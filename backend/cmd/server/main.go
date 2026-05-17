@@ -437,7 +437,7 @@ func main() {
 	// Dev reset handler — constructed here (after vaPool) so MasterReset
 	// can target both mmff_vector (pool) and vector_artefacts (vaPool).
 	// vaPool may be nil; MasterReset skips the VA leg gracefully when nil.
-	devResetH = portfoliomodels.NewDevResetHandler(pool, vaPool)
+	devResetH = portfoliomodels.NewDevResetHandler(pool, vaPool, orgDesignSvc)
 
 	// Tenant settings (master_record_workspaces — renamed from
 	// master_record_tenants by migration 067 on 2026-05-15). M2: reads/writes

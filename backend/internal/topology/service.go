@@ -1142,6 +1142,34 @@ func (s *Service) loadNode(ctx context.Context, tx pgx.Tx, nodeID, subscriptionI
 	return n, nil
 }
 
+// PurgeTenantTopologyData deletes all topology rows for subscriptionID
+// within an existing transaction. Order: role grants → view states →
+// detach parent_id self-refs → nodes. The tx must target vaPool.
+// Intended for dev-reset paths only — irreversible.
+func (s *Service) PurgeTenantTopologyData(ctx context.Context, subscriptionID uuid.UUID, tx pgx.Tx) error {
+	if _, err := tx.Exec(ctx, sqlPurgeTenantRoleGrants, subscriptionID); err != nil {
+		return fmt.Errorf("purge role grants: %w", err)
+	}
+	if _, err := tx.Exec(ctx, sqlPurgeTenantViewStates, subscriptionID); err != nil {
+		return fmt.Errorf("purge view states: %w", err)
+	}
+	if _, err := tx.Exec(ctx, sqlDetachTenantNodeParents, subscriptionID); err != nil {
+		return fmt.Errorf("detach parent refs: %w", err)
+	}
+	if _, err := tx.Exec(ctx, sqlPurgeTenantNodes, subscriptionID); err != nil {
+		return fmt.Errorf("purge nodes: %w", err)
+	}
+	return nil
+}
+
+// SeedRootNode inserts a single root topology node within an existing
+// transaction. The tx must target vaPool.
+// Intended for dev-reset paths only.
+func (s *Service) SeedRootNode(ctx context.Context, workspaceID, subscriptionID uuid.UUID, name string, tx pgx.Tx) error {
+	_, err := tx.Exec(ctx, sqlInsertRootNode, workspaceID, subscriptionID, name)
+	return err
+}
+
 // validateManualXY enforces the same pair-or-null rule the artefacts
 // migration 031 CHECK enforces, in Go, so we return a typed error
 // instead of a raw constraint violation.

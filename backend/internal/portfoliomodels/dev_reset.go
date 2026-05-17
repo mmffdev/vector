@@ -18,16 +18,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/topology"
 )
 
-// DevResetHandler holds both DB pools for dev operations.
+// DevResetHandler holds both DB pools and the topology service for dev operations.
 type DevResetHandler struct {
-	VectorPool *pgxpool.Pool // mmff_vector
-	VAPool     *pgxpool.Pool // vector_artefacts (may be nil)
+	VectorPool  *pgxpool.Pool    // mmff_vector
+	VAPool      *pgxpool.Pool    // vector_artefacts (may be nil)
+	TopologySvc *topology.Service
 }
 
-func NewDevResetHandler(vectorPool *pgxpool.Pool, vaPool *pgxpool.Pool) *DevResetHandler {
-	return &DevResetHandler{VectorPool: vectorPool, VAPool: vaPool}
+func NewDevResetHandler(vectorPool *pgxpool.Pool, vaPool *pgxpool.Pool, topologySvc *topology.Service) *DevResetHandler {
+	return &DevResetHandler{VectorPool: vectorPool, VAPool: vaPool, TopologySvc: topologySvc}
 }
 
 // ResetAdoptionState — POST /_site/admin/dev/adoption-reset
@@ -245,20 +247,9 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 		return fmt.Errorf("timeboxes_releases: %w", err)
 	}
 
-	// 6. Topology — clear role grants and view state first, then detach
-	//    parent_id self-references before deleting nodes (avoids ON DELETE
-	//    RESTRICT firing on the parent_id FK during a cascading delete).
-	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyRoleGrantsForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("users_roles_topology_nodes: %w", err)
-	}
-	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyViewStateForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("topology_view_states: %w", err)
-	}
-	if _, err = tx.Exec(ctx, sqlDetachTopologyParentsForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("topology_nodes parent detach: %w", err)
-	}
-	if _, err = tx.Exec(ctx, sqlDeleteAllTopologyNodesForSubscription, subscriptionID); err != nil {
-		return fmt.Errorf("topology_nodes: %w", err)
+	// 6. Topology — delegated to topology.Service to preserve sole-writer boundary.
+	if err = h.TopologySvc.PurgeTenantTopologyData(ctx, subscriptionID, tx); err != nil {
+		return fmt.Errorf("topology purge: %w", err)
 	}
 
 	// 7. Master record portfolio (adoption snapshot).
@@ -272,7 +263,7 @@ func (h *DevResetHandler) masterResetVA(ctx context.Context, subscriptionID uuid
 	}
 
 	// 9. Seed root topology node "ACME Bank".
-	if _, err = tx.Exec(ctx, sqlInsertTestbedRootTopologyNode, devWorkspaceID, subscriptionID); err != nil {
+	if err = h.TopologySvc.SeedRootNode(ctx, devWorkspaceID, subscriptionID, "ACME Bank", tx); err != nil {
 		return fmt.Errorf("topology root node: %w", err)
 	}
 

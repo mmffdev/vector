@@ -459,14 +459,6 @@ const sqlDeleteAllTimeboxSprintsForSubscription = `DELETE FROM timeboxes_sprints
 
 const sqlDeleteAllTimeboxReleasesForSubscription = `DELETE FROM timeboxes_releases WHERE timeboxes_releases_id_subscription = $1`
 
-const sqlDeleteAllTopologyRoleGrantsForSubscription = `DELETE FROM users_roles_topology_nodes WHERE users_roles_topology_nodes_id_subscription = $1`
-
-const sqlDeleteAllTopologyViewStateForSubscription = `DELETE FROM topology_view_states WHERE topology_view_states_id_subscription = $1`
-
-const sqlDetachTopologyParentsForSubscription = `UPDATE topology_nodes SET parent_id = NULL WHERE subscription_id = $1`
-
-const sqlDeleteAllTopologyNodesForSubscription = `DELETE FROM topology_nodes WHERE subscription_id = $1`
-
 const sqlDeleteMasterRecordPortfolioForWorkspace = `DELETE FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`
 
 const sqlUpsertTestbedTenantRecord = `
@@ -504,16 +496,6 @@ const sqlUpsertTestbedTenantRecord = `
 		       master_record_workspaces_build_changeset_tracking = EXCLUDED.master_record_workspaces_build_changeset_tracking,
 		       master_record_workspaces_primary_contact_email    = EXCLUDED.master_record_workspaces_primary_contact_email,
 		       master_record_workspaces_updated_at               = now()
-	`
-
-const sqlInsertTestbedRootTopologyNode = `
-		INSERT INTO topology_nodes (
-			id, workspace_id, subscription_id, parent_id,
-			name, description, layout_mode, collapsed_default, sort_order
-		) VALUES (
-			gen_random_uuid(), $1, $2, NULL,
-			'ACME Bank', '', 'auto-horizontal', FALSE, 0
-		)
 	`
 
 // sqlSeedDevStrategyArtefactsFn calls the SQL function installed by

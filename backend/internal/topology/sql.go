@@ -599,6 +599,26 @@ const sqlClampPredicate = `
 		SELECT id FROM reachable
 	`
 
+// ── dev-reset purge (used only by PurgeTenantTopologyData / SeedRootNode) ───
+
+const sqlPurgeTenantRoleGrants = `DELETE FROM users_roles_topology_nodes WHERE users_roles_topology_nodes_id_subscription = $1`
+
+const sqlPurgeTenantViewStates = `DELETE FROM topology_view_states WHERE topology_view_states_id_subscription = $1`
+
+const sqlDetachTenantNodeParents = `UPDATE topology_nodes SET parent_id = NULL WHERE subscription_id = $1`
+
+const sqlPurgeTenantNodes = `DELETE FROM topology_nodes WHERE subscription_id = $1`
+
+const sqlInsertRootNode = `
+		INSERT INTO topology_nodes (
+			id, workspace_id, subscription_id, parent_id,
+			name, description, layout_mode, collapsed_default, sort_order
+		) VALUES (
+			gen_random_uuid(), $1, $2, NULL,
+			$3, '', 'auto-horizontal', FALSE, 0
+		)
+	`
+
 // sqlLoadNodeForUpdate is the SELECT … FOR UPDATE helper used by every
 // write path in service.go. Returns the full Node hydration column set.
 const sqlLoadNodeForUpdate = `

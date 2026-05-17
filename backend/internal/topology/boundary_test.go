@@ -9,16 +9,15 @@ import (
 )
 
 // TestPackageBoundary asserts that the topology package is the SOLE
-// writer for topology_nodes, topology_role_grants, topology_view_state,
+// writer for topology_nodes, users_roles_topology_nodes, topology_view_states,
 // and topology_commits. It fails CI if any .go file outside
 // backend/internal/topology/ contains an INSERT/UPDATE/DELETE SQL string
 // targeting one of those tables.
 //
-// M6.2.7 cutover (PLA-0006): the three boundary tables moved from
-// mmff_vector (org_nodes / roles_org_nodes / org_node_view_state /
-// org_levels) to vector_artefacts (topology_nodes / topology_role_grants /
-// topology_view_state). The boundary follows the new tables — the
-// legacy names are now read-only fossils served by the ETL scripts.
+// M6.2.7 cutover (PLA-0006): tables moved from mmff_vector to
+// vector_artefacts; RF1.4.2 renamed topology_role_grants →
+// users_roles_topology_nodes and topology_view_state → topology_view_states.
+// The boundary follows the current names.
 //
 // Mirrors the addressables boundary test (see
 // backend/internal/addressables/boundary_test.go) — same mechanism,
@@ -36,7 +35,7 @@ func TestPackageBoundary(t *testing.T) {
 		t.Skip("ripgrep not installed; CI runs the boundary check via the lint step")
 	}
 
-	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(topology_nodes|topology_role_grants|topology_view_state|topology_commits)\b`
+	pattern := `(?i)(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(topology_nodes|topology_role_grants|topology_view_states|topology_commits|users_roles_topology_nodes)\b`
 
 	cmd := exec.Command("rg",
 		"--no-heading", "--line-number",
@@ -71,7 +70,7 @@ func TestPackageBoundary(t *testing.T) {
 		}
 	}
 	if len(violations) > 0 {
-		t.Fatalf("topology write boundary violated — these files write topology_nodes/topology_role_grants/topology_view_state/topology_commits directly instead of going through backend/internal/topology/:\n%s",
+		t.Fatalf("topology write boundary violated — these files write topology_nodes/users_roles_topology_nodes/topology_view_states/topology_commits directly instead of going through backend/internal/topology/:\n%s",
 			strings.Join(violations, "\n"))
 	}
 }
