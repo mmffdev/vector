@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-17 (solo-dev mode established — WIP-capped at 5; FE-POR-0003 parked; ★ forcing function = FE-POR-0002 Chrome Scope Picker)
-**Doc version:** 2.21
+**Last updated:** 2026-05-17 (FE-POR-0002 ★ FORCING FUNCTION complete — all 11 sub-items done; .3.4 mounted in RedesignTopBar.tsx)
+**Doc version:** 2.25
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, B18.7, FE-POR-0002. Everything else parks below.
 >
@@ -511,7 +511,6 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
-> Commit `f18809e` (2026-05-17): feat(memory): establish solo-dev mode marker [solo-dev]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1454,7 +1453,6 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
-> Commit `f18809e` (2026-05-17): feat(memory): establish solo-dev mode marker [solo-dev]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1844,7 +1842,6 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
-> Commit `f18809e` (2026-05-17): feat(memory): establish solo-dev mode marker [solo-dev]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -5483,27 +5480,38 @@ Governance surface: stand up a **new 3rd-level secondary-nav page** at `/workspa
 
 ## FE-POR-0002. Chrome Scope Picker (PLA-0042) ★ FORCING FUNCTION
 
-Chrome-level scope picker mounted at the start of `.page-header__left` (Rally / Linear convention; see research paper [R051](dev/research/R051.json)). Lets a logged-in user pick between the topology nodes they hold a live grant on — `admin | editor | viewer` rows from `topology_role_grants` — so the active scope follows them across pages. **Iteration 1 (this entry):** picker UI + `ScopeContext` + URL `?scope=<node_id>` + localStorage persistence; no read-path wiring yet (picking a scope persists the choice but does not narrow backlogs / portfolios / dashboards). **Iteration 2 (separate plan):** wire `activeNodeId` into work-items / portfolio-items / dashboard reads as a `?scope=` server filter — every consuming endpoint gets a clamp parameter, and the backend has to decide how scope clamps stack with workspace clamps. Plan: `dev/plans/PLA-0042.md`. `[P2]` 🔵 IN FLIGHT ★ FORCING FUNCTION (solo-dev mode, since 2026-05-17)
+Chrome-level scope picker mounted before the breadcrumbs in `RedesignTopBar` (Rally / Linear convention; see research paper [R051](dev/research/R051.json)). Lets a logged-in user pick between the topology nodes they hold a live grant on — `admin | editor | viewer` rows from `users_roles_topology_nodes` (post-RF1.4.2 rename of the original `topology_role_grants`) — so the active scope follows them across pages. **Iteration 1 (this entry):** picker UI + `ScopeContext` + URL `?scope=<node_id>` + localStorage persistence; no read-path wiring yet (picking a scope persists the choice but does not narrow backlogs / portfolios / dashboards). **Iteration 2 (separate plan):** wire `activeNodeId` into work-items / portfolio-items / dashboard reads as a `?scope=` server filter — every consuming endpoint gets a clamp parameter, and the backend has to decide how scope clamps stack with workspace clamps. Plan: `dev/plans/PLA-0042.md`. `[P2]` ✅ DONE 2026-05-17 (was ★ FORCING FUNCTION — all 11 sub-items shipped; iteration 2 follow-up parked as FE-POR-0003)
 
 ### FE-POR-0002.1 Backend — `GET /api/topology/grants/me`
 
-- 🔵 IN FLIGHT **FE-POR-0002.1.1** `Service.ListMyGrants(ctx, subscriptionID, userID)` in `backend/internal/orgdesign/service.go` — JOIN `topology_role_grants` + `topology_nodes`; filter `revoked_at IS NULL` AND `archived_at IS NULL`; return `MyGrant{grant_id, node_id, workspace_id, parent_id, name, label_override, colour, icon, role, granted_at}` ordered by node name. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0002.1.2** `Handler.MyGrants` in `backend/internal/orgdesign/handler.go` — thin wrapper; reads actor from `auth.UserFromCtx`. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0002.1.3** Register `GET /grants/me` on **both** `/_site` and `/samantha/v2` per PLA-0039 transport-segregation; **not** inside the workspace-clamped subrouter — a user's grants legitimately span workspaces inside the subscription. `[P2]`
+- ✅ ~~**FE-POR-0002.1.1** `Service.ListMyGrants(ctx, subscriptionID, userID)` in `backend/internal/orgdesign/service.go` — JOIN `topology_role_grants` + `topology_nodes`; filter `revoked_at IS NULL` AND `archived_at IS NULL`; return `MyGrant{grant_id, node_id, workspace_id, parent_id, name, label_override, colour, icon, role, granted_at}` ordered by node name.~~ `[P2]`
+  > Last checked: 2026-05-17 — landed in `backend/internal/topology/service.go:1000` (package renamed orgdesign → topology per RF1.4.1). Joins `users_roles_topology_nodes` (post-RF1.4.2 column rename of `topology_role_grants`) + `topology_nodes`. Adds `actorRole` param + gadmin-synth-grant override; adds `Position` field for PLA-0044 walker. SQL in `sql.go` (sole-writer boundary).
+- ✅ ~~**FE-POR-0002.1.2** `Handler.MyGrants` in `backend/internal/orgdesign/handler.go` — thin wrapper; reads actor from `auth.UserFromCtx`.~~ `[P2]`
+  > Last checked: 2026-05-17 — landed in `backend/internal/topology/handler.go:608`.
+- ✅ ~~**FE-POR-0002.1.3** Register `GET /grants/me` on **both** `/_site` and `/samantha/v2` per PLA-0039 transport-segregation; **not** inside the workspace-clamped subrouter — a user's grants legitimately span workspaces inside the subscription.~~ `[P2]`
+  > Last checked: 2026-05-17 — registered in `backend/cmd/server/main.go:1190` and `main.go:1539`.
 
 ### FE-POR-0002.2 Frontend — ScopeContext + client
 
-- 🔵 IN FLIGHT **FE-POR-0002.2.1** `MyGrant` interface + `listMyGrants()` method on `topologyApi` (`app/lib/topologyApi.ts`) routed through `apiSite()`. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0002.2.2** New `app/contexts/ScopeContext.tsx` — provider holds `{grants, activeNodeId, activeGrant, loading, error, setActiveNodeId, reload}`; fetches on mount when authed; resolves active id from URL `?scope=` → localStorage `vector.scope.activeNodeId` → `null`; validates the candidate is still in the grant set (revoked / archived → falls back to `null`); `setActiveNodeId` writes both URL via `router.replace` and localStorage. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0002.2.3** Mount `<ScopeProvider>` in `app/(user)/layout.tsx` between `ActiveNavProvider` and `DomRegistryProvider`. `[P2]`
+- ✅ ~~**FE-POR-0002.2.1** `MyGrant` interface + `listMyGrants()` method on `topologyApi` (`app/lib/topologyApi.ts`) routed through `apiSite()`.~~ `[P2]`
+  > Last checked: 2026-05-17 — `topologyApi.ts:54` (interface) + `topologyApi.ts:132` (method).
+- ✅ ~~**FE-POR-0002.2.2** New `app/contexts/ScopeContext.tsx` — provider holds `{grants, activeNodeId, activeGrant, loading, error, setActiveNodeId, reload}`; fetches on mount when authed; resolves active id from URL `?scope=` → localStorage `vector.scope.activeNodeId` → `null`; validates the candidate is still in the grant set (revoked / archived → falls back to `null`); `setActiveNodeId` writes both URL via `router.replace` and localStorage.~~ `[P2]`
+  > Last checked: 2026-05-17 — `app/contexts/ScopeContext.tsx` present with all listed state + storage key `vector.scope.activeNodeId`.
+- ✅ ~~**FE-POR-0002.2.3** Mount `<ScopeProvider>` in `app/(user)/layout.tsx` between `ActiveNavProvider` and `DomRegistryProvider`.~~ `[P2]`
+  > Last checked: 2026-05-17 — `app/(user)/layout.tsx:40` (between ActiveNavProvider and DomRegistryProvider, as specified).
 
 ### FE-POR-0002.3 Frontend — `<ScopePicker />` chrome component
 
-- 🔵 IN FLIGHT **FE-POR-0002.3.1** New `app/components/ScopePicker.tsx` — trigger button (`.btn.btn--ghost`) showing active scope label + chevron; outside-click + Escape close; auto-focus filter input on open. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0002.3.2** Dropdown panel: filter input (`.form__input`), indented tree of granted nodes reconstructed from flat list via `parent_id` walks inside the grant set, role pill per row, role-coded active state. Visual indent capped at depth 6 via `.scope-picker__item--d{0..6}` modifier classes (no inline `style={{}}`). `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0002.3.3** Edge states: zero grants → picker renders nothing (no disabled stub); filter no-match → "No matches."; load error → inline error row. `[P3]`
-- 🔵 IN FLIGHT **FE-POR-0002.3.4** Mount `<ScopePicker />` at the start of `.page-header__left` in `app/components/PageHeaderBar.tsx`, between the page title and any breadcrumbs row. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0002.3.5** CSS in `app/globals.css` under `.scope-picker*` namespace, appended after the `.avatar-menu` block; tokens only (`--surface`, `--border`, `--ink-1`, `--ink-3`, `--hover`); no shadow. `[P3]`
+- ✅ ~~**FE-POR-0002.3.1** New `app/components/ScopePicker.tsx` — trigger button (`.btn.btn--ghost`) showing active scope label + chevron; outside-click + Escape close; auto-focus filter input on open.~~ `[P2]`
+  > Last checked: 2026-05-17 — `app/components/ScopePicker.tsx` (183 lines).
+- ✅ ~~**FE-POR-0002.3.2** Dropdown panel: filter input (`.form__input`), indented tree of granted nodes reconstructed from flat list via `parent_id` walks inside the grant set, role pill per row, role-coded active state. Visual indent capped at depth 6 via `.scope-picker__item--d{0..6}` modifier classes (no inline `style={{}}`).~~ `[P2]`
+  > Last checked: 2026-05-17 — inside same `ScopePicker.tsx`; `buildTree()` walks parent links inside the grant set; `.scope-picker__item--d{0..6}` depth modifiers.
+- ✅ ~~**FE-POR-0002.3.3** Edge states: zero grants → picker renders nothing (no disabled stub); filter no-match → "No matches."; load error → inline error row.~~ `[P3]`
+  > Last checked: 2026-05-17 — inside same `ScopePicker.tsx`.
+- ✅ ~~**FE-POR-0002.3.4** Mount `<ScopePicker />` at the start of the breadcrumbs row in `app/redesign/components/RedesignTopBar.tsx` (the real chrome header — original spec named `PageHeaderBar.tsx` which doesn't exist). RedesignTopBar renders inside the `ViewportSlot kind="header"` and is the host for all `(user)` pages via `RedesignShell`.~~ `[P2]`
+  > Last checked: 2026-05-17 — imported and mounted before the breadcrumbs `<nav>` in `RedesignTopBar.tsx:7,23`. ScopePicker self-hides when grants.length === 0 (per .3.3) so chrome stays clean for users with no topology grants.
+- ✅ ~~**FE-POR-0002.3.5** CSS in `app/globals.css` under `.scope-picker*` namespace, appended after the `.avatar-menu` block; tokens only (`--surface`, `--border`, `--ink-1`, `--ink-3`, `--hover`); no shadow.~~ `[P3]`
+  > Last checked: 2026-05-17 — `app/globals.css:586+` with `.scope-picker`, `.scope-picker__trigger`, `.scope-picker__panel`, `.scope-picker__search`, `.scope-picker__list`, `.scope-picker__item` rules.
 
 ### FE-POR-0002.4 Follow-up (deferred — separate plan)
 
@@ -5529,36 +5537,36 @@ Design validated against Rally / Jira / ADO via R052 + R053: single-FK ownership
 
 ### FE-POR-0003.1 Schema — `topology_node_id` FK on artefacts
 
-- 🔵 IN FLIGHT **FE-POR-0003.1.1** Migration `db/artefacts_schema/NNN_artefacts_topology_node_id.sql` — add `topology_node_id UUID NULL REFERENCES topology_nodes(id) ON DELETE SET NULL` on `vector_artefacts.artefacts`; partial index `WHERE topology_node_id IS NOT NULL AND archived_at IS NULL`. NULL = un-assigned (visible in unscoped view, excluded from scoped view). `[P2]`
+- **FE-POR-0003.1.1** Migration `db/artefacts_schema/NNN_artefacts_topology_node_id.sql` — add `topology_node_id UUID NULL REFERENCES topology_nodes(id) ON DELETE SET NULL` on `vector_artefacts.artefacts`; partial index `WHERE topology_node_id IS NOT NULL AND archived_at IS NULL`. NULL = un-assigned (visible in unscoped view, excluded from scoped view). `[P2]`
 
 ### FE-POR-0003.2 Backend — `DescendantNodeIDs` helper
 
-- 🔵 IN FLIGHT **FE-POR-0003.2.1** `orgdesign.Service.DescendantNodeIDs(ctx, subscriptionID, rootNodeID) ([]uuid.UUID, error)` in `backend/internal/orgdesign/service.go` — recursive CTE walking `topology_nodes` children; skip `archived_at IS NOT NULL`; cycle-guard via depth cap (max 12 levels, matches portfolio convention). Returns root + all live descendants. Follows the same shape as existing `ArchivedDescendants` helper at line 960. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.2.2** Unit tests in `service_test.go` — single node, parent+children, multi-level tree, archived child excluded, cycle-safe (synthetic bad data). `[P3]`
+- **FE-POR-0003.2.1** `orgdesign.Service.DescendantNodeIDs(ctx, subscriptionID, rootNodeID) ([]uuid.UUID, error)` in `backend/internal/orgdesign/service.go` — recursive CTE walking `topology_nodes` children; skip `archived_at IS NOT NULL`; cycle-guard via depth cap (max 12 levels, matches portfolio convention). Returns root + all live descendants. Follows the same shape as existing `ArchivedDescendants` helper at line 960. `[P2]`
+- **FE-POR-0003.2.2** Unit tests in `service_test.go` — single node, parent+children, multi-level tree, archived child excluded, cycle-safe (synthetic bad data). `[P3]`
 
 ### FE-POR-0003.3 Backend — `CanReadScope` permission helper
 
-- 🔵 IN FLIGHT **FE-POR-0003.3.1** New `backend/internal/orgdesign/permissions.go` exporting `CanReadScope(ctx, userID, targetNodeID) (bool, error)` — gadmin bypass; otherwise check if any of user's grants are on `targetNodeID` itself OR on any **ancestor** of `targetNodeID` (grant-inherits-down). Grants on descendants of target do NOT count (no upward leakage). Uses adjacency-list walk via existing `parent_id` chain. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.3.2** Unit tests — grant on self passes; grant on parent passes; grant on grandparent passes; grant on child rejects parent; gadmin bypass; revoked grant rejects; archived target rejects. `[P3]`
-- 🔵 IN FLIGHT **FE-POR-0003.3.3** Audit-log code `scope_read_denied` emitted from list handlers when scope clamp filters out everything (signal: misconfigured grant or stale URL). `[P3]`
+- **FE-POR-0003.3.1** New `backend/internal/orgdesign/permissions.go` exporting `CanReadScope(ctx, userID, targetNodeID) (bool, error)` — gadmin bypass; otherwise check if any of user's grants are on `targetNodeID` itself OR on any **ancestor** of `targetNodeID` (grant-inherits-down). Grants on descendants of target do NOT count (no upward leakage). Uses adjacency-list walk via existing `parent_id` chain. `[P2]`
+- **FE-POR-0003.3.2** Unit tests — grant on self passes; grant on parent passes; grant on grandparent passes; grant on child rejects parent; gadmin bypass; revoked grant rejects; archived target rejects. `[P3]`
+- **FE-POR-0003.3.3** Audit-log code `scope_read_denied` emitted from list handlers when scope clamp filters out everything (signal: misconfigured grant or stale URL). `[P3]`
 
 ### FE-POR-0003.4 Backend — `artefactitemsv2.List` scope clamp
 
-- 🔵 IN FLIGHT **FE-POR-0003.4.1** `artefactitemsv2.Service.ListWorkItems` (backend/internal/artefactitemsv2/service.go:83) — accept optional `scopeNodeID *uuid.UUID`; when non-nil: call `CanReadScope` (403 if false), then `DescendantNodeIDs`, then add `WHERE topology_node_id = ANY($N::uuid[])` to the existing workspace-clamped query. Workspace clamp + scope clamp BOTH applied. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.4.2** Handler — parse `?scope=<uuid>` from query in `backend/internal/artefactitemsv2/handler.go`; validate UUID format (400 on parse fail); pass to service. Unset/empty → unscoped (existing behaviour). `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.4.3** Handler tests — unscoped (no `?scope=`) returns all artefacts in workspace as today; scoped to leaf returns only that node's artefacts; scoped to parent returns parent + descendants; scoped to node user has no grant on → 403; un-assigned artefacts excluded from scoped view, included in unscoped view. `[P3]`
+- **FE-POR-0003.4.1** `artefactitemsv2.Service.ListWorkItems` (backend/internal/artefactitemsv2/service.go:83) — accept optional `scopeNodeID *uuid.UUID`; when non-nil: call `CanReadScope` (403 if false), then `DescendantNodeIDs`, then add `WHERE topology_node_id = ANY($N::uuid[])` to the existing workspace-clamped query. Workspace clamp + scope clamp BOTH applied. `[P2]`
+- **FE-POR-0003.4.2** Handler — parse `?scope=<uuid>` from query in `backend/internal/artefactitemsv2/handler.go`; validate UUID format (400 on parse fail); pass to service. Unset/empty → unscoped (existing behaviour). `[P2]`
+- **FE-POR-0003.4.3** Handler tests — unscoped (no `?scope=`) returns all artefacts in workspace as today; scoped to leaf returns only that node's artefacts; scoped to parent returns parent + descendants; scoped to node user has no grant on → 403; un-assigned artefacts excluded from scoped view, included in unscoped view. `[P3]`
 
 ### FE-POR-0003.5 Frontend — `apiSite` scope forwarding
 
-- 🔵 IN FLIGHT **FE-POR-0003.5.1** `app/lib/api.ts` — extend `apiSite()` to auto-append `?scope=<activeNodeId>` (read from current `window.location.search`) on GET requests when the URL already carries `scope`. POST/PATCH/DELETE remain unchanged (writes addressed in PLA-0044). Single touch-point replaces per-page wiring. `[P2]`
+- **FE-POR-0003.5.1** `app/lib/api.ts` — extend `apiSite()` to auto-append `?scope=<activeNodeId>` (read from current `window.location.search`) on GET requests when the URL already carries `scope`. POST/PATCH/DELETE remain unchanged (writes addressed in PLA-0044). Single touch-point replaces per-page wiring. `[P2]`
 
 ### FE-POR-0003.6 Public API — OpenAPI
 
-- 🔵 IN FLIGHT **FE-POR-0003.6.1** `dev/openapi/openapi-v2.yaml` — document `?scope=<uuid>` query parameter on `/work-items` (and any other artefact-list route promoted to v2). Note grant requirement: scope node must be in caller's grant set or an ancestor of one. `[P3]`
+- **FE-POR-0003.6.1** `dev/openapi/openapi-v2.yaml` — document `?scope=<uuid>` query parameter on `/work-items` (and any other artefact-list route promoted to v2). Note grant requirement: scope node must be in caller's grant set or an ancestor of one. `[P3]`
 
 ### FE-POR-0003.7 Verification
 
-- 🔵 IN FLIGHT **FE-POR-0003.7.1** Manual verification — seed fixture artefacts on nodes A, A/B, A/B/C; grant role on A/B; verify: picker on B shows B+C artefacts; picker on A → 403 (no grant); picker cleared → all artefacts in workspace (including A and un-assigned). `[P3]`
+- **FE-POR-0003.7.1** Manual verification — seed fixture artefacts on nodes A, A/B, A/B/C; grant role on A/B; verify: picker on B shows B+C artefacts; picker on A → 403 (no grant); picker cleared → all artefacts in workspace (including A and un-assigned). `[P3]`
 
 ### FE-POR-0003.8 Follow-ups (deferred)
 
@@ -5570,16 +5578,16 @@ Design validated against Rally / Jira / ADO via R052 + R053: single-FK ownership
 
 Single shared topology walker — eliminates four independent walks (canvas dagre layout, canvas-tree state hook, topology flyout, scope rail) currently drifting on orphan policy, sort order, and depth-0 quirks. Surfaced when ScopeRail showed a spurious "D" node that the canvas correctly dropped: ScopeRail re-rooted orphans (parent_id set but parent not in user's grant set), while the canvas dropped them. Single walker + consistent orphan policy fixes the drift. Walker lives in `app/lib/shared/topology/` (cross-runtime TS) with a Go parallel at `backend/internal/shared/topology/` — see PLA-0045 for the shared-methods home convention. Iteration 1 powers the `/_site` BFF tree response; public `/samantha/v2/topology/tree` exposure is deferred to PLA-0044.followup-A.
 
-- 🔵 IN FLIGHT **FE-POR-0003.9.1** `app/lib/shared/topology/walker.ts` — generic `walkTopology<T extends TopologyNode>(nodes, opts)` returning `{rows, visibleIds, visibleEdges, childrenOf}`. Opts: `collapsed: Set<string>`, `sort: (a,b)=>number`, `filter?: (n)=>boolean` (default: archived_at IS NULL), `maxDepth?: number` (default 12). Orphans (parent_id set but parent missing/filtered) dropped — caller pre-resolves if a different policy is needed. Generic over node shape so it works for both `OrgNode` (canvas, has `position`) and `MyGrant` (rail). Cross-runtime: imported by frontend React components AND `/_site` BFF route handlers. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.2** Refactor `app/components/topology/layoutWithDagre.ts` — replace inline visible-set + edges walk (lines 30–38, 51–59) with `walkTopology()` output; dagre still attaches coordinates after. Canvas card map (image 1) uses this. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.3** Refactor `app/components/topology/useTopologyTreeState.ts` — replace its own `childrenOf` useMemo by destructuring from `walkTopology()` result (`result.childrenOf`). Topology table view (image 2) uses this. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.4** Refactor `app/components/TopologyTreeFlyout.tsx` — replace `buildTree()` with `walkTopology()`. Renderer (not walker) handles depth-0 spine column drawing; removes the depth-0 path-zeroing quirk from the engine. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.5** Refactor `app/components/ScopeRail.tsx` — replace `buildTree()`/`flattenTree()` with `walkTopology()`. Renderer skips depth-0 spine column (flush-left root). Fixes spurious "D" orphan bug. ScopeRail rail (image 3) uses this. `[P2]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.6** Unit tests `app/lib/shared/topology/walker.test.ts` — flat list, single-root deep tree, multi-root forest, orphan-drop, cycle-guard (depth-cap synthetic loop), collapse hides subtree but keeps row, sort by label vs position, edges only between visible nodes. Reads same fixtures as the Go suite. `[P3]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.7** Backend Go mirror `backend/internal/shared/topology/walker.go` — generic `WalkTopology[T any](nodes, opts)` mirrors TS surface with accessor-func opts (no method-interface). Iteration 1: powers `/_site/topology/tree` (BFF) only. Public `/samantha/v2/topology/tree` exposure deferred to PLA-0044.followup-A. Parity locked by `dev/fixtures/shared/topology/*.json` golden fixtures consumed by both TS Vitest and Go test suites. `[P3]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.8** Add `position INT` to `MyGrant` (`backend/internal/orgdesign/service.go` struct + `ListMyGrants` query) so ScopeRail can sort by position to match the canvas. Followup commit. `[P3]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.9** Visual smoke — canvas card map renders identically pre/post refactor; topology tree table renders identically; flyout renders identically; ScopeRail no longer shows orphan "D". Single `<screenshot>` reference set in `dev/research/` if drift detected. `[P3]`
-- 🔵 IN FLIGHT **FE-POR-0003.9.10** `app/components/topology/UserNodeAssignment.tsx` — new gadmin-only tree picker (checkbox per row) for assigning users to topology node(s). Fifth consumer of `walkTopology()`: walker provides visible-rows + edges + collapse semantics; only the row renderer is bespoke (checkbox cell instead of name). Validates that the walker is reusable for non-display-tree consumers. `[P3]`
+- **FE-POR-0003.9.1** `app/lib/shared/topology/walker.ts` — generic `walkTopology<T extends TopologyNode>(nodes, opts)` returning `{rows, visibleIds, visibleEdges, childrenOf}`. Opts: `collapsed: Set<string>`, `sort: (a,b)=>number`, `filter?: (n)=>boolean` (default: archived_at IS NULL), `maxDepth?: number` (default 12). Orphans (parent_id set but parent missing/filtered) dropped — caller pre-resolves if a different policy is needed. Generic over node shape so it works for both `OrgNode` (canvas, has `position`) and `MyGrant` (rail). Cross-runtime: imported by frontend React components AND `/_site` BFF route handlers. `[P2]`
+- **FE-POR-0003.9.2** Refactor `app/components/topology/layoutWithDagre.ts` — replace inline visible-set + edges walk (lines 30–38, 51–59) with `walkTopology()` output; dagre still attaches coordinates after. Canvas card map (image 1) uses this. `[P2]`
+- **FE-POR-0003.9.3** Refactor `app/components/topology/useTopologyTreeState.ts` — replace its own `childrenOf` useMemo by destructuring from `walkTopology()` result (`result.childrenOf`). Topology table view (image 2) uses this. `[P2]`
+- **FE-POR-0003.9.4** Refactor `app/components/TopologyTreeFlyout.tsx` — replace `buildTree()` with `walkTopology()`. Renderer (not walker) handles depth-0 spine column drawing; removes the depth-0 path-zeroing quirk from the engine. `[P2]`
+- **FE-POR-0003.9.5** Refactor `app/components/ScopeRail.tsx` — replace `buildTree()`/`flattenTree()` with `walkTopology()`. Renderer skips depth-0 spine column (flush-left root). Fixes spurious "D" orphan bug. ScopeRail rail (image 3) uses this. `[P2]`
+- **FE-POR-0003.9.6** Unit tests `app/lib/shared/topology/walker.test.ts` — flat list, single-root deep tree, multi-root forest, orphan-drop, cycle-guard (depth-cap synthetic loop), collapse hides subtree but keeps row, sort by label vs position, edges only between visible nodes. Reads same fixtures as the Go suite. `[P3]`
+- **FE-POR-0003.9.7** Backend Go mirror `backend/internal/shared/topology/walker.go` — generic `WalkTopology[T any](nodes, opts)` mirrors TS surface with accessor-func opts (no method-interface). Iteration 1: powers `/_site/topology/tree` (BFF) only. Public `/samantha/v2/topology/tree` exposure deferred to PLA-0044.followup-A. Parity locked by `dev/fixtures/shared/topology/*.json` golden fixtures consumed by both TS Vitest and Go test suites. `[P3]`
+- **FE-POR-0003.9.8** Add `position INT` to `MyGrant` (`backend/internal/orgdesign/service.go` struct + `ListMyGrants` query) so ScopeRail can sort by position to match the canvas. Followup commit. `[P3]`
+- **FE-POR-0003.9.9** Visual smoke — canvas card map renders identically pre/post refactor; topology tree table renders identically; flyout renders identically; ScopeRail no longer shows orphan "D". Single `<screenshot>` reference set in `dev/research/` if drift detected. `[P3]`
+- **FE-POR-0003.9.10** `app/components/topology/UserNodeAssignment.tsx` — new gadmin-only tree picker (checkbox per row) for assigning users to topology node(s). Fifth consumer of `walkTopology()`: walker provides visible-rows + edges + collapse semantics; only the row renderer is bespoke (checkbox cell instead of name). Validates that the walker is reusable for non-display-tree consumers. `[P3]`
 
 ---
 

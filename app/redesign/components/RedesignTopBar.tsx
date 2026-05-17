@@ -4,6 +4,7 @@ import { useContext } from "react";
 import { usePathname } from "next/navigation";
 import { useShell } from "../ShellContext";
 import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
+import ScopePicker from "@/app/components/ScopePicker";
 
 export default function RedesignTopBar() {
   const { activeSection, isAccountActive } = useShell();
@@ -19,6 +20,7 @@ export default function RedesignTopBar() {
 
   return (
     <div className="nav-top-bar" role="banner">
+      <ScopePicker />
       <nav className="nav-top-bar__Breadcrumbs" aria-label="Breadcrumb">
         <span className="nav-top-bar__Breadcrumbs_Crumb">Vector</span>
         <span className="nav-top-bar__Breadcrumbs_Sep">/</span>

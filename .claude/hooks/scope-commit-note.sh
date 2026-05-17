@@ -62,6 +62,14 @@ fi
 
 [[ -z "$COMMIT_HASH" || -z "$COMMIT_MSG" ]] && exit 0
 
+# Solo-dev mode meta-work (governance / memory / workflow scaffolding) is not
+# product scope. Established 2026-05-17 — see .claude/memory/feedback_solo_dev_mode.md.
+# Exit silently rather than fall through to keyword matching (which pollutes
+# scope items via generic words like "visual"/"review"/"css").
+case "$COMMIT_MSG" in
+  *"[solo-dev]"*) exit 0 ;;
+esac
+
 NOTE="> Commit \`${COMMIT_HASH}\` (${COMMIT_DATE}): ${COMMIT_MSG}"
 
 # ── Priority 1: explicit ref tag in commit message ────────────────────────────
