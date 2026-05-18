@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth, ApiError, MFAChallengeError } from "@/app/contexts/AuthContext";
 import { apiSite as api } from "@/app/lib/api";
 
@@ -76,49 +77,41 @@ function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="login__form" noValidate>
-      <div className="login__welcome">
-        <div className="login__breadcrumb">MMFFDEV / VECTOR</div>
-        <h1 className="login__title">Welcome back, Salung.</h1>
-        <p className="login__subtitle">You last signed in 4 days ago from Madrid. 12 new updates across your pinned portfolios.</p>
-      </div>
+      <label className="login__field-group">
+        <span className="login__field-label">EMAIL</span>
+        <input
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="login__input"
+        />
+      </label>
 
-      <div className="login__fields">
-        <label className="login__field-group">
-          <span className="login__field-label">EMAIL</span>
-          <input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="login__input"
-          />
-        </label>
+      <label className="login__field-group">
+        <span className="login__field-label">PASSWORD</span>
+        <input
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="login__input"
+        />
+      </label>
 
-        <label className="login__field-group">
-          <span className="login__field-label">PASSWORD</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="login__input"
-          />
-        </label>
-
-        <label className="login__field-group">
-          <span className="login__field-label">AUTHENTICATOR CODE</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            value={mfaCode}
-            onChange={(e) => setMfaCode(e.target.value)}
-            className="login__input login__input--mono"
-            placeholder="0 0 0 0 0 0"
-          />
-        </label>
-      </div>
+      <label className="login__field-group">
+        <span className="login__field-label">AUTHENTICATOR CODE</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          value={mfaCode}
+          onChange={(e) => setMfaCode(e.target.value)}
+          className="login__input login__input--mono"
+          placeholder="0 0 0 0 0 0"
+        />
+      </label>
 
       <label className="login__remember">
         <input
@@ -141,10 +134,6 @@ function LoginForm() {
       <div className="login__footer-links">
         <Link href="/login/reset" className="login__link">Forgot password?</Link>
       </div>
-
-      <div className="login__legal">
-        <p>Authorised access only. Activity may be monitored. By signing in you accept the <Link href="/terms">terms of use</Link> and <Link href="/cookies">cookie policy</Link>.</p>
-      </div>
     </form>
   );
 }
@@ -153,23 +142,37 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <aside className="login-page__sidebar">
-        <div className="login-page__sidebar-brand">
-          <svg className="login-page__sidebar-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L14.09 9.26H22L16.45 13.97L18.54 21.5L12 16.79L5.46 21.5L7.55 13.97L2 9.26H9.91L12 2Z" fill="currentColor"/>
-          </svg>
-        </div>
-        <div className="login-page__sidebar-text">
-          VECTOR<br/>v1.01
+        <div className="login-page__sidebar-logo">
+          <Image
+            src="/logo-vector.png"
+            alt="Vector"
+            width={120}
+            height={120}
+            priority
+          />
         </div>
       </aside>
-      <main className="login-page__main">
-        <Suspense fallback={null}>
-          <LoginForm />
-        </Suspense>
-        <footer className="login-page__footer">
-          build 7f3a • 2026.05.18
-        </footer>
+
+      <main className="login-page__content">
+        <div className="login-page__form-column">
+          <div className="login-page__form-panel">
+            <Suspense fallback={null}>
+              <LoginForm />
+            </Suspense>
+          </div>
+        </div>
+
+        <div className="login-page__welcome-column">
+          <div className="login-page__welcome">
+            <h1 className="login-page__welcome-title">Welcome back, Salung.</h1>
+            <p className="login-page__welcome-text">You last signed in 4 days ago from Madrid. 12 new updates across your pinned portfolios.</p>
+          </div>
+        </div>
       </main>
+
+      <footer className="login-page__footer">
+        build 7f3a • 2026.05.18
+      </footer>
     </div>
   );
 }
