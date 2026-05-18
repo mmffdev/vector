@@ -7,6 +7,21 @@ import Image from "next/image";
 import { useAuth, ApiError, MFAChallengeError } from "@/app/contexts/AuthContext";
 import { apiSite as api } from "@/app/lib/api";
 
+function LoginBranding() {
+  return (
+    <div className="login-branding">
+      <Image
+        src="/logo-vector.png"
+        alt="Vector"
+        width={40}
+        height={40}
+        priority
+      />
+      <span className="login-branding__text">Vector</span>
+    </div>
+  );
+}
+
 function LoginForm() {
   const { login, mfaLogin } = useAuth();
   const router = useRouter();
@@ -142,51 +157,34 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <aside className="login-page__sidebar">
-        <div className="login-page__sidebar-logo">
-          <Image
-            src="/logo-vector.png"
-            alt="Vector"
-            width={60}
-            height={60}
-            priority
-          />
+        <LoginBranding />
+        <div className="login-page__sidebar-content">
+          <div className="login-page__breadcrumb">MMFFDEV / PORTFOLIO · PROGRAMME · PRODUCT</div>
+          <h2 className="login-page__sidebar-title">One workspace for every team, sprint, and bet.</h2>
+          <p className="login-page__sidebar-text">Portfolios, programmes and products under one roof. Sign in to pick up where you left off.</p>
         </div>
-        <div className="login-page__sidebar-wordmark">
-          <span className="login-page__sidebar-wordmark-v">V</span><span className="login-page__sidebar-wordmark-ector">ector</span>
-        </div>
-        <div className="login-page__sidebar-version">v1.01</div>
+        <footer className="login-page__sidebar-footer">
+          <span>v1.01 · eu-west-2</span>
+          <span>© MMFFDev 2026</span>
+        </footer>
       </aside>
 
-      <main className="login-page__content">
-        <div className="login-page__welcome-column">
-          <div className="login-page__welcome">
-            <div className="login-page__breadcrumb">MMFFDEV / VECTOR</div>
-            <h1 className="login-page__welcome-title">Welcome back, Salung.</h1>
-            <p className="login-page__welcome-text">You last signed in 4 days ago from Madrid. 12 new updates across your pinned portfolios.</p>
+      <main className="login-page__main">
+        <div className="login-page__form-container">
+          <div className="login-page__form-header">
+            <span className="login-page__form-label">SIGN IN</span>
+            <h1 className="login-page__form-title">Welcome back</h1>
           </div>
-        </div>
-
-        <div className="login-page__form-column">
           <div className="login-page__form-panel">
             <Suspense fallback={null}>
               <LoginForm />
             </Suspense>
           </div>
+          <div className="login-page__form-footer">
+            <p>Authorised access only. Activity may be monitored. By signing in you accept the <Link href="/terms">terms of use</Link> and <Link href="/cookies">cookie policy</Link>.</p>
+          </div>
         </div>
       </main>
-
-      <footer className="login-page__footer">
-        <div className="login-page__footer-left">
-          <span>Authorised access only. Activity may be monitored. By signing in you accept the</span>
-          <Link href="/terms">terms of use</Link>
-          <span>and</span>
-          <Link href="/cookies">cookie policy</Link>
-          <span>.</span>
-        </div>
-        <div className="login-page__footer-right">
-          build 7f3a • 2026.05.18
-        </div>
-      </footer>
     </div>
   );
 }
