@@ -156,6 +156,16 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="login-page">
+      <div className="login-page__logo-column">
+        <Image
+          src="/logo-vector.png"
+          alt="Vector"
+          width={60}
+          height={60}
+          priority
+        />
+      </div>
+
       <aside className="login-page__sidebar">
         <LoginBranding />
         <div className="login-page__sidebar-content">
