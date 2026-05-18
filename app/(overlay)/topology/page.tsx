@@ -15,7 +15,7 @@
 // inside the AppShell — it owns the entire viewport.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ReactFlowProvider,
   useNodesState,
@@ -70,7 +70,6 @@ export default function TopologyOverlayPage() {
 
 function TopologyOverlayInner() {
   const router = useRouter();
-  const search = useSearchParams();
   const { user, switchWorkspace } = useAuth();
   // Custom zoom controls render at the canvas's bottom-center; we
   // replace React Flow's built-in <Controls> because the tree flyout's
@@ -79,18 +78,18 @@ function TopologyOverlayInner() {
   const onZoomIn = useCallback(() => rfInstance.zoomIn({ duration: 150 }), [rfInstance]);
   const onZoomOut = useCallback(() => rfInstance.zoomOut({ duration: 150 }), [rfInstance]);
 
-  const focusId = search.get("focus");
-  // ?expanded=1 — embedded mount (workspace-settings → Topology tab)
-  // reads this on first render so a deep-link can land directly in
-  // expand-to-fill mode.
-  const [expanded, setExpanded] = useState<boolean>(() => search.get("expanded") === "1");
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (expanded) url.searchParams.set("expanded", "1");
-    else url.searchParams.delete("expanded");
-    window.history.replaceState(null, "", url.toString());
-  }, [expanded]);
+  // Canvas-state defaults (TD-URL-TOPOLOGY-EXPANDED-FOCUS retired).
+  //   • focusId — initial selected node. Previously read from ?focus=<id>
+  //     but no codepath generated the param; the deep-link path was dead.
+  //     If reintroduced, prefer a route segment (e.g. /topology/focus/<id>)
+  //     over URL state (feedback_url_is_path_only).
+  //   • expanded — embedded-mount fill flag. Previously round-tripped
+  //     via ?expanded=1 + window.history.replaceState; no codepath set
+  //     the param either. If a future host (workspace-admin/topology
+  //     tab, etc.) needs deep-link expand, lift it to a React prop on
+  //     TopologyOverlayInner — never the address bar.
+  const focusId: string | null = null;
+  const [expanded, setExpanded] = useState(false);
 
   const { wsRef, workspaces, tree, loadError, setLoadError, reload } =
     useTopologyData();
