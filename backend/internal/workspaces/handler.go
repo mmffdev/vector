@@ -49,16 +49,21 @@ type Handler struct {
 // own audit + permission resolver; nothing else to inject here.
 func NewHandler(s *Service) *Handler { return &Handler{Svc: s} }
 
-// Mount registers all five routes onto r. Caller is expected to wrap
-// r in RequireAuth + RequireFreshPassword + rate-limit middlewares
+// Mount registers the non-DELETE routes onto r. Caller is expected to
+// wrap r in RequireAuth + RequireFreshPassword + rate-limit middlewares
 // before calling Mount, mirroring /api/topology in main.go.
+//
+// B16.8.10: DELETE /{id} is deliberately NOT registered here — it
+// requires the per-action step-up reauth gate (RequireStepUpReauth
+// + h.Delete) which must be wired in main.go before Mount runs.
+// Chi silently overwrites duplicate registrations, so leaving a plain
+// r.Delete here would defeat the gate. See main.go:/workspaces.
 func (h *Handler) Mount(r chi.Router) {
 	r.Get("/", h.List)
 	r.Post("/", h.Create)
 	r.Patch("/{id}", h.Patch)
 	r.Post("/{id}/archive", h.Archive)
 	r.Post("/{id}/restore", h.Restore)
-	r.Delete("/{id}", h.Delete)
 }
 
 // ─── request shapes ────────────────────────────────────────────────────

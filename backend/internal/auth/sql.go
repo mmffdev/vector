@@ -337,7 +337,7 @@ const sqlSelectSessionsForUser = `
 		SELECT users_sessions_id,
 		       users_sessions_created_at,
 		       COALESCE(users_sessions_rotated_at, users_sessions_created_at) AS last_activity_at,
-		       users_sessions_ip_address,
+		       host(users_sessions_ip_address)::text AS ip_text,
 		       users_sessions_user_agent
 		  FROM users_sessions
 		 WHERE users_sessions_id_user = $1
