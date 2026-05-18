@@ -101,7 +101,7 @@ func TestTokens_IssuerAudienceConstants(t *testing.T) {
 func TestAccessToken_RoundTripsIssAud(t *testing.T) {
 	t.Setenv("JWT_ACCESS_SECRET", "test-secret-do-not-use-in-prod-do-not-use-in-prod")
 	u := minimalUser()
-	tok, err := SignAccessToken(u, uuid.New())
+	tok, err := SignAccessToken(u, uuid.New(), "")
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}

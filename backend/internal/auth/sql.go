@@ -101,15 +101,26 @@ const sqlClearLockoutAndStampLogin = `
 // added 2026-05-18 for B16.8.11 step 1 — callers capture the id and
 // surface it via LoginResult.SessionID so step 2 can stamp it onto the
 // access JWT as the `sid` claim.
+//
+// users_sessions_dpop_jkt ($6, TD-SEC-DPOP-BINDING Phase 3) holds the
+// RFC 7638 thumbprint of the DPoP key the client presented on the
+// inbound /auth/login. Stamped here so every token rotation through
+// the lifetime of this session can re-emit cnf.jkt with the same
+// value, and so /auth/refresh can verify the incoming proof's
+// thumbprint matches the session's bound key (Phase 4). Nullable on
+// the column until Phase 6 cutover; '' in Go scans as a NULL skip
+// thanks to pgtype's empty-string handling — callers that genuinely
+// have no thumbprint pass "".
 const sqlInsertSession = `
 		INSERT INTO users_sessions (
 			users_sessions_id_user,
 			users_sessions_token_hash,
 			users_sessions_expires_at,
 			users_sessions_ip_address,
-			users_sessions_user_agent
+			users_sessions_user_agent,
+			users_sessions_dpop_jkt
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''))
 		RETURNING users_sessions_id
 	`
 
@@ -127,14 +138,18 @@ const sqlBumpFailedLogin = `UPDATE users SET failed_login_count = $1 WHERE id = 
 
 // sqlSelectSessionByHash returns the rotation-aware session row for a
 // token_hash (revoked + rotated_at + successor_hash needed for the
-// grace-window decision).
+// grace-window decision). users_sessions_dpop_jkt added in Phase 3 so
+// the rotation path inherits the binding onto the new session row
+// without a separate query — Phase 4 also uses the value to verify
+// the incoming proof's thumbprint matches the bound key.
 const sqlSelectSessionByHash = `
 		SELECT users_sessions_id,
 		       users_sessions_id_user,
 		       users_sessions_expires_at,
 		       users_sessions_revoked,
 		       users_sessions_rotated_at,
-		       users_sessions_successor_hash
+		       users_sessions_successor_hash,
+		       COALESCE(users_sessions_dpop_jkt, '')
 		  FROM users_sessions
 		 WHERE users_sessions_token_hash = $1
 	`
@@ -157,12 +172,15 @@ const sqlRotateSession = `
 	`
 
 // sqlSelectSuccessorSession is the lean shape used by refreshFromSuccessor
-// (it doesn't need rotation metadata — only liveness).
+// (it doesn't need rotation metadata — only liveness). dpop_jkt added
+// 2026-05-18 (Phase 3) so the existing-successor reuse path can
+// re-emit the access token's cnf.jkt without a separate lookup.
 const sqlSelectSuccessorSession = `
 		SELECT users_sessions_id,
 		       users_sessions_id_user,
 		       users_sessions_expires_at,
-		       users_sessions_revoked
+		       users_sessions_revoked,
+		       COALESCE(users_sessions_dpop_jkt, '')
 		  FROM users_sessions
 		 WHERE users_sessions_token_hash = $1
 	`

@@ -163,6 +163,33 @@ func main() {
 	authSvc.Resolver = permResolver
 	authH := auth.NewHandler(authSvc)
 
+	// TD-SEC-DPOP-BINDING Phase 3 — background cleanup of expired
+	// DPoP proof JTIs. Every authenticated request reserves a jti
+	// in the dpop_jti_cache table for replay-prevention (RFC 9449
+	// § 4.3 item 11); without periodic eviction the table grows
+	// unbounded. 10-minute cadence is well within the 60s + 120s
+	// freshness window — any reservation older than 3 min is safely
+	// purgeable. Errors are logged but don't block other work.
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				n, err := authSvc.JTICache.CleanupExpired(ctx)
+				if err != nil {
+					log.Printf("dpop_jti_cache cleanup: %v", err)
+					continue
+				}
+				if n > 0 {
+					log.Printf("dpop_jti_cache cleanup: pruned %d expired", n)
+				}
+			}
+		}
+	}()
+
 	apiKeysSvc := apikeys.New(pool)
 	apiKeysH := apikeys.NewHandler(apiKeysSvc)
 

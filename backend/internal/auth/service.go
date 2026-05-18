@@ -48,6 +48,14 @@ type Service struct {
 	Mailer   *email.Service
 	Resolver PermissionResolver
 
+	// JTICache backs RFC 9449 § 4.3 item 11 (DPoP proof jti replay
+	// prevention). Wired by main.go to a Postgres-backed cache against
+	// the dpop_jti_cache table (migration 212). Nil-safe for tests —
+	// extractAndValidateUnboundProof and RequireAuth both skip the
+	// replay-reservation step when JTICache is nil. Production always
+	// has it set.
+	JTICache *JTICache
+
 	// OnLogin is invoked synchronously after a successful Login.
 	// Used by Phase 3 to warm the library-releases reconciler cache for
 	// the just-authenticated subscription. Wire from main.go to avoid an
@@ -58,7 +66,7 @@ type Service struct {
 }
 
 func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
-	return &Service{Pool: pool, Audit: audit, Mailer: mailer}
+	return &Service{Pool: pool, Audit: audit, Mailer: mailer, JTICache: NewJTICache(pool)}
 }
 
 // RolePayload is the wire shape for users.role on auth responses
@@ -185,7 +193,14 @@ type LoginResult struct {
 	MFAChallengeToken  string
 }
 
-func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (*LoginResult, error) {
+// dpopJKT (TD-SEC-DPOP-BINDING Phase 3) is the RFC 7638 thumbprint
+// extracted by the handler from the inbound DPoP proof header. Stamped
+// onto users_sessions_dpop_jkt and emitted as the access token's
+// cnf.jkt claim. Empty string disables binding (test paths only) —
+// production handlers always pass a non-empty thumbprint and would
+// have already 401'd the request in the middleware-equivalent
+// pre-handler check if the proof failed to parse.
+func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua, dpopJKT string) (*LoginResult, error) {
 	u, err := s.FindUserByEmail(ctx, emailIn)
 	if err != nil {
 		s.Audit.Log(ctx, audit.Entry{Action: "auth.login_failed", IPAddress: &ip, Metadata: map[string]any{"email": emailIn, "reason": "no_user"}})
@@ -243,12 +258,12 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	// Reordered 2026-05-18 for B16.8.11 step 2.
 	var sessID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
-		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
+		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua), dpopJKT,
 	).Scan(&sessID); err != nil {
 		return nil, err
 	}
 
-	access, err := SignAccessToken(u, sessID)
+	access, err := SignAccessToken(u, sessID, dpopJKT)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +283,10 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 // MFAVerifyLogin exchanges a challenge token + TOTP/recovery code for a
 // full LoginResult (access token + refresh session). This is the second
 // factor of the two-step login — the first factor (password) was validated
-// by Login(), which emitted the challenge token.
-func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, ua string) (*LoginResult, error) {
+// by Login(), which emitted the challenge token. dpopJKT semantics match
+// Login: the handler-extracted thumbprint binds the new session and
+// every subsequent access token minted from it.
+func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, ua, dpopJKT string) (*LoginResult, error) {
 	claims, err := ParseChallengeToken(challengeToken)
 	if err != nil {
 		return nil, ErrInvalidCredentials
@@ -303,10 +320,10 @@ func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, 
 	// Insert session row before signing the access token so the sid
 	// claim points at this row (B16.8.11 step 2).
 	var sessID uuid.UUID
-	if err := s.Pool.QueryRow(ctx, sqlInsertSession, u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua)).Scan(&sessID); err != nil {
+	if err := s.Pool.QueryRow(ctx, sqlInsertSession, u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua), dpopJKT).Scan(&sessID); err != nil {
 		return nil, err
 	}
-	access, err := SignAccessToken(u, sessID)
+	access, err := SignAccessToken(u, sessID, dpopJKT)
 	if err != nil {
 		return nil, err
 	}
@@ -342,8 +359,9 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	var revoked bool
 	var rotatedAt *time.Time
 	var successorHash *string
+	var boundJKT string // RFC 9449 cnf.jkt inherited onto the new session
 	err := s.Pool.QueryRow(ctx, sqlSelectSessionByHash, hash).
-		Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash)
+		Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash, &boundJKT)
 	if err == pgx.ErrNoRows {
 		return nil, ErrTokenExpired
 	}
@@ -390,9 +408,14 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	if _, err := tx.Exec(ctx, sqlRotateSession, newHash, sessID); err != nil {
 		return nil, err
 	}
+	// Inherit the DPoP binding from the old session row onto the new
+	// one. RFC 9449 § 5 forbids mid-stream key rotation: every access
+	// token minted from a refresh-token chain must carry the SAME
+	// cnf.jkt as the original login. Phase 4 adds the proof-vs-binding
+	// equality check; Phase 3 just preserves the value through rotation.
 	var newSessID uuid.UUID
 	if err := tx.QueryRow(ctx, sqlInsertSession,
-		u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua),
+		u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua), boundJKT,
 	).Scan(&newSessID); err != nil {
 		return nil, err
 	}
@@ -400,7 +423,7 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		return nil, err
 	}
 
-	access, err := SignAccessToken(u, newSessID)
+	access, err := SignAccessToken(u, newSessID, boundJKT)
 	if err != nil {
 		return nil, err
 	}
@@ -415,8 +438,9 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	var sessID, userID uuid.UUID
 	var expiresAt time.Time
 	var revoked bool
+	var boundJKT string // inherited binding for the re-emitted access token
 	err := s.Pool.QueryRow(ctx, sqlSelectSuccessorSession, successorHash).
-		Scan(&sessID, &userID, &expiresAt, &revoked)
+		Scan(&sessID, &userID, &expiresAt, &revoked, &boundJKT)
 	if err == pgx.ErrNoRows || revoked || expiresAt.Before(time.Now()) {
 		return nil, ErrTokenExpired
 	}
@@ -428,8 +452,9 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	if err != nil {
 		return nil, err
 	}
-	// Successor session is already live — stamp its id as the sid claim.
-	access, err := SignAccessToken(u, sessID)
+	// Successor session is already live — stamp its id as the sid claim
+	// and re-emit the same cnf.jkt the parent rotation set on the row.
+	access, err := SignAccessToken(u, sessID, boundJKT)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +744,7 @@ func (s *Service) resolveDefaultWorkspace(ctx context.Context, subscriptionID uu
 // The original refresh session is NOT revoked here — only rotated.
 // This keeps the user logged in if the new JWT fails to round-trip
 // for any reason; the previous session expires normally on its TTL.
-func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, workspaceID uuid.UUID, ip, ua string) (*LoginResult, error) {
+func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, workspaceID uuid.UUID, ip, ua, dpopJKT string) (*LoginResult, error) {
 	if u == nil {
 		return nil, ErrInvalidCredentials
 	}
@@ -747,15 +772,18 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 
 	// Insert session row first so we can stamp its id as the sid claim
 	// (B16.8.11 step 2). SwitchWorkspace mints a fresh session so the
-	// old workspace context doesn't leak across the cut.
+	// old workspace context doesn't leak across the cut. dpopJKT
+	// (Phase 3) is the same thumbprint the caller's outgoing request
+	// already carries — RequireAuth verified the proof above, so by
+	// the time SwitchWorkspace is invoked we know the binding is good.
 	var sessID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
-		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
+		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua), dpopJKT,
 	).Scan(&sessID); err != nil {
 		return nil, err
 	}
 
-	access, err := SignAccessToken(u, sessID)
+	access, err := SignAccessToken(u, sessID, dpopJKT)
 	if err != nil {
 		return nil, err
 	}

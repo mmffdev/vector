@@ -56,7 +56,7 @@ func signNoSidToken(t *testing.T) string {
 	}
 	// uuid.Nil → SignAccessToken omits the sid claim entirely
 	// (omitempty contract from step 2).
-	token, err := auth.SignAccessToken(u, uuid.Nil)
+	token, err := auth.SignAccessToken(u, uuid.Nil, "")
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}

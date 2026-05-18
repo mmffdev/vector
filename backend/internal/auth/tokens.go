@@ -87,7 +87,15 @@ type DPoPConfirmation struct {
 // passes through sqlInsertSession or refreshFromSuccessor which both
 // surface a SessionID — but the omitempty contract keeps that escape
 // hatch open if a future flow needs it).
-func SignAccessToken(u *roletypes.User, sid uuid.UUID) (string, error) {
+//
+// dpopJKT (TD-SEC-DPOP-BINDING Phase 3) is the RFC 7638 thumbprint of
+// the DPoP key bound to this session. When non-empty it is emitted as
+// the cnf.jkt confirmation claim per RFC 9449 § 5, and middleware
+// validates every authed request's DPoP proof against this value.
+// Empty string keeps the cnf claim absent (omitempty) — that path is
+// reserved for tests; production callers thread the real thumbprint
+// from sqlInsertSession back through this function.
+func SignAccessToken(u *roletypes.User, sid uuid.UUID, dpopJKT string) (string, error) {
 	secret := secrets.Get("JWT_ACCESS_SECRET")
 	if secret == "" {
 		return "", errors.New("JWT_ACCESS_SECRET not set")
@@ -111,6 +119,12 @@ func SignAccessToken(u *roletypes.User, sid uuid.UUID) (string, error) {
 		sidStr = sid.String()
 	}
 
+	// DPoP confirmation claim: nil pointer = omitted (omitempty).
+	var cnf *DPoPConfirmation
+	if dpopJKT != "" {
+		cnf = &DPoPConfirmation{JKT: dpopJKT}
+	}
+
 	claims := AccessClaims{
 		Email:          u.Email,
 		Role:           string(u.Role),
@@ -118,6 +132,7 @@ func SignAccessToken(u *roletypes.User, sid uuid.UUID) (string, error) {
 		WorkspaceID:    workspaceID,
 		SessionID:      sidStr,
 		ForcePwdChange: u.ForcePasswordChange,
+		Confirmation:   cnf,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    Issuer,
 			Audience:  jwt.ClaimStrings{Audience},

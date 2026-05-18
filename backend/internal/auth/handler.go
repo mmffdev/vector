@@ -26,6 +26,53 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{Svc: svc}
 }
 
+// extractAndValidateUnboundProof parses the inbound DPoP header on a
+// request that does NOT yet carry an access token (Login, MFAVerify
+// pre-session paths). RFC 9449 § 4.3 still requires every check
+// EXCEPT ath/cnf.jkt — we have no token to bind to. The handler
+// surfaces 401 invalid_dpop_proof per § 7 if validation fails.
+//
+// Returns the proof's RFC 7638 thumbprint so the caller can stamp it
+// onto the new session row and the new access token's cnf.jkt claim.
+// On success the proof's jti is reserved in the JTI cache to prevent
+// replay; if reservation fails, the proof is treated as a replay and
+// rejected.
+func (h *Handler) extractAndValidateUnboundProof(r *http.Request) (string, error) {
+	raw := r.Header.Get("DPoP")
+	if raw == "" {
+		return "", ErrInvalidDPoPProof
+	}
+	proof, err := ParseDPoPProof(raw)
+	if err != nil {
+		return "", err
+	}
+	// Reconstruct the absolute URL the client signed. Trust the
+	// proxy-aware scheme + host from the request rather than the
+	// listener address — middleware sees what the client wrote.
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	htu := scheme + "://" + r.Host + r.URL.Path
+	if err := ValidateDPoPProof(proof, "", r.Method, htu, ""); err != nil {
+		return "", err
+	}
+	if h.Svc.JTICache != nil {
+		if err := h.Svc.JTICache.MarkAndCheck(r.Context(), proof.Claims.JTI, proof.JTIExpiry()); err != nil {
+			return "", err
+		}
+	}
+	return proof.JKT, nil
+}
+
+// writeDPoPError emits the RFC 9449 § 7 401 shape:
+// WWW-Authenticate: DPoP error="invalid_dpop_proof". Used by both
+// the handler-side login mint path and the RequireAuth middleware.
+func writeDPoPError(w http.ResponseWriter, r *http.Request, reason string) {
+	w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+	httperr.Write(w, r, http.StatusUnauthorized, reason)
+}
+
 type loginReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -94,8 +141,16 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
+	// TD-SEC-DPOP-BINDING Phase 3 — validate the inbound DPoP proof
+	// BEFORE committing any state. The thumbprint binds the new
+	// session row and the new access token's cnf.jkt claim.
+	dpopJKT, derr := h.extractAndValidateUnboundProof(r)
+	if derr != nil {
+		writeDPoPError(w, r, usermessages.AuthInvalidCredentials)
+		return
+	}
 	ip := security.ClientIP(r)
-	res, err := h.Svc.Login(r.Context(), strings.ToLower(strings.TrimSpace(req.Email)), req.Password, ip, r.UserAgent())
+	res, err := h.Svc.Login(r.Context(), strings.ToLower(strings.TrimSpace(req.Email)), req.Password, ip, r.UserAgent(), dpopJKT)
 	if err != nil {
 		status := http.StatusUnauthorized
 		msg := usermessages.AuthInvalidCredentials
@@ -128,15 +183,16 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 			expAt := time.Now().Add(refreshTTL)
 			// Insert session row first so the sid claim can be stamped on
-			// the access token (B16.8.11 step 2).
+			// the access token (B16.8.11 step 2). dpopJKT was validated
+			// at the top of Login() — same thumbprint binds this session.
 			var sessID uuid.UUID
 			if err := h.Svc.Pool.QueryRow(r.Context(), sqlInsertSession,
-				res.User.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(r.UserAgent()),
+				res.User.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(r.UserAgent()), dpopJKT,
 			).Scan(&sessID); err != nil {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 				return
 			}
-			access, aerr := SignAccessToken(res.User, sessID)
+			access, aerr := SignAccessToken(res.User, sessID, dpopJKT)
 			if aerr != nil {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 				return
@@ -220,7 +276,10 @@ func (h *Handler) SwitchWorkspace(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, "invalid workspace_id")
 		return
 	}
-	res, err := h.Svc.SwitchWorkspace(r.Context(), u, wsID, security.ClientIP(r), r.UserAgent())
+	// The DPoP proof on this request was validated by RequireAuth;
+	// reuse its thumbprint to bind the new (post-switch) session.
+	// RFC 9449 § 5 forbids mid-session key rotation.
+	res, err := h.Svc.SwitchWorkspace(r.Context(), u, wsID, security.ClientIP(r), r.UserAgent(), DPoPJKTFromCtx(r.Context()))
 	if err != nil {
 		if errors.Is(err, ErrWorkspaceForbidden) {
 			httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
@@ -616,8 +675,16 @@ func (h *Handler) MFAVerify(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
+	// MFAVerify runs unauthed (the challenge token is the credential).
+	// Validate the inbound DPoP proof so the new session binds to the
+	// same browser keypair the original /auth/login presented.
+	dpopJKT, derr := h.extractAndValidateUnboundProof(r)
+	if derr != nil {
+		writeDPoPError(w, r, usermessages.AuthInvalidCredentials)
+		return
+	}
 	ip := security.ClientIP(r)
-	res, err := h.Svc.MFAVerifyLogin(r.Context(), req.ChallengeToken, req.Code, ip, r.UserAgent())
+	res, err := h.Svc.MFAVerifyLogin(r.Context(), req.ChallengeToken, req.Code, ip, r.UserAgent(), dpopJKT)
 	if err != nil {
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthInvalidCredentials)
 		return
