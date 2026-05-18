@@ -156,6 +156,14 @@ export default function LoginPage() {
       </aside>
 
       <main className="login-page__content">
+        <div className="login-page__welcome-column">
+          <div className="login-page__welcome">
+            <div className="login-page__breadcrumb">MMFFDEV / VECTOR</div>
+            <h1 className="login-page__welcome-title">Welcome back, Salung.</h1>
+            <p className="login-page__welcome-text">You last signed in 4 days ago from Madrid. 12 new updates across your pinned portfolios.</p>
+          </div>
+        </div>
+
         <div className="login-page__form-column">
           <div className="login-page__form-panel">
             <Suspense fallback={null}>
@@ -163,17 +171,19 @@ export default function LoginPage() {
             </Suspense>
           </div>
         </div>
-
-        <div className="login-page__welcome-column">
-          <div className="login-page__welcome">
-            <h1 className="login-page__welcome-title">Welcome back, Salung.</h1>
-            <p className="login-page__welcome-text">You last signed in 4 days ago from Madrid. 12 new updates across your pinned portfolios.</p>
-          </div>
-        </div>
       </main>
 
       <footer className="login-page__footer">
-        build 7f3a • 2026.05.18
+        <div className="login-page__footer-left">
+          <span>Authorised access only. Activity may be monitored. By signing in you accept the</span>
+          <Link href="/terms">terms of use</Link>
+          <span>and</span>
+          <Link href="/cookies">cookie policy</Link>
+          <span>.</span>
+        </div>
+        <div className="login-page__footer-right">
+          build 7f3a • 2026.05.18
+        </div>
       </footer>
     </div>
   );
