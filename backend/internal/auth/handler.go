@@ -113,11 +113,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			if wsID, werr := h.Svc.resolveDefaultWorkspace(r.Context(), res.User.SubscriptionID); werr == nil {
 				res.User.WorkspaceID = wsID
 			}
-			access, aerr := SignAccessToken(res.User)
-			if aerr != nil {
-				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
-				return
-			}
 			raw, hash, rerr := GenerateRefreshToken()
 			if rerr != nil {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
@@ -125,6 +120,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			}
 			refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 			expAt := time.Now().Add(refreshTTL)
+			// Insert session row first so the sid claim can be stamped on
+			// the access token (B16.8.11 step 2).
 			var sessID uuid.UUID
 			if err := h.Svc.Pool.QueryRow(r.Context(), sqlInsertSession,
 				res.User.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(r.UserAgent()),
@@ -132,7 +129,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 				return
 			}
-			_ = sessID // B16.8.11 step 2 will pass this to SignAccessToken
+			access, aerr := SignAccessToken(res.User, sessID)
+			if aerr != nil {
+				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+				return
+			}
 			h.Svc.Audit.Log(r.Context(), audit.Entry{UserID: &res.User.ID, SubscriptionID: &res.User.SubscriptionID, Action: "auth.login_trusted_device", IPAddress: &ip})
 			setRefreshCookie(w, raw, expAt)
 			issueCSRF(w)

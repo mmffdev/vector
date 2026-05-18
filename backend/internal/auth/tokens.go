@@ -26,7 +26,15 @@ type AccessClaims struct {
 	// omitempty so a zero-value claim is genuinely absent (not just "")
 	// — distinguishes "JWT has no workspace context yet" from "JWT
 	// explicitly carries an empty workspace_id".
-	WorkspaceID    string `json:"workspace_id,omitempty"`
+	WorkspaceID string `json:"workspace_id,omitempty"`
+	// SessionID is the users_sessions row id that issued this token.
+	// Added by B16.8.11 step 2. Read by RequireAuth middleware (step 3)
+	// to per-request check users_sessions for revocation / idle
+	// eviction without per-request DB-write churn — the existing
+	// FindUserByID lookup is extended into a JOIN against users_sessions
+	// on this id. omitempty so legacy tokens (pre-step-2) decode with an
+	// empty SessionID and middleware's 24h grace path can recognise them.
+	SessionID      string `json:"sid,omitempty"`
 	ForcePwdChange bool   `json:"force_pwd_change"`
 	jwt.RegisteredClaims
 }
@@ -40,7 +48,14 @@ type AccessClaims struct {
 // Contract is now pinned by tokens_test.go (TestAccessClaims_*) — any
 // future reintroduction of dual-accept will fail there before merge.
 
-func SignAccessToken(u *roletypes.User) (string, error) {
+// SignAccessToken mints a fresh access JWT for u, stamped with sid as
+// the `sid` claim so RequireAuth (B16.8.11 step 3) can per-request check
+// users_sessions for revocation/idle eviction. Pass uuid.Nil for sid on
+// paths that have no issuing session row (none today — every call site
+// passes through sqlInsertSession or refreshFromSuccessor which both
+// surface a SessionID — but the omitempty contract keeps that escape
+// hatch open if a future flow needs it).
+func SignAccessToken(u *roletypes.User, sid uuid.UUID) (string, error) {
 	secret := secrets.Get("JWT_ACCESS_SECRET")
 	if secret == "" {
 		return "", errors.New("JWT_ACCESS_SECRET not set")
@@ -56,11 +71,20 @@ func SignAccessToken(u *roletypes.User) (string, error) {
 		workspaceID = u.WorkspaceID.String()
 	}
 
+	// Same omitempty contract as workspace_id — zero uuid = no sid in
+	// the JWT body, which middleware reads as "legacy token, take the
+	// grace path."
+	sidStr := ""
+	if sid != uuid.Nil {
+		sidStr = sid.String()
+	}
+
 	claims := AccessClaims{
 		Email:          u.Email,
 		Role:           string(u.Role),
 		SubscriptionID: u.SubscriptionID.String(),
 		WorkspaceID:    workspaceID,
+		SessionID:      sidStr,
 		ForcePwdChange: u.ForcePasswordChange,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.ID.String(),

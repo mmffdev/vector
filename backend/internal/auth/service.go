@@ -196,10 +196,6 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 		u.WorkspaceID = wsID
 	}
 
-	access, err := SignAccessToken(u)
-	if err != nil {
-		return nil, err
-	}
 	raw, hash, err := GenerateRefreshToken()
 	if err != nil {
 		return nil, err
@@ -207,10 +203,18 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
 
+	// Order matters: insert the session row first so we can stamp the
+	// returned users_sessions_id as the `sid` claim on the access token.
+	// Reordered 2026-05-18 for B16.8.11 step 2.
 	var sessID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
 	).Scan(&sessID); err != nil {
+		return nil, err
+	}
+
+	access, err := SignAccessToken(u, sessID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -255,18 +259,20 @@ func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, 
 	if wsID, werr := s.resolveDefaultWorkspace(ctx, u.SubscriptionID); werr == nil {
 		u.WorkspaceID = wsID
 	}
-	access, err := SignAccessToken(u)
-	if err != nil {
-		return nil, err
-	}
 	raw, hash, err := GenerateRefreshToken()
 	if err != nil {
 		return nil, err
 	}
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
+	// Insert session row before signing the access token so the sid
+	// claim points at this row (B16.8.11 step 2).
 	var sessID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlInsertSession, u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua)).Scan(&sessID); err != nil {
+		return nil, err
+	}
+	access, err := SignAccessToken(u, sessID)
+	if err != nil {
 		return nil, err
 	}
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_verify_success", IPAddress: &ip})
@@ -359,7 +365,7 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		return nil, err
 	}
 
-	access, err := SignAccessToken(u)
+	access, err := SignAccessToken(u, newSessID)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +393,8 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	if err != nil {
 		return nil, err
 	}
-	access, err := SignAccessToken(u)
+	// Successor session is already live — stamp its id as the sid claim.
+	access, err := SignAccessToken(u, sessID)
 	if err != nil {
 		return nil, err
 	}
@@ -605,10 +612,6 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 	// comes off this struct.
 	u.WorkspaceID = workspaceID
 
-	access, err := SignAccessToken(u)
-	if err != nil {
-		return nil, err
-	}
 	raw, hash, err := GenerateRefreshToken()
 	if err != nil {
 		return nil, err
@@ -616,10 +619,18 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
 
+	// Insert session row first so we can stamp its id as the sid claim
+	// (B16.8.11 step 2). SwitchWorkspace mints a fresh session so the
+	// old workspace context doesn't leak across the cut.
 	var sessID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
 	).Scan(&sessID); err != nil {
+		return nil, err
+	}
+
+	access, err := SignAccessToken(u, sessID)
+	if err != nil {
 		return nil, err
 	}
 

@@ -16,6 +16,7 @@ package auth
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -72,6 +73,48 @@ func TestAccessClaims_AcceptsSubscriptionIdClaim(t *testing.T) {
 	}
 	if c.SubscriptionID != "00000000-0000-0000-0000-000000000001" {
 		t.Errorf("SubscriptionID decode broken: got %q", c.SubscriptionID)
+	}
+}
+
+// B16.8.11 step 2 — AccessClaims must carry the issuing session row id
+// as the `sid` JSON claim. Red-first: this test fails before the field
+// is added to AccessClaims. Asserts JSON round-trip (encode → decode)
+// preserves the sid so RequireAuth (step 3) can read it from the parsed
+// claim and per-request check users_sessions for revocation / idle
+// eviction. omitempty is intentional — legacy tokens issued before this
+// commit have no sid; middleware's grace path (step 3) handles that by
+// falling back to user-only auth for the 24h grace window.
+func TestAccessClaims_RoundTripsSessionIDClaim(t *testing.T) {
+	sid := uuid.MustParse("11111111-2222-3333-4444-555555555555")
+	in := AccessClaims{SessionID: sid.String()}
+	enc, err := json.Marshal(in)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	// Must serialise under JSON key "sid" — not "session_id", not
+	// "SessionID" — middleware reads exactly that key.
+	if !strings.Contains(string(enc), `"sid":"11111111-2222-3333-4444-555555555555"`) {
+		t.Errorf("AccessClaims did not serialise the sid claim under key `sid`: %s", string(enc))
+	}
+	var out AccessClaims
+	if err := json.Unmarshal(enc, &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if out.SessionID != sid.String() {
+		t.Errorf("sid round-trip broken: got %q, want %q", out.SessionID, sid.String())
+	}
+}
+
+// Legacy claim without `sid` decodes cleanly with an empty SessionID —
+// the omitempty contract that lets the 24h grace window work in step 3.
+func TestAccessClaims_LegacyTokenHasEmptySessionID(t *testing.T) {
+	legacy := []byte(`{"email":"x@y","role":"gadmin","subscription_id":"00000000-0000-0000-0000-000000000001"}`)
+	var c AccessClaims
+	if err := json.Unmarshal(legacy, &c); err != nil {
+		t.Fatalf("unmarshal legacy: %v", err)
+	}
+	if c.SessionID != "" {
+		t.Errorf("legacy claim should have empty SessionID, got %q", c.SessionID)
 	}
 }
 
