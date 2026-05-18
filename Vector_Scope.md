@@ -264,6 +264,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a709b37` (2026-05-18): fix(login): shift welcome column up another 100px (total 200px)
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
+> Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
 - ✅ **FLOW1.1.3** ~~Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
@@ -529,6 +530,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
+> Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -875,6 +877,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a709b37` (2026-05-18): fix(login): shift welcome column up another 100px (total 200px)
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
+> Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1507,6 +1510,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
+> Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1814,6 +1818,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
+> Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2775,6 +2780,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
+> Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -2916,6 +2922,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a709b37` (2026-05-18): fix(login): shift welcome column up another 100px (total 200px)
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
+> Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive

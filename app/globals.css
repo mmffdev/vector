@@ -2898,7 +2898,7 @@ input[type="reset"] {
    ============================================================================ */
 .login-page {
   display: grid;
-  grid-template-columns: 200px 1fr 1fr;
+  grid-template-columns: 120px 1fr 1fr;
   min-height: 100vh;
   min-height: 100dvh;
   background: #ffffff;
@@ -2915,7 +2915,7 @@ input[type="reset"] {
   align-items: center;
   justify-content: space-between;
   gap: 0;
-  padding-top: 100px;
+  padding-top: 60px;
   padding-bottom: 30px;
   overflow-y: auto;
 }
@@ -2944,16 +2944,16 @@ input[type="reset"] {
   font-weight: 900;
   line-height: 0.9;
   letter-spacing: -0.08em;
-  flex: 1;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   margin: 0;
   padding: 0;
+  margin-top: 40px;
   transform: rotate(-90deg);
   white-space: nowrap;
-  width: 180px;
+  width: 60px;
   height: 180px;
 }
 
