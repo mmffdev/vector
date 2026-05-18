@@ -10,13 +10,6 @@ import { apiSite as api } from "@/app/lib/api";
 function LoginBranding() {
   return (
     <div className="login-branding">
-      <Image
-        src="/logo-vector.png"
-        alt="Vector"
-        width={40}
-        height={40}
-        priority
-      />
       <span className="login-branding__text">Vector</span>
     </div>
   );
