@@ -133,6 +133,33 @@ Two HTTP transports exist. The rule is simple and hard:
 
 Enforcement: `lint:public-helper-allowlist` prevents unapproved `apiV2()` callers from appearing in the frontend. See [`docs/c_c_transport_segregation.md`](c_c_transport_segregation.md) for the full transport architecture.
 
+## Session model — revocation timeliness
+
+Session revocation (B16.8.10 → B16.8.11 → B16.8.12) is **timely, not atomic**, by design. Three intentional bounded windows exist:
+
+- **HTTP requests:** middleware reads `users_sessions_revoked` from Postgres on every protected request. A revoke commit that races an in-flight request can let *one* request slip through with valid auth context (the request read the row before the revoke commit). The *next* request 401s instantly. This is the same race every stateful-session system has and is acceptable per OWASP ASVS V3.3 ("timely termination").
+- **WebSocket connections:** the registry sweeper runs every `WS_SESSION_CHECK_INTERVAL` (default 30s) plus an immediate-close enqueue from the revoke endpoint. Worst-case lag = sweeper interval if the immediate-close signal is dropped (e.g. process restart between revoke commit and sweep).
+- **Future cache layer:** if/when B16.8.11's Redis cache lands, revocation latency rises to ≤5s (cache TTL). Still meets NIST SP 800-63B-4 / OWASP "timely" wording.
+
+If true-atomic revocation is ever required (FedRAMP High, regulated workloads), upgrade path = listen/notify on `users_sessions` updates and push to middleware + WS registry in real time. Not on the roadmap; flagged here so the audit answer is "we considered it and chose timely over atomic."
+
+### `REQUIRE_SID_CLAIM` — closing the legacy-token grace window
+
+When B16.8.11 step 2 first started stamping the `sid` claim on access tokens, every token issued **before** that deploy still authenticated via a user-only lookup (`RequireAuth`'s legacy fallback at `backend/internal/auth/middleware.go`). That grace window is the only reason flipping the per-request session check live did not boot every signed-in user.
+
+After the deploy has been live long enough that no live token can predate it (refresh-token rotation drains in ≤ `JWT_REFRESH_TTL`, default 168h), set `REQUIRE_SID_CLAIM=true` in the backend env. The middleware then rejects any access token whose `sid` claim is empty:
+
+- **`REQUIRE_SID_CLAIM` unset / `false` / anything else (default):** legacy fallback honoured — no-sid tokens authenticate via `FindUserByID`.
+- **`REQUIRE_SID_CLAIM=true|1|yes`:** no-sid tokens 401 outright (`usermessages.AuthUnauthorized`), forcing a re-login that mints a token carrying `sid`.
+
+The flag is intentionally a runtime toggle (not a code change) so the cut-over is reversible during ops. Recommended sequence:
+1. Deploy step 2 (sid claim stamped on new tokens) — leave flag off.
+2. Wait ≥ `JWT_REFRESH_TTL` so every live refresh-token has rotated at least once and the access tokens it issues all carry sid.
+3. Flip `REQUIRE_SID_CLAIM=true`, restart backend.
+4. If anything breaks unexpectedly, flip back and investigate — no rollback commit needed.
+
+Audit-friendly: the env var name appears in `RequireAuth`, in this doc, and in `middleware_test.go`'s contract tests (`TestRequireAuth_RejectsNoSidTokenWhenStrict` / `TestRequireAuth_AllowsNoSidTokenWhenLenient`).
+
 ## Related
 
 - [c_c_schema_auth.md](c_c_schema_auth.md) — `users`, `sessions`, `password_resets`, `user_workspace_permissions`.

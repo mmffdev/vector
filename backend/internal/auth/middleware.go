@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -96,9 +97,21 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			}
 		} else {
 			// Legacy / grace-window token: no sid claim. Honour it via
-			// the user-only lookup until the 24h grace expires (after
-			// which the gate to require sid lives in tokens.go's parse
-			// path — out of scope for this commit).
+			// the user-only lookup until REQUIRE_SID_CLAIM is flipped
+			// on — after which any no-sid token is rejected outright.
+			// B16.8.11 step 5: kill-switch for the grace window.
+			//
+			// Default is lenient (flag absent → grace honoured) so
+			// flipping step 3 live did not boot every existing user;
+			// once Rick is satisfied the deploy has been live long
+			// enough that all live tokens carry sid, setting
+			// REQUIRE_SID_CLAIM=true closes the door without code
+			// changes. The flag accepts "true", "1", "yes" to match
+			// the rest of the codebase's env-toggle conventions.
+			if v := strings.ToLower(os.Getenv("REQUIRE_SID_CLAIM")); v == "true" || v == "1" || v == "yes" {
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				return
+			}
 			u, err = s.FindUserByID(r.Context(), uid)
 			if err != nil || !u.IsActive {
 				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
