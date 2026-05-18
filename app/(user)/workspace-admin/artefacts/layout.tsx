@@ -20,9 +20,9 @@ export default function ArtefactsLayout({ children }: { children: React.ReactNod
             <li key={href}>
               <Link
                 href={href}
-                className={`rd-flyout__row rd-flyout__row--button${pathname.startsWith(href) ? " is-active" : ""}`}
+                className={`sidebar-item sidebar-item--button${pathname.startsWith(href) ? " active" : ""}`}
               >
-                <span className="rd-flyout__row-label">{label}</span>
+                <span>{label}</span>
               </Link>
             </li>
           ))}
