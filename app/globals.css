@@ -12945,6 +12945,7 @@ input[type="reset"] {
 }
 .tree_accordion-dense__cell--numeric { text-align: right; }
 .tree_accordion-dense__cell--center { text-align: center; }
+.tree_accordion-dense__cell--muted { color: var(--ink-muted); }
 
 /* PLA-0021 / 00455 — selection checkbox column (28px). Centered in both
    header and body cells; checkbox sits flush against the row gridline. */
