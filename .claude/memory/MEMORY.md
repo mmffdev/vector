@@ -24,6 +24,7 @@ The entries below are the **always-relevant** memories: incident-earned safety, 
 - [Stakeholder foundation mode — recommend right architecture, not minimum patch](user_stakeholder_foundation_mode.md) — Sole stakeholder, no deadline. Default to "do it right" over "ship today"; Option B over Option A.
 - [Design conversation IS the iteration loop](user_design_collaboration_mode.md) — Push and pull on ideas before coding; converge then build. Long-form architecture discussions are the work, not preamble to it.
 - [Always recommend the safest, best approach](feedback_safety_first.md) — Lead with ranked safest-first recommendation; never neutral A/B/C menus.
+- [Buyer profile: defence + finance](user_buyer_profile.md) — Security/compliance defaults must match NIST 800-53 mod/high, AAL2/AAL3, FFIEC, PCI-DSS 4.0, SOC 2; never punt on "out of scope" when the threat is foreseeable.
 
 ### CSS conventions (every CSS/JSX edit)
 
@@ -46,6 +47,7 @@ The entries below are the **always-relevant** memories: incident-earned safety, 
 - [Never create debt — fix now, flag if detected](feedback_no_debt.md) — Overrides cap-and-defer; introduce no new debt, surface detected debt immediately.
 - [Red-green-refactor is non-negotiable](feedback_red_green_always.md) — Always write the failing test FIRST; never refactor/delete and verify after. No exceptions for "obvious" or "mechanical" changes.
 - [No hardcoded order/list from DB data](feedback_no_hardcoded_order_from_db_data.md) — Never invent an order/mapping in TSX or Go when the data is DB-driven; if the column doesn't carry the signal, STOP and surface the gap.
+- [UUIDs and enum codes are the contract](feedback_uuids_are_truth.md) — Display names drift; identify by UUID/enum in every SQL, don't flag name-mismatch as a warning, but DO stop and ask if a real contradiction surfaces.
 - [Bracket-tag commits with scope ref](feedback_scope_commit_bracket_ref.md) — Always include `[B19.1.4]` (or `[solo-dev]` in current mode) in commit subject; otherwise scope-commit-note hook can't match → Unmatched.
 - [Cookbook every non-trivial SQL + bash](feedback_cookbooks.md) — Append novel psql queries to `docs/c_sql_cookbook.md` and novel bash commands to `docs/c_bash_cookbook.md` before moving on; stop re-deriving same incantations.
 

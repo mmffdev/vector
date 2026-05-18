@@ -1,6 +1,18 @@
 "use client";
 
-import { useState, Suspense } from "react";
+// /login — sign-in page.
+//
+// Inbound-param exceptions (read-once, strip-immediately pattern):
+//   • ?redirect=<path>  set by middleware when an unauthenticated user
+//     hits a protected route. Captured into state on mount, then
+//     router.replace() strips it. Validated as a same-origin relative
+//     path (not /v2/, not protocol-relative).
+//   • Success flags from /login/reset/confirm and elsewhere are read
+//     from sessionStorage on mount, not from URL params (PLA-0053).
+// Deeper fix (middleware stashes the continuation in an httpOnly
+// session cookie instead of ?redirect=) tracked in TD-SEC-LOGIN-REDIRECT-COOKIE.
+
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -19,13 +31,29 @@ function LoginForm() {
   const { login, mfaLogin } = useAuth();
   const router = useRouter();
   const search = useSearchParams();
-  const rawRedirect = search.get("redirect");
-  const explicitRedirect =
-    rawRedirect &&
-    /^\/(?![\\/])/.test(rawRedirect) &&
-    !rawRedirect.startsWith("/v2/")
-      ? rawRedirect
-      : null;
+  // Capture once; the URL copy is stripped below.
+  const [explicitRedirect] = useState<string | null>(() => {
+    const raw = search.get("redirect");
+    return raw && /^\/(?![\\/])/.test(raw) && !raw.startsWith("/v2/") ? raw : null;
+  });
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  useEffect(() => {
+    // Strip ?redirect= from the address bar without dropping the
+    // captured value (still in explicitRedirect state).
+    if (search.get("redirect")) {
+      router.replace("/login");
+    }
+    // Reset-success banner: consume the sessionStorage flag set by
+    // /login/reset/confirm on a successful reset; clear immediately
+    // so it only fires once per redirect.
+    try {
+      if (sessionStorage.getItem("vector.reset.success") === "1") {
+        sessionStorage.removeItem("vector.reset.success");
+        setResetSuccess(true);
+      }
+    } catch { /* private mode */ }
+  }, [router, search]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -134,6 +162,12 @@ function LoginForm() {
       <div className={`login__error${err ? " is-visible" : ""}`} role="alert" aria-live="polite">
         {err}
       </div>
+
+      {resetSuccess && (
+        <div className="login__error login__error--success is-visible" role="status" aria-live="polite">
+          Password updated. Sign in with your new password.
+        </div>
+      )}
 
       <button type="submit" disabled={busy} className="login__submit">
         {busy ? "Verifying and signing in…" : "Verify and sign in"}

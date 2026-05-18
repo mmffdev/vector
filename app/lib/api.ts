@@ -59,10 +59,29 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+// ─── URL surface vs wire surface (PLA-0053 — feedback_url_is_path_only) ─────
+// The user-visible URL is PATH-ONLY. No query state in the address bar,
+// ever. /portfolio-items stays /portfolio-items — no ?scope=, ?limit=,
+// ?filter=, nothing. State lives in user profile (server) + localStorage
+// (client cache) + in-memory React state.
+//
+// The WIRE request that this fetch helper assembles is a different thing.
+// It DOES carry query params (?limit=&offset=&scope=&item_type_id=…),
+// because that's how the backend Go handlers receive parameters. The user
+// never sees those — they're between JS and the Go server.
+//
+// So when you read "we binned ?scope from the URL", that means the address
+// bar, NOT the wire request. The Go handlers must still read q.Get("scope")
+// off the request URL — that URL is the wire URL, not the address bar.
+//
+// If a future Go handler needs a new parameter, this helper (or the caller)
+// appends it to the wire path; the user-visible URL stays untouched.
+// ─────────────────────────────────────────────────────────────────────────────
+
 // PLA-0043 — When a GET targets an artefact-list route (work-items or
 // portfolio-items), forward the active scope node ID so the backend can
 // clamp reads to that topology subtree. Scope is read from localStorage
-// (never from the URL — node IDs must not appear in GET params).
+// (the user-profile-sourced cache; see ScopeContext seed-once pattern).
 function withForwardedScope(path: string, method: string): string {
   if (method !== "GET") return path;
   if (typeof window === "undefined") return path;

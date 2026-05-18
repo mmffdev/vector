@@ -1,15 +1,21 @@
 "use client";
 
 // /login/reset/confirm — set new password from a reset token.
-// Shares the .auth-page / .auth-card surface restyled in 00082.
-// Story 00084 verified: both password fields render at 40px /
-// --radius-md / --border-strong; "Set password" button is a
-// full-width .btn--primary; mismatch / invalid-token errors
-// surface via .auth-card__error-slot which uses --danger-bg /
-// --danger / --danger 1px border. Success redirects to
-// /login?reset=1 (the success styling lives there, not here).
+//
+// Inbound-link exception (2026-05-18): this page MUST read ?token=
+// from the URL because the email link is the only delivery channel.
+// To minimise the leak window:
+//   1. Token is captured into in-memory state on mount, then
+//      router.replace() strips ?token= from the address bar in the
+//      same tick — closes the bookmark/share/screen-share path before
+//      any other request fires.
+//   2. POST body carries the token to /auth/password-reset/confirm;
+//      backend SHA-256 hashes + marks single-use.
+//   3. Success flag for /login is sessionStorage, not a URL param.
+// Deeper fix (token in URL fragment so it never leaves the browser,
+// or short-lived session-cookie handoff) tracked in TD-SEC-RESET-TOKEN-FRAGMENT.
 
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiSite as api, ApiError } from "@/app/lib/api";
@@ -19,7 +25,15 @@ import { AuthBrand } from "@/app/components/AuthBrand";
 function ConfirmForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const token = search.get("token") ?? "";
+  // Capture once; the URL copy is stripped below so the address bar,
+  // history, and any future Referer header are clean.
+  const [token, setToken] = useState<string>(() => search.get("token") ?? "");
+
+  useEffect(() => {
+    if (search.get("token")) {
+      router.replace("/login/reset/confirm");
+    }
+  }, [router, search]);
 
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
@@ -39,7 +53,9 @@ function ConfirmForm() {
         body: JSON.stringify({ token, password: pwd }),
         skipAuth: true,
       });
-      router.push("/login?reset=1");
+      setToken("");
+      try { sessionStorage.setItem("vector.reset.success", "1"); } catch { /* private mode */ }
+      router.push("/login");
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Reset failed.");
     } finally {

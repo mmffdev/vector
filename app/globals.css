@@ -3177,6 +3177,14 @@ input[type="reset"] {
   border-color: var(--status-danger);
 }
 
+.login__error--success {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+}
+.login__error--success.is-visible {
+  border-color: var(--status-success);
+}
+
 .login__submit {
   padding: clamp(14px, 2vw, 18px) clamp(20px, 3vw, 28px);
   background: #1a1a1a;

@@ -26,7 +26,40 @@ Curated `psql` queries that worked. Append a new entry any time a non-trivial qu
 
 ## artefacts (vector_artefacts / vaPool)
 
-_no entries yet — first novel artefact query goes here_
+### Diagnose tree-vs-summary divergence on a portfolio/work-items page
+**DB:** vector_artefacts (vaPool)
+**Use when:** the stats panel shows N items but the ObjectTree renders 0 — compare roots-vs-total and check whether artefact rows carry the same workspace_id as their artefact_type.
+**Gotcha:** Summary filters only on `subscription_id + at.artefacts_types_scope + archived_at IS NULL`. List ALSO applies `at.artefacts_types_id_workspace = $JWT_WS` and (default) `a.parent_artefact_id IS NULL`. Many strategy seed rows carry `a.workspace_id = '…0010'` sentinel — they pass List's clamp because List uses the TYPE's workspace, not the artefact's.
+```sql
+SELECT a.workspace_id           AS a_ws,
+       at.artefacts_types_id_workspace AS at_ws,
+       at.artefacts_types_name,
+       COUNT(*)                                          AS total,
+       COUNT(*) FILTER (WHERE a.parent_artefact_id IS NULL) AS roots
+  FROM artefacts a
+  JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+ WHERE at.artefacts_types_scope = 'strategy'  -- or 'work'
+   AND a.archived_at IS NULL
+   AND a.subscription_id = '<sub-uuid>'
+ GROUP BY a.workspace_id, at.artefacts_types_id_workspace, at.artefacts_types_name
+ ORDER BY a.workspace_id, at.artefacts_types_name;
+```
+
+### Bulk-assign every artefact in a scope to one user
+**DB:** vector_artefacts (vaPool)
+**Use when:** seeding ownership on rows that came in with `owned_by_user_id = NULL` (typical ETL state) so the Owner column renders something visible.
+**Gotcha:** join through `artefacts_types` to filter by `artefacts_types_scope` ('strategy' for portfolio-items, 'work' for work-items). Do NOT touch `created_by_user_id` — that's audit history, not assignment. Wrap in BEGIN/COMMIT; the user-id is in `mmff_vector.users` even though the write target is `vector_artefacts.artefacts`.
+```sql
+BEGIN;
+UPDATE artefacts a
+   SET owned_by_user_id = '<user-uuid>'
+  FROM artefacts_types at
+ WHERE at.artefacts_types_id = a.artefact_type_id
+   AND at.artefacts_types_scope = 'strategy'
+   AND a.archived_at IS NULL
+   AND a.subscription_id = '<sub-uuid>';
+COMMIT;
+```
 
 ---
 
