@@ -97,10 +97,18 @@ export function middleware(req: NextRequest) {
 
   let response: NextResponse;
   if (!isPublic && !hasSession) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
-    response = NextResponse.redirect(url);
+    // TD-SEC-LOGIN-REDIRECT-COOKIE. Instead of /login?redirect=<path>,
+    // bounce through the backend /_site/auth/login-required endpoint
+    // — it validates the path, mints a signed HttpOnly continuation
+    // cookie, and 302s to a plain /login (no URL state). The full path
+    // (with query / fragment) is preserved on the wire only between
+    // here and the backend mint; never appears in the browser's
+    // address bar past this hop.
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
+    const target = new URL(apiBase + "/_site/auth/login-required");
+    target.searchParams.set("p", pathname + (req.nextUrl.search || ""));
+    response = NextResponse.redirect(target);
   } else {
     // Seed the nonce on the FORWARDED request headers so layout.tsx
     // can read it via headers() in a Server Component. Next.js 15

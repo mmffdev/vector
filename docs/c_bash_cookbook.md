@@ -71,6 +71,30 @@ curl -s -b /tmp/cookies.txt -X POST "http://localhost:$PORT/auth/refresh" | pyth
 rm -f /tmp/cookies.txt
 ```
 
+### Smoke-test the login-redirect cookie handoff (TD-SEC-LOGIN-REDIRECT-COOKIE)
+
+**Use when:** verifying the post-2026-05-18 cookie continuation flow that replaces `/login?redirect=`. Confirms (a) middleware bounces to backend with URL-encoded path, (b) backend validates path + mints HttpOnly cookie + 302s to plain `/login`, (c) continuation probe returns `{path}` and clears the cookie atomically (single-use), (d) hostile paths land on `/login` with no cookie.
+**Gotcha:** the `Set-Cookie: …; Max-Age=0` only writes the new value back to a curl jar if you pass BOTH `-c $JAR -b $JAR` on the same call; with `-b` alone curl reads but never updates. The probe's "no cookie / invalid / expired" branch returns 204 (empty body, no Content-Length), not 200 with a sentinel — easy to mis-read as a hang. Validation rejects empty, non-leading-slash, `//`, `\\` prefix, and `/v2/*`.
+```bash
+JAR=$(mktemp)
+# Step 1 — middleware-side bounce (frontend on :5101 → backend on :5100).
+curl -sS -o /dev/null -w "%{http_code} → %{redirect_url}\n" "http://localhost:5101/portfolio-items"
+# Step 2 — backend mints the signed cookie + 302s to plain /login.
+curl -sS -c "$JAR" -b "$JAR" -i "http://localhost:5100/_site/auth/login-required?p=/portfolio-items" \
+  | grep -E "^(HTTP|Set-Cookie:|Location:)"
+# Step 3 — probe returns {path} AND atomically clears the cookie.
+curl -sS -c "$JAR" -b "$JAR" "http://localhost:5100/_site/auth/login-continuation"
+# Step 4 — second probe returns 204 (cookie was single-use).
+curl -sS -c "$JAR" -b "$JAR" -o /dev/null -w "%{http_code}\n" "http://localhost:5100/_site/auth/login-continuation"
+# Step 5 — hostile paths: no Set-Cookie line should appear.
+for p in "//evil.com" "/v2/test" "https://evil.com" "x" ""; do
+  enc=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$p', safe=''))")
+  curl -sS -i "http://localhost:5100/_site/auth/login-required?p=$enc" \
+    | grep -E "^(HTTP|Set-Cookie:|Location:)" | tr '\n' '|'; echo
+done
+rm -f "$JAR"
+```
+
 ---
 
 ## Database (psql invocation shapes)

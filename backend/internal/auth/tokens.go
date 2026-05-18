@@ -306,6 +306,71 @@ func ParseResetHandoffToken(raw string) (*ResetHandoffClaims, error) {
 	return claims, nil
 }
 
+// ── Login continuation handoff (TD-SEC-LOGIN-REDIRECT-COOKIE) ───────────────
+//
+// Replaces /login?redirect=<path>. The middleware-equivalent endpoint
+// /_site/auth/login-required validates the requested path (same-origin
+// relative, not /v2/), mints a 10-minute HttpOnly cookie carrying just
+// that path, and 302s to a plain /login. After successful auth the
+// frontend probes /_site/auth/login-continuation to retrieve the path,
+// then the cookie is cleared. No URL state, no Referer leakage, no
+// open-redirect surface visible to a scanner.
+//
+// Kind discriminator stops a stray access / reset token from being
+// replayed against the continuation probe.
+
+type LoginContinuationClaims struct {
+	Kind string `json:"kind"`
+	Path string `json:"path"`
+	jwt.RegisteredClaims
+}
+
+// SignLoginContinuationToken mints a 10-minute HS256 token carrying the
+// validated path. Set as a HttpOnly cookie by the login-required
+// endpoint; consumed by the login-continuation probe after auth.
+func SignLoginContinuationToken(path string) (string, error) {
+	secret := secrets.Get("JWT_ACCESS_SECRET")
+	if secret == "" {
+		return "", errors.New("JWT_ACCESS_SECRET not set")
+	}
+	claims := LoginContinuationClaims{
+		Kind: "login_continuation",
+		Path: path,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    Issuer,
+			Audience:  jwt.ClaimStrings{Audience},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        uuid.NewString(),
+		},
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString([]byte(secret))
+}
+
+// ParseLoginContinuationToken validates and returns the claims for a
+// token minted by SignLoginContinuationToken.
+func ParseLoginContinuationToken(raw string) (*LoginContinuationClaims, error) {
+	secret := secrets.Get("JWT_ACCESS_SECRET")
+	claims := &LoginContinuationClaims{}
+	_, err := jwt.ParseWithClaims(raw, claims, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims.Kind != "login_continuation" {
+		return nil, errors.New("token is not a login_continuation")
+	}
+	if err := validateIssAud(claims.RegisteredClaims); err != nil {
+		return nil, err
+	}
+	return claims, nil
+}
+
 func parseDurationEnv(key string, def time.Duration) time.Duration {
 	v := os.Getenv(key)
 	if v == "" {

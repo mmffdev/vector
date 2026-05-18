@@ -2,18 +2,18 @@
 
 // /login — sign-in page.
 //
-// Inbound-param exceptions (read-once, strip-immediately pattern):
-//   • ?redirect=<path>  set by middleware when an unauthenticated user
-//     hits a protected route. Captured into state on mount, then
-//     router.replace() strips it. Validated as a same-origin relative
-//     path (not /v2/, not protocol-relative).
-//   • Success flags from /login/reset/confirm and elsewhere are read
-//     from sessionStorage on mount, not from URL params (PLA-0053).
-// Deeper fix (middleware stashes the continuation in an httpOnly
-// session cookie instead of ?redirect=) tracked in TD-SEC-LOGIN-REDIRECT-COOKIE.
+// No URL state. The "where to send the user after login" decision used
+// to ride on ?redirect=<path>; that surface is now closed
+// (TD-SEC-LOGIN-REDIRECT-COOKIE 2026-05-18). Middleware bounces
+// unauthenticated requests through /_site/auth/login-required, which
+// mints a signed HttpOnly continuation cookie carrying the original
+// path and 302s to a plain /login. Post-auth we probe
+// /_site/auth/login-continuation to retrieve and consume the path.
+// Reset-success and involuntary-logout flags are read from
+// sessionStorage on mount, not from URL params (PLA-0053).
 
 import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth, ApiError, MFAChallengeError } from "@/app/contexts/AuthContext";
@@ -30,12 +30,6 @@ function LoginBranding() {
 function LoginForm() {
   const { login, mfaLogin } = useAuth();
   const router = useRouter();
-  const search = useSearchParams();
-  // Capture once; the URL copy is stripped below.
-  const [explicitRedirect] = useState<string | null>(() => {
-    const raw = search.get("redirect");
-    return raw && /^\/(?![\\/])/.test(raw) && !raw.startsWith("/v2/") ? raw : null;
-  });
   const [resetSuccess, setResetSuccess] = useState(false);
   // B16.8.11 step 4 — read the session-state reason flag set by
   // hardLogout() in AuthContext when the backend evicted the user mid-
@@ -45,11 +39,6 @@ function LoginForm() {
   const [reason, setReason] = useState<string | null>(null);
 
   useEffect(() => {
-    // Strip ?redirect= from the address bar without dropping the
-    // captured value (still in explicitRedirect state).
-    if (search.get("redirect")) {
-      router.replace("/login");
-    }
     // Reset-success banner: consume the sessionStorage flag set by
     // /login/reset/confirm on a successful reset; clear immediately
     // so it only fires once per redirect.
@@ -65,7 +54,7 @@ function LoginForm() {
         setReason(r);
       }
     } catch { /* private mode */ }
-  }, [router, search]);
+  }, []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,14 +68,26 @@ function LoginForm() {
       router.push("/change-password");
       return;
     }
-    let dest = explicitRedirect ?? "/dashboard";
-    if (!explicitRedirect) {
+    // TD-SEC-LOGIN-REDIRECT-COOKIE. Probe the continuation cookie set
+    // by middleware → /_site/auth/login-required during the original
+    // unauthenticated bounce. 200 + { path } means there was an
+    // explicit target; 204 means the user landed on /login directly
+    // and we fall through to the start-page resolver.
+    let dest: string | null = null;
+    try {
+      const res = await api<{ path?: string } | null>("/auth/login-continuation", { skipAuth: true });
+      if (res && typeof res.path === "string" && res.path) {
+        dest = res.path;
+      }
+    } catch { /* fall through to start-page */ }
+
+    if (!dest) {
       try {
         const res = await api<{ href: string }>("/nav/start-page");
         if (res.href) dest = res.href;
       } catch { /* fall through */ }
     }
-    router.push(dest);
+    router.push(dest ?? "/dashboard");
   }
 
   async function onSubmit(e: React.FormEvent) {

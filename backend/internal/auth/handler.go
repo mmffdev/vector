@@ -424,6 +424,159 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ── Login continuation handoff (TD-SEC-LOGIN-REDIRECT-COOKIE) ──────────────
+//
+// Replaces /login?redirect=<path>. The Next.js edge middleware can't
+// share secrets with the Go backend without leaking them to the browser
+// bundle, so every step that requires signing the path runs here:
+//   1. Middleware detects an unauthenticated request to a protected route
+//      and 302s to /_site/auth/login-required?p=<path>.
+//   2. This endpoint validates the path (same-origin relative, not /v2/,
+//      no protocol-relative), mints a 10-minute HttpOnly cookie carrying
+//      the signed path, and 302s to a plain frontend /login (no query).
+//   3. After auth the frontend probes /_site/auth/login-continuation;
+//      we read the cookie, verify the JWT, return { path }, and clear
+//      the cookie in the same response.
+// The cookie is opaque to JS, the path never appears in the address
+// bar, and a scanner POST'ing /login-required with a hostile path either
+// fails validation (closed-redirect surface) or stores a path that is
+// only retrievable after a successful login on this same browser.
+
+const loginContinuationCookieName = "vector_login_continuation"
+
+// isSafeContinuationPath enforces the same surface as the legacy
+// frontend regex `/^\/(?![\\/])/.test(raw) && !raw.startsWith("/v2/")`.
+// Reject empty, non-leading-slash, protocol-relative, and /v2/* paths.
+func isSafeContinuationPath(p string) bool {
+	if p == "" || len(p) > 2048 {
+		return false
+	}
+	if p[0] != '/' {
+		return false
+	}
+	if len(p) >= 2 && (p[1] == '/' || p[1] == '\\') {
+		return false
+	}
+	if strings.HasPrefix(p, "/v2/") || p == "/v2" {
+		return false
+	}
+	return true
+}
+
+// PasswordResetRedeem-style email-link handler — but for the login
+// redirect. GET /_site/auth/login-required?p=<path>
+func (h *Handler) LoginRequired(w http.ResponseWriter, r *http.Request) {
+	p := r.URL.Query().Get("p")
+	frontend := os.Getenv("FRONTEND_ORIGIN")
+	if frontend == "" {
+		frontend = "http://localhost:5101"
+	}
+	loginDest := frontend + "/login"
+
+	if !isSafeContinuationPath(p) {
+		// Bad path — still redirect to /login without setting the
+		// cookie. The user lands on a clean /login and goes wherever
+		// the post-auth start-page resolver picks.
+		http.Redirect(w, r, loginDest, http.StatusFound)
+		return
+	}
+
+	jwtToken, err := SignLoginContinuationToken(p)
+	if err != nil {
+		http.Redirect(w, r, loginDest, http.StatusFound)
+		return
+	}
+
+	secure := isProdEnv()
+	http.SetCookie(w, &http.Cookie{
+		Name:     loginContinuationCookieName,
+		Value:    jwtToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   10 * 60,
+	})
+	http.Redirect(w, r, loginDest, http.StatusFound)
+}
+
+// LoginContinuation returns the path the user originally requested
+// before being bounced to /login. Cleared in the same response so a
+// repeat call is a 204 (and a back/forward to /login post-auth doesn't
+// re-trigger navigation).
+//   GET /_site/auth/login-continuation
+// 200 { "path": "/portfolio-items" } if cookie alive + signed; 204 if
+// no cookie / invalid / expired.
+func (h *Handler) LoginContinuation(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie(loginContinuationCookieName)
+	if err != nil || c.Value == "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	claims, perr := ParseLoginContinuationToken(c.Value)
+	if perr != nil || !isSafeContinuationPath(claims.Path) {
+		// Clear the bad cookie so the next probe doesn't keep failing.
+		http.SetCookie(w, &http.Cookie{
+			Name:     loginContinuationCookieName,
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			MaxAge:   -1,
+		})
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	// Clear cookie atomically with the read — single-use semantics.
+	http.SetCookie(w, &http.Cookie{
+		Name:     loginContinuationCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+	})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"path":` + jsonQuote(claims.Path) + `}`))
+}
+
+// jsonQuote escapes a string for inline JSON emission without pulling
+// json.Marshal for a single field. Used by LoginContinuation.
+func jsonQuote(s string) string {
+	b := make([]byte, 0, len(s)+2)
+	b = append(b, '"')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '"':
+			b = append(b, '\\', '"')
+		case '\\':
+			b = append(b, '\\', '\\')
+		case '\n':
+			b = append(b, '\\', 'n')
+		case '\r':
+			b = append(b, '\\', 'r')
+		case '\t':
+			b = append(b, '\\', 't')
+		default:
+			if c < 0x20 {
+				b = append(b, '\\', 'u', '0', '0',
+					hexNibble(c>>4), hexNibble(c&0x0f))
+			} else {
+				b = append(b, c)
+			}
+		}
+	}
+	b = append(b, '"')
+	return string(b)
+}
+
+func hexNibble(n byte) byte {
+	if n < 10 {
+		return '0' + n
+	}
+	return 'a' + (n - 10)
+}
+
 // isProdEnv returns true when the server is running in production mode.
 // Used for the Secure cookie flag — set in prod, omitted in dev (HTTP
 // localhost wouldn't accept Secure-flagged cookies).

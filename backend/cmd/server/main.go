@@ -826,6 +826,17 @@ func main() {
 		r.With(httprate.LimitByIP(60, time.Minute)).Get("/password-reset/state", authH.PasswordResetState)
 		r.With(httprate.LimitByIP(10, time.Minute)).Post("/password-reset/confirm", authH.PasswordResetConfirm)
 
+		// Login continuation handoff (TD-SEC-LOGIN-REDIRECT-COOKIE).
+		// Replaces /login?redirect=<path>. /login-required is the
+		// redirect target the Next.js middleware bounces unauthenticated
+		// users to; it validates the path, mints a 10-min HttpOnly
+		// cookie carrying the signed path, 302s to a plain /login.
+		// /login-continuation is the post-auth probe — returns 200 +
+		// { path } if a valid cookie is present (and clears it
+		// atomically), 204 otherwise.
+		r.With(httprate.LimitByIP(120, time.Minute)).Get("/login-required", authH.LoginRequired)
+		r.With(httprate.LimitByIP(60, time.Minute)).Get("/login-continuation", authH.LoginContinuation)
+
 		r.Group(func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Post("/change-password", authH.ChangePassword)
