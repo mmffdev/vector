@@ -1,5 +1,9 @@
 "use client";
 
+// hook-allow-url-query: useWorkItemsFilters + useWorkItemsSort write shareable
+// view state (?type=, ?status=, ?priority=, ?owner=, ?sort=) to the address bar
+// per TD-URL-SHAREABLE-VIEWS. Allowed params are declared in app/lib/shareableParams.ts.
+
 // Work-items-specific configuration for the generic <ResourceTree>.
 // Owns the column defs, cell renderers, sort comparators, presentation helpers
 // (sprint alias, owner glyph, due-date placeholder), the filter-chips slot,
@@ -7,10 +11,12 @@
 // WorkItemsTree.tsx wires these into ResourceTree props.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/md";
 import { apiSite } from "@/app/lib/api";
 import { useUserPreference } from "@/app/hooks/useUserPreference";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useScope } from "@/app/contexts/ScopeContext";
 import { safeInk, type TypeColourMap } from "@/app/lib/colourUtils";
 import { artefactTypesApi } from "@/app/lib/artefactTypesApi";
 import InlineEditField from "@/app/components/InlineEditField";
@@ -28,6 +34,7 @@ import {
   type ColumnDef,
   type RenderCtx,
 } from "@/app/components/ResourceTree";
+import { parseShareableParams, buildShareableHref } from "@/app/lib/shareableParams";
 
 // ─── Artefact-type colour map ─────────────────────────────────────────────────
 
@@ -554,16 +561,44 @@ export const EMPTY_FILTERS: WorkItemsFilters = {
 // `prefKey` is the namespace under /_site/me/preferences/{key}. Each
 // page passes its own (`workitems.filters` vs `portfolioitems.filters`)
 // so cross-page filter state doesn't bleed.
-export function useWorkItemsFilters(prefKey: string): {
+export function useWorkItemsFilters(
+  prefKey: string,
+  // Paired sort state — needed to preserve ?sort= when writing filter params.
+  sortRef?: React.RefObject<{ key: SortKey | null; dir: SortDir }>,
+): {
   filters: WorkItemsFilters;
   hasAny: boolean;
   setFilter: <K extends keyof WorkItemsFilters>(key: K, value: WorkItemsFilters[K]) => void;
   clearAll: () => void;
 } {
-  const { value: filters, setValue } = useUserPreference<WorkItemsFilters>(
+  const router = useRouter();
+  const pathname = usePathname();
+  const { value: prefFilters, setValue, seeded } = useUserPreference<WorkItemsFilters>(
     prefKey,
     EMPTY_FILTERS,
   );
+
+  // On first seed, check whether the URL carries shareable filter params.
+  // If so, override the preference value so the shared link wins, then
+  // write back to preferences so it persists from this point.
+  const urlSeededRef = useRef(false);
+  useEffect(() => {
+    if (!seeded || urlSeededRef.current) return;
+    urlSeededRef.current = true;
+    const { filters: urlFilters } = parseShareableParams(window.location.search);
+    if (!urlFilters) return;
+    const merged: WorkItemsFilters = {
+      type:     urlFilters.type     ?? prefFilters.type,
+      status:   urlFilters.status   ?? prefFilters.status,
+      priority: urlFilters.priority ?? prefFilters.priority,
+      owner_id: urlFilters.owner_id ?? prefFilters.owner_id,
+    };
+    setValue(merged);
+  }, [seeded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve effective filters: after seed, prefer preference value
+  // (which may have been overridden by URL seed above).
+  const filters = prefFilters;
 
   const hasAny =
     filters.type.length > 0 ||
@@ -571,16 +606,28 @@ export function useWorkItemsFilters(prefKey: string): {
     filters.priority.length > 0 ||
     filters.owner_id.length > 0;
 
+  const writeUrl = useCallback(
+    (next: WorkItemsFilters) => {
+      const sort = sortRef?.current ?? { key: null, dir: "asc" as SortDir };
+      const href = buildShareableHref(pathname, window.location.search, next, sort);
+      router.replace(href, { scroll: false });
+    },
+    [router, pathname, sortRef],
+  );
+
   const setFilter = useCallback(
     <K extends keyof WorkItemsFilters>(key: K, v: WorkItemsFilters[K]) => {
-      setValue({ ...filters, [key]: v });
+      const next = { ...filters, [key]: v };
+      setValue(next);
+      writeUrl(next);
     },
-    [filters, setValue],
+    [filters, setValue, writeUrl],
   );
 
   const clearAll = useCallback(() => {
     setValue(EMPTY_FILTERS);
-  }, [setValue]);
+    writeUrl(EMPTY_FILTERS);
+  }, [setValue, writeUrl]);
 
   return { filters, hasAny, setFilter, clearAll };
 }
@@ -600,27 +647,51 @@ const DEFAULT_SORT: SortPref = { key: null, dir: "asc" };
 
 // Mirrors useWorkItemsFilters but stores a single object { key, dir }.
 // `prefKey` namespaces per-page (e.g. "workitems.sort").
-export function useWorkItemsSort(prefKey: string): {
+// Returns a sortRef the caller can pass into useWorkItemsFilters so URL
+// writes from the filter side include the current sort.
+export function useWorkItemsSort(
+  prefKey: string,
+  filtersRef?: React.RefObject<WorkItemsFilters>,
+): {
   sortKey: SortKey | null;
   sortDir: SortDir;
+  sortRef: React.RefObject<{ key: SortKey | null; dir: SortDir }>;
   setSort: (key: SortKey | null, dir: SortDir) => void;
 } {
-  const { value, setValue } = useUserPreference<SortPref>(prefKey, DEFAULT_SORT);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { value, setValue, seeded } = useUserPreference<SortPref>(prefKey, DEFAULT_SORT);
 
-  // Defensive: an unknown sort key from a stale preference (e.g. a
-  // column that was renamed) collapses to default — never throws.
+  // Defensive: unknown sort key collapses to default.
   const sortKey: SortKey | null =
     value.key && SORT_KEYS.has(value.key) ? value.key : null;
   const sortDir: SortDir = value.dir === "desc" ? "desc" : "asc";
 
+  // Ref so filter-side URL writes can read current sort without circular deps.
+  const sortRef = useRef<{ key: SortKey | null; dir: SortDir }>({ key: sortKey, dir: sortDir });
+  useEffect(() => { sortRef.current = { key: sortKey, dir: sortDir }; }, [sortKey, sortDir]);
+
+  // On first seed, check for ?sort= in URL.
+  const urlSeededRef = useRef(false);
+  useEffect(() => {
+    if (!seeded || urlSeededRef.current) return;
+    urlSeededRef.current = true;
+    const { sort: urlSort } = parseShareableParams(window.location.search);
+    if (!urlSort) return;
+    setValue({ key: urlSort.key, dir: urlSort.dir });
+  }, [seeded]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setSort = useCallback(
     (key: SortKey | null, dir: SortDir) => {
       setValue({ key, dir });
+      const filters = filtersRef?.current ?? EMPTY_FILTERS;
+      const href = buildShareableHref(pathname, window.location.search, filters, { key, dir });
+      router.replace(href, { scroll: false });
     },
-    [setValue],
+    [setValue, router, pathname, filtersRef],
   );
 
-  return { sortKey, sortDir, setSort };
+  return { sortKey, sortDir, sortRef, setSort };
 }
 
 // ─── Filter chips (controlled) ────────────────────────────────────────────────
@@ -752,6 +823,13 @@ export function useArtefactItemsWindow(
   opts: UseArtefactItemsWindowOptions,
 ): UseWorkItemsWindowResult {
   const { resourceUrl, pageSize, pageIndex, sortKey, sortDir, filters, onPatched } = opts;
+  // Active topology scope clamps every read in this hook. The actual
+  // ?meg= param is appended by withForwardedMeg (api.ts), but the
+  // refetch loop needs activeNodeId in its dep list so a scope-picker
+  // flip re-fires the fetch with the new clamp — without this dep the
+  // ObjectTree below the scope picker shows stale rows for the previous
+  // scope (TD-URL-SCOPE-PARAM-CUTOVER).
+  const { activeNodeId, direction } = useScope();
   const [windowRoots, setWindowRoots] = useState<WorkItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loadingWindow, setLoadingWindow] = useState(false);
@@ -818,7 +896,7 @@ export function useArtefactItemsWindow(
     } finally {
       setLoadingWindow(false);
     }
-  }, [resourceUrl, sep, pageSize, pageIndex, sortKey, sortDir, filterQuery]);
+  }, [resourceUrl, sep, pageSize, pageIndex, sortKey, sortDir, filterQuery, activeNodeId, direction]);
 
   useEffect(() => { void refetchWindow(); }, [refetchWindow]);
 

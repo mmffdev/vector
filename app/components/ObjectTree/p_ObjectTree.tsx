@@ -5,7 +5,7 @@
 // a config object. Every tree concern (lines, expand, resize, etc.)
 // lives in <ResourceTree>; every data-type concern lives in the config.
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BulkActionBar from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
@@ -110,8 +110,15 @@ export default function ObjectTree({
   const filtersPrefKey = `${treeName}.filters`;
   const sortPrefKey = `${treeName}.sort`;
 
-  const { filters } = useWorkItemsFilters(filtersPrefKey);
-  const { sortKey, sortDir, setSort } = useWorkItemsSort(sortPrefKey);
+  // sortRef and filtersRef cross-wire the two hooks so URL writes from
+  // either side carry both dimensions (TD-URL-SHAREABLE-VIEWS).
+  const filtersRef = useRef<import("@/app/components/work-items-tree-config").WorkItemsFilters>(
+    { type: [], status: [], priority: [], owner_id: [] }
+  );
+  const { sortKey, sortDir, sortRef, setSort } = useWorkItemsSort(sortPrefKey, filtersRef);
+  const { filters } = useWorkItemsFilters(filtersPrefKey, sortRef);
+  // Keep filtersRef current so sort-side URL writes reflect latest filters.
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
 
   // PLA-0021 / 00456 — multi-select state lives here; the tree consumes
   // it via the SelectionConfig prop set, and BulkActionBar reads it to

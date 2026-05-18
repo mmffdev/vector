@@ -168,6 +168,8 @@ REL="${FILE_PATH##*/MMFFDev - Vector/}"
   echo
   echo "Common right answers:"
   echo "  • Filter state    → useState (ephemeral) or per-user backend pref"
+  echo "  • Shareable view  → declare in app/lib/shareableParams.ts SHAREABLE_PARAMS"
+  echo "                      and add hook-allow-url-query annotation (TD-URL-SHAREABLE-VIEWS)"
   echo "  • Deep link       → route segment, e.g. /work-items/abc-123"
   echo "  • Wizard / view   → route segment or component state"
   echo "  • Scope identity  → users.active_scope_node_id (server) + ScopeContext"
