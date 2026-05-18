@@ -20,7 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
 // TestAccessClaims_RejectsLegacyTenantIdClaim verifies that a JWT body
@@ -76,6 +78,151 @@ func TestAccessClaims_AcceptsSubscriptionIdClaim(t *testing.T) {
 		t.Errorf("SubscriptionID decode broken: got %q", c.SubscriptionID)
 	}
 }
+
+// B16.8.8 — JWT issuer + audience claims.
+//
+// Three contracts pinned here. Until the implementation lands, the
+// "wrong-iss / wrong-aud reject" tests fail red because Parse* doesn't
+// validate either; the "legacy accept" test stays green throughout
+// (no claim present == no constraint to violate).
+//
+// Constants are wire-stable. Renaming the issuer string or audience
+// string anywhere outside a deliberate revoke-all-tokens release is
+// the same severity as renaming the JWT secret.
+func TestTokens_IssuerAudienceConstants(t *testing.T) {
+	if Issuer != "vector-auth" {
+		t.Errorf("Issuer drifted: got %q, want %q", Issuer, "vector-auth")
+	}
+	if Audience != "vector-api" {
+		t.Errorf("Audience drifted: got %q, want %q", Audience, "vector-api")
+	}
+}
+
+func TestAccessToken_RoundTripsIssAud(t *testing.T) {
+	t.Setenv("JWT_ACCESS_SECRET", "test-secret-do-not-use-in-prod-do-not-use-in-prod")
+	u := minimalUser()
+	tok, err := SignAccessToken(u, uuid.New())
+	if err != nil {
+		t.Fatalf("SignAccessToken: %v", err)
+	}
+	claims, err := ParseAccessToken(tok)
+	if err != nil {
+		t.Fatalf("ParseAccessToken: %v", err)
+	}
+	if claims.Issuer != Issuer {
+		t.Errorf("issuer not stamped: got %q, want %q", claims.Issuer, Issuer)
+	}
+	if len(claims.Audience) == 0 || claims.Audience[0] != Audience {
+		t.Errorf("audience not stamped: got %v, want [%q]", claims.Audience, Audience)
+	}
+}
+
+func TestAccessToken_RejectsWrongIssuer(t *testing.T) {
+	t.Setenv("JWT_ACCESS_SECRET", "test-secret-do-not-use-in-prod-do-not-use-in-prod")
+	// Sign with a deliberately wrong issuer by bypassing SignAccessToken.
+	raw := mintTokenWithClaims(t, AccessClaims{
+		Email: "x@y", Role: "user",
+		SubscriptionID: uuid.NewString(),
+		RegisteredClaims: registeredClaimsWith("attacker.example.com", Audience, uuid.New().String()),
+	})
+	if _, err := ParseAccessToken(raw); err == nil {
+		t.Error("ParseAccessToken accepted a token with the wrong issuer — iss validation missing")
+	}
+}
+
+func TestAccessToken_RejectsWrongAudience(t *testing.T) {
+	t.Setenv("JWT_ACCESS_SECRET", "test-secret-do-not-use-in-prod-do-not-use-in-prod")
+	raw := mintTokenWithClaims(t, AccessClaims{
+		Email: "x@y", Role: "user",
+		SubscriptionID: uuid.NewString(),
+		RegisteredClaims: registeredClaimsWith(Issuer, "wrong-audience", uuid.New().String()),
+	})
+	if _, err := ParseAccessToken(raw); err == nil {
+		t.Error("ParseAccessToken accepted a token with the wrong audience — aud validation missing")
+	}
+}
+
+func TestAccessToken_AcceptsLegacyMissingIssAud(t *testing.T) {
+	t.Setenv("JWT_ACCESS_SECRET", "test-secret-do-not-use-in-prod-do-not-use-in-prod")
+	// Legacy token: signed before this commit, no iss/aud claims at all.
+	raw := mintTokenWithClaims(t, AccessClaims{
+		Email: "x@y", Role: "user",
+		SubscriptionID: uuid.NewString(),
+		// RegisteredClaims with sub + exp but no iss/aud.
+		RegisteredClaims: registeredClaimsWith("", "", uuid.New().String()),
+	})
+	if _, err := ParseAccessToken(raw); err != nil {
+		t.Errorf("ParseAccessToken rejected a legacy token missing iss/aud (grace window broken): %v", err)
+	}
+}
+
+func TestChallengeToken_RoundTripsIssAud(t *testing.T) {
+	t.Setenv("JWT_ACCESS_SECRET", "test-secret-do-not-use-in-prod-do-not-use-in-prod")
+	tok, err := SignChallengeToken(uuid.New())
+	if err != nil {
+		t.Fatalf("SignChallengeToken: %v", err)
+	}
+	claims, err := ParseChallengeToken(tok)
+	if err != nil {
+		t.Fatalf("ParseChallengeToken: %v", err)
+	}
+	if claims.Issuer != Issuer {
+		t.Errorf("challenge issuer not stamped: got %q, want %q", claims.Issuer, Issuer)
+	}
+	if len(claims.Audience) == 0 || claims.Audience[0] != Audience {
+		t.Errorf("challenge audience not stamped: got %v, want [%q]", claims.Audience, Audience)
+	}
+}
+
+// ─── B16.8.8 test helpers ────────────────────────────────────────────────
+
+// minimalUser returns a User sufficient for SignAccessToken — ID,
+// SubscriptionID, Email, Role populated; everything else zero.
+func minimalUser() *roletypes.User {
+	return &roletypes.User{
+		ID:             uuid.New(),
+		SubscriptionID: uuid.New(),
+		Email:          "test@example.com",
+		Role:           "user",
+	}
+}
+
+// registeredClaimsWith builds a RegisteredClaims with the given issuer,
+// audience, and jti. Empty issuer/audience produces an empty-string
+// Issuer / empty Audience slice (= claim absent in the JWT body via
+// omitempty). Subject + ExpiresAt are populated so the parser accepts
+// the token on the happy path.
+func registeredClaimsWith(iss, aud, jti string) jwt.RegisteredClaims {
+	rc := jwt.RegisteredClaims{
+		Subject:   uuid.New().String(),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ID:        jti,
+	}
+	if iss != "" {
+		rc.Issuer = iss
+	}
+	if aud != "" {
+		rc.Audience = jwt.ClaimStrings{aud}
+	}
+	return rc
+}
+
+// mintTokenWithClaims signs the supplied AccessClaims with the current
+// JWT_ACCESS_SECRET. Bypasses SignAccessToken so the test can produce
+// deliberately-malformed tokens (wrong iss/aud, missing iss/aud) that
+// SignAccessToken would never emit.
+func mintTokenWithClaims(t *testing.T, claims AccessClaims) string {
+	t.Helper()
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	raw, err := tok.SignedString([]byte("test-secret-do-not-use-in-prod-do-not-use-in-prod"))
+	if err != nil {
+		t.Fatalf("mintTokenWithClaims: %v", err)
+	}
+	return raw
+}
+
+// ────────────────────────────────────────────────────────────────────────
 
 // B16.8.11 step 3 — codes.go pins the wire-stable Problem.Code values
 // emitted by RequireAuth for session-state rejections. If anyone renames

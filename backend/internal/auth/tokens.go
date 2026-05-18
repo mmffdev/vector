@@ -15,6 +15,20 @@ import (
 	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
+// B16.8.8 — wire-stable issuer + audience identifiers stamped onto
+// every Vector-minted JWT (access + challenge). Parse* rejects tokens
+// that present either claim with the wrong value; tokens that omit both
+// claims entirely are accepted as legacy (grace path) until
+// REQUIRE_SID_CLAIM closes the door (B16.8.11 step 5) or operators
+// flip a future REQUIRE_ISS_AUD_CLAIMS gate.
+//
+// Renaming either constant is wire-breaking — equivalent severity to
+// rotating JWT_ACCESS_SECRET. Pinned by TestTokens_IssuerAudienceConstants.
+const (
+	Issuer   = "vector-auth"
+	Audience = "vector-api"
+)
+
 type AccessClaims struct {
 	Email          string `json:"email"`
 	Role           string `json:"role"`
@@ -87,6 +101,8 @@ func SignAccessToken(u *roletypes.User, sid uuid.UUID) (string, error) {
 		SessionID:      sidStr,
 		ForcePwdChange: u.ForcePasswordChange,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    Issuer,
+			Audience:  jwt.ClaimStrings{Audience},
 			Subject:   u.ID.String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -95,6 +111,38 @@ func SignAccessToken(u *roletypes.User, sid uuid.UUID) (string, error) {
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return t.SignedString([]byte(secret))
+}
+
+// ErrTokenInvalidIssuer / ErrTokenInvalidAudience are returned by
+// ParseAccessToken / ParseChallengeToken when a token presents a wrong
+// iss / aud value. Tokens that omit both claims entirely (legacy
+// pre-B16.8.8 tokens) are accepted — the grace window the issuer/audience
+// rollout depends on, mirroring B16.8.11 step 2's sid omitempty contract.
+var (
+	ErrTokenInvalidIssuer   = errors.New("token issuer is not recognised")
+	ErrTokenInvalidAudience = errors.New("token audience is not recognised")
+)
+
+// validateIssAud applies the B16.8.8 issuer/audience policy to a parsed
+// RegisteredClaims. If iss is non-empty it must equal Issuer; if aud is
+// non-empty it must contain Audience. Both empty = legacy token, accepted.
+func validateIssAud(rc jwt.RegisteredClaims) error {
+	if rc.Issuer != "" && rc.Issuer != Issuer {
+		return ErrTokenInvalidIssuer
+	}
+	if len(rc.Audience) > 0 {
+		ok := false
+		for _, a := range rc.Audience {
+			if a == Audience {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return ErrTokenInvalidAudience
+		}
+	}
+	return nil
 }
 
 func ParseAccessToken(raw string) (*AccessClaims, error) {
@@ -107,6 +155,9 @@ func ParseAccessToken(raw string) (*AccessClaims, error) {
 		return []byte(secret), nil
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := validateIssAud(claims.RegisteredClaims); err != nil {
 		return nil, err
 	}
 	return claims, nil
@@ -147,6 +198,8 @@ func SignChallengeToken(userID uuid.UUID) (string, error) {
 	claims := ChallengeClaims{
 		Kind: "mfa_challenge",
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    Issuer,
+			Audience:  jwt.ClaimStrings{Audience},
 			Subject:   userID.String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -159,7 +212,9 @@ func SignChallengeToken(userID uuid.UUID) (string, error) {
 
 // ParseChallengeToken validates and returns the ChallengeClaims for a
 // token minted by SignChallengeToken. Returns an error if the token is
-// expired, malformed, or carries the wrong kind claim.
+// expired, malformed, carries the wrong kind claim, or presents a
+// wrong iss/aud (legacy tokens with neither claim are accepted under
+// the B16.8.8 grace window).
 func ParseChallengeToken(raw string) (*ChallengeClaims, error) {
 	secret := secrets.Get("JWT_ACCESS_SECRET")
 	claims := &ChallengeClaims{}
@@ -174,6 +229,9 @@ func ParseChallengeToken(raw string) (*ChallengeClaims, error) {
 	}
 	if claims.Kind != "mfa_challenge" {
 		return nil, errors.New("token is not an mfa_challenge")
+	}
+	if err := validateIssAud(claims.RegisteredClaims); err != nil {
+		return nil, err
 	}
 	return claims, nil
 }
