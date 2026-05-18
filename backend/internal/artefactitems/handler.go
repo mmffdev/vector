@@ -260,15 +260,52 @@ func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
 }
 
 // Summary handles GET /api/v2/work-items/summary.
+//
+// PLA-0043 / 2026-05-18 — when `?scope=<uuid>` is on the request, the
+// summary clamps to that topology node's subtree (same descendant set
+// List uses). Without this, Summary would always show subscription-
+// wide counts and disagree with the List below it. Permission check
+// mirrors List: the actor must hold a read-grant on the node, else
+// 403 scope_read_denied.
 func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+	actor := auth.UserFromCtx(r.Context())
+	subID := actor.SubscriptionID
+	q := r.URL.Query()
 	var sprintID *string
-	if v := r.URL.Query().Get("sprint_id"); v != "" {
+	if v := q.Get("sprint_id"); v != "" {
 		sprintID = &v
 	}
-	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID)
+	var scopeNodeID, actorUserID *string
+	var actorRole string
+	if v := q.Get("scope"); v != "" {
+		if _, perr := uuid.Parse(v); perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid scope"}`))
+			return
+		}
+		scopeNodeID = &v
+		userIDStr := actor.ID.String()
+		actorUserID = &userIDStr
+		actorRole = string(actor.Role)
+	}
+	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID, scopeNodeID, actorUserID, actorRole)
 	if err != nil {
+		if errors.Is(err, ErrScopeForbidden) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"scope_read_denied"}`))
+			return
+		}
+		if errors.Is(err, ErrScopeNodeNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"scope node not found"}`))
+			return
+		}
+		if errors.Is(err, ErrInvalidInput) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(jsonErrBody(err))
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return

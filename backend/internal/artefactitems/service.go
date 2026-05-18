@@ -283,12 +283,26 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 // SummariseWorkItems returns counts for the Page Summary Header strip.
 // Optional sprintID narrows counts to items in that sprint.
 //
+// PLA-0043 / 2026-05-18: optional scopeNodeID clamps the counts to a
+// topology subtree (same descendants the List query uses), so the
+// summary strip and the tree below it stay in sync. When set,
+// actorUserID + actorRole gate the permission check via
+// topology.CanReadScope. Unscoped calls (all three nil/empty) keep
+// the legacy subscription-wide behaviour.
+//
 // B21 (PLA-0037): the by-type bucket map is populated data-driven from
 // artefacts_types.name so portfolio/strategy scopes (which have no
 // epic/story/task/defect static fields) still get a useful summary. The
 // fixed Epics/Stories/Tasks/Defects fields remain populated from ByType
 // for back-compat with the v2 work-items page header.
-func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UUID, sprintID *string) (WorkItemsSummary, error) {
+func (s *Service) SummariseWorkItems(
+	ctx context.Context,
+	subscriptionID uuid.UUID,
+	sprintID *string,
+	scopeNodeID *string,
+	actorUserID *string,
+	actorRole string,
+) (WorkItemsSummary, error) {
 	out := WorkItemsSummary{ByType: map[string]int{}}
 	if s.vectorArtefactsPool == nil {
 		return out, nil
@@ -303,6 +317,45 @@ func (s *Service) SummariseWorkItems(ctx context.Context, subscriptionID uuid.UU
 	if sprintID != nil && *sprintID != "" {
 		conds = append(conds, fmt.Sprintf("a.artefacts_id_timebox_sprint = $%d::uuid", n))
 		args = append(args, *sprintID)
+		n++
+	}
+	// Topology scope clamp — same shape as ListWorkItems above. NULL
+	// topology_node_id rows are excluded when scope is active (matches
+	// the List behaviour: unscoped reads only see un-assigned items).
+	if scopeNodeID != nil && *scopeNodeID != "" {
+		if s.topology == nil {
+			return out, ErrInvalidInput
+		}
+		if actorUserID == nil || actorRole == "" {
+			return out, ErrInvalidInput
+		}
+		nodeUUID, parseErr := uuid.Parse(*scopeNodeID)
+		if parseErr != nil {
+			return out, ErrInvalidInput
+		}
+		actorUUID, parseErr := uuid.Parse(*actorUserID)
+		if parseErr != nil {
+			return out, ErrInvalidInput
+		}
+		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, actorRole)
+		if permErr != nil {
+			if errors.Is(permErr, ErrNotFound) {
+				return out, ErrScopeNodeNotFound
+			}
+			if strings.Contains(permErr.Error(), "node not found") {
+				return out, ErrScopeNodeNotFound
+			}
+			return out, permErr
+		}
+		if !ok {
+			return out, ErrScopeForbidden
+		}
+		ids, descErr := s.topology.DescendantNodeIDs(ctx, subscriptionID, nodeUUID)
+		if descErr != nil {
+			return out, descErr
+		}
+		conds = append(conds, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
+		args = append(args, ids)
 		n++
 	}
 	_ = n
