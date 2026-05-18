@@ -160,6 +160,28 @@ The flag is intentionally a runtime toggle (not a code change) so the cut-over i
 
 Audit-friendly: the env var name appears in `RequireAuth`, in this doc, and in `middleware_test.go`'s contract tests (`TestRequireAuth_RejectsNoSidTokenWhenStrict` / `TestRequireAuth_AllowsNoSidTokenWhenLenient`).
 
+### Access-token TTL — defense in depth, not the primary idle gate (B16.8.9)
+
+`JWT_ACCESS_TTL` defaults to **15 min** (`backend/internal/auth/tokens.go:48` — `parseDurationEnv("JWT_ACCESS_TTL", 15*time.Minute)`). After B16.8.11 step 3 promoted the `users_sessions` JOIN to baseline, **this TTL is no longer the load-bearing idle gate** — the per-request session check is. The 15-minute window survives as **defense in depth** with a specific job: cap the blast radius of a stolen access token in scenarios the per-request check can't reach.
+
+What it actually protects:
+
+- An access token exfiltrated from memory (XSS, malicious extension) and replayed from a different origin still has at most 15 minutes of unrevocable life before the holder must refresh — at which point the sessions table is consulted and revocation/idle can take effect.
+- Long-lived background tabs that never explicitly refresh still get a fresh server check every 15 min.
+
+What it doesn't protect (and where the other layers carry the weight):
+
+- In-realm extension attacks within the current page (the extension uses Vector's live session, indistinguishable on the wire). See B16.8.10 (step-up reauth + active sessions UI) for the realistic countermeasure.
+- Compromise of the refresh token in `users_sessions` itself — that's the stateful row and is revocable instantly (B16.8.11 step 3).
+
+Tuning guidance:
+
+- **Don't drop below 5 min** without a measured reason. Frequent refresh churn raises DB write rate on `users_sessions` (rotation tx) and adds latency to every request that crosses a refresh boundary.
+- **Don't raise above 15 min** without an audit-driven justification. NIST SP 800-63B-4 AAL2 doesn't directly cap access-token lifetime (it caps *session* idle, which we enforce server-side at 30 min via `SESSION_IDLE_TTL`), but procurement reviews flag long access-token TTLs as a maturity signal.
+- Operators wanting a custom value override via the `JWT_ACCESS_TTL` env var (any `time.ParseDuration` string — `5m`, `30m`, `1h`).
+
+Audit answer for "why 15 minutes": industry-standard short-lived access token; pairs with a refresh token whose revocation is checked on every protected request; total session idle capped server-side at 30 min independent of TTL choice.
+
 ## Related
 
 - [c_c_schema_auth.md](c_c_schema_auth.md) — `users`, `sessions`, `password_resets`, `user_workspace_permissions`.
