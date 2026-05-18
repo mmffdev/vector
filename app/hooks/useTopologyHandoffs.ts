@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from "react";
 import { getApiToken } from "@/app/lib/api";
+import { hasActiveKeypair, mintProof } from "@/app/lib/dpop";
 import { handleSessionCloseCode } from "@/app/lib/wsClose";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
@@ -41,14 +42,36 @@ export function useTopologyHandoffs(
     let retry = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const wsURL = (() => {
-      const base = API_BASE.replace(/^http/i, "ws");
+    // TD-SEC-DPOP-BINDING Phase 5: WebSocket handshake URL built
+    // fresh on every connect (so reconnect after token refresh
+    // carries the new access token + a fresh DPoP proof, not the
+    // stale ones).
+    //
+    // htu scheme: sign against http:// (NOT ws://). The handshake
+    // is an HTTP-Upgrade-to-WebSocket request — backend rebuilds
+    // htu with scheme="http", so mismatched proofs get rejected.
+    // See sibling buildWsURL in useRealtimeSubscription.ts for the
+    // full reasoning.
+    const buildWsURL = async (): Promise<string> => {
+      const httpBase = API_BASE;
+      const wsBase = httpBase.replace(/^http/i, "ws");
       const token = getApiToken();
       const tokenParam = token ? `?access_token=${encodeURIComponent(token)}` : "";
-      return `${base}/ws${tokenParam}`;
-    })();
+      const baseURL = `${wsBase}/ws${tokenParam}`;
+      if (!hasActiveKeypair()) return baseURL;
+      const proof = await mintProof({
+        htm: "GET",
+        htu: `${httpBase}/ws`,
+        accessToken: token ?? undefined,
+      });
+      if (!proof) return baseURL;
+      const sep = baseURL.includes("?") ? "&" : "?";
+      return `${baseURL}${sep}dpop=${encodeURIComponent(proof)}`;
+    };
 
-    const connect = () => {
+    const connect = async () => {
+      if (cancelled) return;
+      const wsURL = await buildWsURL();
       if (cancelled) return;
       ws = new WebSocket(wsURL);
 

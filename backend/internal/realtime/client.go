@@ -207,19 +207,30 @@ func splitN(s string, sep byte, n int) []string {
 // as authorized Origin values. We reuse FRONTEND_ORIGIN — the same env
 // that drives HTTP CORS in main.go — so the WS surface and the HTTP
 // surface stay aligned. The library matches against the Origin
-// header's host (port stripped) using glob patterns; an empty slice
-// means same-origin only, which is the secure fallback when
-// FRONTEND_ORIGIN is unset or unparseable.
+// header's **full Host (including port)** using glob patterns from
+// `path.Match` (case-insensitive). An empty slice means same-origin
+// only, which is the secure fallback when FRONTEND_ORIGIN is unset
+// or unparseable.
+//
+// Pre-2026-05-18 this returned u.Hostname() (port stripped). That
+// was a latent bug: a browser running on http://localhost:5101 sends
+// Origin: http://localhost:5101 with the port, and
+// authenticateOrigin compares against u.Host == "localhost:5101" —
+// "localhost" alone never matched. The bug only surfaced when
+// TD-SEC-DPOP-BINDING Phase 5 made WS handshakes actually reach
+// the origin gate (previously, broken htu scheme made middleware
+// reject WS upgrades earlier in the chain). Tests updated to
+// match real-world port-bearing Origin headers.
 func wsOriginPatterns() []string {
 	raw := os.Getenv("FRONTEND_ORIGIN")
 	if raw == "" {
 		return nil
 	}
 	u, err := url.Parse(raw)
-	if err != nil || u.Hostname() == "" {
+	if err != nil || u.Host == "" {
 		return nil
 	}
-	return []string{u.Hostname()}
+	return []string{u.Host}
 }
 
 // Errors used by tests.

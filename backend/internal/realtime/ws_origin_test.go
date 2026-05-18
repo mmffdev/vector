@@ -88,6 +88,38 @@ func TestWS_AllowedOrigin_Accepted(t *testing.T) {
 	conn.Close(websocket.StatusNormalClosure, "")
 }
 
+// TestWS_AllowedOrigin_WithPort_Accepted pins the 2026-05-18 fix to
+// wsOriginPatterns(): when FRONTEND_ORIGIN carries a port (the dev
+// reality: http://localhost:5101), Origin headers sent by browsers
+// also carry the port, and coder/websocket's authenticateOrigin
+// compares full Host (host:port) — so the pattern stored in
+// OriginPatterns must include the port too. Previously this test
+// suite only used port-less origins, masking the dev bug.
+func TestWS_AllowedOrigin_WithPort_Accepted(t *testing.T) {
+	t.Setenv("FRONTEND_ORIGIN", "http://localhost:5101")
+
+	user := &roletypes.User{
+		ID:             uuid.New(),
+		SubscriptionID: uuid.New(),
+		Email:          "test@mmffdev.com",
+		IsActive:       true,
+	}
+	srv := newOriginGatedServer(t, user)
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{"http://localhost:5101"}},
+	})
+	if err != nil {
+		t.Fatalf("expected dial to succeed when FRONTEND_ORIGIN and Origin both carry the port: %v", err)
+	}
+	conn.Close(websocket.StatusNormalClosure, "")
+}
+
 // TestWS_FrontendOriginUnset_SameOriginOnly proves the secure default:
 // when FRONTEND_ORIGIN is unset, only same-origin Upgrade requests are
 // accepted (the library's built-in fallback when OriginPatterns is

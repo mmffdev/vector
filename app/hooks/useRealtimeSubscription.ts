@@ -24,6 +24,7 @@
 
 import { useEffect, useRef } from "react";
 import { getApiToken, getRefreshCallback } from "@/app/lib/api";
+import { hasActiveKeypair, mintProof } from "@/app/lib/dpop";
 import { handleSessionCloseCode } from "@/app/lib/wsClose";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
@@ -58,11 +59,32 @@ export function useRealtimeSubscription(opts: UseRealtimeSubscriptionOptions) {
 
     // Build the WS URL fresh each time — captures the current access token
     // so reconnects after token refresh carry the new JWT, not the expired one.
-    const buildWsURL = () => {
-      const base = API_BASE.replace(/^http/i, "ws");
+    //
+    // TD-SEC-DPOP-BINDING Phase 5: WebSocket handshakes can't set
+    // headers, so the DPoP proof rides as a ?dpop= query param the
+    // backend middleware reads alongside access_token.
+    //
+    // htu scheme: sign against http:// (NOT ws://). The handshake
+    // is an HTTP-Upgrade-to-WebSocket request, and the Go backend
+    // reconstructs the htu using scheme="http" (or https under TLS).
+    // ws:// is only what the JS WebSocket constructor URL must look
+    // like — under the hood, browser still sends an http(s) handshake.
+    // Mismatch causes RFC 9449 §4.3 htu validation to reject the proof.
+    const buildWsURL = async (): Promise<string> => {
+      const httpBase = API_BASE; // http://localhost:5100 in dev
+      const wsBase = httpBase.replace(/^http/i, "ws");
       const token = getApiToken();
       const tokenParam = token ? `?access_token=${encodeURIComponent(token)}` : "";
-      return `${base}/ws${tokenParam}`;
+      const baseURL = `${wsBase}/ws${tokenParam}`;
+      if (!hasActiveKeypair()) return baseURL;
+      const proof = await mintProof({
+        htm: "GET",
+        htu: `${httpBase}/ws`,
+        accessToken: token ?? undefined,
+      });
+      if (!proof) return baseURL;
+      const sep = baseURL.includes("?") ? "&" : "?";
+      return `${baseURL}${sep}dpop=${encodeURIComponent(proof)}`;
     };
 
     const scheduleReconnect = (wasAuthFailure: boolean) => {
@@ -85,9 +107,11 @@ export function useRealtimeSubscription(opts: UseRealtimeSubscriptionOptions) {
       reconnectTimer = setTimeout(connect, jitter);
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) return;
-      ws = new WebSocket(buildWsURL());
+      const url = await buildWsURL();
+      if (cancelled) return;
+      ws = new WebSocket(url);
 
       ws.addEventListener("open", () => {
         retry = 0;
