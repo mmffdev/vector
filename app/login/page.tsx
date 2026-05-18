@@ -157,20 +157,11 @@ export default function LoginPage() {
           height={60}
           priority
         />
-      </div>
-
-      <aside className="login-page__sidebar">
-        <LoginBranding />
-        <div className="login-page__sidebar-content">
-          <div className="login-page__breadcrumb">MMFFDEV / PORTFOLIO · PROGRAMME · PRODUCT</div>
-          <h2 className="login-page__sidebar-title">One workspace for every team, sprint, and bet.</h2>
-          <p className="login-page__sidebar-text">Portfolios, programmes and products under one roof. Sign in to pick up where you left off.</p>
+        <div className="login-page__sidebar-wordmark">
+          <span className="login-page__sidebar-wordmark-v">V</span><span className="login-page__sidebar-wordmark-ector">ector</span>
         </div>
-        <footer className="login-page__sidebar-footer">
-          <span>v1.01 · eu-west-2</span>
-          <span>© MMFFDev 2026</span>
-        </footer>
-      </aside>
+        <div className="login-page__sidebar-version">v1.01</div>
+      </div>
 
       <main className="login-page__main">
         <div className="login-page__form-container">
