@@ -38,7 +38,7 @@ func (s *Service) CanReadScope(
 			return false, err
 		}
 		defer tx.Rollback(ctx)
-		if _, err := s.loadNode(ctx, tx, targetNodeID, subscriptionID, false); err != nil {
+		if _, err := s.loadNodeReadOnly(ctx, tx, targetNodeID, subscriptionID, false); err != nil {
 			return false, err
 		}
 		return true, nil
@@ -49,7 +49,7 @@ func (s *Service) CanReadScope(
 		return false, err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := s.loadNode(ctx, tx, targetNodeID, subscriptionID, false); err != nil {
+	if _, err := s.loadNodeReadOnly(ctx, tx, targetNodeID, subscriptionID, false); err != nil {
 		return false, err
 	}
 

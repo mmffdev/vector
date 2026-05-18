@@ -631,3 +631,17 @@ const sqlLoadNodeForUpdate = `
 		 WHERE id = $1
 		 FOR UPDATE
 	`
+
+// sqlLoadNodeReadOnly is the lock-free sibling used by read paths
+// (CanReadScope on the artefacts query). Same column projection so
+// the Scan(...) call site is shared with loadNode. Tx must be opened
+// ReadOnly (pgx.ReadOnly) otherwise the optimiser still doesn't
+// touch row locks — but expressing intent is the point.
+const sqlLoadNodeReadOnly = `
+		SELECT id, workspace_id, subscription_id, parent_id, name, description, label_override,
+		       icon, colour, avatar_url,
+		       layout_mode, x, y,
+		       collapsed_default, sort_order, archived_at, created_at, updated_at
+		  FROM topology_nodes
+		 WHERE id = $1
+	`

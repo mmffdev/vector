@@ -1118,9 +1118,24 @@ func (s *Service) ClampPredicate(ctx context.Context, subscriptionID, userID uui
 // when missing or in another subscription. allowArchived=false
 // additionally rejects archived nodes (write paths); =true accepts
 // them (view-state writes, idempotent archive).
+//
+// Write paths only — opens row locks. Read paths must use
+// loadNodeReadOnly so a ReadOnly tx doesn't trip 25006 (SQLSTATE for
+// "cannot execute SELECT FOR UPDATE in a read-only transaction").
 func (s *Service) loadNode(ctx context.Context, tx pgx.Tx, nodeID, subscriptionID uuid.UUID, allowArchived bool) (Node, error) {
+	return s.loadNodeImpl(ctx, tx, sqlLoadNodeForUpdate, nodeID, subscriptionID, allowArchived)
+}
+
+// loadNodeReadOnly is the lock-free sibling of loadNode used by read
+// paths (notably CanReadScope, which opens a pgx.ReadOnly tx and
+// must not request a row lock). Same shape and semantics otherwise.
+func (s *Service) loadNodeReadOnly(ctx context.Context, tx pgx.Tx, nodeID, subscriptionID uuid.UUID, allowArchived bool) (Node, error) {
+	return s.loadNodeImpl(ctx, tx, sqlLoadNodeReadOnly, nodeID, subscriptionID, allowArchived)
+}
+
+func (s *Service) loadNodeImpl(ctx context.Context, tx pgx.Tx, query string, nodeID, subscriptionID uuid.UUID, allowArchived bool) (Node, error) {
 	var n Node
-	err := tx.QueryRow(ctx, sqlLoadNodeForUpdate, nodeID).Scan(
+	err := tx.QueryRow(ctx, query, nodeID).Scan(
 		&n.ID, &n.WorkspaceID, &n.SubscriptionID, &n.ParentID, &n.Name, &n.Description, &n.LabelOverride,
 		&n.Icon, &n.Colour, &n.AvatarURL,
 		&n.LayoutMode, &n.X, &n.Y,

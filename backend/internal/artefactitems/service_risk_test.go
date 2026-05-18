@@ -100,7 +100,7 @@ func TestSummariseWorkItems_PopulatesRisksField(t *testing.T) {
 	riskID := seedArtefact(t, va, sub, "risk", "PLA-0052 Story 8 — risk summary fixture")
 	_ = riskID
 
-	summary, err := svc.SummariseWorkItems(ctx, sub, nil)
+	summary, err := svc.SummariseWorkItems(ctx, sub, nil, nil, nil, "")
 	if err != nil {
 		t.Fatalf("SummariseWorkItems: %v", err)
 	}

@@ -306,12 +306,16 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write(jsonErrBody(err))
 			return
 		}
+		log.Printf("artefactitems.Summary: subID=%s err=%v", subID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
 	}
 	_ = json.NewEncoder(w).Encode(out)
 }
+
+// log.Printf above mirrors the List handler's existing pattern at the
+// 500 fall-through — same signal level, same content.
 
 // RisksSummary handles GET /_site/risks/summary (PLA-0052 Story 10).
 // Severity × likelihood aggregator for the /risk page header.
