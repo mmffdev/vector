@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-18 (B16.8 Phase 5 closed — entire B16.8 security-hardening initiative now done. Console-log audit cleared production debug calls (3 in ScopeContext); 6 placeholder handlers filed as TD-UI-PLACEHOLDER-HANDLERS. New `internal/alerting` package fans selected audit_logs actions to a configurable webhook (HMAC-SHA256 signed, fail-open, 13 unit tests + race detector clean). Default disabled until AUDIT_ALERT_WEBHOOK_URL + AUDIT_ALERT_ACTIONS are set.)
-**Doc version:** 2.41
+**Last updated:** 2026-05-18 (RF1.1.8 stop gate closed — all 5 drift-prevention lints pass against HEAD; CI workflow runs them on every push. RF1 Phase 1 fully complete; next live RF1 step is the RF1.2 package consolidation queue.)
+**Doc version:** 2.42
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, **B16.8**, FE-POR-0002. Everything else parks below. *(Swap 2026-05-18: B18.7 parked out → B16.8 security hardening swapped in; pre-launch security is now the active fifth slot.)*
 >
@@ -99,7 +99,7 @@ Drag the codebase from its current state (SQL scattered across 56 of 137 backend
 - ✅ **RF1.1.6** ~~New CI workflow `tests.yml` running `npm test`, `npx tsc --noEmit`, `go test ./...`, `go vet ./...` on every push (not just PR-to-main).~~ Five jobs: frontend, backend, rf1-lints, existing-lints, plus existing api-contracts.yml unchanged. `[P1]`
 > Commit `08f5740` (2026-05-14): feat(PLA-0048 / RF1.1): install drift-prevention lints + CI workflow [RF1.1.1] [RF1.1.2] [RF1.1.3] [RF1.1.4] [RF1.1.5] [RF1.1.6]
 - **RF1.1.7** Tighten `dev/scripts/check_callers.py` regex to skip files with `import { apiSite as api }` (closes TD-API-003). `[P2]`
-- 🔵 IN FLIGHT **RF1.1.8** Stop gate: all five lints pass against HEAD + user reviews lint configs. `[P1]`
+- ✅ ~~**RF1.1.8** Stop gate: all five lints pass against HEAD + user reviews lint configs.~~ Closed 2026-05-18. All five RF1 drift-prevention lints (`sql-in-sqlfile-only`, `no-empty-route-block`, `exemption-ratchet`, `deferral-needs-td-id`, `package-naming-convention`) pass clean against HEAD. CI workflow `tests.yml` runs them on every push alongside `npm test` / `tsc --noEmit` / `go test` / `go vet`. Exemption ledgers stable since 2026-05-14 landing. `[P1]`
 
 ### RF1.2 Phase 2 — sql.go consolidation, one package at a time
 
@@ -691,6 +691,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -890,6 +891,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1420,6 +1422,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2677,6 +2680,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -3161,6 +3165,7 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -3373,6 +3378,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -3544,6 +3550,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -3882,6 +3890,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -4015,6 +4024,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -4071,6 +4081,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -4271,6 +4282,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -4395,6 +4407,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -4469,6 +4482,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -4608,6 +4622,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -4713,6 +4728,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -4802,6 +4818,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -4866,6 +4883,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -4954,6 +4972,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 > Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -5017,6 +5036,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 > Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -5305,6 +5325,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -5394,6 +5415,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `b0cf595` (2026-05-18): feat(sentinel): coordinate switchWorkspace → scope reload [B16.8.P3]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -5887,6 +5909,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `60054f0` (2026-05-16): chore: file-index tooling + new memory entries + backend-validation doc
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
