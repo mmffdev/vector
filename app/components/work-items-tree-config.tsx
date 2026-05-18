@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/md";
 import { apiSite } from "@/app/lib/api";
+import { useUserPreference } from "@/app/hooks/useUserPreference";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { safeInk, type TypeColourMap } from "@/app/lib/colourUtils";
 import { artefactTypesApi } from "@/app/lib/artefactTypesApi";
@@ -541,59 +542,9 @@ export const EMPTY_FILTERS: WorkItemsFilters = {
 // ─── Per-user prefs backing (replaces URL state — TD-URL-FILTER-CHIPS) ───────
 //
 // State lives in users.preferences (mig 208) keyed by namespace e.g.
-// "workitems.filters" / "portfolioitems.sort". Reads seed once on mount
-// via apiSite('/me/preferences/<key>'); writes fire-and-forget via PUT.
-// Optimistic local state means chip flicks paint instantly — the server
-// is the durable mirror, not the synchronous source of truth.
-//
-// Why per-user instead of useState alone:
-//   • Filter and sort choices survive reload, tab close, and device
-//     switch — matches the Linear/Jira/Notion default users expect.
-//   • Server can render preferences-driven views (e.g. emailed summaries
-//     that respect "show only my open epics") without rehydrating UI.
-//   • The URL stays path-only (PLA-0053).
-
-// Light wrapper around the prefs endpoint. Returns { value, setValue }
-// where value is whatever JSON the caller persisted, defaulted to
-// `defaultValue` on missing/seed-failure. setValue updates local state
-// and PUTs; failures swallow (next refresh will reconcile from server).
-// Generic so both filters and sort can share the same plumbing.
-function useUserPreference<T>(prefKey: string, defaultValue: T): {
-  value: T;
-  setValue: (next: T) => void;
-  seeded: boolean;
-} {
-  const [value, setLocalValue] = useState<T>(defaultValue);
-  const [seeded, setSeeded] = useState(false);
-
-  // Seed once. The prefKey changing mid-mount is rare (per-page
-  // identity) but supported — re-seeds on key change.
-  useEffect(() => {
-    let cancelled = false;
-    apiSite<{ value: T | null }>(`/me/preferences/${encodeURIComponent(prefKey)}`)
-      .then((r) => {
-        if (cancelled) return;
-        if (r.value !== null && r.value !== undefined) setLocalValue(r.value);
-        setSeeded(true);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        // 4xx/5xx on seed → keep default, mark seeded so writes still fire.
-        setSeeded(true);
-      });
-    return () => { cancelled = true; };
-  }, [prefKey]);
-
-  const setValue = useCallback((next: T) => {
-    setLocalValue(next);
-    apiSite(`/me/preferences/${encodeURIComponent(prefKey)}`, {
-      method: "PUT",
-      body: JSON.stringify({ value: next }),
-    }).catch(() => { /* fire-and-forget; reload reconciles */ });
-  }, [prefKey]);
-
-  return { value, setValue, seeded };
-}
+// "workitems.filters" / "portfolioitems.sort". Plumbing lives in
+// [app/hooks/useUserPreference.ts] — see that file for the seed-once
+// pattern and why this approach replaces address-bar query state.
 
 // State lives in users.preferences. Each filter dimension is a separate
 // key in the persisted object so future filters can be added without

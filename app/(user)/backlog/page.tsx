@@ -31,7 +31,7 @@ export default function Backlog() {
   const [active, setActive] = useTabState(
     ["all", "mine", "open", "blocked", "due"] as const,
     "all",
-    "filter",
+    "tab.backlog",
   );
 
   return (

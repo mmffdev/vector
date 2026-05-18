@@ -1298,7 +1298,7 @@ export default function ThemePage() {
   const { user } = useAuth();
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");
-  const [topTab, setTopTab] = useTabState(["themes", "maker"] as const, "themes");
+  const [topTab, setTopTab] = useTabState(["themes", "maker"] as const, "themes", "tab.theme");
   const { full } = usePageTitle();
 
   const shades = useMemo(() => shadesFromSeed(seed), [seed]);

@@ -1,39 +1,44 @@
 "use client";
 
 import { useCallback } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useUserPreference } from "@/app/hooks/useUserPreference";
 
 /**
- * Syncs a tab selection to a URL search param so tabs are bookmarkable,
- * shareable, and survive page reload. Uses router.replace (not push) so
- * tab switches don't pollute browser history — Back takes you to the
- * previous page, not the previous tab.
+ * Per-user tab selection persistence. The active tab survives reload,
+ * tab close, and device switch by storing the value at
+ * users.preferences[prefKey] via /_site/me/preferences/{key}.
+ *
+ * Pre-2026-05-18: this hook wrote `?tab=<value>` into the address bar
+ * via router.replace. Retired with TD-URL-TAB-STATE / PLA-0053
+ * (feedback_url_is_path_only). Address bar stays path-only; tab
+ * identity lives server-side.
+ *
+ * Validation note: when the stored value isn't in `validTabs`
+ * (renamed tab, stale preference), the hook silently falls back to
+ * `defaultTab` — same defensive collapse used by useWorkItemsSort
+ * for unknown sort keys.
  *
  * @param validTabs  - exhaustive list of legal tab values
- * @param defaultTab - value used when the param is absent or unrecognised
- * @param paramName  - search-param key (default "tab"); use a distinct name
- *                     per group when a page has multiple independent tab sets
+ * @param defaultTab - value used when the pref is absent or unrecognised
+ * @param prefKey    - users.preferences namespace (e.g. "tab.backlog").
+ *                     Must be a stable per-page string so independent
+ *                     tab groups don't collide.
  */
 export function useTabState<T extends string>(
   validTabs: readonly T[],
   defaultTab: T,
-  paramName = "tab",
+  prefKey: string,
 ): [T, (next: T) => void] {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const { value, setValue } = useUserPreference<T>(prefKey, defaultTab);
 
-  const raw = searchParams.get(paramName) as T | null;
-  const activeTab =
-    raw && (validTabs as readonly string[]).includes(raw) ? raw : defaultTab;
+  const activeTab: T =
+    value && (validTabs as readonly string[]).includes(value) ? value : defaultTab;
 
   const setTab = useCallback(
     (next: T) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set(paramName, next);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      setValue(next);
     },
-    [router, pathname, searchParams, paramName],
+    [setValue],
   );
 
   return [activeTab, setTab];
