@@ -17,11 +17,27 @@ import (
 
 type ctxKey string
 
-const userCtxKey ctxKey = "user"
+const (
+	userCtxKey      ctxKey = "user"
+	sessionIDCtxKey ctxKey = "session_id"
+)
 
 func UserFromCtx(ctx context.Context) *roletypes.User {
 	u, _ := ctx.Value(userCtxKey).(*roletypes.User)
 	return u
+}
+
+// SessionIDFromCtx returns the users_sessions_id that minted the access
+// token authenticating this request, or uuid.Nil for legacy/grace-window
+// tokens that carry no sid claim. B16.8.12 — consumed by realtime.ServeWS
+// to register the WS connection with the session registry so the sweeper
+// can evict it when the row is revoked or goes idle. Keeping this on the
+// context (rather than on roletypes.User) preserves the per-request
+// scope: the sid is a property of the authenticating token, not of the
+// user.
+func SessionIDFromCtx(ctx context.Context) uuid.UUID {
+	sid, _ := ctx.Value(sessionIDCtxKey).(uuid.UUID)
+	return sid
 }
 
 // WithUserForTest seeds a user into the context as if RequireAuth had
@@ -30,6 +46,13 @@ func UserFromCtx(ctx context.Context) *roletypes.User {
 // package because the ctxKey is unexported.
 func WithUserForTest(ctx context.Context, u *roletypes.User) context.Context {
 	return context.WithValue(ctx, userCtxKey, u)
+}
+
+// WithSessionIDForTest is the SessionIDFromCtx counterpart of
+// WithUserForTest. Used by realtime tests that need to exercise the
+// register-on-accept path without spinning up RequireAuth.
+func WithSessionIDForTest(ctx context.Context, sid uuid.UUID) context.Context {
+	return context.WithValue(ctx, sessionIDCtxKey, sid)
 }
 
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
@@ -74,8 +97,10 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		// legacy FindUserByID path — the 24h grace window that keeps
 		// users signed in across the deploy.
 		var u *roletypes.User
+		var sid uuid.UUID
 		if claims.SessionID != "" {
-			sid, perr := uuid.Parse(claims.SessionID)
+			var perr error
+			sid, perr = uuid.Parse(claims.SessionID)
 			if perr != nil {
 				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 				return
@@ -130,6 +155,13 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			}
 		}
 		ctx := context.WithValue(r.Context(), userCtxKey, u)
+		// B16.8.12: surface the issuing session id so realtime.ServeWS can
+		// register the WS connection with the session registry. uuid.Nil
+		// for legacy/no-sid tokens — realtime treats that as "skip
+		// registration, behave as before."
+		if sid != uuid.Nil {
+			ctx = context.WithValue(ctx, sessionIDCtxKey, sid)
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

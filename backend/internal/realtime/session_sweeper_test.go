@@ -81,20 +81,28 @@ func sweeperTestPool(t *testing.T) *pgxpool.Pool {
 func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID, func()) {
 	t.Helper()
 
-	// users.subscription_id is non-null in dev; pick any live subscription
-	// so the FK holds.
+	// users.subscription_id + users.role_id are non-null in dev; pick any
+	// live subscription and any system role so the FKs hold. Match the
+	// well-known MMFFDev seed subscription if it exists (id 0…001) to
+	// keep the fabrication deterministic across reruns.
 	var subID uuid.UUID
-	err := pool.QueryRow(ctx, `SELECT id FROM subscriptions WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1`).Scan(&subID)
+	err := pool.QueryRow(ctx, `SELECT id FROM subscriptions WHERE is_active = TRUE ORDER BY created_at ASC LIMIT 1`).Scan(&subID)
 	if err != nil {
 		t.Skipf("no live subscription available for fabrication: %v", err)
+	}
+
+	var roleID uuid.UUID
+	err = pool.QueryRow(ctx, `SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' AND users_roles_id_subscription IS NULL LIMIT 1`).Scan(&roleID)
+	if err != nil {
+		t.Skipf("no fallback role available for fabrication: %v", err)
 	}
 
 	userID := uuid.New()
 	email := fmt.Sprintf("ws-sweep-%s@test.local", userID.String()[:8])
 	_, err = pool.Exec(ctx, `
-		INSERT INTO users (id, subscription_id, email, password_hash, role, is_active, auth_method, force_password_change)
-		VALUES ($1, $2, $3, '$argon2id$v=19$m=65536,t=3,p=2$dGVzdA$dGVzdA', 'user', TRUE, 'local', FALSE)
-	`, userID, subID, email)
+		INSERT INTO users (id, subscription_id, email, password_hash, role, role_id, is_active, auth_method, force_password_change)
+		VALUES ($1, $2, $3, '$argon2id$v=19$m=65536,t=3,p=2$dGVzdA$dGVzdA', 'user', $4, TRUE, 'local', FALSE)
+	`, userID, subID, email, roleID)
 	if err != nil {
 		t.Fatalf("INSERT users: %v", err)
 	}

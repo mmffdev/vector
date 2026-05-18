@@ -52,6 +52,15 @@ const (
 // SubscriptionID; topic strings are validated against it before
 // every Subscribe so a client cannot listen on another tenant.
 //
+// Session enforcement (B16.8.12): when the issuing access token
+// carried a `sid` claim (every fresh token post-B16.8.11 step 2),
+// RequireAuth surfaces it via auth.SessionIDFromCtx. We register
+// {sid, user_id, close_fn} with hub.Registry() so the sweeper (or
+// the immediate-close path) can tear this connection down when the
+// users_sessions row is revoked or goes idle. Legacy/grace-window
+// tokens with no sid (uuid.Nil) skip registration — they already
+// 401 on the next refresh via REQUIRE_SID_CLAIM once Rick flips it.
+//
 // Origin: PLA-0010 / story 00354. The previous version set
 // AcceptOptions.InsecureSkipVerify=true with a comment claiming chi
 // CORS already validated Origin upstream — that was wrong. chi's
@@ -87,6 +96,26 @@ func ServeWS(hub *Hub) http.HandlerFunc {
 		defer cancel()
 		defer hub.UnsubscribeAll(c)
 		defer conn.Close(websocket.StatusNormalClosure, "")
+
+		// Register with the session registry so the sweeper / immediate-
+		// close path can evict this connection. The close hook records
+		// the reason on conn, cancels the pump context (which unblocks
+		// the read loop), and writes the close frame — done in this
+		// order so the frame is in flight before the read returns.
+		sid := auth.SessionIDFromCtx(r.Context())
+		if sid != uuid.Nil && hub.Registry() != nil {
+			registry := hub.Registry()
+			closeFn := func(code websocket.StatusCode, reason string) {
+				// Best-effort: ignore the error from Close — the read
+				// pump's exit path also calls Close with StatusNormalClosure
+				// (deferred above), and double-close is harmless under
+				// coder/websocket.
+				_ = conn.Close(code, reason)
+				cancel()
+			}
+			registry.Register(sid, u.ID, closeFn)
+			defer registry.Deregister(sid)
+		}
 
 		go c.writePump(ctx)
 		c.readPump(ctx, hub)
