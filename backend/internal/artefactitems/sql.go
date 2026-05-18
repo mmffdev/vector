@@ -287,9 +287,15 @@ const sqlSelectArtefactTypeIDForCreate = `
 
 const sqlAllocateArtefactNumber = `
 		INSERT INTO artefacts_number_sequences (subscription_id, artefact_type_id, next_num)
-		VALUES ($1, $2, 2)
+		VALUES (
+			$1, $2,
+			(SELECT COALESCE(MAX(number), 0) + 2 FROM artefacts WHERE subscription_id = $1 AND artefact_type_id = $2)
+		)
 		ON CONFLICT (subscription_id, artefact_type_id) DO UPDATE
-			SET next_num = artefacts_number_sequences.next_num + 1
+			SET next_num = GREATEST(
+				artefacts_number_sequences.next_num + 1,
+				(SELECT COALESCE(MAX(number), 0) + 2 FROM artefacts WHERE subscription_id = $1 AND artefact_type_id = $2)
+			)
 		RETURNING next_num - 1
 	`
 
