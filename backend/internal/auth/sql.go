@@ -310,3 +310,84 @@ const sqlDisableMFA = `
 		       mfa_recovery_codes = NULL
 		 WHERE id = $1
 	`
+
+// ── B16.8.10 active sessions UI ─────────────────────────────────────────────
+
+// sqlSelectSessionsForUser returns every live (not-revoked, not-expired)
+// session for a user. last_activity_at = COALESCE(rotated_at, created_at)
+// mirrors the column the per-request RequireAuth check reads (B16.8.11
+// step 3) so the UI shows the same "freshness" notion the gate enforces.
+// Caller filters in-memory to mark which row matches the requester's sid
+// claim — keeping the SQL row-shape stable for whatever frontend wants
+// to display.
+const sqlSelectSessionsForUser = `
+		SELECT users_sessions_id,
+		       users_sessions_created_at,
+		       COALESCE(users_sessions_rotated_at, users_sessions_created_at) AS last_activity_at,
+		       users_sessions_ip_address,
+		       users_sessions_user_agent
+		  FROM users_sessions
+		 WHERE users_sessions_id_user = $1
+		   AND users_sessions_revoked = FALSE
+		   AND users_sessions_expires_at > NOW()
+		 ORDER BY last_activity_at DESC
+	`
+
+// sqlRevokeSessionByIDForUser revokes a single session — but only if it
+// belongs to the caller. Cross-user revoke is silently a no-op (0 rows
+// affected → handler returns 404, no information leak about whether the
+// id exists under a different user).
+const sqlRevokeSessionByIDForUser = `
+		UPDATE users_sessions
+		   SET users_sessions_revoked = TRUE
+		 WHERE users_sessions_id      = $1
+		   AND users_sessions_id_user = $2
+		   AND users_sessions_revoked = FALSE
+	`
+
+// sqlRevokeOtherSessionsForUser revokes every session for a user EXCEPT
+// the one whose id matches $2 (the caller's current sid claim). Used by
+// the "Log out all other sessions" action. Returns the count of rows
+// touched so the handler can include it in the audit entry.
+const sqlRevokeOtherSessionsForUser = `
+		UPDATE users_sessions
+		   SET users_sessions_revoked = TRUE
+		 WHERE users_sessions_id_user = $1
+		   AND users_sessions_id     <> $2
+		   AND users_sessions_revoked = FALSE
+	`
+
+// ── B16.8.10 step-up reauth nonces ──────────────────────────────────────────
+
+// sqlInsertReauthNonce records a freshly-issued reauth challenge. Called
+// by POST /_site/auth/reauth after password (+ TOTP) verification, before
+// returning the signed action_proof to the user. action_key is the
+// route-bound identifier the matching RequireStepUpReauth(actionKey)
+// middleware compares against — proof minted for "delete-workspace"
+// cannot be replayed against "disable-mfa".
+const sqlInsertReauthNonce = `
+		INSERT INTO users_reauth_nonces (
+			users_reauth_nonces_id_user,
+			users_reauth_nonces_action_key,
+			users_reauth_nonces_expires_at
+		)
+		VALUES ($1, $2, $3)
+		RETURNING users_reauth_nonces_id
+	`
+
+// sqlConsumeReauthNonce atomically marks a nonce consumed iff it has
+// not yet been consumed AND has not yet expired AND belongs to the
+// caller AND matches the route's action_key. Returns the user_id on
+// success so the handler can audit the consumption against the actor.
+// rowsAffected=0 covers every failure path (unknown id, already
+// consumed, expired, wrong user, wrong action) — all collapse to 409
+// reauth_required so callers can't probe for which condition failed.
+const sqlConsumeReauthNonce = `
+		UPDATE users_reauth_nonces
+		   SET users_reauth_nonces_consumed_at = NOW()
+		 WHERE users_reauth_nonces_id           = $1
+		   AND users_reauth_nonces_id_user      = $2
+		   AND users_reauth_nonces_action_key   = $3
+		   AND users_reauth_nonces_consumed_at IS NULL
+		   AND users_reauth_nonces_expires_at   > NOW()
+	`

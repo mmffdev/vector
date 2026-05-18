@@ -16,6 +16,9 @@ const (
 	// user reads; the Code drives frontend routing.
 	AuthSessionRevoked     = "Your session was ended (signed out from another device or revoked by an admin). Please sign in again."
 	AuthSessionIdleExpired = "Your session expired due to inactivity. Please re-enter your password to continue."
+	// B16.8.10 — per-action step-up reauth.
+	AuthReauthRequired = "Please re-enter your password to confirm this action."
+	AuthReauthInvalid  = "That confirmation has expired or already been used. Please try again."
 )
 
 // Request

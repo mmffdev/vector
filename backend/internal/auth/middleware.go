@@ -177,6 +177,61 @@ func (s *Service) RequireFreshPassword(next http.Handler) http.Handler {
 	})
 }
 
+// RequireStepUpReauth gates a route on the caller presenting a fresh
+// X-Action-Proof header bound to actionKey. The proof is a single-use,
+// action-bound HMAC token issued by POST /_site/auth/reauth after the
+// user re-presents password (+ TOTP if enrolled). B16.8.10.
+//
+// Response contract:
+//   - Missing or unparseable header → 409 + Problem.Code "reauth_required"
+//     so the frontend opens the reauth modal rather than redirecting to
+//     /login (terminal 401 codes would trigger hardLogout).
+//   - Wrong HMAC / wrong action_key / expired → 401 + "reauth_invalid".
+//   - DB-level consume fails (already consumed, race) → 409
+//     "reauth_required" again so the user can mint a fresh nonce.
+//
+// Per-action binding: a proof minted for "delete-workspace" cannot be
+// replayed against "disable-mfa" — actionKey is signed into the HMAC
+// AND checked against the nonces row's action_key column.
+func (s *Service) RequireStepUpReauth(actionKey string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			u := UserFromCtx(r.Context())
+			if u == nil {
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				return
+			}
+			proof := r.Header.Get("X-Action-Proof")
+			if proof == "" {
+				httperr.WriteCoded(w, r, http.StatusConflict, CodeReauthRequired, usermessages.AuthReauthRequired)
+				return
+			}
+			nonceID, userID, perr := parseActionProof(proof, actionKey)
+			if perr != nil {
+				httperr.WriteCoded(w, r, http.StatusUnauthorized, CodeReauthInvalid, usermessages.AuthReauthInvalid)
+				return
+			}
+			if userID != u.ID {
+				httperr.WriteCoded(w, r, http.StatusUnauthorized, CodeReauthInvalid, usermessages.AuthReauthInvalid)
+				return
+			}
+			ok, err := s.ConsumeReauthNonce(r.Context(), nonceID, u.ID, actionKey)
+			if err != nil {
+				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+				return
+			}
+			if !ok {
+				// Already consumed, expired, or wrong action_key in the row.
+				// Same response shape as missing proof — frontend re-opens
+				// the modal for a fresh round.
+				httperr.WriteCoded(w, r, http.StatusConflict, CodeReauthRequired, usermessages.AuthReauthRequired)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // RequirePermission gates a route on the actor having ALL of the given
 // permission codes (logical AND). Resolves the actor's effective code
 // set via the resolver's process-local cache. Codes are defined in

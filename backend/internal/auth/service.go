@@ -679,3 +679,112 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt, SessionID: sessID}, nil
 }
+
+// ── B16.8.10 active sessions UI ──────────────────────────────────────────
+
+// SessionRow is the shape ListSessionsForUser returns. Sorted by
+// last activity (most-recent first). IPAddress / UserAgent are
+// pointers because they're nullable on the underlying table.
+type SessionRow struct {
+	ID             uuid.UUID
+	CreatedAt      time.Time
+	LastActivityAt time.Time
+	IPAddress      *string
+	UserAgent      *string
+}
+
+// ListSessionsForUser returns every live session owned by userID.
+// "Live" = not revoked AND not expired. The handler marks which row
+// matches the requester's sid claim.
+func (s *Service) ListSessionsForUser(ctx context.Context, userID uuid.UUID) ([]SessionRow, error) {
+	rows, err := s.Pool.Query(ctx, sqlSelectSessionsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SessionRow
+	for rows.Next() {
+		var r SessionRow
+		if err := rows.Scan(&r.ID, &r.CreatedAt, &r.LastActivityAt, &r.IPAddress, &r.UserAgent); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// RevokeSession flips users_sessions_revoked=true on a single session,
+// but only if it belongs to actorID. Returns (rowsAffected, err) — 0
+// covers both "doesn't exist" and "exists but belongs to someone else"
+// so the handler responds with the same 404 either way.
+func (s *Service) RevokeSession(ctx context.Context, sessionID, actorID uuid.UUID) (int64, error) {
+	tag, err := s.Pool.Exec(ctx, sqlRevokeSessionByIDForUser, sessionID, actorID)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+// RevokeOtherSessions revokes every live session for actorID EXCEPT
+// keepSessionID (typically the caller's current sid). Returns the
+// number of rows revoked so the handler can include it in the audit
+// entry.
+func (s *Service) RevokeOtherSessions(ctx context.Context, actorID, keepSessionID uuid.UUID) (int64, error) {
+	tag, err := s.Pool.Exec(ctx, sqlRevokeOtherSessionsForUser, actorID, keepSessionID)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+// ── B16.8.10 step-up reauth ──────────────────────────────────────────────
+
+// reauthNonceTTL is how long a freshly-issued reauth_proof remains
+// valid. 60 seconds is the canonical window for "user clicked a
+// sensitive button, typed their password, now sends the actual
+// request" — short enough that a captured proof has narrow blast
+// radius, long enough to ride out a slow network or a confirm modal.
+const reauthNonceTTL = 60 * time.Second
+
+// IssueReauthNonce verifies password (+ TOTP if mfaEnrolled) for
+// actorID, then inserts a fresh users_reauth_nonces row bound to
+// actionKey. Returns (nonceID, err) — caller HMAC-signs (nonceID +
+// userID + actionKey + expiresAt) to form the action_proof the
+// frontend submits with the sensitive request.
+func (s *Service) IssueReauthNonce(ctx context.Context, actorID uuid.UUID, password, totpCode, actionKey string) (uuid.UUID, error) {
+	u, err := s.FindUserByID(ctx, actorID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if !VerifyPassword(u.PasswordHash, password) {
+		return uuid.Nil, ErrInvalidCredentials
+	}
+	if u.MFAEnrolled {
+		if totpCode == "" {
+			return uuid.Nil, ErrMFAInvalidCode
+		}
+		if err := s.MFAVerifyCode(ctx, u, totpCode); err != nil {
+			return uuid.Nil, ErrMFAInvalidCode
+		}
+	}
+	var nonceID uuid.UUID
+	if err := s.Pool.QueryRow(ctx, sqlInsertReauthNonce,
+		actorID, actionKey, time.Now().Add(reauthNonceTTL),
+	).Scan(&nonceID); err != nil {
+		return uuid.Nil, err
+	}
+	return nonceID, nil
+}
+
+// ConsumeReauthNonce atomically marks the nonce consumed. Returns
+// (ok, err): ok=true means the nonce was valid + bound to actorID +
+// matched actionKey + unconsumed + unexpired, and is now consumed;
+// ok=false means at least one of those failed and the caller must
+// respond with reauth_required (single-use enforcement).
+func (s *Service) ConsumeReauthNonce(ctx context.Context, nonceID, actorID uuid.UUID, actionKey string) (bool, error) {
+	tag, err := s.Pool.Exec(ctx, sqlConsumeReauthNonce, nonceID, actorID, actionKey)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}

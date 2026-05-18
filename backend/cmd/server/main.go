@@ -843,6 +843,20 @@ func main() {
 			r.Post("/mfa/confirm", authH.MFAConfirm)
 			r.Delete("/mfa", authH.MFADisable)
 		})
+
+		// B16.8.10 — active sessions UI + per-action step-up reauth.
+		// Rate-limited because Reauth burns a password verify per call;
+		// 20/min is generous enough for legitimate UX (modal retries)
+		// while capping brute-force attempts against the password.
+		r.Group(func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.With(httprate.LimitByIP(20, time.Minute)).Post("/reauth", authH.Reauth)
+			r.Route("/sessions", func(r chi.Router) {
+				r.Get("/", authH.ListSessions)
+				r.Post("/revoke-others", authH.RevokeOtherSessions)
+				r.Delete("/{id}", authH.RevokeSession)
+			})
+		})
 	})
 
 	// /me
@@ -1005,6 +1019,16 @@ func main() {
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
+
+		// B16.8.10 — DELETE /workspaces/{id} is the one sensitive action
+		// in this group that doesn't already self-gate on inline password
+		// reauth (change-password and disable-mfa both take a password in
+		// the body and re-verify). Register the gated DELETE BEFORE
+		// workspacesH.Mount so chi resolves it ahead of Mount's own
+		// DELETE handler. The unique action_key "delete-workspace" must
+		// match what the frontend's useStepUpAction hook submits to
+		// /auth/reauth.
+		r.With(authSvc.RequireStepUpReauth("delete-workspace")).Delete("/{id}", workspacesH.Delete)
 		workspacesH.Mount(r)
 
 		// /workspaces/{workspaceId}/webhooks (B9)
