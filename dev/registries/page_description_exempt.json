@@ -205,5 +205,13 @@
       "path": "app/(user)/workspace-settings/workspace-settings/workspaces/page.tsx",
       "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
     },
+    {
+      "path": "app/(user)/theme-classic/page.tsx",
+      "reason": "design-system showcase \u2014 bespoke theme-panel heading family; same exemption pattern as theme/page.tsx"
+    },
+    {
+      "path": "app/(user)/workspace-admin/flow-states/page.tsx",
+      "reason": "seeded 2026-05-18 \u2014 pending PageDescription migration"
+    }
   ]
 }

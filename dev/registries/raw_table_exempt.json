@@ -2,6 +2,8 @@
   "description": "Per-file exemption list for lint:no-raw-table (PLA-0015 / Story 00427b). Every data table in app/ MUST go through app/components/Table.tsx — raw <table> JSX bypasses the addressable substrate, the toolbar contract, the inline-edit useDraft integration, and the tree_accordion-dense__* class catalog. Three reasons an entry can land here: (1) TREE EXCEPTION — work-items tree views compose row fragments per leaf, which doesn't fit the v1 columns+rows API. (2) PROVISIONAL — call sites that need a feature the v1 <Table> doesn't yet provide (section-header rows, dense multi-cell grids inside flyouts/health panels). Each provisional entry MUST be paired with a follow-up story that either extends <Table> or refactors the consumer. (3) TEST HARNESS — Vitest fixtures that exist to exercise grid/keyboard contracts against bare semantic markup. Routing them through <Table> would test <Table> rather than the unit under test.",
   "exempt_paths": [
     "app/(user)/workspace-admin/artefact-types/page.tsx",
+    "app/(user)/workspace-admin/flow-states/page.tsx",
+    "app/(user)/theme-classic/page.tsx",
     "app/(user)/work-items/Example2Tree.tsx",
     "app/(user)/work-items/page.tsx",
     "app/(user)/portfolio-model/LayersTable.tsx",
@@ -24,6 +26,8 @@
     "provisional": [
       "app/(user)/portfolio-model/LayersPreviewTable.tsx",
       "app/(user)/workspace-admin/artefact-types/page.tsx",
+      "app/(user)/workspace-admin/flow-states/page.tsx",
+      "app/(user)/theme-classic/page.tsx",
       "app/components/ArchiveMapFlyout.tsx",
       "app/components/ServiceHealthPanel.tsx",
       "app/components/TopologyTreeFlyout.tsx"

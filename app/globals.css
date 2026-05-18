@@ -8870,14 +8870,6 @@ input[type="reset"] {
   margin: 0;
 }
 
-/* === Table cell meta (flex row for value + status pills) === */
-.table__cell-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
 /* === Animated toggle button ===
    Two-cell toggle with a GSAP-driven accent blob that floods across
    the container on switch. GSAP animates `left` / `right` in a
@@ -10976,9 +10968,9 @@ input[type="reset"] {
    remaining horizontal space via width: 100% + word-break wrapping.
    Works under table-layout: auto because the browser allocates leftover
    width to the only non-nowrap column. */
-.table--auto-expander                            { table-layout: auto; width: 100%; }
-.table--auto-expander .fs-table__cell--nowrap    { white-space: nowrap; width: 1%; }
-.table--auto-expander .fs-table__cell--expander  {
+.fs-table--auto-expander                            { table-layout: auto; width: 100%; }
+.fs-table--auto-expander .fs-table__cell--nowrap    { white-space: nowrap; width: 1%; }
+.fs-table--auto-expander .fs-table__cell--expander  {
   white-space: normal;
   width: 100%;
   word-break: break-word;
@@ -13337,9 +13329,6 @@ input[type="reset"] {
   font-size: 0.75rem;
   align-self: flex-start;
 }
-
-/* Saving state dim */
-.table__row--saving { opacity: 0.6; pointer-events: none; }
 
 /* ─── Flow States Customisation (fs-*) ────────────────────────────────────────
    fs-state-dot    : coloured circle badge next to state name.

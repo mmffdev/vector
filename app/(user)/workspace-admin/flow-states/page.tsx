@@ -681,9 +681,9 @@ function StateRow({
   };
 
   return (
-    <tr className={`table__row${saving ? " table__row--saving" : ""}`}>
+    <tr className={`tree_accordion-dense__row${saving ? " tree_accordion-dense__row--saving" : ""}`}>
       {/* 1. State */}
-      <td className="table__cell fs-table__cell--nowrap">
+      <td className="tree_accordion-dense__cell fs-table__cell--nowrap">
         <span
           className="fs-state-dot"
           style={{
@@ -698,12 +698,12 @@ function StateRow({
         )}
       </td>
       {/* 3. Default State (was 'Kind') */}
-      <td className="table__cell table__cell--muted fs-table__cell--nowrap" style={{ fontSize: "0.75rem" }}>
+      <td className="tree_accordion-dense__cell tree_accordion-dense__cell--muted fs-table__cell--nowrap" style={{ fontSize: "0.75rem" }}>
         {KIND_LABEL[state.kind] ?? state.kind}
       </td>
       {/* 4. Description (inline-edit text — EXPANDER column) */}
       <td
-        className="table__cell fs-table__cell--expander"
+        className="tree_accordion-dense__cell fs-table__cell--expander"
         onClick={() => { if (!descEditing) setDescEditing(true); }}
       >
         {descEditing ? (
@@ -730,7 +730,7 @@ function StateRow({
         )}
       </td>
       {/* 5. Edit (pencil → opens combined description + exit-rules flyout) */}
-      <td className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }}>
+      <td className="tree_accordion-dense__cell fs-table__cell--nowrap" style={{ textAlign: "center" }}>
         <button
           type="button"
           className={`btn btn--ghost btn--icon${isEditOpen ? " is-active" : ""}`}
@@ -743,17 +743,17 @@ function StateRow({
         </button>
       </td>
       {/* 7. Exit Rules (count) */}
-      <td className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }} title={`${ruleCount} exit rule(s)`}>
+      <td className="tree_accordion-dense__cell fs-table__cell--nowrap" style={{ textAlign: "center" }} title={`${ruleCount} exit rule(s)`}>
         {ruleCount > 0
           ? <span className="pill pill--neutral">{ruleCount}</span>
           : <span style={{ opacity: 0.4 }}>—</span>}
       </td>
       {/* 8. Colour */}
-      <td className="table__cell fs-table__cell--nowrap">
+      <td className="tree_accordion-dense__cell fs-table__cell--nowrap">
         <ColourPicker value={state.colour} onChange={handleColour} />
       </td>
       {/* 9. Pullable */}
-      <td className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }}>
+      <td className="tree_accordion-dense__cell fs-table__cell--nowrap" style={{ textAlign: "center" }}>
         <label
           className="fs-pullable-toggle"
           title={state.is_pullable
@@ -1307,18 +1307,18 @@ function FlowBlock({
         </p>
       </div>
 
-      <div className="table-scroll">
-        <table className="table table--auto-expander">
-          <thead className="table__head">
+      <div className="tree_accordion-dense__scroll">
+        <table className="tree_accordion-dense__table fs-table--auto-expander">
+          <thead className="tree_accordion-dense__head">
             <tr>
-              <th className="table__cell fs-table__cell--nowrap">State</th>
-              <th className="table__cell fs-table__cell--nowrap" title="Underlying default state (lifecycle stage)">Default State</th>
-              <th className="table__cell fs-table__cell--expander" title="Description for this state — click cell to edit inline">Description</th>
-              <th className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }} title="Open the description + exit-rules editor">Edit</th>
-              <th className="table__cell fs-table__cell--nowrap" style={{ textAlign: "center" }} title="Number of exit rules">Exit Rules</th>
-              <th className="table__cell fs-table__cell--nowrap">Colour</th>
+              <th className="tree_accordion-dense__th fs-table__cell--nowrap">State</th>
+              <th className="tree_accordion-dense__th fs-table__cell--nowrap" title="Underlying default state (lifecycle stage)">Default State</th>
+              <th className="tree_accordion-dense__th fs-table__cell--expander" title="Description for this state — click cell to edit inline">Description</th>
+              <th className="tree_accordion-dense__th fs-table__cell--nowrap" style={{ textAlign: "center" }} title="Open the description + exit-rules editor">Edit</th>
+              <th className="tree_accordion-dense__th fs-table__cell--nowrap" style={{ textAlign: "center" }} title="Number of exit rules">Exit Rules</th>
+              <th className="tree_accordion-dense__th fs-table__cell--nowrap">Colour</th>
               <th
-                className="table__cell fs-table__cell--nowrap"
+                className="tree_accordion-dense__th fs-table__cell--nowrap"
                 style={{ textAlign: "center" }}
                 title="Can the team pull from this state?"
               >

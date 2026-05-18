@@ -409,7 +409,7 @@ export default function TopologyTreeFlyout({
             ) : rows.length === 0 ? (
               <p className="topo-tree__empty">No nodes yet.</p>
             ) : (
-              <table className="table topo-tree-table">
+              <table className="tree_accordion-dense__table topo-tree-table">
                 {/* Caption row — "Topology Tree Structure" + expand-all
                     toggle. Rendered FIRST so it scrolls away with the
                     body content; the toolbar below is sticky and stays
@@ -420,7 +420,7 @@ export default function TopologyTreeFlyout({
                       className="drag-handle-cell topo-tree-table__grip-cell topo-tree-table__admin-grip"
                       aria-hidden="true"
                     />
-                    <th className="table__cell topo-tree-table__toggle-cell">
+                    <th className="tree_accordion-dense__th topo-tree-table__toggle-cell">
                       <span className="topo-tree-table__toggle-inner">
                         <button
                           type="button"
@@ -450,19 +450,19 @@ export default function TopologyTreeFlyout({
                         row's warn + actions cells so the admin tag-cell
                         starts at the same x-position as the swatch on
                         body rows. */}
-                    <th className="table__cell topo-tree-table__warn-cell" aria-hidden="true">
+                    <th className="tree_accordion-dense__th topo-tree-table__warn-cell" aria-hidden="true">
                       <span
                         className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn topo-tree-flyout__placeholder"
                         aria-hidden="true"
                       />
                     </th>
-                    <th className="table__cell topo-tree-table__actions-cell" aria-hidden="true">
+                    <th className="tree_accordion-dense__th topo-tree-table__actions-cell" aria-hidden="true">
                       <span
                         className="btn btn--icon btn--xs btn--ghost topo-tree-table__action-btn topo-tree-flyout__placeholder"
                         aria-hidden="true"
                       />
                     </th>
-                    <th className="table__cell topo-tree-table__tag-cell topo-tree-table__admin-title">
+                    <th className="tree_accordion-dense__th topo-tree-table__tag-cell topo-tree-table__admin-title">
                       Topology Tree Structure
                     </th>
                   </tr>
@@ -550,7 +550,7 @@ function TreeRow({
   return (
     <tr
       ref={trRef}
-      className={`table__row topo-tree-table__row${selected ? " table__row--selected" : ""}`}
+      className={`tree_accordion-dense__row topo-tree-table__row${selected ? " tree_accordion-dense__row--selected" : ""}`}
       onClick={onSelect}
       onDoubleClick={onActivate}
       role="treeitem"
@@ -569,7 +569,7 @@ function TreeRow({
       </td>
 
       {/* Expander — same column for every depth so chevrons line up. */}
-      <td className="table__cell topo-tree-table__toggle-cell">
+      <td className="tree_accordion-dense__cell topo-tree-table__toggle-cell">
         <span className="topo-tree-table__toggle-inner">
           {hasChildren ? (
             <button
@@ -606,7 +606,7 @@ function TreeRow({
           the kebab is always present so every row carries the same row-
           menu affordance as the canvas card. */}
       <td
-        className="table__cell topo-tree-table__warn-cell"
+        className="tree_accordion-dense__cell topo-tree-table__warn-cell"
         onClick={(e) => e.stopPropagation()}
       >
         {archivedDescendantCount > 0 && (
@@ -622,7 +622,7 @@ function TreeRow({
         )}
       </td>
       <td
-        className="table__cell topo-tree-table__actions-cell"
+        className="tree_accordion-dense__cell topo-tree-table__actions-cell"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -638,7 +638,7 @@ function TreeRow({
       {/* Tag cell — paints the tree spine (root-level vertical) and the
           per-row elbow / pass-through verticals so children visually
           connect to their parent. Logic mirrors work-items WorkItemRow. */}
-      <td className="table__cell topo-tree-table__tag-cell">
+      <td className="tree_accordion-dense__cell topo-tree-table__tag-cell">
         <div className="topo-tree-table__tag-inner">
           {depth === 0 && (() => {
             // Root spine: a 1px-wide SVG with overflow:visible draws

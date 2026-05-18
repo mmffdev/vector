@@ -318,20 +318,20 @@ export default function ArchiveMapFlyout({
             <p className="topo-archive-map__empty">No archived descendants.</p>
           )}
           {rows.length > 0 && (
-            <table className="table topo-archive-map__table">
+            <table className="tree_accordion-dense__table topo-archive-map__table">
               <tbody>
                 {rows.map((row) => {
                   const isArchived = row.kind === "archived";
                   const restoring = isArchived && busyId === row.id;
                   const showError = isArchived && rowError && rowError.id === row.id;
                   const rowClass = isArchived
-                    ? "table__row topo-archive-map__row"
-                    : "table__row topo-archive-map__row topo-archive-map__row--live";
+                    ? "tree_accordion-dense__row topo-archive-map__row"
+                    : "tree_accordion-dense__row topo-archive-map__row topo-archive-map__row--live";
                   const parentIsArchived =
                     isArchived && row.node.parent_is_archived && row.depth > 0;
                   return (
                     <tr key={`${row.kind}:${row.id}`} className={rowClass}>
-                      <td className="table__cell topo-archive-map__tag-cell">
+                      <td className="tree_accordion-dense__cell topo-archive-map__tag-cell">
                         <div className="topo-archive-map__tag-inner">
                           {row.depth > 0 && (() => {
                             const H = ROW_H;
@@ -408,7 +408,7 @@ export default function ArchiveMapFlyout({
                           </p>
                         )}
                       </td>
-                      <td className="table__cell topo-archive-map__action-cell">
+                      <td className="tree_accordion-dense__cell topo-archive-map__action-cell">
                         {isArchived && (
                           <button
                             type="button"
