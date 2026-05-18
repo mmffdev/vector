@@ -33,10 +33,13 @@ When a tag is changed (e.g. `US` → `STORY`), stale aliases (`/item/US-00000347
 ## Custom-page route
 
 ```
-/p/<uuid>
+/p/<page-uuid>              → renders first view
+/p/<page-uuid>/<view-uuid>  → renders the named view
 ```
 
-User-authored custom pages live at `/p/<page-id>` where `<page-id>` is the UUID primary key of the `user_custom_pages` row. This route is served by `app/(user)/p/[id]/page.tsx`. A `?vid=<view-id>` query parameter selects a non-default view within the page; omitting it renders the view at `position = 0`.
+User-authored custom pages live under `/p/<page-id>` where `<page-id>` is the UUID primary key of the `user_custom_pages` row. The optional second path segment selects a non-default view; omitting it renders the view at `position = 0`. Served by `app/(user)/p/[id]/[[...vid]]/page.tsx` (Next.js optional catch-all segment).
+
+Pre-2026-05-18 this used a `?vid=<view-id>` query parameter. That form is gone — retired by TD-URL-VID-VIEW-PICKER to honour [`feedback_url_is_path_only`](../.claude/memory/feedback_url_is_path_only.md) (PLA-0053). No address-bar query state. Existing share/bookmark links using `?vid=` will resolve to the page's default view (no redirect) — the legacy form is not honoured.
 
 The catalogue entry for a custom page has `item_key = "custom:<page.id>"` and `href = "/p/<page.id>"`. There is no tag-alias form — custom pages are never renamed in a way that changes the UUID.
 

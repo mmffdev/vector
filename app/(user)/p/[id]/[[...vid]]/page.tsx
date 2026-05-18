@@ -1,7 +1,14 @@
 "use client";
 
+// Custom page deep-link surface. Route shape:
+//   /p/<id>           → renders the page with the first view active
+//   /p/<id>/<vid>     → renders the page with view <vid> active
+// vid was previously a ?vid= query param; retired with TD-URL-VID-VIEW-PICKER
+// to honour feedback_url_is_path_only (PLA-0053). The catch-all segment
+// [[...vid]] keeps the bare /p/<id> URL working (vid is optional).
+
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
@@ -33,8 +40,10 @@ export default function CustomContainerPage() {
   const { user } = useAuth();
   const { full } = usePageTitle();
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const search = useSearchParams();
+  // params.vid is the catch-all segment: undefined when URL is /p/<id>,
+  // ["<vid>"] when URL is /p/<id>/<vid>. Only the first element is read
+  // (extra segments are ignored — no /p/<id>/<vid>/<sub-vid> contract).
+  const params = useParams<{ id: string; vid?: string[] }>();
   const { refetch: refetchNav } = useNavPrefs();
 
   const id = params?.id;
@@ -65,7 +74,7 @@ export default function CustomContainerPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  const requestedVid = search?.get("vid") ?? null;
+  const requestedVid = params?.vid?.[0] ?? null;
   const activeView = useMemo<CustomView | null>(() => {
     if (!page?.views || page.views.length === 0) return null;
     if (requestedVid) {
@@ -162,7 +171,7 @@ export default function CustomContainerPage() {
                   role="tab"
                   aria-selected={active}
                   className={`custom-page__tab ${active ? "custom-page__tab--active" : ""}`}
-                  onClick={() => router.replace(`/p/${page.id}?vid=${v.id}`)}
+                  onClick={() => router.replace(`/p/${page.id}/${v.id}`)}
                 >
                   {v.label}
                 </button>
