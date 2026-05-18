@@ -513,13 +513,78 @@ func (s *Service) RequestPasswordReset(ctx context.Context, emailIn, ip string) 
 	if err != nil {
 		return err
 	}
-	origin := os.Getenv("FRONTEND_ORIGIN")
-	link := origin + "/login/reset/confirm?token=" + raw
+	// TD-SEC-RESET-TOKEN-FRAGMENT — email link now points at the backend
+	// redeem endpoint (cookie handoff path). The redeem hop validates
+	// the raw token server-side, sets a 5-min HttpOnly handoff cookie,
+	// and 302s to /login/reset/confirm with no token in the address bar.
+	// The raw token never lands in the user-visible URL, browser
+	// history, Referer headers, or any client-side surface past the
+	// initial GET.
+	apiOrigin := os.Getenv("API_PUBLIC_ORIGIN")
+	if apiOrigin == "" {
+		apiOrigin = "http://localhost:5100"
+	}
+	link := apiOrigin + "/_site/auth/password-reset/redeem?t=" + raw
 	_ = s.Mailer.SendPasswordReset(ctx, u.Email, link)
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.password_reset_requested", IPAddress: &ip})
 	return nil
 }
 
+// RedeemPasswordResetToken validates a raw reset token from the email
+// link and returns the matching reset_id when alive. The id is then
+// stamped into a signed handoff cookie by the redeem HTTP handler so
+// the raw token can be dropped before the user-visible redirect to
+// /login/reset/confirm (TD-SEC-RESET-TOKEN-FRAGMENT).
+//
+// Does NOT mark the row used — the row is only consumed at the
+// confirm POST after a successful password set. This means a user
+// can hit the redeem endpoint multiple times within the 1h reset
+// TTL (e.g. they closed the tab after clicking the email link); only
+// the final confirm POST burns the row.
+func (s *Service) RedeemPasswordResetToken(ctx context.Context, token string) (uuid.UUID, error) {
+	hash := Sha256Hex(token)
+	var id, userID uuid.UUID
+	var expiresAt time.Time
+	var usedAt *time.Time
+	err := s.Pool.QueryRow(ctx, sqlSelectPasswordResetByHash, hash).
+		Scan(&id, &userID, &expiresAt, &usedAt)
+	if err == pgx.ErrNoRows {
+		return uuid.Nil, ErrTokenExpired
+	}
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if usedAt != nil || expiresAt.Before(time.Now()) {
+		return uuid.Nil, ErrTokenExpired
+	}
+	return id, nil
+}
+
+// ConfirmPasswordResetByID is the cookie-handoff confirm path. The
+// caller has already proven possession of the raw token (via the
+// redeem endpoint) and now carries reset_id in a signed cookie.
+// Same row-lookup + transaction shape as ConfirmPasswordReset but
+// looks the row up by id rather than by hashed token.
+func (s *Service) ConfirmPasswordResetByID(ctx context.Context, resetID uuid.UUID, newPwd, ip string) error {
+	var id, userID uuid.UUID
+	var expiresAt time.Time
+	var usedAt *time.Time
+	err := s.Pool.QueryRow(ctx, sqlSelectPasswordResetByID, resetID).
+		Scan(&id, &userID, &expiresAt, &usedAt)
+	if err == pgx.ErrNoRows {
+		return ErrTokenExpired
+	}
+	if err != nil {
+		return err
+	}
+	return s.applyPasswordReset(ctx, id, userID, expiresAt, usedAt, newPwd, ip)
+}
+
+// ConfirmPasswordReset is the legacy token-in-body path. Retained for
+// back-compat in case any out-of-band caller (mobile client,
+// integration test) still POSTs the raw token directly. The browser
+// frontend uses the handoff flow above. Remove this once we've
+// confirmed no live caller depends on it.
 func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip string) error {
 	hash := Sha256Hex(token)
 	var id, userID uuid.UUID
@@ -533,6 +598,19 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPwd, ip st
 	if err != nil {
 		return err
 	}
+	return s.applyPasswordReset(ctx, id, userID, expiresAt, usedAt, newPwd, ip)
+}
+
+// applyPasswordReset is the shared core: validate expiry/used, validate
+// new-password policy, hash, update + mark-used + revoke-sessions in
+// one tx, audit + notify. Both confirm paths funnel through here.
+func (s *Service) applyPasswordReset(
+	ctx context.Context,
+	id, userID uuid.UUID,
+	expiresAt time.Time,
+	usedAt *time.Time,
+	newPwd, ip string,
+) error {
 	if usedAt != nil || expiresAt.Before(time.Now()) {
 		return ErrTokenExpired
 	}

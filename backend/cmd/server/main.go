@@ -816,6 +816,14 @@ func main() {
 		r.Post("/refresh", authH.Refresh)
 		r.Post("/logout", authH.Logout)
 		r.With(httprate.LimitByIP(3, time.Hour)).Post("/password-reset", authH.PasswordReset)
+		// TD-SEC-RESET-TOKEN-FRAGMENT — email links hit /redeem which
+		// validates the raw token, sets a 5-min HttpOnly handoff cookie,
+		// and 302s to /login/reset/confirm. /state is the frontend's
+		// "is my cookie alive?" probe. /confirm reads the cookie and
+		// (back-compat) still accepts a raw token in the body for
+		// non-browser callers.
+		r.With(httprate.LimitByIP(20, time.Minute)).Get("/password-reset/redeem", authH.PasswordResetRedeem)
+		r.With(httprate.LimitByIP(60, time.Minute)).Get("/password-reset/state", authH.PasswordResetState)
 		r.With(httprate.LimitByIP(10, time.Minute)).Post("/password-reset/confirm", authH.PasswordResetConfirm)
 
 		r.Group(func(r chi.Router) {

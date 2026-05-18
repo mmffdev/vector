@@ -229,6 +229,19 @@ const sqlUpdatePasswordHashAndClearLockout = `
 // password update and session revoke.
 const sqlMarkPasswordResetUsed = `UPDATE users_password_resets SET users_password_resets_used_at = NOW() WHERE users_password_resets_id = $1`
 
+// sqlSelectPasswordResetByID is the post-handoff lookup. The cookie
+// handoff flow (TD-SEC-RESET-TOKEN-FRAGMENT) carries reset_id in the
+// signed cookie; ConfirmPasswordResetByID re-validates expiry +
+// used_at before applying the password change.
+const sqlSelectPasswordResetByID = `
+		SELECT users_password_resets_id,
+		       users_password_resets_id_user,
+		       users_password_resets_expires_at,
+		       users_password_resets_used_at
+		  FROM users_password_resets
+		 WHERE users_password_resets_id = $1
+	`
+
 // sqlSelectFirstLiveWorkspaceID returns the subscription's earliest-created
 // live workspace. Used by Login to seed the JWT's workspace_id claim
 // (PLA-0053 / story 00575). Mirrors topology/sql.go's constant of the

@@ -62,6 +62,12 @@ type userPayload struct {
 	ForcePasswordChange bool        `json:"force_password_change"`
 	AuthMethod          string      `json:"auth_method"`
 	LastLogin           *time.Time  `json:"last_login,omitempty"`
+	// MFAEnrolled lets the frontend conditionally render the
+	// authenticator-code field in the step-up reauth modal (B16.8.10).
+	// Surfacing this on the user payload (rather than a /me/mfa-status
+	// round-trip) means useStepUpAction can decide the form shape
+	// without an extra fetch.
+	MFAEnrolled         bool        `json:"mfa_enrolled"`
 	Permissions         []string    `json:"permissions"`
 }
 
@@ -77,6 +83,7 @@ func (h *Handler) buildUserPayload(ctx context.Context, u *roletypes.User) userP
 		ForcePasswordChange: u.ForcePasswordChange,
 		AuthMethod:          u.AuthMethod,
 		LastLogin:           u.LastLogin,
+		MFAEnrolled:         u.MFAEnrolled,
 		Permissions:         perms,
 	}
 }
@@ -265,15 +272,145 @@ func (h *Handler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ── Password-reset handoff (TD-SEC-RESET-TOKEN-FRAGMENT) ────────────────────
+//
+// The email link no longer carries the raw token in a URL query the
+// user sees. Instead it points at /_site/auth/password-reset/redeem,
+// which validates the raw token server-side, sets a 5-minute HttpOnly
+// handoff cookie, and 302s to /login/reset/confirm with no token in
+// the address bar at all. The frontend then probes /state to check the
+// cookie is live; on submit it POSTs only { password } to /confirm.
+// Raw token never lands in JS, history, address bar, Referer, or logs
+// past the initial redeem request.
+
+const resetHandoffCookieName = "vector_reset_handoff"
+
+// PasswordResetRedeem handles the email link.
+//   GET /_site/auth/password-reset/redeem?t=<raw>
+// On valid raw token: mint handoff JWT, set HttpOnly cookie, 302 to
+// /login/reset/confirm. On invalid/expired: 302 to /login/reset/confirm
+// without setting the cookie (the frontend's /state probe returns the
+// "expired" error and renders the request-a-new-link prompt).
+func (h *Handler) PasswordResetRedeem(w http.ResponseWriter, r *http.Request) {
+	raw := r.URL.Query().Get("t")
+	frontend := os.Getenv("FRONTEND_ORIGIN")
+	if frontend == "" {
+		frontend = "http://localhost:5101"
+	}
+	dest := frontend + "/login/reset/confirm"
+
+	if raw == "" {
+		http.Redirect(w, r, dest, http.StatusFound)
+		return
+	}
+
+	resetID, err := h.Svc.RedeemPasswordResetToken(r.Context(), raw)
+	if err != nil {
+		// Expired / used / not found — still redirect to /confirm so
+		// the user sees a uniform "link expired" UI without leaking
+		// existence to a scanner that hits redeem with a guessed token.
+		http.Redirect(w, r, dest, http.StatusFound)
+		return
+	}
+
+	jwtToken, err := SignResetHandoffToken(resetID)
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, "internal")
+		return
+	}
+
+	// Path scoped to the password-reset endpoints so the cookie isn't
+	// attached to unrelated requests. SameSite=Lax lets the cookie ride
+	// the cross-port redirect from :5100 to :5101 (top-level navigation).
+	secure := isProdEnv()
+	http.SetCookie(w, &http.Cookie{
+		Name:     resetHandoffCookieName,
+		Value:    jwtToken,
+		Path:     "/_site/auth/password-reset",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   5 * 60,
+	})
+	http.Redirect(w, r, dest, http.StatusFound)
+}
+
+// PasswordResetState is the frontend's "is my handoff cookie alive?" probe.
+//   GET /_site/auth/password-reset/state
+// Returns 200 + { "ready": true } if a valid cookie is present, 401
+// otherwise. The page mounts and calls this once before showing the form;
+// failure renders the "link expired" message.
+func (h *Handler) PasswordResetState(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie(resetHandoffCookieName)
+	if err != nil || c.Value == "" {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthTokenExpired)
+		return
+	}
+	if _, err := ParseResetHandoffToken(c.Value); err != nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthTokenExpired)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"ready":true}`))
+}
+
 type resetConfirmReq struct {
-	Token    string `json:"token"`
 	Password string `json:"password"`
+	// Token is the legacy field — kept for back-compat with any
+	// non-browser caller still POSTing the raw token directly. The
+	// browser frontend now relies entirely on the handoff cookie set
+	// by /redeem and leaves this empty.
+	Token string `json:"token,omitempty"`
 }
 
 func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 	var req resetConfirmReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+
+	// Cookie handoff path (browser frontend, TD-SEC-RESET-TOKEN-FRAGMENT).
+	if c, cerr := r.Cookie(resetHandoffCookieName); cerr == nil && c.Value != "" {
+		claims, perr := ParseResetHandoffToken(c.Value)
+		if perr != nil {
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.AuthTokenExpired)
+			return
+		}
+		resetID, perr := uuid.Parse(claims.ResetID)
+		if perr != nil {
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.AuthTokenExpired)
+			return
+		}
+		if err := h.Svc.ConfirmPasswordResetByID(r.Context(), resetID, req.Password, security.ClientIP(r)); err != nil {
+			if errors.Is(err, ErrTokenExpired) {
+				httperr.Write(w, r, http.StatusBadRequest, usermessages.AuthTokenExpired)
+				return
+			}
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
+			return
+		}
+		// Clear the handoff cookie so a second click on the email link
+		// doesn't accidentally reuse a still-live JWT against a now-used
+		// reset row (the DB used_at gate would catch it but no reason
+		// to leave the cookie around).
+		http.SetCookie(w, &http.Cookie{
+			Name:     resetHandoffCookieName,
+			Value:    "",
+			Path:     "/_site/auth/password-reset",
+			HttpOnly: true,
+			MaxAge:   -1,
+		})
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Legacy back-compat path: raw token in the JSON body. No browser
+	// frontend calls this anymore; kept for out-of-band callers (mobile,
+	// integration tests) until they migrate. Remove once unused.
+	if req.Token == "" {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.AuthTokenExpired)
 		return
 	}
 	if err := h.Svc.ConfirmPasswordReset(r.Context(), req.Token, req.Password, security.ClientIP(r)); err != nil {
@@ -285,6 +422,17 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// isProdEnv returns true when the server is running in production mode.
+// Used for the Secure cookie flag — set in prod, omitted in dev (HTTP
+// localhost wouldn't accept Secure-flagged cookies).
+func isProdEnv() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("BACKEND_ENV"))) {
+	case "production", "prod":
+		return true
+	}
+	return false
 }
 
 // ── MFA handlers ─────────────────────────────────────────────────────────────

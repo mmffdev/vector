@@ -1,39 +1,40 @@
 "use client";
 
-// /login/reset/confirm — set new password from a reset token.
+// /login/reset/confirm — set new password.
 //
-// Inbound-link exception (2026-05-18): this page MUST read ?token=
-// from the URL because the email link is the only delivery channel.
-// To minimise the leak window:
-//   1. Token is captured into in-memory state on mount, then
-//      router.replace() strips ?token= from the address bar in the
-//      same tick — closes the bookmark/share/screen-share path before
-//      any other request fires.
-//   2. POST body carries the token to /auth/password-reset/confirm;
-//      backend SHA-256 hashes + marks single-use.
-//   3. Success flag for /login is sessionStorage, not a URL param.
-// Deeper fix (token in URL fragment so it never leaves the browser,
-// or short-lived session-cookie handoff) tracked in TD-SEC-RESET-TOKEN-FRAGMENT.
+// Cookie handoff (TD-SEC-RESET-TOKEN-FRAGMENT, 2026-05-18). The raw
+// reset token never reaches this page. The flow is:
+//   1. User clicks email link → GET :5100/_site/auth/password-reset/redeem?t=<raw>
+//   2. Backend validates raw token, mints a 5-min HttpOnly handoff
+//      cookie carrying only the reset_id, 302s here.
+//   3. This page probes /_site/auth/password-reset/state on mount —
+//      200 if cookie alive, 401 (rendered as "link expired") if not.
+//   4. Submit POSTs only { password } to /_site/auth/password-reset/confirm;
+//      backend reads the cookie, looks up reset_id, applies the change.
+// No token in URL, history, JS, Referer, or logs.
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiSite as api, ApiError } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
 import { AuthBrand } from "@/app/components/AuthBrand";
 
+type State = "probing" | "ready" | "expired";
+
 function ConfirmForm() {
   const router = useRouter();
-  const search = useSearchParams();
-  // Capture once; the URL copy is stripped below so the address bar,
-  // history, and any future Referer header are clean.
-  const [token, setToken] = useState<string>(() => search.get("token") ?? "");
+  const [state, setState] = useState<State>("probing");
 
+  // Probe the handoff cookie once on mount. 200 → form ready;
+  // 401/anything-else → render the "link expired" CTA.
   useEffect(() => {
-    if (search.get("token")) {
-      router.replace("/login/reset/confirm");
-    }
-  }, [router, search]);
+    let cancelled = false;
+    api("/auth/password-reset/state", { skipAuth: true })
+      .then(() => { if (!cancelled) setState("ready"); })
+      .catch(() => { if (!cancelled) setState("expired"); });
+    return () => { cancelled = true; };
+  }, []);
 
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
@@ -48,12 +49,13 @@ function ConfirmForm() {
     if (pwd !== pwd2) return setErr("Passwords do not match.");
     setBusy(true);
     try {
+      // No token in the body — the handoff cookie set by /redeem
+      // identifies the reset row server-side.
       await api("/auth/password-reset/confirm", {
         method: "POST",
-        body: JSON.stringify({ token, password: pwd }),
+        body: JSON.stringify({ password: pwd }),
         skipAuth: true,
       });
-      setToken("");
       try { sessionStorage.setItem("vector.reset.success", "1"); } catch { /* private mode */ }
       router.push("/login");
     } catch (e) {
@@ -63,13 +65,22 @@ function ConfirmForm() {
     }
   }
 
-  if (!token) {
+  if (state === "probing") {
+    return (
+      <form className="auth-card auth-card--vector" noValidate aria-busy="true">
+        <AuthBrand />
+        <p className="auth-card__subtitle">Checking your reset link…</p>
+      </form>
+    );
+  }
+
+  if (state === "expired") {
     return (
       <form className="auth-card auth-card--vector" noValidate>
         <AuthBrand />
-        <h1 className="auth-card__title">Missing token</h1>
+        <h1 className="auth-card__title">Link expired</h1>
         <p className="auth-card__subtitle">
-          This reset link is invalid or incomplete. Request a new one.
+          This reset link is invalid, has been used, or has expired. Request a new one.
         </p>
         <Link href="/login/reset" className="auth-card__link">Request a new link</Link>
       </form>
@@ -115,9 +126,7 @@ function ConfirmForm() {
 export default function ResetConfirmPage() {
   return (
     <div className="auth-page">
-      <Suspense fallback={null}>
-        <ConfirmForm />
-      </Suspense>
+      <ConfirmForm />
       <AuthFooter />
     </div>
   );

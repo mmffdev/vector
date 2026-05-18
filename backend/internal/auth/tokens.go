@@ -236,6 +236,76 @@ func ParseChallengeToken(raw string) (*ChallengeClaims, error) {
 	return claims, nil
 }
 
+// ── Password-reset handoff token ────────────────────────────────────────────
+//
+// TD-SEC-RESET-TOKEN-FRAGMENT. The reset-link redeem endpoint
+// (/_site/auth/password-reset/redeem) validates the raw token from
+// the email link, then hands off to /login/reset/confirm via a
+// signed cookie carrying only the reset_id. The cookie is HttpOnly,
+// so JS can't read it; the raw token never crosses into client land.
+//
+// Why a JWT and not just an opaque cookie value: the JWT signature
+// proves the cookie was minted by the redeem endpoint after a
+// successful raw-token check. Without it, a hostile site could
+// forge a cookie containing any reset_id. With it, the backend
+// verifies the signature before trusting reset_id.
+//
+// Kind discriminator stops a stray access token from being replayed
+// against the confirm POST.
+
+type ResetHandoffClaims struct {
+	Kind    string `json:"kind"`
+	ResetID string `json:"reset_id"`
+	jwt.RegisteredClaims
+}
+
+// SignResetHandoffToken mints a 5-minute HS256 token referencing the
+// users_password_resets row by id. Set as a HttpOnly cookie by the
+// redeem endpoint; consumed by the confirm POST.
+func SignResetHandoffToken(resetID uuid.UUID) (string, error) {
+	secret := secrets.Get("JWT_ACCESS_SECRET")
+	if secret == "" {
+		return "", errors.New("JWT_ACCESS_SECRET not set")
+	}
+	claims := ResetHandoffClaims{
+		Kind:    "reset_handoff",
+		ResetID: resetID.String(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    Issuer,
+			Audience:  jwt.ClaimStrings{Audience},
+			Subject:   resetID.String(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        uuid.NewString(),
+		},
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString([]byte(secret))
+}
+
+// ParseResetHandoffToken validates and returns the ResetHandoffClaims
+// for a token minted by SignResetHandoffToken.
+func ParseResetHandoffToken(raw string) (*ResetHandoffClaims, error) {
+	secret := secrets.Get("JWT_ACCESS_SECRET")
+	claims := &ResetHandoffClaims{}
+	_, err := jwt.ParseWithClaims(raw, claims, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims.Kind != "reset_handoff" {
+		return nil, errors.New("token is not a reset_handoff")
+	}
+	if err := validateIssAud(claims.RegisteredClaims); err != nil {
+		return nil, err
+	}
+	return claims, nil
+}
+
 func parseDurationEnv(key string, def time.Duration) time.Duration {
 	v := os.Getenv(key)
 	if v == "" {
