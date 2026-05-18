@@ -151,7 +151,9 @@ export default function LoginPage() {
             priority
           />
         </div>
-        <div className="login-page__sidebar-wordmark">VECTOR</div>
+        <div className="login-page__sidebar-wordmark">
+          <span className="login-page__sidebar-wordmark-v">V</span><span className="login-page__sidebar-wordmark-ector">ector</span>
+        </div>
         <div className="login-page__sidebar-version">v1.01</div>
       </aside>
 
