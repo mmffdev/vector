@@ -24,6 +24,7 @@
 
 import { useEffect, useRef } from "react";
 import { getApiToken, getRefreshCallback } from "@/app/lib/api";
+import { handleSessionCloseCode } from "@/app/lib/wsClose";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 
@@ -105,6 +106,11 @@ export function useRealtimeSubscription(opts: UseRealtimeSubscriptionOptions) {
 
       ws.addEventListener("close", (ev) => {
         if (cancelled) return;
+        // B16.8.12: WS session enforcement may close us with code 4001
+        // (session revoked) or 4002 (session idle expired). Those are
+        // terminal — handleSessionCloseCode fires hardLogout and we
+        // bail out instead of reconnecting against a dead session.
+        if (handleSessionCloseCode(ev)) return;
         // code 4401 = backend explicit auth rejection (set by WS upgrade handler).
         // code 1006 = abnormal close (HTTP 401/403 during upgrade — no close frame).
         const isAuthFailure = ev.code === 4401 || ev.code === 1006;

@@ -39,6 +39,15 @@ export function setHardLogoutCallback(fn: ((reason: string) => Promise<void>) | 
   _hardLogoutCallback = fn;
 }
 
+// getHardLogoutCallback returns the registered hardLogout function (or
+// null if AuthContext hasn't mounted yet). Exposed for the WS close-code
+// handler (app/lib/wsClose.ts, B16.8.12) which is invoked from inside a
+// WebSocket close listener — those run outside React render scope, so
+// they can't go through useAuth().
+export function getHardLogoutCallback(): ((reason: string) => Promise<void>) | null {
+  return _hardLogoutCallback;
+}
+
 export type ApiViolation = { field: string; message: string };
 
 // RFC 9457 Problem Details fields surfaced from error responses. `code`

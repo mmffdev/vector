@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from "react";
 import { getApiToken } from "@/app/lib/api";
+import { handleSessionCloseCode } from "@/app/lib/wsClose";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100";
 
@@ -67,8 +68,11 @@ export function useTopologyHandoffs(
         }
       });
 
-      ws.addEventListener("close", () => {
+      ws.addEventListener("close", (ev) => {
         if (cancelled) return;
+        // B16.8.12: terminal session-state codes (4001/4002) route
+        // through hardLogout; do not reconnect against a dead session.
+        if (handleSessionCloseCode(ev)) return;
         const base = Math.min(500 * 2 ** retry, 30_000);
         const jitter = base * (0.75 + Math.random() * 0.5);
         retry++;
