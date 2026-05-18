@@ -77,18 +77,19 @@ func MFARememberCookieName(userID string) string {
 }
 
 // SetMFARememberCookie writes the 30-day device-trust cookie for a user.
-func SetMFARememberCookie(w http.ResponseWriter, userID string) error {
+// Secure flag set when the request arrived over TLS (r.TLS != nil) or
+// when COOKIE_SECURE=true. B16.8.7.
+func SetMFARememberCookie(w http.ResponseWriter, r *http.Request, userID string) error {
 	token, err := SignMFARememberToken(userID)
 	if err != nil {
 		return err
 	}
-	secure := os.Getenv("COOKIE_SECURE") == "true"
 	http.SetCookie(w, &http.Cookie{
 		Name:     MFARememberCookieName(userID),
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
+		Secure:   isSecureCookieRequest(r),
 		SameSite: http.SameSiteStrictMode,
 		Expires:  time.Now().Add(MFARememberTTL),
 	})

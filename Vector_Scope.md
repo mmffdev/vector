@@ -1,10 +1,10 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-18 (B16.9 LDAP/AD SSO added to backlog)
-**Doc version:** 2.29
+**Last updated:** 2026-05-18 (B16.8.11 shipped — 5 commits ded3f12→802dd70; B16.8.6 marked done via .11's per-request enforcement; B-SHARE short-link service parked with design captured)
+**Doc version:** 2.36
 
-> **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, B18.7, FE-POR-0002. Everything else parks below.
+> **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, **B16.8**, FE-POR-0002. Everything else parks below. *(Swap 2026-05-18: B18.7 parked out → B16.8 security hardening swapped in; pre-launch security is now the active fifth slot.)*
 >
 > **★ FORCING FUNCTION:** [FE-POR-0002 Chrome Scope Picker](#fe-por-0002-chrome-scope-picker-pla-0042) — the daily-use slice. Everything else justifies itself against keeping this healthy.
 
@@ -67,6 +67,8 @@
 **Parked — solo-dev mode** *(WIP-cap overflow; verbatim, awaiting unpark)*
 
 - [FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043)](#fe-por-0003-topology-scope-clamp-on-artefact-reads-pla-0043) — parked 2026-05-17
+- [B18.7. Shared methods catalogue (PLA-0045)](#b187-shared-methods-catalogue-pla-0045--parked-2026-05-18-swapped-out-for-b168-security-hardening) — parked 2026-05-18 (swapped for B16.8)
+- [B-SHARE. Short-link service for sharing views &amp; filters](#b-share-short-link-service-for-sharing-views--filters--parked-2026-05-18) — parked 2026-05-18 (design captured, awaiting saved-views consumer)
 
 ---
 
@@ -277,6 +279,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `9c45ef2` (2026-05-17): chore(tech-debt): triage 2026-05-17 — mark 3 resolved, flag DB-002 trigger
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -655,6 +658,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -878,6 +885,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1350,6 +1358,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1552,6 +1565,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1664,6 +1678,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -1728,6 +1744,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f6d4935` (2026-05-16): feat(workspace): mount WorkspaceClampMiddleware on artefact routes [00578]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -1820,6 +1837,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
 > Commit `573c633` (2026-05-18): fix(login): scale entire auth card to 50% size
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2006,6 +2025,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2561,6 +2581,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `37c9929` (2026-05-16): test(priority): red — F9 catalogue + chip + Showstopper [00609]
 > Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -2636,6 +2658,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -2835,9 +2859,12 @@ Full lifecycle management for tasks, bugs, epics.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
 > Commit `d60981e` (2026-05-16): fix(plans-panel): query param typo + defensive array guards
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 - **B8.10** Per-tenant API keys with scoped permissions `[P2]`
 > Commit `761d7cd` (2026-05-09): fix(B22): DevPageHelpPanel — apiSite import + strip stale /api/ prefix
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2924,6 +2951,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3203,6 +3231,22 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
   - ✅ ~~**B16.8.5** Frontend MFA~~ `[P1]` > Commit 2026-05-18: `MFAChallengeError` + `mfaLogin()` in `AuthContext.tsx`; inline TOTP step on `app/login/page.tsx`; `app/(user)/account-settings/mfa/page.tsx` with QR code enrollment, recovery codes, disable flow; `qrcode` npm package added.
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+  - ✅ ~~**B16.8.6** Session idle timeout (NIST SP 800-63B-4 AAL2 ≤30min) — enforced **per protected request** via B16.8.11's middleware JOIN: `NOW() - COALESCE(rotated_at, created_at) > SESSION_IDLE_TTL` (default 30m) → 401 with `Problem.code = "session_idle_expired"`. Frontend AuthContext (step 4) catches the code, clears state, redirects to `/login` with banner copy from `usermessages.AuthSessionIdleExpired`. E2E verified 2026-05-18 (SQL backdate created_at by 31min → next request 401s with the right code).~~ `[P1]`
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+  - ✅ ~~**B16.8.7** Cookie flags hardened on every backend `Set-Cookie` + frontend `session_alive`.~~ Shipped 2026-05-18. `rt`, `csrf_token`, `mfa_remember_*` all carry `HttpOnly` (except `csrf_token` by double-submit design) + `SameSite=Strict` + `Secure` via new `isSecureCookieRequest(r)` helper that auto-detects TLS (`req.TLS != nil`) with `COOKIE_SECURE=true` env as proxy-case override; either signal sets Secure. Frontend `setSessionCookie` adds `Secure` on `window.location.protocol === "https:"`. Three contract tests in `auth/cookies_test.go` pin all three rules (TLS auto-detect, env override, dev plain-HTTP). E2E verified against side-instance: HTTP+env-off → no Secure (dev safe); HTTP+env-on → Secure set (proxy case). NOTE: `SameSite=Strict` chosen over the AC's `Lax` — Strict is correct for auth cookies (no cross-origin ride-along). NOTE: env-file gap on staging/prod (`COOKIE_SECURE=false`) flagged as `TD-SEC-COOKIE-SECURE-ENV` in `docs/c_tech_debt.md` for ops-level fix; auto-detect mitigates direct-TLS deploys, env override mitigates TLS-upstream deploys. `[P1]`
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+  - 🔵 IN FLIGHT **B16.8.8** JWT `iss` + `aud` claims on access/refresh/challenge tokens. AC: `tokens.go` signs `iss=vector-auth`, `aud=vector-api`; `ParseToken*` rejects mismatches with `errors_codes.TOKEN_INVALID_ISSUER` / `TOKEN_INVALID_AUDIENCE`; legacy tokens missing claims accepted for a 24h grace window via `tokens_grace.json` flag, then hard-rejected; unit test covers wrong-iss + wrong-aud. `[P1]`
+  - 🔵 IN FLIGHT **B16.8.9** Access-token TTL — **hold at 15min** (was: drop to 5min). Repurposed 2026-05-18 after promoting B16.8.11 (per-request stateful session check) to baseline: the sessions table is now hit on every protected request, so TTL no longer functions as the "fast idle gate" — instant revocation makes the 5-min shrink unnecessary, and 15min stays as a sane upper bound on token-replay-from-elsewhere blast radius (defense in depth, not load-bearing). AC: `parseDurationEnv("JWT_ACCESS_TTL", 15*time.Minute)` in `tokens.go:48` documented in `docs/c_security.md` under "Session model" — explicit note that the 15min cap is defense in depth, not the primary idle gate; no code change required. `[P3]`
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+  - 🔵 IN FLIGHT **B16.8.10** Active sessions UI + log-out-everywhere + per-action step-up reauth for sensitive actions. The user-visible counterpart to B16.8.11 — without this, instant server-side revocation has no trigger. AC: `/account-settings/sessions` page lists every row in `users_sessions` for the current user (created_at, last_active = rotated_at, ip, user-agent, current-session badge); per-row "revoke" button and a "Log out all other sessions" action; both call new `DELETE /auth/sessions/:id` and `POST /auth/sessions/revoke-others` endpoints which `UPDATE users_sessions SET users_sessions_revoked = TRUE` and emit `audit.Log` entries; integration test: revoke from device A → next request from device B 401s within 1s (cache TTL when B16.8.11's Redis layer lands). **Per-action step-up reauth (replaces the originally-drafted time-window model — closes in-realm-extension pre-staging attack):** sensitive endpoints — change email, change password, disable MFA, delete workspace — return `409 errors_codes.REAUTH_REQUIRED` with `{action_token: <opaque server-issued>}` on first call; frontend opens reauth modal, posts `{action_token, password, totp_code?}` to `POST /auth/reauth`; backend verifies password (+ TOTP if enrolled), returns `{action_proof: <HMAC-signed action_token + user_id + action_key + expiry=60s + nonce>}`; frontend retries the sensitive endpoint with `X-Action-Proof` header; backend validates HMAC, checks action_key matches the requested route, checks nonce not consumed (`users_reauth_nonces` table with `users_reauth_nonces_id`, `_id_user`, `_action_key`, `_consumed_at`, `_expires_at`), marks consumed atomically, then proceeds. Each `action_proof` is single-use, action-bound, 60s-expiring — extension that captures the password during the modal can replay only the exact action the user just clicked, not pre-stage a different one. `[P1]`
+  - ✅ ~~**B16.8.11** `sid` claim on access tokens + per-request session check in `RequireAuth` middleware.~~ Shipped 2026-05-18 across 5 commits (`ded3f12` → `802dd70`). Tokens carry `sid`; middleware extends `FindUserByID` into a `users JOIN users_sessions` query (same DB roundtrip count); revoked rows → 401 `code: "session_revoked"`; idle rows → 401 `code: "session_idle_expired"`; frontend api.ts + AuthContext.hardLogout route both codes to a banner-backed redirect; `REQUIRE_SID_CLAIM=true` env flag closes the legacy-token grace door once refresh-TTL has drained. Wire contract pinned by `tokens_test.go` + `middleware_test.go` + `app/lib/__tests__/api-session-codes.test.ts` (all green). End-to-end verified against live `:5100` + side-instance `:5199`. Revocation-timeliness design noted in `docs/c_security.md`. **Future scale note (deferred):** when concurrent users > 1k or Postgres p99 on the join > 5ms, introduce a Redis-cached `sid → {revoked, rotated_at}` with 5-second TTL — same Redis instance B16.8 Phase 4 introduces for rate limiting. `[P1]`
+  - 🔵 IN FLIGHT **B16.8.12** WebSocket session enforcement. Closes the long-lived-connection gap exposed by B16.8.11's stress-test: `RequireAuth` runs only at WS upgrade (`main.go:768`), so an open socket keeps serving its original token forever — instant revocation from `/account-settings/sessions` reaches the next HTTP request but does not close the WS. AC: WS connection registers `sid + user_id` in an in-process registry on upgrade; a server-side ticker (every 30s, configurable via `WS_SESSION_CHECK_INTERVAL`) sweeps the registry, batch-queries `SELECT users_sessions_id, users_sessions_revoked, users_sessions_rotated_at FROM users_sessions WHERE users_sessions_id = ANY($1)`, closes any connection whose row is revoked or idle-expired with WS close code 4001 ("session terminated"); revoke endpoint (B16.8.10) also enqueues an immediate-close signal for the targeted `sid` so revocation feels instant rather than waiting up to 30s; frontend WS client re-handshakes on close code 4001 by hitting `/auth/refresh` first (if refresh succeeds → new socket; if refresh fails → redirect to `/login?reason=session_expired`); integration test: open WS, revoke session via HTTP, assert socket closes within `WS_SESSION_CHECK_INTERVAL + 1s` carrying code 4001. `[P1]`
 
 - **B16.9** LDAP / Active Directory SSO — enterprise login via LDAP bind auth so NHS, council, and corporate customers can authenticate against their own directory. `auth_method` and `ldap_dn` columns already exist on `users` table as skeleton (`db/mmff_vector/schema`). Implementation: `backend/internal/auth/ldap.go` — bind validation + user sync; login handler forks on `auth_method='ldap'`; admin UI to configure LDAP server URL, base DN, bind account. Test infra: `osixia/openldap` or `bitnami/openldap` Docker container. Longer-term companion: SAML 2.0 / OIDC for cloud IdP federation (Azure AD, Okta, Google Workspace). Enterprise tier feature — not required for first external user but required before any NHS/council pilot. `[P3]`
 
@@ -3239,6 +3283,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `5e06f7d` (2026-05-13): style: remove border from .panel — borderless card surface [FE-POR-0003.1]
 > Commit `5bdf3be` (2026-05-13): docs(PLA-0030): document 5 missing /samantha/v2 routes in openapi-v2.yaml
 > Commit `2e9ff2d` (2026-05-13): chore: memory rule + 4 deferrals filed in tech-debt register [TD-AUTH-001 TD-API-002 TD-API-003 TD-API-004]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
@@ -3301,22 +3346,36 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   > Last checked: 2026-05-08
   >
 
-### B18.7 Shared methods catalogue (PLA-0045)
+### B18.7 Shared methods catalogue (PLA-0045) — **PARKED 2026-05-18** (swapped out for B16.8 security hardening)
 
 Persistent home, naming convention, and discoverability surface for cross-runtime shared methods — logic re-used across Frontend React ↔ BFF Route Handler ↔ Public Go API. Directory contract: `app/lib/shared/<domain>/` (TS, cross-runtime: browser bundle + Next.js Node route handler), `backend/internal/shared/<domain>/` (Go), `dev/fixtures/shared/<domain>/` (parity golden fixtures consumed by both Vitest and Go test suites). Catalogue at `docs/c_shared_methods.md` is the single index of every shared method with TS path, Go path, fixtures path, consumers, status. PostToolUse hook nudges shared placement on new `app/api/**/route.ts` or `backend/internal/**/handler.go` files. PLA-0044 topology walker is the first cataloguer.
 
-- 🔵 IN FLIGHT **B18.7.1** Directory scaffolds — `app/lib/shared/`, `backend/internal/shared/`, `dev/fixtures/shared/` with `.gitkeep` so paths exist before walker lands. `[P2]`
-- 🔵 IN FLIGHT **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P2]`
-- 🔵 IN FLIGHT **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P2]`
-- 🔵 IN FLIGHT **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P3]`
-- 🔵 IN FLIGHT **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P3]`
+> **Parked 2026-05-18** — swapped out of the WIP-allowed five so B16.8 (pre-launch security hardening) can take the slot. No sub-stories were started, so no work is lost. Unpark when B16.8 closes or when shared-method drift becomes a felt pain.
+
+- **B18.7.1** Directory scaffolds — `app/lib/shared/`, `backend/internal/shared/`, `dev/fixtures/shared/` with `.gitkeep` so paths exist before walker lands. `[P3]`
+- **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
+- **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
+- **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
+- **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 
 ---
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
 
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
 ## B19. Work Item Relations Graph
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 A 3D force-directed graph (Obsidian-style globe) for visualising the work-item hierarchy at tenant scale. New tab on the Work Items page at `/work-items/work-item-relations`. Nodes coloured by type (Epic/Story/Defect/Task), hub size proportional to descendant count, mouse-drag rotation, search + neighbour-mode + depth slider. Stack: `3d-force-graph` (Three.js + d3-force-3d) with route-level dynamic import (`ssr:false`). 55k-row test seed already in place (500 epics + 100 top-level defects + descendants). Plan: [PLA-0035](dev/plans/PLA-0035.json)
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 ### ✅ ~~B19.1 API — `/api/v2/work-items/relations`~~
 
 - ✅ **B19.1.1** Design `GET /api/v2/work-items/relations` payload — `{nodes: [{id,type,title,state,descendantCount,parentId}], edges: [{source,target,kind:"parent"}], meta}` `[P2]`
@@ -3590,6 +3649,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -3702,6 +3765,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -3753,6 +3821,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `6814e7d` (2026-05-18): feat(login): update sidebar branding — white bg, vertical red VECTOR wordmark
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -3834,6 +3903,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -3934,6 +4005,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -4242,6 +4316,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -4339,6 +4417,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -4748,6 +4827,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -4875,6 +4956,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -4946,6 +5032,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
+> Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -5017,6 +5108,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -5392,6 +5484,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -5792,6 +5885,23 @@ Single shared topology walker — eliminates four independent walks (canvas dagr
 - **FE-POR-0003.9.8** Add `position INT` to `MyGrant` (`backend/internal/orgdesign/service.go` struct + `ListMyGrants` query) so ScopeRail can sort by position to match the canvas. Followup commit. `[P3]`
 - **FE-POR-0003.9.9** Visual smoke — canvas card map renders identically pre/post refactor; topology tree table renders identically; flyout renders identically; ScopeRail no longer shows orphan "D". Single `<screenshot>` reference set in `dev/research/` if drift detected. `[P3]`
 - **FE-POR-0003.9.10** `app/components/topology/UserNodeAssignment.tsx` — new gadmin-only tree picker (checkbox per row) for assigning users to topology node(s). Fifth consumer of `walkTopology()`: walker provides visible-rows + edges + collapse semantics; only the row renderer is bespoke (checkbox cell instead of name). Validates that the walker is reusable for non-display-tree consumers. `[P3]`
+
+---
+
+## B-SHARE. Short-link service for sharing views & filters — parked 2026-05-18
+
+Polymorphic short-link lookup service so users can share URLs and (later) full view/filter payloads without 500-char QR codes or unreadable links. Table `short_links` in `mmff_vector` with `kind` discriminator (`url` | `payload`), nullable `target_url` / `payload` columns enforced by CHECK constraint, tenant-scoped via `tenants_id` FK, opt-in `expires_at` TTL, soft-delete via `archived_at`, plus `resolve_count` / `last_resolved_at` for lightweight analytics. Slugs are 8-char base62 from `crypto/rand` (~218 trillion possibilities, not enumerable). Backend service at `backend/internal/shortlinks/` follows the handler/service/sql split (RF1.2 convention); v2 routes `POST /samantha/v2/short-links`, `GET /samantha/v2/short-links/:slug`, `DELETE /samantha/v2/short-links/:slug`, `GET /samantha/v2/short-links`. Frontend route `app/s/[slug]/page.tsx` resolves and either server-redirects (`kind='url'`) or rehydrates state (`kind='payload'`). Helper at `app/lib/shared/shortlinks.ts` (per shared-methods catalogue convention) used by `QRCodeTrigger` popover and any future "Copy share link" action.
+
+> **Parked 2026-05-18** — design captured but unparking deferred until a real consumer arrives (saved-views feature, mobile QR-share for stakeholder demos, or repeated user pain from long filter URLs). Today's `QRCodeTrigger` encodes `origin + pathname` only (strips query/hash) — sufficient density for the in-page sharing primitive. When unparked, the trigger swaps to minting `/s/<slug>` on popover open and the `kind='payload'` path lights up alongside whatever view/filter persistence ships. Decisions baked in: polymorphic from day one (`kind='url' | 'payload'`), random base62 slugs (not enumerable, no vanity slugs to spoof), tenant-scoped (signed-in users only — no public/anonymous resolution; defence/finance buyer requirement), opt-in TTL (no expiry by default), always mint new slug per share (no dedup — simpler audit trail, payload-kind rows can't dedup anyway).
+
+- **B-SHARE.1** Migration — `db/mmff_vector_schema/NNN_short_links.sql` creates `short_links` table with CHECK constraint enforcing kind/payload coherence, `tenant_idx` partial index `WHERE archived_at IS NULL`, `expires_idx` partial index `WHERE expires_at IS NOT NULL AND archived_at IS NULL`. `[P3]`
+- **B-SHARE.2** Backend service — `backend/internal/shortlinks/{handler,service,sql,service_test,sql_test}.go`; slug minting uses `crypto/rand.Read(6)` + base62 encode + `INSERT … ON CONFLICT (slug) DO NOTHING RETURNING id` with 5-retry collision loop. Wire in `backend/cmd/server/main.go` using the `pool` variable. `[P3]`
+- **B-SHARE.3** Backend routes — `POST/GET/DELETE/GET-list` on `/samantha/v2/short-links` with tenant-clamp on every read (NEVER ASSUME — golden-rule re-verify on resolve). `[P3]`
+- **B-SHARE.4** Frontend route — `app/s/[slug]/page.tsx` server component; 404 on expired/archived/wrong-tenant, 401 → `/login?next=/s/<slug>`, `kind='url'` server-redirect, `kind='payload'` hydration client component. `[P3]`
+- **B-SHARE.5** Shared helper — `app/lib/shared/shortlinks.ts` with `createShortLink({ kind, target_url?, payload?, expires_in_seconds? })` + companion Go helper if needed in `backend/internal/shared/shortlinks/`; entry in `docs/c_shared_methods.md`. `[P3]`
+- **B-SHARE.6** `QRCodeTrigger` rewire — on popover open (not page load), mint `/s/<slug>` for current href, cache by href, show "Generating link…" intermediate state, encode `https://vector.app/s/<slug>` in the 256px popover QR; 40×40 trigger keeps the pathname-only encoding for instant render with no network call. `[P3]`
+- **B-SHARE.7** Nightly sweeper — cron or scheduled job that hard-archives rows where `expires_at < now() - interval '30 days'` and `archived_at IS NULL`. Out of scope until a real expiring-link use-case appears; document the schema readiness only. `[P4]`
+- **B-SHARE.8** Slug-enumeration security test — automated test (Go) hammers `/s/<random-slugs>` and asserts: 404 on non-existent, 401 on wrong-tenant existing, no rate-limit bypass via slug brute-force. Tracks B16.8 security-hardening posture. `[P3]`
 
 ---
 

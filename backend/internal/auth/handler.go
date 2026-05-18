@@ -135,16 +135,16 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			h.Svc.Audit.Log(r.Context(), audit.Entry{UserID: &res.User.ID, SubscriptionID: &res.User.SubscriptionID, Action: "auth.login_trusted_device", IPAddress: &ip})
-			setRefreshCookie(w, raw, expAt)
-			issueCSRF(w)
+			setRefreshCookie(w, r, raw, expAt)
+			issueCSRF(w, r)
 			writeJSON(w, 200, loginResp{AccessToken: access, User: h.buildUserPayload(r.Context(), res.User)})
 			return
 		}
 		writeJSON(w, 200, mfaChallengeResp{MFARequired: true, ChallengeToken: res.MFAChallengeToken})
 		return
 	}
-	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
-	issueCSRF(w)
+	setRefreshCookie(w, r, res.RefreshRaw, res.RefreshExpAt)
+	issueCSRF(w, r)
 	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
 }
 
@@ -164,9 +164,9 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	// Grace-window successor reuse returns RefreshRaw="" — the browser already
 	// holds the successor cookie so we leave it untouched.
 	if res.RefreshRaw != "" {
-		setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
+		setRefreshCookie(w, r, res.RefreshRaw, res.RefreshExpAt)
 	}
-	issueCSRF(w)
+	issueCSRF(w, r)
 	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
 }
 
@@ -222,8 +222,8 @@ func (h *Handler) SwitchWorkspace(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
-	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
-	issueCSRF(w)
+	setRefreshCookie(w, r, res.RefreshRaw, res.RefreshExpAt)
+	issueCSRF(w, r)
 	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
 }
 
@@ -310,10 +310,10 @@ func (h *Handler) MFAVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.RememberDevice {
-		_ = security.SetMFARememberCookie(w, res.User.ID.String())
+		_ = security.SetMFARememberCookie(w, r, res.User.ID.String())
 	}
-	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
-	issueCSRF(w)
+	setRefreshCookie(w, r, res.RefreshRaw, res.RefreshExpAt)
+	issueCSRF(w, r)
 	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
 }
 
@@ -402,25 +402,39 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func setRefreshCookie(w http.ResponseWriter, raw string, expAt time.Time) {
-	secure := os.Getenv("COOKIE_SECURE") == "true"
+// isSecureCookieRequest decides whether to set the Secure flag on a
+// cookie issued in response to r. B16.8.7: prefer TLS auto-detect
+// (req.TLS != nil) so the dev → prod transition doesn't depend on an
+// operator remembering to flip COOKIE_SECURE. The env var stays as the
+// explicit override for TLS-terminating-upstream deployments
+// (Cloudflare, ALB) where req.TLS is nil because TLS terminates before
+// Go sees the request — operators set COOKIE_SECURE=true there. Either
+// signal is sufficient.
+func isSecureCookieRequest(r *http.Request) bool {
+	if r != nil && r.TLS != nil {
+		return true
+	}
+	return os.Getenv("COOKIE_SECURE") == "true"
+}
+
+func setRefreshCookie(w http.ResponseWriter, r *http.Request, raw string, expAt time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "rt",
 		Value:    raw,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
+		Secure:   isSecureCookieRequest(r),
 		SameSite: http.SameSiteStrictMode,
 		Expires:  expAt,
 	})
 }
 
-func issueCSRF(w http.ResponseWriter) {
+func issueCSRF(w http.ResponseWriter, r *http.Request) {
 	tok, err := security.NewCSRFToken()
 	if err != nil {
 		return
 	}
-	security.SetCSRFCookie(w, tok)
+	security.SetCSRFCookie(w, r, tok)
 }
 
 func clearRefreshCookie(w http.ResponseWriter) {

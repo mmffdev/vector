@@ -103,12 +103,20 @@ const Ctx = createContext<AuthState | null>(null);
 let _bootstrapFlight: Promise<void> | null = null;
 let _bootstrapped = false;
 
+// B16.8.7 — session_alive is a UI-only hint cookie (no auth value;
+// HttpOnly=false is fine because it's read by AuthContext on bootstrap
+// to decide whether to attempt /auth/refresh). Secure flag IS required
+// on HTTPS pages — browsers strip Secure cookies set over plain http://
+// so this auto-detects via window.location.protocol: secure on https,
+// omitted on http (local dev).
 function setSessionCookie() {
-  document.cookie = "session_alive=1; Path=/; SameSite=Strict; Max-Age=604800";
+  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `session_alive=1; Path=/; SameSite=Strict; Max-Age=604800${secure}`;
 }
 
 function clearSessionCookie() {
-  document.cookie = "session_alive=; Path=/; Max-Age=0";
+  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `session_alive=; Path=/; Max-Age=0${secure}`;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

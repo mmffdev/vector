@@ -27,17 +27,30 @@ func NewCSRFToken() (string, error) {
 }
 
 // SetCSRFCookie issues a JS-readable cookie (HttpOnly=false on purpose, that's the
-// double-submit pattern) scoped to the whole site.
-func SetCSRFCookie(w http.ResponseWriter, token string) {
-	secure := os.Getenv("COOKIE_SECURE") == "true"
+// double-submit pattern) scoped to the whole site. Secure is set when the
+// request arrived over TLS (req.TLS != nil) OR when COOKIE_SECURE=true
+// (proxy / TLS-upstream case). B16.8.7.
+func SetCSRFCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CSRFCookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: false,
-		Secure:   secure,
+		Secure:   isSecureCookieRequest(r),
 		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+// isSecureCookieRequest decides whether to set the Secure flag on a
+// cookie issued in response to r. Prefers TLS auto-detect so the
+// dev → prod transition doesn't depend on COOKIE_SECURE being set;
+// env var stays as the explicit override for TLS-terminating-upstream
+// deployments where r.TLS is nil. B16.8.7.
+func isSecureCookieRequest(r *http.Request) bool {
+	if r != nil && r.TLS != nil {
+		return true
+	}
+	return os.Getenv("COOKIE_SECURE") == "true"
 }
 
 // ClearCSRFCookie removes the CSRF cookie (e.g. on logout).
