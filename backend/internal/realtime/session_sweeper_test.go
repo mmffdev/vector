@@ -279,3 +279,82 @@ func TestWSSessionSweeper_ImmediateCloseFiresWithoutWaitingForSweep(t *testing.T
 		t.Fatalf("close code = %d, want 4001", closeErr.Code)
 	}
 }
+
+// TestWSSessionSweeper_DeletedRowClosesConnection covers the case the
+// original sweeper comment dismissed: a users_sessions row deleted out
+// from under us (user account deletion via ON DELETE CASCADE, manual
+// psql cleanup, or future user-delete endpoint). Pre-fix the sweeper
+// silently ignored absent-from-SELECT sids, on the reasoning that
+// RequireAuth would 401 the next refresh and the frontend would close
+// the WS — but RequireAuth never re-runs on an open WebSocket, and an
+// idle subscriber tab never makes the HTTP requests that would trigger
+// the close path. Result: the WS stayed open until natural disconnect.
+// Post-fix the sweeper treats absent rows as terminated and closes
+// with code 4001 (same semantic as a revoked row — the session is
+// gone, get the user out).
+func TestWSSessionSweeper_DeletedRowClosesConnection(t *testing.T) {
+	pool := sweeperTestPool(t)
+	defer pool.Close()
+
+	t.Setenv("WS_SESSION_CHECK_INTERVAL", "500ms")
+	t.Setenv("JWT_ACCESS_SECRET", sweeperTestSecret)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	userID, sessionID, cleanup := fabricateUserAndSession(t, ctx, pool)
+	defer cleanup()
+
+	token, err := auth.SignAccessToken(&roletypes.User{
+		ID:             userID,
+		SubscriptionID: uuid.New(),
+		Email:          "ws-deleted@test.local",
+	}, sessionID)
+	if err != nil {
+		t.Fatalf("SignAccessToken: %v", err)
+	}
+
+	registry := realtime.NewSessionRegistry()
+	hub := realtime.NewHubWithRegistry(registry)
+	realtime.StartSessionSweeper(ctx, pool, registry)
+
+	svc := &auth.Service{Pool: pool}
+	r := chi.NewRouter()
+	r.Group(func(r chi.Router) {
+		r.Use(svc.RequireAuth)
+		r.Get("/ws", realtime.ServeWS(hub))
+	})
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws?access_token=" + token
+	dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer dialCancel()
+	conn, _, err := websocket.Dial(dialCtx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("websocket.Dial: %v", err)
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	time.Sleep(100 * time.Millisecond)
+
+	// DELETE — not UPDATE — the session row. This is the "out from
+	// under us" case the original code's comment dismissed.
+	if _, err := pool.Exec(ctx, `DELETE FROM users_sessions WHERE users_sessions_id = $1`, sessionID); err != nil {
+		t.Fatalf("DELETE users_sessions: %v", err)
+	}
+
+	readCtx, readCancel := context.WithTimeout(ctx, 2*time.Second)
+	defer readCancel()
+	_, _, readErr := conn.Read(readCtx)
+	if readErr == nil {
+		t.Fatalf("connection still open after row deletion (sweeper ignored absent sid)")
+	}
+	var closeErr websocket.CloseError
+	if !errors.As(readErr, &closeErr) {
+		t.Fatalf("expected websocket.CloseError, got %T: %v", readErr, readErr)
+	}
+	if closeErr.Code != 4001 {
+		t.Fatalf("close code = %d, want 4001 (deleted-row sessions are terminated, same wire semantic as revoked)", closeErr.Code)
+	}
+}

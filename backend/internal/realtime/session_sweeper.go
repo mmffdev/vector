@@ -87,6 +87,15 @@ func sweepOnce(ctx context.Context, pool *pgxpool.Pool, registry *SessionRegistr
 	}
 	defer rows.Close()
 
+	// Track which snapshot sids the SELECT actually returned. Anything
+	// absent at the end has been DELETE'd out from under us (account
+	// deletion via ON DELETE CASCADE, manual cleanup, or a future
+	// user-delete endpoint) — those sockets need to die the same way a
+	// revoked row's would, because RequireAuth NEVER re-runs on an open
+	// WebSocket and an idle subscriber will never trigger the HTTP path
+	// that would otherwise close them.
+	seen := make(map[uuid.UUID]struct{}, len(sids))
+
 	now := time.Now()
 	for rows.Next() {
 		var sid uuid.UUID
@@ -96,6 +105,7 @@ func sweepOnce(ctx context.Context, pool *pgxpool.Pool, registry *SessionRegistr
 			log.Printf("realtime: session sweeper scan: %v", err)
 			continue
 		}
+		seen[sid] = struct{}{}
 		switch {
 		case revoked:
 			registry.CloseSession(sid, WSCloseSessionRevoked, auth.CodeSessionRevoked)
@@ -105,14 +115,21 @@ func sweepOnce(ctx context.Context, pool *pgxpool.Pool, registry *SessionRegistr
 	}
 	if err := rows.Err(); err != nil {
 		log.Printf("realtime: session sweeper rows: %v", err)
+		// If the result stream broke mid-iteration we don't know which
+		// rows we missed, so skip the absent-sweep this tick rather
+		// than mass-closing connections whose rows might be fine.
+		return
 	}
 
-	// Sids registered locally but absent from the SELECT result mean the
-	// users_sessions row has been deleted out from under us. Leave them
-	// alone — RequireAuth will reject the next refresh, which closes the
-	// socket through normal channels, and a deleted-not-revoked row is
-	// rare enough that an extra close-fast pass isn't worth the second
-	// hashmap walk.
+	for _, sid := range sids {
+		if _, ok := seen[sid]; !ok {
+			// Deleted-not-revoked: the session is gone, treat it as
+			// terminated. Same wire code (4001) as a revoked row —
+			// frontend wsClose handler routes both to hardLogout with
+			// reason session_revoked.
+			registry.CloseSession(sid, WSCloseSessionRevoked, auth.CodeSessionRevoked)
+		}
+	}
 }
 
 // parseDurationEnv mirrors the helper in internal/auth/tokens.go but
