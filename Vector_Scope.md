@@ -1800,6 +1800,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `7c9af17` (2026-05-18): fix(login): sidebar branding — black V + red ector, proper fill and spacing
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `d8cf68b` (2026-05-18): fix(login): sidebar wordmark — vertical text with rotation
+> Commit `bb5412f` (2026-05-18): fix(login): sidebar wordmark — Vector with lowercase ector
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
