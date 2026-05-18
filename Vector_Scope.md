@@ -1821,6 +1821,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
+> Commit `573c633` (2026-05-18): fix(login): scale entire auth card to 50% size
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
