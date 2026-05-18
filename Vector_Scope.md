@@ -3706,6 +3706,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
 > Commit `c85101f` (2026-05-18): fix(login): constrain sidebar to 120px, logo padding 60px from top, vector text width matches logo
 > Commit `a65c680` (2026-05-18): fix(login): align logo column content to top
+> Commit `50cbe00` (2026-05-18): fix(login): scale Vector text to match logo width
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
