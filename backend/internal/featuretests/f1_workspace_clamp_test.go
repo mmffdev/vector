@@ -115,7 +115,7 @@ func TestF1_SignAccessToken_IncludesWorkspaceID(t *testing.T) {
 		WorkspaceID: workspaceID,
 	}
 
-	signed, err := auth.SignAccessToken(u)
+	signed, err := auth.SignAccessToken(u, uuid.Nil, "")
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}

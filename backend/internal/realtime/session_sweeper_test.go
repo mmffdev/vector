@@ -154,7 +154,7 @@ func TestWSSessionSweeper_RevokeClosesConnection(t *testing.T) {
 		ID:             userID,
 		SubscriptionID: uuid.New(), // value irrelevant to the sweeper path
 		Email:          "ws-sweep@test.local",
-	}, sessionID)
+	}, sessionID, "")
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestWSSessionSweeper_ImmediateCloseFiresWithoutWaitingForSweep(t *testing.T
 		ID:             userID,
 		SubscriptionID: uuid.New(),
 		Email:          "ws-immediate@test.local",
-	}, sessionID)
+	}, sessionID, "")
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}
@@ -309,7 +309,7 @@ func TestWSSessionSweeper_DeletedRowClosesConnection(t *testing.T) {
 		ID:             userID,
 		SubscriptionID: uuid.New(),
 		Email:          "ws-deleted@test.local",
-	}, sessionID)
+	}, sessionID, "")
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}

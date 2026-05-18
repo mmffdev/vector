@@ -127,9 +127,13 @@ func TestGetByModelID_BadUUID(t *testing.T) {
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status: want 400, got %d", resp.StatusCode)
 	}
+	// Detail string is the standardised usermessages.RequestInvalidID
+	// (post 2026-05-XX messages centralisation). Asserting on the code
+	// path's RFC 9457 Problem.detail rather than the legacy free-form
+	// string the handler used to emit.
 	body, _ := readAllString(resp)
-	if !strings.Contains(body, "invalid model id") {
-		t.Errorf("body: want 'invalid model id', got %q", body)
+	if !strings.Contains(body, "ID provided was not valid") {
+		t.Errorf("body: want canonical invalid-ID message, got %q", body)
 	}
 }
 
