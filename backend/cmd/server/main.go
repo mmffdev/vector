@@ -24,6 +24,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/logger"
 	"github.com/mmffdev/vector-backend/internal/addressables"
 	"github.com/mmffdev/vector-backend/internal/apikeys"
+	"github.com/mmffdev/vector-backend/internal/cspreport"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/bootstatus"
@@ -165,6 +166,11 @@ func main() {
 	usersSvc := users.New(pool, auditLog, mailer)
 	usersH := users.NewHandler(usersSvc, permResolver)
 
+	// TD-SEC-CSP-NONCES-SRI Phase 2 — browser-side CSP violation reporting.
+	// Mounted unauthenticated below; service writes to mmff_vector.csp_reports
+	// (mig 209). Per-IP rate limit is the only DoS protection.
+	cspReportH := cspreport.NewHandler(cspreport.NewService(pool))
+
 	// Roles HTTP surface (PLA-0007 G3). Service is sole writer for
 	// roles + role_permissions; the handler is a thin translation layer.
 	rolesSvc := roles.New(pool, auditLog)
@@ -271,8 +277,15 @@ func main() {
 	//
 	// Constructed early so other services can inject it as a notifier
 	// (e.g. topology GrantNotifier for story 00283 handoff inbox).
-	rtHub := realtime.NewHub()
+	// B16.8.12 — share one SessionRegistry between the hub (which
+	// registers WS connections on accept) and the sweeper (which evicts
+	// revoked/idle sessions every WS_SESSION_CHECK_INTERVAL). Without
+	// the shared handle, the sweeper would walk an empty map and the WS
+	// session enforcement contract would silently break.
+	rtRegistry := realtime.NewSessionRegistry()
+	rtHub := realtime.NewHubWithRegistry(rtRegistry)
 	realtime.StartRankListener(context.Background(), pool, rtHub)
+	realtime.StartSessionSweeper(context.Background(), pool, rtRegistry)
 
 	// Topology / federated org canvas (PLA-0006). topology is the SOLE
 	// writer for topology_nodes, topology_role_grants, and
@@ -788,6 +801,14 @@ func main() {
 	// authenticate via JWT only (API keys are a data-plane concept on
 	// /samantha/v2).
 	mountSiteRoutes := func(r chi.Router) {
+
+	// /csp-report — TD-SEC-CSP-NONCES-SRI Phase 2.
+	// Unauthenticated AND CSRF-exempt: the browser POSTs these on the
+	// user's behalf with no session cookie. Per-IP rate limit is the
+	// only DoS protection. Accepts both legacy application/csp-report
+	// and modern application/reports+json wire formats; service drops
+	// browser-extension noise before persisting.
+	r.With(httprate.LimitByIP(120, time.Minute)).Post("/csp-report", cspReportH.Report)
 
 	// /auth
 	r.Route("/auth", func(r chi.Router) {
