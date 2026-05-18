@@ -265,7 +265,6 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
-> Commit `a65c680` (2026-05-18): fix(login): align logo column content to top
 - ✅ **FLOW1.1.3** ~~Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
@@ -879,7 +878,6 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
-> Commit `a65c680` (2026-05-18): fix(login): align logo column content to top
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -2926,7 +2924,6 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
-> Commit `a65c680` (2026-05-18): fix(login): align logo column content to top
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3706,7 +3703,6 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
 > Commit `c85101f` (2026-05-18): fix(login): constrain sidebar to 120px, logo padding 60px from top, vector text width matches logo
-> Commit `a65c680` (2026-05-18): fix(login): align logo column content to top
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`

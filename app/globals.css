@@ -2940,7 +2940,7 @@ input[type="reset"] {
 
 .login-page__sidebar-wordmark {
   font-family: var(--font-sans);
-  font-size: 90px;
+  font-size: 110px;
   font-weight: 900;
   line-height: 0.9;
   letter-spacing: -0.08em;
@@ -2954,7 +2954,7 @@ input[type="reset"] {
   transform: rotate(-90deg);
   white-space: nowrap;
   width: 60px;
-  height: 140px;
+  height: 180px;
 }
 
 .login-page__sidebar-wordmark-v {
