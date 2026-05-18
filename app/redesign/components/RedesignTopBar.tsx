@@ -4,6 +4,7 @@ import { useContext } from "react";
 import { usePathname } from "next/navigation";
 import { useShell } from "../ShellContext";
 import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
+import QRCodeTrigger from "@/app/components/QRCodeTrigger";
 
 export default function RedesignTopBar() {
   const { activeSection, isAccountActive } = useShell();
@@ -36,9 +37,10 @@ export default function RedesignTopBar() {
           </>
         )}
       </nav>
-      {pageHeader?.actions && (
-        <div className="nav-top-bar__Actions">{pageHeader.actions}</div>
-      )}
+      <div className="nav-top-bar__Actions">
+        {pageHeader?.actions}
+        <QRCodeTrigger />
+      </div>
     </div>
   );
 }
