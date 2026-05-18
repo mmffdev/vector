@@ -111,6 +111,13 @@ const sqlClearLockoutAndStampLogin = `
 // the column until Phase 6 cutover; '' in Go scans as a NULL skip
 // thanks to pgtype's empty-string handling — callers that genuinely
 // have no thumbprint pass "".
+//
+// users_sessions_first_* ($7..$10, TD-SEC-SESSION-ANOMALY) capture
+// the geo+UA fingerprint at session creation so subsequent refreshes
+// have a baseline to detect drift against. ip is INET; the other
+// three are text (ASN as decimal string, country as ISO-3166-1
+// alpha-2, UA fingerprint as base64url SHA-256). NULLIF on each
+// preserves NULL semantics when the geo lookup failed.
 const sqlInsertSession = `
 		INSERT INTO users_sessions (
 			users_sessions_id_user,
@@ -118,9 +125,14 @@ const sqlInsertSession = `
 			users_sessions_expires_at,
 			users_sessions_ip_address,
 			users_sessions_user_agent,
-			users_sessions_dpop_jkt
+			users_sessions_dpop_jkt,
+			users_sessions_first_ip,
+			users_sessions_first_asn,
+			users_sessions_first_country,
+			users_sessions_first_ua_fp
 		)
-		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''))
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''),
+		        NULLIF($7, '')::inet, NULLIF($8, ''), NULLIF($9, ''), NULLIF($10, ''))
 		RETURNING users_sessions_id
 	`
 
@@ -142,6 +154,10 @@ const sqlBumpFailedLogin = `UPDATE users SET failed_login_count = $1 WHERE id = 
 // the rotation path inherits the binding onto the new session row
 // without a separate query — Phase 4 also uses the value to verify
 // the incoming proof's thumbprint matches the bound key.
+// users_sessions_first_country / first_asn (TD-SEC-SESSION-ANOMALY)
+// are read on every refresh so Service.Refresh can compare the
+// inbound IP's country+ASN against the row's baseline and trigger a
+// step-up reauth when they drift.
 const sqlSelectSessionByHash = `
 		SELECT users_sessions_id,
 		       users_sessions_id_user,
@@ -149,7 +165,9 @@ const sqlSelectSessionByHash = `
 		       users_sessions_revoked,
 		       users_sessions_rotated_at,
 		       users_sessions_successor_hash,
-		       COALESCE(users_sessions_dpop_jkt, '')
+		       COALESCE(users_sessions_dpop_jkt, ''),
+		       COALESCE(users_sessions_first_country, ''),
+		       COALESCE(users_sessions_first_asn, '')
 		  FROM users_sessions
 		 WHERE users_sessions_token_hash = $1
 	`

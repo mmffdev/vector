@@ -28,6 +28,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/cspreport"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/geo"
 	"github.com/mmffdev/vector-backend/internal/bootstatus"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
@@ -161,6 +162,15 @@ func main() {
 
 	authSvc := auth.NewService(pool, auditLog, mailer)
 	authSvc.Resolver = permResolver
+	// TD-SEC-SESSION-ANOMALY — geo resolver. Loads GeoLite2-City +
+	// GeoLite2-ASN .mmdb files from GEOIP_CITY_DB / GEOIP_ASN_DB env
+	// paths. Non-fatal if missing: drift detection silently no-ops
+	// until the .mmdb files are provisioned (see backend/data/geoip/
+	// README.md). Closed on server shutdown by the geoResolver.Close
+	// in the signal handler below.
+	geoResolver := geo.NewResolver()
+	defer func() { _ = geoResolver.Close() }()
+	authSvc.Geo = geoResolver
 	authH := auth.NewHandler(authSvc)
 
 	// TD-SEC-DPOP-BINDING Phase 3 — background cleanup of expired

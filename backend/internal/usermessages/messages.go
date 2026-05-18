@@ -16,6 +16,11 @@ const (
 	// user reads; the Code drives frontend routing.
 	AuthSessionRevoked     = "Your session was ended (signed out from another device or revoked by an admin). Please sign in again."
 	AuthSessionIdleExpired = "Your session expired due to inactivity. Please re-enter your password to continue."
+	// TD-SEC-SESSION-ANOMALY — Refresh detected a country / ASN
+	// change between login and this refresh. The session family is
+	// revoked; the user signs in again from the new location, which
+	// itself proves possession of credentials.
+	AuthSessionAnomaly = "We detected a change in your network location. Please sign in again to continue."
 	// B16.8.10 — per-action step-up reauth.
 	AuthReauthRequired = "Please re-enter your password to confirm this action."
 	AuthReauthInvalid  = "That confirmation has expired or already been used. Please try again."

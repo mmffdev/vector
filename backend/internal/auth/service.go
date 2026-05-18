@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"os"
 	"sort"
@@ -12,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
+	"github.com/mmffdev/vector-backend/internal/geo"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
@@ -27,6 +30,15 @@ var (
 	// or carries no live role grant for this user. Single sentinel for
 	// all three so we don't leak existence (PLA-0053 / story 00576.5).
 	ErrWorkspaceForbidden = errors.New("workspace forbidden")
+	// ErrSessionAnomaly — refresh detected a country or ASN drift
+	// from the session's first_* baseline. The session family has
+	// been revoked by the time this is returned; handler.Refresh
+	// emits 401 + Problem.Code=CodeSessionAnomaly so the frontend
+	// hardLogout cascade lands with a banner explaining the location
+	// change. Distinct from ErrTokenExpired so callers can branch
+	// on the specific failure if needed (audit-trail enrichment
+	// already names the action 'auth.refresh_session_anomaly').
+	ErrSessionAnomaly = errors.New("session anomaly")
 )
 
 // PermissionResolver is the small surface auth.Service needs from the
@@ -56,6 +68,14 @@ type Service struct {
 	// has it set.
 	JTICache *JTICache
 
+	// Geo resolves an IP to country + ASN at login/refresh time.
+	// Wired by main.go from env paths (GEOIP_CITY_DB, GEOIP_ASN_DB).
+	// Nil-safe: when the receiver is nil OR the databases failed to
+	// load, every lookup returns empty strings and the session-anomaly
+	// drift check fails open (no enforcement signal, no false positive).
+	// See TD-SEC-SESSION-ANOMALY and backend/internal/geo.
+	Geo *geo.Resolver
+
 	// OnLogin is invoked synchronously after a successful Login.
 	// Used by Phase 3 to warm the library-releases reconciler cache for
 	// the just-authenticated subscription. Wire from main.go to avoid an
@@ -67,6 +87,64 @@ type Service struct {
 
 func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
 	return &Service{Pool: pool, Audit: audit, Mailer: mailer, JTICache: NewJTICache(pool)}
+}
+
+// sessionFingerprint is the bundle the session-anomaly layer
+// (TD-SEC-SESSION-ANOMALY) captures at every login + refresh.
+// Country and ASN may be "" when the MaxMind databases aren't loaded
+// (dev without GEOIP_* env, or a private/loopback IP that doesn't
+// resolve) — callers treat empty values as "no signal" and skip the
+// drift check.
+type sessionFingerprint struct {
+	IP      string // raw IP (storing as text so audit_logs JSON keeps a clean string; sqlInsertSession casts to inet)
+	UA      string // raw User-Agent string for forensics
+	UAFP    string // base64url SHA-256(UA) for cheap equality
+	Country string // ISO-3166-1 alpha-2, may be ""
+	ASN     string // decimal string, may be ""
+}
+
+// buildFingerprint resolves the geo bundle and hashes the UA in one
+// place so every auth-event emitter stays consistent. Nil-safe on
+// Service.Geo — production wires a real Resolver; tests can leave
+// it nil and the fingerprint just has empty country/ASN.
+func (s *Service) buildFingerprint(ip, ua string) sessionFingerprint {
+	fp := sessionFingerprint{IP: ip, UA: ua, UAFP: hashUA(ua)}
+	if s != nil && s.Geo != nil {
+		geoLookup := s.Geo.Resolve(ip)
+		fp.Country = geoLookup.Country
+		fp.ASN = geoLookup.ASN
+	}
+	return fp
+}
+
+// auditMetadata flattens the fingerprint plus the caller-supplied
+// session_id (when known) into the map shape audit.Logger expects.
+// Empty fields are still included so a downstream forensic query
+// like `WHERE metadata->>'country' IS NULL` returns expected rows.
+func (fp sessionFingerprint) auditMetadata(extra map[string]any) map[string]any {
+	out := map[string]any{
+		"ip":      fp.IP,
+		"ua":      fp.UA,
+		"ua_fp":   fp.UAFP,
+		"country": fp.Country,
+		"asn":     fp.ASN,
+	}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
+}
+
+// hashUA computes the SHA-256 of the User-Agent string as a base64url
+// no-pad string. Used as a cheap-equality fingerprint to detect
+// browser/device drift between login and refresh without storing
+// the full UA in two places. Empty UA → empty hash (no signal).
+func hashUA(ua string) string {
+	if ua == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(ua))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 // RolePayload is the wire shape for users.role on auth responses
@@ -256,9 +334,14 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua, dpopJKT 
 	// Order matters: insert the session row first so we can stamp the
 	// returned users_sessions_id as the `sid` claim on the access token.
 	// Reordered 2026-05-18 for B16.8.11 step 2.
+	// TD-SEC-SESSION-ANOMALY: stamp the geo+UA fingerprint onto the
+	// new row so subsequent refreshes can drift-check against this
+	// baseline.
+	fp := s.buildFingerprint(ip, ua)
 	var sessID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua), dpopJKT,
+		fp.IP, fp.ASN, fp.Country, fp.UAFP,
 	).Scan(&sessID); err != nil {
 		return nil, err
 	}
@@ -268,7 +351,13 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua, dpopJKT 
 		return nil, err
 	}
 
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.login", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{
+		UserID:         &u.ID,
+		SubscriptionID: &u.SubscriptionID,
+		Action:         "auth.login",
+		IPAddress:      &ip,
+		Metadata:       fp.auditMetadata(map[string]any{"session_id": sessID.String()}),
+	})
 
 	// Fire post-login hooks (cache warming, presence, etc.). Errors
 	// inside hooks are the hook's own responsibility — Login's contract
@@ -319,15 +408,26 @@ func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, 
 	expAt := time.Now().Add(refreshTTL)
 	// Insert session row before signing the access token so the sid
 	// claim points at this row (B16.8.11 step 2).
+	// TD-SEC-SESSION-ANOMALY: same fingerprint stamp as Login.
+	fp := s.buildFingerprint(ip, ua)
 	var sessID uuid.UUID
-	if err := s.Pool.QueryRow(ctx, sqlInsertSession, u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua), dpopJKT).Scan(&sessID); err != nil {
+	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
+		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua), dpopJKT,
+		fp.IP, fp.ASN, fp.Country, fp.UAFP,
+	).Scan(&sessID); err != nil {
 		return nil, err
 	}
 	access, err := SignAccessToken(u, sessID, dpopJKT)
 	if err != nil {
 		return nil, err
 	}
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_verify_success", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{
+		UserID:         &u.ID,
+		SubscriptionID: &u.SubscriptionID,
+		Action:         "auth.mfa_verify_success",
+		IPAddress:      &ip,
+		Metadata:       fp.auditMetadata(map[string]any{"session_id": sessID.String()}),
+	})
 	for _, h := range s.OnLogin {
 		h(ctx, u)
 	}
@@ -368,9 +468,10 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 	var revoked bool
 	var rotatedAt *time.Time
 	var successorHash *string
-	var boundJKT string // RFC 9449 cnf.jkt inherited onto the new session
+	var boundJKT string           // RFC 9449 cnf.jkt inherited onto the new session
+	var firstCountry, firstASN string // TD-SEC-SESSION-ANOMALY drift baseline
 	err := s.Pool.QueryRow(ctx, sqlSelectSessionByHash, hash).
-		Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash, &boundJKT)
+		Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash, &boundJKT, &firstCountry, &firstASN)
 	if err == pgx.ErrNoRows {
 		return nil, ErrTokenExpired
 	}
@@ -423,6 +524,38 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 		return nil, ErrTokenExpired
 	}
 
+	// TD-SEC-SESSION-ANOMALY Stage 2 — geo drift detection. Resolve
+	// the inbound IP's country + ASN; compare against the session's
+	// first_country / first_asn baseline stamped at login. A change
+	// in EITHER signal revokes the session family (same defence as
+	// the DPoP binding violation above), audit-logs the drift with
+	// both fingerprints, and emits Problem.Code=session_anomaly so
+	// the frontend's hardLogout path can render an explanatory
+	// banner on /login. Empty values from the baseline (geo DB not
+	// loaded at login time) or the new lookup (DB went missing
+	// since) skip the check on that axis — fail-open at the detection
+	// layer is the correct stance to avoid locking out every user
+	// when MaxMind data is unavailable.
+	fp := s.buildFingerprint(ip, ua)
+	driftCountry := firstCountry != "" && fp.Country != "" && firstCountry != fp.Country
+	driftASN := firstASN != "" && fp.ASN != "" && firstASN != fp.ASN
+	if driftCountry || driftASN {
+		_, _ = s.Pool.Exec(ctx, sqlRevokeAllUserSessions, userID)
+		s.Audit.Log(ctx, audit.Entry{
+			UserID:    &userID,
+			Action:    "auth.refresh_session_anomaly",
+			IPAddress: &ip,
+			Metadata: fp.auditMetadata(map[string]any{
+				"session_id":     sessID.String(),
+				"first_country":  firstCountry,
+				"first_asn":      firstASN,
+				"drift_country":  driftCountry,
+				"drift_asn":      driftASN,
+			}),
+		})
+		return nil, ErrSessionAnomaly
+	}
+
 	u, err := s.FindUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -450,9 +583,15 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 	// token minted from a refresh-token chain must carry the SAME
 	// cnf.jkt as the original login. Phase 4 adds the proof-vs-binding
 	// equality check; Phase 3 just preserves the value through rotation.
+	// TD-SEC-SESSION-ANOMALY: also inherit the first_* fingerprints
+	// from the parent session row so the drift baseline stays anchored
+	// at the original login, not the rotation point. (We pass the OLD
+	// firstCountry/firstASN here, not fp.* — Drift detection compares
+	// against where the session STARTED, not where it last rotated.)
 	var newSessID uuid.UUID
 	if err := tx.QueryRow(ctx, sqlInsertSession,
 		u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua), boundJKT,
+		fp.IP, firstASN, firstCountry, fp.UAFP,
 	).Scan(&newSessID); err != nil {
 		return nil, err
 	}
@@ -464,7 +603,13 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 	if err != nil {
 		return nil, err
 	}
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.token_refresh", IPAddress: &ip})
+	s.Audit.Log(ctx, audit.Entry{
+		UserID:         &u.ID,
+		SubscriptionID: &u.SubscriptionID,
+		Action:         "auth.token_refresh",
+		IPAddress:      &ip,
+		Metadata:       fp.auditMetadata(map[string]any{"session_id": newSessID.String(), "from_session_id": sessID.String()}),
+	})
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: newExp, SessionID: newSessID}, nil
 }
 
@@ -519,7 +664,19 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	// We do NOT rotate again here — the successor is still live.
 	// SessionID is the existing successor row id (loaded above) — no new
 	// insert on this path, so we surface the row already in play.
-	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.token_refresh_grace", IPAddress: &ip})
+	// TD-SEC-SESSION-ANOMALY: grace-window successor reuse skips the
+	// drift check because the successor is by definition already
+	// authenticated and bound — log the fingerprint for forensics but
+	// don't enforce drift on this path (the parent Refresh already
+	// did, or this is a legitimate tab race within REFRESH_GRACE_SECONDS).
+	fp := s.buildFingerprint(ip, ua)
+	s.Audit.Log(ctx, audit.Entry{
+		UserID:         &u.ID,
+		SubscriptionID: &u.SubscriptionID,
+		Action:         "auth.token_refresh_grace",
+		IPAddress:      &ip,
+		Metadata:       fp.auditMetadata(map[string]any{"session_id": sessID.String()}),
+	})
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: "", RefreshExpAt: expiresAt, SessionID: sessID}, nil
 }
 
@@ -832,9 +989,16 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 	// (Phase 3) is the same thumbprint the caller's outgoing request
 	// already carries — RequireAuth verified the proof above, so by
 	// the time SwitchWorkspace is invoked we know the binding is good.
+	// TD-SEC-SESSION-ANOMALY: stamp a fresh fingerprint baseline on
+	// the new session. The user has just proved DPoP possession at
+	// the current IP, so this IP becomes the new drift baseline —
+	// not the parent session's, since SwitchWorkspace mints a fresh
+	// row, not a rotation.
+	fp := s.buildFingerprint(ip, ua)
 	var sessID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua), dpopJKT,
+		fp.IP, fp.ASN, fp.Country, fp.UAFP,
 	).Scan(&sessID); err != nil {
 		return nil, err
 	}
@@ -849,7 +1013,10 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 		SubscriptionID: &u.SubscriptionID,
 		Action:         "auth.workspace_switched",
 		IPAddress:      &ip,
-		Metadata:       map[string]any{"workspace_id": workspaceID.String()},
+		Metadata: fp.auditMetadata(map[string]any{
+			"workspace_id": workspaceID.String(),
+			"session_id":   sessID.String(),
+		}),
 	})
 
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt, SessionID: sessID}, nil

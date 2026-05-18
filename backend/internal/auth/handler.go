@@ -185,9 +185,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			// Insert session row first so the sid claim can be stamped on
 			// the access token (B16.8.11 step 2). dpopJKT was validated
 			// at the top of Login() — same thumbprint binds this session.
+			// TD-SEC-SESSION-ANOMALY: stamp the geo+UA fingerprint
+			// baseline so subsequent refreshes have a drift target.
+			fp := h.Svc.buildFingerprint(ip, r.UserAgent())
 			var sessID uuid.UUID
 			if err := h.Svc.Pool.QueryRow(r.Context(), sqlInsertSession,
 				res.User.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(r.UserAgent()), dpopJKT,
+				fp.IP, fp.ASN, fp.Country, fp.UAFP,
 			).Scan(&sessID); err != nil {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 				return
@@ -197,7 +201,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 				return
 			}
-			h.Svc.Audit.Log(r.Context(), audit.Entry{UserID: &res.User.ID, SubscriptionID: &res.User.SubscriptionID, Action: "auth.login_trusted_device", IPAddress: &ip})
+			h.Svc.Audit.Log(r.Context(), audit.Entry{
+				UserID:         &res.User.ID,
+				SubscriptionID: &res.User.SubscriptionID,
+				Action:         "auth.login_trusted_device",
+				IPAddress:      &ip,
+				Metadata:       fp.auditMetadata(map[string]any{"session_id": sessID.String()}),
+			})
 			setRefreshCookie(w, r, raw, expAt)
 			issueCSRF(w, r)
 			writeJSON(w, 200, loginResp{AccessToken: access, User: h.buildUserPayload(r.Context(), res.User)})
@@ -232,6 +242,14 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	res, err := h.Svc.Refresh(r.Context(), c.Value, security.ClientIP(r), r.UserAgent(), dpopJKT)
 	if err != nil {
 		clearRefreshCookie(w)
+		// TD-SEC-SESSION-ANOMALY: surface the specific code so the
+		// frontend hardLogout cascade can render the location-change
+		// banner instead of the generic token-expired one. Session
+		// is already revoked server-side by Service.Refresh.
+		if errors.Is(err, ErrSessionAnomaly) {
+			httperr.WriteCoded(w, r, http.StatusUnauthorized, CodeSessionAnomaly, usermessages.AuthSessionAnomaly)
+			return
+		}
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthTokenExpired)
 		return
 	}

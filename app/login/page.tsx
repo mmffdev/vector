@@ -49,7 +49,7 @@ function LoginForm() {
       }
       // Same read-once pattern for the involuntary-logout reason.
       const r = sessionStorage.getItem("vector.login.reason");
-      if (r === "session_revoked" || r === "session_idle_expired") {
+      if (r === "session_revoked" || r === "session_idle_expired" || r === "session_anomaly") {
         sessionStorage.removeItem("vector.login.reason");
         setReason(r);
       }
@@ -190,6 +190,11 @@ function LoginForm() {
       {reason === "session_idle_expired" && (
         <div className="login__error is-visible" role="status" aria-live="polite">
           Your session expired due to inactivity. Please re-enter your password to continue.
+        </div>
+      )}
+      {reason === "session_anomaly" && (
+        <div className="login__error is-visible" role="status" aria-live="polite">
+          We detected a change in your network location. Please sign in again to continue.
         </div>
       )}
 

@@ -33,4 +33,16 @@ const (
 	// generic "request invalid" surface. Telemetry-only mode (the
 	// default rollout setting) logs the hit but does NOT emit this code.
 	CodeBreachedPassword = "breached_password"
+	// TD-SEC-SESSION-ANOMALY — geo / ASN drift on /auth/refresh.
+	//
+	// session_anomaly: the inbound refresh request resolved to a
+	// different country or ASN than the session's first_country /
+	// first_asn baseline. Treated as a terminal session-state code
+	// — the frontend's hardLogout cascade catches it and redirects
+	// to /login with an explanatory banner ("we detected a location
+	// change — please sign in to continue"). The session family is
+	// revoked on the backend before this code is emitted; refresh
+	// is irrecoverable. Audit row carries both fingerprints for
+	// forensics.
+	CodeSessionAnomaly = "session_anomaly"
 )

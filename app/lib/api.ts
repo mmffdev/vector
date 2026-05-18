@@ -84,7 +84,15 @@ export class ApiError extends Error {
 // either revoked or idle-expired, so any refresh attempt 401s on the
 // same row. Mirrors backend/internal/auth/codes.go (B16.8.11 step 3);
 // keep in sync when adding new codes.
-const TERMINAL_SESSION_CODES = new Set(["session_revoked", "session_idle_expired"]);
+//
+// session_anomaly (TD-SEC-SESSION-ANOMALY): added 2026-05-18. Refresh
+// detected a country/ASN drift from the session's first_* baseline;
+// the session family was revoked server-side before this code was
+// emitted. Same hardLogout treatment as session_revoked — but the
+// banner copy in AuthContext differs ("we detected a change in your
+// network location") so the user knows why they're being asked to
+// sign back in.
+const TERMINAL_SESSION_CODES = new Set(["session_revoked", "session_idle_expired", "session_anomaly"]);
 
 type ApiOpts = RequestInit & { skipAuth?: boolean; _retried?: boolean };
 
