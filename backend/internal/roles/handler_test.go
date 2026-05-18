@@ -70,7 +70,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 		// go before users_roles. users_password_resets and other user-FK leaves go
 		// before users.
 		stmts := []string{
-			`DELETE FROM users_roles_permissions            WHERE role_id IN (SELECT id FROM users_roles WHERE subscription_id = $1)`,
+			`DELETE FROM users_roles_permissions            WHERE users_roles_permissions_id_role IN (SELECT users_roles_id FROM users_roles WHERE users_roles_id_subscription = $1)`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_stakeholders  WHERE subscriptions_stakeholders_id_subscription = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,
@@ -78,9 +78,9 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
-			`DELETE FROM users_password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
-			`DELETE FROM users_roles                       WHERE subscription_id = $1`,
+			`DELETE FROM users_roles                       WHERE users_roles_id_subscription = $1`,
 			`DELETE FROM subscriptions               WHERE id = $1`,
 		}
 		for _, sql := range stmts {
@@ -196,15 +196,15 @@ func TestList_returnsRolesScopedToTenant(t *testing.T) {
 	ctx := context.Background()
 	var aRoleID, bRoleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
-		VALUES ($1, $2, 'A Custom', '', 100, FALSE, FALSE) RETURNING id`,
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, $2, 'A Custom', '', 100, FALSE, FALSE) RETURNING users_roles_id`,
 		subA, "tenant-a-"+uuid.NewString()[:8],
 	).Scan(&aRoleID); err != nil {
 		t.Fatalf("insert role A: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
-		VALUES ($1, $2, 'B Custom', '', 100, FALSE, FALSE) RETURNING id`,
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, $2, 'B Custom', '', 100, FALSE, FALSE) RETURNING users_roles_id`,
 		subB, "tenant-b-"+uuid.NewString()[:8],
 	).Scan(&bRoleID); err != nil {
 		t.Fatalf("insert role B: %v", err)
@@ -321,8 +321,8 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	ctx := context.Background()
 	var roleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
-		VALUES ($1, $2, 'Target', '', 100, FALSE, FALSE) RETURNING id`,
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, $2, 'Target', '', 100, FALSE, FALSE) RETURNING users_roles_id`,
 		subID, "target-"+uuid.NewString()[:8],
 	).Scan(&roleID); err != nil {
 		t.Fatalf("insert target role: %v", err)
@@ -331,7 +331,7 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	// Pick any seeded permission id to attempt to grant.
 	var permID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT id FROM users_permissions WHERE code = $1`, string(permissions.RolesList),
+		`SELECT users_permissions_id FROM users_permissions WHERE users_permissions_code = $1`, string(permissions.RolesList),
 	).Scan(&permID); err != nil {
 		t.Fatalf("lookup permission id: %v", err)
 	}
@@ -341,8 +341,8 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	// can't blank it; we have to swap it for an empty-grid role.
 	var emptyRoleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
-		VALUES ($1, $2, 'Empty', '', 99, FALSE, FALSE) RETURNING id`,
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, $2, 'Empty', '', 99, FALSE, FALSE) RETURNING users_roles_id`,
 		subID, "empty-"+uuid.NewString()[:8],
 	).Scan(&emptyRoleID); err != nil {
 		t.Fatalf("insert empty role: %v", err)

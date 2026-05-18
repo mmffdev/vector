@@ -276,8 +276,8 @@ func insertSession(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) {
 	t.Helper()
 	hash := uuid.NewString()
 	_, err := pool.Exec(context.Background(), `
-		INSERT INTO users_sessions (users_sessions_id_user, users_sessions_token_hash, users_sessions_expires_at, users_sessions_ip_address, users_sessions_user_agent)
-		VALUES ($1, $2, NOW() + INTERVAL '1 hour', '127.0.0.1', 'test')`,
+		INSERT INTO users_sessions (users_sessions_id_user, users_sessions_token_hash, users_sessions_expires_at, users_sessions_ip_address, users_sessions_user_agent, users_sessions_dpop_jkt)
+		VALUES ($1, $2, NOW() + INTERVAL '1 hour', '127.0.0.1', 'test', '')`,
 		userID, hash,
 	)
 	if err != nil {

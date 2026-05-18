@@ -89,9 +89,9 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 		// then the legacy `workspace` table (different beast); then
 		// users + users_roles + the subscription row.
 		stmts := []string{
-			`DELETE FROM users_roles_workspaces             WHERE subscription_id = $1`,
+			`DELETE FROM users_roles_workspaces             WHERE users_roles_workspaces_id_subscription = $1`,
 			`DELETE FROM master_record_workspaces                  WHERE subscription_id = $1`,
-			`DELETE FROM users_roles_permissions            WHERE role_id IN (SELECT id FROM users_roles WHERE subscription_id = $1)`,
+			`DELETE FROM users_roles_permissions            WHERE users_roles_permissions_id_role IN (SELECT users_roles_id FROM users_roles WHERE users_roles_id_subscription = $1)`,
 			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_stakeholders  WHERE subscriptions_stakeholders_id_subscription = $1`,
 			`DELETE FROM product                     WHERE subscription_id = $1`,
@@ -99,9 +99,9 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
-			`DELETE FROM users_password_resets             WHERE user_id IN (SELECT id FROM users WHERE subscription_id = $1)`,
+			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
-			`DELETE FROM users_roles                       WHERE subscription_id = $1`,
+			`DELETE FROM users_roles                       WHERE users_roles_id_subscription = $1`,
 			`DELETE FROM subscriptions               WHERE id = $1`,
 		}
 		for _, sql := range stmts {
@@ -202,6 +202,7 @@ func newRouter(pool *pgxpool.Pool, u *roletypes.User) (http.Handler, *workspaces
 	r.Use(withUser(u))
 	r.Route("/api/master_record_workspaces", func(r chi.Router) {
 		h.Mount(r)
+		r.Delete("/{id}", h.Delete)
 	})
 	return r, svc
 }

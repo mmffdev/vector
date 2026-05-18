@@ -2,14 +2,35 @@ package roles
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/audit"
-	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/permissions"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
+
+// openAuditPool opens a connection to vector_artefacts where audit_logs lives.
+func openAuditPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=vector_artefacts sslmode=disable",
+		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
+	)
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Skipf("cannot open vector_artefacts audit pool: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Skipf("cannot ping vector_artefacts (tunnel down?): %v", err)
+	}
+	return pool
+}
 
 // PLA-0007 AC #9 (audit smoke): role.created, role.updated,
 // role.archived, role.permissions_granted, role.permissions_revoked all
@@ -19,12 +40,14 @@ import (
 func TestRolesService_auditTrailSmoke(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
+	vaPool := openAuditPool(t)
+	defer vaPool.Close()
 
 	subID, cleanup := mkTenant(t, pool, "audit-smoke")
 	defer cleanup()
 
 	actor := mkUser(t, pool, subID, roletypes.RoleGAdmin)
-	svc := New(pool, audit.New(pool))
+	svc := New(pool, audit.New(vaPool))
 	ctx := context.Background()
 
 	// Create.
@@ -46,7 +69,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 	// Look up a permission id and grant/revoke it.
 	var permID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT id FROM users_permissions WHERE code = $1`, string(permissions.RolesList),
+		`SELECT users_permissions_id FROM users_permissions WHERE users_permissions_code = $1`, string(permissions.RolesList),
 	).Scan(&permID); err != nil {
 		t.Fatalf("lookup perm: %v", err)
 	}
@@ -66,7 +89,7 @@ func TestRolesService_auditTrailSmoke(t *testing.T) {
 
 	// Pull all audit rows for this resource and assert the five action
 	// codes are present.
-	rows, err := pool.Query(ctx,
+	rows, err := vaPool.Query(ctx,
 		`SELECT audit_logs_action FROM audit_logs WHERE audit_logs_resource_id = $1 ORDER BY audit_logs_created_at`,
 		r.ID.String(),
 	)

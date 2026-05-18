@@ -46,11 +46,15 @@ func (s *Service) Create(ctx context.Context, in CreateSprintInput) (*Sprint, er
 		return nil, err
 	}
 
+	velocity := 0
+	if in.SprintVelocity != nil {
+		velocity = *in.SprintVelocity
+	}
 	row := s.pool.QueryRow(ctx, sqlInsertSprint,
 		in.SubscriptionID, in.WorkspaceID, in.OrgNodeID,
 		in.SprintName, in.SprintSuffix, in.SprintOwner,
 		in.SprintCadenceDays, in.SprintDateStart, in.SprintDateEnd,
-		in.SprintVelocity,
+		velocity,
 	)
 	sprint, err := scanSprint(row)
 	if err != nil {
@@ -82,11 +86,15 @@ func (s *Service) BulkCreate(ctx context.Context, inputs []CreateSprintInput) ([
 
 	results := make([]*Sprint, 0, len(inputs))
 	for _, in := range inputs {
+		velocity := 0
+		if in.SprintVelocity != nil {
+			velocity = *in.SprintVelocity
+		}
 		row := tx.QueryRow(ctx, sqlInsertSprint,
 			in.SubscriptionID, in.WorkspaceID, in.OrgNodeID,
 			in.SprintName, in.SprintSuffix, in.SprintOwner,
 			in.SprintCadenceDays, in.SprintDateStart, in.SprintDateEnd,
-			in.SprintVelocity,
+			velocity,
 		)
 		sprint, err := scanSprint(row)
 		if err != nil {

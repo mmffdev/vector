@@ -48,8 +48,8 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 	ctx := context.Background()
 	var roleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users_roles (subscription_id, code, label, description, rank, is_system, is_external)
-		VALUES ($1, $2, 'Cache target', '', 100, FALSE, FALSE) RETURNING id`,
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, $2, 'Cache target', '', 100, FALSE, FALSE) RETURNING users_roles_id`,
 		subID, "cache-target-"+uuid.NewString()[:8],
 	).Scan(&roleID); err != nil {
 		t.Fatalf("insert role: %v", err)
@@ -72,7 +72,7 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 	// Pick a permission to grant.
 	var permID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT id FROM users_permissions WHERE code = $1`, string(permissions.RolesList),
+		`SELECT users_permissions_id FROM users_permissions WHERE users_permissions_code = $1`, string(permissions.RolesList),
 	).Scan(&permID); err != nil {
 		t.Fatalf("lookup perm: %v", err)
 	}
