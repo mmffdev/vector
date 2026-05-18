@@ -152,17 +152,23 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("dir"); v != "" {
 		f.Dir = v
 	}
-	// PLA-0043 — ?scope=<uuid> clamps reads to the artefacts owned by
+	// PLA-0043 — ?meg=<uuid> clamps reads to the artefacts owned by
 	// this topology node and every live descendant. Invalid UUID is 400
 	// before reaching the service; permission/existence is checked
 	// inside the service and surfaced as 403/404.
-	if v := q.Get("scope"); v != "" {
-		if _, perr := uuid.Parse(v); perr != nil {
+	// ?scope= is the legacy name (cutover via TD-URL-SCOPE-PARAM-CUTOVER);
+	// ?meg= takes precedence when both are present.
+	megVal := q.Get("meg")
+	if megVal == "" {
+		megVal = q.Get("scope")
+	}
+	if megVal != "" {
+		if _, perr := uuid.Parse(megVal); perr != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":"invalid scope"}`))
 			return
 		}
-		f.ScopeNodeID = &v
+		f.ScopeNodeID = &megVal
 		actor := auth.UserFromCtx(r.Context())
 		userIDStr := actor.ID.String()
 		f.ActorUserID = &userIDStr
@@ -278,13 +284,19 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	}
 	var scopeNodeID, actorUserID *string
 	var actorRole string
-	if v := q.Get("scope"); v != "" {
-		if _, perr := uuid.Parse(v); perr != nil {
+	// ?meg= is the canonical name; ?scope= is the legacy fallback
+	// (TD-URL-SCOPE-PARAM-CUTOVER).
+	megVal := q.Get("meg")
+	if megVal == "" {
+		megVal = q.Get("scope")
+	}
+	if megVal != "" {
+		if _, perr := uuid.Parse(megVal); perr != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":"invalid scope"}`))
 			return
 		}
-		scopeNodeID = &v
+		scopeNodeID = &megVal
 		userIDStr := actor.ID.String()
 		actorUserID = &userIDStr
 		actorRole = string(actor.Role)

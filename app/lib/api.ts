@@ -115,18 +115,22 @@ function readCookie(name: string): string | null {
 
 // PLA-0043 — When a GET targets an artefact-list route (work-items or
 // portfolio-items), forward the active scope node ID so the backend can
-// clamp reads to that topology subtree. Scope is read from localStorage
-// (the user-profile-sourced cache; see ScopeContext seed-once pattern).
-function withForwardedScope(path: string, method: string): string {
+// clamp reads to that topology subtree. Source of truth is the browser
+// URL (?meg=<node-id>) — URL-as-state means every fetch on the same
+// render reads the same value, no localStorage race. localStorage is
+// kept as a fallback only for the brief window before ?meg= lands in
+// the URL on first paint (TD-URL-SCOPE-PARAM-CUTOVER).
+function withForwardedMeg(path: string, method: string): string {
   if (method !== "GET") return path;
   if (typeof window === "undefined") return path;
   if (!/(^|\/)(work-items|portfolio-items)(\?|\/|$)/.test(path)) return path;
-  if (path.includes("scope=")) return path;
+  if (path.includes("meg=") || path.includes("scope=")) return path;
   try {
-    const scope = window.localStorage.getItem("vector.scope.activeNodeId");
-    if (!scope) return path;
+    let meg = new URLSearchParams(window.location.search).get("meg");
+    if (!meg) meg = window.localStorage.getItem("vector.scope.activeNodeId");
+    if (!meg) return path;
     const sep = path.includes("?") ? "&" : "?";
-    return path + sep + "scope=" + encodeURIComponent(scope);
+    return path + sep + "meg=" + encodeURIComponent(meg);
   } catch {
     return path;
   }
@@ -146,7 +150,7 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
 
-  const finalPath = withForwardedScope(path, method);
+  const finalPath = withForwardedMeg(path, method);
   const fullURL = base + finalPath;
 
   // RFC 9449 DPoP proof (TD-SEC-DPOP-BINDING Phase 2). Minted on

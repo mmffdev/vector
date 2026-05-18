@@ -11,6 +11,7 @@ import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/comp
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useScope } from "@/app/contexts/ScopeContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import portfolioWizardJson from "@/app/components/ObjectTree/configs/p_wizard_portfolio.json";
@@ -18,6 +19,7 @@ import portfolioWizardJson from "@/app/components/ObjectTree/configs/p_wizard_po
 export default function PortfolioItemsPage() {
   const { full } = usePageTitle();
   const { user } = useAuth();
+  const { activeNodeId } = useScope();
   useHintOnce("PORTFOLIO_MODEL_FIRST_VISIT");
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [summary, setSummary] = useState<{
@@ -51,9 +53,13 @@ export default function PortfolioItemsPage() {
     return refetchSummary();
   }, [refetchSummary]);
 
+  // Re-fire on scope change — the scope picker mutates ?meg= and
+  // ScopeContext.activeNodeId, both of which `withForwardedMeg` reads
+  // into the wire request. Without this dep the Summary keeps showing
+  // the count from whichever node was active on first mount.
   useEffect(() => {
     void refetchSummary();
-  }, [refetchSummary]);
+  }, [refetchSummary, activeNodeId]);
 
   const subscriptionID = user?.subscription_id ?? null;
   const topic = subscriptionID

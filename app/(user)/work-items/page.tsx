@@ -11,6 +11,7 @@ import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/comp
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useScope } from "@/app/contexts/ScopeContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_workitems.json";
@@ -18,6 +19,7 @@ import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_wo
 export default function WorkItemsPage() {
   const { full } = usePageTitle();
   const { user } = useAuth();
+  const { activeNodeId } = useScope();
   useHintOnce("WORK_ITEMS_FIRST_VISIT");
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
@@ -60,9 +62,12 @@ export default function WorkItemsPage() {
     return refetchSummary();
   }, [refetchSummary]);
 
+  // Re-fire on scope change — see portfolio-items/page.tsx for the full
+  // rationale (?meg= URL state + ScopeContext.activeNodeId both drive
+  // the wire-request scope clamp; effect must depend on the latter).
   useEffect(() => {
     void refetchSummary();
-  }, [refetchSummary]);
+  }, [refetchSummary, activeNodeId]);
 
   const subscriptionID = user?.subscription_id ?? null;
   const sprintID = filters.sprint_id || null;

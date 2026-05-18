@@ -1,4 +1,7 @@
 "use client";
+// hook-allow-url-query: ScopeContext is the canonical writer/reader of the
+// ?meg= URL param (active scope node). Carveout from PLA-0053 per
+// TD-URL-SCOPE-PARAM-CUTOVER — the rest of the address bar stays path-only.
 
 // PLA-0042 — Scope picker substrate. Holds the user's live grants
 // (the topology nodes they hold a role on) and the currently active
@@ -29,6 +32,34 @@ import { WORKSPACES_CHANGED_EVENT } from "@/app/lib/workspacesApi";
 import { registerScopeReload, unregisterScopeReload } from "@/app/contexts/Sentinel";
 
 const STORAGE_KEY = "vector.scope.activeNodeId";
+
+// URL is the canonical source for active scope. localStorage + server
+// profile remain as fallbacks for first-paint and cross-device persistence
+// (TD-URL-SCOPE-PARAM-CUTOVER). The address-bar param is `?meg=`.
+const URL_PARAM = "meg";
+
+function readUrlMeg(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return new URLSearchParams(window.location.search).get(URL_PARAM);
+  } catch {
+    return null;
+  }
+}
+
+function writeUrlMeg(id: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set(URL_PARAM, id);
+    else url.searchParams.delete(URL_PARAM);
+    // replaceState — no history entry per scope flip; back-button still
+    // navigates between pages, not scope picks.
+    window.history.replaceState(window.history.state, "", url.toString());
+  } catch {
+    // URL parsing may fail in edge environments — non-fatal, fallbacks cover.
+  }
+}
 
 interface ScopeValue {
   grants: MyGrant[];
@@ -127,24 +158,32 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     }
 
     if (!profileSeededRef.current) {
-      // First grants load — read the server profile to pick the right node.
+      // First grants load — precedence: URL ?meg= > server profile > localStorage.
+      // The URL wins because it's the only source that's race-free at call
+      // time (the bug TD-URL-SCOPE-PARAM-CUTOVER pays down).
       profileSeededRef.current = true;
       const seed = async () => {
-        let candidate: string | null = null;
-        try {
-          const resp = await apiSite<{ node_id: string | null }>("/me/active-scope");
-          candidate = resp.node_id ?? readStoredId();
-        } catch {
-          candidate = readStoredId();
+        let candidate: string | null = readUrlMeg();
+        if (!candidate) {
+          try {
+            const resp = await apiSite<{ node_id: string | null }>("/me/active-scope");
+            candidate = resp.node_id ?? readStoredId();
+          } catch {
+            candidate = readStoredId();
+          }
         }
         const match = candidate ? grants.find((g) => g.node_id === candidate) : null;
         if (candidate && !match) {
           writeStoredId(null);
+          writeUrlMeg(null);
           apiSite("/me/active-scope", { method: "PUT", body: JSON.stringify({ node_id: null }) }).catch(() => {});
         }
         const resolved = match ? match.node_id : null;
         setActiveNodeIdState(resolved);
-        if (resolved) writeStoredId(resolved);
+        if (resolved) {
+          writeStoredId(resolved);
+          writeUrlMeg(resolved);
+        }
       };
       void seed();
     } else {
@@ -152,7 +191,7 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
       setActiveNodeIdState((prev) => {
         if (!prev) return null;
         const still = grants.find((g) => g.node_id === prev);
-        if (!still) { writeStoredId(null); return null; }
+        if (!still) { writeStoredId(null); writeUrlMeg(null); return null; }
         return prev;
       });
     }
@@ -160,8 +199,9 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
 
   const setActiveNodeId = useCallback((id: string | null) => {
     setActiveNodeIdState(id);
+    writeUrlMeg(id);
     writeStoredId(id);
-    // Fire-and-forget — failure is non-fatal; localStorage is the fallback.
+    // Fire-and-forget — failure is non-fatal; URL + localStorage are the fallbacks.
     apiSite("/me/active-scope", { method: "PUT", body: JSON.stringify({ node_id: id }) }).catch(() => {});
   }, []);
 
