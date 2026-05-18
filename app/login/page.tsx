@@ -3,17 +3,10 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth, ApiError, MFAChallengeError } from "@/app/contexts/AuthContext";
+import { AuthFooter } from "@/app/components/AuthFooter";
+import { AuthBrand } from "@/app/components/AuthBrand";
 import { apiSite as api } from "@/app/lib/api";
-
-function LoginBranding() {
-  return (
-    <div className="login-branding">
-      <span className="login-branding__text">Vector</span>
-    </div>
-  );
-}
 
 function LoginForm() {
   const { login, mfaLogin } = useAuth();
@@ -84,31 +77,33 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="login__form" noValidate>
-      <label className="login__field-group">
-        <span className="login__field-label">EMAIL</span>
+    <form onSubmit={onSubmit} className="auth-card auth-card--vector" noValidate>
+      <AuthBrand />
+
+      <label className="form__label">
+        [1] Email
         <input
           type="email"
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="login__input"
+          className="form__input"
         />
       </label>
 
-      <label className="login__field-group">
-        <span className="login__field-label">PASSWORD</span>
+      <label className="form__label">
+        [2] Password
         <input
           type="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="login__input"
+          className="form__input"
         />
       </label>
 
-      <label className="login__field-group">
-        <span className="login__field-label">AUTHENTICATOR CODE</span>
+      <label className="form__label">
+        [3] Authenticator code
         <input
           type="text"
           inputMode="numeric"
@@ -116,31 +111,34 @@ function LoginForm() {
           maxLength={6}
           value={mfaCode}
           onChange={(e) => setMfaCode(e.target.value)}
-          className="login__input login__input--mono"
-          placeholder="0 0 0 0 0 0"
+          className="form__input form__input--mono"
+          placeholder="000000"
         />
       </label>
 
-      <label className="login__remember">
+      <label className="auth-card__remember-row">
         <input
           type="checkbox"
           checked={rememberDevice}
           onChange={(e) => setRememberDevice(e.target.checked)}
-          className="login__checkbox"
         />
-        <span>Remember this device for 30 days</span>
+        Remember this device for 30 days
       </label>
 
-      <div className={`login__error${err ? " is-visible" : ""}`} role="alert" aria-live="polite">
+      <div className={`auth-card__error-slot${err ? " is-visible" : ""}`} role="alert" aria-live="polite">
         {err}
       </div>
 
-      <button type="submit" disabled={busy} className="login__submit">
-        {busy ? "Verifying and signing in…" : "Verify and sign in"}
+      <button type="submit" disabled={busy} className="btn btn--primary btn--block">
+        {busy ? "Signing in…" : "Sign in"}
       </button>
 
-      <div className="login__footer-links">
-        <Link href="/login/reset" className="login__link">Forgot password?</Link>
+      <Link href="/login/reset" className="auth-card__link">Forgot password?</Link>
+
+      <div className="auth-card__notice">
+        <p>WARNING: Unauthorised access to this system is prohibited and will be subject to legal action. By accessing this system, you accept that your activities may be monitored if unauthorised use is suspected.</p>
+        <p>This login page uses only strictly necessary cookies. For more information, please see our Cookie Policy.</p>
+        <p>By proceeding to log in, you confirm your understanding.</p>
       </div>
     </form>
   );
@@ -148,37 +146,11 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="login-page">
-      <div className="login-page__logo-column">
-        <Image
-          src="/logo-vector.png"
-          alt="Vector"
-          width={60}
-          height={60}
-          priority
-        />
-        <div className="login-page__sidebar-wordmark">
-          <span className="login-page__sidebar-wordmark-v">V</span><span className="login-page__sidebar-wordmark-ector">ector</span>
-        </div>
-        <div className="login-page__sidebar-version">v1.01</div>
-      </div>
-
-      <main className="login-page__main">
-        <div className="login-page__form-container">
-          <div className="login-page__form-header">
-            <span className="login-page__form-label">SIGN IN</span>
-            <h1 className="login-page__form-title">Welcome back</h1>
-          </div>
-          <div className="login-page__form-panel">
-            <Suspense fallback={null}>
-              <LoginForm />
-            </Suspense>
-          </div>
-          <div className="login-page__form-footer">
-            <p>Authorised access only. Activity may be monitored. By signing in you accept the <Link href="/terms">terms of use</Link> and <Link href="/cookies">cookie policy</Link>.</p>
-          </div>
-        </div>
-      </main>
+    <div className="auth-page">
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
+      <AuthFooter />
     </div>
   );
 }

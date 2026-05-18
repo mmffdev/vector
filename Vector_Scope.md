@@ -5803,6 +5803,7 @@ Single shared topology walker — eliminates four independent walks (canvas dagr
 
 ## Unmatched Commits
 
+> Commit `5c5fbad` (2026-05-18): fix(login): reduce Vector text size by 10px (90px to 80px)
 > Commit `877ec30` (2026-05-09): fix(B22): move dynamicIdColWidth above fixedWidths — fix ReferenceError
 > Commit `4ebf82f` (2026-05-09): fix: resolve getParentId/getChildrenCount functions in wizard config
 > Commit `ca3e543` (2026-05-09): feat(PLA-0030 B19.7): wire p_wizard.json sidecar pattern to work-items and portfolio-items pages
