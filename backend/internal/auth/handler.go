@@ -217,7 +217,19 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthTokenExpired)
 		return
 	}
-	res, err := h.Svc.Refresh(r.Context(), c.Value, security.ClientIP(r), r.UserAgent())
+	// TD-SEC-DPOP-BINDING Phase 4 — refresh-token binding.
+	// Validate the inbound proof unbound-style (no access token in
+	// hand, so no ath check) and pass its thumbprint to Refresh,
+	// which compares it to the session row's stored binding. A
+	// mismatch revokes the family — that's the stolen-rt-from-
+	// another-device defence.
+	dpopJKT, derr := h.extractAndValidateUnboundProof(r)
+	if derr != nil {
+		clearRefreshCookie(w)
+		writeDPoPError(w, r, usermessages.AuthTokenExpired)
+		return
+	}
+	res, err := h.Svc.Refresh(r.Context(), c.Value, security.ClientIP(r), r.UserAgent(), dpopJKT)
 	if err != nil {
 		clearRefreshCookie(w)
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthTokenExpired)

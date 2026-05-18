@@ -351,7 +351,16 @@ func (s *Service) recordFailedLogin(ctx context.Context, u *roletypes.User, ip s
 	}
 }
 
-func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*LoginResult, error) {
+// incomingJKT (TD-SEC-DPOP-BINDING Phase 4) is the RFC 7638 thumbprint
+// from the DPoP proof the caller presented on the inbound refresh
+// request. It MUST equal the session's stored users_sessions_dpop_jkt
+// or the refresh is rejected as a binding-attack and the entire
+// session family is revoked. RFC 9449 § 5 forbids mid-stream key
+// rotation: the key that signed login is the only key allowed to
+// refresh. Empty string is reserved for legacy sessions whose
+// stored jkt is also empty (pre-DPoP) — those still work until
+// Phase 6 cutover deletes them all.
+func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT string) (*LoginResult, error) {
 	hash := Sha256Hex(rawRefresh)
 
 	var sessID, userID uuid.UUID
@@ -376,13 +385,43 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		// a reuse attack → nuke all sessions.
 		graceSecs := parseDurationEnv("REFRESH_GRACE_SECONDS", 30*time.Second)
 		if rotatedAt != nil && successorHash != nil && time.Since(*rotatedAt) <= graceSecs {
-			return s.refreshFromSuccessor(ctx, *successorHash, ip, ua)
+			return s.refreshFromSuccessor(ctx, *successorHash, ip, ua, incomingJKT)
 		}
 		_, _ = s.Pool.Exec(ctx, sqlRevokeAllUserSessions, userID)
 		s.Audit.Log(ctx, audit.Entry{UserID: &userID, Action: "auth.refresh_token_reuse", IPAddress: &ip, Metadata: map[string]any{"session_id": sessID.String()}})
 		return nil, ErrTokenExpired
 	}
 	if expiresAt.Before(time.Now()) {
+		return nil, ErrTokenExpired
+	}
+	// TD-SEC-DPOP-BINDING Phase 4 — refresh-token binding. The
+	// session row's bound JKT was stamped at login; the inbound
+	// proof's JKT must match it. A mismatch is the
+	// "stolen-rt-from-another-device" attack — treat exactly like
+	// the rotation reuse-detection path: revoke every session for
+	// this user (forces re-login everywhere), audit-log it, return
+	// the same generic ErrTokenExpired so no information leaks back
+	// to the attacker about which check failed.
+	//
+	// boundJKT == "" handles the legacy/pre-DPoP rollout window: a
+	// session inserted before Phase 3 has NULL in users_sessions_dpop_jkt
+	// (COALESCE'd to ""). Once Phase 6 cutover wipes those rows,
+	// boundJKT will always be non-empty in production and the equality
+	// check applies unconditionally. Until then, an empty bound JKT
+	// inherits the rotation onto a new (also empty-bound) session —
+	// the user keeps working but is unbound until they re-login.
+	if boundJKT != "" && incomingJKT != boundJKT {
+		_, _ = s.Pool.Exec(ctx, sqlRevokeAllUserSessions, userID)
+		s.Audit.Log(ctx, audit.Entry{
+			UserID:    &userID,
+			Action:    "auth.refresh_dpop_binding_violation",
+			IPAddress: &ip,
+			Metadata: map[string]any{
+				"session_id":   sessID.String(),
+				"bound_jkt":    boundJKT,
+				"incoming_jkt": incomingJKT,
+			},
+		})
 		return nil, ErrTokenExpired
 	}
 
@@ -434,7 +473,10 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 // refreshFromSuccessor is called when a revoked token is reused within the
 // grace window. It finds the successor session and re-issues tokens from it
 // without rotating again, so concurrent tab bootstraps share one valid session.
-func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, ua string) (*LoginResult, error) {
+// Same binding check as Refresh — the successor session's stored jkt must
+// match the proof on the inbound request, otherwise we're dealing with a
+// stolen-during-grace reuse and the whole family is revoked.
+func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, ua, incomingJKT string) (*LoginResult, error) {
 	var sessID, userID uuid.UUID
 	var expiresAt time.Time
 	var revoked bool
@@ -446,6 +488,22 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	// Grace-window binding check (matches Refresh; same revoke + audit shape).
+	if boundJKT != "" && incomingJKT != boundJKT {
+		_, _ = s.Pool.Exec(ctx, sqlRevokeAllUserSessions, userID)
+		s.Audit.Log(ctx, audit.Entry{
+			UserID:    &userID,
+			Action:    "auth.refresh_dpop_binding_violation_grace",
+			IPAddress: &ip,
+			Metadata: map[string]any{
+				"session_id":   sessID.String(),
+				"bound_jkt":    boundJKT,
+				"incoming_jkt": incomingJKT,
+			},
+		})
+		return nil, ErrTokenExpired
 	}
 
 	u, err := s.FindUserByID(ctx, userID)
