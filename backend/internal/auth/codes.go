@@ -24,4 +24,13 @@ const (
 	// re-open the reauth modal rather than redirecting to /login.
 	CodeReauthRequired = "reauth_required"
 	CodeReauthInvalid  = "reauth_invalid"
+	// B16.8 P4 — HIBP breach-password check.
+	//
+	// breached_password: the candidate password matches an entry in the
+	// HaveIBeenPwned breach corpus AND HIBP_CHECK_MODE=enforce. The
+	// handler returns 400 with this code so the frontend can render a
+	// targeted "choose a different password" prompt instead of the
+	// generic "request invalid" surface. Telemetry-only mode (the
+	// default rollout setting) logs the hit but does NOT emit this code.
+	CodeBreachedPassword = "breached_password"
 )

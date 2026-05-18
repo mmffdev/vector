@@ -19,6 +19,9 @@ const (
 	// B16.8.10 — per-action step-up reauth.
 	AuthReauthRequired = "Please re-enter your password to confirm this action."
 	AuthReauthInvalid  = "That confirmation has expired or already been used. Please try again."
+	// B16.8 P4 — HIBP breach-password check (enforce mode only). Telemetry
+	// mode never surfaces this string because the user is never blocked.
+	AuthBreachedPassword = "This password has appeared in a known data breach. Please choose a different one."
 )
 
 // Request

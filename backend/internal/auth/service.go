@@ -471,6 +471,13 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 	if err := ValidatePassword(newPwd, u.Email); err != nil {
 		return err
 	}
+	// B16.8 P4 — HIBP breach-password check. No-op when
+	// HIBP_CHECK_MODE=disabled (default); telemetry-only logs hits;
+	// enforce returns ErrBreachedPassword which the handler maps to
+	// a user-facing message.
+	if err := s.CheckPasswordNotBreached(ctx, newPwd, userID); err != nil {
+		return err
+	}
 	hash, err := HashPassword(newPwd)
 	if err != nil {
 		return err
@@ -620,6 +627,12 @@ func (s *Service) applyPasswordReset(
 		return err
 	}
 	if err := ValidatePassword(newPwd, u.Email); err != nil {
+		return err
+	}
+	// B16.8 P4 — HIBP breach-password check (same gate as ChangePassword).
+	// Reset flow already knows the userID via the token row, so the audit
+	// entry can be attributed even though the request is unauthenticated.
+	if err := s.CheckPasswordNotBreached(ctx, newPwd, userID); err != nil {
 		return err
 	}
 	pwHash, err := HashPassword(newPwd)

@@ -255,6 +255,10 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthInvalidCurrentPassword)
 			return
 		}
+		if errors.Is(err, ErrBreachedPassword) {
+			httperr.WriteCoded(w, r, http.StatusBadRequest, CodeBreachedPassword, usermessages.AuthBreachedPassword)
+			return
+		}
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -388,6 +392,10 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 				httperr.Write(w, r, http.StatusBadRequest, usermessages.AuthTokenExpired)
 				return
 			}
+			if errors.Is(err, ErrBreachedPassword) {
+				httperr.WriteCoded(w, r, http.StatusBadRequest, CodeBreachedPassword, usermessages.AuthBreachedPassword)
+				return
+			}
 			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -416,6 +424,10 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 	if err := h.Svc.ConfirmPasswordReset(r.Context(), req.Token, req.Password, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrTokenExpired) {
 			httperr.Write(w, r, http.StatusBadRequest, usermessages.AuthTokenExpired)
+			return
+		}
+		if errors.Is(err, ErrBreachedPassword) {
+			httperr.WriteCoded(w, r, http.StatusBadRequest, CodeBreachedPassword, usermessages.AuthBreachedPassword)
 			return
 		}
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())
