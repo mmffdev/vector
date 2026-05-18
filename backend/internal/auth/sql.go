@@ -72,7 +72,10 @@ const sqlClearLockoutAndStampLogin = `
 
 // sqlInsertSession opens a new refresh-token session row. token_hash is
 // the SHA-256 of the raw refresh token (raw never persists). Used by
-// Login and the rotation path in Refresh.
+// Login and the rotation path in Refresh. RETURNING users_sessions_id
+// added 2026-05-18 for B16.8.11 step 1 — callers capture the id and
+// surface it via LoginResult.SessionID so step 2 can stamp it onto the
+// access JWT as the `sid` claim.
 const sqlInsertSession = `
 		INSERT INTO users_sessions (
 			users_sessions_id_user,
@@ -82,6 +85,7 @@ const sqlInsertSession = `
 			users_sessions_user_agent
 		)
 		VALUES ($1, $2, $3, $4, $5)
+		RETURNING users_sessions_id
 	`
 
 // sqlBumpFailedLoginAndLock raises failed_login_count to $1 AND stamps

@@ -17,6 +17,8 @@ package auth
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // TestAccessClaims_RejectsLegacyTenantIdClaim verifies that a JWT body
@@ -70,5 +72,27 @@ func TestAccessClaims_AcceptsSubscriptionIdClaim(t *testing.T) {
 	}
 	if c.SubscriptionID != "00000000-0000-0000-0000-000000000001" {
 		t.Errorf("SubscriptionID decode broken: got %q", c.SubscriptionID)
+	}
+}
+
+// B16.8.11 step 1 — LoginResult must carry the issuing session row id so
+// downstream callers (step 2: sid claim signing) can stamp it onto the
+// access JWT. Red-first: this test fails to compile before
+// LoginResult.SessionID is added; once added it asserts the field is
+// assignable and round-trips a uuid. Pins the structural contract every
+// session-issuing call site (Login, MFAVerifyLogin, Refresh,
+// refreshFromSuccessor — no, .refreshFromSuccessor reuses existing
+// session, no insert — and SwitchWorkspace) must populate.
+func TestLoginResult_CarriesSessionID(t *testing.T) {
+	sid := uuid.New()
+	lr := LoginResult{SessionID: sid}
+	if lr.SessionID != sid {
+		t.Errorf("LoginResult.SessionID round-trip broken: got %s, want %s", lr.SessionID, sid)
+	}
+	// Zero value is uuid.Nil — confirms the field exists but is not
+	// populated by accident; callers must set it explicitly.
+	var empty LoginResult
+	if empty.SessionID != uuid.Nil {
+		t.Errorf("LoginResult{}.SessionID = %s, want uuid.Nil", empty.SessionID)
 	}
 }

@@ -125,12 +125,14 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			}
 			refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 			expAt := time.Now().Add(refreshTTL)
-			if _, err = h.Svc.Pool.Exec(r.Context(), sqlInsertSession,
+			var sessID uuid.UUID
+			if err := h.Svc.Pool.QueryRow(r.Context(), sqlInsertSession,
 				res.User.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(r.UserAgent()),
-			); err != nil {
+			).Scan(&sessID); err != nil {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 				return
 			}
+			_ = sessID // B16.8.11 step 2 will pass this to SignAccessToken
 			h.Svc.Audit.Log(r.Context(), audit.Entry{UserID: &res.User.ID, SubscriptionID: &res.User.SubscriptionID, Action: "auth.login_trusted_device", IPAddress: &ip})
 			setRefreshCookie(w, raw, expAt)
 			issueCSRF(w)

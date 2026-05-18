@@ -135,6 +135,14 @@ type LoginResult struct {
 	AccessToken  string
 	RefreshRaw   string
 	RefreshExpAt time.Time
+	// SessionID is the users_sessions row id created (or reused on the
+	// successor-grace path) for this login. Populated by every session-
+	// issuing entry path: Login, MFAVerifyLogin, Refresh (rotation),
+	// refreshFromSuccessor (existing row), SwitchWorkspace. Read by
+	// SignAccessToken (B16.8.11 step 2) to stamp the `sid` claim onto
+	// the JWT so RequireAuth can per-request check users_sessions for
+	// revocation/idle eviction.
+	SessionID uuid.UUID
 	// MFA challenge path — set when mfa_enrolled=true.
 	// MFARequired=true means no refresh cookie should be set; the caller
 	// must redirect the user to POST /auth/mfa/verify with MFAChallengeToken.
@@ -199,10 +207,10 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
 
-	_, err = s.Pool.Exec(ctx, sqlInsertSession,
+	var sessID uuid.UUID
+	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
-	)
-	if err != nil {
+	).Scan(&sessID); err != nil {
 		return nil, err
 	}
 
@@ -215,7 +223,7 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 		h(ctx, u)
 	}
 
-	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt, SessionID: sessID}, nil
 }
 
 // MFAVerifyLogin exchanges a challenge token + TOTP/recovery code for a
@@ -257,14 +265,15 @@ func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, 
 	}
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
-	if _, err = s.Pool.Exec(ctx, sqlInsertSession, u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua)); err != nil {
+	var sessID uuid.UUID
+	if err := s.Pool.QueryRow(ctx, sqlInsertSession, u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua)).Scan(&sessID); err != nil {
 		return nil, err
 	}
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_verify_success", IPAddress: &ip})
 	for _, h := range s.OnLogin {
 		h(ctx, u)
 	}
-	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt, SessionID: sessID}, nil
 }
 
 func (s *Service) recordFailedLogin(ctx context.Context, u *roletypes.User, ip string) {
@@ -340,9 +349,10 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 	if _, err := tx.Exec(ctx, sqlRotateSession, newHash, sessID); err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, sqlInsertSession,
+	var newSessID uuid.UUID
+	if err := tx.QueryRow(ctx, sqlInsertSession,
 		u.ID, newHash, newExp, nilIfEmpty(ip), nilIfEmpty(ua),
-	); err != nil {
+	).Scan(&newSessID); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -354,7 +364,7 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua string) (*Logi
 		return nil, err
 	}
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.token_refresh", IPAddress: &ip})
-	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: newExp}, nil
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: newExp, SessionID: newSessID}, nil
 }
 
 // refreshFromSuccessor is called when a revoked token is reused within the
@@ -384,8 +394,10 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 
 	// Re-set the successor cookie so the caller's browser holds the current token.
 	// We do NOT rotate again here — the successor is still live.
+	// SessionID is the existing successor row id (loaded above) — no new
+	// insert on this path, so we surface the row already in play.
 	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.token_refresh_grace", IPAddress: &ip})
-	return &LoginResult{User: u, AccessToken: access, RefreshRaw: "", RefreshExpAt: expiresAt}, nil
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: "", RefreshExpAt: expiresAt, SessionID: sessID}, nil
 }
 
 func (s *Service) Logout(ctx context.Context, rawRefresh, ip string) error {
@@ -604,9 +616,10 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
 	expAt := time.Now().Add(refreshTTL)
 
-	if _, err := s.Pool.Exec(ctx, sqlInsertSession,
+	var sessID uuid.UUID
+	if err := s.Pool.QueryRow(ctx, sqlInsertSession,
 		u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua),
-	); err != nil {
+	).Scan(&sessID); err != nil {
 		return nil, err
 	}
 
@@ -618,5 +631,5 @@ func (s *Service) SwitchWorkspace(ctx context.Context, u *roletypes.User, worksp
 		Metadata:       map[string]any{"workspace_id": workspaceID.String()},
 	})
 
-	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt, SessionID: sessID}, nil
 }
