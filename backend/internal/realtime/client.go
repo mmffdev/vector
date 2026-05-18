@@ -95,22 +95,28 @@ func ServeWS(hub *Hub) http.HandlerFunc {
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 		defer hub.UnsubscribeAll(c)
-		defer conn.Close(websocket.StatusNormalClosure, "")
+
+		// gateClose ensures the FIRST Close to fire is the one that
+		// reaches the wire. Without this gate, the deferred fallback
+		// below races the immediate-close hook below it: under load,
+		// the deferred Close(StatusNormalClosure) can overwrite an
+		// in-flight 4001/4002 frame, the client sees code 1000, and
+		// the frontend wsClose handler never triggers hardLogout
+		// (review of B16.8.12 commit chain d32ebd9..9ac876f).
+		gateClose := newCloseOnce(conn)
+		defer gateClose.Close(websocket.StatusNormalClosure, "")
 
 		// Register with the session registry so the sweeper / immediate-
-		// close path can evict this connection. The close hook records
-		// the reason on conn, cancels the pump context (which unblocks
-		// the read loop), and writes the close frame — done in this
-		// order so the frame is in flight before the read returns.
+		// close path can evict this connection. The close hook fires
+		// the gated close (a no-op if the deferred fallback already
+		// won, which is the right behaviour: closeOnce preserves the
+		// first wire-observable code) then cancels the pump context to
+		// unblock the read loop.
 		sid := auth.SessionIDFromCtx(r.Context())
 		if sid != uuid.Nil && hub.Registry() != nil {
 			registry := hub.Registry()
 			closeFn := func(code websocket.StatusCode, reason string) {
-				// Best-effort: ignore the error from Close — the read
-				// pump's exit path also calls Close with StatusNormalClosure
-				// (deferred above), and double-close is harmless under
-				// coder/websocket.
-				_ = conn.Close(code, reason)
+				_ = gateClose.Close(code, reason)
 				cancel()
 			}
 			registry.Register(sid, u.ID, closeFn)
