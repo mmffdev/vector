@@ -2909,18 +2909,20 @@ input[type="reset"] {
 .login-page__sidebar {
   grid-column: 1;
   grid-row: 1 / -1;
-  background: #1a1a1a;
+  background: #ffffff;
+  border-right: 1px solid #e8e0d8;
   padding: clamp(32px, 6vw, 56px) clamp(16px, 4vw, 32px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  gap: clamp(32px, 8vh, 56px);
   position: relative;
 }
 
 .login-page__sidebar-logo {
-  width: clamp(56px, 12vw, 96px);
-  height: clamp(56px, 12vw, 96px);
+  width: clamp(56px, 10vw, 80px);
+  height: clamp(56px, 10vw, 80px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2933,6 +2935,28 @@ input[type="reset"] {
   height: 100%;
   object-fit: contain;
   display: block;
+}
+
+.login-page__sidebar-wordmark {
+  font-family: var(--font-sans);
+  font-size: clamp(18px, 4vw, 28px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #c94444;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.login-page__sidebar-version {
+  font-family: var(--font-sans);
+  font-size: clamp(12px, 2vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #999999;
+  margin-top: auto;
 }
 
 .login-page__content {
