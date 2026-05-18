@@ -52,6 +52,10 @@ interface ShellState {
   isScopeOpen: boolean;
   toggleScopeOpen: () => void;
   closeScopePanel: () => void;
+  /** Dev-only debug bar — toggled by clicking the Vector logo in Rail 1. */
+  isDebugOpen: boolean;
+  toggleDebugOpen: () => void;
+  closeDebugPanel: () => void;
 }
 
 const ShellContext = createContext<ShellState | null>(null);
@@ -224,6 +228,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   // a page in a different section, the override resets to follow the URL.
   const [manualSectionId, setManualSectionId] = useState<string>("");
   const [isScopeOpen, setIsScopeOpen] = useState(false);
+  const [isDebugOpen, setIsDebugOpen] = useState(false);
 
   useEffect(() => {
     if (urlSection) setManualSectionId(urlSection.id);
@@ -243,6 +248,8 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
 
   const toggleScopeOpen = useCallback(() => setIsScopeOpen((v) => !v), []);
   const closeScopePanel = useCallback(() => setIsScopeOpen(false), []);
+  const toggleDebugOpen = useCallback(() => setIsDebugOpen((v) => !v), []);
+  const closeDebugPanel = useCallback(() => setIsDebugOpen(false), []);
 
   return (
     <ShellContext.Provider
@@ -256,6 +263,9 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
         isScopeOpen,
         toggleScopeOpen,
         closeScopePanel,
+        isDebugOpen,
+        toggleDebugOpen,
+        closeDebugPanel,
       }}
     >
       {children}

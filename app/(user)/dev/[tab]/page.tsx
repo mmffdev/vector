@@ -18,6 +18,7 @@ import DevApiV2TestsPanel from "@dev/pages/DevApiV2TestsPanel";
 import DevApiChangelogPanel from "@dev/pages/DevApiChangelogPanel";
 import DevScopePanel from "@dev/pages/DevScopePanel";
 import DevComponentsPanel from "@dev/pages/DevComponentsPanel";
+import DevSecurityAuditsPanel from "@dev/pages/DevSecurityAuditsPanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 const TAB_TITLES: Record<string, string> = {
@@ -34,7 +35,8 @@ const TAB_TITLES: Record<string, string> = {
   icons:         "Icons",
   "api-v2-tests":  "API v2 Tests",
   "api-changelog": "API Changelog",
-  "components":    "Components",
+  "components":       "Components",
+  "security-audits":  "Security Audits",
 };
 
 export default function DevTabPage() {
@@ -63,8 +65,9 @@ export default function DevTabPage() {
         {tab === "api-v2-tests"  && <DevApiV2TestsPanel />}
         {tab === "api-changelog" && <DevApiChangelogPanel />}
         {tab === "scope"         && <DevScopePanel onTick={() => {}} />}
-        {tab === "components"    && <DevComponentsPanel />}
-        {tab === "icons"         && (
+        {tab === "components"      && <DevComponentsPanel />}
+        {tab === "security-audits" && <DevSecurityAuditsPanel />}
+        {tab === "icons"           && (
           <div className="dui-icons-host">
             <UiAppIconbrowser />
           </div>

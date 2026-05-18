@@ -867,3 +867,100 @@
 .scope-group-panel__status--error {
   color: var(--danger-1, #e35);
 }
+
+/* ── Debug panel (dev-only — remove before go-live) ──────────────────── */
+.debug-panel {
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  border-bottom: 1px solid #30363d;
+  flex-shrink: 0;
+}
+
+.debug-panel__Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+}
+
+.debug-panel__Header_Title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #58a6ff;
+}
+
+.debug-panel__Header_Close {
+  background: none;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+  line-height: 1;
+  border-radius: 3px;
+}
+.debug-panel__Header_Close:hover { color: #c9d1d9; background: #21262d; }
+
+.debug-panel__Body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  padding: 4px 0 6px;
+}
+
+.debug-panel__Divider {
+  grid-column: 1 / -1;
+  padding: 4px 12px 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #484f58;
+  border-top: 1px solid #21262d;
+  margin-top: 3px;
+}
+.debug-panel__Divider:first-child { border-top: none; margin-top: 0; }
+
+.debug-panel__Row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 1px 12px;
+}
+.debug-panel__Row.is-warn { background: rgba(210, 64, 64, 0.12); }
+
+.debug-panel__Row_Label {
+  color: #8b949e;
+  flex-shrink: 0;
+  min-width: 180px;
+}
+
+.debug-panel__Row_Value {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+  color: #e6edf3;
+  word-break: break-all;
+  white-space: normal;
+  cursor: pointer;
+  flex: 1;
+  border-radius: 2px;
+}
+.debug-panel__Row_Value:hover { color: #79c0ff; text-decoration: underline; }
+.debug-panel__Row_Value.is-copied { color: #3fb950; }
+.debug-panel__Row.is-warn .debug-panel__Row_Value { color: #f97583; }
+.debug-panel__Row.is-warn .debug-panel__Row_Value:hover { color: #ff9faa; }
+
+/* Logo pressed state */
+.nav-primary-rail-1__brand.is-debug-open { opacity: 0.6; }
+.nav-primary-rail-1__brand { cursor: pointer; background: none; border: none; }

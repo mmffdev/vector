@@ -103,6 +103,57 @@ func Sha256Hex(s string) string {
 	return hex.EncodeToString(h[:])
 }
 
+// ChallengeClaims is the payload for short-lived MFA challenge tokens.
+// kind="mfa_challenge" lets ParseAccessToken callers reject these at
+// protected endpoints — they carry no role/subscription context.
+type ChallengeClaims struct {
+	Kind string `json:"kind"`
+	jwt.RegisteredClaims
+}
+
+// SignChallengeToken mints a 5-minute HS256 token that can only be
+// exchanged at POST /auth/mfa/verify. It carries sub (userID) + kind
+// but no role, subscription_id, or workspace_id — it is not a full
+// access token and must never be accepted as one.
+func SignChallengeToken(userID uuid.UUID) (string, error) {
+	secret := secrets.Get("JWT_ACCESS_SECRET")
+	if secret == "" {
+		return "", errors.New("JWT_ACCESS_SECRET not set")
+	}
+	claims := ChallengeClaims{
+		Kind: "mfa_challenge",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        uuid.NewString(),
+		},
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString([]byte(secret))
+}
+
+// ParseChallengeToken validates and returns the ChallengeClaims for a
+// token minted by SignChallengeToken. Returns an error if the token is
+// expired, malformed, or carries the wrong kind claim.
+func ParseChallengeToken(raw string) (*ChallengeClaims, error) {
+	secret := secrets.Get("JWT_ACCESS_SECRET")
+	claims := &ChallengeClaims{}
+	_, err := jwt.ParseWithClaims(raw, claims, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims.Kind != "mfa_challenge" {
+		return nil, errors.New("token is not an mfa_challenge")
+	}
+	return claims, nil
+}
+
 func parseDurationEnv(key string, def time.Duration) time.Duration {
 	v := os.Getenv(key)
 	if v == "" {

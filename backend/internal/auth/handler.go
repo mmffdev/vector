@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
@@ -33,6 +34,13 @@ type loginReq struct {
 type loginResp struct {
 	AccessToken string      `json:"access_token"`
 	User        userPayload `json:"user"`
+}
+
+// mfaChallengeResp is returned instead of loginResp when the user has
+// MFA enrolled. The frontend must POST /auth/mfa/verify with this token.
+type mfaChallengeResp struct {
+	MFARequired     bool   `json:"mfa_required"`
+	ChallengeToken  string `json:"challenge_token"`
 }
 
 // userPayload mirrors AuthContext.AuthUser on the frontend. Adding the
@@ -95,6 +103,41 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			msg = usermessages.InternalError
 		}
 		httperr.Write(w, r, status, msg)
+		return
+	}
+	if res.MFARequired {
+		// Check for a valid 30-day device-trust cookie — skip the challenge
+		// if this browser was previously trusted on this account.
+		if security.CheckMFARememberCookie(r, res.User.ID.String()) {
+			// Trusted device: issue full session without MFA challenge.
+			if wsID, werr := h.Svc.resolveDefaultWorkspace(r.Context(), res.User.SubscriptionID); werr == nil {
+				res.User.WorkspaceID = wsID
+			}
+			access, aerr := SignAccessToken(res.User)
+			if aerr != nil {
+				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+				return
+			}
+			raw, hash, rerr := GenerateRefreshToken()
+			if rerr != nil {
+				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+				return
+			}
+			refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
+			expAt := time.Now().Add(refreshTTL)
+			if _, err = h.Svc.Pool.Exec(r.Context(), sqlInsertSession,
+				res.User.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(r.UserAgent()),
+			); err != nil {
+				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+				return
+			}
+			h.Svc.Audit.Log(r.Context(), audit.Entry{UserID: &res.User.ID, SubscriptionID: &res.User.SubscriptionID, Action: "auth.login_trusted_device", IPAddress: &ip})
+			setRefreshCookie(w, raw, expAt)
+			issueCSRF(w)
+			writeJSON(w, 200, loginResp{AccessToken: access, User: h.buildUserPayload(r.Context(), res.User)})
+			return
+		}
+		writeJSON(w, 200, mfaChallengeResp{MFARequired: true, ChallengeToken: res.MFAChallengeToken})
 		return
 	}
 	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
@@ -236,6 +279,113 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ── MFA handlers ─────────────────────────────────────────────────────────────
+
+// POST /auth/mfa/verify — exchange a challenge_token + code for a full session.
+// B16.8.3.
+type mfaVerifyReq struct {
+	ChallengeToken string `json:"challenge_token"`
+	Code           string `json:"code"`
+	RememberDevice bool   `json:"remember_device"`
+}
+
+func (h *Handler) MFAVerify(w http.ResponseWriter, r *http.Request) {
+	var req mfaVerifyReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	ip := security.ClientIP(r)
+	res, err := h.Svc.MFAVerifyLogin(r.Context(), req.ChallengeToken, req.Code, ip, r.UserAgent())
+	if err != nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthInvalidCredentials)
+		return
+	}
+	if req.RememberDevice {
+		_ = security.SetMFARememberCookie(w, res.User.ID.String())
+	}
+	setRefreshCookie(w, res.RefreshRaw, res.RefreshExpAt)
+	issueCSRF(w)
+	writeJSON(w, 200, loginResp{AccessToken: res.AccessToken, User: h.buildUserPayload(r.Context(), res.User)})
+}
+
+// POST /auth/mfa/enroll — generate TOTP secret + recovery codes.
+// B16.8.4.
+func (h *Handler) MFAEnroll(w http.ResponseWriter, r *http.Request) {
+	u := UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	uri, codes, err := h.Svc.MFAEnroll(r.Context(), u.ID, u.Email)
+	if err != nil {
+		if errors.Is(err, ErrMFAAlreadyEnrolled) {
+			httperr.Write(w, r, http.StatusConflict, "mfa already enrolled")
+			return
+		}
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"otpauth_uri": uri, "recovery_codes": codes})
+}
+
+// POST /auth/mfa/confirm — validate live TOTP code + flip mfa_enrolled=TRUE.
+// B16.8.4.
+type mfaConfirmReq struct {
+	Code string `json:"code"`
+}
+
+func (h *Handler) MFAConfirm(w http.ResponseWriter, r *http.Request) {
+	u := UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	var req mfaConfirmReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	confirmFn := h.Svc.MFAConfirm(r.Context(), u.ID)
+	if err := confirmFn(req.Code); err != nil {
+		if errors.Is(err, ErrMFAInvalidCode) {
+			httperr.Write(w, r, http.StatusUnauthorized, "mfa_invalid: code is incorrect or expired")
+			return
+		}
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DELETE /auth/mfa — disable MFA after password re-verification.
+// B16.8.4.
+type mfaDisableReq struct {
+	Password string `json:"password"`
+}
+
+func (h *Handler) MFADisable(w http.ResponseWriter, r *http.Request) {
+	u := UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	var req mfaDisableReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	if err := h.Svc.MFADisable(r.Context(), u.ID, req.Password); err != nil {
+		if errors.Is(err, ErrInvalidCredentials) {
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthInvalidCurrentPassword)
+			return
+		}
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

@@ -61,6 +61,11 @@ type User struct {
 	PasswordChangedAt   *time.Time `json:"password_changed_at,omitempty"`
 	FailedLoginCount    int        `json:"-"`
 	LockedUntil         *time.Time `json:"-"`
+	// MFA fields — populated from the four columns added in 003_mfa_scaffold.sql.
+	// MFAEnrolled is false until the user completes POST /auth/mfa/confirm.
+	MFAEnrolled         bool       `json:"-"`
+	MFASecret           *string    `json:"-"`
+	MFARecoveryCodes    []string   `json:"-"`
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
 }

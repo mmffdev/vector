@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-18 (B16.7 backend security audit added)
-**Doc version:** 2.26
+**Last updated:** 2026-05-18 (B16.9 LDAP/AD SSO added to backlog)
+**Doc version:** 2.29
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, B18.7, FE-POR-0002. Everything else parks below.
 >
@@ -305,6 +305,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -518,6 +519,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9c45ef2` (2026-05-17): chore(tech-debt): triage 2026-05-17 — mark 3 resolved, flag DB-002 trigger
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -640,6 +642,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -829,6 +832,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -855,6 +859,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3ad9531` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix RBAC triangle [RF1.4.4.users_roles_rbac]
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
+> Commit `31feaed` (2026-05-18): feat(login): complete redesign — welcome (left) + form (right) layout
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1474,6 +1479,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `9c45ef2` (2026-05-17): chore(tech-debt): triage 2026-05-17 — mark 3 resolved, flag DB-002 trigger
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1513,6 +1519,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d0f31ee` (2026-05-14): refactor(PLA-0048 / RF1.4.2.subscriptions): rename subscription_* + entity_stakeholders [RF1.4.2.subscriptions]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `c9c78c5` (2026-05-16): chore(claude): add /migration skill — DB schema scaffolder
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1765,6 +1772,12 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
+> Commit `ddbca1f` (2026-05-18): feat(login): redesigned login page with quiet sidebar layout
+> Commit `1a5abc5` (2026-05-18): feat(login): pixel-perfect redesigned login matching design mockup
+> Commit `6814e7d` (2026-05-18): feat(login): update sidebar branding — white bg, vertical red VECTOR wordmark
+> Commit `31feaed` (2026-05-18): feat(login): complete redesign — welcome (left) + form (right) layout
+> Commit `7c9af17` (2026-05-18): fix(login): sidebar branding — black V + red ector, proper fill and spacing
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -1870,6 +1883,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2430,6 +2444,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -2572,6 +2587,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -2628,6 +2644,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6747107` (2026-05-16): fix(users): translate legacy role enum to grp_* code before insert [TD-USERS-CREATE-001]
 > Commit `3288391` (2026-05-16): test(td): refresh test fixtures for retired role UUIDs + filed prod-bug [TD-TEST-002]
 > Commit `fca8efb` (2026-05-16): feat(auth): workspace_id JWT claim + auth.User.WorkspaceID + login resolves default workspace [00575]
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -2707,6 +2724,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `481407b` (2026-05-16): feat(001_redesign): share travel-indicator across both nav rails [FE-POR-0003.1]
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
+> Commit `ddbca1f` (2026-05-18): feat(login): redesigned login page with quiet sidebar layout
+> Commit `1a5abc5` (2026-05-18): feat(login): pixel-perfect redesigned login matching design mockup
+> Commit `31feaed` (2026-05-18): feat(login): complete redesign — welcome (left) + form (right) layout
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -2840,6 +2861,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3111,6 +3133,16 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   >
 - **B16.7** Backend security audit — systematic pass of all ~1300 routes against the backend validation checklist (`docs/c_c_backend_validation.md`): tenant_id from session only, user_id/role from session only, every payload resource ID re-verified against DB before write, permission check before every data-modifying operation, cross-tenant lookups return 404 not 403, errors flow through `errors_codes`. Required for SOC 2 / FedRAMP / PCI-DSS procurement audit readiness. Triggered by discovery that `SetActiveScope` was writing an arbitrary node_id without confirming the caller held a grant on that node. `[P1]`
 
+- **B16.8** 🔵 IN FLIGHT Security hardening — full-stack codebase-grounded remediation before first external user. Five phases: **P1** MFA/TOTP (schema exists, zero code — `db/mmff_vector/schema/003_mfa_scaffold.sql`; `github.com/pquerna/otp`), session idle timeout (NIST AAL2 ≤1hr), `session_alive` cookie `HttpOnly`+`Secure` flags, JWT `iss`/`aud` claims. **P2** DOMPurify on `dangerouslySetInnerHTML` (`Header.tsx:197`, `HelpDocRenderer.tsx:139`), CSP `unsafe-inline` → nonce. **P3** Sentinel.tsx workspace/scope desync convergence (plan: `docs/c_sentinel_plan.md`). **P4** Redis-backed rate limiter + account lockout, HIBP breach-password check. **P5** Guard console debug logs, audit-event alerting layer. Standards basis: NIST SP 800-63B-4, OWASP ASVS 4.0, NCSC Cyber Security Design Principles (28 sub-principles), FCA PS21/3, UK GDPR Article 32. Implementation plan: `/Users/rick/.claude/plans/velvet-dreaming-hamming.md`. `[P1]`
+
+  - ✅ ~~**B16.8.1** Backend TOTP core~~ `[P1]` > Commit 2026-05-18: `mfa.go` + `roletypes.User` MFA fields + `auth/sql.go` MFA constants; `go build ./...` clean.
+  - ✅ ~~**B16.8.2** Login partial-auth gate~~ `[P1]` > Commit 2026-05-18: `SignChallengeToken`/`ParseChallengeToken` in `tokens.go`; `LoginResult.MFARequired`+`MFAChallengeToken`; `Login()` forks to challenge on `mfa_enrolled=true`; handler returns `mfa_challenge_resp`.
+  - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
+  - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
+  - ✅ ~~**B16.8.5** Frontend MFA~~ `[P1]` > Commit 2026-05-18: `MFAChallengeError` + `mfaLogin()` in `AuthContext.tsx`; inline TOTP step on `app/login/page.tsx`; `app/(user)/account-settings/mfa/page.tsx` with QR code enrollment, recovery codes, disable flow; `qrcode` npm package added.
+
+- **B16.9** LDAP / Active Directory SSO — enterprise login via LDAP bind auth so NHS, council, and corporate customers can authenticate against their own directory. `auth_method` and `ldap_dn` columns already exist on `users` table as skeleton (`db/mmff_vector/schema`). Implementation: `backend/internal/auth/ldap.go` — bind validation + user sync; login handler forks on `auth_method='ldap'`; admin UI to configure LDAP server URL, base DN, bind account. Test infra: `osixia/openldap` or `bitnami/openldap` Docker container. Longer-term companion: SAML 2.0 / OIDC for cloud IdP federation (Azure AD, Okta, Google Workspace). Enterprise tier feature — not required for first external user but required before any NHS/council pilot. `[P3]`
+
 ---
 
 ## B17. Infrastructure & DevOps
@@ -3125,6 +3157,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   > Added via `035_search_outbox.sql` — `CREATE EXTENSION IF NOT EXISTS vector`; `content_embedding vector(768)` column on `artefacts`
   > Last checked: 2026-05-08
   >
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 - **B17.5** Ollama (`nomic-embed-text`) local embedding model `[P3]`
 - ✅ ~~**B17.6** DB migration toolchain~~
   > `backend/migrate` compiled binary confirmed; `db/artefacts_schema/` SQL files numbered sequentially (001–035)
@@ -3161,6 +3194,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
 > Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
@@ -3488,6 +3522,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -3596,6 +3631,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -3644,6 +3680,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f5ba706` (2026-05-16): feat(artefactpriorities): green — CRUD package + endpoints [00596]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
+> Commit `6814e7d` (2026-05-18): feat(login): update sidebar branding — white bg, vertical red VECTOR wordmark
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -3723,6 +3761,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -3821,6 +3860,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -3937,6 +3977,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -4005,6 +4046,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -4123,6 +4165,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -4218,6 +4261,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -4299,6 +4343,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9df930e` (2026-05-16): feat(priority): green — catalogue context + Priority chip catalogue-driven [00598,00599]
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -4357,6 +4402,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -4438,6 +4484,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -4495,6 +4542,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `586d050` (2026-05-14): chore(PLA-0048): close session scope — TD-RESET-001 fix + scope markers [RF1.4.4][RF1.5][RF1.6]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -4744,6 +4792,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `e41ed3c` (2026-05-17): fix(errorsreport): correct wire-shape assertion in TestReport_UnknownCode (TD-ERRORSREPORT-WIRE-SHAPE)
+> Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`

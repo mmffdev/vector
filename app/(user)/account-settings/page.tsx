@@ -1,27 +1,153 @@
 "use client";
 
-/**
- * /account-settings — Story 00103 future-state restyle.
- *
- * Personal account surface for the signed-in user. Three sections
- * separated by .eyebrow micro-headings:
- *   1. Profile         — display name, email (read-only).
- *   2. Password        — current/new/confirm with .form__hint guidance.
- *   3. Notifications   — switch row per channel (.form__switch + .pill).
- *
- * Vector kit only: PageShell header, .form / .form__row / .form__label /
- * .form__input, single .btn--primary "Save changes" per region. No
- * card surfaces (this page sits on --canvas), no box-shadow, no
- * brand colour. Disabled inputs use --surface-sunken via the
- * standard form rules in globals.css.
- */
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
+import { apiSite as api, ApiError } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
+
+type MFAStep = "idle" | "enrolling" | "active";
+
+interface EnrollResp { otpauth_uri: string; recovery_codes: string[]; }
+
+function MFASection() {
+  const [step, setStep] = useState<MFAStep>("idle");
+  const [otpauthUri, setOtpauthUri] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [confirmCode, setConfirmCode] = useState("");
+  const [disablePassword, setDisablePassword] = useState("");
+  const [showDisable, setShowDisable] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const confirmRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (otpauthUri) {
+      QRCode.toDataURL(otpauthUri, { width: 180, margin: 1 })
+        .then(setQrDataUrl)
+        .catch(() => setQrDataUrl(""));
+    }
+  }, [otpauthUri]);
+
+  async function startEnroll() {
+    setBusy(true);
+    try {
+      const res = await api<EnrollResp>("/auth/mfa/enroll", { method: "POST" });
+      setOtpauthUri(res.otpauth_uri);
+      setRecoveryCodes(res.recovery_codes);
+      setStep("enrolling");
+      setTimeout(() => confirmRef.current?.focus(), 50);
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0;
+      if (status === 409) notify.error("2FA is already enrolled — disable it first to re-enrol.");
+      else notify.error("Could not start enrollment. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmEnroll() {
+    setBusy(true);
+    try {
+      await api("/auth/mfa/confirm", { method: "POST", body: JSON.stringify({ code: confirmCode.trim() }) });
+      setStep("active");
+      notify.success("Two-factor authentication is now active.");
+    } catch {
+      notify.error("Incorrect code — check your app and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disableMFA() {
+    setBusy(true);
+    try {
+      await api("/auth/mfa", { method: "DELETE", body: JSON.stringify({ password: disablePassword }) });
+      setStep("idle");
+      setShowDisable(false);
+      setDisablePassword("");
+      notify.success("Two-factor authentication disabled.");
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0;
+      if (status === 401) notify.error("Incorrect password.");
+      else notify.error("Could not disable 2FA. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (step === "active") {
+    return (
+      <div className="mfa-section">
+        <div className="mfa-section__status">
+          <span className="pill pill--success">Enabled</span>
+          <p className="mfa-section__body">Your account is protected with an authenticator app. You&apos;ll be asked for a code each time you sign in.</p>
+        </div>
+        {!showDisable ? (
+          <button className="btn btn--danger" onClick={() => setShowDisable(true)}>Disable two-factor authentication</button>
+        ) : (
+          <div className="mfa-section__disable-row">
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your current password to confirm"
+              value={disablePassword}
+              onChange={(e) => setDisablePassword(e.target.value)}
+              className="form__input mfa-section__disable-input"
+            />
+            <button className="btn btn--danger" onClick={disableMFA} disabled={busy || !disablePassword}>
+              {busy ? "Disabling…" : "Confirm disable"}
+            </button>
+            <button className="btn btn--ghost" onClick={() => { setShowDisable(false); setDisablePassword(""); }}>Cancel</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (step === "enrolling") {
+    return (
+      <div className="mfa-section">
+        <p className="mfa-section__body">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code it shows to confirm.</p>
+        {qrDataUrl && <img src={qrDataUrl} alt="Authenticator QR code" className="mfa-section__qr" />}
+        <p className="mfa-section__label">Save these recovery codes — each works once if you lose your phone:</p>
+        <div className="mfa-section__recovery-grid">
+          {recoveryCodes.map((c) => <code key={c} className="mfa-section__code">{c}</code>)}
+        </div>
+        <div className="mfa-section__confirm-row">
+          <input
+            ref={confirmRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="000000"
+            value={confirmCode}
+            onChange={(e) => setConfirmCode(e.target.value)}
+            className="form__input form__input--mono mfa-section__code-input"
+          />
+          <button className="btn btn--primary" onClick={confirmEnroll} disabled={busy || confirmCode.trim().length < 6}>
+            {busy ? "Verifying…" : "Activate"}
+          </button>
+          <button className="btn btn--ghost" onClick={() => { setStep("idle"); setOtpauthUri(""); setRecoveryCodes([]); setConfirmCode(""); }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mfa-section">
+      <p className="mfa-section__body">Add a second layer of security. Once enabled, you&apos;ll need your authenticator app every time you sign in — a stolen password alone won&apos;t be enough.</p>
+      <button className="btn btn--primary" onClick={startEnroll} disabled={busy}>
+        {busy ? "Starting…" : "Enable two-factor authentication"}
+      </button>
+    </div>
+  );
+}
 
 export default function AccountSettingsPage() {
   const { full } = usePageTitle();
@@ -116,6 +242,9 @@ export default function AccountSettingsPage() {
           </button>
         </div>
       </form>
+
+      <h3 className="eyebrow">Two-Factor Authentication</h3>
+      <MFASection />
 
       <h3 className="eyebrow">Notifications</h3>
       <div className="form u-row--gap-3">

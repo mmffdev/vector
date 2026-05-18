@@ -90,6 +90,7 @@ func isCSRFExempt(path string) bool {
 		"/auth/refresh",
 		"/auth/password-reset",
 		"/auth/password-reset/confirm",
+		"/auth/mfa/verify",
 		"/addressables/build-reconcile":
 		return true
 	}

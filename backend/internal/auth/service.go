@@ -102,7 +102,9 @@ func (s *Service) FindUserByEmail(ctx context.Context, email string) (*roletypes
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByEmail, email).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
-		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
+		&u.FailedLoginCount, &u.LockedUntil,
+		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,
+		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound
@@ -118,7 +120,9 @@ func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*roletypes.Us
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByID, id).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
-		&u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt,
+		&u.FailedLoginCount, &u.LockedUntil,
+		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,
+		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound
@@ -131,6 +135,11 @@ type LoginResult struct {
 	AccessToken  string
 	RefreshRaw   string
 	RefreshExpAt time.Time
+	// MFA challenge path — set when mfa_enrolled=true.
+	// MFARequired=true means no refresh cookie should be set; the caller
+	// must redirect the user to POST /auth/mfa/verify with MFAChallengeToken.
+	MFARequired        bool
+	MFAChallengeToken  string
 }
 
 func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (*LoginResult, error) {
@@ -155,6 +164,19 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 
 	// Success: reset lockout state, stamp last_login.
 	_, _ = s.Pool.Exec(ctx, sqlClearLockoutAndStampLogin, u.ID)
+
+	// B16.8.2 — MFA challenge gate. Password is valid but enrollment is
+	// complete: return a short-lived challenge token instead of a full
+	// session. The caller must POST /auth/mfa/verify to exchange it.
+	// No refresh cookie, no session row, no OnLogin hooks at this stage.
+	if u.MFAEnrolled {
+		challengeToken, cerr := SignChallengeToken(u.ID)
+		if cerr != nil {
+			return nil, cerr
+		}
+		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_challenge_issued", IPAddress: &ip})
+		return &LoginResult{User: u, MFARequired: true, MFAChallengeToken: challengeToken}, nil
+	}
 
 	// PLA-0053 / story 00575: attach the user's first live workspace
 	// to the JWT claim. Failure (no workspaces yet, DB error) is
@@ -193,6 +215,55 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua string) (
 		h(ctx, u)
 	}
 
+	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
+}
+
+// MFAVerifyLogin exchanges a challenge token + TOTP/recovery code for a
+// full LoginResult (access token + refresh session). This is the second
+// factor of the two-step login — the first factor (password) was validated
+// by Login(), which emitted the challenge token.
+func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, ua string) (*LoginResult, error) {
+	claims, err := ParseChallengeToken(challengeToken)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+	u, err := s.FindUserByID(ctx, userID)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+	if !u.MFAEnrolled {
+		return nil, ErrMFANotEnrolled
+	}
+	if err := s.MFAVerifyCode(ctx, u, code); err != nil {
+		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_verify_failed", IPAddress: &ip})
+		return nil, ErrMFAInvalidCode
+	}
+
+	// MFA passed — issue full session (mirrors the non-MFA Login tail).
+	if wsID, werr := s.resolveDefaultWorkspace(ctx, u.SubscriptionID); werr == nil {
+		u.WorkspaceID = wsID
+	}
+	access, err := SignAccessToken(u)
+	if err != nil {
+		return nil, err
+	}
+	raw, hash, err := GenerateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+	refreshTTL := parseDurationEnv("JWT_REFRESH_TTL", 168*time.Hour)
+	expAt := time.Now().Add(refreshTTL)
+	if _, err = s.Pool.Exec(ctx, sqlInsertSession, u.ID, hash, expAt, nilIfEmpty(ip), nilIfEmpty(ua)); err != nil {
+		return nil, err
+	}
+	s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_verify_success", IPAddress: &ip})
+	for _, h := range s.OnLogin {
+		h(ctx, u)
+	}
 	return &LoginResult{User: u, AccessToken: access, RefreshRaw: raw, RefreshExpAt: expAt}, nil
 }
 

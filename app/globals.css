@@ -2911,24 +2911,24 @@ input[type="reset"] {
   grid-row: 1 / -1;
   background: #ffffff;
   border-right: 1px solid #e8e0d8;
-  padding: 50px;
+  padding: 40px 30px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 0;
   position: relative;
 }
 
 .login-page__sidebar-logo {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
-  margin-bottom: 40px;
+  z-index: 2;
 }
 
 .login-page__sidebar-logo img {
@@ -2940,19 +2940,20 @@ input[type="reset"] {
 
 .login-page__sidebar-wordmark {
   font-family: var(--font-sans);
-  font-size: 56px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: clamp(120px, 35vh, 280px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
   writing-mode: vertical-rl;
-  text-orientation: mixed;
   transform: rotate(180deg);
-  line-height: 1;
-  text-align: center;
-  flex: 1;
+  line-height: 0.85;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  flex: 1;
   word-spacing: 9999px;
+  text-align: center;
+  margin: 20px 0;
 }
 
 .login-page__sidebar-wordmark-v {
@@ -2965,11 +2966,13 @@ input[type="reset"] {
 
 .login-page__sidebar-version {
   font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: #999999;
-  margin-top: 40px;
+  margin-top: auto;
+  padding-top: 20px;
 }
 
 .login-page__content {

@@ -811,6 +811,17 @@ func main() {
 			// auth+fresh-password gates already on this group apply.
 			r.Post("/switch-workspace", authH.SwitchWorkspace)
 		})
+
+		// B16.8.3 — MFA verify (unauthenticated — accepts challenge_token)
+		r.With(httprate.LimitByIP(10, time.Minute)).Post("/mfa/verify", authH.MFAVerify)
+
+		// B16.8.4 — MFA management (requires full authentication)
+		r.Group(func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Post("/mfa/enroll", authH.MFAEnroll)
+			r.Post("/mfa/confirm", authH.MFAConfirm)
+			r.Delete("/mfa", authH.MFADisable)
+		})
 	})
 
 	// /me

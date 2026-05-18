@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-type DevTab = "setup" | "shortcuts" | "reports" | "research" | "operations" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog" | "api-v2-tests" | "api-changelog" | "scope";
+type DevTab = "setup" | "shortcuts" | "reports" | "research" | "operations" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog" | "api-v2-tests" | "api-changelog" | "scope" | "security-audits";
 
 interface DevTabContextValue {
   activeTab: DevTab;
@@ -21,6 +21,7 @@ const OPERATIONS_STORAGE_KEY = "dev-setup-open-operations";
 const VALID_TABS = new Set<DevTab>([
   "setup", "shortcuts", "reports", "research", "operations", "icons",
   "plans", "page-help", "retros", "ui-catalog", "api-v2-tests", "api-changelog", "scope",
+  "security-audits",
 ]);
 
 function tabFromPath(pathname: string): DevTab {

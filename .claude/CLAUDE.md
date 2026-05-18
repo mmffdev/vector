@@ -95,6 +95,8 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Samantha SDK — Fields** → [`docs/c_samantha_sdk_fields.md`](../docs/c_samantha_sdk_fields.md) — field rendering/schema/value surface.
 - **Retro index** → [`docs/c_retro_index.md`](../docs/c_retro_index.md) — `RETRO-NNN` counter; `<r>` writes here.
 - **Secrets audit** → [`docs/c_c_secrets_audit.md`](../docs/c_c_secrets_audit.md) — `os.Getenv` sensitive-key inventory.
+- **`<makeskill>` skill** → [`.claude/skills/makeskill/SKILL.md`](skills/makeskill/SKILL.md) — meta-skill: turns a chat-statement brief + `-<name>[-<scope>]` flags into a new audit/report skill wired to the canonical R### → `dev/research/` pipeline.
+- **`<codebase>` skill** → [`.claude/skills/codebase/SKILL.md`](skills/codebase/SKILL.md) — full 7-dimension codebase quality audit; writes next sequential `R###` into `dev/research/` (Dev → Research tab); one-shot, no separate report step.
 - **Codebase file index** → [`.claude/c_file_index.md`](c_file_index.md) — auto-generated map of curated source dirs; consult before `<search>`.
 - **Commands & skills index** → [`.claude/
 c_tools_index.md`](c_tools_index.md) — load for shortcuts not listed above.

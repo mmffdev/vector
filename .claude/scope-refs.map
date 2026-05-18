@@ -182,3 +182,10 @@ RF1.4	naming sweep package rename table rename route rename plural REST Phase 4
 RF1.5	cross-DB writer hardening crossdb_test partial-failure Adopt MasterReset CreateWorkItem Ack Report Phase 5
 RF1.6	documentation pass c_c_db_routing c_schema c_c_naming_conventions CLAUDE.md index Phase 6
 B16.7	backend security audit routes validation checklist tenant session permission write cross-tenant errors_codes procurement audit
+B16.8	security hardening MFA TOTP session idle timeout cookie flags JWT claims DOMPurify dangerouslySetInnerHTML CSP unsafe-inline Sentinel workspace scope desync Redis rate limiter HIBP breach password console logs audit alerting NIST OWASP NCSC FCA external user
+B16.8.1	TOTP core mfa.go GenerateTOTPSecret ValidateTOTPCode GenerateRecoveryCodes UseRecoveryCode roletypes User MFAEnrolled MFASecret pquerna otp sql.go
+B16.8.2	login partial-auth mfa_challenge JWT challenge_token MFARequired LoginResult mfa_enrolled service.go handler.go
+B16.8.3	mfa verify endpoint challenge_token totp_code recovery_code mfa_invalid refresh cookie access_token
+B16.8.4	mfa enroll confirm disable otpauth_uri recovery_codes mfa_enrolled_at management endpoints
+B16.8.5	frontend mfa login challenge TOTP input settings mfa page QR code qrcode enrollment disable
+B16.9	ldap active directory ldap_dn auth_method bind enterprise sso saml oidc osixia bitnami openldap

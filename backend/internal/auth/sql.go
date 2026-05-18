@@ -38,22 +38,26 @@ const sqlSelectRoleByID = `
 // ── user hydration (FindUserByEmail, FindUserByID) ──────────────────────────
 
 // sqlSelectUserByEmail returns the full user row for a given email.
-// Used by Login + RequestPasswordReset. PLA-0049: includes role_id so
-// the hydrated User carries the UUID source-of-truth alongside the
-// dual-read enum role string.
+// Used by Login + RequestPasswordReset. Includes MFA columns added in
+// 003_mfa_scaffold.sql.
 const sqlSelectUserByEmail = `
 		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until, created_at, updated_at
+		       failed_login_count, locked_until,
+		       mfa_enrolled, mfa_secret, mfa_recovery_codes,
+		       created_at, updated_at
 		FROM users WHERE email = $1
 	`
 
 // sqlSelectUserByID returns the full user row for a given UUID. Used
 // by Refresh / ConfirmPasswordReset / ChangePassword post-token-validation.
+// Includes MFA columns added in 003_mfa_scaffold.sql.
 const sqlSelectUserByID = `
 		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until, created_at, updated_at
+		       failed_login_count, locked_until,
+		       mfa_enrolled, mfa_secret, mfa_recovery_codes,
+		       created_at, updated_at
 		FROM users WHERE id = $1
 	`
 
@@ -231,4 +235,49 @@ const sqlAssertWorkspaceMemberLive = `
 		   AND ws.id              = $2::uuid
 		   AND ws.archived_at IS NULL
 		 LIMIT 1
+	`
+
+// ── MFA (003_mfa_scaffold.sql columns) ──────────────────────────────────────
+
+// sqlStoreMFASecretAndRecoveries writes the TOTP secret and hashed recovery
+// codes during enrollment (before confirm). mfa_enrolled stays FALSE until
+// sqlConfirmMFAEnrollment.
+const sqlStoreMFASecretAndRecoveries = `
+		UPDATE users SET mfa_secret = $1, mfa_recovery_codes = $2 WHERE id = $3
+	`
+
+// sqlStoreMFASecret writes the TOTP secret during enrollment (before
+// the user has confirmed with a live code). mfa_enrolled stays FALSE
+// until sqlConfirmMFAEnrollment.
+const sqlStoreMFASecret = `
+		UPDATE users SET mfa_secret = $1 WHERE id = $2
+	`
+
+// sqlConfirmMFAEnrollment flips mfa_enrolled=TRUE, stamps
+// mfa_enrolled_at, and writes the bcrypt-hashed recovery codes.
+// Called by MFAConfirm after the user proves a valid TOTP code.
+const sqlConfirmMFAEnrollment = `
+		UPDATE users
+		   SET mfa_enrolled       = TRUE,
+		       mfa_enrolled_at    = NOW(),
+		       mfa_recovery_codes = $1
+		 WHERE id = $2
+	`
+
+// sqlUpdateMFARecoveryCodes rewrites the recovery-codes array after a
+// code has been consumed (UseRecoveryCode replaces the full array with
+// the spent slot zeroed out).
+const sqlUpdateMFARecoveryCodes = `
+		UPDATE users SET mfa_recovery_codes = $1 WHERE id = $2
+	`
+
+// sqlDisableMFA clears all four MFA columns, returning the user to the
+// unenrolled state. Called by MFADisable after password re-verification.
+const sqlDisableMFA = `
+		UPDATE users
+		   SET mfa_enrolled       = FALSE,
+		       mfa_secret         = NULL,
+		       mfa_enrolled_at    = NULL,
+		       mfa_recovery_codes = NULL
+		 WHERE id = $1
 	`

@@ -11,7 +11,7 @@ import ProfilePillStack from "./nav_primary_rail_1_NavProfilePillStack";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 
 export default function IconRail() {
-  const { sections, activeSectionId, setActiveSectionId, isScopeOpen, toggleScopeOpen } = useShell();
+  const { sections, activeSectionId, setActiveSectionId, isScopeOpen, toggleScopeOpen, isDebugOpen, toggleDebugOpen } = useShell();
   const { user } = useAuth();
   const router = useRouter();
   const accountActive = activeSectionId === ACCOUNT_SECTION_ID;
@@ -26,18 +26,20 @@ export default function IconRail() {
 
   return (
     <nav id="nav-primary-rail-1" className="nav-primary-rail-1" aria-label="Primary navigation rail">
-      <Link
+      <button
         id="nav-primary-rail-1__brand"
-        href="/dev"
-        className="nav-primary-rail-1__brand"
-        aria-label="Vector home (dev)"
+        type="button"
+        className={`nav-primary-rail-1__brand${isDebugOpen ? " is-debug-open" : ""}`}
+        aria-label="Toggle debug panel"
+        aria-pressed={isDebugOpen}
+        onClick={toggleDebugOpen}
       >
         <img
           src="/logo-vector.png"
           alt="Vector"
           className="nav-primary-rail-1__brand_logo"
         />
-      </Link>
+      </button>
 
       <div id="nav-primary-rail-1__ProfileStack" className="nav-primary-rail-1__ProfileStack">
         <ProfilePillStack />

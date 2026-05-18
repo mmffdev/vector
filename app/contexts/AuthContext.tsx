@@ -41,6 +41,23 @@ interface LoginResp {
   user: AuthUser;
 }
 
+interface MFAChallengeResp {
+  mfa_required: true;
+  challenge_token: string;
+}
+
+// Thrown by login() when the backend requires a TOTP second factor.
+// The login page catches this, stores challenge_token in state, and
+// renders the inline TOTP input. Call mfaLogin() to complete the flow.
+export class MFAChallengeError extends Error {
+  readonly challengeToken: string;
+  constructor(token: string) {
+    super("mfa_challenge");
+    this.name = "MFAChallengeError";
+    this.challengeToken = token;
+  }
+}
+
 interface AuthState {
   user: AuthUser | null;
   role: Role | null;
@@ -48,6 +65,10 @@ interface AuthState {
   permissions: Set<string>;
   hasPermission: (code: string) => boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
+  // mfaLogin exchanges a challenge_token (from MFAChallengeError) + TOTP
+  // code for a full session. Pass rememberDevice=true to set a 30-day
+  // device-trust cookie so future logins on this browser skip MFA.
+  mfaLogin: (challengeToken: string, code: string, rememberDevice?: boolean) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   // PLA-0053 / story 00576.5 — POST /auth/switch-workspace re-mints
@@ -156,9 +177,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await apiSite<LoginResp>("/auth/login", {
+      const res = await apiSite<LoginResp | MFAChallengeResp>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
+        skipAuth: true,
+      });
+      if ("mfa_required" in res && res.mfa_required) {
+        throw new MFAChallengeError(res.challenge_token);
+      }
+      applyLogin(res as LoginResp);
+      return (res as LoginResp).user;
+    },
+    [applyLogin]
+  );
+
+  const mfaLogin = useCallback(
+    async (challengeToken: string, code: string, rememberDevice = false) => {
+      const res = await apiSite<LoginResp>("/auth/mfa/verify", {
+        method: "POST",
+        body: JSON.stringify({ challenge_token: challengeToken, code, remember_device: rememberDevice }),
         skipAuth: true,
       });
       applyLogin(res);
@@ -213,7 +250,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const role = user?.role ?? null;
 
   return (
-    <Ctx.Provider value={{ user, role, loading, permissions, hasPermission, login, logout, refresh, switchWorkspace, setUser }}>
+    <Ctx.Provider value={{ user, role, loading, permissions, hasPermission, login, mfaLogin, logout, refresh, switchWorkspace, setUser }}>
       {children}
     </Ctx.Provider>
   );

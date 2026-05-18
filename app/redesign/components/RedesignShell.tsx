@@ -7,9 +7,10 @@ import IconRail from "./nav_primary_rail_1";
 import SectionFlyout, { ScopeFlyout2 } from "./nav_primary_rail_2";
 import AccountFlyout from "./AccountFlyout";
 import RedesignTopBar from "./RedesignTopBar";
+import DebugPanel from "./DebugPanel";
 
 function ShellBody({ children }: { children: React.ReactNode }) {
-  const { isAccountActive, isScopeOpen } = useShell();
+  const { isAccountActive, isScopeOpen, isDebugOpen } = useShell();
 
   function rail2() {
     if (isScopeOpen) return <ScopeFlyout2 />;
@@ -24,6 +25,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
       <main className="rd-shell__main">
         <ViewportSlot kind="header"><RedesignTopBar /></ViewportSlot>
         <ViewportSlot kind="app">
+          {isDebugOpen && <DebugPanel />}
           <div className="rd-shell__main-body">{children}</div>
         </ViewportSlot>
       </main>

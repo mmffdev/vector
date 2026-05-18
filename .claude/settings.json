@@ -94,7 +94,33 @@
       "mcp__github__get_label",
       "mcp__github__create_or_update_file",
       "Bash(mkdir -p \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/skills/treelist\")",
-      "Edit(/.claude/skills/treelist/**)"
+      "Edit(/.claude/skills/treelist/**)",
+      "Bash(echo \"B16.7\tbackend security audit routes validation checklist tenant session permission write cross-tenant errors_codes procurement audit\" >> \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/scope-refs.map\")",
+      "WebFetch(domain:pages.nist.gov)",
+      "WebFetch(domain:cheatsheetseries.owasp.org)",
+      "WebFetch(domain:csrc.nist.gov)",
+      "WebFetch(domain:www.cisa.gov)",
+      "WebFetch(domain:www.ncsc.gov.uk)",
+      "WebFetch(domain:www.pcisecuritystandards.org)",
+      "WebFetch(domain:www.fedramp.gov)",
+      "WebFetch(domain:www.aicpa-cima.com)",
+      "WebFetch(domain:nvlpubs.nist.gov)",
+      "WebFetch(domain:doi.org)",
+      "WebFetch(domain:www.iso.org)",
+      "WebFetch(domain:listings.pcisecuritystandards.org)",
+      "WebFetch(domain:docs-prv.pcisecuritystandards.org)",
+      "Skill(migration)",
+      "Skill(migration:*)",
+      "WebFetch(domain:ico.org.uk)",
+      "WebFetch(domain:www.fca.org.uk)",
+      "WebFetch(domain:www.bankofengland.co.uk)",
+      "Bash(mkdir -p \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/skills/sec\")",
+      "Edit(/.claude/skills/sec/**)",
+      "Skill(sec)",
+      "Skill(sec:*)",
+      "Bash(echo \"B16.8\tsecurity hardening MFA TOTP session idle timeout cookie flags JWT claims DOMPurify dangerouslySetInnerHTML CSP unsafe-inline Sentinel workspace scope desync Redis rate limiter HIBP breach password console logs audit alerting NIST OWASP NCSC FCA external user\" >> \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/scope-refs.map\")",
+      "Bash(echo \"B16.9\tldap active directory ldap_dn auth_method bind enterprise sso saml oidc osixia bitnami openldap\" >> \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/scope-refs.map\")",
+      "mcp__playwright__browser_resize"
     ],
     "additionalDirectories": [
       "/Users/rick/.claude",
@@ -161,6 +187,16 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-edit-lint.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/shortcuts-staleness-check.sh\"",
+            "async": true
           }
         ]
       }
@@ -267,7 +303,7 @@
     "sourcegraph@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": false,
     "ralph-loop@claude-plugins-official": false,
-    "code-simplifier@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true
   }

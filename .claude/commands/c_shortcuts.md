@@ -1,14 +1,19 @@
 # `<?>` — shortcuts reference
 
-Opens `dev/shortcuts.html` in the default browser — a formatted table of every Claude Code shortcut registered in this project, with descriptions and flag states.
+Opens the Dev → Shortcuts page in the browser (or the static `dev/shortcuts.html` mirror) — a formatted table of every Claude Code shortcut registered in this project, with descriptions and flag states.
 
-**File:** `dev/shortcuts.html`
+**Two render targets (both must be kept in sync):**
+
+| Target | Path | Role |
+|---|---|---|
+| Live UI | [`dev/pages/DevShortcutsPanel.tsx`](../../dev/pages/DevShortcutsPanel.tsx) | Source of truth — rendered at `/dev/shortcuts` inside the running Next.js app (auth-gated) |
+| Static mirror | [`dev/shortcuts.html`](../../dev/shortcuts.html) | Standalone HTML, openable directly in a browser without the app running |
 
 ## Syntax
 
 ```
-<?>        Open shortcuts.html in the browser
-<?> -u     Rescan all command + skill docs, regenerate shortcuts.html, then open it
+<?>        Open the live Dev → Shortcuts page in the browser
+<?> -u     Rescan all command + skill docs, regenerate BOTH render targets, then open
 ```
 
 ---
@@ -16,22 +21,39 @@ Opens `dev/shortcuts.html` in the default browser — a formatted table of every
 ## Default (no flags) — open
 
 ```bash
-open "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/dev/shortcuts.html"
+open "http://localhost:5101/dev/shortcuts"
 ```
 
-If the file does not exist, run the `-u` procedure to generate it first.
+If the Next dev server isn't running (`<services>` to check), fall back to the static mirror:
+
+```bash
+open "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/dev/shortcuts.html"
+```
 
 ---
 
 ## `-u` — update and open
 
-Rescan all registered shortcut sources, regenerate `dev/shortcuts.html`, then open it.
+Rescan all registered shortcut sources, regenerate **BOTH** render targets, then open the live page.
 
 ### Sources to scan (in order)
 
 1. `.claude/commands/c_*.md` — each file's `# \`<tag>\`` title line = shortcut tag; description in the doc body; flags documented in its `## Flags` or flag sub-sections.
 2. `.claude/skills/*/SKILL.md` — each skill's `# /skill-name` or `# \`<tag>\`` title.
 3. `.claude/CLAUDE.md` — use as the authoritative pointer list to confirm nothing is missed.
+
+### Skip list (internal/protocol files — NOT user-facing shortcuts)
+
+These are helpers called by other shortcuts but never invoked directly. Do NOT include them on the page:
+
+- `.claude/skills/setup-matt-pocock-skills/SKILL.md`
+- `.claude/commands/c_addpaper-stories.md`
+- `.claude/commands/c_research-paper-format.md`
+- `.claude/commands/c_write-research-paper.md`
+- `.claude/commands/c_research.md` (protocol detail for `/research` skill)
+- `.claude/commands/c_retro.md` (protocol detail for `<r>` skill)
+
+The hook at [`.claude/hooks/shortcuts-staleness-check.sh`](../hooks/shortcuts-staleness-check.sh) maintains the same list — keep them in sync.
 
 ### Procedure
 
@@ -41,15 +63,17 @@ Rescan all registered shortcut sources, regenerate `dev/shortcuts.html`, then op
    - **Summary** — first one-sentence description
    - **Flags** — all flags listed (pill items for the table)
    - **Flag notes** — one-line explanation per flag
-3. Group shortcuts by category (Session & Navigation, Dev Services, Database, Credentials, Backlog & Stories, Scaffolding, Documentation).
-4. Write a new `dev/shortcuts.html` using the same HTML/CSS template as the existing file. Preserve the exact template structure — only replace the `<tbody>` content and the `Generated:` date in header + footer.
-5. Open the file:
+3. Group shortcuts by category. The current category set is:
+   `Session & Navigation`, `Dev Services`, `Database`, `Credentials & Tests`, `Backlog, Scope & Stories`, `Scaffolding`, `Code Quality & Audits`, `Search & Navigation`, `Documentation & Research`, `Issue Tracker (Matt Pocock skills)`, `Collaboration`, `Content`.
+4. **Update `dev/pages/DevShortcutsPanel.tsx`** — replace the `DATA: Category[]` array (typically lines ~20–~XXX). Keep the render code and `Panel` wrapper below it untouched. Use the existing `Shortcut` / `Category` / `Flag` types — no new fields.
+5. **Update `dev/shortcuts.html`** — replace the `<tbody>` content and update the `Generated:` date in header + footer. Preserve the exact CSS/template structure.
+6. Open the live page:
 
 ```bash
-open "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/dev/shortcuts.html"
+open "http://localhost:5101/dev/shortcuts"
 ```
 
-6. Report: `Shortcuts page updated — N shortcuts across M categories. Opened in browser.`
+7. Report: `Shortcuts page updated — N shortcuts across M categories. Both render targets in sync.`
 
 ---
 
