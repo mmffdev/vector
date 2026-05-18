@@ -1,0 +1,103 @@
+version: "3.9"
+
+# vector-dev — Docker Swarm stack for the dev Postgres tier and supporting UIs.
+# Lives on host vector-dev-pg (77.68.33.216). Deploy / re-deploy with:
+#
+#   docker stack deploy -c vector-dev-stack.yml vector-dev
+#
+# Captured from the live service spec on 2026-05-18. See README.md for the
+# discovery procedure (in case anyone needs to re-sync this file with a future
+# out-of-band `docker service update`).
+
+services:
+
+  # --- Postgres (pgvector) -------------------------------------------------
+  # Image is pinned by digest to match what's running today. Bump deliberately
+  # — never use a floating tag here; pgdata format and migration drift depend
+  # on a known-good binary.
+  #
+  # Args enable pg_stat_statements (installed 2026-05-18). If you change these,
+  # update docs/c_sql_cookbook.md (performance / pg_stat_statements section).
+  postgres:
+    image: pgvector/pgvector@sha256:a132765ec351c65111b5b675928a3a0515a466a40f97277329db8b8209ad8bc9
+    command:
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.max=10000"
+      - "-c"
+      - "pg_stat_statements.track=all"
+    environment:
+      POSTGRES_DB: mmff_vector
+      POSTGRES_USER: mmff_dev
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    secrets:
+      - source: postgres_password
+        target: postgres_password
+        uid: "0"
+        gid: "0"
+        mode: 0444
+    ports:
+      - target: 5432
+        published: 5432
+        protocol: tcp
+        mode: ingress
+    deploy:
+      replicas: 1
+
+  # --- Adminer (DB UI) ----------------------------------------------------
+  # Reached over the SSH tunnel — bound to port 8085 on the host. The
+  # `adminer:latest` tag matches the live spec; pin to a digest if procurement
+  # ever asks (no functional reason today).
+  adminer:
+    image: adminer:latest
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - target: 8080
+        published: 8085
+        protocol: tcp
+        mode: ingress
+    deploy:
+      replicas: 1
+
+  # --- Homepage (internal landing page) -----------------------------------
+  # Config lives on the host bind-mount at /opt/vector-dev/homepage-config —
+  # NOT in this repo. Treat the bind path as ops-owned; document changes
+  # in this stack file's git history.
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: "localhost:7575,127.0.0.1:7575"
+    volumes:
+      - type: bind
+        source: /opt/vector-dev/homepage-config
+        target: /app/config
+    ports:
+      - target: 3000
+        published: 7575
+        protocol: tcp
+        mode: ingress
+    deploy:
+      replicas: 1
+
+# --- Volumes ---------------------------------------------------------------
+# pgdata is the persistent Postgres data dir. NEVER delete this volume; it is
+# the source of truth for every dev DB (mmff_vector, vector_artefacts,
+# mmff_library). Take a backup via <backupsql> before any volume-touching op.
+volumes:
+  pgdata:
+
+# --- Secrets ---------------------------------------------------------------
+# The postgres_password secret is managed out-of-band (pre-dates this stack
+# file) and is marked `external: true`. To rotate:
+#   echo -n "<newpassword>" | docker secret create postgres_password_v2 -
+#   <update this file to reference postgres_password_v2>
+#   docker stack deploy -c vector-dev-stack.yml vector-dev
+#   docker secret rm postgres_password
+# Then rotate the password in backend/.env.dev and restart the backend.
+secrets:
+  postgres_password:
+    external: true

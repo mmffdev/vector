@@ -81,6 +81,90 @@ _no entries yet_
 
 ---
 
+## performance / pg_stat_statements (any DB)
+
+### Top N slow queries by total time
+**DB:** any (each DB has its own `pg_stat_statements` view — counts are per-DB; on dev installed 2026-05-18 via swarm service args, `shared_preload_libraries=pg_stat_statements`, `track=all`, `max=10000`)
+**Use when:** "what's actually slow?" — first pass on any perf investigation. Total time = `calls × mean_exec_time`, so this catches both single-slow-query and death-by-1000-cuts (N+1) patterns the per-request log can't see.
+**Gotcha:** PG16 column names are `total_exec_time` / `mean_exec_time` (not `total_time` / `mean_time` — that was PG12 and earlier; copy-paste hazard). Query text is normalised — params replaced with `$1`, `$2`, etc. Backend `pgx` prepared statements show up as parameterised. Reset with `SELECT pg_stat_statements_reset();` after a fix to verify improvement; reset is per-DB.
+```sql
+SELECT calls,
+       round(total_exec_time::numeric, 1)  AS total_ms,
+       round(mean_exec_time::numeric, 2)   AS mean_ms,
+       round(stddev_exec_time::numeric, 2) AS stddev_ms,
+       rows,
+       left(query, 120)                    AS query
+  FROM pg_stat_statements
+ WHERE query NOT LIKE 'SELECT pg_stat_statements%'
+   AND query NOT LIKE 'CREATE EXTENSION%'
+ ORDER BY total_exec_time DESC
+ LIMIT 20;
+```
+
+### Top N queries by call count (find N+1 patterns)
+**DB:** any
+**Use when:** total_exec_time view shows fast queries dominating — those are usually N+1 candidates. A 0.5ms query called 50,000× per page is a bigger problem than one 500ms query called once.
+**Gotcha:** look for queries with high `calls` AND low `mean_exec_time` — that's the N+1 shape. Real slow queries usually have mean > 10ms.
+```sql
+SELECT calls,
+       round(mean_exec_time::numeric, 2)  AS mean_ms,
+       round(total_exec_time::numeric, 1) AS total_ms,
+       left(query, 120)                   AS query
+  FROM pg_stat_statements
+ WHERE query NOT LIKE 'SELECT pg_stat_statements%'
+ ORDER BY calls DESC
+ LIMIT 20;
+```
+
+### Reset stats after a fix
+**DB:** any (per-DB reset)
+**Use when:** you've shipped a query optimisation and want a clean baseline to measure against. Run reset, exercise the feature, re-run the top-N query.
+```sql
+SELECT pg_stat_statements_reset();
+```
+
+---
+
+## performance / bloat (any DB)
+
+### One-shot bloat audit — is pg_repack worth installing?
+**DB:** any (run on each — `mmff_vector`, `vector_artefacts`, `mmff_library`)
+**Use when:** deciding whether table/index bloat is a real problem before reaching for `pg_repack`, `VACUUM FULL`, or `CLUSTER`. Answers "do I have bloat worth the install?" in 30 seconds.
+**Gotcha:** uses `pgstattuple` extension — install with `CREATE EXTENSION IF NOT EXISTS pgstattuple;` (needs superuser). `pgstattuple()` is slow on big tables (full scan); `pgstattuple_approx()` is fast but less accurate — prefer approx for the first sweep. Thresholds: <20% dead-tuple ratio = autovacuum coping; 20-40% = monitor; >40% = pg_repack candidate. Indexes bloat differently — separate query below.
+```sql
+-- Table bloat (fast approximate)
+SELECT schemaname || '.' || relname                     AS table,
+       pg_size_pretty(pg_relation_size(c.oid))          AS size,
+       round((approx.approx_free_percent)::numeric, 1)  AS free_pct,
+       round((approx.dead_tuple_percent)::numeric, 1)   AS dead_pct,
+       approx.approx_tuple_count                        AS live_tuples
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_stat_user_tables s ON s.relid = c.oid,
+       LATERAL pgstattuple_approx(c.oid) approx
+ WHERE c.relkind = 'r'
+   AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+   AND pg_relation_size(c.oid) > 1024 * 1024  -- skip <1MB
+ ORDER BY approx.dead_tuple_percent DESC NULLS LAST
+ LIMIT 20;
+
+-- Index bloat (B-tree only — uses pgstatindex)
+SELECT schemaname || '.' || indexrelname                AS index,
+       pg_size_pretty(pg_relation_size(i.indexrelid))   AS size,
+       round(stat.avg_leaf_density::numeric, 1)         AS leaf_density_pct,
+       stat.leaf_pages,
+       stat.empty_pages
+  FROM pg_stat_user_indexes i
+  JOIN pg_index x ON x.indexrelid = i.indexrelid
+  JOIN pg_class c ON c.oid = i.indexrelid,
+       LATERAL pgstatindex(i.indexrelid::regclass::text) stat
+ WHERE pg_relation_size(i.indexrelid) > 1024 * 1024
+ ORDER BY stat.avg_leaf_density ASC
+ LIMIT 20;
+```
+
+---
+
 ## migrations / schema introspection
 
 ### List the N most recently applied migrations

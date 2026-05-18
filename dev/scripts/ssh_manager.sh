@@ -329,6 +329,42 @@ verify_db() {
   fi
 }
 
+verify_pg_stat_statements() {
+  step "Verify pg_stat_statements preloaded on dev Postgres"
+  if ! has_cmd psql; then
+    warn "psql missing — skipping pg_stat_statements check."
+    return 0
+  fi
+  if ! nc -z localhost "$TUNNEL_PORT" 2>/dev/null; then
+    warn "Tunnel not up — skipping pg_stat_statements check."
+    return 0
+  fi
+  local pw
+  if [ -f "$ENV_LOCAL" ]; then
+    pw="$(grep '^DB_PASSWORD=' "$ENV_LOCAL" | sed -E 's/^DB_PASSWORD=//; s/^"(.*)"$/\1/')"
+  fi
+  pw="${pw:-$DB_PASSWORD_DEFAULT}"
+  # Two checks: (1) the library is in shared_preload_libraries — confirms the
+  # swarm service args survived the last deploy; (2) the extension exists and
+  # the view is queryable. If either fails, infra/swarm/vector-dev-stack.yml
+  # has drifted from the live service spec — see infra/swarm/README.md.
+  local preload
+  preload=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d mmff_vector -tAc "SHOW shared_preload_libraries;" 2>&1) || {
+    err "pg_stat_statements check: SHOW failed: $preload"
+    return 1
+  }
+  if [[ "$preload" != *pg_stat_statements* ]]; then
+    err "pg_stat_statements NOT in shared_preload_libraries (got: '$preload'). Stack spec drifted — see infra/swarm/README.md."
+    return 1
+  fi
+  local probe
+  probe=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d mmff_vector -tAc "SELECT 1 FROM pg_stat_statements LIMIT 1;" 2>&1) || {
+    err "pg_stat_statements view query failed: $probe"
+    return 1
+  }
+  ok "pg_stat_statements preloaded and queryable."
+}
+
 # ---------- main ----------
 
 emit "[INFO] mmff-Ops laptop setup — starting"
@@ -346,6 +382,7 @@ check_tunnel
 check_env_local
 check_dotenv_installed
 verify_db            || true
+verify_pg_stat_statements || true
 
 emit ""
 emit "[INFO] Setup finished."
