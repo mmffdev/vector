@@ -167,6 +167,25 @@ const sqlSelectSuccessorSession = `
 		 WHERE users_sessions_token_hash = $1
 	`
 
+// ── DPoP JTI replay cache (TD-SEC-DPOP-BINDING) ─────────────────────────────
+
+// sqlInsertDPoPJTI records a DPoP-proof JTI as seen. The
+// ON CONFLICT DO NOTHING + xmax inspection lets the caller detect a
+// replay attempt without a separate SELECT round-trip: when xmax=0 the
+// INSERT actually wrote a new row (first time we've seen this jti);
+// any other value means the row already existed (replay → 401).
+const sqlInsertDPoPJTI = `
+		INSERT INTO dpop_jti_cache (jti, expires_at)
+		VALUES ($1, $2)
+		ON CONFLICT (jti) DO NOTHING
+		RETURNING xmax
+	`
+
+// sqlDeleteExpiredDPoPJTIs is the cleanup-cron shape (10-minute
+// goroutine in main.go). Bounded by the partial index on expires_at
+// so it's an index range delete, not a seq scan.
+const sqlDeleteExpiredDPoPJTIs = `DELETE FROM dpop_jti_cache WHERE expires_at <= NOW()`
+
 // ── logout (Logout) ─────────────────────────────────────────────────────────
 
 // sqlRevokeSessionByHashReturningUser revokes the session matching a

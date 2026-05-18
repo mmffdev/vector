@@ -81,6 +81,25 @@ _no entries yet_
 
 ---
 
+## auth / DPoP replay cache (mmff_vector / pool)
+
+### Confirm ON CONFLICT DO NOTHING + RETURNING xmax behaves as jti_cache.go expects
+**DB:** mmff_vector (pool — via tunnel `:5435`)
+**Use when:** verifying the Postgres-backed DPoP replay-cache shape after touching migration 212 or `jti_cache.go`. The `MarkAndCheck` implementation relies on pgx returning `ErrNoRows` from `QueryRow` when `ON CONFLICT DO NOTHING` fires — confirm here that the wire shape matches.
+**Gotcha:** the duplicate insert returns **zero rows** (not a row with non-zero xmax). pgx scans this as `ErrNoRows`, which `jti_cache.go` translates to `ErrJTIReplay`. If a future Postgres version changes this so the conflict path returns a row with `xmax != 0`, the defensive `if xmax != 0` guard in `jti_cache.go` catches it. Verified 2026-05-18 on PG 18.
+```bash
+PGPASSWORD=68H9m2ncJJeKGvwKqQ3zMVzLjF0o4LPi /opt/homebrew/Cellar/libpq/18.3/bin/psql \
+  -h localhost -p 5435 -U mmff_dev -d mmff_vector <<'SQL'
+INSERT INTO dpop_jti_cache (jti, expires_at) VALUES ('probe-1', NOW() + INTERVAL '60 seconds')
+ON CONFLICT (jti) DO NOTHING RETURNING xmax;  -- expect 1 row, xmax=0
+INSERT INTO dpop_jti_cache (jti, expires_at) VALUES ('probe-1', NOW() + INTERVAL '60 seconds')
+ON CONFLICT (jti) DO NOTHING RETURNING xmax;  -- expect 0 rows = replay signal
+DELETE FROM dpop_jti_cache WHERE jti = 'probe-1';
+SQL
+```
+
+---
+
 ## performance / pg_stat_statements (any DB)
 
 ### Top N slow queries by total time

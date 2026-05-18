@@ -50,7 +50,25 @@ type AccessClaims struct {
 	// empty SessionID and middleware's 24h grace path can recognise them.
 	SessionID      string `json:"sid,omitempty"`
 	ForcePwdChange bool   `json:"force_pwd_change"`
+	// Confirmation carries the DPoP key-binding claim per RFC 9449 § 5.
+	// When non-nil, every authed request must present a DPoP proof JWT
+	// whose JWK thumbprint (RFC 7638) equals Confirmation.JKT. Added by
+	// TD-SEC-DPOP-BINDING Phase 1 (2026-05-18). omitempty keeps the
+	// claim absent on Phase 1 + Phase 2 tokens (substrate-only window);
+	// Phase 3 flips SignAccessToken to always emit it, and Phase 6
+	// makes the absence of a binding cause middleware to reject.
+	Confirmation *DPoPConfirmation `json:"cnf,omitempty"`
 	jwt.RegisteredClaims
+}
+
+// DPoPConfirmation is the RFC 9449 § 5 access-token confirmation
+// claim. The single member jkt is the base64url-encoded SHA-256
+// thumbprint of the canonical-JSON public JWK that bound the session
+// at login (RFC 7638). It is the same string stored on
+// users_sessions.users_sessions_dpop_jkt for the issuing session row;
+// equality between the two is checked on refresh.
+type DPoPConfirmation struct {
+	JKT string `json:"jkt"`
 }
 
 // (Removed 2026-05-16 — TD-LIB-001.) A bespoke UnmarshalJSON used to
