@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -73,6 +74,42 @@ func TestAccessClaims_AcceptsSubscriptionIdClaim(t *testing.T) {
 	}
 	if c.SubscriptionID != "00000000-0000-0000-0000-000000000001" {
 		t.Errorf("SubscriptionID decode broken: got %q", c.SubscriptionID)
+	}
+}
+
+// B16.8.11 step 3 — codes.go pins the wire-stable Problem.Code values
+// emitted by RequireAuth for session-state rejections. If anyone renames
+// these (e.g. session_revoked → revoked), every frontend reading
+// problem-details JSON breaks silently. This test fails loudly first.
+func TestSessionProblemCodes_AreWireStable(t *testing.T) {
+	if CodeSessionRevoked != "session_revoked" {
+		t.Errorf("CodeSessionRevoked drifted: got %q, want %q", CodeSessionRevoked, "session_revoked")
+	}
+	if CodeSessionIdleExpired != "session_idle_expired" {
+		t.Errorf("CodeSessionIdleExpired drifted: got %q, want %q", CodeSessionIdleExpired, "session_idle_expired")
+	}
+}
+
+// B16.8.11 step 3 — SessionState shape is the contract between
+// FindUserBySessionID and RequireAuth. Revoked is the instant-kill
+// signal; LastActivityAt drives the idle-timeout comparison
+// (NOW() - LastActivityAt > SESSION_IDLE_TTL). Test pins both fields
+// exist and are the expected types so refactors that drop one trip CI.
+func TestSessionState_HasRequiredFields(t *testing.T) {
+	now := time.Now()
+	st := SessionState{Revoked: true, LastActivityAt: now}
+	if !st.Revoked {
+		t.Error("Revoked field not assignable to true")
+	}
+	if !st.LastActivityAt.Equal(now) {
+		t.Errorf("LastActivityAt round-trip broken: got %v, want %v", st.LastActivityAt, now)
+	}
+	var empty SessionState
+	if empty.Revoked {
+		t.Error("zero-value Revoked should be false")
+	}
+	if !empty.LastActivityAt.IsZero() {
+		t.Errorf("zero-value LastActivityAt should be zero time, got %v", empty.LastActivityAt)
 	}
 }
 

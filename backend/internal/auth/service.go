@@ -130,6 +130,41 @@ func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*roletypes.Us
 	return u, err
 }
 
+// SessionState captures the per-request session signals RequireAuth needs
+// alongside the user row. Revoked = user was signed out from another
+// device or revoked by an admin. LastActivityAt = the timestamp the
+// idle-timeout check compares NOW() against; COALESCE'd from
+// users_sessions_rotated_at (set on every refresh) falling back to
+// users_sessions_created_at for brand-new sessions that haven't rotated
+// yet. B16.8.11 step 3.
+type SessionState struct {
+	Revoked        bool
+	LastActivityAt time.Time
+}
+
+// FindUserBySessionID is the JOIN variant of FindUserByID used by
+// RequireAuth when the access token carries a `sid` claim. Returns
+// ErrNotFound when (id, sid) don't both resolve to a live row — the
+// caller treats that as 401, identical wire shape to an expired token,
+// so an attacker can't distinguish "user gone" from "session detached
+// from user" from "session never existed." B16.8.11 step 3.
+func (s *Service) FindUserBySessionID(ctx context.Context, userID, sessionID uuid.UUID) (*roletypes.User, SessionState, error) {
+	u := &roletypes.User{}
+	var st SessionState
+	err := s.Pool.QueryRow(ctx, sqlSelectUserBySessionID, userID, sessionID).Scan(
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
+		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
+		&u.FailedLoginCount, &u.LockedUntil,
+		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,
+		&u.CreatedAt, &u.UpdatedAt,
+		&st.Revoked, &st.LastActivityAt,
+	)
+	if err == pgx.ErrNoRows {
+		return nil, SessionState{}, ErrNotFound
+	}
+	return u, st, err
+}
+
 type LoginResult struct {
 	User         *roletypes.User
 	AccessToken  string

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/httperr"
@@ -62,10 +63,47 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 			return
 		}
-		u, err := s.FindUserByID(r.Context(), uid)
-		if err != nil || !u.IsActive {
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
-			return
+
+		// B16.8.11 step 3 — when the access token carries a `sid` claim,
+		// the user-row lookup is extended into a JOIN against
+		// users_sessions so per-request revocation and idle-eviction
+		// become first-class. Same number of DB roundtrips as before
+		// (the existing FindUserByID lookup is replaced, not added to).
+		// Tokens minted before step 2 (no sid) fall through to the
+		// legacy FindUserByID path — the 24h grace window that keeps
+		// users signed in across the deploy.
+		var u *roletypes.User
+		if claims.SessionID != "" {
+			sid, perr := uuid.Parse(claims.SessionID)
+			if perr != nil {
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				return
+			}
+			var st SessionState
+			u, st, err = s.FindUserBySessionID(r.Context(), uid, sid)
+			if err != nil || !u.IsActive {
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				return
+			}
+			if st.Revoked {
+				httperr.WriteCoded(w, r, http.StatusUnauthorized, CodeSessionRevoked, usermessages.AuthSessionRevoked)
+				return
+			}
+			idleTTL := parseDurationEnv("SESSION_IDLE_TTL", 30*time.Minute)
+			if time.Since(st.LastActivityAt) > idleTTL {
+				httperr.WriteCoded(w, r, http.StatusUnauthorized, CodeSessionIdleExpired, usermessages.AuthSessionIdleExpired)
+				return
+			}
+		} else {
+			// Legacy / grace-window token: no sid claim. Honour it via
+			// the user-only lookup until the 24h grace expires (after
+			// which the gate to require sid lives in tokens.go's parse
+			// path — out of scope for this commit).
+			u, err = s.FindUserByID(r.Context(), uid)
+			if err != nil || !u.IsActive {
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				return
+			}
 		}
 		// PLA-0053 / story 00575: populate u.WorkspaceID from the JWT
 		// claim. The users table itself has no workspace_id column —

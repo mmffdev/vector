@@ -11,6 +11,11 @@ const (
 	AuthPasswordChangeRequired = "You must change your password before continuing."
 	AuthCSRFInvalid            = "Your session appears invalid. Please refresh the page and try again."
 	AuthInvalidCurrentPassword = "Your current password is incorrect."
+	// Session-state messages — paired with Problem.Code values declared
+	// in `auth/errors.go` (B16.8.11 step 3). Detail strings are what the
+	// user reads; the Code drives frontend routing.
+	AuthSessionRevoked     = "Your session was ended (signed out from another device or revoked by an admin). Please sign in again."
+	AuthSessionIdleExpired = "Your session expired due to inactivity. Please re-enter your password to continue."
 )
 
 // Request

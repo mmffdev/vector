@@ -61,6 +61,31 @@ const sqlSelectUserByID = `
 		FROM users WHERE id = $1
 	`
 
+// sqlSelectUserBySessionID returns the same user columns as
+// sqlSelectUserByID plus the session revoked + rotated_at signals so
+// RequireAuth (B16.8.11 step 3) can per-request reject revoked or
+// idle-expired sessions in a single roundtrip (no extra DB hit beyond
+// what middleware already pays). Joins on users.id = users_sessions_id_user
+// AND filters by users_sessions_id = $2 so the row corresponds to THIS
+// specific session, not any session the user holds. Returns zero rows
+// when the sid is unknown, the session belongs to a different user, or
+// the user row has been deleted — caller treats that as 401 (the same
+// shape an expired access token already produces).
+const sqlSelectUserBySessionID = `
+		SELECT u.id, u.subscription_id, u.email, u.password_hash, u.role, u.role_id, u.is_active, u.last_login,
+		       u.auth_method, u.ldap_dn, u.force_password_change, u.password_changed_at,
+		       u.failed_login_count, u.locked_until,
+		       u.mfa_enrolled, u.mfa_secret, u.mfa_recovery_codes,
+		       u.created_at, u.updated_at,
+		       s.users_sessions_revoked,
+		       COALESCE(s.users_sessions_rotated_at, s.users_sessions_created_at) AS last_activity_at
+		FROM users u
+		JOIN users_sessions s
+		  ON s.users_sessions_id_user = u.id
+		 AND s.users_sessions_id      = $2
+		WHERE u.id = $1
+	`
+
 // ── login lifecycle (Login, recordFailedLogin) ──────────────────────────────
 
 // sqlClearLockoutAndStampLogin resets failed_login_count + locked_until
