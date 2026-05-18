@@ -14991,3 +14991,84 @@ input[type="reset"] {
   line-height: 1;
   font-weight: 500;
 }
+
+/* ── Artefacts shell tab bar ────────────────────────────────────────────────
+   Sticky horizontal tab bar for /workspace-admin/artefacts/*.
+   Lives inside rd-shell__main-body (padding: 30px). Negative margin bleeds
+   out of the body padding so the bar sits flush at the top edge with no gap.
+   Background matches the shell canvas (--surface-sunken). 20px padding-bottom
+   gives the travel indicator breathing room as pages scroll underneath. */
+.artefacts-tab-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--surface-sunken);
+  margin: -30px -30px 0;
+  padding: 0 30px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.artefacts-tab-bar__tabs {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.artefacts-tab-bar__tab {
+  position: relative;
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.artefacts-tab-bar__tab:hover {
+  color: var(--ink);
+}
+
+.artefacts-tab-bar__tab.is-active {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* Horizontal travel indicator — absolutely positioned at the bottom of the
+   tab row. stretch phase bridges old→new (140ms linear); settle phase
+   elastic-contracts onto the target (520ms overshoot bounce). */
+.artefacts-tab-bar__indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.artefacts-tab-bar__indicator--idle {
+  transition: none;
+}
+
+.artefacts-tab-bar__indicator--stretch {
+  transition:
+    left  140ms linear,
+    width 140ms linear;
+}
+
+.artefacts-tab-bar__indicator--settle {
+  transition:
+    left  520ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    width 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artefacts-tab-bar__indicator--stretch,
+  .artefacts-tab-bar__indicator--settle {
+    transition: none;
+  }
+}
