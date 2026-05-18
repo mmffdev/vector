@@ -2,6 +2,9 @@
 // Site/BFF routes (auth, nav, me, roles, admin, workspaces, errors,
 // addressables, page-help, library/releases, custom-pages, user/tab-order)
 // live under /_site (PLA-0039 / B22) — use apiSite() for those.
+
+import { hasActiveKeypair, mintProof } from "./dpop";
+
 const API_ROOT_BASE = process.env.NEXT_PUBLIC_API_INFRA_BASE ?? "http://localhost:5100";
 export const API_SITE_BASE = API_ROOT_BASE + "/_site";
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v1";
@@ -144,8 +147,25 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
   }
 
   const finalPath = withForwardedScope(path, method);
+  const fullURL = base + finalPath;
 
-  const res = await fetch(base + finalPath, {
+  // RFC 9449 DPoP proof (TD-SEC-DPOP-BINDING Phase 2). Minted on
+  // every call when a keypair is active — even when skipAuth is set,
+  // because the login endpoint itself expects an unbound proof so
+  // the backend can stamp the key's thumbprint onto the new session
+  // row. ath is conditional: present when an access token is on
+  // hand, omitted on the pre-token mint path. Phase 2 ships the
+  // header; backend enforcement flips on in Phase 3.
+  if (hasActiveKeypair()) {
+    const proof = await mintProof({
+      htm: method,
+      htu: fullURL,
+      accessToken: opts.skipAuth ? undefined : (_accessToken ?? undefined),
+    });
+    if (proof) headers.set("DPoP", proof);
+  }
+
+  const res = await fetch(fullURL, {
     ...opts,
     headers,
     credentials: "include",

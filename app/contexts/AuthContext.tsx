@@ -6,6 +6,18 @@ import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallba
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 import { triggerScopeReload } from "@/app/contexts/Sentinel";
+// DPoP (RFC 9449) keypair lifecycle. Generated before the initial
+// /auth/login POST so the proof on that request carries the public
+// JWK the backend stamps onto the session row; reparented under the
+// real userId once /auth/login returns; deleted on logout so a
+// following user doesn't inherit a binding. See TD-SEC-DPOP-BINDING.
+import {
+  clearKeypair,
+  DPOP_ANON_KEY,
+  ensureAnyActiveKeypair,
+  ensureKeypair,
+  reparentAnonKeypair,
+} from "@/app/lib/dpop";
 
 // PLA-0007: role is now a structured row from the `roles` table, not an
 // enum. Consumers should branch on permission codes (useHasPermission)
@@ -143,6 +155,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(res.access_token);
     setUser(res.user);
     setSessionCookie();
+    // DPoP: if the request that produced this LoginResp went out
+    // under the anonymous keypair (login mint), reparent the IDB
+    // record under the real userId now. On a refresh response the
+    // record is already under the userId from before, so this is a
+    // no-op. Fire-and-forget — proof minting on subsequent requests
+    // works either way because the in-memory cache holds the same
+    // CryptoKey reference; reparent only changes the IDB key.
+    void reparentAnonKeypair(res.user.id);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -179,12 +199,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       // _bootstrapFlight: deduplicates StrictMode's unmount+remount double-fire
-      // within the same synchronous render cycle.
+      // within the same synchronous render cycle. DPoP: load the
+      // signing keypair from IDB BEFORE the refresh call so the
+      // outgoing request carries a proof. From Phase 3 onward, an
+      // unsigned refresh would 401 immediately.
       if (!_bootstrapFlight) {
-        _bootstrapFlight = refresh().finally(() => {
-          _bootstrapFlight = null;
-          setLoading(false);
-        });
+        _bootstrapFlight = ensureAnyActiveKeypair()
+          .then(() => refresh())
+          .finally(() => {
+            _bootstrapFlight = null;
+            setLoading(false);
+          });
       } else {
         _bootstrapFlight.finally(() => setLoading(false));
       }
@@ -196,6 +221,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
+      // DPoP: mint a fresh anonymous keypair before the request so
+      // the outgoing /auth/login carries a proof. The backend reads
+      // the proof's public-key thumbprint and stamps it onto the new
+      // users_sessions row in Phase 3+; applyLogin re-parents the
+      // record under the real userId once the response arrives.
+      await ensureKeypair(DPOP_ANON_KEY);
       const res = await apiSite<LoginResp | MFAChallengeResp>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
@@ -212,6 +243,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const mfaLogin = useCallback(
     async (challengeToken: string, code: string, rememberDevice = false) => {
+      // DPoP: the anon keypair generated during login() is still
+      // active and signs this MFA verification request too. Backend
+      // will stamp the same thumbprint onto the new session row on
+      // verify success.
+      await ensureKeypair(DPOP_ANON_KEY);
       const res = await apiSite<LoginResp>("/auth/mfa/verify", {
         method: "POST",
         body: JSON.stringify({ challenge_token: challengeToken, code, remember_device: rememberDevice }),
@@ -253,9 +289,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ignore
     }
     if (departingId) {
-      // Purge drafts owned by the signing-out user so they're never
-      // visible if a different user signs in on the same browser.
+      // Purge drafts AND the DPoP signing keypair owned by the
+      // signing-out user so neither is visible if a different user
+      // signs in on the same browser. The keypair clear also wipes
+      // the in-memory cache so the next request mints under a fresh
+      // anon record.
       try { await purgeDraftsFor(departingId); } catch { /* IDB unavailable; ignore */ }
+      try { await clearKeypair(departingId); } catch { /* IDB unavailable; ignore */ }
     }
     setApiToken(null);
     setUser(null);
@@ -289,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (departingId) {
       try { await purgeDraftsFor(departingId); } catch { /* IDB unavailable; ignore */ }
+      try { await clearKeypair(departingId); } catch { /* IDB unavailable; ignore */ }
     }
     setApiToken(null);
     setUser(null);

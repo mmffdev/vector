@@ -647,7 +647,7 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   strings.Split(os.Getenv("FRONTEND_ORIGIN"), ","),
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "X-CSRF-Token", "DPoP"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
