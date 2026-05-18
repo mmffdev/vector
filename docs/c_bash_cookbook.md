@@ -25,7 +25,51 @@ Curated shell commands that worked. Append a new entry any time a non-trivial co
 
 ## Backend / dev server
 
-_no entries yet — e.g. start backend with BACKEND_ENV=dev, tail logs, restart on :5100_
+### Run a side instance of the backend on `:5199` without touching the live `:5100`
+
+**Use when:** verifying a fresh build of `backend/cmd/server` end-to-end (e.g. after an auth change) without restarting the launcher-managed `:5100` process. `:5199` is the convention — clearly out of band from frontend (`:5101`) and backend (`:5100`).
+**Gotcha:** binary is built into `/tmp` so a `git status` doesn't show it; `SERVER_PORT=5199` overrides the `backend/.env.dev` default; `BACKEND_ENV=dev` is required so it picks the dev DB tunnel (`localhost:5435`); background it with `&` and grep `lsof -i :5199` for the LISTEN PID to kill it cleanly. Don't forget to `rm -f /tmp/vector-server-*` after.
+```bash
+cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/backend"
+go build -o /tmp/vector-server-side ./cmd/server
+BACKEND_ENV=dev SERVER_PORT=5199 /tmp/vector-server-side > /tmp/vector-side.log 2>&1 &
+sleep 3 && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5199/healthz
+# … run tests …
+kill "$(lsof -i :5199 -P 2>/dev/null | awk '/LISTEN/ {print $2}')"
+rm -f /tmp/vector-server-side /tmp/vector-side.log
+```
+
+### Decode the payload of a JWT (no signature check) for inspecting claims
+
+**Use when:** verifying a freshly-issued access token carries the expected claims (e.g. confirming `sid` lands in tokens after B16.8.11 step 2). The middle segment of a JWT is base64url-encoded JSON; macOS `base64` is forgiving about a missing `=` but Linux is strict, so pad to length-multiple-of-4.
+**Gotcha:** JWT uses **URL-safe** base64 (`-` and `_` instead of `+` and `/`); `base64 -d` accepts both on macOS but tools like `openssl base64` don't — use `tr -- '-_' '+/'` if you hit decode errors.
+```bash
+TOKEN='<jwt here>'
+PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
+PADDED=$(echo "$PAYLOAD" | awk '{ for(i=length($0)%4; i<4 && i>0; i++) printf "="; print "" }')
+echo "$PAYLOAD$PADDED" | base64 -d 2>/dev/null | python3 -m json.tool
+```
+
+### End-to-end auth smoke test against a running backend (login → decode sid → query users_sessions)
+
+**Use when:** verifying a complete login flow including session-row write (e.g. after B16.8.11 steps 1+2). Uses `claude_3_test@` (gadmin Claude-owned test account) so `claude@` doesn't get touched. Adjust port for live (`:5100`) vs side instance (`:5199`).
+**Gotcha:** login path is `/auth/login` (root mount), **not** `/v1/api/auth/login` — the test-accounts memory line about `/v1/api/` was outdated as of 2026-05-18. The CSRF middleware exempts `/auth/login` so no double-submit token is needed for this call.
+```bash
+PORT=5199  # or 5100 for live
+RESP=$(curl -s -c /tmp/cookies.txt -X POST "http://localhost:$PORT/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"claude_3_test@mmffdev.com","password":"password123!"}')
+TOKEN=$(echo "$RESP" | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+PAYLOAD=$(echo "$TOKEN" | cut -d. -f2); PADDED=$(echo "$PAYLOAD" | awk '{ for(i=length($0)%4; i<4 && i>0; i++) printf "="; print "" }')
+SID=$(echo "$PAYLOAD$PADDED" | base64 -d 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('sid',''))")
+echo "JWT sid: $SID"
+PGPASSWORD=68H9m2ncJJeKGvwKqQ3zMVzLjF0o4LPi /opt/homebrew/Cellar/libpq/18.3/bin/psql \
+  -h localhost -p 5435 -U mmff_dev -d mmff_vector \
+  -c "SELECT users_sessions_id, users_sessions_revoked FROM users_sessions WHERE users_sessions_id = '$SID';"
+# Then test refresh rotation:
+curl -s -b /tmp/cookies.txt -X POST "http://localhost:$PORT/auth/refresh" | python3 -m json.tool
+rm -f /tmp/cookies.txt
+```
 
 ---
 
