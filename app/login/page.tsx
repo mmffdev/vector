@@ -37,6 +37,12 @@ function LoginForm() {
     return raw && /^\/(?![\\/])/.test(raw) && !raw.startsWith("/v2/") ? raw : null;
   });
   const [resetSuccess, setResetSuccess] = useState(false);
+  // B16.8.11 step 4 — read the session-state reason flag set by
+  // hardLogout() in AuthContext when the backend evicted the user mid-
+  // session (revoked or idle-expired). Banner copy mirrors the
+  // backend's usermessages.AuthSession* strings so the user sees the
+  // same explanation here that the API rejection emitted.
+  const [reason, setReason] = useState<string | null>(null);
 
   useEffect(() => {
     // Strip ?redirect= from the address bar without dropping the
@@ -51,6 +57,12 @@ function LoginForm() {
       if (sessionStorage.getItem("vector.reset.success") === "1") {
         sessionStorage.removeItem("vector.reset.success");
         setResetSuccess(true);
+      }
+      // Same read-once pattern for the involuntary-logout reason.
+      const r = sessionStorage.getItem("vector.login.reason");
+      if (r === "session_revoked" || r === "session_idle_expired") {
+        sessionStorage.removeItem("vector.login.reason");
+        setReason(r);
       }
     } catch { /* private mode */ }
   }, [router, search]);
@@ -166,6 +178,17 @@ function LoginForm() {
       {resetSuccess && (
         <div className="login__error login__error--success is-visible" role="status" aria-live="polite">
           Password updated. Sign in with your new password.
+        </div>
+      )}
+
+      {reason === "session_revoked" && (
+        <div className="login__error is-visible" role="status" aria-live="polite">
+          Your session was ended (signed out from another device or revoked by an admin). Please sign in again.
+        </div>
+      )}
+      {reason === "session_idle_expired" && (
+        <div className="login__error is-visible" role="status" aria-live="polite">
+          Your session expired due to inactivity. Please re-enter your password to continue.
         </div>
       )}
 

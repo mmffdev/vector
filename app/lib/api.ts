@@ -12,6 +12,12 @@ let _accessToken: string | null = null;
 let _refreshCallback: (() => Promise<void>) | null = null;
 // Dedup: only one refresh flight at a time; concurrent 401s share the same promise.
 let _refreshPromise: Promise<void> | null = null;
+// Registered by AuthContext for terminal 401s where silent refresh
+// would be useless (session_revoked / session_idle_expired). api.ts
+// invokes this on detection so AuthContext owns the full logout side
+// effects (clear token + clear user state + hit /auth/logout + set
+// sessionStorage reason flag + redirect). B16.8.11 step 4.
+let _hardLogoutCallback: ((reason: string) => Promise<void>) | null = null;
 
 export function setApiToken(t: string | null) {
   _accessToken = t;
@@ -29,13 +35,22 @@ export function getRefreshCallback(): (() => Promise<void>) | null {
   return _refreshCallback;
 }
 
+export function setHardLogoutCallback(fn: ((reason: string) => Promise<void>) | null) {
+  _hardLogoutCallback = fn;
+}
+
 export type ApiViolation = { field: string; message: string };
 
-// RFC 9457 Problem Details fields surfaced from error responses.
+// RFC 9457 Problem Details fields surfaced from error responses. `code`
+// is the §3.4 extension member backend handlers set via httperr.WriteCoded
+// (e.g. "session_revoked", "session_idle_expired") so callers can branch
+// on machine-readable identity rather than parsing the human-readable
+// `detail` string. B16.8.11 step 4.
 export class ApiError extends Error {
   status: number;
   body: unknown;
   title?: string;
+  code?: string;
   detail?: string;
   violations?: ApiViolation[];
   constructor(status: number, body: unknown, message: string) {
@@ -45,11 +60,19 @@ export class ApiError extends Error {
     if (body && typeof body === "object") {
       const p = body as Record<string, unknown>;
       if (typeof p.title === "string") this.title = p.title;
+      if (typeof p.code === "string") this.code = p.code;
       if (typeof p.detail === "string") this.detail = p.detail;
       if (Array.isArray(p.violations)) this.violations = p.violations as ApiViolation[];
     }
   }
 }
+
+// Problem.code values that signal a terminal session state — silent
+// refresh would be useless on these because the issuing session row is
+// either revoked or idle-expired, so any refresh attempt 401s on the
+// same row. Mirrors backend/internal/auth/codes.go (B16.8.11 step 3);
+// keep in sync when adding new codes.
+const TERMINAL_SESSION_CODES = new Set(["session_revoked", "session_idle_expired"]);
 
 type ApiOpts = RequestInit & { skipAuth?: boolean; _retried?: boolean };
 
@@ -127,15 +150,36 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
     // leave as text
   }
 
-  if (res.status === 401 && !opts.skipAuth && !opts._retried && _refreshCallback) {
-    // Silent refresh-and-retry: deduplicate concurrent 401s onto one flight.
-    if (!_refreshPromise) {
-      _refreshPromise = _refreshCallback().finally(() => { _refreshPromise = null; });
-    }
-    await _refreshPromise;
-    if (_accessToken) {
-      // pass the original path; finalPath is re-derived inside the retry.
-      return _fetch<T>(base, path, { ...opts, _retried: true });
+  if (res.status === 401 && !opts.skipAuth && !opts._retried) {
+    // B16.8.11 step 4 — peek at Problem.code BEFORE deciding whether
+    // to silently refresh. A terminal session-state 401
+    // (session_revoked / session_idle_expired) means the issuing
+    // session row is gone or idle-expired; refresh would 401 on the
+    // same row and loop. Skip refresh, hand off to AuthContext's
+    // hardLogout, and let the original 401 propagate to the caller
+    // so any in-flight UI can unwind.
+    const problemCode =
+      body && typeof body === "object" && typeof (body as Record<string, unknown>).code === "string"
+        ? (body as Record<string, unknown>).code as string
+        : undefined;
+    if (problemCode && TERMINAL_SESSION_CODES.has(problemCode) && _hardLogoutCallback) {
+      // Fire-and-forget — the 401 still throws below so the caller
+      // sees the terminal failure. hardLogout handles the side
+      // effects (clear token, hit /auth/logout, redirect to /login
+      // with reason). We don't await it because we don't want to
+      // delay the throw, and the navigation it triggers replaces
+      // the page anyway.
+      void _hardLogoutCallback(problemCode);
+    } else if (_refreshCallback) {
+      // Silent refresh-and-retry: deduplicate concurrent 401s onto one flight.
+      if (!_refreshPromise) {
+        _refreshPromise = _refreshCallback().finally(() => { _refreshPromise = null; });
+      }
+      await _refreshPromise;
+      if (_accessToken) {
+        // pass the original path; finalPath is re-derived inside the retry.
+        return _fetch<T>(base, path, { ...opts, _retried: true });
+      }
     }
   }
 

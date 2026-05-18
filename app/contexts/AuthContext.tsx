@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiSite, ApiError, setApiToken, setRefreshCallback } from "@/app/lib/api";
+import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 
@@ -238,6 +238,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     notify.success("You've been signed out.");
     router.push("/login");
   }, [router, user]);
+
+  // hardLogout is invoked by api.ts when the backend returns a 401
+  // carrying Problem.code = "session_revoked" or "session_idle_expired"
+  // (B16.8.11 step 3). Silent refresh would loop forever on those
+  // codes because the issuing session row is dead. Mirrors logout()
+  // for the local-state cleanup, then sets a sessionStorage flag that
+  // the /login page reads (B16.8.11 step 4e) to render the matching
+  // banner instead of dropping the user onto a blank login form with
+  // no explanation.
+  //
+  // Differences vs logout():
+  //   - No success toast (this is involuntary, not a user action).
+  //   - sessionStorage flag carries the reason code for the banner.
+  //   - window.location.assign instead of router.push — guarantees a
+  //     fresh page mount so any stale React state (caches, contexts
+  //     holding pre-logout data) is wiped, not just AuthContext's.
+  const hardLogout = useCallback(async (reason: string) => {
+    const departingId = user?.id ?? null;
+    try {
+      await apiSite("/auth/logout", { method: "POST" });
+    } catch {
+      // ignore — backend may already have nuked the session
+    }
+    if (departingId) {
+      try { await purgeDraftsFor(departingId); } catch { /* IDB unavailable; ignore */ }
+    }
+    setApiToken(null);
+    setUser(null);
+    clearSessionCookie();
+    _bootstrapped = false;
+    try {
+      sessionStorage.setItem("vector.login.reason", reason);
+    } catch { /* private mode; banner won't render but redirect still happens */ }
+    if (typeof window !== "undefined") {
+      window.location.assign("/login");
+    }
+  }, [user]);
+
+  // Register/unregister hardLogout with api.ts. Separate effect from the
+  // bootstrap one so it doesn't drag hardLogout (defined further down)
+  // into the bootstrap effect's deps before it's been declared.
+  useEffect(() => {
+    setHardLogoutCallback(hardLogout);
+    return () => setHardLogoutCallback(null);
+  }, [hardLogout]);
 
   const permissions = useMemo(
     () => new Set(user?.permissions ?? []),
