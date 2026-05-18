@@ -189,3 +189,10 @@ B16.8.3	mfa verify endpoint challenge_token totp_code recovery_code mfa_invalid 
 B16.8.4	mfa enroll confirm disable otpauth_uri recovery_codes mfa_enrolled_at management endpoints
 B16.8.5	frontend mfa login challenge TOTP input settings mfa page QR code qrcode enrollment disable
 B16.9	ldap active directory ldap_dn auth_method bind enterprise sso saml oidc osixia bitnami openldap
+B16.8.6	session idle timeout last_activity_at sliding window AAL2 session_idle_expired AuthContext middleware boundary
+B16.8.7	session_alive cookie HttpOnly Secure SameSite Lax Set-Cookie scheme dev BACKEND_ENV integration login
+B16.8.8	jwt iss aud claims issuer audience tokens.go SignAccessToken SignRefreshToken SignChallengeToken ParseToken TOKEN_INVALID_AUDIENCE TOKEN_INVALID_ISSUER grace tokens_grace
+B16.8.9	jwt access token ttl JWT_ACCESS_TTL 15min 5min tokens.go parseDurationEnv unrevocable window
+B16.8.10	active sessions revoke log-out-everywhere step-up reauth REAUTH_REQUIRED sensitive actions account-settings sessions page
+B16.8.11	sid claim middleware per-request session check RequireAuth SESSION_REVOKED SESSION_IDLE_EXPIRED users_sessions_id grace tokens_grace
+B16.8.12	websocket session enforcement registry ticker WS_SESSION_CHECK_INTERVAL close code 4001 sweeper immediate-close handshake

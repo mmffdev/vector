@@ -1,10 +1,13 @@
 ---
-name: Test accounts — Claude-owned + human-owned
-description: All test logins in one place — Claude-owned (claude@, claude_N_test@) and human-owned (gadmin/padmin/user@); HARD RULE on human accounts.
-type: reference
+name: test-accounts-claude-owned-human-owned
+description: "All test logins in one place — Claude-owned (claude@, claude_N_test@) and human-owned (gadmin/padmin/user@); HARD RULE on human accounts."
+metadata: 
+  node_type: memory
+  type: reference
+  originSessionId: dd7942f6-31fa-4e6b-89f6-2cd7e1ee896a
 ---
 
-All accounts live in fixture subscription `00000000-0000-0000-0000-000000000001` on dev DB (`mmff_vector` via tunnel `:5435`). Frontend login: `http://localhost:5101/login`. Backend auth: `POST http://localhost:5100/v1/api/auth/login`.
+All accounts live in fixture subscription `00000000-0000-0000-0000-000000000001` on dev DB (`mmff_vector` via tunnel `:5435`). Frontend login: `http://localhost:5101/login`. Backend auth: `POST http://localhost:5100/auth/login` (verified 2026-05-18 against running dev backend — earlier note `/v1/api/auth/login` was outdated). Also reachable via `/_site/auth/login` BFF mount per [`docs/c_c_transport_segregation.md`](../../docs/c_c_transport_segregation.md).
 
 ## Claude-owned (free to use, do not modify)
 
