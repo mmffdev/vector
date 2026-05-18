@@ -120,6 +120,39 @@ const sqlArchiveAllLiveNodes = `
 		   AND archived_at IS NULL
 	`
 
+// sqlRenameWorkspaceRootNode renames the root topology node of a single
+// workspace ($2). Only touches the root (parent_id IS NULL) — child node
+// names are independent. Called from workspaces.Service.Rename via the
+// TopologySeeder interface so the writer-boundary lint stays green.
+// $1 = newName, $2 = workspaceID.
+const sqlRenameWorkspaceRootNode = `
+		UPDATE topology_nodes
+		   SET name = $1
+		 WHERE workspace_id = $2
+		   AND parent_id IS NULL
+		   AND archived_at IS NULL
+	`
+
+// sqlArchiveWorkspaceTopology archives every live topology_nodes row
+// belonging to a workspace so grants/me stops returning them after the
+// workspace itself is archived. Called from workspaces.Service.Archive
+// via TopologySeeder. $1 = workspaceID.
+const sqlArchiveWorkspaceTopology = `
+		UPDATE topology_nodes
+		   SET archived_at = NOW()
+		 WHERE workspace_id = $1
+		   AND archived_at IS NULL
+	`
+
+// sqlRestoreWorkspaceTopology unarchives every topology_nodes row for
+// a workspace on workspace restore so the nodes re-appear in grants/me.
+// Mirror inverse of sqlArchiveWorkspaceTopology. $1 = workspaceID.
+const sqlRestoreWorkspaceTopology = `
+		UPDATE topology_nodes
+		   SET archived_at = NULL
+		 WHERE workspace_id = $1
+	`
+
 // ── middleware.go ───────────────────────────────────────────────────────────
 
 // sqlSelectTenantRootID resolves the canonical root topology_node for a

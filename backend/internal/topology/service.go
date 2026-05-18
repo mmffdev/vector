@@ -1185,6 +1185,44 @@ func (s *Service) SeedRootNode(ctx context.Context, workspaceID, subscriptionID 
 	return err
 }
 
+// RenameWorkspaceRootNode syncs the topology root node's name after a
+// workspace is renamed. Called from workspaces.Service.Rename as a
+// post-commit hook (the workspace row is already committed; this is a
+// best-effort mirror). Implements workspaces.TopologySeeder so the
+// writer-boundary lint stays green — workspaces never writes
+// topology_nodes SQL directly.
+func (s *Service) RenameWorkspaceRootNode(ctx context.Context, workspaceID uuid.UUID, name string) error {
+	if s.vaPool == nil {
+		return nil
+	}
+	_, err := s.vaPool.Exec(ctx, sqlRenameWorkspaceRootNode, name, workspaceID)
+	return err
+}
+
+// ArchiveWorkspaceTopology archives every live topology node belonging
+// to a workspace so grants/me stops returning them once the workspace
+// itself is archived. Called from workspaces.Service.Archive as a
+// post-commit hook.
+func (s *Service) ArchiveWorkspaceTopology(ctx context.Context, workspaceID uuid.UUID) error {
+	if s.vaPool == nil {
+		return nil
+	}
+	_, err := s.vaPool.Exec(ctx, sqlArchiveWorkspaceTopology, workspaceID)
+	return err
+}
+
+// RestoreWorkspaceTopology unarchives every topology node for a
+// workspace on workspace restore — inverse of
+// ArchiveWorkspaceTopology. Post-commit hook from
+// workspaces.Service.Restore.
+func (s *Service) RestoreWorkspaceTopology(ctx context.Context, workspaceID uuid.UUID) error {
+	if s.vaPool == nil {
+		return nil
+	}
+	_, err := s.vaPool.Exec(ctx, sqlRestoreWorkspaceTopology, workspaceID)
+	return err
+}
+
 // validateManualXY enforces the same pair-or-null rule the artefacts
 // migration 031 CHECK enforces, in Go, so we return a typed error
 // instead of a raw constraint violation.

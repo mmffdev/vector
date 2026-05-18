@@ -23,6 +23,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+
+	"github.com/mmffdev/vector-backend/internal/topology"
 )
 
 func main() {
@@ -126,21 +128,23 @@ func main() {
 	}
 	fmt.Printf("workspace grant inserted: admin on %s for user %s\n", workspaceID, createdBy)
 
-	// Insert root topology node on vector_artefacts.
-	var topologyID uuid.UUID
-	if err := vaPool.QueryRow(ctx, `
-		INSERT INTO topology_nodes (
-			id, workspace_id, subscription_id, parent_id,
-			name, description, layout_mode, collapsed_default, sort_order
-		) VALUES (
-			gen_random_uuid(), $1, $2, NULL,
-			$3, '', 'auto-horizontal', FALSE, 0
-		) RETURNING id`,
-		workspaceID, subscriptionID, name,
-	).Scan(&topologyID); err != nil {
-		fatalf("insert topology root node: %v", err)
+	// Insert root topology node on vector_artefacts. Routed through
+	// topology.Service.SeedRootNode so the writer-boundary lint
+	// (TestPackageBoundary) catches any drift — this script must NEVER
+	// write topology_nodes SQL directly.
+	topoSvc := topology.New(vectorPool, vaPool)
+	tx, err := vaPool.Begin(ctx)
+	if err != nil {
+		fatalf("begin vaPool tx: %v", err)
 	}
-	fmt.Printf("topology root node: %s  workspace_id=%s\n", topologyID, workspaceID)
+	if err := topoSvc.SeedRootNode(ctx, workspaceID, subscriptionID, name, tx); err != nil {
+		_ = tx.Rollback(ctx)
+		fatalf("seed root topology node: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		fatalf("commit vaPool tx: %v", err)
+	}
+	fmt.Printf("topology root node seeded for workspace_id=%s\n", workspaceID)
 }
 
 // toSlug converts a name to a valid workspace slug (lowercase, hyphens).

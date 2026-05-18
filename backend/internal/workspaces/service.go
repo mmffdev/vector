@@ -35,12 +35,26 @@ import (
 	"github.com/mmffdev/vector-backend/internal/permissions"
 )
 
-// TopologySeeder is the subset of topology.Service used to seed a root
-// topology node after a workspace is created. Defined as an interface so
-// workspaces.Service does not import topology.Service directly (cycle guard).
-// SeedRootNode must execute against a pgx.Tx targeting the vector_artefacts DB.
+// TopologySeeder is the subset of topology.Service used by workspace
+// lifecycle hooks. Defined as an interface so workspaces.Service does not
+// import topology.Service directly (cycle guard) AND the writer-boundary
+// lint enforces that workspaces never touches topology_nodes SQL itself.
+//
+// SeedRootNode runs inside the workspace-creation transaction (vector_artefacts
+// DB) so a topology-seed failure rolls back the workspace row.
+//
+// RenameWorkspaceRootNode / ArchiveWorkspaceTopology / RestoreWorkspaceTopology
+// run AFTER the workspace transaction commits (the topology mirror is best-
+// effort; an mmff_vector commit success with a vector_artefacts mirror failure
+// would otherwise rollback a row the user already sees). All three operate
+// on every node in a workspace (rename targets the root; archive/restore
+// fan out to every live/archived node) — not on a single nodeID like the
+// generic RenameNode / ArchiveNode / RestoreNode service methods.
 type TopologySeeder interface {
 	SeedRootNode(ctx context.Context, workspaceID, subscriptionID uuid.UUID, name string, tx pgx.Tx) error
+	RenameWorkspaceRootNode(ctx context.Context, workspaceID uuid.UUID, name string) error
+	ArchiveWorkspaceTopology(ctx context.Context, workspaceID uuid.UUID) error
+	RestoreWorkspaceTopology(ctx context.Context, workspaceID uuid.UUID) error
 }
 
 // ArtefactTypeSeeder is the subset of artefacttypes.Service used to seed

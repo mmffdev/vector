@@ -29,16 +29,11 @@ const sqlInsertWorkspaceCreatorAdminGrant = `
 
 const sqlRenameWorkspace = `UPDATE master_record_workspaces SET name = $1, updated_at = NOW() WHERE id = $2`
 
-// sqlRenameTopologyRootNode syncs the root topology node name after a
-// workspace rename. $1=newName, $2=workspaceID. Only touches the root
-// (parent_id IS NULL); child nodes keep their own names.
-const sqlRenameTopologyRootNode = `
-		UPDATE topology_nodes
-		SET    name = $1
-		WHERE  workspace_id = $2
-		  AND  parent_id IS NULL
-		  AND  archived_at IS NULL
-	`
+// Note: the matching topology-root rename used to live here as
+// sqlRenameTopologyRootNode. Moved to topology/sql.go +
+// topology.Service.RenameWorkspaceRootNode 2026-05-18 so the writer-
+// boundary lint catches any future regression. workspaces.Service.Rename
+// calls topology.RenameWorkspaceRootNode via the TopologySeeder interface.
 
 const sqlCountLiveSiblingsExcluding = `
 		SELECT COUNT(*)
@@ -56,22 +51,10 @@ const sqlArchiveWorkspace = `
 		 WHERE id = $2
 	`
 
-// sqlArchiveTopologyNodes archives all live topology nodes for a workspace
-// in vector_artefacts so they no longer appear in grants/me.
-// $1=workspaceID. Non-fatal; called after the mmff_vector commit.
-const sqlArchiveTopologyNodes = `
-		UPDATE topology_nodes
-		   SET archived_at = NOW()
-		 WHERE workspace_id = $1
-		   AND archived_at IS NULL
-	`
-
-// sqlRestoreTopologyNodes unarchives topology nodes on workspace restore.
-const sqlRestoreTopologyNodes = `
-		UPDATE topology_nodes
-		   SET archived_at = NULL
-		 WHERE workspace_id = $1
-	`
+// Note: the matching topology archive/restore used to live here as
+// sqlArchiveTopologyNodes / sqlRestoreTopologyNodes. Moved to
+// topology/sql.go + topology.Service.{Archive,Restore}WorkspaceTopology
+// 2026-05-18 (same writer-boundary fix as the rename hook above).
 
 // sqlExistsLiveSlugCollision is the slug-collision guard before restore.
 const sqlExistsLiveSlugCollision = `

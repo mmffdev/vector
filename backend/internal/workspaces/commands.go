@@ -257,9 +257,11 @@ func (s *Service) Rename(ctx context.Context, subscriptionID, workspaceID uuid.U
 	}
 
 	// Sync the topology root node name in vector_artefacts (non-fatal;
-	// the workspace row is already committed).
-	if s.VAPool != nil {
-		_, _ = s.VAPool.Exec(ctx, sqlRenameTopologyRootNode, name, workspaceID)
+	// the workspace row is already committed). Routed through
+	// TopologySeeder so the writer-boundary lint stays green — only the
+	// topology package writes topology_nodes SQL.
+	if s.topoSeeder != nil {
+		_ = s.topoSeeder.RenameWorkspaceRootNode(ctx, workspaceID, name)
 	}
 
 	wid := workspaceID.String()
@@ -324,9 +326,10 @@ func (s *Service) Archive(ctx context.Context, subscriptionID, workspaceID, acto
 	}
 
 	// Archive topology nodes in vector_artefacts so grants/me stops returning
-	// them. Non-fatal: workspace row is already committed.
-	if s.VAPool != nil {
-		_, _ = s.VAPool.Exec(ctx, sqlArchiveTopologyNodes, workspaceID)
+	// them. Non-fatal: workspace row is already committed. Routed through
+	// TopologySeeder for writer-boundary discipline.
+	if s.topoSeeder != nil {
+		_ = s.topoSeeder.ArchiveWorkspaceTopology(ctx, workspaceID)
 	}
 
 	wid := workspaceID.String()
@@ -389,9 +392,10 @@ func (s *Service) Restore(ctx context.Context, subscriptionID, workspaceID, acto
 	}
 
 	// Restore topology nodes in vector_artefacts so the workspace re-appears
-	// in grants/me. Non-fatal: workspace row is already committed.
-	if s.VAPool != nil {
-		_, _ = s.VAPool.Exec(ctx, sqlRestoreTopologyNodes, workspaceID)
+	// in grants/me. Non-fatal: workspace row is already committed. Routed
+	// through TopologySeeder for writer-boundary discipline.
+	if s.topoSeeder != nil {
+		_ = s.topoSeeder.RestoreWorkspaceTopology(ctx, workspaceID)
 	}
 
 	wid := workspaceID.String()
