@@ -89,6 +89,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` single source of truth.
 - **Pace report** → [`dev/scripts/pace.sh`](../dev/scripts/pace.sh) — commit-mix scoreboard + TD-register delta.
 - **Infrastructure & ops** → [`docs/c_infra_index.md`](../docs/c_infra_index.md) — bash / postgres / ssh / deploy / hooks.
+- **Swarm stack (dev)** → [`infra/swarm/README.md`](../infra/swarm/README.md) — `vector-dev` Docker Swarm stack file is source of truth for the dev Postgres tier; re-sync on any out-of-band `docker service update`.
 - **Section-tag vocab** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — short product-slice tags.
 - **URL routing — work items & custom pages** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — `/work-items/{id}` + `/p/{id}` + `?vid=` convention.
 - **Theme rules** → [`docs/c_theme_rules.md`](../docs/c_theme_rules.md) — palette→role mapping for `<theme>` skill.
