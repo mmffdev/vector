@@ -9,8 +9,9 @@
 // data-address, data-addressable-id, help button + popover, Provider for
 // child addresses — is identical to Panel.
 
-import { useEffect, useId, useRef, useState, ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, ReactNode } from "react";
 import { TbHelpHexagon } from "react-icons/tb";
+import DOMPurify from "isomorphic-dompurify";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
 import {
   useSamanthaSdk,
@@ -54,6 +55,17 @@ export default function Header({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const labelId = useId();
+
+  // B16.8 Phase 2 — defense-in-depth XSS guard. Backend allowlist
+  // (addressables/sanitise.go SanitiseHelpBodyHTML) runs at write-time;
+  // DOMPurify here protects render against any path that bypasses that
+  // gate (DB-direct edits, future writers that forget the sanitiser,
+  // schema migrations). Memo keyed on the raw string so re-renders
+  // don't re-parse.
+  const safeBodyHtml = useMemo(
+    () => (bodyHtml ? DOMPurify.sanitize(bodyHtml) : ""),
+    [bodyHtml],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -193,8 +205,8 @@ export default function Header({
             <div className="addr-header__popover-body">
               {bodyLoading ? (
                 <p className="addr-header__popover-empty">Loading…</p>
-              ) : bodyHtml ? (
-                <div dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+              ) : safeBodyHtml ? (
+                <div dangerouslySetInnerHTML={{ __html: safeBodyHtml }} />
               ) : (
                 <p className="addr-header__popover-empty">No help text yet for this header.</p>
               )}

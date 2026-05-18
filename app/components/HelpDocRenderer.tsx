@@ -12,7 +12,8 @@
 // image URLs are re-checked here so a bad row in the DB cannot leak a
 // non-whitelisted iframe into the DOM.
 
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import DOMPurify from "isomorphic-dompurify";
 
 export type VideoEmbed = { url: string; title?: string; position?: number };
 export type ImageRef = { url: string; alt?: string; caption?: string; position?: number };
@@ -106,6 +107,15 @@ export default function HelpDocRenderer({
 
   const bodyHtml = (doc.body_html ?? "").trim() || (fallbackBodyHtml ?? "").trim();
 
+  // B16.8 Phase 2 — defense-in-depth XSS guard. Backend allowlist
+  // (addressables/sanitise.go SanitiseHelpBodyHTML) runs at write time;
+  // DOMPurify here protects the render against any future write path
+  // that bypasses that gate.
+  const safeBodyHtml = useMemo(
+    () => (bodyHtml ? DOMPurify.sanitize(bodyHtml) : ""),
+    [bodyHtml],
+  );
+
   const videos = sortByPosition(doc.video_embeds ?? [])
     .map((v) => ({ ...v, _src: youTubeEmbedSrc(v.url) }))
     .filter((v): v is VideoEmbed & { _src: string } => v._src !== null);
@@ -135,8 +145,8 @@ export default function HelpDocRenderer({
         )
       ) : null}
 
-      {bodyHtml ? (
-        <div className="help-doc__body" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+      {safeBodyHtml ? (
+        <div className="help-doc__body" dangerouslySetInnerHTML={{ __html: safeBodyHtml }} />
       ) : null}
 
       {renderedVideos.length > 0 ? (

@@ -57,6 +57,7 @@
     "framer-motion": "^12.38.0",
     "gsap": "^3.15.0",
     "iconoir": "^7.11.0",
+    "isomorphic-dompurify": "^3.13.0",
     "lucide-react": "^1.14.0",
     "next": "^15.0.0",
     "pg": "^8.20.0",
