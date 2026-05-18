@@ -534,6 +534,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -662,6 +665,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -853,6 +858,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1363,6 +1370,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1524,6 +1534,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `28a4c8e` (2026-05-18): fix(login): remove duplicate logo from beige panel
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1680,6 +1693,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2689,6 +2704,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
 > Commit `4641ce7` (2026-05-16): feat(auth): green — POST /auth/switch-workspace + topology switcher rewire [00576.5]
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -3228,6 +3244,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 
   - ✅ ~~**B16.8.1** Backend TOTP core~~ `[P1]` > Commit 2026-05-18: `mfa.go` + `roletypes.User` MFA fields + `auth/sql.go` MFA constants; `go build ./...` clean.
   - ✅ ~~**B16.8.2** Login partial-auth gate~~ `[P1]` > Commit 2026-05-18: `SignChallengeToken`/`ParseChallengeToken` in `tokens.go`; `LoginResult.MFARequired`+`MFAChallengeToken`; `Login()` forks to challenge on `mfa_enrolled=true`; handler returns `mfa_challenge_resp`.
+> Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
   - ✅ ~~**B16.8.5** Frontend MFA~~ `[P1]` > Commit 2026-05-18: `MFAChallengeError` + `mfaLogin()` in `AuthContext.tsx`; inline TOTP step on `app/login/page.tsx`; `app/(user)/account-settings/mfa/page.tsx` with QR code enrollment, recovery codes, disable flow; `qrcode` npm package added.
@@ -3239,8 +3256,13 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   - ✅ ~~**B16.8.7** Cookie flags hardened on every backend `Set-Cookie` + frontend `session_alive`.~~ Shipped 2026-05-18. `rt`, `csrf_token`, `mfa_remember_*` all carry `HttpOnly` (except `csrf_token` by double-submit design) + `SameSite=Strict` + `Secure` via new `isSecureCookieRequest(r)` helper that auto-detects TLS (`req.TLS != nil`) with `COOKIE_SECURE=true` env as proxy-case override; either signal sets Secure. Frontend `setSessionCookie` adds `Secure` on `window.location.protocol === "https:"`. Three contract tests in `auth/cookies_test.go` pin all three rules (TLS auto-detect, env override, dev plain-HTTP). E2E verified against side-instance: HTTP+env-off → no Secure (dev safe); HTTP+env-on → Secure set (proxy case). NOTE: `SameSite=Strict` chosen over the AC's `Lax` — Strict is correct for auth cookies (no cross-origin ride-along). NOTE: env-file gap on staging/prod (`COOKIE_SECURE=false`) flagged as `TD-SEC-COOKIE-SECURE-ENV` in `docs/c_tech_debt.md` for ops-level fix; auto-detect mitigates direct-TLS deploys, env override mitigates TLS-upstream deploys. `[P1]`
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
   - 🔵 IN FLIGHT **B16.8.8** JWT `iss` + `aud` claims on access/refresh/challenge tokens. AC: `tokens.go` signs `iss=vector-auth`, `aud=vector-api`; `ParseToken*` rejects mismatches with `errors_codes.TOKEN_INVALID_ISSUER` / `TOKEN_INVALID_AUDIENCE`; legacy tokens missing claims accepted for a 24h grace window via `tokens_grace.json` flag, then hard-rejected; unit test covers wrong-iss + wrong-aud. `[P1]`
   - 🔵 IN FLIGHT **B16.8.9** Access-token TTL — **hold at 15min** (was: drop to 5min). Repurposed 2026-05-18 after promoting B16.8.11 (per-request stateful session check) to baseline: the sessions table is now hit on every protected request, so TTL no longer functions as the "fast idle gate" — instant revocation makes the 5-min shrink unnecessary, and 15min stays as a sane upper bound on token-replay-from-elsewhere blast radius (defense in depth, not load-bearing). AC: `parseDurationEnv("JWT_ACCESS_TTL", 15*time.Minute)` in `tokens.go:48` documented in `docs/c_security.md` under "Session model" — explicit note that the 15min cap is defense in depth, not the primary idle gate; no code change required. `[P3]`
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
@@ -3356,18 +3378,27 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
+> Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 
 ---
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 ## B19. Work Item Relations Graph
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 
@@ -3653,6 +3684,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -3770,6 +3804,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -3905,6 +3941,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -4008,6 +4047,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -4126,6 +4167,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -4135,6 +4178,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a6db775` (2026-05-14): fix(nav): AccountFlyout only shows avatar_menu tag, not rail-1 admin buckets
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
   > Currently returns hardcoded `{total, epics, stories, tasks, defects, blocked}`. Make summary buckets data-driven from artefact-types of the current scope. Strategy summary should return `{total, themes, objectives, features}` per existing portfolio page contract. Pattern: GROUP BY `at.code`, project into stable JSON keys per scope config.
   >
 - **B21.1.7** Register `/portfolio-items` routes against `artefactitemsv2.New(db, "strategy")` in `main.go` `[P1]` `[ ]B21.1.4` `[ ]B21.1.6`
@@ -4320,6 +4364,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -4418,6 +4464,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -4501,6 +4549,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -4560,6 +4610,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -4643,6 +4695,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -4702,6 +4756,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `65d22c3` (2026-05-16): fix(fields): non-admin users hit 500 on workspace field list [TD-FIELDS-WSPERMS-RENAME]
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -4829,6 +4885,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -4961,6 +5019,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -5037,6 +5098,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -5109,6 +5173,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `802dd70` (2026-05-18): feat(auth): REQUIRE_SID_CLAIM kill-switch for legacy grace window [B16.8.11]
+> Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
+> Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -5330,6 +5396,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `97e8501` (2026-05-16): feat(priority): green — artefacts.priority TEXT→UUID FK + handler ?priority_id [00595,00597]
 > Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -5436,6 +5503,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
+> Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
