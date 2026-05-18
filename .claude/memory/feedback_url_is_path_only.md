@@ -30,6 +30,8 @@ This rule is about the **user-visible URL in the address bar**. Nothing else. It
 
 If Rick says "we binned `?…` from the URL", he means the address bar surface that the user sees and can bookmark / share / fiddle. He does NOT mean the wire surface where Go handlers parse query params. Don't second-guess this — go straight to reading `r.URL.Query().Get(...)` on the Go side; the address bar is unaffected.
 
+**Fragments (`#…`) are also OUTSIDE this rule.** The fragment after `#` is the standard HTML mechanism for in-page anchors (`<a name=…>`, `#section`). It does not traverse to the server, does not appear in Referer headers, does not get logged. The PLA-0053 audit on 2026-05-18 false-positived `app/components/AddressAnchorResolver.tsx` (reads `window.location.hash` for `#addr=…` share-links) and `app/components/AddressDevtool.tsx` (writes `u.hash = …`) — both are correct as written. Fragment-based share links are the *recommended* pattern for deep-linking to in-page elements without leaking the target via the wire. Treat audits flagging `window.location.hash` reads as benign unless the fragment is carrying a secret (in which case the issue is "secret in URL", not "URL state").
+
 **Related:**
 - [[project_workspace_scope_invisible]] — the original "no workspace UUIDs" rule this generalises.
 - [[feedback_no_browser_alerts]] — same family: in-page UI / backend mechanism over surfaced state.
