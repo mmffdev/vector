@@ -33,6 +33,10 @@ export interface AuthUser {
   force_password_change: boolean;
   auth_method: "local" | "ldap";
   last_login?: string | null;
+  // B16.8.10 — used by useStepUpAction to conditionally render the
+  // TOTP field in the reauth modal. Sourced from /auth/me +
+  // /auth/login responses.
+  mfa_enrolled?: boolean;
   permissions: string[];
 }
 
@@ -82,6 +86,12 @@ interface AuthState {
 }
 
 const Ctx = createContext<AuthState | null>(null);
+
+// AuthContext is the test-only export of Ctx. Production code uses the
+// useAuth() hook; tests that need to inject a stub user (e.g. the
+// B16.8.10 useStepUpAction contract tests) wrap with
+// <AuthContext.Provider value={...}>.
+export const AuthContext = Ctx;
 
 // _bootstrapFlight deduplicates concurrent bootstrap calls within the same
 // JS runtime lifetime (StrictMode double-mount, HMR re-runs). It is a
