@@ -23,6 +23,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/logger"
 	"github.com/mmffdev/vector-backend/internal/addressables"
+	"github.com/mmffdev/vector-backend/internal/alerting"
 	"github.com/mmffdev/vector-backend/internal/apikeys"
 	"github.com/mmffdev/vector-backend/internal/cspreport"
 	"github.com/mmffdev/vector-backend/internal/audit"
@@ -148,6 +149,14 @@ func main() {
 	// repointed to vaPool below via SetPool once vaPool is initialised. If
 	// VECTOR_ARTEFACTS_DB_URL is unset (legacy path), writes continue against pool.
 	auditLog := audit.New(pool)
+	// B16.8 P5 — audit-event alerting. NewWebhook reads
+	// AUDIT_ALERT_{WEBHOOK_URL,ACTIONS,SECRET}; returns a disabled
+	// Webhook (no-op) unless both URL and allowlist are set. Wired
+	// before any service starts firing audit rows so the alerter is
+	// live from the first request.
+	alertWebhook := alerting.NewWebhook()
+	auditLog.SetAlerter(alertWebhook)
+	log.Printf("audit-alerting: %s", alertWebhook.String())
 	mailer := email.NewFromEnv()
 
 	authSvc := auth.NewService(pool, auditLog, mailer)

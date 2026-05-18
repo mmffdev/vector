@@ -78,14 +78,11 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     setError(null);
-    console.log("[ScopeContext] reload start", { user_id: user.id, role: user.role });
     try {
       const data = await topologyApi.listMyGrants();
-      console.log("[ScopeContext] grants loaded", { count: data.length, grants: data });
       setGrants(data);
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Failed to load scope";
-      console.log("[ScopeContext] grants error", msg, e);
       setError(msg);
       setGrants([]);
     } finally {
