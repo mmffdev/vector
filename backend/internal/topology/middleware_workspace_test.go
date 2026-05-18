@@ -428,7 +428,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, uuid.U
 
 	cleanup := func() {
 		stmts := []string{
-			`DELETE FROM users_roles_workspaces             WHERE subscription_id = $1`,
+			`DELETE FROM users_roles_workspaces             WHERE users_roles_workspaces_id_subscription = $1`,
 			`DELETE FROM master_record_workspaces                  WHERE subscription_id = $1`,
 			`DELETE FROM workspace                   WHERE subscription_id = $1`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
@@ -469,15 +469,15 @@ func seedWorkspaceRole(t *testing.T, pool *pgxpool.Pool, subID, wsID, userID, gr
 	t.Helper()
 	var id uuid.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO users_roles_workspaces (subscription_id, workspace_id, user_id, role, can_redelegate, granted_by)
+		INSERT INTO users_roles_workspaces (users_roles_workspaces_id_subscription, users_roles_workspaces_id_workspace, users_roles_workspaces_id_user, users_roles_workspaces_role, users_roles_workspaces_can_redelegate, users_roles_workspaces_id_user_granted_by)
 		VALUES ($1, $2, $3, $4, FALSE, $5)
-		RETURNING id
+		RETURNING users_roles_workspaces_id
 	`, subID, wsID, userID, role, grantedBy).Scan(&id); err != nil {
 		t.Fatalf("seed workspace_role: %v", err)
 	}
 	if revoked {
 		if _, err := pool.Exec(context.Background(),
-			`UPDATE users_roles_workspaces SET revoked_at = NOW(), revoked_by = $1 WHERE id = $2`,
+			`UPDATE users_roles_workspaces SET users_roles_workspaces_revoked_at = NOW(), users_roles_workspaces_id_user_revoked_by = $1 WHERE users_roles_workspaces_id = $2`,
 			grantedBy, id,
 		); err != nil {
 			t.Fatalf("revoke seed grant: %v", err)
@@ -615,8 +615,8 @@ func TestPoolWorkspaceLookup_HasActiveRole_RevokedExcluded(t *testing.T) {
 
 	// Revoke the original grant; HasActiveRole now returns false.
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE users_roles_workspaces SET revoked_at = NOW(), revoked_by = $1
-		 WHERE workspace_id = $2 AND user_id = $3`,
+		`UPDATE users_roles_workspaces SET users_roles_workspaces_revoked_at = NOW(), users_roles_workspaces_id_user_revoked_by = $1
+		 WHERE users_roles_workspaces_id_workspace = $2 AND users_roles_workspaces_id_user = $3`,
 		userID, wsID, userID,
 	); err != nil {
 		t.Fatalf("revoke grant: %v", err)
@@ -644,5 +644,25 @@ func TestPoolWorkspaceLookup_HasActiveRole_RevokedExcluded(t *testing.T) {
 // scope. Filed as TD-TOPOLOGY-WS-TESTHELPERS in docs/c_tech_debt.md;
 // pay down on the next topology-middleware touch.
 func TestWorkspaceClamp_LiveDB_PassesThrough(t *testing.T) {
-	t.Skip("TD-TOPOLOGY-WS-TESTHELPERS: helper SQL uses pre-RF1.4.4 column names; pay down with the next topology middleware change")
+	pool := testPool(t)
+	defer pool.Close()
+	subID, userID, cleanup := mkTenant(t, pool, "e2e-clamp")
+	defer cleanup()
+
+	slug := "e2e-" + uuid.NewString()[:6]
+	wsID := seedWorkspace(t, pool, subID, userID, "E2E Workspace", slug, false)
+	seedWorkspaceRole(t, pool, subID, wsID, userID, userID, "admin", false)
+
+	lookup := topology.PoolWorkspaceLookup{Pool: pool}
+	user := &roletypes.User{ID: userID, SubscriptionID: subID}
+
+	// Pass ?ws=<slug> so the middleware resolves via slug lookup.
+	rec, seen := runClamp(t, lookup, user, "ws="+slug)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("WorkspaceClampMiddleware E2E: want 200, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if seen.workspaceID != wsID {
+		t.Errorf("workspaceID on ctx: want %s, got %s", wsID, seen.workspaceID)
+	}
 }
