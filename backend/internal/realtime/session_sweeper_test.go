@@ -21,8 +21,14 @@ package realtime_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -32,6 +38,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -78,7 +85,7 @@ func sweeperTestPool(t *testing.T) *pgxpool.Pool {
 // fabricateUserAndSession inserts a throwaway user + session row, returns
 // (userID, sessionID, cleanup). Cleanup deletes both rows; safe to call
 // even if the test failed partway.
-func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID, func()) {
+func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Pool, boundJKT string) (uuid.UUID, uuid.UUID, func()) {
 	t.Helper()
 
 	// users.subscription_id + users.role_id are non-null in dev; pick any
@@ -108,14 +115,20 @@ func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Po
 	}
 
 	var sessionID uuid.UUID
+	// users_sessions_dpop_jkt is NOT NULL post-Phase-6 (migration 213).
+	// The caller's mintDPoPBoundToken helper generates the keypair and
+	// passes the thumbprint here, so the row's bound JKT matches the
+	// access token's cnf.jkt and the WS handshake DPoP proof — that's
+	// what RequireAuth needs to let the upgrade through.
 	err = pool.QueryRow(ctx, `
 		INSERT INTO users_sessions (
 			users_sessions_id_user,
 			users_sessions_token_hash,
-			users_sessions_expires_at
-		) VALUES ($1, $2, NOW() + INTERVAL '7 days')
+			users_sessions_expires_at,
+			users_sessions_dpop_jkt
+		) VALUES ($1, $2, NOW() + INTERVAL '7 days', $3)
 		RETURNING users_sessions_id
-	`, userID, fmt.Sprintf("test-hash-%s", userID.String())).Scan(&sessionID)
+	`, userID, fmt.Sprintf("test-hash-%s", userID.String()), boundJKT).Scan(&sessionID)
 	if err != nil {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
 		t.Fatalf("INSERT users_sessions: %v", err)
@@ -128,6 +141,94 @@ func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Po
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 	}
 	return userID, sessionID, cleanup
+}
+
+// dpopFixture bundles an ECDSA-P256 keypair, its RFC 7638 thumbprint,
+// and a minting function that returns a fresh DPoP proof for the given
+// HTTP method + URL (with optional access-token ath). Used by the WS
+// sweeper tests to produce Phase-6-compliant authenticated handshakes:
+// each test generates one fixture, fabricates a session row bound to
+// fixture.JKT, signs an access token with the same JKT, then uses
+// fixture.MintProof to sign the actual WS handshake URL.
+type dpopFixture struct {
+	priv      *ecdsa.PrivateKey
+	JKT       string
+	MintProof func(method, url, accessToken string) string
+}
+
+func newDPoPFixture(t *testing.T) *dpopFixture {
+	t.Helper()
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("ecdsa.GenerateKey: %v", err)
+	}
+	// Pad coordinates to 32 bytes so the JWK canonical form matches
+	// what backend/internal/auth/dpop.go ComputeJKT would compute over
+	// a browser-generated key.
+	pad := func(b []byte) []byte {
+		out := make([]byte, 32)
+		copy(out[32-len(b):], b)
+		return out
+	}
+	xB64 := base64.RawURLEncoding.EncodeToString(pad(priv.PublicKey.X.Bytes()))
+	yB64 := base64.RawURLEncoding.EncodeToString(pad(priv.PublicKey.Y.Bytes()))
+	canonical := fmt.Sprintf(`{"crv":"P-256","kty":"EC","x":%q,"y":%q}`, xB64, yB64)
+	sum := sha256.Sum256([]byte(canonical))
+	jkt := base64.RawURLEncoding.EncodeToString(sum[:])
+
+	mint := func(method, url, accessToken string) string {
+		claims := jwt.MapClaims{
+			"jti": uuid.NewString(),
+			"htm": method,
+			"htu": stripURLQuery(url),
+			"iat": time.Now().Unix(),
+		}
+		if accessToken != "" {
+			ath := sha256.Sum256([]byte(accessToken))
+			claims["ath"] = base64.RawURLEncoding.EncodeToString(ath[:])
+		}
+		tok := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+		tok.Header["typ"] = "dpop+jwt"
+		tok.Header["jwk"] = map[string]interface{}{
+			"kty": "EC", "crv": "P-256", "x": xB64, "y": yB64,
+		}
+		signed, err := tok.SignedString(priv)
+		if err != nil {
+			t.Fatalf("DPoP proof sign: %v", err)
+		}
+		return signed
+	}
+	return &dpopFixture{priv: priv, JKT: jkt, MintProof: mint}
+}
+
+// stripURLQuery normalises a URL to its scheme://host/path form so
+// the htu claim matches what RequireAuth reconstructs (RFC 9449 § 4.3
+// requires query-stripped htu).
+func stripURLQuery(u string) string {
+	if i := strings.IndexAny(u, "?#"); i >= 0 {
+		return u[:i]
+	}
+	return u
+}
+
+// wsURLToHTTP converts the ws://host/ws URL the test will dial to the
+// http://host/ws form the backend reconstructs for htu validation.
+func wsURLToHTTP(wsURL string) string {
+	httpURL := strings.Replace(wsURL, "ws://", "http://", 1)
+	httpURL = strings.Replace(httpURL, "wss://", "https://", 1)
+	return stripURLQuery(httpURL)
+}
+
+// dialWithDPoP opens a WebSocket against srvURL with both
+// ?access_token= and ?dpop= so the connection completes a
+// Phase-6-compliant handshake against the real RequireAuth.
+func dialWithDPoP(t *testing.T, ctx context.Context, srvURL, token string, fx *dpopFixture) (*websocket.Conn, error) {
+	t.Helper()
+	wsBase := "ws" + strings.TrimPrefix(srvURL, "http") + "/ws"
+	proof := fx.MintProof(http.MethodGet, wsURLToHTTP(wsBase), token)
+	full := wsBase + "?access_token=" + token + "&dpop=" + proof
+	conn, _, err := websocket.Dial(ctx, full, nil)
+	return conn, err
 }
 
 // TestWSSessionSweeper_RevokeClosesConnection is the contract-pin
@@ -146,15 +247,19 @@ func TestWSSessionSweeper_RevokeClosesConnection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	userID, sessionID, cleanup := fabricateUserAndSession(t, ctx, pool)
+	fx := newDPoPFixture(t)
+	userID, sessionID, cleanup := fabricateUserAndSession(t, ctx, pool, fx.JKT)
 	defer cleanup()
 
-	// Mint a real access token carrying sid.
+	// Mint a Phase-6-compliant access token: carries sid AND cnf.jkt
+	// matching the session row's bound JKT. RequireAuth's DPoP gate
+	// will demand a proof signed by the same key (fx.MintProof) on
+	// every request — dialWithDPoP wires that into the WS handshake.
 	token, err := auth.SignAccessToken(&roletypes.User{
 		ID:             userID,
 		SubscriptionID: uuid.New(), // value irrelevant to the sweeper path
 		Email:          "ws-sweep@test.local",
-	}, sessionID, "")
+	}, sessionID, fx.JKT)
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}
@@ -173,10 +278,9 @@ func TestWSSessionSweeper_RevokeClosesConnection(t *testing.T) {
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws?access_token=" + token
 	dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer dialCancel()
-	conn, _, err := websocket.Dial(dialCtx, wsURL, nil)
+	conn, err := dialWithDPoP(t, dialCtx, srv.URL, token, fx)
 	if err != nil {
 		t.Fatalf("websocket.Dial: %v", err)
 	}
@@ -223,14 +327,15 @@ func TestWSSessionSweeper_ImmediateCloseFiresWithoutWaitingForSweep(t *testing.T
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	userID, sessionID, cleanup := fabricateUserAndSession(t, ctx, pool)
+	fx := newDPoPFixture(t)
+	userID, sessionID, cleanup := fabricateUserAndSession(t, ctx, pool, fx.JKT)
 	defer cleanup()
 
 	token, err := auth.SignAccessToken(&roletypes.User{
 		ID:             userID,
 		SubscriptionID: uuid.New(),
 		Email:          "ws-immediate@test.local",
-	}, sessionID, "")
+	}, sessionID, fx.JKT)
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}
@@ -249,10 +354,9 @@ func TestWSSessionSweeper_ImmediateCloseFiresWithoutWaitingForSweep(t *testing.T
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws?access_token=" + token
 	dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer dialCancel()
-	conn, _, err := websocket.Dial(dialCtx, wsURL, nil)
+	conn, err := dialWithDPoP(t, dialCtx, srv.URL, token, fx)
 	if err != nil {
 		t.Fatalf("websocket.Dial: %v", err)
 	}
@@ -302,14 +406,15 @@ func TestWSSessionSweeper_DeletedRowClosesConnection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	userID, sessionID, cleanup := fabricateUserAndSession(t, ctx, pool)
+	fx := newDPoPFixture(t)
+	userID, sessionID, cleanup := fabricateUserAndSession(t, ctx, pool, fx.JKT)
 	defer cleanup()
 
 	token, err := auth.SignAccessToken(&roletypes.User{
 		ID:             userID,
 		SubscriptionID: uuid.New(),
 		Email:          "ws-deleted@test.local",
-	}, sessionID, "")
+	}, sessionID, fx.JKT)
 	if err != nil {
 		t.Fatalf("SignAccessToken: %v", err)
 	}
@@ -327,10 +432,9 @@ func TestWSSessionSweeper_DeletedRowClosesConnection(t *testing.T) {
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws?access_token=" + token
 	dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer dialCancel()
-	conn, _, err := websocket.Dial(dialCtx, wsURL, nil)
+	conn, err := dialWithDPoP(t, dialCtx, srv.URL, token, fx)
 	if err != nil {
 		t.Fatalf("websocket.Dial: %v", err)
 	}

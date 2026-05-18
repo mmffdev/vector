@@ -197,8 +197,25 @@ func TestParseDPoPProof_Tampered(t *testing.T) {
 		{
 			name: "signature flipped",
 			mangle: func(raw string) string {
-				// Replace last byte of the signature with something else.
-				return raw[:len(raw)-1] + "A"
+				// Flip a mid-signature character to a deterministically
+				// different base64url symbol. End-of-signature flips can
+				// occasionally produce a still-valid R||S decoding when
+				// the original last char is the substitute character; a
+				// mid-sig flip guarantees the signature bytes change.
+				// The signature is the third compact-JWS segment.
+				lastDot := strings.LastIndex(raw, ".")
+				if lastDot < 0 || lastDot+5 >= len(raw) {
+					return raw
+				}
+				flipIdx := lastDot + 4
+				orig := raw[flipIdx]
+				sub := byte('A')
+				if orig == 'A' {
+					sub = 'B'
+				}
+				b := []byte(raw)
+				b[flipIdx] = sub
+				return string(b)
 			},
 			wantErr: ErrDPoPProofBadSignature,
 		},

@@ -403,13 +403,11 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 	// the same generic ErrTokenExpired so no information leaks back
 	// to the attacker about which check failed.
 	//
-	// boundJKT == "" handles the legacy/pre-DPoP rollout window: a
-	// session inserted before Phase 3 has NULL in users_sessions_dpop_jkt
-	// (COALESCE'd to ""). Once Phase 6 cutover wipes those rows,
-	// boundJKT will always be non-empty in production and the equality
-	// check applies unconditionally. Until then, an empty bound JKT
-	// inherits the rotation onto a new (also empty-bound) session —
-	// the user keeps working but is unbound until they re-login.
+	// Phase 6 cutover (migration 213) made users_sessions_dpop_jkt
+	// NOT NULL, so boundJKT is always non-empty in production. The
+	// `boundJKT != ""` guard is belt-and-braces against a hypothetical
+	// future migration that re-introduces nullability — without it,
+	// such a regression would silently disable refresh binding.
 	if boundJKT != "" && incomingJKT != boundJKT {
 		_, _ = s.Pool.Exec(ctx, sqlRevokeAllUserSessions, userID)
 		s.Audit.Log(ctx, audit.Entry{

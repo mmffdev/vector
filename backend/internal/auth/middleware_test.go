@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -103,23 +104,19 @@ func TestRequireAuth_RejectsNoSidTokenWhenStrict(t *testing.T) {
 	}
 }
 
-// Flag OFF (default): legacy no-sid tokens reach the DB path (and our
-// nil Pool makes that path explode). Contract being pinned: the env
-// gate did NOT short-circuit with a 401.
+// TestRequireAuth_RejectsTokenWithoutDPoPConfirmation pins the
+// post-Phase-6 (TD-SEC-DPOP-BINDING, migration 213, 2026-05-18)
+// behaviour: a token without a cnf.jkt claim is always 401, regardless
+// of any other state. The previous shape of this test pinned the
+// B16.8.11 REQUIRE_SID_CLAIM grace window's lenient mode — that grace
+// window is functionally superseded by DPoP requirement, because no
+// mint path produces a token that lacks BOTH sid and cnf.jkt, and
+// every pre-Phase-6 session was wiped by migration 213.
 //
-// Two possible outcomes when the gate is OFF and the request proceeds
-// past it:
-//   - Connection EOF: the nil-Pool panic crashes the goroutine
-//     mid-request (chi's recovery middleware isn't mounted in this
-//     minimal test router).
-//   - 5xx: if a recoverer were mounted, we'd get an HTTP error.
-//
-// Both prove the same thing: the gate let the request through. What
-// we explicitly reject is a clean 401 from the gate itself.
-func TestRequireAuth_AllowsNoSidTokenWhenLenient(t *testing.T) {
-	// Explicit unset to defend against test order: anything that set
-	// REQUIRE_SID_CLAIM in a previous test leaks unless t.Setenv was
-	// used. t.Setenv is per-test cleanup, so this is just defensive.
+// signNoSidToken produces a token that also lacks cnf.jkt (the helper
+// predates Phase 3); Phase 6 middleware rejects it before the
+// REQUIRE_SID_CLAIM gate even runs.
+func TestRequireAuth_RejectsTokenWithoutDPoPConfirmation(t *testing.T) {
 	os.Unsetenv("REQUIRE_SID_CLAIM")
 	token := signNoSidToken(t)
 
@@ -130,23 +127,18 @@ func TestRequireAuth_AllowsNoSidTokenWhenLenient(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	res, err := http.DefaultClient.Do(req)
-	// EOF / connection reset = gate let through, downstream panicked.
-	// Any clean response = gate let through, downstream did something.
-	// Only a 401 would mean the gate fired — which is the failure case.
 	if err != nil {
-		// Connection-level failure (EOF from nil-Pool panic). That's
-		// fine: it proves the gate didn't 401.
-		if *reached {
-			t.Error("handler should not have been reached either (Pool nil) — sanity check")
-		}
-		return
+		t.Fatalf("request failed: %v", err)
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode == http.StatusUnauthorized {
-		t.Errorf("REQUIRE_SID_CLAIM unset with no-sid token: gate must NOT 401 (got 401 — flag is leaking on)")
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401 for token without cnf.jkt; got %d", res.StatusCode)
+	}
+	if got := res.Header.Get("WWW-Authenticate"); !strings.Contains(got, "DPoP") {
+		t.Errorf("expected WWW-Authenticate: DPoP error=\"invalid_dpop_proof\"; got %q", got)
 	}
 	if *reached {
-		t.Error("handler should not have been reached either (Pool nil) — sanity check")
+		t.Error("handler should not have been reached — DPoP gate must reject first")
 	}
 }

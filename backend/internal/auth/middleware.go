@@ -100,57 +100,58 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 			return
 		}
-		// TD-SEC-DPOP-BINDING Phase 3 — DPoP proof validation.
-		// If the access token carries cnf.jkt (Phase 3+ sessions), the
-		// caller MUST present a matching DPoP header and the proof's
-		// JWK thumbprint MUST equal cnf.jkt. Tokens minted before
-		// Phase 3 had no cnf claim — accepted without DPoP during the
-		// substrate-only soak window. Phase 6 cutover forces all
-		// tokens to carry cnf.jkt by revoking pre-DPoP sessions, at
-		// which point the cnf-absent branch never runs.
+		// TD-SEC-DPOP-BINDING — DPoP proof validation (RFC 9449).
+		// Phase 6 cutover (migration 213, 2026-05-18): every access
+		// token now carries cnf.jkt unconditionally. A token without
+		// the confirmation claim is either (a) hand-crafted by an
+		// attacker who forgot to add cnf or (b) a leftover legacy
+		// token from a pre-Phase-6 mint that survived the session
+		// wipe somehow — neither is legitimate, both 401.
 		//
 		// WebSocket transport (Phase 5) accepts the proof via ?dpop=
 		// for the same reason it accepts the access token via
 		// ?access_token=: browsers can't set headers on WS handshakes.
-		var validatedJKT string
-		if claims.Confirmation != nil && claims.Confirmation.JKT != "" {
-			dpopRaw := r.Header.Get("DPoP")
-			if dpopRaw == "" {
-				dpopRaw = r.URL.Query().Get("dpop")
-			}
-			if dpopRaw == "" {
-				w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
-				return
-			}
-			proof, perr := ParseDPoPProof(dpopRaw)
-			if perr != nil {
-				w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
-				return
-			}
-			scheme := "http"
-			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-				scheme = "https"
-			}
-			htu := scheme + "://" + r.Host + r.URL.Path
-			if verr := ValidateDPoPProof(proof, raw, r.Method, htu, claims.Confirmation.JKT); verr != nil {
-				w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
-				return
-			}
-			// Reserve the jti in the replay cache. A duplicate within
-			// the freshness window (iat ± DPoPProofMaxAge) is the
-			// replay signal and must reject the request.
-			if s.JTICache != nil {
-				if jerr := s.JTICache.MarkAndCheck(r.Context(), proof.Claims.JTI, proof.JTIExpiry()); jerr != nil {
-					w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-					httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
-					return
-				}
-			}
-			validatedJKT = proof.JKT
+		if claims.Confirmation == nil || claims.Confirmation.JKT == "" {
+			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			return
 		}
+		dpopRaw := r.Header.Get("DPoP")
+		if dpopRaw == "" {
+			dpopRaw = r.URL.Query().Get("dpop")
+		}
+		if dpopRaw == "" {
+			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			return
+		}
+		proof, perr := ParseDPoPProof(dpopRaw)
+		if perr != nil {
+			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			return
+		}
+		scheme := "http"
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		htu := scheme + "://" + r.Host + r.URL.Path
+		if verr := ValidateDPoPProof(proof, raw, r.Method, htu, claims.Confirmation.JKT); verr != nil {
+			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			return
+		}
+		// Reserve the jti in the replay cache. A duplicate within
+		// the freshness window (iat ± DPoPProofMaxAge) is the
+		// replay signal and must reject the request.
+		if s.JTICache != nil {
+			if jerr := s.JTICache.MarkAndCheck(r.Context(), proof.Claims.JTI, proof.JTIExpiry()); jerr != nil {
+				w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				return
+			}
+		}
+		validatedJKT := proof.JKT
 		uid, err := uuid.Parse(claims.Subject)
 		if err != nil {
 			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
