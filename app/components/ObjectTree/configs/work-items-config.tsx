@@ -44,5 +44,5 @@ export const workItemsConfig: ObjectTreeConfig<WorkItem> = {
     options: [10, 25, 50, 100],
     defaultPageSize: 25,
   },
-  filterChips: <WorkItemsFilterChips />,
+  filterChips: <WorkItemsFilterChips prefKey="workitems.filters" />,
 };

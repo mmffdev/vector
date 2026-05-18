@@ -82,6 +82,36 @@ case "$FILE_PATH" in
   *"/app/lib/"*) exit 0 ;;
 esac
 
+# Per-file annotation exemption (PLA-0053 — feedback_url_is_path_only).
+# A file may carry `// hook-allow-url-query: <reason>` within the first
+# 20 lines to exempt itself from the checks below. Used for files that
+# legitimately handle URL query state — inbound auth-callback routes
+# that read a one-shot ?token=, or work-in-progress refactors that are
+# removing existing URL writes (the hook would otherwise block edits
+# to the very offenders we want gone).
+#
+# Audit the active exemptions any time with:
+#   grep -rln 'hook-allow-url-query' app/
+#
+# The annotation must include a non-empty reason after the colon —
+# the reason is the paper trail. Files without the annotation are
+# subject to the normal checks.
+# For existing files: read the on-disk content (the annotation is what's
+# already there). For new files (Write tool): read the NEW content
+# being written. Either path can declare the exemption.
+ANNOTATION_HAYSTACK=""
+if [[ -f "$FILE_PATH" ]]; then
+  ANNOTATION_HAYSTACK=$(head -n 20 "$FILE_PATH" 2>/dev/null)
+else
+  # New file — the annotation must appear in the first 20 lines of the
+  # content being written.
+  ANNOTATION_HAYSTACK=$(printf '%s' "$NEW_TEXT" | head -n 20)
+fi
+if printf '%s' "$ANNOTATION_HAYSTACK" \
+     | grep -qE '^\s*//\s*hook-allow-url-query:\s*\S'; then
+  exit 0
+fi
+
 [[ -z "$NEW_TEXT" ]] && exit 0
 
 BLOCKED=()

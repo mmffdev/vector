@@ -837,6 +837,13 @@ func main() {
 		r.Get("/active-scope", usersH.GetActiveScope)
 		r.Put("/active-scope", usersH.SetActiveScope)
 
+		// Per-user namespaced preferences (mig 208).
+		// Replaces URL-bar query state for filter chips, sort, tab —
+		// see TD-URL-FILTER-CHIPS / TD-URL-TAB-STATE in c_tech_debt.md.
+		r.Get("/preferences/{key}", usersH.GetPreference)
+		r.Put("/preferences/{key}", usersH.SetPreference)
+		r.Delete("/preferences/{key}", usersH.DeletePreference)
+
 		// PLA-0049 Phase 0.5.3: per-user page-access set + global version.
 		// Drives usePageAccess() in the frontend; client polls/re-fetches
 		// when the version bumps.

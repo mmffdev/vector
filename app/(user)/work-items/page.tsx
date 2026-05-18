@@ -13,7 +13,6 @@ import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import { WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
 import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_workitems.json";
 
 export default function WorkItemsPage() {
@@ -39,7 +38,8 @@ export default function WorkItemsPage() {
       getParentId: funcs.getParentId,
       getChildrenCount: funcs.getChildrenCount,
       searchAccessor: funcs.searchAccessor,
-      filterChips: resolved.filterChipsComponent === "WorkItemsFilterChips" ? <WorkItemsFilterChips /> : undefined,
+      // filterChips is provided by ObjectTree itself based on
+      // filterChipsComponent — page no longer wires the React element.
     } as ObjectTreeDataConfig;
   }, []);
 

@@ -101,8 +101,17 @@ export default function ObjectTree({
   const colourMap = useArtefactTypeColours();
   const [pageSize, setPageSize] = useState<number | "all">(25);
   const [pageIndex, setPageIndex] = useState(0);
-  const { filters } = useWorkItemsFilters();
-  const { sortKey, sortDir, setSort } = useWorkItemsSort();
+
+  // Per-user filter/sort preferences are namespaced by treeName so
+  // /work-items and /portfolio-items don't bleed across pages
+  // (TD-URL-FILTER-CHIPS pay-down). Default keys when consumer hasn't
+  // passed treeName: fall back to mode for back-compat.
+  const treeName = wizardConfig?.treeName ?? (mode === "portfolio_items" ? "portfolioitems" : "workitems");
+  const filtersPrefKey = `${treeName}.filters`;
+  const sortPrefKey = `${treeName}.sort`;
+
+  const { filters } = useWorkItemsFilters(filtersPrefKey);
+  const { sortKey, sortDir, setSort } = useWorkItemsSort(sortPrefKey);
 
   // PLA-0021 / 00456 — multi-select state lives here; the tree consumes
   // it via the SelectionConfig prop set, and BulkActionBar reads it to
@@ -176,11 +185,15 @@ export default function ObjectTree({
   );
 
   // Build config based on mode or accept from wizardConfig (p_wizard.json).
+  // When wizardConfig.filterChips is missing OR doesn't already carry our
+  // prefKey-bound chips, we provide them here so the page doesn't have to
+  // know the prefKey namespace (TD-URL-FILTER-CHIPS).
   const config = useMemo<ObjectTreeDataConfig<WorkItem>>(() => {
     if (wizardConfig) {
       return {
         ...wizardConfig,
         columns,
+        filterChips: wizardConfig.filterChips ?? <WorkItemsFilterChips prefKey={filtersPrefKey} />,
       };
     }
     const isPortfolio = mode === "portfolio_items";
@@ -197,7 +210,7 @@ export default function ObjectTree({
       getParentId: (r) => r.parent_id,
       getChildrenCount: (r) => r.children_count,
       searchAccessor: (r) => `${r.title} vec-${r.key_num}`,
-      filterChips: <WorkItemsFilterChips />,
+      filterChips: <WorkItemsFilterChips prefKey={filtersPrefKey} />,
       paginationOptions: [25, 50, 100],
       defaultPageSize: 25,
       resourceUrl: isPortfolio ? "/portfolio-items" : "/work-items",

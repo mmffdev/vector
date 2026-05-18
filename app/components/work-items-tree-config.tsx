@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/md";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { apiSite } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { safeInk, type TypeColourMap } from "@/app/lib/colourUtils";
@@ -539,34 +538,80 @@ export const EMPTY_FILTERS: WorkItemsFilters = {
   owner_id: [],
 };
 
-function readMulti(search: URLSearchParams, key: string): string[] {
-  const raw = search.get(key);
-  if (!raw) return [];
-  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+// ─── Per-user prefs backing (replaces URL state — TD-URL-FILTER-CHIPS) ───────
+//
+// State lives in users.preferences (mig 208) keyed by namespace e.g.
+// "workitems.filters" / "portfolioitems.sort". Reads seed once on mount
+// via apiSite('/me/preferences/<key>'); writes fire-and-forget via PUT.
+// Optimistic local state means chip flicks paint instantly — the server
+// is the durable mirror, not the synchronous source of truth.
+//
+// Why per-user instead of useState alone:
+//   • Filter and sort choices survive reload, tab close, and device
+//     switch — matches the Linear/Jira/Notion default users expect.
+//   • Server can render preferences-driven views (e.g. emailed summaries
+//     that respect "show only my open epics") without rehydrating UI.
+//   • The URL stays path-only (PLA-0053).
+
+// Light wrapper around the prefs endpoint. Returns { value, setValue }
+// where value is whatever JSON the caller persisted, defaulted to
+// `defaultValue` on missing/seed-failure. setValue updates local state
+// and PUTs; failures swallow (next refresh will reconcile from server).
+// Generic so both filters and sort can share the same plumbing.
+function useUserPreference<T>(prefKey: string, defaultValue: T): {
+  value: T;
+  setValue: (next: T) => void;
+  seeded: boolean;
+} {
+  const [value, setLocalValue] = useState<T>(defaultValue);
+  const [seeded, setSeeded] = useState(false);
+
+  // Seed once. The prefKey changing mid-mount is rare (per-page
+  // identity) but supported — re-seeds on key change.
+  useEffect(() => {
+    let cancelled = false;
+    apiSite<{ value: T | null }>(`/me/preferences/${encodeURIComponent(prefKey)}`)
+      .then((r) => {
+        if (cancelled) return;
+        if (r.value !== null && r.value !== undefined) setLocalValue(r.value);
+        setSeeded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // 4xx/5xx on seed → keep default, mark seeded so writes still fire.
+        setSeeded(true);
+      });
+    return () => { cancelled = true; };
+  }, [prefKey]);
+
+  const setValue = useCallback((next: T) => {
+    setLocalValue(next);
+    apiSite(`/me/preferences/${encodeURIComponent(prefKey)}`, {
+      method: "PUT",
+      body: JSON.stringify({ value: next }),
+    }).catch(() => { /* fire-and-forget; reload reconciles */ });
+  }, [prefKey]);
+
+  return { value, setValue, seeded };
 }
 
-// Single source of truth: URL search params. Each filter maps to one param
-// of the same name (so the URL stays human-readable). All updates route
-// through router.replace() so back/forward history is not polluted on each
-// chip flick — bookmarking still works because params are persisted.
-export function useWorkItemsFilters(): {
+// State lives in users.preferences. Each filter dimension is a separate
+// key in the persisted object so future filters can be added without
+// invalidating existing preferences. Read-side defaults to EMPTY_FILTERS
+// (no chip selected) when the user has no stored value.
+//
+// `prefKey` is the namespace under /_site/me/preferences/{key}. Each
+// page passes its own (`workitems.filters` vs `portfolioitems.filters`)
+// so cross-page filter state doesn't bleed.
+export function useWorkItemsFilters(prefKey: string): {
   filters: WorkItemsFilters;
   hasAny: boolean;
   setFilter: <K extends keyof WorkItemsFilters>(key: K, value: WorkItemsFilters[K]) => void;
   clearAll: () => void;
 } {
-  const router = useRouter();
-  const pathname = usePathname();
-  const search = useSearchParams();
-
-  const filters = useMemo<WorkItemsFilters>(
-    () => ({
-      type: readMulti(search, "type"),
-      status: readMulti(search, "status"),
-      priority: readMulti(search, "priority"),
-      owner_id: readMulti(search, "owner_id"),
-    }),
-    [search],
+  const { value: filters, setValue } = useUserPreference<WorkItemsFilters>(
+    prefKey,
+    EMPTY_FILTERS,
   );
 
   const hasAny =
@@ -576,64 +621,52 @@ export function useWorkItemsFilters(): {
     filters.owner_id.length > 0;
 
   const setFilter = useCallback(
-    <K extends keyof WorkItemsFilters>(key: K, value: WorkItemsFilters[K]) => {
-      const next = new URLSearchParams(search.toString());
-      const list = (value as unknown as string[]) ?? [];
-      if (list.length === 0) next.delete(key);
-      else next.set(key, list.join(","));
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    <K extends keyof WorkItemsFilters>(key: K, v: WorkItemsFilters[K]) => {
+      setValue({ ...filters, [key]: v });
     },
-    [router, pathname, search],
+    [filters, setValue],
   );
 
   const clearAll = useCallback(() => {
-    const next = new URLSearchParams(search.toString());
-    (["type", "status", "priority", "owner_id"] as const).forEach((k) => next.delete(k));
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [router, pathname, search]);
+    setValue(EMPTY_FILTERS);
+  }, [setValue]);
 
   return { filters, hasAny, setFilter, clearAll };
 }
 
-// ─── Sort URL state ───────────────────────────────────────────────────────────
+// ─── Sort state (per-user pref) ───────────────────────────────────────────────
 
 const SORT_KEYS: ReadonlySet<string> = new Set([
   "id", "title", "status", "priority", "points", "sprint", "due",
 ]);
 
-// Sort state mirrors the filter pattern: URL is the single source of truth.
-// `?sort=<key>&dir=asc|desc`; absent ⇒ default (no sort key, server uses
-// position order). setSort with key=null clears both params at once.
-export function useWorkItemsSort(): {
+interface SortPref {
+  key: SortKey | null;
+  dir: SortDir;
+}
+
+const DEFAULT_SORT: SortPref = { key: null, dir: "asc" };
+
+// Mirrors useWorkItemsFilters but stores a single object { key, dir }.
+// `prefKey` namespaces per-page (e.g. "workitems.sort").
+export function useWorkItemsSort(prefKey: string): {
   sortKey: SortKey | null;
   sortDir: SortDir;
   setSort: (key: SortKey | null, dir: SortDir) => void;
 } {
-  const router = useRouter();
-  const pathname = usePathname();
-  const search = useSearchParams();
+  const { value, setValue } = useUserPreference<SortPref>(prefKey, DEFAULT_SORT);
 
-  const rawKey = search.get("sort");
-  const rawDir = search.get("dir");
-  const sortKey = (rawKey && SORT_KEYS.has(rawKey) ? rawKey : null) as SortKey | null;
-  const sortDir: SortDir = rawDir === "desc" ? "desc" : "asc";
+  // Defensive: an unknown sort key from a stale preference (e.g. a
+  // column that was renamed) collapses to default — never throws.
+  const sortKey: SortKey | null =
+    value.key && SORT_KEYS.has(value.key) ? value.key : null;
+  const sortDir: SortDir = value.dir === "desc" ? "desc" : "asc";
 
   const setSort = useCallback(
     (key: SortKey | null, dir: SortDir) => {
-      const next = new URLSearchParams(search.toString());
-      if (key == null) {
-        next.delete("sort");
-        next.delete("dir");
-      } else {
-        next.set("sort", key);
-        next.set("dir", dir);
-      }
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      setValue({ key, dir });
     },
-    [router, pathname, search],
+    [setValue],
   );
 
   return { sortKey, sortDir, setSort };
@@ -662,12 +695,13 @@ export function useWorkItemsSort(): {
 // change.
 const STATUS_CHIP_OPTIONS_TRANSITIONAL: { value: string; label: string }[] = [];
 
-// Controlled filter chips. State lives in URL via useWorkItemsFilters().
+// Controlled filter chips. State lives in users.preferences (mig 208)
+// keyed by `prefKey` — see useWorkItemsFilters / TD-URL-FILTER-CHIPS.
 // Type / Status / Priority are multi-select NavigationPie chips; Owner
 // remains a single-toggle "Mine" chip until the user-picker story lands.
-export function WorkItemsFilterChips() {
+export function WorkItemsFilterChips({ prefKey }: { prefKey: string }) {
   const { user } = useAuth();
-  const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters();
+  const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters(prefKey);
   const meId = user?.id ?? null;
   const ownerIsMe = filters.owner_id.length > 0 && filters.owner_id[0] === meId;
 

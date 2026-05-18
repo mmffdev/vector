@@ -133,6 +133,36 @@ const sqlUserHasGrantOnNode = `
 		   AND users_roles_topology_nodes_revoked_at IS NULL
 	)`
 
+// ── Per-user namespaced preferences (mig 208) ──────────────────────────────
+//
+// users.preferences is a JSONB column keyed by string namespace
+// (e.g. "workitems.filters"). Reads return the value at the key
+// (or null when absent). Writes overwrite the key — the caller
+// owns the value shape; backend doesn't interpret it. See
+// TD-URL-FILTER-CHIPS / TD-URL-TAB-STATE in docs/c_tech_debt.md.
+
+// sqlSelectUserPreference returns the JSONB value at the namespace
+// (or NULL when the key isn't set). Uses jsonb -> operator (not ->>)
+// so the caller gets back the raw JSON, not a stringified copy.
+const sqlSelectUserPreference = `SELECT preferences -> $2 FROM users WHERE id = $1`
+
+// sqlUpsertUserPreference writes the namespace key with the given
+// JSON value, leaving every other key intact. jsonb_set with
+// create_missing=true is the standard upsert-key pattern.
+const sqlUpsertUserPreference = `
+	UPDATE users
+	   SET preferences = jsonb_set(preferences, ARRAY[$2]::text[], $3::jsonb, true),
+	       updated_at = NOW()
+	 WHERE id = $1`
+
+// sqlDeleteUserPreference clears a single namespace key (- operator
+// removes by key). Idempotent — no error when the key wasn't set.
+const sqlDeleteUserPreference = `
+	UPDATE users
+	   SET preferences = preferences - $2,
+	       updated_at = NOW()
+	 WHERE id = $1`
+
 // ── handler.go (post-reset email lookup) ───────────────────────────────────
 
 // sqlSelectUserEmailByID is the lean email-only lookup after

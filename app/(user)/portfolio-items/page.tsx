@@ -13,7 +13,6 @@ import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import { WorkItemsFilterChips } from "@/app/components/work-items-tree-config";
 import portfolioWizardJson from "@/app/components/ObjectTree/configs/p_wizard_portfolio.json";
 
 export default function PortfolioItemsPage() {
@@ -29,12 +28,13 @@ export default function PortfolioItemsPage() {
   const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
     const resolved = resolveWizardConfig(portfolioWizardJson as any);
     const funcs = buildWorkItemsFunctions();
+    // filterChips is provided by ObjectTree itself based on
+    // filterChipsComponent — page no longer wires the React element.
     return {
       ...resolved,
       getParentId: funcs.getParentId,
       getChildrenCount: funcs.getChildrenCount,
       searchAccessor: funcs.searchAccessor,
-      filterChips: resolved.filterChipsComponent === "WorkItemsFilterChips" ? <WorkItemsFilterChips /> : undefined,
     } as ObjectTreeDataConfig;
   }, []);
 
