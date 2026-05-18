@@ -14708,25 +14708,47 @@ input[type="reset"] {
 }
 .qr-code__Trigger_Button {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  width: 40px;
-  height: 40px;
   padding: 0;
-  background: var(--surface);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   color: var(--ink);
-  transition: border-color 120ms ease, background 120ms ease;
+  overflow: hidden;
+  transition: border-color 120ms ease;
 }
 .qr-code__Trigger_Button:hover {
   border-color: var(--ink);
-  background: var(--surface-raised);
 }
 .qr-code__Trigger_Button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+.qr-code__Trigger_Frame {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: #ffffff;
+}
+.qr-code__Trigger_Code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  background: #ffffff;
+}
+.qr-code__Trigger_Caption {
+  display: block;
+  padding: 4px 8px 6px;
+  background: #ffffff;
+  color: #000000;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1;
 }
 .qr-code__Trigger_Button .qr-code__Container {
   gap: 0;
@@ -14782,4 +14804,200 @@ input[type="reset"] {
 }
 .qr-code__Popover_Status-failed {
   color: var(--danger, #c0392b);
+}
+
+/* ----------- /redesign landing page -----------
+   Migrated from <style jsx> in app/redesign/page.tsx as part of
+   TD-SEC-CSP-STYLE-INLINE (2026-05-18). styled-jsx inline <style>
+   tags require nonce wiring under strict CSP — moving the rules to
+   globals.css avoids that machinery without changing rendered styles.
+*/
+.rd-page { display: flex; flex-direction: column; min-height: 100vh; }
+.rd-page__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px 0;
+  gap: 16px;
+}
+.rd-page__crumbs { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
+.rd-page__crumb { color: var(--ink-muted); }
+.rd-page__crumb--current { color: var(--ink); font-weight: 500; }
+.rd-page__crumb-sep { color: var(--ink-faint); }
+.rd-page__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.rd-page__action:hover { background: var(--surface-sunken); }
+.rd-page__body { padding: 24px 32px 48px; }
+.rd-page__heading { margin-bottom: 24px; }
+.rd-page__title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+.rd-page__subtitle { font-size: 13px; color: var(--ink-muted); margin: 0; }
+.rd-page__subtitle strong { color: var(--ink); font-weight: 600; }
+.rd-empty {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 32px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.rd-empty__hint { color: var(--ink-subtle); margin-top: 8px; }
+
+/* ----------- flow-states-v2 page (workspace-admin) -----------
+   Migrated from <style jsx> in app/(user)/workspace-admin/flow-states-v2/
+   page.tsx as part of TD-SEC-CSP-STYLE-INLINE.
+*/
+.orbit-poc__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.orbit-poc__count {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+.fs-flow-block__title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  margin: 0 0 var(--space-3);
+  color: var(--ink);
+}
+
+/* ----------- Circular additor (catalogue/c_circular_additor) -----------
+   Migrated from <style jsx> in circularAdditor.tsx as part of
+   TD-SEC-CSP-STYLE-INLINE. The runtime `transitionMs` prop becomes
+   CSS custom property `--aftd-transition-ms`, set via style={{}} on
+   the wrapper element (the only viable channel for a per-instance
+   value — inline `style=""` attributes are gated by `style-src-attr`,
+   not `style-src`, so this remains permitted under our CSP).
+   styled-jsx :global() syntax stripped (globals.css is already global).
+*/
+.aftd__body .flow-rules__rail {
+  min-height: 590px;
+}
+.aftd__body .flow-rules__canvas-root {
+  width: 520px;
+  height: 520px;
+}
+.aftd__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.aftd__flow-arc {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  display: none;
+}
+.aftd__flow-arc--inner { stroke: #22c55e; }
+.aftd__flow-arc--outer { stroke: #ef4444; }
+.aftd__boundary-wedge {
+  fill: url(#aftd-wedge-stripes);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.aftd__arc-track {
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 1;
+  opacity: 0.55;
+  display: none;
+}
+.aftd__arc-track--outer {
+  display: block;
+  stroke-dasharray: 20 10;
+}
+.aftd__cross line {
+  stroke: var(--ink-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+.aftd__node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ink-muted) 55%, transparent);
+  background: transparent;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.aftd__node-fill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: background 160ms ease;
+}
+.aftd__node-index {
+  color: #fff;
+  font-weight: 600;
+  font-size: 35px;
+  line-height: 1;
+  user-select: none;
+  transition: transform var(--aftd-transition-ms, 360ms) cubic-bezier(0.4, 0, 0.2, 1);
+}
+.aftd__node-label {
+  position: absolute;
+  font-size: 0.95rem;
+  color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.aftd__node-label--top    { bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.aftd__node-label--bottom { top:    calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.aftd__node-label--left   { right:  calc(100% + 8px); top: 50%;  transform: translateY(-50%); }
+.aftd__node-label--right  { left:   calc(100% + 8px); top: 50%;  transform: translateY(-50%); }
+
+.aftd__plus {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border: 1.5px dashed var(--ink-muted);
+  background: var(--surface-raised, rgba(255, 255, 255, 0.04));
+  color: var(--ink);
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.aftd__plus:hover {
+  background: var(--accent, #3b82f6);
+  color: white;
+  border-color: var(--accent, #3b82f6);
+  transform: translate(-50%, -50%) scale(1.15);
+}
+.aftd__plus-glyph {
+  font-size: 1rem;
+  line-height: 1;
+  font-weight: 500;
 }

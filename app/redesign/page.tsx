@@ -36,50 +36,6 @@ export default function RedesignLanding() {
         </div>
       </div>
 
-      <style jsx>{`
-        .rd-page { display: flex; flex-direction: column; min-height: 100vh; }
-        .rd-page__topbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 18px 32px 0;
-          gap: 16px;
-        }
-        .rd-page__crumbs { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
-        .rd-page__crumb { color: var(--ink-muted); }
-        .rd-page__crumb--current { color: var(--ink); font-weight: 500; }
-        .rd-page__crumb-sep { color: var(--ink-faint); }
-        .rd-page__action {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          height: 30px;
-          padding: 0 12px;
-          background: var(--surface);
-          color: var(--ink);
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          font-size: 12px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 150ms ease;
-        }
-        .rd-page__action:hover { background: var(--surface-sunken); }
-        .rd-page__body { padding: 24px 32px 48px; }
-        .rd-page__heading { margin-bottom: 24px; }
-        .rd-page__title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
-        .rd-page__subtitle { font-size: 13px; color: var(--ink-muted); margin: 0; }
-        .rd-page__subtitle strong { color: var(--ink); font-weight: 600; }
-        .rd-empty {
-          border: 1px solid var(--border);
-          background: var(--surface);
-          padding: 32px;
-          color: var(--ink-muted);
-          font-size: 13px;
-          line-height: 1.6;
-        }
-        .rd-empty__hint { color: var(--ink-subtle); margin-top: 8px; }
-      `}</style>
     </div>
   );
 }

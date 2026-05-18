@@ -43,12 +43,22 @@ function buildCsp(nonce: string, apiBase: string): string {
     "'strict-dynamic'",
     ...(isProd ? [] : ["'unsafe-eval'"]),
   ].join(" ");
-  // style-src keeps 'unsafe-inline' as a transitional measure — see
-  // TD-SEC-CSP-STYLE-INLINE (S3). Killing inline styles requires
-  // retiring 96 `style={{…}}` props + handling React Flow / styled-jsx
-  // dynamic styles. Not on the critical path for the S1 XSS reduction
-  // (script-src nonce-only is the procurement-relevant control).
-  const styleSrc = "'self' 'unsafe-inline' https://fonts.googleapis.com";
+  // style-src: production is nonce-driven (the three <style jsx>
+  // blocks that existed pre-2026-05-18 migrated to globals.css; React
+  // Flow ships its CSS via a normal stylesheet — allowed under 'self').
+  // Dev keeps 'unsafe-inline' because Next.js's dev overlay /
+  // error-modal devtools inject inline <style> blocks dynamically and
+  // there's no nonce-passing hook into that code path. Production
+  // build doesn't load the devtools, so the strict directive applies.
+  // Same conditional pattern we use for 'unsafe-eval'.
+  //
+  // Inline style="" attributes on elements are gated by 'style-src-attr'
+  // (left permissive by default) — 96 pre-existing `style={{...}}` JSX
+  // props compile to inline attributes and are a CSS-discipline issue,
+  // not an XSS surface.
+  const styleSrc = isProd
+    ? "'self' 'nonce-" + nonce + "' https://fonts.googleapis.com"
+    : "'self' 'unsafe-inline' https://fonts.googleapis.com";
   const parts = [
     "default-src 'self'",
     `script-src ${scriptSrc}`,
@@ -62,7 +72,11 @@ function buildCsp(nonce: string, apiBase: string): string {
     "form-action 'self'",
     "base-uri 'none'",
     "object-src 'none'",
-    "report-uri /_site/csp-report",
+    // report-uri must point at the absolute backend URL — the browser
+    // fires CSP reports against this directly (no Next.js proxy hop),
+    // so a same-origin path would 404 on :5101. Backend endpoint at
+    // /_site/csp-report (CSRF-exempt, unauthenticated, rate-limited).
+    `report-uri ${apiBase}/_site/csp-report`,
   ];
   return parts.join("; ");
 }

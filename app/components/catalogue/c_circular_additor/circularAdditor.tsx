@@ -230,7 +230,15 @@ export default function CircularAdditor({
   }, [onResetToDefaults, isControlled, defaultItems]);
 
   return (
-    <div className="flow-rules__body aftd__body">
+    <div
+      className="flow-rules__body aftd__body"
+      // --aftd-transition-ms exposes the runtime `transitionMs` prop to
+      // .aftd__node-index in globals.css. Set as an inline style
+      // attribute (style-src-attr surface, not style-src) so the value
+      // remains per-instance under strict CSP without needing a nonce
+      // on a <style> tag. Default mirrored in the CSS rule's fallback.
+      style={{ "--aftd-transition-ms": `${transitionMs}ms` } as React.CSSProperties}
+    >
       {showRail && (
         <div className="flow-rules__rail aftd__rail" role="group" aria-label="Item list">
           <p className="flow-rules__eyebrow">{railEyebrow}</p>
@@ -415,127 +423,6 @@ export default function CircularAdditor({
         </div>
       </div>
 
-      <style jsx>{`
-        /* The PoC sets a min-height on the rail so the canvas-wrap doesn't
-           push the row taller. Scoped to this component only via the
-           aftd__body wrapper. */
-        .aftd__body :global(.flow-rules__rail) {
-          min-height: 590px;
-        }
-        .aftd__body :global(.flow-rules__canvas-root) {
-          width: 520px;
-          height: 520px;
-        }
-        .aftd__svg {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-          overflow: visible;
-        }
-        .aftd__flow-arc {
-          fill: none;
-          stroke: #ffffff;
-          stroke-width: 2;
-          stroke-linecap: round;
-          display: none;
-        }
-        .aftd__flow-arc--inner { stroke: #22c55e; }
-        .aftd__flow-arc--outer { stroke: #ef4444; }
-        .aftd__boundary-wedge {
-          fill: url(#aftd-wedge-stripes);
-          stroke: var(--border);
-          stroke-width: 1;
-        }
-        .aftd__arc-track {
-          fill: none;
-          stroke: var(--ink-muted);
-          stroke-width: 1;
-          opacity: 0.55;
-          display: none;
-        }
-        .aftd__arc-track--outer {
-          display: block;
-          stroke-dasharray: 20 10;
-        }
-        .aftd__cross line {
-          stroke: var(--ink-muted);
-          stroke-width: 1.5;
-          stroke-linecap: round;
-          opacity: 0.55;
-        }
-        .aftd__node {
-          position: absolute;
-          transform: translate(-50%, -50%);
-          padding: 0;
-          border: 1px solid color-mix(in srgb, var(--ink-muted) 55%, transparent);
-          background: transparent;
-          border-radius: 50%;
-          aspect-ratio: 1 / 1;
-          height: auto;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .aftd__node-fill {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 60%;
-          height: 60%;
-          border-radius: 50%;
-          pointer-events: none;
-          transition: background 160ms ease;
-        }
-        .aftd__node-index {
-          color: #fff;
-          font-weight: 600;
-          font-size: 35px;
-          line-height: 1;
-          user-select: none;
-          transition: transform ${transitionMs}ms cubic-bezier(0.4,0,0.2,1);
-        }
-        .aftd__node-label {
-          position: absolute;
-          font-size: 0.95rem;
-          color: var(--ink);
-          white-space: nowrap;
-          pointer-events: none;
-        }
-        .aftd__node-label--top    { bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
-        .aftd__node-label--bottom { top:    calc(100% + 6px); left: 50%; transform: translateX(-50%); }
-        .aftd__node-label--left   { right:  calc(100% + 8px); top: 50%;  transform: translateY(-50%); }
-        .aftd__node-label--right  { left:   calc(100% + 8px); top: 50%;  transform: translateY(-50%); }
-
-        .aftd__plus {
-          position: absolute;
-          transform: translate(-50%, -50%);
-          padding: 0;
-          border: 1.5px dashed var(--ink-muted);
-          background: var(--surface-raised, rgba(255,255,255,0.04));
-          color: var(--ink);
-          border-radius: 50%;
-          aspect-ratio: 1 / 1;
-          height: auto;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .aftd__plus:hover {
-          background: var(--accent, #3b82f6);
-          color: white;
-          border-color: var(--accent, #3b82f6);
-          transform: translate(-50%, -50%) scale(1.15);
-        }
-        .aftd__plus-glyph {
-          font-size: 1rem;
-          line-height: 1;
-          font-weight: 500;
-        }
-      `}</style>
     </div>
   );
 }

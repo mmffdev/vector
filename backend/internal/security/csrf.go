@@ -104,7 +104,13 @@ func isCSRFExempt(path string) bool {
 		"/auth/password-reset",
 		"/auth/password-reset/confirm",
 		"/auth/mfa/verify",
-		"/addressables/build-reconcile":
+		"/addressables/build-reconcile",
+		// TD-SEC-CSP-NONCES-SRI Phase 2 — browser CSP reports are POSTed
+		// without session cookies (sometimes pre-login, always without
+		// JS-driven CSRF header). Per-IP rate limit on the route is the
+		// only DoS protection. Body is parsed as opaque JSON; no state
+		// change beyond inserting an audit row.
+		"/csp-report":
 		return true
 	}
 	if strings.HasPrefix(bare, "/admin/api-keys") {

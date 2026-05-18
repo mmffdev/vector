@@ -341,24 +341,6 @@ export default function FlowStatesV2Page() {
         </div>
       </div>
 
-      <style jsx>{`
-        .orbit-poc__toolbar {
-          display: flex;
-          align-items: center;
-          gap: var(--space-3);
-          margin-bottom: var(--space-4);
-        }
-        .orbit-poc__count {
-          font-size: 0.85rem;
-          color: var(--ink-muted);
-        }
-        .fs-flow-block__title {
-          font-size: var(--text-md);
-          font-weight: 600;
-          margin: 0 0 var(--space-3);
-          color: var(--ink);
-        }
-      `}</style>
     </PageContent>
   );
 }
