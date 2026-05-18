@@ -280,6 +280,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `9c45ef2` (2026-05-17): chore(tech-debt): triage 2026-05-17 — mark 3 resolved, flag DB-002 trigger
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -537,7 +538,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
@@ -674,7 +675,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
@@ -869,7 +870,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
@@ -1554,7 +1555,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
@@ -1598,6 +1599,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1714,7 +1716,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
 > Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2063,7 +2065,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -2910,7 +2912,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 - **B8.10** Per-tenant API keys with scoped permissions `[P2]`
 > Commit `761d7cd` (2026-05-09): fix(B22): DevPageHelpPanel — apiSite import + strip stale /api/ prefix
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3288,11 +3290,13 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -3434,15 +3438,16 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 
 ---
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
@@ -3456,8 +3461,9 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
@@ -3762,8 +3768,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -3888,7 +3895,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
@@ -3943,7 +3950,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6814e7d` (2026-05-18): feat(login): update sidebar branding — white bg, vertical red VECTOR wordmark
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
@@ -4032,7 +4039,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -4138,7 +4145,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -4259,6 +4267,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -4330,7 +4339,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0bb686` (2026-05-17): feat(nav): bookmark bucket in Rail 2
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
@@ -4463,8 +4472,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -4566,6 +4576,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -4652,6 +4663,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -4713,7 +4725,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -4799,6 +4812,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -4860,6 +4874,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -4991,6 +5006,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -5131,7 +5147,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `55a679d` (2026-05-18): feat(realtime): WS session sweeper + immediate-close [B16.8.12]
 > Commit `c5d96ba` (2026-05-18): feat(auth/realtime): plumb sid into WS via context + Hub.CloseSession [B16.8.12]
-> Commit `4fcc535` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
@@ -5292,6 +5308,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3cacf3c` (2026-05-18): feat(auth): TLS auto-detect on every cookie setter [B16.8.7]
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
+> Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
