@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
+import { triggerScopeReload } from "@/app/contexts/Sentinel";
 
 // PLA-0007: role is now a structured row from the `roles` table, not an
 // enum. Consumers should branch on permission codes (useHasPermission)
@@ -223,15 +224,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   // PLA-0053 / story 00576.5 — switch active workspace.
+  //
+  // B16.8 P3: after applyLogin re-mints the JWT with the new workspace,
+  // await triggerScopeReload() so ScopeContext refreshes its grants
+  // against the new workspace BEFORE this promise resolves. Closes the
+  // desync window where activeGrant.workspace_id still pointed at the
+  // OLD workspace (manifested as portfolio-model "no bundle" 404s).
+  // When ScopeProvider isn't mounted (login pages, overlay routes) the
+  // module-level ref is the default no-op, so this is safe everywhere.
   const switchWorkspace = useCallback(
     async (workspaceID: string) => {
       const res = await apiSite<LoginResp>("/auth/switch-workspace", {
         method: "POST",
         body: JSON.stringify({ workspace_id: workspaceID }),
       });
-      // Reuse applyLogin so the access token + user payload land
-      // exactly as they do after login/refresh.
       applyLogin(res);
+      await triggerScopeReload();
       return res.user;
     },
     [applyLogin]

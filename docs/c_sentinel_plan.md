@@ -1,7 +1,12 @@
 # Sentinel.tsx — Convergence Plan
 
-**Confidence: 82%**  
-**Status: PLANNED — not yet implemented**  
+**Status: IMPLEMENTED 2026-05-18 — tighter scope than the original plan.**
+
+The shipped implementation coordinates Auth↔Scope only — catalogues and `useActiveWorkspace` already invalidate correctly via the existing `useActiveWorkspace` chain, so the planned shims were unnecessary churn. `app/contexts/Sentinel.tsx` exposes a module-level `scopeReloadRef` (registered by `ScopeContext` on every render via `useEffect([reload])`) which `AuthContext.switchWorkspace` awaits after `applyLogin`. `SentinelBridge` is mounted inside `ScopeProvider` in `(user)/layout.tsx` and surfaces a `useSentinel()` view including the derived `workspaceInSync` predicate; the DebugPanel reads this alongside its existing local mismatch check. Coverage: `app/featuretests/__tests__/f_sentinel_scope_reload.test.tsx` (6 tests, all green).
+
+The original plan kept below for reference — the shipped scope differs from "Files to change" by leaving AuthContext, ScopeContext, the two catalogue providers, and `useActiveWorkspace` as their original implementations (with minimal coordination edits in Auth + Scope, not full shim conversions). The "zero consumer changes" commitment was kept.
+
+**Confidence (original): 82%**  
 **Trigger:** JWT workspace_id ≠ scope workspace_id mismatch causing portfolio model "no bundle" + other workspace-scoped 404s. Discovery method: DebugPanel (Vector logo → sticky debug bar).
 
 ---

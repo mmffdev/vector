@@ -11,6 +11,7 @@ import { DomRegistryProvider } from "@/app/contexts/DomRegistryContext";
 import { TenantProvider } from "@/app/contexts/TenantContext";
 import { ActiveNavProvider } from "@/app/contexts/ActiveNavContext";
 import { ScopeProvider } from "@/app/contexts/ScopeContext";
+import { SentinelBridge } from "@/app/contexts/Sentinel";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -38,9 +39,11 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       <PageHeaderProvider>
         <ActiveNavProvider>
         <ScopeProvider>
+        <SentinelBridge>
         <DomRegistryProvider>
           <RedesignShell>{children}</RedesignShell>
         </DomRegistryProvider>
+        </SentinelBridge>
         </ScopeProvider>
         </ActiveNavProvider>
       </PageHeaderProvider>

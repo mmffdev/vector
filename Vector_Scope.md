@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-18 (B16.8 Phase 2 closed — CSP nonces enforced 2026-05-18 + DOMPurify wraps on Header.tsx + HelpDocRenderer.tsx as defense-in-depth over backend SanitiseHelpBodyHTML allowlist; TD-SEC-DOMPURIFY-CLIENT filed)
-**Doc version:** 2.38
+**Last updated:** 2026-05-18 (B16.8 Phase 3 closed — Sentinel coordination layer wires AuthContext.switchWorkspace to await ScopeContext reload via module-level ref; closes the JWT/scope desync window that produced portfolio-model "no bundle" 404s; 6 f-sentinel tests green)
+**Doc version:** 2.39
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: RF1, FLOW1, F1, **B16.8**, FE-POR-0002. Everything else parks below. *(Swap 2026-05-18: B18.7 parked out → B16.8 security hardening swapped in; pre-launch security is now the active fifth slot.)*
 >
@@ -546,6 +546,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c40d494` (2026-05-18): fix(realtime): gate ServeWS conn.Close so first frame wins [B16.8.12]
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -884,6 +885,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1581,6 +1583,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c40d494` (2026-05-18): fix(realtime): gate ServeWS conn.Close so first frame wins [B16.8.12]
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1744,6 +1747,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2048,6 +2052,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2940,6 +2945,7 @@ Full lifecycle management for tasks, bugs, epics.
 - **B8.8** Cursor-based pagination on list endpoints `[P2]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `9e4422d` (2026-05-17): feat(tree): paginationPosition prop on ResourceTree (both|bottom) [B21]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
@@ -3231,6 +3237,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `c630ee7` (2026-05-16): chore(plans): merge orphan ACs + sync 00595/00597 done flags
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `f53722c` (2026-05-17): refactor(tree): drop legacy panelHeader path — WorkItemsPanelHeader/RisksPanelHeader retired [B21]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -3315,7 +3322,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   >
 - **B16.7** Backend security audit — systematic pass of all ~1300 routes against the backend validation checklist (`docs/c_c_backend_validation.md`): tenant_id from session only, user_id/role from session only, every payload resource ID re-verified against DB before write, permission check before every data-modifying operation, cross-tenant lookups return 404 not 403, errors flow through `errors_codes`. Required for SOC 2 / FedRAMP / PCI-DSS procurement audit readiness. Triggered by discovery that `SetActiveScope` was writing an arbitrary node_id without confirming the caller held a grant on that node. `[P1]`
 
-- **B16.8** 🔵 IN FLIGHT Security hardening — full-stack codebase-grounded remediation before first external user. Five phases. ✅ **P1 done 2026-05-18** — MFA/TOTP shipped (B16.8.1–.5), session idle timeout via per-request `users_sessions` JOIN (B16.8.6 + B16.8.11), cookie flags hardened (B16.8.7), JWT `iss`/`aud` claims (B16.8.8), access-token TTL doc'd as defense-in-depth (B16.8.9), active sessions UI + step-up reauth (B16.8.10), WebSocket session enforcement (B16.8.12). ✅ **P2 done 2026-05-18** — CSP nonces enforced (TD-SEC-CSP-NONCES-SRI + TD-SEC-CSP-STYLE-INLINE both closed), DOMPurify wraps on `Header.tsx` + `HelpDocRenderer.tsx` (defense-in-depth over backend `SanitiseHelpBodyHTML` allowlist). **P3** Sentinel.tsx workspace/scope desync convergence (plan: `docs/c_sentinel_plan.md`). **P4** Redis-backed rate limiter + account lockout, HIBP breach-password check. **P5** Guard console debug logs, audit-event alerting layer. Standards basis: NIST SP 800-63B-4, OWASP ASVS 4.0, NCSC Cyber Security Design Principles (28 sub-principles), FCA PS21/3, UK GDPR Article 32. Implementation plan: `/Users/rick/.claude/plans/velvet-dreaming-hamming.md`. `[P1]`
+- **B16.8** 🔵 IN FLIGHT Security hardening — full-stack codebase-grounded remediation before first external user. Five phases. ✅ **P1 done 2026-05-18** — MFA/TOTP shipped (B16.8.1–.5), session idle timeout via per-request `users_sessions` JOIN (B16.8.6 + B16.8.11), cookie flags hardened (B16.8.7), JWT `iss`/`aud` claims (B16.8.8), access-token TTL doc'd as defense-in-depth (B16.8.9), active sessions UI + step-up reauth (B16.8.10), WebSocket session enforcement (B16.8.12). ✅ **P2 done 2026-05-18** — CSP nonces enforced (TD-SEC-CSP-NONCES-SRI + TD-SEC-CSP-STYLE-INLINE both closed), DOMPurify wraps on `Header.tsx` + `HelpDocRenderer.tsx` (defense-in-depth over backend `SanitiseHelpBodyHTML` allowlist). ✅ **P3 done 2026-05-18** — Sentinel coordination layer (`app/contexts/Sentinel.tsx`): module-level `scopeReloadRef` registered by `ScopeContext` on every render, awaited by `AuthContext.switchWorkspace` after `applyLogin`; closes the JWT/scope desync window observed in DebugPanel; 6 f-sentinel tests green; tighter than the written plan (catalogues + `useActiveWorkspace` already coordinated correctly via existing `useActiveWorkspace`, no shims needed). **P4** Redis-backed rate limiter + account lockout, HIBP breach-password check. **P5** Guard console debug logs, audit-event alerting layer. Standards basis: NIST SP 800-63B-4, OWASP ASVS 4.0, NCSC Cyber Security Design Principles (28 sub-principles), FCA PS21/3, UK GDPR Article 32. Implementation plan: `/Users/rick/.claude/plans/velvet-dreaming-hamming.md`. `[P1]`
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -3348,6 +3355,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -3512,6 +3521,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -3979,6 +3990,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bde26f3` (2026-05-18): fix(realtime): sweeper closes orphan WS when users_sessions row deleted [B16.8.12]
 > Commit `2646566` (2026-05-18): feat(auth): backend slice for active sessions + step-up reauth [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -4670,6 +4682,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -4907,6 +4920,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
 > Commit `1a6cbcb` (2026-05-18): chore(auth-meta): correct login endpoint + B16.8.6–.12 scope-refs [B16.8.11]
 > Commit `75bc7c4` (2026-05-18): docs(security): pin WS_SESSION_CHECK_INTERVAL contract + B16.8.12 scope [B16.8.12]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -5105,6 +5119,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -5419,6 +5434,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
+> Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`

@@ -26,6 +26,7 @@ import { topologyApi, type MyGrant } from "@/app/lib/topologyApi";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { WORKSPACES_CHANGED_EVENT } from "@/app/lib/workspacesApi";
+import { registerScopeReload, unregisterScopeReload } from "@/app/contexts/Sentinel";
 
 const STORAGE_KEY = "vector.scope.activeNodeId";
 
@@ -104,6 +105,18 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     function onWorkspacesChanged() { void reload(); }
     window.addEventListener(WORKSPACES_CHANGED_EVENT, onWorkspacesChanged);
     return () => window.removeEventListener(WORKSPACES_CHANGED_EVENT, onWorkspacesChanged);
+  }, [reload]);
+
+  // B16.8 P3 — expose this provider's latest `reload` to
+  // AuthContext.switchWorkspace via a module-level ref so the
+  // workspace-switch path can await an immediate grant refresh.
+  // Keyed on `reload` (stable per-user via useCallback), so registration
+  // re-fires only when the user identity changes — that's exactly when
+  // a fresh closure is needed. On unmount we restore the no-op default
+  // so a stale provider reference can't be invoked.
+  useEffect(() => {
+    registerScopeReload(reload);
+    return unregisterScopeReload;
   }, [reload]);
 
   // Resolve the active scope each time grants land.

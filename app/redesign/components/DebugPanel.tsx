@@ -10,6 +10,7 @@ import { useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/contexts/Sentinel";
 import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useShell } from "@/app/redesign/ShellContext";
@@ -55,6 +56,7 @@ export default function DebugPanel() {
   const pathname = usePathname() ?? "";
   const { user, loading: authLoading, permissions } = useAuth();
   const { grants, activeNodeId, activeGrant, loading: scopeLoading, error: scopeError } = useScope();
+  const sentinel = useSentinel();
   const activeWorkspaceId = useActiveWorkspace();
   const { types, loading: catLoading, error: catError } = useArtefactTypeCatalogue();
 
@@ -121,6 +123,11 @@ export default function DebugPanel() {
               : "✗ MISMATCH"
           }
           warn={jwtWorkspaceMatchesScope === false}
+        />
+        <Row
+          label="sentinel.workspaceInSync (B16.8 P3)"
+          value={sentinel.workspaceInSync ? "✓ in sync" : "✗ DESYNC"}
+          warn={!sentinel.workspaceInSync}
         />
 
         {/* ── Artefact Type Catalogue ───────────────── */}
