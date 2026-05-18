@@ -146,13 +146,13 @@ export default function LoginPage() {
           <Image
             src="/logo-vector.png"
             alt="Vector"
-            width={80}
-            height={80}
+            width={60}
+            height={60}
             priority
           />
         </div>
         <div className="login-page__sidebar-wordmark">
-          <span className="login-page__sidebar-wordmark-v">V</span><span className="login-page__sidebar-wordmark-ector">ector</span>
+          <span className="login-page__sidebar-wordmark-v">V</span><span className="login-page__sidebar-wordmark-ector">ECTOR</span>
         </div>
         <div className="login-page__sidebar-version">v1.01</div>
       </aside>
