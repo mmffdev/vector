@@ -2364,6 +2364,31 @@ paths:
                   type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [topology]
+      summary: Create topology level
+      operationId: createTopologyLevel
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Level created
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /topology/commit:
     get:
@@ -2683,32 +2708,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /topology/levels:
-    post:
-      tags: [topology]
-      summary: Create topology level
-      operationId: createTopologyLevel
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Level created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
 
   /topology/levels/{id}:
     patch:

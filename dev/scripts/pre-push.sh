@@ -4,7 +4,10 @@
 #
 # 1. check_routes.sh — Go router ↔ openapi.yaml
 # 2. check_callers.py — frontend api(...) callers ↔ openapi.yaml
-# 3. oasdiff breaking — spec breaking changes vs latest snapshot
+# 3. oasdiff breaking — spec breaking changes vs latest snapshot for
+#                       BOTH v1 (openapi.yaml) and v2 (openapi-v2.yaml).
+#                       Snapshots live under api-snapshots/v1/vN.yaml
+#                       and api-snapshots/v2/vN.yaml per snap_api.sh.
 #
 # Breaking-change escape hatch: include `[breaking]` in the most recent
 # commit message (subject or body) to bypass the breaking-change block.
@@ -13,7 +16,6 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SCRIPTS="$REPO_ROOT/dev/scripts"
 SNAP_DIR="$REPO_ROOT/api-snapshots"
-SPEC="$REPO_ROOT/openapi.yaml"
 
 resolve_oasdiff() {
   if command -v oasdiff &>/dev/null; then
@@ -27,6 +29,54 @@ resolve_oasdiff() {
     return 0
   fi
   return 1
+}
+
+# find_latest_snap LABEL — echoes the path to the highest-numbered
+# snapshot under api-snapshots/<label>/, or empty if none. The
+# snap_api.sh script writes here; older top-level api-snapshots/v*.yaml
+# files are ignored (they predate the v1/v2 split).
+find_latest_snap() {
+  local label="$1"
+  local dir="$SNAP_DIR/$label"
+  [[ -d "$dir" ]] || return 0
+  local latest=""
+  local latest_n=0
+  for f in "$dir"/v*.yaml; do
+    [[ -f "$f" ]] || continue
+    local n="${f##*/v}"; n="${n%.yaml}"
+    [[ "$n" =~ ^[0-9]+$ ]] && (( n > latest_n )) && { latest_n=$n; latest=$f; }
+  done
+  echo "$latest"
+}
+
+# diff_against_snap LABEL SPEC_FILE — runs oasdiff breaking, prints a
+# BLOCKED message + exits 1 on real breaking changes (unless commit
+# carries [breaking]). No-ops when the snapshot is missing.
+diff_against_snap() {
+  local label="$1"
+  local spec="$2"
+  local latest_snap
+  latest_snap="$(find_latest_snap "$label")"
+
+  if [[ -z "$latest_snap" ]]; then
+    echo "WARN: no $label snapshot found — breaking-change check skipped for $label."
+    echo "      Run 'npm run api:snap' to establish a baseline."
+    return 0
+  fi
+
+  if ! "$OASDIFF" breaking "$latest_snap" "$spec" --fail-on ERR &>/dev/null; then
+    LAST_MSG=$(git log -1 --format="%s%n%b" 2>/dev/null || echo "")
+    if echo "$LAST_MSG" | grep -q '\[breaking\]'; then
+      echo "INFO: Breaking changes detected vs $label/$(basename "$latest_snap") but [breaking] token found — allowed."
+      return 0
+    fi
+    echo "" >&2
+    echo "BLOCKED: Breaking API changes detected vs $label/$(basename "$latest_snap")." >&2
+    echo "         Add [breaking] to your commit message to allow this push." >&2
+    echo "         Diff:" >&2
+    "$OASDIFF" breaking "$latest_snap" "$spec" --fail-on ERR 2>/dev/null >&2 || true
+    exit 1
+  fi
 }
 
 echo "=== pre-push: API contract checks ==="
@@ -43,22 +93,8 @@ if ! python3 "$SCRIPTS/check_callers.py"; then
   exit 1
 fi
 
-# Layer 2: Breaking change detection vs latest snapshot
-latest_snap=""
-latest_n=0
-for f in "$SNAP_DIR"/v*.yaml; do
-  [[ -f "$f" ]] || continue
-  n="${f##*/v}"; n="${n%.yaml}"
-  [[ "$n" =~ ^[0-9]+$ ]] && (( n > latest_n )) && { latest_n=$n; latest_snap=$f; }
-done
-
-if [[ -z "$latest_snap" ]]; then
-  echo "WARN: no snapshot found in api-snapshots/ — breaking-change check skipped."
-  echo "      Run 'npm run api:snap' to establish a baseline."
-  echo "=== pre-push: OK (no snapshot) ==="
-  exit 0
-fi
-
+# Layer 2: Breaking change detection vs latest snapshot. Run for both
+# v1 and v2 spec families against their respective snapshot dirs.
 if ! OASDIFF=$(resolve_oasdiff); then
   echo "WARN: oasdiff not installed — breaking-change check skipped."
   echo "      Install: go install github.com/oasdiff/oasdiff@latest"
@@ -66,18 +102,9 @@ if ! OASDIFF=$(resolve_oasdiff); then
   exit 0
 fi
 
-if ! "$OASDIFF" breaking "$latest_snap" "$SPEC" --fail-on ERR &>/dev/null; then
-  LAST_MSG=$(git log -1 --format="%s%n%b" 2>/dev/null || echo "")
-  if echo "$LAST_MSG" | grep -q '\[breaking\]'; then
-    echo "INFO: Breaking changes detected but [breaking] token found in commit — allowed."
-  else
-    echo "" >&2
-    echo "BLOCKED: Breaking API changes detected vs $(basename "$latest_snap")." >&2
-    echo "         Add [breaking] to your commit message to allow this push." >&2
-    echo "         Diff:" >&2
-    "$OASDIFF" breaking "$latest_snap" "$SPEC" --fail-on ERR 2>/dev/null >&2 || true
-    exit 1
-  fi
+diff_against_snap "v1" "$REPO_ROOT/openapi.yaml"
+if [[ -f "$REPO_ROOT/openapi-v2.yaml" ]]; then
+  diff_against_snap "v2" "$REPO_ROOT/openapi-v2.yaml"
 fi
 
 echo "=== pre-push: OK ==="

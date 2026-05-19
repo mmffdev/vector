@@ -20,6 +20,7 @@
 /auth/login
 /auth/logout
 /auth/me
+/auth/password-reset/confirm
 /auth/refresh
 /custom-field-library
 /custom-field-library/{id}
@@ -28,9 +29,16 @@
 /defects/{id}
 /flows
 /library/releases/{id}/ack
+/nav/bookmark
 /nav/bookmark/check
+/nav/catalogue
+/nav/prefs
+/nav/profiles
+/nav/profiles/active
+/nav/profiles/order
 /nav/profiles/{id}
 /nav/profiles/{id}/groups
+/nav/start-page
 /page-help/admin
 /page-help/admin/{addressable_id}
 /page-help/{addressable_id}

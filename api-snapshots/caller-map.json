@@ -1,60 +1,7 @@
 {
-  "/library/releases": [
-    "app/(user)/library-releases/page.tsx:80"
-  ],
-  "/auth/password-reset/confirm": [
-    "app/login/reset/confirm/page.tsx:54"
-  ],
-  "/nav/bookmark": [
-    "app/contexts/NavPrefsContext.tsx:383",
-    "app/contexts/NavPrefsContext.tsx:394"
-  ],
-  "/nav/catalogue": [
-    "app/contexts/NavPrefsContext.tsx:189"
-  ],
-  "/auth/password-reset": [
-    "app/login/reset/page.tsx:27"
-  ],
   "/me/theme-pack": [
     "app/hooks/useThemePack.ts:105",
     "app/hooks/useThemePack.ts:138"
-  ],
-  "/nav/profiles": [
-    "app/contexts/NavPrefsContext.tsx:188",
-    "app/contexts/NavPrefsContext.tsx:284"
-  ],
-  "/library/releases/count": [
-    "app/contexts/LibraryReleasesContext.tsx:44"
-  ],
-  "/custom-pages": [
-    "app/lib/customPages.ts:23",
-    "app/lib/customPages.ts:32"
-  ],
-  "/admin/users": [
-    "app/(user)/user-management/page.tsx:231",
-    "app/(user)/user-management/page.tsx:333"
-  ],
-  "/roles/permissions/catalogue": [
-    "app/(user)/admin/roles/page.tsx:91"
-  ],
-  "/errors/report": [
-    "app/lib/reportError.ts:8"
-  ],
-  "/nav/prefs": [
-    "app/contexts/NavPrefsContext.tsx:259"
-  ],
-  "/nav/start-page": [
-    "app/login/page.tsx:86"
-  ],
-  "/nav/profiles/order": [
-    "app/contexts/NavPrefsContext.tsx:308"
-  ],
-  "/nav/profiles/active": [
-    "app/contexts/NavPrefsContext.tsx:276"
-  ],
-  "/roles/creatable": [
-    "app/(user)/user-management/page.tsx:46",
-    "app/(user)/user-management/page.tsx:215"
   ],
   "/nav/entities": [
     "app/(user)/product/[id]/page.tsx:34"
@@ -62,9 +9,36 @@
   "/roles": [
     "app/(user)/admin/roles/page.tsx:90",
     "app/(user)/admin/roles/page.tsx:196",
-    "app/(user)/user-management/page.tsx:334"
+    "app/(user)/user-management/users/page.tsx:786"
+  ],
+  "/library/releases": [
+    "app/(user)/library-releases/page.tsx:80"
+  ],
+  "/roles/permissions/catalogue": [
+    "app/(user)/admin/roles/page.tsx:91"
+  ],
+  "/library/releases/count": [
+    "app/contexts/LibraryReleasesContext.tsx:44"
+  ],
+  "/auth/password-reset": [
+    "app/login/reset/page.tsx:27"
   ],
   "/auth/change-password": [
     "app/change-password/page.tsx:46"
+  ],
+  "/roles/creatable": [
+    "app/(user)/user-management/users/page.tsx:261",
+    "app/(user)/user-management/users/page.tsx:619"
+  ],
+  "/custom-pages": [
+    "app/lib/customPages.ts:23",
+    "app/lib/customPages.ts:32"
+  ],
+  "/errors/report": [
+    "app/lib/reportError.ts:8"
+  ],
+  "/admin/users": [
+    "app/(user)/user-management/users/page.tsx:635",
+    "app/(user)/user-management/users/page.tsx:785"
   ]
 }

@@ -1264,6 +1264,7 @@ paths:
   /user-stories:
     post:
       tags: [work-items]
+      deprecated: true
       summary: Create user story
       operationId: createUserStory
       security:
@@ -1289,6 +1290,7 @@ paths:
   /user-stories/{id}:
     get:
       tags: [work-items]
+      deprecated: true
       summary: Get user story
       operationId: getUserStory
       security:
@@ -1313,6 +1315,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     patch:
       tags: [work-items]
+      deprecated: true
       summary: Update user story
       operationId: patchUserStory
       security:
@@ -1343,6 +1346,7 @@ paths:
           $ref: '#/components/responses/NotFound'
     delete:
       tags: [work-items]
+      deprecated: true
       summary: Archive user story
       operationId: archiveUserStory
       security:
@@ -1364,6 +1368,7 @@ paths:
 
   /defects:
     post:
+      deprecated: true
       tags: [work-items]
       summary: Create defect
       operationId: createDefect
@@ -1389,6 +1394,7 @@ paths:
 
   /defects/{id}:
     get:
+      deprecated: true
       tags: [work-items]
       summary: Get defect
       operationId: getDefect
@@ -1413,6 +1419,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
+      deprecated: true
       tags: [work-items]
       summary: Update defect
       operationId: patchDefect
@@ -1443,6 +1450,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
+      deprecated: true
       tags: [work-items]
       summary: Archive defect
       operationId: archiveDefect
@@ -1821,40 +1829,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /rank/move:
-    post:
-      tags: [ranking]
-      summary: Move item in ranking
-      operationId: moveRank
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                resource_type:
-                  type: string
-                id:
-                  type: string
-                  format: uuid
-                position:
-                  type: number
-              required: [resource_type, id, position]
-      responses:
-        '200':
-          description: Rank updated
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
   /ws:
     get:
       tags: [realtime]
@@ -1869,297 +1843,6 @@ paths:
           description: WebSocket available
         '401':
           $ref: '#/components/responses/Unauthorized'
-
-  /work-items:
-    get:
-      tags: [work-items]
-      summary: List work items
-      operationId: listWorkItems
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: skip
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: sort
-          in: query
-          schema:
-            type: string
-        - name: dir
-          in: query
-          schema:
-            type: string
-            enum: [asc, desc]
-      responses:
-        '200':
-          description: Work items
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
-                  total:
-                    type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags: [work-items]
-      summary: Create work item
-      operationId: createWorkItem
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Work item created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /work-items/summary:
-    get:
-      tags: [work-items]
-      summary: Get work items summary
-      operationId: getWorkItemsSummary
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Work items summary
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /work-items/flow-states:
-    get:
-      tags: [work-items]
-      summary: List work item flow states
-      operationId: listWorkItemFlowStates
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Flow states
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /work-items/{id}:
-    get:
-      tags: [work-items]
-      summary: Get work item
-      operationId: getWorkItem
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Work item
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      tags: [work-items]
-      summary: Update work item
-      operationId: updateWorkItem
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Work item updated
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [work-items]
-      summary: Archive work item
-      operationId: archiveWorkItem
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Work item archived
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /work-items/{id}/children:
-    get:
-      tags: [work-items]
-      summary: List work item children
-      operationId: listWorkItemChildren
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Child work items
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /work-items/{id}/field-values:
-    get:
-      tags: [work-items]
-      summary: List work item field values
-      operationId: listWorkItemFieldValues
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Field values
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags: [work-items]
-      summary: Upsert work item field values
-      operationId: upsertWorkItemFieldValues
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Field values upserted
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /work-items/{id}/field-values/{field_library_id}:
-    delete:
-      tags: [work-items]
-      summary: Delete work item field value
-      operationId: deleteWorkItemFieldValue
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: field_library_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Field value deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /sprints:
     get:
@@ -2681,6 +2364,31 @@ paths:
                   type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [topology]
+      summary: Create topology level
+      operationId: createTopologyLevel
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Level created
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /topology/commit:
     get:
@@ -3000,32 +2708,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /topology/levels:
-    post:
-      tags: [topology]
-      summary: Create topology level
-      operationId: createTopologyLevel
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Level created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
 
   /topology/levels/{id}:
     patch:
@@ -3095,6 +2777,7 @@ paths:
 
   /portfolio-items:
     post:
+      deprecated: true
       tags: [work-items]
       summary: Create portfolio item
       operationId: createPortfolioItem
@@ -3120,6 +2803,7 @@ paths:
 
   /portfolio-items/{id}:
     get:
+      deprecated: true
       tags: [work-items]
       summary: Get portfolio item
       operationId: getPortfolioItem
@@ -3144,6 +2828,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
+      deprecated: true
       tags: [work-items]
       summary: Update portfolio item
       operationId: patchPortfolioItem
@@ -3174,6 +2859,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
+      deprecated: true
       tags: [work-items]
       summary: Archive portfolio item
       operationId: archivePortfolioItem
@@ -3868,196 +3554,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /timeboxes/sprints:
-    get:
-      tags: [timeboxes]
-      summary: List sprints
-      operationId: listSprints
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Sprint list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sprints:
-                    type: array
-                    items:
-                      type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '503':
-          description: Timebox sprints not enabled
-    post:
-      tags: [timeboxes]
-      summary: Create a sprint
-      operationId: createSprint
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Sprint created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /timeboxes/sprints/bulk-create:
-    post:
-      tags: [timeboxes]
-      summary: Bulk-create sprints
-      operationId: bulkCreateSprints
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                sprints:
-                  type: array
-                  items:
-                    type: object
-      responses:
-        '201':
-          description: Sprints created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /timeboxes/sprints/{id}:
-    get:
-      tags: [timeboxes]
-      summary: Get a sprint
-      operationId: getSprint
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Sprint
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags: [timeboxes]
-      summary: Update a sprint
-      operationId: updateSprint
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Sprint updated
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [timeboxes]
-      summary: Delete a sprint
-      operationId: deleteSprint
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Sprint deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /work-items/bulk:
-    post:
-      tags: [work-items]
-      summary: Bulk work item operations
-      operationId: bulkWorkItems
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Bulk operation result
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
 
 components:
   schemas:
