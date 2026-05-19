@@ -2,6 +2,8 @@
 -- Creates item_field_definitions and item_field_values tables for padmin-controlled
 -- custom field schemas across portfolio items, user stories, and defects.
 
+BEGIN;
+
 -- item_field_definitions: schema catalogue per subscription × entity_kind × item_type
 CREATE TABLE item_field_definitions (
     id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -103,3 +105,5 @@ COMMENT ON TABLE item_field_definitions IS
 
 COMMENT ON TABLE item_field_values IS
     'Per-artefact custom field data with typed value columns (value_text, value_number, value_boolean, value_date, value_jsonb). entity_kind + entity_id form a polymorphic FK to the correct artefact table. Exactly one value column is non-NULL per row (enforced by constraint).';
+
+COMMIT;

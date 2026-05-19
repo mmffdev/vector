@@ -22,6 +22,8 @@
 -- migrations and Go code (see story 00204+ in c_story_index.md).
 -- ============================================================
 
+BEGIN;
+
 ALTER TABLE o_artefacts_execution_work_items
     ADD COLUMN backlog_position INT NULL,
     ADD COLUMN sprint_position  INT NULL;
@@ -46,3 +48,5 @@ CREATE INDEX idx_o_wi_sprint_position
 CREATE INDEX idx_o_wi_backlog_position
     ON o_artefacts_execution_work_items (subscription_id, backlog_position)
     WHERE archived_at IS NULL AND sprint_id IS NULL;
+
+COMMIT;

@@ -3,6 +3,8 @@
 -- Then consolidates portfolio and product hierarchy into a single portfolio_items table
 -- with self-referencing parent_id and comprehensive metadata fields per R007.
 
+BEGIN;
+
 -- portfolio_item_types: per-subscription catalogue of portfolio item types
 -- (e.g., Feature, Initiative, Theme). Similar to execution_item_types pattern.
 CREATE TABLE portfolio_item_types (
@@ -137,3 +139,5 @@ COMMENT ON TABLE portfolio_item_types IS
 
 COMMENT ON TABLE portfolio_items IS
     'Unified portfolio item artefact table per R007. Hierarchy via self-referencing parent_id (hierarchy_parent). Key_num allocated atomically from subscription_sequence(scope=POR). Soft-archived via archived_at (NULL = live). Rollup counts (count_*) computed/materialised on child work-item writes. flow_state_change_owner and flow_state_change_update_date are maintained by state-change handlers (not triggers). Future: item-level discussions (discussion_threads entity_kind=portfolio_item); custom field values (item_field_values portfolio_item_id FK).';
+
+COMMIT;

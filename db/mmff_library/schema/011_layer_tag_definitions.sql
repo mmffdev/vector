@@ -5,6 +5,8 @@
 -- FetchTemplateByID resolves descriptions from here at adoption time,
 -- falling back to the JSONB layer description if a tag is not found.
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS portfolio_template_layer_definitions (
   tag         text PRIMARY KEY,
   name        text        NOT NULL,
@@ -14,3 +16,5 @@ CREATE TABLE IF NOT EXISTS portfolio_template_layer_definitions (
 );
 
 GRANT SELECT ON portfolio_template_layer_definitions TO mmff_dev;
+
+COMMIT;

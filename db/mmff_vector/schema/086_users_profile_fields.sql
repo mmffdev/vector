@@ -7,6 +7,8 @@
 -- a gadmin or the user themselves fills them in.
 -- ============================================================
 
+BEGIN;
+
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS first_name TEXT,
     ADD COLUMN IF NOT EXISTS last_name  TEXT,
@@ -14,3 +16,5 @@ ALTER TABLE users
 
 CREATE INDEX IF NOT EXISTS idx_users_department ON users(department);
 CREATE INDEX IF NOT EXISTS idx_users_last_name  ON users(last_name);
+
+COMMIT;

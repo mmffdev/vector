@@ -1,6 +1,8 @@
 -- Migration 048: item_field_options table for select/multiselect custom field vocabularies.
 -- Scoped to item_field_definitions with entity_kind + position ordering.
 
+BEGIN;
+
 CREATE TABLE item_field_options (
     id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
     subscription_id     UUID            NOT NULL REFERENCES subscriptions(id) ON DELETE RESTRICT,
@@ -40,3 +42,5 @@ CREATE TRIGGER trg_item_field_options_updated_at
 
 COMMENT ON TABLE item_field_options IS
     'Vocabulary of valid options for select and multiselect custom field types. Scoped to a field_definition with position-based ordering. Soft-archived via archived_at (NULL = live).';
+
+COMMIT;

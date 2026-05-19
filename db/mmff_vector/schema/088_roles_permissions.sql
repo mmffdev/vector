@@ -16,6 +16,8 @@
 --   Tenant rows: rank must be in [11..24] or [26..29] (CHECK constraint)
 -- ============================================================
 
+BEGIN;
+
 -- ── roles ────────────────────────────────────────────────────
 CREATE TABLE roles (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -213,3 +215,5 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT '00000000-0000-0000-0000-00000000ad05', p.id
 FROM permissions p
 WHERE p.code IN ('portfolio.list');
+
+COMMIT;

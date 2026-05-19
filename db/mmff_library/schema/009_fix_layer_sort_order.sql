@@ -3,6 +3,8 @@
 -- descending (highest sort_order = top = most strategic).  Reverse so each
 -- root layer has the highest value and each leaf the lowest.
 
+BEGIN;
+
 -- MMFF model  (PRW→PR→BO→TH→FT)
 UPDATE portfolio_model_layers SET sort_order = 50 WHERE id = '00000000-0000-0000-0000-00000000ab01'::uuid;  -- PRW
 UPDATE portfolio_model_layers SET sort_order = 40 WHERE id = '00000000-0000-0000-0000-00000000ab02'::uuid;  -- PR
@@ -29,3 +31,5 @@ UPDATE portfolio_model_layers SET sort_order = 20 WHERE id = '00000000-0000-0000
 UPDATE portfolio_model_layers SET sort_order = 10 WHERE id = '00000000-0000-0000-0000-00000000ee14'::uuid;  -- FE
 
 -- Flat model (dd) has one layer; single-layer position is irrelevant — no change.
+
+COMMIT;

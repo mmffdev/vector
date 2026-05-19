@@ -11,8 +11,12 @@
 --
 -- Backfill any pre-existing NULLs to '' before the constraint flip.
 
+BEGIN;
+
 UPDATE org_nodes SET description = '' WHERE description IS NULL;
 
 ALTER TABLE org_nodes
     ALTER COLUMN description SET DEFAULT '',
     ALTER COLUMN description SET NOT NULL;
+
+COMMIT;

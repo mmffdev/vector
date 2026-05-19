@@ -6,6 +6,8 @@
 -- Matches rows by source_library_id (the library layer UUID stamped at
 -- adoption time) so only subscription-mirrored rows are touched.
 
+BEGIN;
+
 UPDATE subscription_layers
    SET sort_order = CASE source_library_id::text
        -- MMFF model
@@ -48,3 +50,5 @@ UPDATE subscription_layers
        '00000000-0000-0000-0000-00000000ee14'::uuid
    )
    AND archived_at IS NULL;
+
+COMMIT;

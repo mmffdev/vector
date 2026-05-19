@@ -34,9 +34,13 @@
 -- migration is a deliberate relaxation and we don't intend to put
 -- the constraint back.
 
+BEGIN;
+
 DROP INDEX IF EXISTS org_nodes_sibling_unique;
 DROP INDEX IF EXISTS org_nodes_root_unique;
 
 -- The subscription/parent lookup index from 082 (idx_org_nodes_subscription_parent)
 -- and the sibling-order index (idx_org_nodes_sibling_order) are kept —
 -- they support tree walks and are unrelated to uniqueness.
+
+COMMIT;
