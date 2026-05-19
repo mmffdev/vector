@@ -1,6 +1,6 @@
 "use client";
 
-import type { RelationsNode } from "@/app/api/v2/work-items/relations/route";
+import type { RelationsNode } from "@/app/components/MapRelationship3D/types";
 
 type Props = {
   node: RelationsNode | null;

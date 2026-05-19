@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { RelationsFilters } from "./index";
-import type { RelationsPayload } from "@/app/api/v2/work-items/relations/route";
+import type { RelationsFilters, RelationsPayload } from "@/app/components/MapRelationship3D/types";
 
 type Props = {
   payload: RelationsPayload;

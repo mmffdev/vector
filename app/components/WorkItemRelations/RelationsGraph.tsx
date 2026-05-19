@@ -6,8 +6,8 @@ import type {
   RelationsEdge,
   RelationsNode,
   RelationsPayload,
-} from "@/app/api/v2/work-items/relations/route";
-import type { RelationsFilters } from "./index";
+  RelationsFilters,
+} from "@/app/components/MapRelationship3D/types";
 
 // 3d-force-graph's NodeObject is `object & { id?: string|number }`;
 // our id is always a UUID string. Re-declare the intersection so the

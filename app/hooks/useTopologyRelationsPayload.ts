@@ -14,7 +14,7 @@ import type {
   RelationsEdge,
   RelationsNode,
   RelationsPayload,
-} from "@/app/api/v2/work-items/relations/route";
+} from "@/app/components/MapRelationship3D/types";
 
 export type UseTopologyRelationsPayloadResult = {
   data: RelationsPayload | null;
