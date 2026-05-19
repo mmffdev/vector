@@ -1,7 +1,7 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-19 (Afternoon session — B20.5.A–.F complete: spec round-trip from Go truth (`npm run api:sync`), closure-aware parser tests (`npm run api:test:parser`, 8 fixtures), multi-line middleware-chain regex fix uncovered 19 previously-invisible routes, stub enrichment with path-derived Scalar tags + HTTP-shape-correct responses. Stubs explicitly marked `x-stub: true`. Contract gate green on both transport tiers. Morning session — B20.5.1 retire legacy api()/samantha/v1: silently 404'ing helper found + every caller migrated to apiSite(), 22 files / ~95 callsites.)
+**Last updated:** 2026-05-19 (Evening session — B20.5.G handler-shape extractor: Go-AST scrape of every handler under backend/internal/ → 124 of 149 stubs auto-curated with real request/response/error schemas. Three-marker system (`x-stub` / `x-auto-curated` / no marker). 25 remaining tagged with handler file path for hand follow-up. Afternoon session — B20.5.A–.F: spec round-trip from Go truth, closure-aware parser tests, multi-line middleware-chain regex fix uncovered 19 previously-invisible routes, stub enrichment. Morning session — B20.5.1 retire legacy api()/samantha/v1.)
 **Doc version:** 2.47
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
@@ -3837,6 +3837,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 - ✅ ~~**B20.5.A–.F** Spec round-trip + parser hardening — `siteAPI.yaml` + `samanthaAPI.yaml` regenerated from Go truth via new `extract_routes.py` + `sync_specs.py` (npm `api:sync`); closure-aware parser handles single/multi-arg + nested closures, middleware chains incl. multi-line `.With(...).\n    Get(...)`; 8-fixture test suite (`npm run api:test:parser`) locks the contract; auto-generated stubs ship `x-stub: true` + path-derived tag + HTTP-shape-correct response set (`POST` w/o `{id}` → 201, `DELETE` → 204, 404 on `{id}` paths, 400+422 on write verbs).~~ `[P1]`
   > Shipped 2026-05-19 in commits c32bd04 (B20.5.A `/_site` mount + closure), e0687b3 (B20.5.B parser middleware-chain + spec resync — breaking), 4e7d3c5 (B20.5.C+E round-trip tool + explicit stub markers), 820c1c7 (B20.5.D parser test suite + multi-line chain fix → uncovered 19 previously-invisible routes), 07b9a04 (B20.5.F stub enrichment).
   > Stub count post-enrichment: site 114, v2 35 — all marked `x-stub:true`, grouped by Scalar IDE under path-derived tags (admin, roles, portfolio-items, etc.). Curated: site 67, v2 28.
+  > Last checked: 2026-05-19
+
+- ✅ ~~**B20.5.G** Handler-shape extractor: auto-curate spec stubs from Go truth — `dev/scripts/extract_handler_shapes.py` walks `main.go` to recover `(METHOD, path, handler_symbol)`, scrapes each handler under `backend/internal/` for request struct + response struct + query params + error catalogue, and merges into the per-route operation as `x-auto-curated: true`. Three-marker system now in play: `x-stub` (hollow), `x-auto-curated` (regenerated from Go each sync), no marker (hand-curated, preserved verbatim).~~ `[P1]`
+  > Shipped 2026-05-19 in commit 6f8fad7. 124 of 149 stubs upgraded to real schemas in one pass. Remaining 25 (cross-package types, polymorphic responses) tagged with handler file path in `x-handler.file` for hand follow-up.
+  > Counts: hand-curated 95, auto-curated 124, stubs 25 (needs-curation), total 244 operations across both specs.
+  > Pipeline wired: `npm run api:sync` now runs extract_routes → extract_handler_shapes → sync_specs.
   > Last checked: 2026-05-19
 
 ---
