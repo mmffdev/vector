@@ -255,11 +255,13 @@ const sqlListPortfoliosAndProductsInTenant = `
 
 // sqlListPageTags returns the page_tags catalogue in default order.
 // Used by LoadRegistry as the first hop before joining pages.
+// pages_tags_env_only is TD-NAV-001: env restriction (NULL = visible everywhere).
 const sqlListPageTags = `
 		SELECT pages_tags_tag_enum,
 		       pages_tags_display_name,
 		       pages_tags_default_order,
-		       pages_tags_is_admin_menu
+		       pages_tags_is_admin_menu,
+		       pages_tags_env_only
 		FROM pages_tags
 		ORDER BY pages_tags_default_order
 	`

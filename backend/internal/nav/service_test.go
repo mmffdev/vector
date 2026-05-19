@@ -445,6 +445,61 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 	}
 }
 
+// TestLoadRegistry_EnvFiltersDevToolsOutOfStaging (TD-NAV-001):
+// pages_tags row 'dev_tools' has pages_tags_env_only='dev'. When
+// BACKEND_ENV='staging' or 'production' the registry must drop the tag
+// AND every page that belonged to it.
+func TestLoadRegistry_EnvFiltersDevToolsOutOfStaging(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	ctx := context.Background()
+
+	// Sanity: dev_tools tag carries env_only='dev'.
+	var envOnly *string
+	if err := pool.QueryRow(ctx,
+		`SELECT pages_tags_env_only FROM pages_tags WHERE pages_tags_tag_enum = 'dev_tools'`,
+	).Scan(&envOnly); err != nil {
+		t.Fatalf("query dev_tools env_only: %v", err)
+	}
+	if envOnly == nil || *envOnly != "dev" {
+		t.Skipf("dev_tools tag env_only is %v — migration 219 not applied?", envOnly)
+	}
+
+	// Load under BACKEND_ENV=dev: dev_tools tag must be present.
+	t.Setenv("BACKEND_ENV", "dev")
+	devReg, err := LoadRegistry(ctx, pool)
+	if err != nil {
+		t.Fatalf("LoadRegistry dev: %v", err)
+	}
+	var foundDevTagInDev bool
+	for _, tg := range devReg.Tags() {
+		if tg.Enum == "dev_tools" {
+			foundDevTagInDev = true
+		}
+	}
+	if !foundDevTagInDev {
+		t.Fatal("dev env: registry must include dev_tools tag")
+	}
+
+	// Load under BACKEND_ENV=staging: dev_tools tag must be filtered out.
+	t.Setenv("BACKEND_ENV", "staging")
+	stgReg, err := LoadRegistry(ctx, pool)
+	if err != nil {
+		t.Fatalf("LoadRegistry staging: %v", err)
+	}
+	for _, tg := range stgReg.Tags() {
+		if tg.Enum == "dev_tools" {
+			t.Fatal("staging env: registry must NOT include dev_tools tag")
+		}
+	}
+	// And every page that lived under dev_tools must be gone too.
+	for _, e := range stgReg.CatalogFor(uuid.Nil, uuid.Nil) {
+		if e.TagEnum == "dev_tools" {
+			t.Fatalf("staging env: page %q under dev_tools must be filtered out", e.Key)
+		}
+	}
+}
+
 // TestPageBookmarks_PinUnpin verifies the full lifecycle:
 //   - PinPage inserts a pref row with is_bookmark=true
 //   - GetPrefs returns that row with IsBookmark=true

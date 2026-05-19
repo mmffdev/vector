@@ -3,6 +3,7 @@ package nav
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -10,6 +11,16 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// currentBackendEnv returns the BACKEND_ENV the process is running
+// against ("dev" / "staging" / "production"). Defaults to "dev" if
+// unset so unit tests + local runs see the default rail.
+func currentBackendEnv() string {
+	if v := os.Getenv("BACKEND_ENV"); v != "" {
+		return v
+	}
+	return "dev"
+}
 
 // Registry holds the catalogue loaded from the pages / page_tags /
 // page_roles tables. It replaces the hand-coded static slice.
@@ -27,11 +38,18 @@ type Registry struct {
 }
 
 // TagGroup is a row from page_tags, plus a resolved display name.
+//
+// TD-NAV-001: EnvOnly is the optional env restriction. NULL/empty = the
+// tag is visible in every env (default); any other value (e.g. "dev")
+// restricts the tag to that env. Compared against BACKEND_ENV at
+// registry-load time; tags that don't match are dropped from the
+// catalogue before per-user filtering.
 type TagGroup struct {
-	Enum         string `json:"enum"`
-	Label        string `json:"label"`
-	DefaultOrder int    `json:"defaultOrder"`
-	IsAdminMenu  bool   `json:"isAdminMenu"`
+	Enum         string  `json:"enum"`
+	Label        string  `json:"label"`
+	DefaultOrder int     `json:"defaultOrder"`
+	IsAdminMenu  bool    `json:"isAdminMenu"`
+	EnvOnly      *string `json:"-"` // omitted from wire; filter-only
 }
 
 // CachedRegistry wraps a Registry with a TTL so callers refresh at most
@@ -106,13 +124,18 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("nav registry: query tags: %w", err)
 	}
+	env := currentBackendEnv()
 	var tags []TagGroup
 	tagsByEnum := make(map[string]TagGroup)
 	for tagRows.Next() {
 		var t TagGroup
-		if err := tagRows.Scan(&t.Enum, &t.Label, &t.DefaultOrder, &t.IsAdminMenu); err != nil {
+		if err := tagRows.Scan(&t.Enum, &t.Label, &t.DefaultOrder, &t.IsAdminMenu, &t.EnvOnly); err != nil {
 			tagRows.Close()
 			return nil, fmt.Errorf("nav registry: scan tag: %w", err)
+		}
+		// TD-NAV-001: drop tags that are restricted to a different env.
+		if t.EnvOnly != nil && *t.EnvOnly != "" && *t.EnvOnly != env {
+			continue
 		}
 		tags = append(tags, t)
 		tagsByEnum[t.Enum] = t
@@ -147,8 +170,11 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 			return nil, fmt.Errorf("nav registry: scan page: %w", err)
 		}
 		e.Kind = NavItemKind(kind)
+		// TD-NAV-001: skip pages whose tag was env-filtered out. The tag
+		// is a FK in the DB so the row exists in pages_tags; tagsByEnum
+		// only carries env-matched tags after the filter loop above.
 		if _, ok := tagsByEnum[e.TagEnum]; !ok {
-			return nil, fmt.Errorf("nav registry: page %q references unknown tag %q", e.Key, e.TagEnum)
+			continue
 		}
 		entries = append(entries, e)
 		byKey[e.Key] = e
