@@ -715,6 +715,47 @@ function ResetLinkModal({ email, url, onClose }: { email: string; url: string; o
   );
 }
 
+// B20.4.4 — emails of the three protected human accounts. Bulk
+// operations MUST filter these out of any mutation set per the HARD
+// RULE in .claude/CLAUDE.md. The exclusion happens client-side as a
+// UX safety (the backend already rejects any attempt to mutate them
+// via the per-user endpoints; this is defence in depth + clear
+// operator messaging).
+const PROTECTED_ACCOUNT_EMAILS = new Set([
+  "gadmin@mmffdev.com",
+  "padmin@mmffdev.com",
+  "user@mmffdev.com",
+]);
+
+// Bounded-concurrency parallel runner for bulk loops. 5 in flight at
+// a time keeps the audit-log write rate manageable and avoids the
+// per-user endpoint rate limiter without slowing through-put to a
+// crawl. Returns the count of fulfilled vs failed plus the failed
+// row identifiers (used to surface partial-success toasts).
+async function runBulk<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<{ ok: number; failed: T[] }> {
+  let cursor = 0;
+  let ok = 0;
+  const failed: T[] = [];
+  const next = async (): Promise<void> => {
+    while (cursor < items.length) {
+      const idx = cursor++;
+      try {
+        await fn(items[idx]);
+        ok++;
+      } catch {
+        failed.push(items[idx]);
+      }
+    }
+  };
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => next());
+  await Promise.all(workers);
+  return { ok, failed };
+}
+
 export default function UsersPage() {
   const { full } = usePageTitle();
   const [users,        setUsers]        = useState<AdminUser[] | null>(null);
@@ -729,6 +770,13 @@ export default function UsersPage() {
   const [externalOnly, setExternalOnly] = useState(false);
   const [pageSize,     setPageSize]     = useState<PageSize>(25);
   const [page,         setPage]         = useState(1);
+
+  // B20.4.4 — bulk multi-select. Set of user IDs.
+  const [selected,     setSelected]     = useState<Set<string>>(new Set());
+  const [bulkBusy,     setBulkBusy]     = useState(false);
+  const [bulkResult,   setBulkResult]   = useState<string | null>(null);
+  // Bulk Set Role modal state.
+  const [showSetRole,  setShowSetRole]  = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -811,6 +859,159 @@ export default function UsersPage() {
     await load();
   }
 
+  // ── B20.4.4 bulk operations ────────────────────────────────────
+  //
+  // Each handler:
+  //   1. Filters protected human accounts out of the selected set
+  //      (HARD RULE — see PROTECTED_ACCOUNT_EMAILS).
+  //   2. Confirms with the operator (count + skip count).
+  //   3. Loops the existing per-user endpoint via runBulk() at
+  //      concurrency=5. No new bulk endpoint — N independent gated
+  //      calls (server-side permission re-checked on each).
+  //   4. Surfaces a partial-success message + leaves selection
+  //      intact for retry of failures.
+
+  const allFilteredIds = useMemo(() => {
+    return new Set((filtered ?? []).map((u) => u.id));
+  }, [filtered]);
+  const allFilteredCount = allFilteredIds.size;
+  const selectedFilteredCount = useMemo(() => {
+    let n = 0;
+    for (const id of selected) if (allFilteredIds.has(id)) n++;
+    return n;
+  }, [selected, allFilteredIds]);
+  const headerSelectState: "none" | "some" | "all" =
+    selectedFilteredCount === 0
+      ? "none"
+      : selectedFilteredCount === allFilteredCount && allFilteredCount > 0
+        ? "all"
+        : "some";
+
+  const toggleRowSelection = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleHeaderSelection = useCallback(() => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (headerSelectState === "all") {
+        // Clear the visible/filtered ones from selection.
+        for (const id of allFilteredIds) next.delete(id);
+      } else {
+        // Add every filtered row to selection.
+        for (const id of allFilteredIds) next.add(id);
+      }
+      return next;
+    });
+  }, [headerSelectState, allFilteredIds]);
+
+  // Split a selected ID set into actionable + protected (by email).
+  // Returns the target list ready for runBulk plus a skipped-count
+  // for the confirm dialog.
+  const partitionSelected = useCallback((): { targets: AdminUser[]; skipped: number } => {
+    const all = users ?? [];
+    const targets: AdminUser[] = [];
+    let skipped = 0;
+    for (const u of all) {
+      if (!selected.has(u.id)) continue;
+      if (PROTECTED_ACCOUNT_EMAILS.has(u.email)) {
+        skipped++;
+        continue;
+      }
+      targets.push(u);
+    }
+    return { targets, skipped };
+  }, [users, selected]);
+
+  async function bulkSendReset() {
+    const { targets, skipped } = partitionSelected();
+    if (targets.length === 0 && skipped > 0) {
+      alert(`All ${skipped} selected account(s) are protected and cannot be modified.`);
+      return;
+    }
+    if (!confirm(
+      `Send password reset email to ${targets.length} user(s)?` +
+      (skipped > 0 ? ` (${skipped} protected account(s) skipped.)` : ""),
+    )) return;
+    setBulkBusy(true);
+    setBulkResult(null);
+    const { ok, failed } = await runBulk(targets, 5, async (u) => {
+      await api(`/admin/users/${u.id}/password-reset`, { method: "POST" });
+    });
+    setBulkBusy(false);
+    setBulkResult(
+      failed.length === 0
+        ? `Password reset sent to ${ok} of ${targets.length}.`
+        : `Sent ${ok} of ${targets.length} — failed: ${failed.map((u) => u.email).join(", ")}`,
+    );
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const f of failed) next.delete(f.id); // keep failures? no — drop on success
+      return next;
+    });
+  }
+
+  async function bulkDisable() {
+    const { targets, skipped } = partitionSelected();
+    const activeTargets = targets.filter((u) => u.is_active);
+    if (activeTargets.length === 0) {
+      alert(`No actionable accounts (${skipped} protected, ${targets.length - activeTargets.length} already disabled).`);
+      return;
+    }
+    if (!confirm(
+      `Disable ${activeTargets.length} active user account(s)?` +
+      (skipped > 0 ? ` (${skipped} protected account(s) skipped.)` : ""),
+    )) return;
+    setBulkBusy(true);
+    setBulkResult(null);
+    const { ok, failed } = await runBulk(activeTargets, 5, async (u) => {
+      await api(`/admin/users/${u.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: false }),
+      });
+    });
+    setBulkBusy(false);
+    setBulkResult(
+      failed.length === 0
+        ? `Disabled ${ok} of ${activeTargets.length}.`
+        : `Disabled ${ok} of ${activeTargets.length} — failed: ${failed.map((u) => u.email).join(", ")}`,
+    );
+    await load();
+  }
+
+  async function bulkSetRole(role: AdminUserRole) {
+    const { targets, skipped } = partitionSelected();
+    if (targets.length === 0) {
+      alert(`No actionable accounts (${skipped} protected).`);
+      return;
+    }
+    if (!confirm(
+      `Set role to "${role}" on ${targets.length} user(s)?` +
+      (skipped > 0 ? ` (${skipped} protected account(s) skipped.)` : ""),
+    )) return;
+    setBulkBusy(true);
+    setBulkResult(null);
+    const { ok, failed } = await runBulk(targets, 5, async (u) => {
+      await api(`/admin/users/${u.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      });
+    });
+    setBulkBusy(false);
+    setBulkResult(
+      failed.length === 0
+        ? `Role set on ${ok} of ${targets.length}.`
+        : `Set role on ${ok} of ${targets.length} — failed: ${failed.map((u) => u.email).join(", ")}`,
+    );
+    setShowSetRole(false);
+    await load();
+  }
+
   const paginationConfig =
     pageSize === "all" || total <= pageSize
       ? undefined
@@ -834,6 +1035,56 @@ export default function UsersPage() {
       />
     <div>
       {err && <div className="form__error">{err}</div>}
+
+      {/* B20.4.4 — bulk-action bar. Renders above the table whenever
+          one or more rows is selected. Buttons loop the existing
+          per-user endpoints with bounded concurrency 5. The
+          protected-account filter inside each handler keeps gadmin@/
+          padmin@/user@ out of every mutation set per the HARD RULE. */}
+      {selected.size > 0 && (
+        <div className="users-bulk-bar" role="region" aria-label="Bulk actions">
+          <span className="users-bulk-bar__count">
+            {selected.size} selected
+          </span>
+          <span className="users-bulk-bar__sep" aria-hidden>·</span>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            disabled={bulkBusy}
+            onClick={() => setShowSetRole(true)}
+          >
+            Set role…
+          </button>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            disabled={bulkBusy}
+            onClick={bulkSendReset}
+          >
+            Send password reset
+          </button>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            disabled={bulkBusy}
+            onClick={bulkDisable}
+          >
+            Disable
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm users-bulk-bar__cancel"
+            disabled={bulkBusy}
+            onClick={() => setSelected(new Set())}
+          >
+            Clear selection
+          </button>
+          {bulkBusy && <span className="users-bulk-bar__busy" aria-live="polite">Working…</span>}
+        </div>
+      )}
+      {bulkResult && (
+        <div className="form__info" role="status" aria-live="polite">{bulkResult}</div>
+      )}
 
       {filtered && (
         <Table<AdminUser>
@@ -922,6 +1173,45 @@ export default function UsersPage() {
             ),
           }}
           columns={[
+            // B20.4.4 — leading selection checkbox column. Header is
+            // a tri-state aria checkbox driven by headerSelectState.
+            // The header click toggles selection for the *currently
+            // filtered* row set (not cross-page) — that's the
+            // recommended scope from the plan doc (Slack/Linear/
+            // GitHub parity, avoids accidental "I just disabled
+            // 5,000 accounts").
+            {
+              key: "select",
+              header: (
+                <input
+                  type="checkbox"
+                  checked={headerSelectState === "all"}
+                  ref={(el) => {
+                    if (el) el.indeterminate = headerSelectState === "some";
+                  }}
+                  onChange={toggleHeaderSelection}
+                  aria-label={
+                    headerSelectState === "all"
+                      ? "Deselect all visible users"
+                      : "Select all visible users"
+                  }
+                />
+              ),
+              width: 40,
+              kind: "custom",
+              render: (u) => (
+                <input
+                  type="checkbox"
+                  checked={selected.has(u.id)}
+                  onChange={() => toggleRowSelection(u.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select ${u.email}`}
+                  // The Table row click expands the inline editor;
+                  // stopPropagation keeps the click on the checkbox
+                  // from also expanding the row.
+                />
+              ),
+            },
             { key: "expander", width: 40, kind: "expander" },
             {
               key: "last_name",
@@ -1032,7 +1322,83 @@ export default function UsersPage() {
           onClose={() => setResetUrl(null)}
         />
       )}
+
+      {showSetRole && (
+        <BulkSetRoleModal
+          count={selected.size}
+          roles={visibleRoles ?? []}
+          onClose={() => setShowSetRole(false)}
+          onConfirm={bulkSetRole}
+        />
+      )}
     </div>
     </PageContent>
+  );
+}
+
+// B20.4.4 — small modal for the bulk "Set role…" action. Picks one
+// role from the visible-roles set and hands it back to bulkSetRole().
+function BulkSetRoleModal({
+  count,
+  roles,
+  onClose,
+  onConfirm,
+}: {
+  count: number;
+  roles: RoleSummary[];
+  onClose: () => void;
+  onConfirm: (role: AdminUserRole) => Promise<void>;
+}) {
+  const [picked, setPicked] = useState<AdminUserRole>("");
+  const [busy,   setBusy]   = useState(false);
+  useEffect(() => {
+    if (!picked && roles.length > 0) {
+      setPicked(roles[0].code);
+    }
+  }, [roles, picked]);
+
+  async function go() {
+    if (!picked) return;
+    setBusy(true);
+    try {
+      await onConfirm(picked);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} title="Set role on selected users">
+      <div className="u-stack">
+        <p className="form__hint">
+          The chosen role will be applied to {count} selected user(s).
+          Protected human accounts (gadmin@/padmin@/user@) are skipped
+          automatically. Operation runs as N independent gated calls,
+          partial failures surface inline.
+        </p>
+        <label className="form__label">
+          Role
+          <select
+            className="form__select"
+            value={picked}
+            onChange={(e) => setPicked(e.target.value)}
+          >
+            {roles.map((r) => (
+              <option key={r.id} value={r.code}>
+                {r.label}{r.is_external ? " (external)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button type="button" className="btn btn--primary" onClick={go} disabled={busy || !picked}>
+            {busy ? "Applying…" : "Apply"}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
