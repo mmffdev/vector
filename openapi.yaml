@@ -1,22 +1,31 @@
 openapi: 3.1.0
 info:
-  title: Samantha API
+  title: Vector Site API (BFF)
   version: 1.0.0
   description: |
-    The Samantha external API surface provides programmatic access to portfolio, work-item, topology, and admin features.
+    Vector's site-tier BFF surface — auth, navigation, admin, roles,
+    topology, cost centres, page help, errors, library releases, custom
+    pages, user tab order, addressables, workspaces.
 
-    All responses on error return RFC 9457 Problem Details format.
-    Authentication uses Bearer token via Authorization header.
+    **Transport split** (B20.5.1):
+    - **Site BFF** (this spec) → `http://HOST/_site/*`
+    - **Public v2 data plane** → `http://HOST/samantha/v2/*` (see `openapi-v2.yaml`)
+    - **Transport infra** → `http://HOST/*` (healthz, env, status/pipeline, ws — no spec yet)
+
+    The legacy `/samantha/v1` mount was retired 2026-05-19; every BFF
+    route now lives under `/_site`. All error responses use RFC 9457
+    Problem Details. Authentication is Bearer JWT via Authorization
+    header (some sensitive operations additionally require DPoP proof).
   contact:
-    name: Samantha API Support
+    name: Vector API Support
   license:
     name: Proprietary
 
 servers:
-  - url: http://localhost:5100/samantha/v1
-    description: Local development
-  - url: https://api.example.com/samantha/v1
-    description: Production
+  - url: http://localhost:5100/_site
+    description: Local development (BFF)
+  - url: https://api.example.com/_site
+    description: Production (BFF)
 
 tags:
   - name: auth
