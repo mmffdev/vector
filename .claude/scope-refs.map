@@ -196,3 +196,14 @@ B16.8.9	jwt access token ttl JWT_ACCESS_TTL 15min 5min tokens.go parseDurationEn
 B16.8.10	active sessions revoke log-out-everywhere step-up reauth REAUTH_REQUIRED sensitive actions account-settings sessions page
 B16.8.11	sid claim middleware per-request session check RequireAuth SESSION_REVOKED SESSION_IDLE_EXPIRED users_sessions_id grace tokens_grace
 B16.8.12	websocket session enforcement registry ticker WS_SESSION_CHECK_INTERVAL close code 4001 sweeper immediate-close handshake
+B20.4	user management consolidation tab bar artefacts layout users permissions sibling routes
+B20.4.1	tab bar restructure user-management layout users permissions redirect catalogue migration href
+B20.4.2	extended user fields phone work mobile e164 location timezone date format datetime password reset required
+B20.4.3	cost centres structured entity subscription parent hierarchy users cost_centre_id FK manage permission
+B20.4.4	bulk multi select action bar tri-state checkbox partial success protected accounts filter bounded concurrency
+B20.4.5	topology grants fold inline panel UserNodeAssignment delete route role choice viewer editor admin
+B20.4.6	password reset flag column users password_reset_required render server gated payload absent
+B20.4.7	office locations entity vector admin stub FK platform global office_location_id manage permission deferred
+B20.4.8	inline edit row panel sections account information display preferences settings administrative fields
+B20.4.9	profile image upload multipart mime sniff avatar initials fallback audit deferred
+B20.4.10	disabled column read only checkbox rally pattern toggle edit panel accidental disable
