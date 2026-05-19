@@ -26,6 +26,15 @@ function formatNow(d: Date): string {
   return `${date} · ${time}`;
 }
 
+function RailHeader({ title, now }: { title: string; now: Date }) {
+  return (
+    <div className="rail-2__header header-band">
+      <h3 className="rail-2__title">{title}</h3>
+      <p className="rail-2__date" aria-live="off">{formatNow(now)}</p>
+    </div>
+  );
+}
+
 export default function SectionFlyout() {
   const { activeSection, bookmarkPages } = useShell();
   const pathname = usePathname() ?? "";
@@ -39,7 +48,7 @@ export default function SectionFlyout() {
   const groupRef = useRef<HTMLDivElement>(null);
   const bookmarkGroupRef = useRef<HTMLDivElement>(null);
 
-  if (!activeSection) return <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label="Section" />;
+  if (!activeSection) return <aside className="rail-2" aria-label="Section" />;
 
   const isActivePage = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -110,55 +119,49 @@ function SectionFlyoutBody({
     : null;
 
   return (
-    <aside id="nav-primary-rail-2" className="nav-primary-rail-2" aria-label={`${activeSection.name} pages`}>
-      <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
-      <div id="nav-primary-rail-2__SectionHeader" className="nav-primary-rail-2__SectionHeader">
-        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">{scopeLabel ?? activeSection.name}</h3>
-        <p id="nav-primary-rail-2__SectionHeader_Clock" className="nav-primary-rail-2__SectionHeader_Clock" aria-live="off">{formatNow(now)}</p>
-      </div>
+    <aside className="rail-2" aria-label={`${activeSection.name} pages`}>
+      <RailHeader title={scopeLabel ?? activeSection.name} now={now} />
 
-      <div id="nav-primary-rail-2__PageList" className="nav-primary-rail-2__PageList">
-        <div
-          id="nav-primary-rail-2__PageList_Group"
-          className="nav-primary-rail-2__PageList_Group"
-          ref={groupRef}
-        >
-          <TravelIndicator id="nav-primary-rail-2__PageList_Group_TravelIndicator" indicator={indicator} phase={phase} />
-          {tops.map((p) => {
-            const kids = childrenByParent.get(p.itemKey) ?? [];
-            return (
-              <div key={p.itemKey}>
-                <PageRow page={p} active={isActivePage(p.href)} setRef={setTarget} />
-                {kids.map((k) => (
-                  <PageRow
-                    key={k.itemKey}
-                    page={k}
-                    active={isActivePage(k.href)}
-                    nested
-                    setRef={setTarget}
-                  />
+      <div className="rail-2__content">
+        <div className="rail-2__top">
+          <div className="rail-2__nav" ref={groupRef}>
+            <TravelIndicator id="rail-2__nav_travel-indicator" indicator={indicator} phase={phase} />
+            {tops.map((p) => {
+              const kids = childrenByParent.get(p.itemKey) ?? [];
+              return (
+                <div key={p.itemKey}>
+                  <PageRow page={p} active={isActivePage(p.href)} setRef={setTarget} />
+                  {kids.map((k) => (
+                    <PageRow
+                      key={k.itemKey}
+                      page={k}
+                      active={isActivePage(k.href)}
+                      nested
+                      setRef={setTarget}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {bookmarkPages.length > 0 && (
+            <div className="rail-2__bookmarks">
+              <div className="rail-2__bookmarks_divider" aria-hidden />
+              <span className="rail-2__bookmarks_label">Bookmarks</span>
+              <div className="rail-2__nav" ref={bookmarkGroupRef}>
+                <TravelIndicator
+                  id="rail-2__bookmarks_travel-indicator"
+                  indicator={bmIndicator}
+                  phase={bmPhase}
+                />
+                {bookmarkPages.map((p) => (
+                  <PageRow key={p.itemKey} page={p} active={isActivePage(p.href)} setRef={bmSetTarget} />
                 ))}
               </div>
-            );
-          })}
-        </div>
-
-        {bookmarkPages.length > 0 && (
-          <div className="nav-primary-rail-2__BookmarkBucket">
-            <div className="nav-primary-rail-2__BookmarkBucket_Divider" aria-hidden />
-            <span className="nav-primary-rail-2__BookmarkBucket_Label">Bookmarks</span>
-            <div className="nav-primary-rail-2__PageList_Group" ref={bookmarkGroupRef}>
-              <TravelIndicator
-                id="nav-primary-rail-2__BookmarkBucket_TravelIndicator"
-                indicator={bmIndicator}
-                phase={bmPhase}
-              />
-              {bookmarkPages.map((p) => (
-                <PageRow key={p.itemKey} page={p} active={isActivePage(p.href)} setRef={bmSetTarget} />
-              ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </aside>
   );
@@ -183,17 +186,9 @@ export function ScopeFlyout2() {
     : null;
 
   return (
-    <aside id="nav-primary-rail-2" className="nav-primary-rail-2 nav-primary-rail-2--scope" aria-label="Workspace scope">
-      <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
-      <div id="nav-primary-rail-2__SectionHeader" className="nav-primary-rail-2__SectionHeader">
-        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">
-          {scopeLabel ?? activeSection?.name ?? "Workspace"}
-        </h3>
-        <p id="nav-primary-rail-2__SectionHeader_Clock" className="nav-primary-rail-2__SectionHeader_Clock" aria-live="off">
-          {formatNow(now)}
-        </p>
-      </div>
-      <div className="nav-primary-rail-2__ScopeBody vector-scroll">
+    <aside className="rail-2 rail-2--scope" aria-label="Workspace scope">
+      <RailHeader title={scopeLabel ?? activeSection?.name ?? "Workspace"} now={now} />
+      <div className="rail-2__content rail-2__content--scope vector-scroll">
         <ScopeGroupPanel />
       </div>
     </aside>
@@ -216,17 +211,9 @@ export function ScopeFlyout() {
     : null;
 
   return (
-    <aside id="nav-primary-rail-2" className="nav-primary-rail-2 nav-primary-rail-2--scope" aria-label="Workspace scope">
-      <div className="nav-primary-rail-2__SectionDivider" aria-hidden />
-      <div id="nav-primary-rail-2__SectionHeader" className="nav-primary-rail-2__SectionHeader">
-        <h3 id="nav-primary-rail-2__SectionHeader_Title" className="nav-primary-rail-2__SectionHeader_Title">
-          {scopeLabel ?? activeSection?.name ?? "Workspace"}
-        </h3>
-        <p id="nav-primary-rail-2__SectionHeader_Clock" className="nav-primary-rail-2__SectionHeader_Clock" aria-live="off">
-          {formatNow(now)}
-        </p>
-      </div>
-      <div className="nav-primary-rail-2__ScopeBody vector-scroll">
+    <aside className="rail-2 rail-2--scope" aria-label="Workspace scope">
+      <RailHeader title={scopeLabel ?? activeSection?.name ?? "Workspace"} now={now} />
+      <div className="rail-2__content rail-2__content--scope vector-scroll">
         <ScopeTreePanel />
       </div>
     </aside>
@@ -267,22 +254,22 @@ function PageRow({
   return (
     <div
       ref={(el) => setRef(page.itemKey, el as HTMLElement | null)}
-      className={`nav-primary-rail-2__PageList_Group_Row${active ? " is-active" : ""}${nested ? " is-nested" : ""}`}
+      className={`rail-2__nav-row${active ? " is-active" : ""}${nested ? " is-nested" : ""}`}
     >
       <Link
         href={page.href}
-        className="nav-primary-rail-2__PageList_Group_Row_Link"
+        className="rail-2__nav-row_link"
         aria-current={active ? "page" : undefined}
       >
-        <span className="nav-primary-rail-2__PageList_Group_Row_Icon">
+        <span className="rail-2__nav-row_icon">
           <NavIcon iconKey={page.icon} />
         </span>
-        <span className="nav-primary-rail-2__PageList_Group_Row_Label">{page.name}</span>
+        <span className="rail-2__nav-row_label">{page.name}</span>
       </Link>
       {pinnable && (
         <span
           role="button"
-          className={`nav-primary-rail-2__PageList_Group_Row_Bookmark${bookmarked ? " is-bookmarked" : ""}`}
+          className={`rail-2__nav-row_bookmark${bookmarked ? " is-bookmarked" : ""}`}
           onClick={onBookmark}
           aria-pressed={bookmarked}
           aria-label={bookmarked ? `Remove ${page.name} from bookmarks` : `Bookmark ${page.name}`}

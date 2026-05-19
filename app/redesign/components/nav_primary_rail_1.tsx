@@ -7,7 +7,6 @@ import { Bell, Globe, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
-import ProfilePillStack from "./nav_primary_rail_1_NavProfilePillStack";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 
 export default function IconRail() {
@@ -25,109 +24,97 @@ export default function IconRail() {
   );
 
   return (
-    <nav id="nav-primary-rail-1" className="nav-primary-rail-1" aria-label="Primary navigation rail">
-      <button
-        id="nav-primary-rail-1__brand"
-        type="button"
-        className={`nav-primary-rail-1__brand${isDebugOpen ? " is-debug-open" : ""}`}
-        aria-label="Toggle debug panel"
-        aria-pressed={isDebugOpen}
-        onClick={toggleDebugOpen}
-      >
-        <img
-          src="/logo-vector.png"
-          alt="Vector"
-          className="nav-primary-rail-1__brand_logo"
-        />
-      </button>
-
-      <div id="nav-primary-rail-1__ProfileStack" className="nav-primary-rail-1__ProfileStack">
-        <ProfilePillStack />
+    <nav className="rail-1" aria-label="Primary navigation rail">
+      <div className="rail-1__header header-band">
+        <button
+          type="button"
+          className={`rail-1__brand${isDebugOpen ? " is-debug-open" : ""}`}
+          aria-label="Toggle debug panel"
+          aria-pressed={isDebugOpen}
+          onClick={toggleDebugOpen}
+        >
+          <img src="/logo-vector.png" alt="Vector" className="rail-1__brand_logo" />
+        </button>
       </div>
 
-      <div id="nav-primary-rail-1__divider" className="nav-primary-rail-1__divider" aria-hidden />
+      <div className="rail-1__content">
+        <div className="rail-1__top">
+          <button
+            type="button"
+            className={`rail-1__nav-btn${isScopeOpen ? " is-active" : ""}`}
+            title="Workspace scope"
+            aria-label="Toggle workspace scope"
+            aria-pressed={isScopeOpen}
+            onClick={toggleScopeOpen}
+          >
+            <Globe size={20} strokeWidth={1.75} />
+            <span className="rail-1__nav-btn_label">Workspace</span>
+          </button>
 
-      <button
-        id="nav-primary-rail-1__ScopeToggle"
-        type="button"
-        className={`nav-primary-rail-1__ScopeToggle${isScopeOpen ? " is-active" : ""}`}
-        title="Workspace scope"
-        aria-label="Toggle workspace scope"
-        aria-pressed={isScopeOpen}
-        onClick={toggleScopeOpen}
-      >
-        <Globe size={20} strokeWidth={1.75} />
-        <span className="nav-primary-rail-1__NavBuckets_Items_Button_Label">Workspace</span>
-      </button>
+          <ul className="rail-1__nav" ref={listRef}>
+            <TravelIndicator id="rail-1__nav_travel-indicator" indicator={indicator} phase={phase} />
+            {sections.map((s) => {
+              const active = s.id === activeSectionId;
+              return (
+                <li key={s.id} className="rail-1__nav_item">
+                  <button
+                    ref={(el) => setTarget(s.id, el)}
+                    type="button"
+                    className={`rail-1__nav-btn${active ? " is-active" : ""}`}
+                    title={s.name}
+                    aria-label={s.name}
+                    aria-pressed={active}
+                    onClick={() => {
+                      setActiveSectionId(s.id);
+                      const first = s.pages[0]?.href;
+                      if (first) router.push(first);
+                    }}
+                  >
+                    <NavIcon iconKey={s.icon} />
+                    <span className="rail-1__nav-btn_label">{s.name}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
-      <ul id="nav-primary-rail-1__NavBuckets" className="nav-primary-rail-1__NavBuckets" ref={listRef}>
-        <TravelIndicator id="nav-primary-rail-1__NavBuckets_TravelIndicator" indicator={indicator} phase={phase} />
-        {sections.map((s) => {
-          const active = s.id === activeSectionId;
-          return (
-            <li key={s.id} id={`nav-primary-rail-1__NavBuckets_Items-${s.id}`} className="nav-primary-rail-1__NavBuckets_Items">
-              <button
-                id={`nav-primary-rail-1__NavBuckets_Items_Button-${s.id}`}
-                ref={(el) => setTarget(s.id, el)}
-                type="button"
-                className={`nav-primary-rail-1__NavBuckets_Items_Button${active ? " is-active" : ""}`}
-                title={s.name}
-                aria-label={s.name}
-                aria-pressed={active}
-                onClick={() => {
-                  setActiveSectionId(s.id);
-                  const first = s.pages[0]?.href;
-                  if (first) router.push(first);
-                }}
-              >
-                <NavIcon iconKey={s.icon} />
-                <span className="nav-primary-rail-1__NavBuckets_Items_Button_Label">{s.name}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div id="nav-primary-rail-1__Util" className="nav-primary-rail-1__Util">
-        <Link
-          id="nav-primary-rail-1__Util_Button-edit"
-          href="/preferences/navigation"
-          className="nav-primary-rail-1__Util_Button"
-          title="Edit navigation"
-          aria-label="Edit navigation"
-        >
-          <Pencil size={18} strokeWidth={1.75} />
-        </Link>
-        <Link
-          id="nav-primary-rail-1__Util_Button-settings"
-          href="/dev/research"
-          className="nav-primary-rail-1__Util_Button"
-          title="Dev Tools"
-          aria-label="Dev Tools"
-        >
-          <Settings size={20} strokeWidth={1.75} />
-        </Link>
-        <button
-          id="nav-primary-rail-1__Util_Button-notifications"
-          type="button"
-          className="nav-primary-rail-1__Util_Button"
-          title="Notifications"
-          aria-label="Notifications"
-        >
-          <Bell size={20} strokeWidth={1.75} />
-        </button>
-        <button
-          id="nav-primary-rail-1__Util_UserAccount"
-          type="button"
-          className={`nav-primary-rail-1__Util_UserAccount${accountActive ? " is-active" : ""}`}
-          title={user ? `Account — ${user.email}` : "Account"}
-          aria-label="Account"
-          aria-pressed={accountActive}
-          onClick={() => setActiveSectionId(ACCOUNT_SECTION_ID)}
-        >
-          {initials}
-          {accountActive && <span id="nav-primary-rail-1__Util_UserAccount_Indicator" className="nav-primary-rail-1__Util_UserAccount_Indicator" aria-hidden />}
-        </button>
+        <div className="rail-1__bottom">
+          <Link
+            href="/preferences/navigation"
+            className="rail-1__util-btn"
+            title="Edit navigation"
+            aria-label="Edit navigation"
+          >
+            <Pencil size={18} strokeWidth={1.75} />
+          </Link>
+          <Link
+            href="/dev/research"
+            className="rail-1__util-btn"
+            title="Dev Tools"
+            aria-label="Dev Tools"
+          >
+            <Settings size={20} strokeWidth={1.75} />
+          </Link>
+          <button
+            type="button"
+            className="rail-1__util-btn"
+            title="Notifications"
+            aria-label="Notifications"
+          >
+            <Bell size={20} strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            className={`rail-1__user-btn${accountActive ? " is-active" : ""}`}
+            title={user ? `Account — ${user.email}` : "Account"}
+            aria-label="Account"
+            aria-pressed={accountActive}
+            onClick={() => setActiveSectionId(ACCOUNT_SECTION_ID)}
+          >
+            {initials}
+          </button>
+        </div>
       </div>
     </nav>
   );

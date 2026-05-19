@@ -35,45 +35,41 @@ export default function ProfilePillStack() {
   if (!active) return null;
 
   return (
-    <div ref={ref} className="nav-primary-rail-1__ProfileStack_Picker">
+    <div ref={ref} className="profile-pill">
       <button
         type="button"
-        className="nav-primary-rail-1__ProfileStack_Picker_Pill"
+        className="profile-pill__active"
         title={active.label}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="nav-primary-rail-1__ProfileStack_Picker_Pill_Label">
-          {profileBadge(active)}
-        </span>
+        <span className="profile-pill__label">{profileBadge(active)}</span>
       </button>
 
       {others.length > 0 && (
         <ul
-          className={`nav-primary-rail-1__ProfileStack_Picker_Menu${open ? " is-open" : ""}`}
+          className={`profile-pill__menu${open ? " is-open" : ""}`}
           role="listbox"
           aria-label="Switch profile"
         >
           {others.map((p) => (
             <li
               key={p.id}
-              className="nav-primary-rail-1__ProfileStack_Picker_Menu_Item"
+              className="profile-pill__menu_item"
               role="option"
               aria-selected={false}
             >
               <button
                 type="button"
-                className="nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill"
+                className="profile-pill__menu_item_pill"
                 title={p.label}
                 onClick={() => {
                   void setActiveProfile(p.id);
                   setOpen(false);
                 }}
               >
-                <span className="nav-primary-rail-1__ProfileStack_Picker_Menu_Item_Pill_Label">
-                  {profileBadge(p)}
-                </span>
+                <span className="profile-pill__label">{profileBadge(p)}</span>
               </button>
             </li>
           ))}

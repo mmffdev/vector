@@ -1,10 +1,10 @@
 "use client";
 
-import { useContext } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useShell } from "../ShellContext";
 import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
-import QRCodeTrigger from "@/app/components/QRCodeTrigger";
+import ProfilePillStack from "./nav_primary_rail_1_NavProfilePillStack";
 
 export default function RedesignTopBar() {
   const { activeSection, isAccountActive } = useShell();
@@ -18,28 +18,27 @@ export default function RedesignTopBar() {
 
   const sectionLabel = isAccountActive ? "Account" : activeSection?.name ?? "Vector";
 
+  // Hold the last non-empty title across the pop→push gap. Without this,
+  // the title slot would briefly fall back to a URL-derived label (the
+  // shell route name) between the outgoing page's PageHeading unmount
+  // and the incoming page's mount — which reads as a flash.
+  const [stickyTitle, setStickyTitle] = useState<string>("");
+  const lastTitleRef = useRef<string>("");
+  useEffect(() => {
+    if (pageHeader?.title) {
+      lastTitleRef.current = pageHeader.title;
+      setStickyTitle(pageHeader.title);
+    }
+  }, [pageHeader?.title]);
+
+  const displayTitle = pageHeader?.title || stickyTitle || currentPage?.name || sectionLabel;
+
   return (
-    <div className="nav-top-bar" role="banner">
-      <nav className="nav-top-bar__Breadcrumbs" aria-label="Breadcrumb">
-        <span className="nav-top-bar__Breadcrumbs_Crumb">Vector</span>
-        <span className="nav-top-bar__Breadcrumbs_Sep">/</span>
-        <span
-          className={`nav-top-bar__Breadcrumbs_Crumb${currentPage ? "" : " nav-top-bar__Breadcrumbs_Crumb-current"}`}
-        >
-          {sectionLabel}
-        </span>
-        {currentPage && (
-          <>
-            <span className="nav-top-bar__Breadcrumbs_Sep">/</span>
-            <span className="nav-top-bar__Breadcrumbs_Crumb nav-top-bar__Breadcrumbs_Crumb-current">
-              {currentPage.name}
-            </span>
-          </>
-        )}
-      </nav>
-      <div className="nav-top-bar__Actions">
+    <div className="main_title header-band" role="banner">
+      <h1 className="main_title__text">{displayTitle}</h1>
+      <div className="main_title__actions">
         {pageHeader?.actions}
-        <QRCodeTrigger />
+        <ProfilePillStack />
       </div>
     </div>
   );

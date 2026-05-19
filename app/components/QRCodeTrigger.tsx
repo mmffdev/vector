@@ -130,7 +130,12 @@ export default function QRCodeTrigger({ value, label }: QRCodeTriggerProps) {
         onClick={() => setOpen((v) => !v)}
       >
         {resolved && (
-          <QRCode value={resolved} size={36} level="Q" logo={false} />
+          <span className="qr-code__Trigger_Frame">
+            <span className="qr-code__Trigger_Code">
+              <QRCode value={resolved} size={36} level="Q" logo={false} />
+            </span>
+            <span className="qr-code__Trigger_Caption">Share me</span>
+          </span>
         )}
       </button>
       {open && resolved && (

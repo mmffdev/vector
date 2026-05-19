@@ -1,12 +1,16 @@
 "use client";
 
-import React, { ReactNode } from "react";
-import { buildBorderStyle, type BorderProp } from "@/app/components/Panel";
+import { ReactNode, useContext, useEffect, useId, useRef } from "react";
+import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
+import type { BorderProp } from "@/app/components/Panel";
 
 interface PageHeadingProps {
   level?:     1 | 2 | 3 | 4;
   title:      ReactNode;
   subtitle?:  ReactNode;
+  // Visual props retained for call-site compatibility — PageHeading now
+  // renders nothing inline and hoists title/subtitle into the top-bar via
+  // PageHeaderContext, so these are silently ignored.
   className?: string;
   margin?:    [string?, string?, string?, string?];
   padding?:   [string?, string?, string?, string?];
@@ -15,62 +19,25 @@ interface PageHeadingProps {
   radius?:    { top?: string; right?: string; bottom?: string; left?: string };
 }
 
-export default function PageHeading({
-  level = 1,
-  title,
-  subtitle,
-  className,
-  margin,
-  padding,
-  border,
-  background,
-  radius,
-}: PageHeadingProps) {
-  const Tag = `h${level}` as "h1" | "h2" | "h3" | "h4";
+export default function PageHeading({ title, subtitle }: PageHeadingProps) {
+  const headerCtx = useContext(PageHeaderContext);
+  const id = useId();
+  const titleStr = typeof title === "string" ? title : String(title ?? "");
+  const subtitleStr = typeof subtitle === "string" ? subtitle : subtitle ? String(subtitle) : undefined;
 
-  const marginStyle = margin
-    ? {
-        marginTop:    margin[0] ?? "0",
-        marginRight:  margin[1] ?? "0",
-        marginBottom: margin[2] ?? "0",
-        marginLeft:   margin[3] ?? "0",
-      }
-    : undefined;
+  // Stash push/pop in a ref so the effect deps only react to the actual
+  // {title, subtitle} payload — not to the new context value object that
+  // PageHeaderContext emits on every push (which would otherwise loop:
+  // push → context state change → new ctx value → effect re-runs → push).
+  const ctxRef = useRef(headerCtx);
+  ctxRef.current = headerCtx;
 
-  const paddingStyle = padding
-    ? {
-        paddingTop:    padding[0] ?? "0",
-        paddingRight:  padding[1] ?? "0",
-        paddingBottom: padding[2] ?? "0",
-        paddingLeft:   padding[3] ?? "0",
-      }
-    : undefined;
+  useEffect(() => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+    ctx.push(id, { title: titleStr, subtitle: subtitleStr });
+    return () => ctxRef.current?.pop(id);
+  }, [id, titleStr, subtitleStr]);
 
-  const borderStyle  = border     ? buildBorderStyle(border) : undefined;
-  const bgStyle      = background ? { background }           : undefined;
-
-  const radiusStyle = radius
-    ? {
-        borderTopLeftRadius:     radius.top    ?? "0",
-        borderTopRightRadius:    radius.right  ?? "0",
-        borderBottomRightRadius: radius.bottom ?? "0",
-        borderBottomLeftRadius:  radius.left   ?? "0",
-      }
-    : undefined;
-
-  const classes = [
-    "page-heading",
-    `page-heading--h${level}`,
-    className,
-  ].filter(Boolean).join(" ");
-
-  return (
-    <div
-      className={classes}
-      style={{ ...marginStyle, ...paddingStyle, ...borderStyle, ...bgStyle, ...radiusStyle }}
-    >
-      <Tag className="page-heading__title">{title}</Tag>
-      {subtitle && <p className="page-heading__subtitle">{subtitle}</p>}
-    </div>
-  );
+  return null;
 }

@@ -8,6 +8,7 @@ import SectionFlyout, { ScopeFlyout2 } from "./nav_primary_rail_2";
 import AccountFlyout from "./AccountFlyout";
 import RedesignTopBar from "./RedesignTopBar";
 import DebugPanel from "./DebugPanel";
+import QRCodeTrigger from "@/app/components/QRCodeTrigger";
 
 function ShellBody({ children }: { children: React.ReactNode }) {
   const { isAccountActive, isScopeOpen, isDebugOpen } = useShell();
@@ -28,6 +29,9 @@ function ShellBody({ children }: { children: React.ReactNode }) {
           {isDebugOpen && <DebugPanel />}
           <div className="rd-shell__main-body">{children}</div>
         </ViewportSlot>
+        <div className="rd-shell__main_QrAnchor">
+          <QRCodeTrigger />
+        </div>
       </main>
     </div>
   );
