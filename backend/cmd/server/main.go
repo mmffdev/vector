@@ -1144,6 +1144,8 @@ func main() {
 				r.Post("/dev/master-reset", devResetH.MasterReset)
 				r.Post("/dev/seed-risks", devResetH.SeedRisks)
 				r.Post("/dev/seed-workspace", devResetH.SeedWorkspace)
+				r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
+				r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
 			})
 		})
 
@@ -1486,10 +1488,36 @@ func main() {
 		})
 	}
 
+	// B20.5.L — Synthetic-user resolver used by apikeys.Middleware on
+	// the /_site mount. When a `sam_live_*` bearer token authenticates
+	// a request, we look up the highest-tier active user on the key's
+	// subscription and stash it in the auth context so downstream
+	// handlers (which expect auth.UserFromCtx() to be non-nil) work
+	// against api-key auth identically to JWT auth. Nil on
+	// /samantha/v2 — that transport's handlers only need
+	// subscription_id and would ignore the User anyway.
+	siteUserSynth := func(ctx context.Context, subscriptionIDStr string) (*roletypes.User, context.Context, error) {
+		subID, err := uuid.Parse(subscriptionIDStr)
+		if err != nil {
+			return nil, ctx, err
+		}
+		u, err := authSvc.FindServiceUserForSubscription(ctx, subID)
+		if err != nil {
+			return nil, ctx, err
+		}
+		return u, auth.WithUserForServiceAuth(ctx, u), nil
+	}
+
 	// Canonical BFF mount: every site-only route lives under /_site.
 	// Frontend uses apiSite() (formerly apiInfra) to reach these.
+	// apikeys.Middleware sits ahead of the JWT-bearing routes so a
+	// `sam_live_*` token validates here and the downstream RequireAuth
+	// short-circuits via its existing api_key_subscription_id check.
+	// Only the api-key path needs the synthetic User; JWT requests
+	// still get their User from RequireAuth's normal lookup.
 	r.Route("/_site", func(r chi.Router) {
 		r.Use(tagSite)
+		r.Use(apikeys.Middleware(apiKeysSvc, siteUserSynth))
 		mountSiteRoutes(r)
 	})
 
@@ -1516,7 +1544,9 @@ func main() {
 				next.ServeHTTP(w, req.WithContext(transport.WithPublicContext(req.Context())))
 			})
 		})
-		r.Use(apikeys.Middleware(apiKeysSvc))
+		// /samantha/v2 handlers only need subscription_id, not a full
+		// User — pass nil for the UserSynth.
+		r.Use(apikeys.Middleware(apiKeysSvc, nil))
 
 		// ---- /work-items + /portfolio-items (B21 / PLA-0037) ----
 		// Both groups share the artefactitems handler; the only

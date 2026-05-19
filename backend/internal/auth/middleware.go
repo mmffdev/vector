@@ -66,6 +66,20 @@ func WithUserForTest(ctx context.Context, u *roletypes.User) context.Context {
 	return context.WithValue(ctx, userCtxKey, u)
 }
 
+// WithUserForServiceAuth seeds a user into the context for non-JWT
+// auth paths (today: API-key bearer tokens). Called by
+// apikeys.Middleware after validating a `sam_live_*` token; the
+// synthetic user is the highest-tier active user on the key's
+// subscription (see auth.Service.FindServiceUserForSubscription).
+//
+// Distinct name from WithUserForTest so PR reviewers can tell at a
+// glance whether a call site is test scaffolding or a real auth
+// path. Both helpers write the same ctxKey — RequireAuth's downstream
+// check is unchanged.
+func WithUserForServiceAuth(ctx context.Context, u *roletypes.User) context.Context {
+	return context.WithValue(ctx, userCtxKey, u)
+}
+
 // WithSessionIDForTest is the SessionIDFromCtx counterpart of
 // WithUserForTest. Used by realtime tests that need to exercise the
 // register-on-accept path without spinning up RequireAuth.

@@ -58,7 +58,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **v2 work-items cutover follow-ups** → [`docs/c_c_v2_workitems_cutover_followups.md`](../docs/c_c_v2_workitems_cutover_followups.md) — PLA-0023 deferral register.
 - **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — per-route-group cutover plan.
 - **Transport segregation (PLA-0039)** → [`docs/c_c_transport_segregation.md`](../docs/c_c_transport_segregation.md) — `/_site` + `/samantha/v2`; lint trio + DTO convention.
-- **Scalar IDE setup (B20.5.K)** → [`docs/c_c_scalar_setup.md`](../docs/c_c_scalar_setup.md) — `DEV_API_KEY` in `backend/.env.dev` + `apikeys.SeedDevKey` boot path; unlocks `/samantha/v2` (64 endpoints). `/_site` dual-mount pending as B20.5.L.
+- **Scalar IDE setup (B20.5.K + .L)** → [`docs/c_c_scalar_setup.md`](../docs/c_c_scalar_setup.md) — `DEV_API_KEY` in `backend/.env.dev` + `apikeys.SeedDevKey` boot path; `apikeys.Middleware` dual-mounted on `/_site` AND `/samantha/v2` (B20.5.L); synthetic-User shim seeds `auth.UserFromCtx()` from the subscription's highest-tier active user. Unlocks the full 268-endpoint surface.
 - **Shared methods catalogue (PLA-0045)** → [`docs/c_shared_methods.md`](../docs/c_shared_methods.md) — `app/lib/shared/` + `backend/internal/shared/` parity.
 - **Wizard sidecar pattern (PLA-0037)** → [`docs/c_c_wizard_sidecar.md`](../docs/c_c_wizard_sidecar.md) — `p_wizard_*.json` declarative `<ObjectTree>` config.
 - **Polymorphic FK pattern** → [`docs/c_polymorphic_writes.md`](../docs/c_polymorphic_writes.md) — writer rules + cleanup registry + canary.

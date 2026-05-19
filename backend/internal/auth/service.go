@@ -216,6 +216,30 @@ func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*roletypes.Us
 	return u, err
 }
 
+// FindServiceUserForSubscription returns the highest-tier active user
+// in the given subscription. Used exclusively by apikeys.Middleware to
+// synthesise the User context for `sam_live_*` bearer requests — so
+// `/_site` handlers that read auth.UserFromCtx() see a real user row
+// even when authentication came from an API key instead of a JWT.
+//
+// Picks by users_roles_rank ASC (highest tier first) then created_at
+// ASC (oldest account first) for stable selection. ErrNotFound when
+// the subscription has zero active users.
+func (s *Service) FindServiceUserForSubscription(ctx context.Context, subscriptionID uuid.UUID) (*roletypes.User, error) {
+	u := &roletypes.User{}
+	err := s.Pool.QueryRow(ctx, sqlSelectServiceUserForSubscription, subscriptionID).Scan(
+		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
+		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
+		&u.FailedLoginCount, &u.LockedUntil,
+		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,
+		&u.CreatedAt, &u.UpdatedAt,
+	)
+	if err == pgx.ErrNoRows {
+		return nil, ErrNotFound
+	}
+	return u, err
+}
+
 // SessionState captures the per-request session signals RequireAuth needs
 // alongside the user row. Revoked = user was signed out from another
 // device or revoked by an admin. LastActivityAt = the timestamp the

@@ -45,12 +45,18 @@ That token is now sent on every "Send Request".
 
 | Surface | Status | Notes |
 |---|---|---|
-| `/samantha/v2/*` (64 endpoints) | ✅ Works | `apikeys.Middleware` is mounted on this transport; the key validates and downstream handlers read `subscription_id` from context. |
-| `/_site/*` (204 endpoints) | ⚠️ 401 | The dual-mount is tracked as **B20.5.L** (pending — needs a synthetic-user shim in `auth.UserFromCtx` so handlers expecting a `User` in context still work under api-key auth). |
+| `/samantha/v2/*` (64 endpoints) | ✅ Works | `apikeys.Middleware` is mounted; handlers read `subscription_id` from context. |
+| `/_site/*` (204 endpoints) | ✅ Works | `apikeys.Middleware` is dual-mounted (B20.5.L). A synthetic-user shim seeds `auth.UserFromCtx()` with the highest-tier active user on the key's subscription, so handlers that gate on permissions/roles/audit attribution work identically under api-key auth. |
 | `/healthz`, `/readyz` | ✅ Works | No auth required. |
 | `/auth/login`, `/auth/refresh` | ✅ Works | Public by design — these mint the JWT in the first place. |
 
-So for now: Scalar gives you full coverage of `/samantha/v2/*` (the public data plane — work-items, portfolio-items, topology, flows, fields, timeboxes). For `/_site` (the BFF — admin UIs, page-help, navigation prefs, etc.), keep using the browser DevTools "copy bearer token" trick until B20.5.L lands.
+**Full coverage** — Scalar can drive every endpoint in either spec.
+
+## Who am I (under the api-key)?
+
+When you hit `/_site/auth/me` with the dev key, the response is the highest-tier active user on the key's subscription, picked by `users_roles_rank ASC` then `users.created_at ASC`. In a fresh dev DB that's typically `gadmin@mmffdev.com` (the grp_global system user). Permission gating, audit log attribution, and scope clamping all flow from this synthetic identity.
+
+If you want the key to "be" a different user, today the only lever is to mark the higher-tier accounts inactive — there's no per-key user binding in the schema. (Future-state: `admin_api_keys_id_user` column for explicit bind.)
 
 ## Troubleshooting
 

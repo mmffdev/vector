@@ -86,6 +86,32 @@ const sqlSelectUserBySessionID = `
 		WHERE u.id = $1
 	`
 
+// sqlSelectServiceUserForSubscription returns the highest-tier active
+// user row for a subscription. Used by apikeys.Middleware to synthesise
+// the auth.UserFromCtx() context when a `sam_live_*` bearer token
+// authenticates a request on /_site — handlers downstream read the
+// User to drive permission checks, audit attribution, and scope clamps.
+//
+// Ordering: users_roles.users_roles_rank ASC (lower rank = higher tier
+// in the project's convention — see roles/sql.go). When two users
+// share the same role, prefer the oldest (most stable) account.
+//
+// Sentinel for "no usable user on this subscription" is pgx.ErrNoRows;
+// caller (apikeys.Middleware) maps that to 401 with a clear message.
+const sqlSelectServiceUserForSubscription = `
+		SELECT u.id, u.subscription_id, u.email, u.password_hash, u.role, u.role_id, u.is_active, u.last_login,
+		       u.auth_method, u.ldap_dn, u.force_password_change, u.password_changed_at,
+		       u.failed_login_count, u.locked_until,
+		       u.mfa_enrolled, u.mfa_secret, u.mfa_recovery_codes,
+		       u.created_at, u.updated_at
+		FROM users u
+		JOIN users_roles ur ON ur.users_roles_id = u.role_id
+		WHERE u.subscription_id = $1
+		  AND u.is_active = TRUE
+		ORDER BY ur.users_roles_rank ASC, u.created_at ASC
+		LIMIT 1
+	`
+
 // ── login lifecycle (Login, recordFailedLogin) ──────────────────────────────
 
 // sqlClearLockoutAndStampLogin resets failed_login_count + locked_until
