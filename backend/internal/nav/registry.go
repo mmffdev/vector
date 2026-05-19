@@ -34,7 +34,11 @@ type Registry struct {
 	byKey      map[string]CatalogEntry
 	tags       []TagGroup
 	tagsByEnum map[string]TagGroup
-	loadedAt   time.Time
+	// roleRankByID maps users_roles.id → users_roles.rank so the
+	// per-request auth_level derivation does not hit the DB. Loaded once
+	// per registry refresh (TTL — same cadence as tag/page reloads).
+	roleRankByID map[uuid.UUID]int
+	loadedAt     time.Time
 }
 
 // TagGroup is a row from page_tags, plus a resolved display name.
@@ -49,6 +53,11 @@ type TagGroup struct {
 	Label        string  `json:"label"`
 	DefaultOrder int     `json:"defaultOrder"`
 	IsAdminMenu  bool    `json:"isAdminMenu"`
+	// MinAuthLevel is the minimum admin tier required to see this tag on
+	// the primary rail. 1 = Vector Admin, 2 = Workspace Admin, 3 =
+	// everyone. Compared client-side against the user's derived
+	// auth_level (Global Admin → 1, Portfolio Manager → 2, else → 3).
+	MinAuthLevel int     `json:"minAuthLevel"`
 	EnvOnly      *string `json:"-"` // omitted from wire; filter-only
 }
 
@@ -129,7 +138,7 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 	tagsByEnum := make(map[string]TagGroup)
 	for tagRows.Next() {
 		var t TagGroup
-		if err := tagRows.Scan(&t.Enum, &t.Label, &t.DefaultOrder, &t.IsAdminMenu, &t.EnvOnly); err != nil {
+		if err := tagRows.Scan(&t.Enum, &t.Label, &t.DefaultOrder, &t.IsAdminMenu, &t.MinAuthLevel, &t.EnvOnly); err != nil {
 			tagRows.Close()
 			return nil, fmt.Errorf("nav registry: scan tag: %w", err)
 		}
@@ -183,12 +192,37 @@ func LoadRegistry(ctx context.Context, pool *pgxpool.Pool) (*Registry, error) {
 		return nil, fmt.Errorf("nav registry: page rows: %w", err)
 	}
 
+	// Role rank map — drives server-side auth_level filtering on
+	// CatalogFor / TagsFor. Loaded inside the same snapshot tx so the
+	// rank values match whatever role rows existed when pages/tags were
+	// scanned. Tenant-custom roles are included; they slot into the
+	// 1/2/3 tiers via the same rank thresholds as system roles.
+	rankRows, err := tx.Query(ctx, sqlListRoleRanks)
+	if err != nil {
+		return nil, fmt.Errorf("nav registry: query role ranks: %w", err)
+	}
+	roleRankByID := make(map[uuid.UUID]int)
+	for rankRows.Next() {
+		var id uuid.UUID
+		var rank int
+		if err := rankRows.Scan(&id, &rank); err != nil {
+			rankRows.Close()
+			return nil, fmt.Errorf("nav registry: scan role rank: %w", err)
+		}
+		roleRankByID[id] = rank
+	}
+	rankRows.Close()
+	if err := rankRows.Err(); err != nil {
+		return nil, fmt.Errorf("nav registry: role rank rows: %w", err)
+	}
+
 	return &Registry{
-		entries:    entries,
-		byKey:      byKey,
-		tags:       tags,
-		tagsByEnum: tagsByEnum,
-		loadedAt:   time.Now(),
+		entries:      entries,
+		byKey:        byKey,
+		tags:         tags,
+		tagsByEnum:   tagsByEnum,
+		roleRankByID: roleRankByID,
+		loadedAt:     time.Now(),
 	}, nil
 }
 
@@ -204,11 +238,45 @@ func (r *Registry) IsPinnable(key string) bool {
 	return ok && e.Pinnable
 }
 
+// authLevelFor maps a role UUID to its admin tier (1/2/3) using the
+// preloaded rank table. Lower number = higher privilege.
+//
+//   rank ≥ 70 → 1 (Vector Admin)
+//   rank ≥ 60 → 2 (Workspace Admin)
+//   else      → 3 (Everyone)
+//
+// An unknown roleID (e.g. a tenant-custom role created after the
+// registry's last refresh) gets the safest fallback: tier 3. The cache
+// will pick it up on the next TTL.
+func (r *Registry) authLevelFor(roleID uuid.UUID) int {
+	rank, ok := r.roleRankByID[roleID]
+	if !ok {
+		return 3
+	}
+	if rank >= 70 {
+		return 1
+	}
+	if rank >= 60 {
+		return 2
+	}
+	return 3
+}
+
 // CatalogFor returns entries visible to (roleID, tenant), in canonical
-// order. Static pages (SubscriptionID == nil) appear for every tenant; entity
-// pages appear only for users in their owning tenant. Roles still gate
-// regardless of kind. PLA-0049: keyed by users_roles UUID, not enum.
+// order. Two filters are applied:
+//
+//   1. roleAllowed(roleID, page.RoleIDs) — the per-page role grant
+//      (PLA-0049); unchanged.
+//   2. tag.MinAuthLevel — server-side admin-tier gate so a Team Member
+//      cannot enumerate admin-surface pages (Vector Admin / Workspace
+//      Admin / User Management / Dev Tools) even by tampering with the
+//      client. This is the authoritative gate; the rail's client-side
+//      filter is defence-in-depth.
+//
+// Static pages (SubscriptionID == nil) appear for every tenant; entity
+// pages appear only for users in their owning tenant.
 func (r *Registry) CatalogFor(roleID uuid.UUID, subscriptionID uuid.UUID) []CatalogEntry {
+	level := r.authLevelFor(roleID)
 	out := make([]CatalogEntry, 0, len(r.entries))
 	for _, e := range r.entries {
 		if !roleAllowed(roleID, e.RoleIDs) {
@@ -217,14 +285,42 @@ func (r *Registry) CatalogFor(roleID uuid.UUID, subscriptionID uuid.UUID) []Cata
 		if e.SubscriptionID != nil && *e.SubscriptionID != subscriptionID {
 			continue
 		}
+		// Admin-tier gate via the page's tag. Pages under a tag the
+		// caller isn't cleared for are dropped from the catalogue
+		// payload entirely.
+		if tag, ok := r.tagsByEnum[e.TagEnum]; ok {
+			if level > tag.MinAuthLevel {
+				continue
+			}
+		}
 		out = append(out, e)
 	}
 	return out
 }
 
-// Tags returns all tag groups in default order. Caller must treat as read-only.
+// Tags returns every tag group in default order, regardless of caller.
+// Internal use (registry-self plumbing, tests, admin tooling). HTTP
+// handlers MUST use TagsFor so admin tags don't leak to lower-tier
+// callers.
 func (r *Registry) Tags() []TagGroup {
 	return r.tags
+}
+
+// TagsFor returns the tag groups visible to (roleID), filtered by the
+// admin-tier gate (MinAuthLevel). This is the authoritative server-side
+// filter for the nav rail — a lower-tier user's response will not
+// contain the admin-only tag enums at all, so client tampering cannot
+// re-introduce them.
+func (r *Registry) TagsFor(roleID uuid.UUID) []TagGroup {
+	level := r.authLevelFor(roleID)
+	out := make([]TagGroup, 0, len(r.tags))
+	for _, t := range r.tags {
+		if level > t.MinAuthLevel {
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
 }
 
 // TagByEnum returns the tag group for an enum, or (zero, false).

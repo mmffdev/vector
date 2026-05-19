@@ -196,3 +196,19 @@ FROM schema_migrations
 ORDER BY applied_at DESC
 LIMIT 5;
 ```
+
+---
+
+## nav / pages_tags
+
+### Which nav tags are admin-menu (hidden from primary rail)?
+**DB:** mmff_vector (pool)
+**Use when:** auditing why a tag appears on rail 1 vs the avatar admin menu. ShellContext + UserAvatarMenu both branch on `pages_tags_is_admin_menu` — TRUE = avatar menu only, FALSE = primary rail.
+**Gotcha:** the column prefix is `pages_tags_*` (RF1.4.4 style); don't confuse with `pages_*` columns on the `pages` table. Ten tag rows total — four user-facing buckets, four admin surfaces, plus `notifications` and `avatar_menu`.
+```sql
+SELECT pages_tags_tag_enum,
+       pages_tags_display_name,
+       pages_tags_is_admin_menu
+  FROM pages_tags
+ ORDER BY pages_tags_default_order;
+```

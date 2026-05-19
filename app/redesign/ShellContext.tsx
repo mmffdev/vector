@@ -3,6 +3,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useNavPrefs, type NavCatalogEntry, type NavTagGroup, type PrefRow } from "@/app/contexts/NavPrefsContext";
+import { useAuth } from "@/app/contexts/AuthContext";
+
+// Map the user's role rank to the admin tier used by pages_tags.min_auth_level.
+// Lower number = higher privilege. Global Admin (rank 70) → 1, Portfolio
+// Manager (rank 60) → 2, everyone else → 3. A user sees a tag iff
+// tag.minAuthLevel >= userAuthLevel.
+function deriveAuthLevel(roleRank: number | undefined | null): number {
+  if (roleRank == null) return 3;
+  if (roleRank >= 70) return 1;
+  if (roleRank >= 60) return 2;
+  return 3;
+}
 
 /** Sentinel ID for the account flyout slot — not a real customGroup. */
 export const ACCOUNT_SECTION_ID = "__account";
@@ -15,7 +27,7 @@ const TAG_ICON_DEFAULTS: Record<string, string> = {
   bookmarks: "pin",
   dev_tools: "terminal-square",
   workspace_admin: "cog",
-  user_admin: "users",
+  user_management: "users",
   vector_admin: "shield",
 };
 
@@ -129,6 +141,11 @@ function sectionForPath(sections: ShellSection[], pathname: string): ShellSectio
 export function ShellProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const { prefs, customGroups, catalogue, tags, profileGroups } = useNavPrefs();
+  const { user } = useAuth();
+  const userAuthLevel = useMemo(
+    () => deriveAuthLevel(user?.role?.rank),
+    [user?.role?.rank],
+  );
 
   const catalogueByKey = useMemo(() => {
     const m = new Map<string, NavCatalogEntry>();
@@ -160,6 +177,10 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
       if (p.tag_enum) {
         const tag = tagByEnum.get(p.tag_enum);
         if (!tag || tag.isAdminMenu) continue;
+        // Admin-tier gate: tag.minAuthLevel = 1 (Vector Admin), 2
+        // (Workspace Admin), 3 (everyone). User passes if their derived
+        // auth_level ≤ the tag's required level.
+        if (userAuthLevel > tag.minAuthLevel) continue;
         placedTags.add(tag.enum);
         out.push({
           id: `tag:${tag.enum}`,
@@ -186,7 +207,9 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     // by pool position. Empty tag buckets are skipped here — but a tag
     // that IS in profileGroups is rendered even when empty so the rail
     // honours the user's choice.
-    for (const t of [...tags].filter((tt) => !tt.isAdminMenu).sort((a, b) => a.defaultOrder - b.defaultOrder)) {
+    for (const t of [...tags]
+      .filter((tt) => !tt.isAdminMenu && userAuthLevel <= tt.minAuthLevel)
+      .sort((a, b) => a.defaultOrder - b.defaultOrder)) {
       if (placedTags.has(t.enum)) continue;
       const pages = pagesForTag(t.enum, prefs, catalogueByKey);
       if (pages.length === 0) continue;
@@ -208,7 +231,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     }
 
     return out;
-  }, [profileGroups, tags, customGroups, prefs, catalogueByKey, tagByEnum, customGroupById]);
+  }, [profileGroups, tags, customGroups, prefs, catalogueByKey, tagByEnum, customGroupById, userAuthLevel]);
 
   const bookmarkPages = useMemo<ShellPage[]>(() => {
     const result: ShellPage[] = [];

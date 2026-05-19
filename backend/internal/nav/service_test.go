@@ -445,6 +445,160 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 	}
 }
 
+// TestTagsFor_AdminTierFiltering — server-side authoritative gate for
+// the admin-tier rail filter. A client cannot tamper its way to seeing
+// admin tag enums; if a user's auth_level is too low the tag is dropped
+// from the /nav/catalogue response entirely.
+//
+// Migration 221 seeded:
+//   vector_admin    → 1 (Vector Admin)
+//   user_management → 1
+//   dev_tools       → 1
+//   workspace_admin → 2 (Workspace Admin)
+//   everything else → 3 (Everyone)
+//
+// Role rank → auth_level mapping (registry.authLevelFor):
+//   grp_global    (rank 70) → 1   — sees levels 1, 2, 3
+//   grp_portfolio (rank 60) → 2   — sees levels 2, 3
+//   grp_team_member (rank 30) → 3 — sees level 3 only
+//
+// This test is the procurement-evidence pin: if anyone changes the
+// thresholds or filtering logic, the assertions below must be updated
+// deliberately, not silently.
+func TestTagsFor_AdminTierFiltering(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	svc := newSvc(t, pool)
+
+	ctx := context.Background()
+	reg, err := svc.Registry.Get(ctx)
+	if err != nil {
+		t.Fatalf("registry get: %v", err)
+	}
+
+	resolveRole := func(code string) uuid.UUID {
+		var id uuid.UUID
+		if err := pool.QueryRow(ctx,
+			`SELECT users_roles_id FROM users_roles WHERE users_roles_code = $1 AND users_roles_id_subscription IS NULL`,
+			code,
+		).Scan(&id); err != nil {
+			t.Fatalf("resolve role %q: %v", code, err)
+		}
+		return id
+	}
+
+	gadminID := resolveRole("grp_global")
+	padminID := resolveRole("grp_portfolio")
+	userID := resolveRole("grp_team_member")
+
+	enums := func(tags []TagGroup) map[string]bool {
+		m := make(map[string]bool, len(tags))
+		for _, t := range tags {
+			m[t.Enum] = true
+		}
+		return m
+	}
+
+	tier1 := []string{"vector_admin", "user_management", "dev_tools"}
+	tier2 := []string{"workspace_admin"}
+	tier3UserFacing := []string{"personal", "planning", "strategy", "bookmarks"}
+
+	t.Run("gadmin sees every admin tag", func(t *testing.T) {
+		got := enums(reg.TagsFor(gadminID))
+		for _, want := range append(append([]string{}, tier1...), tier2...) {
+			if !got[want] {
+				t.Errorf("gadmin missing admin tag %q (have: %v)", want, got)
+			}
+		}
+		for _, want := range tier3UserFacing {
+			if !got[want] {
+				t.Errorf("gadmin missing user-facing tag %q (have: %v)", want, got)
+			}
+		}
+	})
+
+	t.Run("padmin sees workspace_admin but not Vector-tier admin tags", func(t *testing.T) {
+		got := enums(reg.TagsFor(padminID))
+		for _, banned := range tier1 {
+			if got[banned] {
+				t.Errorf("padmin must not see %q (it is auth_level=1)", banned)
+			}
+		}
+		for _, want := range tier2 {
+			if !got[want] {
+				t.Errorf("padmin missing %q (auth_level=2 should be visible)", want)
+			}
+		}
+		for _, want := range tier3UserFacing {
+			if !got[want] {
+				t.Errorf("padmin missing user-facing tag %q", want)
+			}
+		}
+	})
+
+	t.Run("team member sees no admin tags at all", func(t *testing.T) {
+		got := enums(reg.TagsFor(userID))
+		for _, banned := range append(append([]string{}, tier1...), tier2...) {
+			if got[banned] {
+				t.Errorf("team member must not see admin tag %q", banned)
+			}
+		}
+		for _, want := range tier3UserFacing {
+			if !got[want] {
+				t.Errorf("team member missing user-facing tag %q", want)
+			}
+		}
+	})
+
+	t.Run("unknown roleID falls back to tier 3", func(t *testing.T) {
+		got := enums(reg.TagsFor(uuid.New()))
+		for _, banned := range append(append([]string{}, tier1...), tier2...) {
+			if got[banned] {
+				t.Errorf("unknown role must not see admin tag %q (defaults to tier 3)", banned)
+			}
+		}
+	})
+}
+
+// TestCatalogFor_DropsAdminPagesForLowerTier — the tag gate also applies
+// to catalogue entries. A Team Member's response must not contain pages
+// whose tag is gated above their auth_level, even if those pages would
+// otherwise pass the per-page role grant check. This is the second leg
+// of the procurement-evidence pin (alongside TestTagsFor_AdminTierFiltering).
+func TestCatalogFor_DropsAdminPagesForLowerTier(t *testing.T) {
+	pool := testPool(t)
+	defer pool.Close()
+	svc := newSvc(t, pool)
+
+	ctx := context.Background()
+	reg, err := svc.Registry.Get(ctx)
+	if err != nil {
+		t.Fatalf("registry get: %v", err)
+	}
+
+	var userID uuid.UUID
+	if err := pool.QueryRow(ctx,
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' AND users_roles_id_subscription IS NULL`,
+	).Scan(&userID); err != nil {
+		t.Fatalf("resolve grp_team_member: %v", err)
+	}
+
+	// Admin tag enums a team member must never see in catalogue entries.
+	forbidden := map[string]bool{
+		"vector_admin":    true,
+		"user_management": true,
+		"workspace_admin": true,
+		"dev_tools":       true,
+	}
+
+	entries := reg.CatalogFor(userID, uuid.Nil)
+	for _, e := range entries {
+		if forbidden[e.TagEnum] {
+			t.Errorf("team member must not see catalogue entry %q under admin tag %q", e.Key, e.TagEnum)
+		}
+	}
+}
+
 // TestLoadRegistry_EnvFiltersDevToolsOutOfStaging (TD-NAV-001):
 // pages_tags row 'dev_tools' has pages_tags_env_only='dev'. When
 // BACKEND_ENV='staging' or 'production' the registry must drop the tag

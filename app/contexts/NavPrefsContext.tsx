@@ -24,6 +24,11 @@ export interface NavTagGroup {
   label: string;
   defaultOrder: number;
   isAdminMenu: boolean;
+  // Minimum admin tier required to see this tag on the primary nav rail.
+  // 1 = Vector Admin (Global Admin role only), 2 = Workspace Admin
+  // (Portfolio Manager and above), 3 = Everyone. ShellContext compares
+  // against the current user's derived auth_level.
+  minAuthLevel: number;
 }
 
 export interface PrefRow {
