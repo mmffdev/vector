@@ -10571,6 +10571,22 @@ input[type="reset"] {
   margin-top: 0;
 }
 
+/* B20.4.5 — topology section header strip. Hosts the default-role
+   picker that gates new grants, plus a hint about the toggle
+   semantics. Compact row above the <UserNodeAssignment> tree. */
+.users-edit-panel__topology_header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.users-edit-panel__topology_header .form__label--inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
 .users-edit-panel__state {
   position: relative;
   display: inline-flex;

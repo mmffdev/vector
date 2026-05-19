@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
@@ -9,11 +8,179 @@ import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import ToggleBtn from "@/app/components/ToggleBtn";
+import UserNodeAssignment from "@/app/components/topology/UserNodeAssignment";
 import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite as api, ApiError } from "@/app/lib/api";
+import { topologyApi, listGrantsByUser, type MyGrant, type OrgNode } from "@/app/lib/topologyApi";
 import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "@/app/(user)/_shared";
 
 type PageSize = "all" | 10 | 25 | 50 | 100;
+
+// B20.4.5 — topology access section inside the inline edit-row panel.
+// Replaces the previous standalone /user-management/{id}/topology-
+// permissions page. The previous component hard-coded role="admin"
+// when granting; this version exposes a default-role select
+// (viewer/editor/admin) at the section header so the operator picks
+// the intended role before ticking nodes.
+//
+// Server-side: each toggle hits the topology service directly
+// (POST /topology/nodes/{nodeId}/roles to grant, DELETE
+// /topology/roles/{grant_id} to revoke). Both endpoints are gated
+// behind topology.grants.manage_others on the backend, which the
+// host UserEditPanel already gates the section's visibility on —
+// but the backend re-checks per call (server-side-first per the
+// SERVER IS THE GATE hard rule), so deep-linking or stale UI cannot
+// bypass.
+//
+// Optimistic mutation pattern mirrors the previous standalone page:
+// flip the grants array, fire the network call, refetch on grant
+// to bind the real grant_id. On error, revert.
+function TopologyAccessSection({
+  userId,
+}: {
+  userId: string;
+}) {
+  type TopologyRole = "viewer" | "editor" | "admin";
+  const [tree,        setTree]        = useState<OrgNode[] | null>(null);
+  const [grants,      setGrants]      = useState<MyGrant[] | null>(null);
+  const [collapsed,   setCollapsed]   = useState<Set<string>>(new Set());
+  const [defaultRole, setDefaultRole] = useState<TopologyRole>("viewer");
+  const [loadErr,     setLoadErr]     = useState<string | null>(null);
+  const [mutErr,      setMutErr]      = useState<string | null>(null);
+
+  const selectedNodeIds = useMemo<Set<string>>(
+    () => new Set((grants ?? []).map((g) => g.node_id)),
+    [grants],
+  );
+
+  const reloadGrants = useCallback(async () => {
+    const next = await listGrantsByUser(userId);
+    setGrants(next);
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadErr(null);
+    Promise.all([topologyApi.tree(), listGrantsByUser(userId)])
+      .then(([treeRows, grantRows]) => {
+        if (cancelled) return;
+        setTree(treeRows);
+        setGrants(grantRows);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadErr(
+          err instanceof ApiError
+            ? `Error ${err.status}: ${String(err.body ?? "")}`
+            : "Failed to load topology access.",
+        );
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const handleToggle = useCallback(
+    async (nodeId: string, nextSelected: boolean) => {
+      setMutErr(null);
+      const prev = grants ?? [];
+
+      if (nextSelected) {
+        const placeholder: MyGrant = {
+          grant_id: `optimistic-${nodeId}`,
+          node_id: nodeId,
+          workspace_id: "",
+          parent_id: null,
+          name: "",
+          label_override: null,
+          colour: null,
+          icon: null,
+          role: defaultRole,
+          granted_at: new Date().toISOString(),
+          position: 0,
+        };
+        setGrants([...prev, placeholder]);
+        try {
+          await topologyApi.grantRole(nodeId, userId, defaultRole, false);
+          await reloadGrants();
+        } catch (err) {
+          setGrants(prev);
+          setMutErr(
+            err instanceof ApiError
+              ? `Grant failed (Error ${err.status}): ${String(err.body ?? "")}`
+              : "Grant failed.",
+          );
+        }
+        return;
+      }
+
+      const target = prev.find((g) => g.node_id === nodeId);
+      if (!target) {
+        setMutErr("Cannot revoke — no matching grant on record.");
+        return;
+      }
+      setGrants(prev.filter((g) => g.node_id !== nodeId));
+      try {
+        await topologyApi.revokeRole(target.grant_id);
+      } catch (err) {
+        setGrants(prev);
+        setMutErr(
+          err instanceof ApiError
+            ? `Revoke failed (Error ${err.status}): ${String(err.body ?? "")}`
+            : "Revoke failed.",
+        );
+      }
+    },
+    [grants, userId, defaultRole, reloadGrants],
+  );
+
+  const toggleCollapsed = useCallback((id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  return (
+    <>
+      <div className="users-edit-panel__topology_header">
+        <label className="form__label form__label--inline">
+          <span>Default role for new grants:</span>
+          <select
+            className="form__select form__select--sm"
+            value={defaultRole}
+            onChange={(e) => setDefaultRole(e.target.value as TopologyRole)}
+            aria-label="Default role for new topology grants"
+          >
+            <option value="viewer">Viewer</option>
+            <option value="editor">Editor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <span className="form__hint">
+          Ticking a node grants this role. Untick to revoke. Existing
+          grants keep their original role; the picker shows the granted
+          subset only — change role by untick → re-tick.
+        </span>
+      </div>
+
+      {loadErr && <div className="form__error">{loadErr}</div>}
+      {mutErr  && <div className="form__error">{mutErr}</div>}
+
+      {tree && grants ? (
+        <UserNodeAssignment
+          tree={tree}
+          selectedNodeIds={selectedNodeIds}
+          onToggle={handleToggle}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+        />
+      ) : (
+        !loadErr && <p className="form__hint">Loading topology…</p>
+      )}
+    </>
+  );
+}
 
 // B20.4.8 — inline edit-row panel restructured into 4 sections:
 // Account Information / Display Preferences / Settings / Administrative
@@ -350,6 +517,14 @@ function UserEditPanel({
           </label>
         </div>
 
+        {/* ── Topology Access (B20.4.5) ─────────────────────────── */}
+        {hasManageGrants && (
+          <>
+            <SectionHeader>Topology Access</SectionHeader>
+            <TopologyAccessSection userId={u.id} />
+          </>
+        )}
+
         {err  && <div className="form__error">{err}</div>}
         {info && <div className="form__info">{info}</div>}
 
@@ -364,14 +539,9 @@ function UserEditPanel({
             >
               {resetBusy ? "Sending…" : "Send password reset"}
             </button>
-            {hasManageGrants && (
-              <Link
-                href={`/user-management/${u.id}/topology-permissions`}
-                className="btn btn--secondary"
-              >
-                Manage topology permissions
-              </Link>
-            )}
+            {/* B20.4.5 — "Manage topology permissions" link removed;
+                topology access now lives inline as a section above
+                in the same panel, replacing the standalone route. */}
           </div>
           <div className="users-edit-panel__actions-right">
             {isActive !== u.is_active && (
