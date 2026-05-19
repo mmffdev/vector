@@ -1,7 +1,7 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-19 (Morning session — B20.5.1 retire legacy api()/samantha/v1: silently 404'ing helper found + every caller migrated to apiSite(), 22 files / ~95 callsites. Pre-push contract gate repaired (subdir snapshot layout + duplicate /topology/levels yaml key). Affected surfaces previously degraded — Header page-help, admin/roles, library-releases, password change, workspace settings — now hit real routes.)
+**Last updated:** 2026-05-19 (Afternoon session — B20.5.A–.F complete: spec round-trip from Go truth (`npm run api:sync`), closure-aware parser tests (`npm run api:test:parser`, 8 fixtures), multi-line middleware-chain regex fix uncovered 19 previously-invisible routes, stub enrichment with path-derived Scalar tags + HTTP-shape-correct responses. Stubs explicitly marked `x-stub: true`. Contract gate green on both transport tiers. Morning session — B20.5.1 retire legacy api()/samantha/v1: silently 404'ing helper found + every caller migrated to apiSite(), 22 files / ~95 callsites.)
 **Doc version:** 2.47
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
@@ -3832,6 +3832,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 
 - ✅ ~~**B20.5.1** Retire legacy `api()` helper, migrate all callers to `apiSite()`. AC: zero `api()` callers remain under `app/`; `api()` export + `API_BASE` removed from `app/lib/api.ts`; no `samantha/v1` string anywhere in app/; TS baseline unchanged (36); backend builds + tests pass; pre-push gate green on both v1 + v2 contract layers.~~ `[P1]`
   > Shipped 2026-05-19 in commits 1866774 (gate fix) + b70a76a (codemod). 22 files / ~95 callsites migrated. Verified each unique path responds 401/405/400 on `/_site` (i.e. route exists). pre-push.sh now reads snapshots from the canonical `api-snapshots/v1/` and `api-snapshots/v2/` subdirs and runs oasdiff against both spec families. Fresh baselines written.
+  > Last checked: 2026-05-19
+
+- ✅ ~~**B20.5.A–.F** Spec round-trip + parser hardening — `siteAPI.yaml` + `samanthaAPI.yaml` regenerated from Go truth via new `extract_routes.py` + `sync_specs.py` (npm `api:sync`); closure-aware parser handles single/multi-arg + nested closures, middleware chains incl. multi-line `.With(...).\n    Get(...)`; 8-fixture test suite (`npm run api:test:parser`) locks the contract; auto-generated stubs ship `x-stub: true` + path-derived tag + HTTP-shape-correct response set (`POST` w/o `{id}` → 201, `DELETE` → 204, 404 on `{id}` paths, 400+422 on write verbs).~~ `[P1]`
+  > Shipped 2026-05-19 in commits c32bd04 (B20.5.A `/_site` mount + closure), e0687b3 (B20.5.B parser middleware-chain + spec resync — breaking), 4e7d3c5 (B20.5.C+E round-trip tool + explicit stub markers), 820c1c7 (B20.5.D parser test suite + multi-line chain fix → uncovered 19 previously-invisible routes), 07b9a04 (B20.5.F stub enrichment).
+  > Stub count post-enrichment: site 114, v2 35 — all marked `x-stub:true`, grouped by Scalar IDE under path-derived tags (admin, roles, portfolio-items, etc.). Curated: site 67, v2 28.
   > Last checked: 2026-05-19
 
 ---
