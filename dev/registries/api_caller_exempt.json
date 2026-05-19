@@ -13,6 +13,14 @@
     {
       "path": "app/(user)/portfolio-model/AdoptionOverlay.tsx",
       "reason": "EventSource (SSE) for portfolio-model adoption progress — long-lived stream during cutover state-machine; can be refactored to a typed wrapper but the current call-site composes API_BASE locally."
+    },
+    {
+      "path": "app/components/CustomFieldsTree.tsx",
+      "reason": "Tracked by TD-API-AUDIT-001 (migration A). Calls /api/dev/artefact-types + /api/dev/artefact-types/{id}/fields via local bff() wrapper. The underlying handlers are pg-direct shadow routes; migration: add Go endpoints under /_site/admin/dev/artefact-types/*, swap bff() for apiSite(), delete the shadow handlers. Estimated ~2d."
+    },
+    {
+      "path": "app/hooks/useRelationsData.ts",
+      "reason": "Tracked by TD-API-AUDIT-001 (migration B). Calls /api/v2/work-items/relations — a pg-direct Next.js handler. Kept alive because WorkItemRelations + MapRelationship3D consume it (mounted at /workspace-admin/topology-map). Migration: lift the route into Go as /_site/work-items/relations, switch to apiSite(), delete the shadow handler + app/lib/v2/db.ts. Estimated ~1.5d."
     }
   ]
 }

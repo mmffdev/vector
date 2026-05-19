@@ -1146,6 +1146,7 @@ func main() {
 				r.Post("/dev/seed-workspace", devResetH.SeedWorkspace)
 				r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
 				r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
+				r.Get("/dev/api-audit", devResetH.ApiAudit)
 			})
 		})
 

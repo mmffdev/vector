@@ -9,6 +9,8 @@
 #   app/(user)/**/page.tsx                          → lint:page-description
 #   app/(user)/**/*.tsx                             → lint:h2-panel-only
 #   app/**/*.tsx                                    → lint:no-raw-table
+#   app/**/*.{tsx,ts}                               → lint:api-caller-discipline
+#                                                     + lint:api-helper-exclusive
 #   app/globals.css | dev/**/*.{tsx,css,ts}         → lint:dev-css
 #   backend/internal/**/handler*.go | *_handler.go  → lint:no-db-in-handlers
 #   backend/internal/**/*.go                        → lint:sql-in-sqlfile-only
@@ -58,6 +60,14 @@ case "$REL" in
 esac
 case "$REL" in
   "app/"*.tsx) LINTS+=("no_raw_table") ;;
+esac
+# API discipline — every fetch/XHR/WebSocket/EventSource and every
+# backend-URL literal in app/** must go through app/lib/api.ts (apiSite
+# family) or be in the api_caller_exempt.json registry. Catches the
+# Next.js shadow-backend bypass (`/api/dev/*` or `/api/v2/*` outside
+# the sanctioned-shadow allowlist).
+case "$REL" in
+  "app/"*.tsx|"app/"*.ts) LINTS+=("api_caller_discipline" "api_helper_exclusive") ;;
 esac
 case "$REL" in
   "app/globals.css"|"dev/"*.tsx|"dev/"*.css|"dev/"*.ts) LINTS+=("dev_css") ;;

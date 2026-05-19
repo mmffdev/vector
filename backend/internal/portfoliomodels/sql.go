@@ -453,6 +453,18 @@ const sqlDeleteAllArtefactFieldValuesForSubscription = `
 
 const sqlDeleteAllArtefactsForSubscription = `DELETE FROM artefacts WHERE subscription_id = $1`
 
+// sqlCountArtefactsForSubscription — used by ArtefactsCount pre-flight
+// (GET /_site/admin/dev/artefacts-count). Returns live / archived / total
+// rows for one tenant; archived_at NULL = live.
+const sqlCountArtefactsForSubscription = `
+	SELECT
+	  count(*) FILTER (WHERE archived_at IS NULL),
+	  count(*) FILTER (WHERE archived_at IS NOT NULL),
+	  count(*)
+	FROM artefacts
+	WHERE subscription_id = $1
+`
+
 const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefacts_number_sequences WHERE subscription_id = $1`
 
 const sqlDeleteTenantArtefactTypesForSubscription = `DELETE FROM artefacts_types WHERE artefacts_types_id_subscription = $1 AND artefacts_types_source = 'tenant'`

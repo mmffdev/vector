@@ -26,6 +26,10 @@
       "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
     },
     {
+      "path": "app/(user)/dev/[tab]/page.tsx",
+      "reason": "dev tab dispatcher \u2014 each Dev*Panel emits its own header via usePageHeader/Panel; no page-level description"
+    },
+    {
       "path": "app/(user)/dev/page.tsx",
       "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
     },

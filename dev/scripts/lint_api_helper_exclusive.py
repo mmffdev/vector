@@ -70,18 +70,31 @@ def is_implicitly_exempt(rel: str) -> bool:
 
 
 def first_arg_targets_backend(arg: str) -> bool:
-    """Heuristically decide whether a fetch() first arg points at the
-    Go backend (so it must go through apiSite) or at a Next.js-internal
-    route (which is OK).
+    """Heuristically decide whether a fetch() first arg points at code
+    that must go through apiSite, or at a sanctioned exception.
+
+    Two classes of `/api/...` URL exist in this repo:
+
+      - **Sanctioned shadow** (file-only Next.js handlers — research,
+        retros, plans, scope, operations, etc.). These are gadmin-only
+        dev-panel data sources that read repo files, not the DB. The
+        full list lives in dev/scripts/audit_api_touchpoints.sh's
+        SANCTIONED_SHADOW_PATHS array; the contract is documented in
+        docs/c_c_shadow_backend_exceptions.md.
+
+      - **DB-touching shadow** (`/api/dev/artefact-types/*`,
+        `/api/v2/work-items/relations`, anything pg-direct). These ARE
+        the bypass the rule was written to ban. They MUST migrate to
+        a Go handler under `/_site/*` and call via apiSite.
 
     OK (returns False):
-      - relative URLs starting with "/api/..."
+      - sanctioned-shadow `/api/dev/<area>` URLs (whitelist below)
       - data: / blob: URLs
       - file:// URLs
-      - relative URLs that don't look like backend mounts
 
     NOT OK (returns True):
       - any explicit localhost:5100 / _site / samantha/v2 reference
+      - any non-sanctioned `/api/dev/...` or `/api/v2/...` URL
       - URL constructed from API_BASE / NEXT_PUBLIC_API_BASE
       - absolute http URLs (likely external; could still be a bypass)
     """
@@ -90,16 +103,42 @@ def first_arg_targets_backend(arg: str) -> bool:
         return False  # empty / variable — let caller-discipline handle string-literal checks
     # Strip surrounding quotes/backticks for static analysis.
     stripped = a.strip("'\"`")
-    if stripped.startswith("/api/"):
-        return False
+    # data:/blob:/file: URLs — never a backend call.
     if stripped.startswith("data:") or stripped.startswith("blob:") or stripped.startswith("file:"):
         return False
+    # Sanctioned shadow paths — file-only handlers, no DB touch. Mirrors
+    # the SANCTIONED_SHADOW_PATHS array in audit_api_touchpoints.sh. Keep
+    # the two lists in sync; any path in the audit's allowlist MUST also
+    # be in this prefix tuple (and vice-versa).
+    sanctioned_shadow_prefixes = (
+        "/api/dev/api-changelog",
+        "/api/dev/library",
+        "/api/dev/memory-reports",
+        "/api/dev/operations",
+        "/api/dev/plans",
+        "/api/dev/research",
+        "/api/dev/retros",
+        "/api/dev/scope",
+        "/api/dev/security-audits",
+        "/api/dev/services",
+        "/api/dev/go-test",
+    )
+    if stripped.startswith(sanctioned_shadow_prefixes):
+        return False
+    # Non-sanctioned shadow routes are DB-touching bypasses — flag.
+    if stripped.startswith("/api/dev/") or stripped.startswith("/api/v2/"):
+        return True
     if stripped.startswith("/_site/") or stripped.startswith("/samantha/v2/"):
         return True
     if "localhost:5100" in a or "API_BASE" in a or "NEXT_PUBLIC_API_BASE" in a:
         return True
-    # Anything starting with `${` (template literal) is suspicious;
-    # flag conservatively unless the literal prefix is /api/.
+    # Template literals — check the literal prefix.
+    if a.startswith("`/api/dev/") or a.startswith("`/api/v2/"):
+        # Re-strip and re-check against sanctioned list.
+        tl_stripped = a.strip("`")
+        if tl_stripped.startswith(sanctioned_shadow_prefixes):
+            return False
+        return True
     if a.startswith("`/api/"):
         return False
     # External absolute URLs — flag (could be CSRF / SSRF surface).

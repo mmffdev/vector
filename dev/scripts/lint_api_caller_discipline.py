@@ -7,7 +7,7 @@ the Go backend MUST go through `app/lib/api.ts` (`apiSite`, `apiV2`,
 header injection, retry policy, MFA step-up redirects, CSP-bounded
 URL composition all live there.
 
-This lint catches the four ways code can sneak past:
+This lint catches the five ways code can sneak past:
 
   1. Direct `localhost:5100` URLs anywhere except api.ts
   2. Direct `/_site/...` or `/samantha/v2/...` path literals outside
@@ -15,6 +15,10 @@ This lint catches the four ways code can sneak past:
   3. Direct `${API_BASE}/...` interpolations outside the api.ts +
      allowlisted SSE/streaming sites
   4. `process.env.NEXT_PUBLIC_API_BASE` reads outside the allowlist
+  5. Direct `/api/dev/<non-sanctioned>` or `/api/v2/...` path literals
+     — sibling loophole to the Go-backend bypass: the Next.js shadow
+     backend. Sanctioned-shadow paths (file-only dev-panel handlers)
+     are exempted; see docs/c_c_shadow_backend_exceptions.md.
 
 A small allowlist at dev/registries/api_caller_exempt.json lists the
 SSE/EventSource/WebSocket sites that legitimately compose backend
@@ -48,7 +52,44 @@ PATTERNS = [
      'direct /samantha/v2/... path literal — use apiV2() which prepends the mount'),
     (re.compile(r'process\.env\.NEXT_PUBLIC_API_BASE'),
      'NEXT_PUBLIC_API_BASE read outside api.ts — the helper handles env resolution'),
+    # Shadow-backend bypass: /api/dev/* or /api/v2/* string literals.
+    # Sanctioned file-only handlers are filtered out below via
+    # SANCTIONED_SHADOW_PREFIXES. Anything else is the SOC2 hole.
+    (re.compile(r'["\'`](/api/(?:dev|v2)/[^"\'`\s]+)'),
+     'direct Next.js shadow path literal — migrate the handler to /_site/* on the Go backend, then call apiSite()'),
 ]
+
+# Mirrors dev/scripts/audit_api_touchpoints.sh SANCTIONED_SHADOW_PATHS.
+# Keep in sync — if a path is exempted by the audit, it must also be
+# exempted here (and vice-versa). See docs/c_c_shadow_backend_exceptions.md.
+SANCTIONED_SHADOW_PREFIXES = (
+    "/api/dev/api-changelog",
+    "/api/dev/library",
+    "/api/dev/memory-reports",
+    "/api/dev/operations",
+    "/api/dev/plans",
+    "/api/dev/research",
+    "/api/dev/retros",
+    "/api/dev/scope",
+    "/api/dev/security-audits",
+    "/api/dev/services",
+    "/api/dev/go-test",
+)
+
+
+def _shadow_path_is_sanctioned(line: str) -> bool:
+    """True if every shadow-path literal on this line is in the
+    sanctioned-shadow allowlist. False if any literal points at a
+    DB-touching shadow route."""
+    matches = re.findall(r'["\'`](/api/(?:dev|v2)/[^"\'`\s]+)', line)
+    if not matches:
+        return False
+    for path in matches:
+        # Strip template-literal interpolation tails (e.g. ${id} → drop).
+        canonical = re.sub(r'\$\{[^}]+\}.*', '', path)
+        if not canonical.startswith(SANCTIONED_SHADOW_PREFIXES):
+            return False
+    return True
 
 
 def load_exemptions() -> dict[str, str]:
@@ -103,6 +144,11 @@ def scan(file_path: pathlib.Path, rel: str) -> list[tuple[int, str, str]]:
             continue
         for pat, msg in PATTERNS:
             if pat.search(line):
+                # Shadow-path pattern matched? Skip if every literal on
+                # this line is in the sanctioned-shadow allowlist
+                # (file-only dev panels read repo content, not the DB).
+                if "shadow path literal" in msg and _shadow_path_is_sanctioned(line):
+                    break
                 out.append((i, line.rstrip(), msg))
                 break  # one message per line is enough
     return out

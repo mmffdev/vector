@@ -13,6 +13,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -110,6 +112,166 @@ func (h *DevResetHandler) MasterReset(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Master reset complete. Tenant data cleared and testbed defaults applied.",
 	})
+}
+
+// ArtefactsCount — GET /_site/admin/dev/artefacts-count
+//
+// Pre-flight for the `<artefacts> -d` skill. Returns live / archived /
+// total artefact counts for the caller's subscription on vector_artefacts.
+// Read-only — surfaces the blast radius before the destructive call.
+func (h *DevResetHandler) ArtefactsCount(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if h.VAPool == nil {
+		http.Error(w, "vector_artefacts pool unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	var live, archived, total int64
+	err := h.VAPool.QueryRow(r.Context(), sqlCountArtefactsForSubscription, u.SubscriptionID).
+		Scan(&live, &archived, &total)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("count failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"subscription_id": u.SubscriptionID,
+		"live":            live,
+		"archived":        archived,
+		"total":           total,
+	})
+}
+
+// ArtefactsWipe — POST /_site/admin/dev/artefacts-wipe
+//
+// Tenant-scoped hard-delete of every artefact (live + archived) for the
+// caller's subscription on vector_artefacts. Cascades:
+//   - artefacts_fields_values (ON DELETE CASCADE via FK)
+//   - artefacts_search_outbox (ON DELETE CASCADE via FK)
+//
+// Also clears artefacts_number_sequences so a fresh seed restarts at 1.
+//
+// PRESERVED: artefacts_types, topology_nodes, flows*, timeboxes_*,
+//            artefacts_fields_library, master_record_workspaces, users,
+//            roles, permissions, workspaces.
+//
+// Single transaction; rollback on any failure. Gadmin-only via the route
+// permission gate (same group as the other /dev/* tools). Body must
+// contain {"confirm":"yes"} — server-side double-check on top of the
+// skill's prompt; mismatched body → 400.
+//
+// Returns the deleted row counts so the skill can report back.
+func (h *DevResetHandler) ArtefactsWipe(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if h.VAPool == nil {
+		http.Error(w, "vector_artefacts pool unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Confirm string `json:"confirm"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+	if body.Confirm != "yes" {
+		http.Error(w, `{"error":"confirm field must be \"yes\""}`, http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	tx, err := h.VAPool.Begin(ctx)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("begin tx: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	fvTag, err := tx.Exec(ctx, sqlDeleteAllArtefactFieldValuesForSubscription, u.SubscriptionID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("artefacts_fields_values: %v", err), http.StatusInternalServerError)
+		return
+	}
+	aTag, err := tx.Exec(ctx, sqlDeleteAllArtefactsForSubscription, u.SubscriptionID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("artefacts: %v", err), http.StatusInternalServerError)
+		return
+	}
+	nsTag, err := tx.Exec(ctx, sqlDeleteArtefactNumberSequenceForSubscription, u.SubscriptionID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("artefacts_number_sequences: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if err := tx.Commit(ctx); err != nil {
+		http.Error(w, fmt.Sprintf("commit: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":                          true,
+		"subscription_id":                  u.SubscriptionID,
+		"artefacts_deleted":                aTag.RowsAffected(),
+		"artefacts_fields_values_deleted":  fvTag.RowsAffected(),
+		"artefacts_number_sequences_reset": nsTag.RowsAffected(),
+		"message":                          "Artefacts wiped. Types, topology, flows, timeboxes, fields-library preserved.",
+	})
+}
+
+// ApiAudit — GET /_site/admin/dev/api-audit
+//
+// Serves the API-touchpoint audit snapshot produced by
+// dev/scripts/audit_api_touchpoints.sh. The snapshot is regenerated on
+// demand by re-running the script; this handler just reads the latest
+// dev/audits/api-touchpoints.json and returns it.
+//
+// Returns 404 if the snapshot file is missing (script never run).
+//
+// The page that consumes this lives at /dev/api-audit (rail2 Dev Tools).
+// SOC2 narrative: every site DB-touch must route via apiSite; this page
+// is the standing evidence that the rule is being measured.
+func (h *DevResetHandler) ApiAudit(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Anchor on the repo root regardless of where the binary was started.
+	// In dev, the working dir is usually the project root or backend/.
+	candidates := []string{
+		"dev/audits/api-touchpoints.json",
+		"../dev/audits/api-touchpoints.json",
+		"../../dev/audits/api-touchpoints.json",
+	}
+	var data []byte
+	var err error
+	var found string
+	for _, c := range candidates {
+		abs, _ := filepath.Abs(c)
+		if _, statErr := os.Stat(abs); statErr == nil {
+			data, err = os.ReadFile(abs)
+			found = abs
+			break
+		}
+	}
+	if found == "" || err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"snapshot not found","hint":"run bash dev/scripts/audit_api_touchpoints.sh"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(data)
 }
 
 // SeedRisks — POST /_site/admin/dev/seed-risks

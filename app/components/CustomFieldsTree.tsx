@@ -9,7 +9,20 @@ import {
   type RenderCtx,
 } from "@/app/components/ResourceTree";
 import { ITEM_TYPES, CORE_FIELDS } from "@/app/lib/work-item-types";
-import type { ArtefactTypeBinding } from "@/app/components/CustomFieldManager";
+// Type lifted from the retired CustomFieldManager.tsx (deleted 2026-05-19,
+// dead code — no importers remained after the v2 PoC delete). The same
+// shape is returned by /api/dev/artefact-types/{id}/fields.
+export interface ArtefactTypeBinding {
+  id: string;
+  field_library_id: string;
+  field_name: string;
+  label: string;
+  field_type: string;
+  options_json: unknown;
+  position: number;
+  required: boolean;
+  default_value: string | null;
+}
 
 // ─── Row types ────────────────────────────────────────────────────────────────
 

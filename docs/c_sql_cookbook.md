@@ -26,6 +26,25 @@ Curated `psql` queries that worked. Append a new entry any time a non-trivial qu
 
 ## artefacts (vector_artefacts / vaPool)
 
+### Wipe ALL artefacts for one tenant (clean-sheet reset)
+**DB:** vector_artefacts (vaPool)
+**Use when:** dev tenant needs a clean slate — work-items page is empty/broken because of accumulated seed + archived noise, and you want a true zero state to seed fresh from.
+**Gotcha:** FK fan-out is friendly here — `artefacts_fields_values.artefacts_fields_values_id_artefact` and `artefacts_search_outbox.artefact_id` are both `ON DELETE CASCADE`; self-ref `parent_artefact_id` is `ON DELETE SET NULL`, so no manual ordering. The delete also picks up SOFT-ARCHIVED rows (the WHERE has no `archived_at` filter — that's intentional for a wipe). Verify pre-flight with three counts (live / archived / total) before pulling the trigger. Survives the wipe: `artefacts_types`, `topology_nodes`, `flows*`, `timeboxes_*`, `artefacts_fields_library`, users/roles/workspaces.
+```sql
+-- Pre-flight: see the blast radius before committing
+SELECT
+  count(*) FILTER (WHERE archived_at IS NULL)     AS live,
+  count(*) FILTER (WHERE archived_at IS NOT NULL) AS archived,
+  count(*)                                        AS total
+FROM artefacts
+WHERE subscription_id = '<tenant-uuid>';
+
+-- The wipe (cascades field_values + search_outbox automatically)
+BEGIN;
+DELETE FROM artefacts WHERE subscription_id = '<tenant-uuid>';
+COMMIT;
+```
+
 ### Diagnose tree-vs-summary divergence on a portfolio/work-items page
 **DB:** vector_artefacts (vaPool)
 **Use when:** the stats panel shows N items but the ObjectTree renders 0 — compare roots-vs-total and check whether artefact rows carry the same workspace_id as their artefact_type.

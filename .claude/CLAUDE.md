@@ -54,10 +54,12 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
 - **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
 - **`<artefacts>` skill** → [`.claude/skills/artefacts/SKILL.md`](skills/artefacts/SKILL.md) — tenant artefacts maintenance via backend API (`/_site/admin/dev/artefacts-{count,wipe}`); `-d` wipe-all with pre-flight count + explicit "yes" prompt; dev-only; never psql-direct.
+- **`<audit>` skill** → [`.claude/skills/audit/SKILL.md`](skills/audit/SKILL.md) — repo-wide audits; `-api` regenerates `dev/audits/api-touchpoints.json` (consumed by /dev/api-audit page); read-only grep, ~2s.
 - **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — `obj_*` → vector_artefacts ETL.
 - **v2 work-items cutover follow-ups** → [`docs/c_c_v2_workitems_cutover_followups.md`](../docs/c_c_v2_workitems_cutover_followups.md) — PLA-0023 deferral register.
 - **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — per-route-group cutover plan.
 - **Transport segregation (PLA-0039)** → [`docs/c_c_transport_segregation.md`](../docs/c_c_transport_segregation.md) — `/_site` + `/samantha/v2`; lint trio + DTO convention.
+- **Shadow-backend exemptions** → [`docs/c_c_shadow_backend_exceptions.md`](../docs/c_c_shadow_backend_exceptions.md) — `app/api/dev/*` file-only handlers exempted from the siteAPI rule (no DB touch); SOC2 audit narrative.
 - **Scalar IDE setup (B20.5.K + .L)** → [`docs/c_c_scalar_setup.md`](../docs/c_c_scalar_setup.md) — `DEV_API_KEY` in `backend/.env.dev` + `apikeys.SeedDevKey` boot path; `apikeys.Middleware` dual-mounted on `/_site` AND `/samantha/v2` (B20.5.L); synthetic-User shim seeds `auth.UserFromCtx()` from the subscription's highest-tier active user. Unlocks the full 268-endpoint surface.
 - **Shared methods catalogue (PLA-0045)** → [`docs/c_shared_methods.md`](../docs/c_shared_methods.md) — `app/lib/shared/` + `backend/internal/shared/` parity.
 - **Wizard sidecar pattern (PLA-0037)** → [`docs/c_c_wizard_sidecar.md`](../docs/c_c_wizard_sidecar.md) — `p_wizard_*.json` declarative `<ObjectTree>` config.

@@ -313,6 +313,35 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /admin/dev/api-audit:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/api-audit
+      operationId: getAdminDevApiAudit
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devResetH.ApiAudit
+        file: backend/internal/portfoliomodels/dev_reset.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /admin/dev/artefacts-count:
     get:
       tags:

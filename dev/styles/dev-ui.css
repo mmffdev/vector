@@ -138,6 +138,19 @@
   margin-bottom: var(--space-4);
 }
 
+/* Toolbar where the first child input/select absorbs the remaining
+ * row width (so a long search box doesn't crowd the count + buttons
+ * on the right). Use on toolbars with shape: [input][meta][button]. */
+.dui-toolbar--stretchy > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.dui-toolbar--stretchy > :not(:first-child) {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .dui-toolbar--in-panel {
   margin-bottom: 0;
   padding: var(--space-3) var(--space-4);
@@ -366,6 +379,87 @@
 
 .dui-table__cell--nowrap {
   white-space: nowrap;
+}
+
+/* Scroll container for long tables. Pair with .dui-table--sticky-head
+ * to keep the column headers visible while scrolling the body.
+ *
+ * Why a wrapper? .dui-panel uses overflow:hidden which kills sticky;
+ * sticky needs an ancestor that CAN scroll. This wrapper provides that
+ * runway. The max-height of 70vh is a sensible default for dev pages
+ * that show one big table per panel (api-audit, retros, etc.); override
+ * with a more specific selector if a page needs a different height. */
+.dui-table-scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.dui-table--sticky-head thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  /* re-assert background — sticky elements lose their cell background
+   * when they detach, so the row content scrolls visibly behind them
+   * unless we paint here. */
+  background: var(--surface-sunken);
+  /* a subtle border keeps the header visually anchored once the table
+   * body starts scrolling under it. */
+  box-shadow: inset 0 -1px 0 var(--border);
+  border-bottom: none;
+}
+
+/* Second sticky header row — per-column filter inputs. Stacks under
+ * the column-name row so both stay frozen while the body scrolls.
+ * Tight padding + small inputs so the row doesn't waste vertical space
+ * (the column-name row above already establishes context).
+ *
+ * `top` matches the column-name row's actual rendered height. We use a
+ * fixed 32px there to keep the math simple — the .dui-th rule pads
+ * --space-2 (~8px) top+bottom over the --text-xs (~12px) line-height,
+ * landing right at 32px. If --space-2 or --text-xs change, revisit. */
+.dui-table--sticky-head thead tr.dui-table__filters {
+  height: 32px;
+}
+
+.dui-table--sticky-head thead tr.dui-table__filters th {
+  top: 32px;
+  z-index: 1;
+  height: 32px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px var(--space-2);
+  font-weight: 400;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.dui-table__filters .dui-input {
+  height: 24px;
+  padding: 0 6px;
+  font-size: var(--text-xs);
+  width: 100%;
+  min-width: 0; /* let the input shrink inside narrow columns */
+}
+
+/* Row tinting by severity — paints the whole row, not just the status
+ * cell, so red/black urgent rows pop while scanning. Uses --*-bg tones
+ * (already aliased to a translucent variant in app/globals.css) so the
+ * text stays legible on top. Hover still applies. */
+.dui-table tbody tr.dui-table__row--pass     { background: color-mix(in srgb, var(--success-bg) 35%, transparent); }
+.dui-table tbody tr.dui-table__row--warn     { background: color-mix(in srgb, var(--warning-bg) 45%, transparent); }
+.dui-table tbody tr.dui-table__row--fail     { background: color-mix(in srgb, var(--danger-bg)  50%, transparent); }
+.dui-table tbody tr.dui-table__row--critical { background: color-mix(in srgb, var(--ink)         12%, transparent); }
+.dui-table tbody tr.dui-table__row--neutral  { background: var(--surface); }
+
+.dui-table tbody tr.dui-table__row--pass:hover     td,
+.dui-table tbody tr.dui-table__row--warn:hover     td,
+.dui-table tbody tr.dui-table__row--fail:hover     td,
+.dui-table tbody tr.dui-table__row--critical:hover td,
+.dui-table tbody tr.dui-table__row--neutral:hover  td {
+  background: var(--surface-sunken);
 }
 
 .dui-table__cell--name {
@@ -1010,6 +1104,55 @@
 .dui-pill--warn    { background: var(--warning-bg); color: var(--warning); border-color: var(--warning); }
 .dui-pill--info    { background: var(--info-bg);    color: var(--info);    border-color: var(--info); }
 .dui-pill--fixed   { background: var(--info-bg);    color: var(--info);    border-color: var(--info); }
+.dui-pill--critical { background: var(--ink); color: var(--canvas); border-color: var(--ink); }
+.dui-pill--neutral-quiet { background: var(--surface-sunken); color: var(--ink-muted); border-color: var(--border); }
+
+
+/* ─── 11b. Summary tile grid (large pill variants for compliance dashboards) ── */
+
+.dui-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) 0;
+}
+
+.dui-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 6px);
+  background: var(--surface);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: left;
+}
+
+.dui-tile:hover { border-color: var(--border-strong); }
+.dui-tile.is-active { outline: 2px solid var(--accent, var(--info)); outline-offset: 1px; }
+
+.dui-tile__glyph { font-size: var(--text-lg, 16px); font-weight: 600; line-height: 1; }
+.dui-tile__count { font-size: var(--text-xl, 18px); font-weight: 700; font-variant-numeric: tabular-nums; }
+.dui-tile__label { font-size: var(--text-xs, 12px); color: var(--ink-muted); }
+
+.dui-tile--pass     { border-color: var(--success); }
+.dui-tile--pass     .dui-tile__glyph,
+.dui-tile--pass     .dui-tile__count { color: var(--success); }
+.dui-tile--warn     { border-color: var(--warning); }
+.dui-tile--warn     .dui-tile__glyph,
+.dui-tile--warn     .dui-tile__count { color: var(--warning); }
+.dui-tile--fail     { border-color: var(--danger); }
+.dui-tile--fail     .dui-tile__glyph,
+.dui-tile--fail     .dui-tile__count { color: var(--danger); }
+.dui-tile--critical { border-color: var(--ink); background: var(--surface-sunken); }
+.dui-tile--critical .dui-tile__glyph,
+.dui-tile--critical .dui-tile__count { color: var(--ink); }
+.dui-tile--neutral  { border-color: var(--border); }
+.dui-tile--neutral  .dui-tile__glyph,
+.dui-tile--neutral  .dui-tile__count { color: var(--ink-muted); }
 
 
 /* ─── 12. Heat dot + heat row (severity / activity) ────────── */

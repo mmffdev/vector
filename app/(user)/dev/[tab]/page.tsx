@@ -16,6 +16,7 @@ import DevPageHelpPanel from "@dev/pages/DevPageHelpPanel";
 import DevUiCatalogPanel from "@dev/pages/DevUiCatalogPanel";
 import DevApiV2TestsPanel from "@dev/pages/DevApiV2TestsPanel";
 import DevApiChangelogPanel from "@dev/pages/DevApiChangelogPanel";
+import DevApiAuditPanel from "@dev/pages/DevApiAuditPanel";
 import DevScopePanel from "@dev/pages/DevScopePanel";
 import DevComponentsPanel from "@dev/pages/DevComponentsPanel";
 import DevSecurityAuditsPanel from "@dev/pages/DevSecurityAuditsPanel";
@@ -35,6 +36,7 @@ const TAB_TITLES: Record<string, string> = {
   icons:         "Icons",
   "api-v2-tests":  "API v2 Tests",
   "api-changelog": "API Changelog",
+  "api-audit":     "API Audit",
   "components":       "Components",
   "security-audits":  "Security Audits",
 };
@@ -64,6 +66,7 @@ export default function DevTabPage() {
         {tab === "ui-catalog"    && <DevUiCatalogPanel />}
         {tab === "api-v2-tests"  && <DevApiV2TestsPanel />}
         {tab === "api-changelog" && <DevApiChangelogPanel />}
+        {tab === "api-audit"     && <DevApiAuditPanel />}
         {tab === "scope"         && <DevScopePanel onTick={() => {}} />}
         {tab === "components"      && <DevComponentsPanel />}
         {tab === "security-audits" && <DevSecurityAuditsPanel />}
