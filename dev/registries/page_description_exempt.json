@@ -212,6 +212,10 @@
     {
       "path": "app/(user)/workspace-admin/flow-states/page.tsx",
       "reason": "seeded 2026-05-18 \u2014 pending PageDescription migration"
+    },
+    {
+      "path": "app/(user)/workspace-admin/artefacts/artefact-types/page.tsx",
+      "reason": "seeded 2026-05-19 \u2014 copied from /workspace-admin/artefact-types into shell, inherits exemption"
     }
   ]
 }

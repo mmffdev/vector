@@ -295,7 +295,7 @@ export default function ArtefactTypesPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load, workspaceId]);
+  useEffect(() => { load(); }, [load]);
 
   const onPatch = useCallback(async (
     id: string,
