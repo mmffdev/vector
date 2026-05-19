@@ -117,10 +117,24 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 type patchReq struct {
 	Role       *roletypes.Role `json:"role,omitempty"`
-	IsActive   *bool        `json:"is_active,omitempty"`
-	FirstName  *string      `json:"first_name,omitempty"`
-	LastName   *string      `json:"last_name,omitempty"`
-	Department *string      `json:"department,omitempty"`
+	IsActive   *bool           `json:"is_active,omitempty"`
+	FirstName  *string         `json:"first_name,omitempty"`
+	LastName   *string         `json:"last_name,omitempty"`
+	Department *string         `json:"department,omitempty"`
+
+	// B20.4.2 extended profile.
+	MiddleName                *string `json:"middle_name,omitempty"`
+	DisplayName               *string `json:"display_name,omitempty"`
+	PhoneWork                 *string `json:"phone_work,omitempty"`
+	PhoneMobile               *string `json:"phone_mobile,omitempty"`
+	Timezone                  *string `json:"timezone,omitempty"`
+	DateFormat                *string `json:"date_format,omitempty"`
+	DatetimeFormat            *string `json:"datetime_format,omitempty"`
+	EmailNotificationsEnabled *bool   `json:"email_notifications_enabled,omitempty"`
+	PasswordResetRequired     *bool   `json:"password_reset_required,omitempty"`
+	CostCentreID              *string `json:"cost_centre_id,omitempty"`
+	OfficeLocationID          *string `json:"office_location_id,omitempty"`
+	ProfileImageURL           *string `json:"profile_image_url,omitempty"`
 }
 
 func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
@@ -141,6 +155,19 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		FirstName:  req.FirstName,
 		LastName:   req.LastName,
 		Department: req.Department,
+
+		MiddleName:                req.MiddleName,
+		DisplayName:               req.DisplayName,
+		PhoneWork:                 req.PhoneWork,
+		PhoneMobile:               req.PhoneMobile,
+		Timezone:                  req.Timezone,
+		DateFormat:                req.DateFormat,
+		DatetimeFormat:            req.DatetimeFormat,
+		EmailNotificationsEnabled: req.EmailNotificationsEnabled,
+		PasswordResetRequired:     req.PasswordResetRequired,
+		CostCentreID:              req.CostCentreID,
+		OfficeLocationID:          req.OfficeLocationID,
+		ProfileImageURL:           req.ProfileImageURL,
 	}, actor.Role, actor.SubscriptionID, actor.ID, security.ClientIP(r)); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
@@ -148,6 +175,10 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, ErrRoleCeiling) {
 			httperr.Write(w, r, http.StatusForbidden, err.Error())
+			return
+		}
+		if errors.Is(err, ErrInvalidPhone) {
+			httperr.Write(w, r, http.StatusBadRequest, "phone.invalid_e164")
 			return
 		}
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)

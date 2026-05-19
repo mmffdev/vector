@@ -54,6 +54,26 @@ type User struct {
 	FirstName           *string    `json:"first_name,omitempty"`
 	LastName            *string    `json:"last_name,omitempty"`
 	Department          *string    `json:"department,omitempty"`
+
+	// B20.4.2 extended profile. Optional on the wire — fields are
+	// only returned to callers holding users.admin.view (the admin
+	// handler clears them server-side for other roles before
+	// serialising; see backend/internal/users/handler.go).
+	MiddleName                *string `json:"middle_name,omitempty"`
+	DisplayName               *string `json:"display_name,omitempty"`
+	PhoneWork                 *string `json:"phone_work,omitempty"`
+	PhoneMobile               *string `json:"phone_mobile,omitempty"`
+	Timezone                  *string `json:"timezone,omitempty"`
+	DateFormat                *string `json:"date_format,omitempty"`
+	DatetimeFormat            *string `json:"datetime_format,omitempty"`
+	EmailNotificationsEnabled *bool   `json:"email_notifications_enabled,omitempty"`
+	PasswordResetRequired     *bool   `json:"password_reset_required,omitempty"`
+	// Stub UUID columns (B20.4.2). Promoted to real FKs by the
+	// owning stories; until then they accept NULL or a string UUID.
+	CostCentreID     *uuid.UUID `json:"cost_centre_id,omitempty"`
+	OfficeLocationID *uuid.UUID `json:"office_location_id,omitempty"`
+	ProfileImageURL  *string    `json:"profile_image_url,omitempty"`
+
 	LastLogin           *time.Time `json:"last_login,omitempty"`
 	AuthMethod          string     `json:"auth_method"`
 	LdapDN              *string    `json:"-"`

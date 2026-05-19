@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -127,6 +128,11 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]roletyp
 		u := roletypes.User{}
 		if err := rows.Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.RoleID, &u.IsActive,
 			&u.FirstName, &u.LastName, &u.Department,
+			// B20.4.2 extended profile + stubs
+			&u.MiddleName, &u.DisplayName, &u.PhoneWork, &u.PhoneMobile,
+			&u.Timezone, &u.DateFormat, &u.DatetimeFormat,
+			&u.EmailNotificationsEnabled, &u.PasswordResetRequired,
+			&u.CostCentreID, &u.OfficeLocationID, &u.ProfileImageURL,
 			&u.LastLogin, &u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt,
 			&u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
@@ -142,7 +148,38 @@ type UpdateInput struct {
 	FirstName  *string
 	LastName   *string
 	Department *string
+
+	// B20.4.2 extended profile. All optional; nil = no change. String
+	// fields are trimmed and an empty string after trimming clears the
+	// column (nilIfEmpty).
+	MiddleName                *string
+	DisplayName               *string
+	PhoneWork                 *string
+	PhoneMobile               *string
+	Timezone                  *string
+	DateFormat                *string
+	DatetimeFormat            *string
+	EmailNotificationsEnabled *bool
+	PasswordResetRequired     *bool
+
+	// B20.4.2 stub fields. Promoted to real FKs by their owning stories
+	// (B20.4.3 cost centres, B20.4.7 office locations, B20.4.9 profile
+	// image). Until promotion the columns accept NULL or a UUID
+	// (string), the caller is responsible for validity.
+	CostCentreID     *string
+	OfficeLocationID *string
+	ProfileImageURL  *string
 }
+
+// e164Re is the canonical E.164 phone format: leading '+', country
+// code 1-9, then up to 14 more digits. Whitespace, hyphens, parens
+// and other niceties must be stripped by the caller — the DB stores
+// the raw E.164 string.
+var e164Re = regexp.MustCompile(`^\+[1-9]\d{1,14}$`)
+
+// ErrInvalidPhone signals a phone_work / phone_mobile value didn't
+// match E.164. The handler maps this to 400 phone.invalid_e164.
+var ErrInvalidPhone = errors.New("phone.invalid_e164")
 
 // Update mutates a user's role and/or is_active flag.
 //
@@ -215,6 +252,86 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.Department)))
 		i++
 	}
+
+	// B20.4.2 extended profile fields. String fields go through
+	// nilIfEmpty(strings.TrimSpace(...)) so an empty payload clears
+	// the column rather than storing whitespace.
+	if in.MiddleName != nil {
+		sets = append(sets, "middle_name = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.MiddleName)))
+		i++
+	}
+	if in.DisplayName != nil {
+		sets = append(sets, "display_name = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.DisplayName)))
+		i++
+	}
+	// Phone fields validated E.164 BEFORE building the SQL — empty
+	// string clears the column; any non-empty value must match the
+	// regex or we 400 the request before any write happens.
+	if in.PhoneWork != nil {
+		v := strings.TrimSpace(*in.PhoneWork)
+		if v != "" && !e164Re.MatchString(v) {
+			return ErrInvalidPhone
+		}
+		sets = append(sets, "phone_work = $"+itoa(i))
+		args = append(args, nilIfEmpty(v))
+		i++
+	}
+	if in.PhoneMobile != nil {
+		v := strings.TrimSpace(*in.PhoneMobile)
+		if v != "" && !e164Re.MatchString(v) {
+			return ErrInvalidPhone
+		}
+		sets = append(sets, "phone_mobile = $"+itoa(i))
+		args = append(args, nilIfEmpty(v))
+		i++
+	}
+	if in.Timezone != nil {
+		sets = append(sets, "timezone = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.Timezone)))
+		i++
+	}
+	if in.DateFormat != nil {
+		sets = append(sets, "date_format = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.DateFormat)))
+		i++
+	}
+	if in.DatetimeFormat != nil {
+		sets = append(sets, "datetime_format = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.DatetimeFormat)))
+		i++
+	}
+	if in.EmailNotificationsEnabled != nil {
+		sets = append(sets, "email_notifications_enabled = $"+itoa(i))
+		args = append(args, *in.EmailNotificationsEnabled)
+		i++
+	}
+	if in.PasswordResetRequired != nil {
+		sets = append(sets, "password_reset_required = $"+itoa(i))
+		args = append(args, *in.PasswordResetRequired)
+		i++
+	}
+
+	// Stub UUID fields. Stored as raw uuid; empty string clears.
+	// FK constraint not added yet (see plan doc — promoted by owning
+	// story). Until then the caller is responsible for value validity.
+	if in.CostCentreID != nil {
+		sets = append(sets, "cost_centre_id = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.CostCentreID)))
+		i++
+	}
+	if in.OfficeLocationID != nil {
+		sets = append(sets, "office_location_id = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.OfficeLocationID)))
+		i++
+	}
+	if in.ProfileImageURL != nil {
+		sets = append(sets, "profile_image_url = $"+itoa(i))
+		args = append(args, nilIfEmpty(strings.TrimSpace(*in.ProfileImageURL)))
+		i++
+	}
+
 	if len(sets) == 0 {
 		return nil
 	}

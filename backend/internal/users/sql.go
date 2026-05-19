@@ -50,8 +50,16 @@ const sqlInsertPasswordReset = `
 // ordered most-recently-created first. Column shape matches the
 // admin list response; no pagination yet (small tenants only —
 // covered by TD when first multi-thousand-user tenant ships).
+//
+// B20.4.2: extended profile + stub-FK columns appended. List remains
+// gated by users.admin.view at the handler — the SQL pulls every
+// field; the handler clears PII for unprivileged callers before
+// serialising (see filterAdminFieldsForRole in handler.go).
 const sqlListUsersBySubscription = `
 		SELECT id, subscription_id, email, role, role_id, is_active, first_name, last_name, department,
+		       middle_name, display_name, phone_work, phone_mobile, timezone, date_format,
+		       datetime_format, email_notifications_enabled, password_reset_required,
+		       cost_centre_id, office_location_id, profile_image_url,
 		       last_login, auth_method, force_password_change, password_changed_at,
 		       created_at, updated_at
 		FROM users WHERE subscription_id = $1 ORDER BY created_at DESC
