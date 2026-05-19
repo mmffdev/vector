@@ -60,6 +60,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 	"github.com/mmffdev/vector-backend/internal/artefactitems"
 	"github.com/mmffdev/vector-backend/internal/artefactpriorities"
+	"github.com/mmffdev/vector-backend/internal/costcentres"
 	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
@@ -625,6 +626,13 @@ func main() {
 	workspacesSvc.WithArtefactTypeSeeder(artefactTypesSvc)
 	artefactTypesH := artefacttypes.NewHandler(artefactTypesSvc)
 	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))
+
+	// B20.4.3 — cost_centres lives in mmff_vector (subscription-scoped
+	// finance reference data; FK target of users.cost_centre_id, which
+	// also lives in mmff_vector). Writes gated by cost_centres.manage;
+	// reads available to any authenticated tenant member (server-side
+	// SubscriptionID clamp ensures no cross-tenant leak).
+	costCentresH := costcentres.NewHandler(costcentres.NewService(pool), permResolver)
 
 	// PLA-0053 / story 00578: hoist the workspace-clamp lookup once so
 	// every route group that needs the JWT-anchored workspace clamp
@@ -1374,6 +1382,24 @@ func main() {
 			Post("/{id}/permissions", rolesH.AssignPermissions)
 		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
 			Delete("/{id}/permissions", rolesH.RevokePermissions)
+	})
+
+	// B20.4.3 — cost centres. Subscription-scoped reference data;
+	// reads available to any authenticated tenant member (per-user
+	// edit panel needs the dropdown list), writes gated by
+	// cost_centres.manage. The handler re-checks per-request even
+	// though Patch/Create/Archive route through RequirePermission —
+	// SERVER IS THE GATE hard rule, defence in depth.
+	r.Route("/cost-centres", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Get("/", costCentresH.List)
+		r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
+			Post("/", costCentresH.Create)
+		r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
+			Patch("/{id}", costCentresH.Patch)
+		r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
+			Delete("/{id}", costCentresH.Archive)
 	})
 
 	// Artefact-types settings: GET (list all) + PATCH /{id} (name/prefix/description/colour).

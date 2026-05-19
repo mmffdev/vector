@@ -12,6 +12,7 @@ import UserNodeAssignment from "@/app/components/topology/UserNodeAssignment";
 import { useHasPermission } from "@/app/contexts/AuthContext";
 import { apiSite as api, ApiError } from "@/app/lib/api";
 import { topologyApi, listGrantsByUser, type MyGrant, type OrgNode } from "@/app/lib/topologyApi";
+import { costCentresApi, type CostCentre } from "@/app/lib/costCentresApi";
 import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "@/app/(user)/_shared";
 
 type PageSize = "all" | 10 | 25 | 50 | 100;
@@ -252,11 +253,22 @@ function UserEditPanel({
   // direct deep-links still surface the in-page Forbidden panel.
   const hasManageGrants = useHasPermission("topology.grants.manage_others");
 
+  // Cost-centre dropdown options (B20.4.3).
+  const [costCentres, setCostCentres] = useState<CostCentre[] | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     api<RoleSummary[]>("/roles/creatable")
       .then((rows) => { if (!cancelled) setCreatable(rows); })
       .catch(() => { if (!cancelled) setCreatable([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    costCentresApi.list()
+      .then((rows) => { if (!cancelled) setCostCentres(rows); })
+      .catch(() => { if (!cancelled) setCostCentres([]); });
     return () => { cancelled = true; };
   }, []);
 
@@ -495,14 +507,20 @@ function UserEditPanel({
           </label>
           <label className="form__label">
             Cost centre
-            <input
-              type="text"
-              className="form__input"
-              placeholder="(UUID until B20.4.3 lands the picker)"
+            <select
+              className="form__select"
               value={costCentreId}
               onChange={(e) => setCostCentreId(e.target.value)}
-            />
-            <span className="form__hint">Becomes a typeahead dropdown when cost-centres entity ships.</span>
+              disabled={costCentres == null}
+            >
+              <option value="">(none)</option>
+              {(costCentres ?? []).map((cc) => (
+                <option key={cc.id} value={cc.id}>
+                  {cc.code} — {cc.name}
+                </option>
+              ))}
+            </select>
+            <span className="form__hint">Manage the catalogue at <code>/workspace-admin/cost-centres</code> (gadmin only).</span>
           </label>
           <label className="form__label">
             Office location

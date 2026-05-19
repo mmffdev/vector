@@ -93,6 +93,9 @@ const (
 
 	// topology grants admin (PLA-0046 / B6.8)
 	TopologyGrantsManageOthers Code = "topology.grants.manage_others"
+
+	// B20.4.3 — cost centres entity (migration 224)
+	CostCentresManage Code = "cost_centres.manage"
 )
 
 // All is the canonical set of permission codes the Go side knows about.
@@ -143,6 +146,8 @@ var All = []Code{
 	FlowsManage,
 
 	TopologyGrantsManageOthers,
+
+	CostCentresManage,
 }
 
 // VerifyParity compares the DB permissions table against the Go All set.
