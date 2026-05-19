@@ -29,6 +29,10 @@ dev/backups/
 dev/reports/
 dev/logs/
 
+# Memory system — transcripts are private, memsearch cache is local
+context/transcripts/
+.memsearch/
+
 # Launcher build artifacts (regenerate via `xcodegen generate` + xcodebuild)
 MMFF Vector Launcher.app/
 MMFF Vector Launcher.xcodeproj/

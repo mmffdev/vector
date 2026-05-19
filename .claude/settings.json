@@ -120,7 +120,15 @@
       "Skill(sec:*)",
       "Bash(echo \"B16.8\tsecurity hardening MFA TOTP session idle timeout cookie flags JWT claims DOMPurify dangerouslySetInnerHTML CSP unsafe-inline Sentinel workspace scope desync Redis rate limiter HIBP breach password console logs audit alerting NIST OWASP NCSC FCA external user\" >> \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/scope-refs.map\")",
       "Bash(echo \"B16.9\tldap active directory ldap_dn auth_method bind enterprise sso saml oidc osixia bitnami openldap\" >> \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/scope-refs.map\")",
-      "mcp__playwright__browser_resize"
+      "mcp__playwright__browser_resize",
+      "WebFetch(domain:www.w3.org)",
+      "WebFetch(domain:developer.okta.com)",
+      "WebFetch(domain:pockit.tools)",
+      "mcp__playwright__browser_run_code_unsafe",
+      "Skill(memory-write)",
+      "Skill(memory-write:*)",
+      "Bash(cd \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector\" && cp .claude/CLAUDE.md /tmp/claude-md-with-all-changes.md && git diff HEAD -- .claude/CLAUDE.md > /tmp/claude-md-full.patch && wc -l /tmp/claude-md-full.patch /tmp/claude-md-with-all-changes.md)",
+      "Bash(cd \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector\" && cp /tmp/claude-md-with-all-changes.md .claude/CLAUDE.md && wc -c .claude/CLAUDE.md)"
     ],
     "additionalDirectories": [
       "/Users/rick/.claude",
@@ -258,6 +266,14 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/memory-session-start.sh\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-digest.sh\""
           }
         ]
@@ -293,6 +309,11 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/api-docs-reminder.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/transcript-capture.sh\"",
+            "async": true
           }
         ]
       }
