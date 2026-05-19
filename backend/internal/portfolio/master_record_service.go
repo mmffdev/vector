@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
@@ -149,7 +150,7 @@ func (s *Service) CanReadMasterRecord(
 	// Without a vector pool we cannot prove tenancy; only padmin/gadmin
 	// pass. This path exists for unit tests that bypass the DB.
 	if s.vectorPool == nil {
-		return u.Role == roletypes.RolePAdmin || u.Role == roletypes.RoleGAdmin, nil
+		return u.RoleID == roles.SystemGrpPortfolioID || u.RoleID == roles.SystemGrpGlobalID, nil
 	}
 
 	// Tenancy: workspace must belong to caller's subscription.
@@ -167,7 +168,7 @@ func (s *Service) CanReadMasterRecord(
 	}
 
 	// Tenant admins always pass.
-	if u.Role == roletypes.RolePAdmin || u.Role == roletypes.RoleGAdmin {
+	if u.RoleID == roles.SystemGrpPortfolioID || u.RoleID == roles.SystemGrpGlobalID {
 		return true, nil
 	}
 

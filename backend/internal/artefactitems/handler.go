@@ -178,7 +178,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		actor := auth.UserFromCtx(r.Context())
 		userIDStr := actor.ID.String()
 		f.ActorUserID = &userIDStr
-		f.ActorRole = string(actor.Role)
+		f.ActorRoleID = actor.RoleID
 	}
 
 	// PLA-0053 / story 00579: workspace clamp from JWT-anchored
@@ -289,7 +289,7 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		sprintID = &v
 	}
 	var scopeNodeID, actorUserID *string
-	var actorRole string
+	var actorRoleID uuid.UUID
 	// ?meg= is the canonical name; ?scope= is the legacy fallback
 	// (TD-URL-SCOPE-PARAM-CUTOVER).
 	megVal := q.Get("meg")
@@ -305,13 +305,13 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		scopeNodeID = &megVal
 		userIDStr := actor.ID.String()
 		actorUserID = &userIDStr
-		actorRole = string(actor.Role)
+		actorRoleID = actor.RoleID
 	}
 	var scopeDir string
 	if v := q.Get("scope_dir"); v == "ascend" || v == "descend" {
 		scopeDir = v
 	}
-	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID, scopeNodeID, actorUserID, actorRole, scopeDir)
+	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID, scopeNodeID, actorUserID, actorRoleID, scopeDir)
 	if err != nil {
 		if errors.Is(err, ErrScopeForbidden) {
 			w.WriteHeader(http.StatusForbidden)

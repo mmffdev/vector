@@ -429,7 +429,7 @@ func TestNilPool_ReturnsEmpty(t *testing.T) {
 		t.Errorf("nil pool ListChildren: got %d err %v, want 0/nil", len(children), err)
 	}
 
-	summary, err := svc.SummariseWorkItems(ctx, sub, nil, nil, nil, "", "")
+	summary, err := svc.SummariseWorkItems(ctx, sub, nil, nil, nil, uuid.Nil, "")
 	if err != nil || summary.Total != 0 {
 		t.Errorf("nil pool Summary: got %+v err %v, want zeroes/nil", summary, err)
 	}
@@ -737,7 +737,7 @@ func TestSummariseWorkItems_CountsWorkScoped(t *testing.T) {
 	sub := pickTestSubscription(t, va)
 	svc := artefactitems.NewService(va, nil, "work")
 
-	summary, err := svc.SummariseWorkItems(context.Background(), sub, nil, nil, nil, "", "")
+	summary, err := svc.SummariseWorkItems(context.Background(), sub, nil, nil, nil, uuid.Nil, "")
 	if err != nil {
 		t.Fatalf("SummariseWorkItems: %v", err)
 	}

@@ -23,6 +23,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
 // PatchNodeInput collects the editable display fields. Only
@@ -228,15 +230,15 @@ func (s *Service) GetCommitStatus(ctx context.Context, subscriptionID uuid.UUID)
 
 // Commit stamps the topology working-model commit checkpoint into
 // topology_commits (vector_artefacts). Only gadmin may call —
-// actorRole is the caller's user.role string. Returns the new
+// actorRoleID is the caller's user.role_id UUID. Returns the new
 // CommitStatus so the frontend can swap the banner immediately.
 //
 // PLA-0023 P6: checkpoint moved from mmff_vector.subscriptions to
 // vector_artefacts.topology_commits. Single-row-per-subscription
 // upsert; subsequent Commits overwrite committed_at + committed_by
 // and bump updated_at.
-func (s *Service) Commit(ctx context.Context, subscriptionID, actorID uuid.UUID, actorRole string) (CommitStatus, error) {
-	if actorRole != "gadmin" {
+func (s *Service) Commit(ctx context.Context, subscriptionID, actorID uuid.UUID, actorRoleID uuid.UUID) (CommitStatus, error) {
+	if actorRoleID != roles.SystemGrpGlobalID {
 		return CommitStatus{}, ErrCommitForbidden
 	}
 	if _, err := s.vaPool.Exec(ctx, sqlUpsertCommit, subscriptionID, actorID); err != nil {
@@ -254,8 +256,8 @@ func (s *Service) Commit(ctx context.Context, subscriptionID, actorID uuid.UUID,
 //
 // Only gadmin may call. Idempotent: re-running on an already
 // empty canvas is a no-op.
-func (s *Service) ResetCanvas(ctx context.Context, subscriptionID, actorID uuid.UUID, actorRole string) (int, error) {
-	if actorRole != "gadmin" {
+func (s *Service) ResetCanvas(ctx context.Context, subscriptionID, actorID uuid.UUID, actorRoleID uuid.UUID) (int, error) {
+	if actorRoleID != roles.SystemGrpGlobalID {
 		return 0, ErrResetForbidden
 	}
 	tag, err := s.vaPool.Exec(ctx, sqlArchiveAllLiveNodes, subscriptionID)

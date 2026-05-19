@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
 
@@ -87,7 +88,7 @@ func (s *Service) AssertCallerMayRead(ctx context.Context, wsID uuid.UUID, u *ro
 	if wsTenant != u.SubscriptionID {
 		return ErrWorkspaceNotFound
 	}
-	if u.Role == roletypes.RoleGAdmin || u.Role == roletypes.RolePAdmin {
+	if u.RoleID == roles.SystemGrpGlobalID || u.RoleID == roles.SystemGrpPortfolioID {
 		return nil
 	}
 	var member bool

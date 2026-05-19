@@ -38,7 +38,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
 // LayoutMode is the closed vocabulary for topology_nodes.layout_mode.
@@ -619,7 +619,7 @@ func (s *Service) GrantRole(
 	subscriptionID, nodeID, userID uuid.UUID,
 	role Role,
 	grantedBy uuid.UUID,
-	granterRole string,
+	granterRoleID uuid.UUID,
 	canRedelegate bool,
 ) (uuid.UUID, error) {
 	if !role.IsValid() {
@@ -628,7 +628,7 @@ func (s *Service) GrantRole(
 	if canRedelegate {
 		return uuid.Nil, ErrRedelegationDisabled
 	}
-	if granterRole != "" && granterRole != "gadmin" {
+	if granterRoleID != uuid.Nil && granterRoleID != roles.SystemGrpGlobalID {
 		return uuid.Nil, ErrDelegationDepth
 	}
 
@@ -884,6 +884,45 @@ func (s *Service) DescendantNodeIDs(
 	return out, rows.Err()
 }
 
+// AncestorNodeIDs returns rootNodeID plus the IDs of every live ancestor
+// up to the subscription root (strict chain — no siblings). Archived nodes
+// are excluded, so a scope clamp built from this set never reaches dead
+// branches. ErrNodeNotFound is returned when rootNodeID is missing,
+// archived, or in another tenant.
+//
+// Used by the "ascend" direction of the PLA-0043 scope clamp so users
+// can walk up the topology tree and see artefacts assigned to any node
+// in their ancestor chain.
+func (s *Service) AncestorNodeIDs(
+	ctx context.Context,
+	subscriptionID, rootNodeID uuid.UUID,
+) ([]uuid.UUID, error) {
+	tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := s.loadNode(ctx, tx, rootNodeID, subscriptionID, false); err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.Query(ctx, sqlAncestorNodeIDs, rootNodeID, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // RestoreNode lifts a node out of limbo by clearing its archived_at.
 // When newParentID is non-nil it ALSO reparents to that node; pass nil
 // to leave the existing parent_id untouched.
@@ -997,8 +1036,8 @@ type MyGrant struct {
 // uses it as a React key. GrantedAt is the node's created_at for stable
 // sort, and Role is fixed to "admin" so any role-coded UI affordance
 // (e.g. role pill in the picker) renders meaningfully.
-func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.UUID, actorRole string) ([]MyGrant, error) {
-	if actorRole == string(roletypes.RoleGAdmin) {
+func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.UUID, actorRoleID uuid.UUID) ([]MyGrant, error) {
+	if actorRoleID == roles.SystemGrpGlobalID {
 		return s.listMyGrantsGadmin(ctx, subscriptionID)
 	}
 	rows, err := s.vaPool.Query(ctx, sqlListMyGrants, subscriptionID, userID)
@@ -1062,8 +1101,8 @@ func (s *Service) listMyGrantsGadmin(ctx context.Context, subscriptionID uuid.UU
 // Result is ordered by node sort_order then name for a stable list.
 // Archived nodes are excluded — a grant on a node that was later
 // archived has no useful scope to display.
-func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUserID uuid.UUID, actorRole string) ([]MyGrant, error) {
-	if actorRole != string(roletypes.RoleGAdmin) {
+func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUserID uuid.UUID, actorRoleID uuid.UUID) ([]MyGrant, error) {
+	if actorRoleID != roles.SystemGrpGlobalID {
 		return nil, ErrForbidden
 	}
 	rows, err := s.vaPool.Query(ctx, sqlListGrantsByUser, subscriptionID, targetUserID)

@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
+	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
 // TestListGrantsByUser covers the admin-pivot grant listing added for
@@ -15,42 +17,51 @@ import (
 // DB-backed test harness — existing tests (grant_gate_test.go,
 // middleware_workspace_test.go, boundary_test.go) all exercise guards
 // that short-circuit before any pgx call by constructing &Service{}
-// directly. Mirroring that pattern, we cover the actorRole gate here,
+// directly. Mirroring that pattern, we cover the actorRoleID gate here,
 // which short-circuits with ErrForbidden before s.vaPool is touched.
 // The two DB-backed sub-tests proposed in the spec
 // (gadmin_returns_grants, target_with_no_grants) are deferred until a
 // DB-backed harness lands in this package — adding one solely for
 // these cases would constitute new test infrastructure, which is
 // explicitly forbidden by the story's hard constraints.
+//
+// TD-ROLE-001: gate now compares role UUIDs (actorRoleID) rather than
+// the legacy users.role string. Test seeds roles.SystemGrpGlobalID
+// with a fixed UUID for the duration of the test so the non-gadmin
+// branches reliably fall through to ErrForbidden.
 func TestListGrantsByUser(t *testing.T) {
+	prev := roles.SystemGrpGlobalID
+	roles.SystemGrpGlobalID = uuid.New()
+	t.Cleanup(func() { roles.SystemGrpGlobalID = prev })
+
 	svc := &Service{}
 	ctx := context.Background()
 	sub := uuid.New()
 	target := uuid.New()
 
 	t.Run("non_gadmin_returns_forbidden", func(t *testing.T) {
-		_, err := svc.ListGrantsByUser(ctx, sub, target, "padmin")
+		_, err := svc.ListGrantsByUser(ctx, sub, target, uuid.New())
 		if !errors.Is(err, ErrForbidden) {
 			t.Fatalf("padmin actor: want ErrForbidden, got %v", err)
 		}
 	})
 
 	t.Run("user_role_returns_forbidden", func(t *testing.T) {
-		_, err := svc.ListGrantsByUser(ctx, sub, target, "user")
+		_, err := svc.ListGrantsByUser(ctx, sub, target, uuid.New())
 		if !errors.Is(err, ErrForbidden) {
 			t.Fatalf("user actor: want ErrForbidden, got %v", err)
 		}
 	})
 
 	t.Run("team_lead_returns_forbidden", func(t *testing.T) {
-		_, err := svc.ListGrantsByUser(ctx, sub, target, "team_lead")
+		_, err := svc.ListGrantsByUser(ctx, sub, target, uuid.New())
 		if !errors.Is(err, ErrForbidden) {
 			t.Fatalf("team_lead actor: want ErrForbidden, got %v", err)
 		}
 	})
 
 	t.Run("empty_role_returns_forbidden", func(t *testing.T) {
-		_, err := svc.ListGrantsByUser(ctx, sub, target, "")
+		_, err := svc.ListGrantsByUser(ctx, sub, target, uuid.Nil)
 		if !errors.Is(err, ErrForbidden) {
 			t.Fatalf("empty actor role: want ErrForbidden, got %v", err)
 		}

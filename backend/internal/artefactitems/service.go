@@ -18,7 +18,7 @@ import (
 // orgdesign (which would create a cycle once orgdesign starts reading
 // artefacts). Wired by main.go after both services exist.
 type TopologyScopeResolver interface {
-	CanReadScope(ctx context.Context, subscriptionID, userID, targetNodeID uuid.UUID, actorRole string) (bool, error)
+	CanReadScope(ctx context.Context, subscriptionID, userID, targetNodeID uuid.UUID, actorRoleID uuid.UUID) (bool, error)
 	DescendantNodeIDs(ctx context.Context, subscriptionID, rootNodeID uuid.UUID) ([]uuid.UUID, error)
 	// AncestorNodeIDs returns rootNodeID plus every live ancestor up to the
 	// subscription root (strict chain — no siblings). Used by the "ascend"
@@ -96,7 +96,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		if s.topology == nil {
 			return nil, 0, ErrInvalidInput
 		}
-		if filters.ActorUserID == nil || filters.ActorRole == "" {
+		if filters.ActorUserID == nil || filters.ActorRoleID == uuid.Nil {
 			return nil, 0, ErrInvalidInput
 		}
 		scopeNodeID, parseErr := uuid.Parse(*filters.ScopeNodeID)
@@ -107,7 +107,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		if parseErr != nil {
 			return nil, 0, ErrInvalidInput
 		}
-		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, filters.ActorRole)
+		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, filters.ActorRoleID)
 		if permErr != nil {
 			if errors.Is(permErr, ErrNotFound) {
 				return nil, 0, ErrScopeNodeNotFound
@@ -298,7 +298,7 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 // PLA-0043 / 2026-05-18: optional scopeNodeID clamps the counts to a
 // topology subtree (same descendants the List query uses), so the
 // summary strip and the tree below it stay in sync. When set,
-// actorUserID + actorRole gate the permission check via
+// actorUserID + actorRoleID gate the permission check via
 // topology.CanReadScope. Unscoped calls (all three nil/empty) keep
 // the legacy subscription-wide behaviour.
 //
@@ -313,7 +313,7 @@ func (s *Service) SummariseWorkItems(
 	sprintID *string,
 	scopeNodeID *string,
 	actorUserID *string,
-	actorRole string,
+	actorRoleID uuid.UUID,
 	scopeDirection string,
 ) (WorkItemsSummary, error) {
 	out := WorkItemsSummary{ByType: map[string]int{}}
@@ -339,7 +339,7 @@ func (s *Service) SummariseWorkItems(
 		if s.topology == nil {
 			return out, ErrInvalidInput
 		}
-		if actorUserID == nil || actorRole == "" {
+		if actorUserID == nil || actorRoleID == uuid.Nil {
 			return out, ErrInvalidInput
 		}
 		nodeUUID, parseErr := uuid.Parse(*scopeNodeID)
@@ -350,7 +350,7 @@ func (s *Service) SummariseWorkItems(
 		if parseErr != nil {
 			return out, ErrInvalidInput
 		}
-		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, actorRole)
+		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, actorRoleID)
 		if permErr != nil {
 			if errors.Is(permErr, ErrNotFound) {
 				return out, ErrScopeNodeNotFound

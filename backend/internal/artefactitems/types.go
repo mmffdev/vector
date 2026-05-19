@@ -160,11 +160,11 @@ type Filters struct {
 	// topology_node_id is `ScopeNodeID` or any live descendant of it
 	// (PLA-0043). NULL topology_node_id rows are excluded when scope is
 	// active. The service calls CanReadScope before executing the
-	// query; ActorUserID and ActorRole MUST be set whenever ScopeNodeID
+	// query; ActorUserID and ActorRoleID MUST be set whenever ScopeNodeID
 	// is, otherwise the service returns ErrInvalidInput.
 	ScopeNodeID  *string
-	ActorUserID  *string // required when ScopeNodeID is set
-	ActorRole    string  // required when ScopeNodeID is set (e.g. "user", "padmin", "gadmin")
+	ActorUserID  *string   // required when ScopeNodeID is set
+	ActorRoleID  uuid.UUID // required when ScopeNodeID is set; uuid.Nil means "not provided"
 	// ScopeDirection controls which nodes the scope clamp resolves to.
 	// "descend" (default, empty string): rootNodeID + all live descendants.
 	// "ascend": strict ancestor chain — rootNodeID + every ancestor up to

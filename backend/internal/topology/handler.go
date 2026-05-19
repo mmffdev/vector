@@ -329,7 +329,7 @@ func (h *Handler) CommitStatus(w http.ResponseWriter, r *http.Request) {
 // POST /api/topology/commit — story 00322.
 func (h *Handler) Commit(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	st, err := h.Svc.Commit(r.Context(), u.SubscriptionID, u.ID, string(u.Role))
+	st, err := h.Svc.Commit(r.Context(), u.SubscriptionID, u.ID, u.RoleID)
 	if err != nil {
 		writeErr(w, r, err)
 		return
@@ -347,7 +347,7 @@ func (h *Handler) Commit(w http.ResponseWriter, r *http.Request) {
 // POST /api/topology/reset — story 00310 (gadmin-only).
 func (h *Handler) Reset(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	count, err := h.Svc.ResetCanvas(r.Context(), u.SubscriptionID, u.ID, string(u.Role))
+	count, err := h.Svc.ResetCanvas(r.Context(), u.SubscriptionID, u.ID, u.RoleID)
 	if err != nil {
 		writeErr(w, r, err)
 		return
@@ -613,7 +613,7 @@ func (h *Handler) Ancestors(w http.ResponseWriter, r *http.Request) {
 // inside the same subscription.
 func (h *Handler) MyGrants(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	grants, err := h.Svc.ListMyGrants(r.Context(), u.SubscriptionID, u.ID, string(u.Role))
+	grants, err := h.Svc.ListMyGrants(r.Context(), u.SubscriptionID, u.ID, u.RoleID)
 	if err != nil {
 		writeErr(w, r, err)
 		return
@@ -623,7 +623,7 @@ func (h *Handler) MyGrants(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/topology/users/{userId}/grants — list every active grant
 // for the target user (admin-pivot). Gated by topology.grants.manage_others
-// at the route, and re-checked service-side via actorRole (PLA-0046 / B6.8).
+// at the route, and re-checked service-side via actorRoleID (PLA-0046 / B6.8).
 func (h *Handler) ListGrantsByUser(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	targetID, err := uuid.Parse(chi.URLParam(r, "userId"))
@@ -631,7 +631,7 @@ func (h *Handler) ListGrantsByUser(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
 		return
 	}
-	grants, err := h.Svc.ListGrantsByUser(r.Context(), u.SubscriptionID, targetID, string(u.Role))
+	grants, err := h.Svc.ListGrantsByUser(r.Context(), u.SubscriptionID, targetID, u.RoleID)
 	if err != nil {
 		if errors.Is(err, ErrForbidden) {
 			httperr.Write(w, r, http.StatusForbidden, "topology.grants.manage_others required")
@@ -656,7 +656,7 @@ func (h *Handler) GrantRole(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
-	grantID, err := h.Svc.GrantRole(r.Context(), u.SubscriptionID, nodeID, req.UserID, req.Role, u.ID, string(u.Role), req.CanRedelegate)
+	grantID, err := h.Svc.GrantRole(r.Context(), u.SubscriptionID, nodeID, req.UserID, req.Role, u.ID, u.RoleID, req.CanRedelegate)
 	if err != nil {
 		writeErr(w, r, err)
 		return

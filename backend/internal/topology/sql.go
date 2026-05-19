@@ -542,6 +542,28 @@ const sqlDescendantNodeIDsTemplate = `
 		SELECT id FROM live_down
 	`
 
+// sqlAncestorNodeIDs returns rootNodeID plus every live ancestor up to the
+// subscription root (strict chain — no siblings). $1 = rootNodeID,
+// $2 = subscriptionID. Archived nodes are excluded at all levels so
+// a scope clamp built from this set never reaches dead branches.
+// Used by the "ascend" direction of the PLA-0043 scope clamp.
+const sqlAncestorNodeIDs = `
+		WITH RECURSIVE live_up AS (
+		    SELECT n.id, n.parent_id
+		      FROM topology_nodes n
+		     WHERE n.id = $1
+		       AND n.subscription_id = $2
+		       AND n.archived_at IS NULL
+		    UNION ALL
+		    SELECT p.id, p.parent_id
+		      FROM topology_nodes p
+		      JOIN live_up lu ON p.id = lu.parent_id
+		     WHERE p.subscription_id = $2
+		       AND p.archived_at IS NULL
+		)
+		SELECT id FROM live_up
+	`
+
 // sqlSelectParentForRestoreByID probes a candidate landing parent (by ID
 // alone) so RestoreNode can validate it before reparenting.
 const sqlSelectParentForRestoreByID = `

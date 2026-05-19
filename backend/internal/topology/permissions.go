@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
 // CanReadScope answers "may this user read artefacts clamped to
@@ -29,9 +29,9 @@ import (
 func (s *Service) CanReadScope(
 	ctx context.Context,
 	subscriptionID, userID, targetNodeID uuid.UUID,
-	actorRole string,
+	actorRoleID uuid.UUID,
 ) (bool, error) {
-	if actorRole == string(roletypes.RoleGAdmin) {
+	if actorRoleID == roles.SystemGrpGlobalID {
 		// Confirm node exists in tenant so a bogus ?scope= still 404s.
 		tx, err := s.vaPool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
 		if err != nil {

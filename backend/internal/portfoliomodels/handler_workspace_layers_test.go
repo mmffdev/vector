@@ -5,14 +5,31 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
+
+// TestMain seeds non-nil UUIDs for the system role package vars so the
+// RoleID UUID comparisons in the handlers can distinguish admin from
+// non-admin. Production roles.LoadSystemRoles populates these at boot;
+// the unit-mode handler tests bypass that path.
+var (
+	testGrpGlobalID    = uuid.MustParse("00000000-0000-0000-0000-0000000000aa")
+	testGrpPortfolioID = uuid.MustParse("00000000-0000-0000-0000-0000000000bb")
+)
+
+func TestMain(m *testing.M) {
+	roles.SystemGrpGlobalID = testGrpGlobalID
+	roles.SystemGrpPortfolioID = testGrpPortfolioID
+	os.Exit(m.Run())
+}
 
 // PLA-0026 / Story 00499 (B10): handler tests for
 // GET /api/workspace/{id}/portfolio/layers.
@@ -70,7 +87,7 @@ func TestWorkspaceLayers_Unauthorized(t *testing.T) {
 func TestWorkspaceLayers_BadUUID(t *testing.T) {
 	// UUID parse fails before any pool use.
 	h := NewWorkspaceLayersHandler(NewService(nil, nil, nil))
-	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RoleUser}
+	u := &roletypes.User{ID: uuid.New(), SubscriptionID: uuid.New(), Role: roletypes.RoleUser, RoleID: uuid.New()}
 	srv := httptest.NewServer(newWorkspaceLayersRouter(h, u))
 	defer srv.Close()
 
@@ -172,6 +189,7 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 		SubscriptionID: subID,
 		Email:          "claude-gadmin-test@example.invalid",
 		Role:           roletypes.RoleGAdmin,
+		RoleID:         testGrpGlobalID,
 		IsActive:       true,
 	}
 
@@ -254,6 +272,7 @@ func TestWorkspaceLayers_Forbidden_NonMember(t *testing.T) {
 		SubscriptionID: subID,
 		Email:          "claude-nonmember-test@example.invalid",
 		Role:           roletypes.RoleUser,
+		RoleID:         uuid.New(),
 		IsActive:       true,
 	}
 
@@ -299,6 +318,7 @@ func TestWorkspaceLayers_NotFound_CrossTenant(t *testing.T) {
 		SubscriptionID: uuid.New(), // != subID
 		Email:          "claude-crosstenant-test@example.invalid",
 		Role:           roletypes.RoleGAdmin, // even gadmin can't peek across tenants
+		RoleID:         testGrpGlobalID,
 		IsActive:       true,
 	}
 	if user.SubscriptionID == subID {

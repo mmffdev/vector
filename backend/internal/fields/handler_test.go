@@ -33,8 +33,19 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/roles"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
+
+// TestMain seeds non-nil UUIDs for the system role package vars so the
+// canRead UUID comparison in service.go can distinguish admin from
+// non-admin. Production roles.LoadSystemRoles populates these at boot;
+// the unit-mode handler tests bypass that path.
+func TestMain(m *testing.M) {
+	roles.SystemGrpGlobalID = uuid.MustParse("00000000-0000-0000-0000-0000000000aa")
+	roles.SystemGrpPortfolioID = uuid.MustParse("00000000-0000-0000-0000-0000000000bb")
+	os.Exit(m.Run())
+}
 
 // withUser injects a fake user into the request context — same pattern
 // as libraryreleases/handler_test.go.
