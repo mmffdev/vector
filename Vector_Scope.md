@@ -1,7 +1,7 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-19 (Late-evening session — B20.5.J Mount(r) resolution + route-orphan lint: 47 newly visible routes via Mount pattern; check_callers migrated to apiSite(); third side of the contract triangle (spec ↔ frontend) closed. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement: caller lints + pre-commit auto-sync. B20.5.G handler-shape extractor: 124 of 149 stubs auto-curated. Afternoon — B20.5.A–.F: spec round-trip, parser tests, multi-line middleware-chain fix uncovered 19 invisible routes. Morning — B20.5.1 retire legacy api()/samantha/v1.)
+**Last updated:** 2026-05-19 (Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
 **Doc version:** 2.47
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
@@ -3855,6 +3855,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 
 - ✅ ~~**B20.5.J** Mount-pattern resolution + route-orphan lint — `extract_routes.py` + `extract_handler_shapes.py` now resolve `someH.Mount(r)` calls by parsing main.go for `varName := pkg.NewHandler(...)` declarations and splicing the foreign Mount method body. `check_callers.py` migrated from retired `api()` to `apiSite()`. New `lint:route-orphans` detects spec routes with zero frontend callers, allowlisted per-route with a reason.~~ `[P1]`
   > Shipped 2026-05-19 in commit 6f9462c. 47 newly visible routes (8 Mount sites). 472 handler bindings, 472 resolved. Final: site 67 hand + 136 auto + 1 stub; v2 28 + 36 + 0. caller-map: 72 frontend → spec bindings; 0 errors. route-orphans: 117 unexplained today (mostly /samantha/v2 backend-only routes).
+  > Last checked: 2026-05-19
+
+- ✅ ~~**B20.5.K** Scalar IDE dev API key setup — `DEV_API_KEY=sam_live_*` in `backend/.env.dev` (gitignored); existing `apikeys.SeedDevKey` boot path seeds the row into `admin_api_keys`. Docs at `docs/c_c_scalar_setup.md`.~~ `[P2]`
+  > Shipped 2026-05-19 in commit 4c9e0b7. Unlocked `/samantha/v2` (64 endpoints) in Scalar.
+
+- ✅ ~~**B20.5.L** Dual-mount api-key auth on `/_site` — `apikeys.Middleware` grows an optional `UserSynth` parameter; main.go wires a closure that calls new `auth.Service.FindServiceUserForSubscription` (highest-tier active user by `users_roles_rank`) and seeds `auth.UserFromCtx` via new `auth.WithUserForServiceAuth`. Same key now authenticates against the full 268-endpoint surface for Scalar.~~ `[P1]`
+  > Shipped 2026-05-19 in commit 196906a. Backend tests green (apikeys + auth + full suite minus pre-existing unrelated F3_DTO_IncludesSlot failure). Pre-commit auto-sync hook fired correctly during the commit (validation pass).
   > Last checked: 2026-05-19
 
 ---
