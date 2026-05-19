@@ -42,9 +42,13 @@ ROUTE_RE = re.compile(r'r\.Route\(\s*"([^"]+)"\s*,\s*func\s*\(\s*r\s+chi\.Router
 # Verb call: matches any `.Get("/path")`, `.Post("/path")` etc. tail.
 # Anchors on the dot so middleware chains like
 #   r.With(auth.RequirePermission(X, Y)).With(rateLimit).Get("/p")
-# all resolve to the .Get part. The verb call itself uses a single
-# string literal as the first arg.
-VERB_CALL_RE = re.compile(r'\.(Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
+# all resolve to the .Get part. Tolerates whitespace/newlines between
+# the dot and the verb so multi-line chains like
+#   r.With(authSvc.X).
+#       Get("/users", h.List)
+# parse correctly. The verb call itself uses a single string literal
+# as the first arg.
+VERB_CALL_RE = re.compile(r'\.\s*(Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
 # Closure declaration: NAME := func(r chi.Router[, more args]) {
 # The [^)]* allows trailing args (e.g. mountArtefactSite takes a handler).
 CLOSURE_DECL_RE = re.compile(r'(\w+)\s*:=\s*func\s*\(\s*r\s+chi\.Router\b[^)]*\)\s*\{')

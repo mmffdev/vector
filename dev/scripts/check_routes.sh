@@ -101,7 +101,13 @@ route_re   = re.compile(r'r\.Route\(\s*"([^"]+)"\s*,\s*func\s*\(\s*r\s+chi\.Rout
 #   3. (For attribution, we don't care about what middleware was
 #      applied — just the path.)
 # verb_call_re finds the verb token + opening "(" of the call.
-verb_call_re = re.compile(r'\.(Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
+# Tolerates whitespace/newlines between the dot and the verb so
+# multi-line middleware chains like
+#   r.With(authSvc.X).
+#       Get("/users", h.List)
+# parse correctly. Mirrored in dev/scripts/extract_routes.py — change
+# both together.
+verb_call_re = re.compile(r'\.\s*(Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
 # Closure declaration: NAME := func(r chi.Router) {        — single-arg
 #                  or: NAME := func(r chi.Router, ...) {  — multi-arg
 # The body always opens a brace right after the closing ).

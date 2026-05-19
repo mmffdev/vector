@@ -492,6 +492,51 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '503':
           description: Timebox releases not enabled
+    post:
+      tags:
+      - uncategorised
+      summary: POST /timeboxes/releases
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: postTimeboxesReleases
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /timeboxes/releases/bulk-create:
+    post:
+      tags:
+      - uncategorised
+      summary: POST /timeboxes/releases/bulk-create
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: postTimeboxesReleasesBulkCreate
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/releases/{id}:
     get:
       tags:
@@ -518,6 +563,50 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+      - uncategorised
+      summary: DELETE /timeboxes/releases/{id}
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: deleteTimeboxesReleasesId
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+      - uncategorised
+      summary: PUT /timeboxes/releases/{id}
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: putTimeboxesReleasesId
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints:
     get:
       tags:
@@ -542,6 +631,51 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '503':
           description: Timebox sprints not enabled
+    post:
+      tags:
+      - uncategorised
+      summary: POST /timeboxes/sprints
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: postTimeboxesSprints
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /timeboxes/sprints/bulk-create:
+    post:
+      tags:
+      - uncategorised
+      summary: POST /timeboxes/sprints/bulk-create
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: postTimeboxesSprintsBulkCreate
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints/{id}:
     get:
       tags:
@@ -568,6 +702,96 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+      - uncategorised
+      summary: DELETE /timeboxes/sprints/{id}
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: deleteTimeboxesSprintsId
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+      - uncategorised
+      summary: PUT /timeboxes/sprints/{id}
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: putTimeboxesSprintsId
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /timeboxes/sprints/{id}/close:
+    post:
+      tags:
+      - uncategorised
+      summary: POST /timeboxes/sprints/{id}/close
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: postTimeboxesSprintsIdClose
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /timeboxes/sprints/{id}/start:
+    post:
+      tags:
+      - uncategorised
+      summary: POST /timeboxes/sprints/{id}/start
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: postTimeboxesSprintsIdStart
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /topology/commit:
     get:
       tags:
@@ -1103,6 +1327,29 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /topology/users/{userId}/grants:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /topology/users/{userId}/grants
+      description: |-
+        AUTO-GENERATED STUB — schema not yet curated.
+        Path exists in main.go; request body, response shape, and error
+        cases need hand-curation. Search for `x-stub: true` to find all
+        stubs awaiting review. See dev/scripts/sync_specs.py.
+      operationId: getTopologyUsersUseridGrants
+      x-stub: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK (stub response shape)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /topology/view-state:
     put:
       tags:
