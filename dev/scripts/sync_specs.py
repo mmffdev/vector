@@ -63,21 +63,53 @@ def opid(verb: str, path: str) -> str:
     return verb + "".join(p.title() for p in parts)
 
 
+def tag_for(path: str) -> str:
+    """Derive a Scalar-friendly group tag from the path's first segment.
+    `/portfolio-items/{id}/children` → `portfolio-items`.
+    `/admin/users/{id}` → `admin`. Falls back to `uncategorised` for
+    pathological inputs (shouldn't happen since every path starts with /)."""
+    parts = [p for p in path.strip("/").split("/") if p and not p.startswith("{")]
+    return parts[0] if parts else "uncategorised"
+
+
+def stub_responses(verb: str, path: str) -> dict:
+    """Common response envelope shared by every stub. Adds 404 when the
+    path includes a `{id}`-style param (any 200/PATCH/PUT/DELETE that
+    targets a specific resource can miss it) and 400/422 on write verbs
+    where the body can fail validation. 401 is universal."""
+    has_param = "{" in path
+    is_write = verb in ("post", "put", "patch", "delete")
+    success_code = "200"
+    if verb == "post" and not has_param:
+        success_code = "201"
+    elif verb == "delete":
+        success_code = "204"
+    success = {
+        "description": f"{success_code} (stub response shape — schema not yet curated)",
+    }
+    if success_code != "204":
+        success["content"] = {"application/json": {"schema": {"type": "object"}}}
+    responses: dict = {
+        success_code: success,
+        "401": {"$ref": "#/components/responses/Unauthorized"},
+    }
+    if is_write:
+        responses["400"] = {"$ref": "#/components/responses/BadRequest"}
+        responses["422"] = {"$ref": "#/components/responses/UnprocessableEntity"}
+    if has_param:
+        responses["404"] = {"$ref": "#/components/responses/NotFound"}
+    return responses
+
+
 def stub_op(verb: str, path: str) -> dict:
     return {
-        "tags": ["uncategorised"],
+        "tags": [tag_for(path)],
         "summary": f"{verb.upper()} {path}",
         "description": STUB_DESCRIPTION,
         "operationId": opid(verb, path),
         "x-stub": True,
         "security": [{"bearerAuth": []}],
-        "responses": {
-            "200": {
-                "description": "OK (stub response shape)",
-                "content": {"application/json": {"schema": {"type": "object"}}},
-            },
-            "401": {"$ref": "#/components/responses/Unauthorized"},
-        },
+        "responses": stub_responses(verb, path),
     }
 
 
@@ -110,6 +142,7 @@ def sync_spec(spec_path: pathlib.Path, routes_json: pathlib.Path) -> dict:
             del existing[p]
 
     # 2 + 3. Reconcile method sets; add new paths.
+    retrofitted = 0
     for p, methods in go_truth.items():
         ml = [m.lower() for m in methods]
         if p in existing:
@@ -122,6 +155,13 @@ def sync_spec(spec_path: pathlib.Path, routes_json: pathlib.Path) -> dict:
                 if verb not in ex:
                     ex[verb] = stub_op(verb, p)
                     method_changes.append(f"{p}: added {verb.upper()} (stub)")
+                else:
+                    # Existing stubs get retrofitted to the latest stub
+                    # shape: tag derived from path, expanded responses.
+                    # Curated ops are left alone.
+                    if is_stub(ex[verb]):
+                        ex[verb] = stub_op(verb, p)
+                        retrofitted += 1
         else:
             existing[p] = {verb: stub_op(verb, p) for verb in ml}
             added_paths.append(f"{p}: {', '.join(methods)} (stub)")
@@ -150,6 +190,7 @@ def sync_spec(spec_path: pathlib.Path, routes_json: pathlib.Path) -> dict:
         "removed": removed_paths,
         "method_changes": method_changes,
         "added": added_paths,
+        "retrofitted": retrofitted,
         "stub_count": stub_count,
         "curated_count": curated_count,
         "total_paths": len(existing),
@@ -171,6 +212,8 @@ def main() -> int:
         print(f"\n=== {r['spec']} ===")
         print(f"  Total paths: {r['total_paths']}  "
               f"({r['curated_count']} curated operations, {r['stub_count']} stubs)")
+        print(f"  Retrofitted {r['retrofitted']} existing stubs to latest shape "
+              f"(tag from path + expanded responses)")
         print(f"  Removed {len(r['removed'])} dead spec paths")
         for p in r["removed"][:10]:
             print(f"    - {p}")
