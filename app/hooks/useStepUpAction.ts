@@ -12,7 +12,7 @@
 //
 //   // somewhere in onClick:
 //   const result = await stepUp.run(async (headers) => {
-//     return await api(`/workspaces/${id}`, {
+//     return await apiSite(`/workspaces/${id}`, {
 //       method: "DELETE",
 //       headers,
 //     });
@@ -32,7 +32,7 @@
 //     surface error, leave modal open. Other error → reject.
 
 import { useCallback, useRef, useState } from "react";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 interface ReauthResp {
@@ -103,7 +103,7 @@ export function useStepUpAction({ actionKey, actionLabel }: UseStepUpActionOptio
     setBusy(true);
     setError(null);
     try {
-      const proof = await api<ReauthResp>("/auth/reauth", {
+      const proof = await apiSite<ReauthResp>("/auth/reauth", {
         method: "POST",
         body: JSON.stringify({
           action_key: actionKey,

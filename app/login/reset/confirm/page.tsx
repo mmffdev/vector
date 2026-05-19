@@ -16,7 +16,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
 import { AuthBrand } from "@/app/components/AuthBrand";
 
@@ -30,7 +30,7 @@ function ConfirmForm() {
   // 401/anything-else → render the "link expired" CTA.
   useEffect(() => {
     let cancelled = false;
-    api("/auth/password-reset/state", { skipAuth: true })
+    apiSite("/auth/password-reset/state", { skipAuth: true })
       .then(() => { if (!cancelled) setState("ready"); })
       .catch(() => { if (!cancelled) setState("expired"); });
     return () => { cancelled = true; };
@@ -51,7 +51,7 @@ function ConfirmForm() {
     try {
       // No token in the body — the handoff cookie set by /redeem
       // identifies the reset row server-side.
-      await api("/auth/password-reset/confirm", {
+      await apiSite("/auth/password-reset/confirm", {
         method: "POST",
         body: JSON.stringify({ password: pwd }),
         skipAuth: true,

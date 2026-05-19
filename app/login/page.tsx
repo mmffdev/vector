@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth, ApiError, MFAChallengeError } from "@/app/contexts/AuthContext";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 function LoginBranding() {
   return (
@@ -75,7 +75,7 @@ function LoginForm() {
     // and we fall through to the start-page resolver.
     let dest: string | null = null;
     try {
-      const res = await api<{ path?: string } | null>("/auth/login-continuation", { skipAuth: true });
+      const res = await apiSite<{ path?: string } | null>("/auth/login-continuation", { skipAuth: true });
       if (res && typeof res.path === "string" && res.path) {
         dest = res.path;
       }
@@ -83,7 +83,7 @@ function LoginForm() {
 
     if (!dest) {
       try {
-        const res = await api<{ href: string }>("/nav/start-page");
+        const res = await apiSite<{ href: string }>("/nav/start-page");
         if (res.href) dest = res.href;
       } catch { /* fall through */ }
     }

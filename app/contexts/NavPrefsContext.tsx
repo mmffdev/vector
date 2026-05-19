@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export type NavItemKind = "static" | "entity" | "user_custom";
@@ -185,8 +185,8 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const [profilesRes, catRes] = await Promise.all([
-        api<ProfilesResp>("/nav/profiles"),
-        api<CatalogueResp>("/nav/catalogue"),
+        apiSite<ProfilesResp>("/nav/profiles"),
+        apiSite<CatalogueResp>("/nav/catalogue"),
       ]);
       const profileList = profilesRes.profiles ?? [];
       setProfiles(profileList);
@@ -204,7 +204,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       const prefsPath = targetId
         ? `/nav/prefs?profile_id=${encodeURIComponent(targetId)}`
         : "/nav/prefs";
-      const prefsRes = await api<PrefsResp>(prefsPath);
+      const prefsRes = await apiSite<PrefsResp>(prefsPath);
       setPrefs(prefsRes.prefs ?? []);
       setCustomGroups(prefsRes.groups ?? []);
       // Server returns the resolved profile_id — trust it as the source of truth
@@ -217,7 +217,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       // than blocking the whole prefs load.
       if (resolvedProfileId) {
         try {
-          const groupsRes = await api<ProfileGroupsResp>(
+          const groupsRes = await apiSite<ProfileGroupsResp>(
             `/nav/profiles/${encodeURIComponent(resolvedProfileId)}/groups`,
           );
           setProfileGroupsState(groupsRes.placements ?? []);
@@ -256,7 +256,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     const scoped: PutPrefsBody & { profile_id?: string } = activeProfileId
       ? { ...body, profile_id: activeProfileId }
       : body;
-    const resp = await api<{ groups: NavCustomGroup[] }>("/nav/prefs", {
+    const resp = await apiSite<{ groups: NavCustomGroup[] }>("/nav/prefs", {
       method: "PUT",
       body: JSON.stringify(scoped),
     });
@@ -268,12 +268,12 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     const path = activeProfileId
       ? `/nav/prefs?profile_id=${encodeURIComponent(activeProfileId)}`
       : "/nav/prefs";
-    await api(path, { method: "DELETE" });
+    await apiSite(path, { method: "DELETE" });
     await refetch();
   }, [refetch, activeProfileId]);
 
   const setActiveProfile = useCallback(async (profileId: string) => {
-    await api("/nav/profiles/active", {
+    await apiSite("/nav/profiles/active", {
       method: "PUT",
       body: JSON.stringify({ profile_id: profileId }),
     });
@@ -281,7 +281,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   const createProfile = useCallback(async (label: string) => {
-    const created = await api<NavProfile>("/nav/profiles", {
+    const created = await apiSite<NavProfile>("/nav/profiles", {
       method: "POST",
       body: JSON.stringify({ label }),
     });
@@ -290,7 +290,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   const renameProfile = useCallback(async (profileId: string, label: string) => {
-    await api(`/nav/profiles/${encodeURIComponent(profileId)}`, {
+    await apiSite(`/nav/profiles/${encodeURIComponent(profileId)}`, {
       method: "PATCH",
       body: JSON.stringify({ label }),
     });
@@ -298,14 +298,14 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   const deleteProfile = useCallback(async (profileId: string) => {
-    await api(`/nav/profiles/${encodeURIComponent(profileId)}`, {
+    await apiSite(`/nav/profiles/${encodeURIComponent(profileId)}`, {
       method: "DELETE",
     });
     await refetch();
   }, [refetch]);
 
   const reorderProfiles = useCallback(async (orderedIds: string[]) => {
-    await api("/nav/profiles/order", {
+    await apiSite("/nav/profiles/order", {
       method: "PUT",
       body: JSON.stringify({ profile_ids: orderedIds }),
     });
@@ -318,7 +318,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   // with other writes (e.g. PUT prefs first, then this).
   const setProfileGroups = useCallback(
     async (profileId: string, placements: ProfileGroupPlacement[]) => {
-      await api(`/nav/profiles/${encodeURIComponent(profileId)}/groups`, {
+      await apiSite(`/nav/profiles/${encodeURIComponent(profileId)}/groups`, {
         method: "PUT",
         body: JSON.stringify({ placements }),
       });
@@ -380,7 +380,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const bookmark = useCallback(
     async (kind: EntityKind, id: string) => {
-      await api("/nav/bookmark", {
+      await apiSite("/nav/bookmark", {
         method: "POST",
         body: JSON.stringify({ entity_kind: kind, entity_id: id }),
       });
@@ -391,7 +391,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const unbookmark = useCallback(
     async (kind: EntityKind, id: string) => {
-      await api("/nav/bookmark", {
+      await apiSite("/nav/bookmark", {
         method: "DELETE",
         body: JSON.stringify({ entity_kind: kind, entity_id: id }),
       });
@@ -407,7 +407,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const bookmarkPage = useCallback(
     async (key: string) => {
-      await api("/nav/page-bookmark", { method: "POST", body: JSON.stringify({ page_key: key }) });
+      await apiSite("/nav/page-bookmark", { method: "POST", body: JSON.stringify({ page_key: key }) });
       await refetch();
     },
     [refetch],
@@ -415,7 +415,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const unbookmarkPage = useCallback(
     async (key: string) => {
-      await api("/nav/page-bookmark", { method: "DELETE", body: JSON.stringify({ page_key: key }) });
+      await apiSite("/nav/page-bookmark", { method: "DELETE", body: JSON.stringify({ page_key: key }) });
       await refetch();
     },
     [refetch],

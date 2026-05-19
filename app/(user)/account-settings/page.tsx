@@ -7,7 +7,7 @@ import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 type MFAStep = "idle" | "enrolling" | "active";
@@ -36,7 +36,7 @@ function MFASection() {
   async function startEnroll() {
     setBusy(true);
     try {
-      const res = await api<EnrollResp>("/auth/mfa/enroll", { method: "POST" });
+      const res = await apiSite<EnrollResp>("/auth/mfa/enroll", { method: "POST" });
       setOtpauthUri(res.otpauth_uri);
       setRecoveryCodes(res.recovery_codes);
       setStep("enrolling");
@@ -53,7 +53,7 @@ function MFASection() {
   async function confirmEnroll() {
     setBusy(true);
     try {
-      await api("/auth/mfa/confirm", { method: "POST", body: JSON.stringify({ code: confirmCode.trim() }) });
+      await apiSite("/auth/mfa/confirm", { method: "POST", body: JSON.stringify({ code: confirmCode.trim() }) });
       setStep("active");
       notify.success("Two-factor authentication is now active.");
     } catch {
@@ -66,7 +66,7 @@ function MFASection() {
   async function disableMFA() {
     setBusy(true);
     try {
-      await api("/auth/mfa", { method: "DELETE", body: JSON.stringify({ password: disablePassword }) });
+      await apiSite("/auth/mfa", { method: "DELETE", body: JSON.stringify({ password: disablePassword }) });
       setStep("idle");
       setShowDisable(false);
       setDisablePassword("");

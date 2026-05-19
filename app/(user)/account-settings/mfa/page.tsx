@@ -8,7 +8,7 @@ import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 type Step = "idle" | "enrolling" | "confirming" | "done";
@@ -44,7 +44,7 @@ export default function MFASettingsPage() {
   async function startEnroll() {
     setBusy(true);
     try {
-      const res = await api<EnrollResp>("/auth/mfa/enroll", { method: "POST" });
+      const res = await apiSite<EnrollResp>("/auth/mfa/enroll", { method: "POST" });
       setOtpauthUri(res.otpauth_uri);
       setRecoveryCodes(res.recovery_codes);
       setStep("enrolling");
@@ -62,7 +62,7 @@ export default function MFASettingsPage() {
     if (!confirmCode.trim()) return;
     setBusy(true);
     try {
-      await api("/auth/mfa/confirm", {
+      await apiSite("/auth/mfa/confirm", {
         method: "POST",
         body: JSON.stringify({ code: confirmCode.trim() }),
       });
@@ -79,7 +79,7 @@ export default function MFASettingsPage() {
     if (!disablePassword) return;
     setBusy(true);
     try {
-      await api("/auth/mfa", {
+      await apiSite("/auth/mfa", {
         method: "DELETE",
         body: JSON.stringify({ password: disablePassword }),
       });

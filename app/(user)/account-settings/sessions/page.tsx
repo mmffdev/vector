@@ -19,7 +19,7 @@ import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 interface SessionRow {
@@ -68,7 +68,7 @@ export default function SessionsPage() {
   const load = useCallback(async () => {
     setLoadErr(null);
     try {
-      const res = await api<ListResp>("/auth/sessions");
+      const res = await apiSite<ListResp>("/auth/sessions");
       setSessions(res.sessions ?? []);
     } catch (e) {
       setLoadErr(e instanceof ApiError ? (e.detail ?? "Failed to load sessions") : "Failed to load sessions");
@@ -80,7 +80,7 @@ export default function SessionsPage() {
   const revokeOne = useCallback(async (id: string) => {
     setBusyId(id);
     try {
-      await api(`/auth/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await apiSite(`/auth/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
       // Optimistic: remove the row locally rather than re-fetch.
       setSessions((prev) => (prev ?? []).filter((s) => s.id !== id));
       notify.success("Session revoked.");
@@ -101,7 +101,7 @@ export default function SessionsPage() {
     if (!confirm("Sign out everywhere except this device?")) return;
     setRevokingOthers(true);
     try {
-      await api("/auth/sessions/revoke-others", { method: "POST" });
+      await apiSite("/auth/sessions/revoke-others", { method: "POST" });
       setSessions((prev) => (prev ?? []).filter((s) => s.is_current));
       notify.success("Other sessions signed out.");
     } catch {
