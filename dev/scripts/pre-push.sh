@@ -81,6 +81,24 @@ diff_against_snap() {
 
 echo "=== pre-push: API contract checks ==="
 
+# Layer 0: Frontend caller discipline. Two lints make sure no client
+# code goes rogue with direct backend URLs or bare fetch()/SSE calls
+# outside the sanctioned app/lib/api.ts chokepoint. Procurement story
+# (defence/finance): every outbound backend call is audit-traceable
+# through one file.
+if ! python3 "$SCRIPTS/lint_api_caller_discipline.py"; then
+  echo "BLOCKED: a client file references the backend directly." >&2
+  echo "         Route through apiSite/apiV2/apiRoot from app/lib/api.ts," >&2
+  echo "         or add an exemption with a reason in dev/registries/api_caller_exempt.json." >&2
+  exit 1
+fi
+if ! python3 "$SCRIPTS/lint_api_helper_exclusive.py"; then
+  echo "BLOCKED: a client file uses fetch()/XMLHttpRequest()/WebSocket()/EventSource() outside the helper." >&2
+  echo "         Route through apiSite/apiV2/apiRoot from app/lib/api.ts," >&2
+  echo "         or add an exemption with a reason in dev/registries/api_caller_exempt.json." >&2
+  exit 1
+fi
+
 # Layer 1a: Go router vs spec
 if ! bash "$SCRIPTS/check_routes.sh"; then
   echo "BLOCKED: fix undocumented routes before pushing." >&2

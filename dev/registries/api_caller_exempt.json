@@ -1,0 +1,18 @@
+{
+  "_doc": "Exemptions for lint:api-caller-discipline. Each entry is one file path that legitimately composes a backend URL outside app/lib/api.ts. The lint reads `path` + `reason`; defence/finance procurement reviewers can audit this file to see *why* each bypass exists. Bare `fetch()` chunks in app pages are NOT exempt — refactor them to go through apiSite/apiV2/apiRoot.",
+  "_format": "Add entries to `exemptions` only. Path is repo-relative. Reason is one sentence; longer notes belong in the file's header comment.",
+  "exemptions": [
+    {
+      "path": "app/hooks/useRealtimeSubscription.ts",
+      "reason": "EventSource (SSE) URL composition — the api.ts helpers handle fetch-style RPC only; streaming connections compose their own URL. The hook itself is the chokepoint for realtime subs."
+    },
+    {
+      "path": "app/hooks/useTopologyHandoffs.ts",
+      "reason": "EventSource (SSE) for topology change notifications — same reason as useRealtimeSubscription.ts."
+    },
+    {
+      "path": "app/(user)/portfolio-model/AdoptionOverlay.tsx",
+      "reason": "EventSource (SSE) for portfolio-model adoption progress — long-lived stream during cutover state-machine; can be refactored to a typed wrapper but the current call-site composes API_BASE locally."
+    }
+  ]
+}

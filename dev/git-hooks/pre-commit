@@ -16,4 +16,39 @@ if ! python3 "$ROOT/dev/scripts/lint_addressables.py" --report; then
   exit 1
 fi
 
+# ── API spec auto-sync ─────────────────────────────────────────────────
+# When the commit touches a Go file that contributes to the route
+# catalogue, re-run `npm run api:sync` and auto-stage the regenerated
+# specs into the same commit. This guarantees the spec never falls out
+# of sync with `main.go` — if you add a route, the YAML moves with it,
+# and the pre-push contract gate stays green.
+#
+# Trigger files: backend/cmd/server/main.go (routing) + every
+# backend/internal/<pkg>/*.go (handler shapes).
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)
+NEEDS_API_SYNC=0
+if echo "$STAGED" | grep -qE '^backend/cmd/server/main\.go$|^backend/internal/.*\.go$'; then
+  NEEDS_API_SYNC=1
+fi
+
+if [[ "$NEEDS_API_SYNC" == "1" ]]; then
+  echo "[pre-commit] Backend route surface changed — running npm run api:sync …"
+  if ! ( cd "$ROOT" && npm run api:sync >/dev/null 2>&1 ); then
+    echo "" >&2
+    echo "Commit blocked: 'npm run api:sync' failed." >&2
+    echo "Run it manually and resolve the errors:" >&2
+    echo "    npm run api:sync" >&2
+    exit 1
+  fi
+  # Re-stage any regenerated artefacts. This is the auto-magic: the
+  # human edits main.go, the spec catches up in the same commit.
+  for f in siteAPI.yaml samanthaAPI.yaml \
+           api-reference/static/siteAPI.yaml api-reference/static/samanthaAPI.yaml; do
+    if [[ -f "$ROOT/$f" ]] && ! git diff --quiet -- "$ROOT/$f" 2>/dev/null; then
+      git add "$ROOT/$f"
+      echo "  [pre-commit] auto-staged regenerated $f"
+    fi
+  done
+fi
+
 exit 0

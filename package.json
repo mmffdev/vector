@@ -28,6 +28,8 @@
     "lint:package-naming-convention": "python3 dev/scripts/lint_package_naming_convention.py",
     "lint:column-prefix-convention": "python3 dev/scripts/lint_column_prefix_convention.py",
     "lint:cross-db-writer-test": "python3 dev/scripts/lint_cross_db_writer_test.py",
+    "lint:api-caller-discipline": "python3 dev/scripts/lint_api_caller_discipline.py",
+    "lint:api-helper-exclusive": "python3 dev/scripts/lint_api_helper_exclusive.py",
     "lint:rf1": "npm run lint:sql-in-sqlfile-only && npm run lint:no-empty-route-block && npm run lint:exemption-ratchet && npm run lint:package-naming-convention && npm run lint:cross-db-writer-test && npm run lint:column-prefix-convention",
     "api:snap": "bash dev/scripts/snap_api.sh",
     "api:sync": "python3 dev/scripts/extract_routes.py && python3 dev/scripts/extract_handler_shapes.py && python3 dev/scripts/sync_specs.py",

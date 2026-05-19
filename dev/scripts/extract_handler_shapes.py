@@ -218,50 +218,60 @@ def _walk_for_bindings(
 # packages define the same method name, we fall back to disambiguating
 # by the var prefix (usersH → users, sprintH → timeboxes/sprints, etc.).
 
-_VAR_PKG_HINTS = {
-    "usersH": "users",
-    "sprintH": "timeboxes",
-    "releaseH": "timeboxes",
-    "permsH": "permissions",
-    "apiKeysH": "apikeys",
-    "devResetH": "devreset",
-    "workItemsV2H": "artefactitems",
-    "portfolioH": "artefactitems",
-    "rolesH": "roles",
-    "topologyH": "topology",
-    "costCentresH": "costcentres",
-    "flowsH": "flows",
-    "fieldsH": "fields",
-    "auditH": "audit",
-    "artefactTypesH": "artefacttypes",
-    "addressablesH": "addressables",
-    "subscriptionsH": "subscriptions",
-    "personalH": "personal",
-    "navigationH": "navigation",
-    "navH": "navigation",
-    "scopesH": "scopes",
-    "officeLocsH": "officelocations",
-    "sysauditH": "sysaudit",
-}
+# Handler-var declaration in main.go, e.g.
+#   usersH := users.NewHandler(...)
+#   sprintH := timeboxsprints.NewHandler(pool, ...)
+#   navGrantsAdminH := navgrantsadmin.NewHandler(pool)
+# Captures: var name, package name.
+HANDLER_VAR_DECL_RE = re.compile(
+    r'(?:^|\s)(\w+H[a-zA-Z]*?)\s*:?=\s*(\w+)\.NewHandler\(',
+    re.MULTILINE,
+)
+
+
+def build_var_to_pkg_map() -> dict[str, str]:
+    """Parse main.go to learn which package each handler var was
+    constructed from. Replaces the brittle hand-maintained
+    _VAR_PKG_HINTS dict."""
+    src = MAIN_GO.read_text(encoding="utf-8")
+    out: dict[str, str] = {}
+    for m in HANDLER_VAR_DECL_RE.finditer(src):
+        var, pkg = m.group(1), m.group(2)
+        if var not in out:
+            out[var] = pkg
+    return out
+
+
+_VAR_TO_PKG: dict[str, str] | None = None
+
+
+def _var_to_pkg() -> dict[str, str]:
+    global _VAR_TO_PKG
+    if _VAR_TO_PKG is None:
+        _VAR_TO_PKG = build_var_to_pkg_map()
+    return _VAR_TO_PKG
 
 
 def find_handler_file(handler_symbol: str) -> pathlib.Path | None:
     """Walk backend/internal/ looking for the func definition that
-    matches the method name. Disambiguate by _VAR_PKG_HINTS prefix."""
+    matches the method name. Disambiguates by parsing main.go for
+    `varName := pkg.NewHandler(...)` declarations — so when we see
+    `navGrantsAdminH.List`, we look in backend/internal/navgrantsadmin/
+    first instead of guessing across the whole tree."""
     if "." not in handler_symbol:
         return None
     var, method = handler_symbol.split(".", 1)
-    pkg_hint = _VAR_PKG_HINTS.get(var)
+    pkg_hint = _var_to_pkg().get(var)
     # Two-stage scan: hinted package first, then broad fallback.
-    candidates: list[pathlib.Path] = []
-    search_dirs = []
+    search_dirs: list[pathlib.Path] = []
     if pkg_hint:
         hinted = INTERNAL / pkg_hint
         if hinted.exists():
             search_dirs.append(hinted)
     search_dirs.append(INTERNAL)
-    seen = set()
+    seen: set[pathlib.Path] = set()
     for d in search_dirs:
+        candidates: list[pathlib.Path] = []
         for p in d.rglob("*.go"):
             if p in seen or p.name.endswith("_test.go"):
                 continue
@@ -411,6 +421,23 @@ def fields_to_schema(fields: list[dict]) -> dict:
     return out
 
 
+def _find_struct_in_package(struct_name: str, pkg_dir: pathlib.Path) -> list[dict] | None:
+    """Search every non-test .go file in pkg_dir for the struct
+    definition. Used when the struct lives in a sibling file
+    (e.g. types.go, service.go, inputs.go)."""
+    for p in pkg_dir.glob("*.go"):
+        if p.name.endswith("_test.go"):
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        fields = find_struct(text, struct_name)
+        if fields is not None:
+            return fields
+    return None
+
+
 def _resolve_response_variable(
     var_name: str, handler_body: str, pkg_dir: pathlib.Path, handler_file_src: str,
 ) -> dict | None:
@@ -507,6 +534,10 @@ def analyse_handler(
         if vm:
             struct_name = vm.group(1)
             fields = find_struct(full_src, struct_name)
+            if fields is None:
+                # Search every other .go file in the same package dir
+                # (struct may be in service.go, types.go, etc.).
+                fields = _find_struct_in_package(struct_name, file_path.parent)
             if fields is not None:
                 request_struct = {"name": struct_name, "fields": fields}
             else:

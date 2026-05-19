@@ -1933,21 +1933,7 @@ paths:
       x-auto-curated: true
       x-handler:
         symbol: cspReportH.Report
-        file: backend/internal/errorsreport/handler.go
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                code:
-                  type: string
-                context:
-                  type: object
-              required:
-              - code
-              - context
+        file: backend/internal/cspreport/handler.go
       responses:
         '201':
           description: 201 — success response
@@ -1955,22 +1941,8 @@ paths:
             application/json:
               schema:
                 type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '500':
-          description: '500 — error codes observed: usermessages.InternalError'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-        '503':
-          description: '503 — error codes observed: usermessages.InternalError'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Problem'
   /custom-pages:
     get:
       tags:
@@ -2167,40 +2139,62 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.PatchExitRule
         file: backend/internal/flows/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-PatchExitRuleInput-not-found
-      x-stub: true
-      responses:
-        '200':
-          description: 200 (stub response shape — schema not yet curated)
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                colour:
+                  type: string
+                sort_order:
+                  type: integer
+                  format: int32
       parameters:
       - name: id
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  sort_order:
+                    type: integer
+                    format: int32
+                  name:
+                    type: string
+                  colour:
+                    type: string
+                required:
+                - id
+                - sort_order
+                - name
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /flow-states/{id}:
     delete:
       tags:
@@ -2248,40 +2242,90 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.PatchFlowState
         file: backend/internal/flows/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-PatchStateInput-not-found
-      x-stub: true
-      responses:
-        '200':
-          description: 200 (stub response shape — schema not yet curated)
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                colour:
+                  type: string
+                name:
+                  type: string
+                kind:
+                  type: string
+                sort_order:
+                  type: integer
+                  format: int32
+                is_initial:
+                  type: boolean
+                is_pullable:
+                  type: boolean
+                description:
+                  type: string
       parameters:
       - name: id
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                  sort_order:
+                    type: integer
+                    format: int32
+                  is_initial:
+                    type: boolean
+                  is_pullable:
+                    type: boolean
+                  colour:
+                    type: string
+                  description:
+                    type: string
+                  exit_rules:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: FlowExitRule
+                  exit_rule_count:
+                    type: integer
+                    format: int32
+                required:
+                - id
+                - name
+                - kind
+                - sort_order
+                - is_initial
+                - is_pullable
+                - exit_rule_count
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /flow-states/{id}/exit-rules:
     get:
       tags:
@@ -2349,40 +2393,61 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.CreateExitRule
         file: backend/internal/flows/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-CreateExitRuleInput-not-found
-      x-stub: true
-      responses:
-        '200':
-          description: 200 (stub response shape — schema not yet curated)
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                colour:
+                  type: string
+              required:
+              - name
       parameters:
       - name: id
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  sort_order:
+                    type: integer
+                    format: int32
+                  name:
+                    type: string
+                  colour:
+                    type: string
+                required:
+                - id
+                - sort_order
+                - name
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /flows:
     get:
       tags:
@@ -2413,32 +2478,77 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.ResetApply
         file: backend/internal/flows/reset_handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-ResetPreviewInput-not-found
-      x-stub: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                artefact_type_id:
+                  type: string
+              required:
+              - artefact_type_id
       responses:
-        '201':
-          description: 201 (stub response shape — schema not yet curated)
+        '200':
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
+                properties:
+                  artefact_type_id:
+                    type: string
+                  flow_id:
+                    type: string
+                  pills_added:
+                    type: integer
+                    format: int32
+                  pills_updated:
+                    type: integer
+                    format: int32
+                  pills_removed:
+                    type: integer
+                    format: int32
+                  transitions_added:
+                    type: integer
+                    format: int32
+                  transitions_removed:
+                    type: integer
+                    format: int32
+                  artefacts_rebound:
+                    type: integer
+                    format: int32
+                required:
+                - artefact_type_id
+                - flow_id
+                - pills_added
+                - pills_updated
+                - pills_removed
+                - transitions_added
+                - transitions_removed
+                - artefacts_rebound
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
   /flows/reset/preview:
     post:
       tags:
@@ -2448,32 +2558,80 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.ResetPreview
         file: backend/internal/flows/reset_handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-ResetPreviewInput-not-found
-      x-stub: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                artefact_type_id:
+                  type: string
+              required:
+              - artefact_type_id
       responses:
-        '201':
-          description: 201 (stub response shape — schema not yet curated)
+        '200':
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
+                properties:
+                  artefact_type_id:
+                    type: string
+                  artefact_type_name:
+                    type: string
+                  flow_id:
+                    type: string
+                  flow_name:
+                    type: string
+                  pills:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: ResetPillDelta
+                  transitions:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: ResetTransitionDelta
+                  artefact_impacts:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: ResetArtefactImpact
+                  already_at_default:
+                    type: boolean
+                required:
+                - artefact_type_id
+                - artefact_type_name
+                - flow_id
+                - flow_name
+                - pills
+                - transitions
+                - artefact_impacts
+                - already_at_default
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
   /flows/{flowId}/states:
     post:
       tags:
@@ -2483,40 +2641,92 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.CreateFlowState
         file: backend/internal/flows/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-CreateStateInput-not-found
-      x-stub: true
-      responses:
-        '200':
-          description: 200 (stub response shape — schema not yet curated)
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                kind:
+                  type: string
+                sort_order:
+                  type: integer
+                  format: int32
+                is_initial:
+                  type: boolean
+                is_pullable:
+                  type: boolean
+              required:
+              - name
+              - kind
+              - sort_order
+              - is_initial
+              - is_pullable
       parameters:
       - name: flowId
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                  sort_order:
+                    type: integer
+                    format: int32
+                  is_initial:
+                    type: boolean
+                  is_pullable:
+                    type: boolean
+                  colour:
+                    type: string
+                  description:
+                    type: string
+                  exit_rules:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: FlowExitRule
+                  exit_rule_count:
+                    type: integer
+                    format: int32
+                required:
+                - id
+                - name
+                - kind
+                - sort_order
+                - is_initial
+                - is_pullable
+                - exit_rule_count
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /flows/{flowId}/transitions:
     delete:
       tags:
@@ -2526,36 +2736,50 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.DeleteTransition
         file: backend/internal/flows/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-DeleteTransitionInput-not-found
-      x-stub: true
-      responses:
-        '204':
-          description: 204 (stub response shape — schema not yet curated)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from_state_id:
+                  type: string
+                to_state_id:
+                  type: string
+              required:
+              - from_state_id
+              - to_state_id
       parameters:
       - name: flowId
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '204':
+          description: 204 — no content
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags:
       - flows
@@ -2564,40 +2788,56 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: flowsH.CreateTransition
         file: backend/internal/flows/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-CreateTransitionInput-not-found
-      x-stub: true
-      responses:
-        '200':
-          description: 200 (stub response shape — schema not yet curated)
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from_state_id:
+                  type: string
+                to_state_id:
+                  type: string
+              required:
+              - from_state_id
+              - to_state_id
       parameters:
       - name: flowId
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from:
+                    type: string
+                  to:
+                    type: string
+                required:
+                - from
+                - to
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /library/releases:
     get:
       tags:
@@ -4103,10 +4343,10 @@ paths:
         `x-needs-curation: true` to find all such operations.
       x-handler:
         symbol: portfolioModelsH.List
-        file: backend/internal/libraryreleases/handler.go
+        file: backend/internal/portfoliomodels/list.go
         needs_curation: true
         reasons:
-        - response-from-variable-resp
+        - response-from-variable-out
       x-stub: true
       responses:
         '200':
@@ -4787,26 +5027,30 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: releaseH.List
-        file: backend/internal/libraryreleases/handler.go
-        needs_curation: true
-        reasons:
-        - response-from-variable-resp
-      x-stub: true
+        file: backend/internal/timeboxreleases/handler.go
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
@@ -4817,132 +5061,32 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-CURATED — schema derived from the Go handler. Field names
-        and types come from struct tags + service return types; the
-        human curator can refine summaries, descriptions, and add
-        $ref schemas to /components/schemas. Search for
-        `x-auto-curated: true` to find all auto-curated operations.
-        Re-run `npm run api:sync` to refresh from Go truth (preserves
-        any fields a human has added above `x-auto-curated`).
-      x-auto-curated: true
+        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
+        could not resolve the response or request type from the Go
+        handler (cross-package returns, polymorphic responses, or
+        unrecognised patterns). Open the handler at the file:line
+        below and document the shape manually. Search for
+        `x-needs-curation: true` to find all such operations.
       x-handler:
         symbol: releaseH.Create
-        file: backend/internal/topology/handler.go
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspace_id:
-                  type: string
-                  format: uuid
-                parent_id:
-                  type: string
-                  format: uuid
-                name:
-                  type: string
-                description:
-                  type: string
-                label_override:
-                  type: string
-                icon:
-                  type: string
-                colour:
-                  type: string
-                avatar_url:
-                  type: string
-                layout_mode:
-                  type: object
-                  x-go-type: LayoutMode
-                manual_x:
-                  type: integer
-                  format: int32
-                manual_y:
-                  type: integer
-                  format: int32
-                collapsed_default:
-                  type: boolean
-                position:
-                  type: integer
-                  format: int32
-              required:
-              - name
+        file: backend/internal/timeboxreleases/handler.go
+        needs_curation: true
+        reasons:
+        - request-struct-struct-not-found
+      x-stub: true
       responses:
         '201':
-          description: 201 — success response
+          description: 201 (stub response shape — schema not yet curated)
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  workspace_id:
-                    type: string
-                    format: uuid
-                  subscription_id:
-                    type: string
-                    format: uuid
-                  parent_id:
-                    type: string
-                    format: uuid
-                  name:
-                    type: string
-                  description:
-                    type: string
-                  label_override:
-                    type: string
-                  icon:
-                    type: string
-                  colour:
-                    type: string
-                  avatar_url:
-                    type: string
-                  layout_mode:
-                    type: object
-                    x-go-type: LayoutMode
-                  manual_x:
-                    type: integer
-                    format: int32
-                  manual_y:
-                    type: integer
-                    format: int32
-                  collapsed_default:
-                    type: boolean
-                  position:
-                    type: integer
-                    format: int32
-                  archived_at:
-                    type: string
-                    format: date-time
-                  archived_descendant_count:
-                    type: integer
-                    format: int32
-                  created_at:
-                    type: string
-                    format: date-time
-                  updated_at:
-                    type: string
-                    format: date-time
-                required:
-                - id
-                - workspace_id
-                - subscription_id
-                - name
-                - description
-                - layout_mode
-                - collapsed_default
-                - position
-                - archived_descendant_count
-                - created_at
-                - updated_at
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
   /timeboxes/releases/bulk-create:
     post:
       tags:
@@ -4960,7 +5104,7 @@ paths:
         `x-needs-curation: true` to find all such operations.
       x-handler:
         symbol: releaseH.BulkCreate
-        file: backend/internal/timeboxsprints/handler.go
+        file: backend/internal/timeboxreleases/handler.go
         needs_curation: true
         reasons:
         - request-struct-struct-not-found
@@ -4997,7 +5141,7 @@ paths:
       x-auto-curated: true
       x-handler:
         symbol: releaseH.Get
-        file: backend/internal/usertaborder/handler.go
+        file: backend/internal/timeboxreleases/handler.go
       parameters:
       - name: id
         in: path
@@ -5011,27 +5155,16 @@ paths:
             application/json:
               schema:
                 type: object
-                properties:
-                  page_id:
-                    type: string
-                  items:
-                    type: array
-                    items:
-                      type: object
-                      x-go-type: Row
-                required:
-                - page_id
-                - items
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           description: '500 — error codes observed: usermessages.InternalError'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     delete:
       tags:
       - timeboxes
@@ -5050,7 +5183,7 @@ paths:
       x-auto-curated: true
       x-handler:
         symbol: releaseH.Delete
-        file: backend/internal/usertaborder/handler.go
+        file: backend/internal/timeboxreleases/handler.go
       parameters:
       - name: id
         in: path
@@ -5060,70 +5193,21 @@ paths:
       responses:
         '204':
           description: 204 — no content
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           description: '500 — error codes observed: usermessages.InternalError'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     put:
       tags:
       - timeboxes
       summary: PUT /timeboxes/releases/{id}
       operationId: putTimeboxesReleasesId
-      security:
-      - bearerAuth: []
-      description: |-
-        AUTO-CURATED — schema derived from the Go handler. Field names
-        and types come from struct tags + service return types; the
-        human curator can refine summaries, descriptions, and add
-        $ref schemas to /components/schemas. Search for
-        `x-auto-curated: true` to find all auto-curated operations.
-        Re-run `npm run api:sync` to refresh from Go truth (preserves
-        any fields a human has added above `x-auto-curated`).
-      x-auto-curated: true
-      x-handler:
-        symbol: releaseH.Update
-        file: backend/internal/roles/handler.go
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                label:
-                  type: string
-                description:
-                  type: string
-                rank:
-                  type: integer
-                  format: int32
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: 200 — success response
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /timeboxes/sprints:
-    get:
-      tags:
-      - timeboxes
-      summary: GET /timeboxes/sprints
-      operationId: getTimeboxesSprints
       security:
       - bearerAuth: []
       description: |-
@@ -5134,11 +5218,11 @@ paths:
         below and document the shape manually. Search for
         `x-needs-curation: true` to find all such operations.
       x-handler:
-        symbol: sprintH.List
-        file: backend/internal/libraryreleases/handler.go
+        symbol: releaseH.Update
+        file: backend/internal/timeboxreleases/handler.go
         needs_curation: true
         reasons:
-        - response-from-variable-resp
+        - request-struct-struct-not-found
       x-stub: true
       responses:
         '200':
@@ -5149,11 +5233,24 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-    post:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /timeboxes/sprints:
+    get:
       tags:
       - timeboxes
-      summary: POST /timeboxes/sprints
-      operationId: postTimeboxesSprints
+      summary: GET /timeboxes/sprints
+      operationId: getTimeboxesSprints
       security:
       - bearerAuth: []
       description: |-
@@ -5166,123 +5263,57 @@ paths:
         any fields a human has added above `x-auto-curated`).
       x-auto-curated: true
       x-handler:
-        symbol: sprintH.Create
-        file: backend/internal/topology/handler.go
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspace_id:
-                  type: string
-                  format: uuid
-                parent_id:
-                  type: string
-                  format: uuid
-                name:
-                  type: string
-                description:
-                  type: string
-                label_override:
-                  type: string
-                icon:
-                  type: string
-                colour:
-                  type: string
-                avatar_url:
-                  type: string
-                layout_mode:
-                  type: object
-                  x-go-type: LayoutMode
-                manual_x:
-                  type: integer
-                  format: int32
-                manual_y:
-                  type: integer
-                  format: int32
-                collapsed_default:
-                  type: boolean
-                position:
-                  type: integer
-                  format: int32
-              required:
-              - name
+        symbol: sprintH.List
+        file: backend/internal/timeboxsprints/handler.go
       responses:
-        '201':
-          description: 201 — success response
+        '200':
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  workspace_id:
-                    type: string
-                    format: uuid
-                  subscription_id:
-                    type: string
-                    format: uuid
-                  parent_id:
-                    type: string
-                    format: uuid
-                  name:
-                    type: string
-                  description:
-                    type: string
-                  label_override:
-                    type: string
-                  icon:
-                    type: string
-                  colour:
-                    type: string
-                  avatar_url:
-                    type: string
-                  layout_mode:
-                    type: object
-                    x-go-type: LayoutMode
-                  manual_x:
-                    type: integer
-                    format: int32
-                  manual_y:
-                    type: integer
-                    format: int32
-                  collapsed_default:
-                    type: boolean
-                  position:
-                    type: integer
-                    format: int32
-                  archived_at:
-                    type: string
-                    format: date-time
-                  archived_descendant_count:
-                    type: integer
-                    format: int32
-                  created_at:
-                    type: string
-                    format: date-time
-                  updated_at:
-                    type: string
-                    format: date-time
-                required:
-                - id
-                - workspace_id
-                - subscription_id
-                - name
-                - description
-                - layout_mode
-                - collapsed_default
-                - position
-                - archived_descendant_count
-                - created_at
-                - updated_at
-        '400':
-          $ref: '#/components/responses/BadRequest'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - timeboxes
+      summary: POST /timeboxes/sprints
+      operationId: postTimeboxesSprints
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
+        could not resolve the response or request type from the Go
+        handler (cross-package returns, polymorphic responses, or
+        unrecognised patterns). Open the handler at the file:line
+        below and document the shape manually. Search for
+        `x-needs-curation: true` to find all such operations.
+      x-handler:
+        symbol: sprintH.Create
+        file: backend/internal/timeboxsprints/handler.go
+        needs_curation: true
+        reasons:
+        - request-struct-struct-not-found
+      x-stub: true
+      responses:
+        '201':
+          description: 201 (stub response shape — schema not yet curated)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
   /timeboxes/sprints/bulk-create:
     post:
       tags:
@@ -5337,7 +5368,7 @@ paths:
       x-auto-curated: true
       x-handler:
         symbol: sprintH.Get
-        file: backend/internal/usertaborder/handler.go
+        file: backend/internal/timeboxsprints/handler.go
       parameters:
       - name: id
         in: path
@@ -5351,27 +5382,16 @@ paths:
             application/json:
               schema:
                 type: object
-                properties:
-                  page_id:
-                    type: string
-                  items:
-                    type: array
-                    items:
-                      type: object
-                      x-go-type: Row
-                required:
-                - page_id
-                - items
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           description: '500 — error codes observed: usermessages.InternalError'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     delete:
       tags:
       - timeboxes
@@ -5390,7 +5410,7 @@ paths:
       x-auto-curated: true
       x-handler:
         symbol: sprintH.Delete
-        file: backend/internal/usertaborder/handler.go
+        file: backend/internal/timeboxsprints/handler.go
       parameters:
       - name: id
         in: path
@@ -5400,16 +5420,16 @@ paths:
       responses:
         '204':
           description: 204 — no content
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           description: '500 — error codes observed: usermessages.InternalError'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     put:
       tags:
       - timeboxes
@@ -5418,46 +5438,40 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-CURATED — schema derived from the Go handler. Field names
-        and types come from struct tags + service return types; the
-        human curator can refine summaries, descriptions, and add
-        $ref schemas to /components/schemas. Search for
-        `x-auto-curated: true` to find all auto-curated operations.
-        Re-run `npm run api:sync` to refresh from Go truth (preserves
-        any fields a human has added above `x-auto-curated`).
-      x-auto-curated: true
+        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
+        could not resolve the response or request type from the Go
+        handler (cross-package returns, polymorphic responses, or
+        unrecognised patterns). Open the handler at the file:line
+        below and document the shape manually. Search for
+        `x-needs-curation: true` to find all such operations.
       x-handler:
         symbol: sprintH.Update
-        file: backend/internal/roles/handler.go
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                label:
-                  type: string
-                description:
-                  type: string
-                rank:
-                  type: integer
-                  format: int32
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
+        file: backend/internal/timeboxsprints/handler.go
+        needs_curation: true
+        reasons:
+        - request-struct-struct-not-found
+      x-stub: true
       responses:
         '200':
-          description: 200 — success response
+          description: 200 (stub response shape — schema not yet curated)
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
   /timeboxes/sprints/{id}/close:
     post:
       tags:
@@ -6822,7 +6836,7 @@ paths:
       x-auto-curated: true
       x-handler:
         symbol: workspacesH.Delete
-        file: backend/internal/usertaborder/handler.go
+        file: backend/internal/workspaces/handler.go
       parameters:
       - name: id
         in: path
@@ -6836,12 +6850,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '500':
-          description: '500 — error codes observed: usermessages.InternalError'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Problem'
   /workspaces/{id}/fields:
     get:
       tags:
