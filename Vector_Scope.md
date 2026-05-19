@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-19 (B20.4 User Admin Consolidation — 8 of 10 stories shipped end-to-end in one overnight session: B20.4.1 tab-bar restructure, .2 extended fields + stubs, .3 cost centres entity, .4 bulk multi-select, .5 topology fold-in, .6 password-reset flag, .8 four-section IA, .10 read-only Disabled. B20.4.7 office locations and B20.4.9 profile-image upload stay deferred per plan. Plan doc: `context/plans/USERS-CONSOLIDATION.md`.)
-**Doc version:** 2.46
+**Last updated:** 2026-05-19 (Morning session — B20.5.1 retire legacy api()/samantha/v1: silently 404'ing helper found + every caller migrated to apiSite(), 22 files / ~95 callsites. Pre-push contract gate repaired (subdir snapshot layout + duplicate /topology/levels yaml key). Affected surfaces previously degraded — Header page-help, admin/roles, library-releases, password change, workspace settings — now hit real routes.)
+**Doc version:** 2.47
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -3825,6 +3825,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > **Open scoping question** — split into B20.4 core (stories 1–6, 8) + B20.5 procurement-grade refinements (stories 7, 9, 10 + future saved-views/column-picker/density/audit-timeline) once we start hitting the later stories. Default: stay as B20.4 for now.
 >
 > **Open intent question** — "onboarding topology": does this mean topology grants pre-assigned during the invite/create flow? If yes, a new story wires the CreateUser modal to accept an initial topology-grant payload (server-side: invite carries the grant payload; account creation transaction inserts user row + grant rows atomically).
+
+### B20.5 Transport hygiene — retire legacy api()/samantha/v1, refresh contract gate
+
+> The frontend `api()` helper from `app/lib/api.ts` targeted `${API_BASE}/samantha/v1/...` but the Go backend never had a `/samantha/v1` mount. PLA-0039 moved BFF routes to `/_site` and PLA-0023 split the public data plane to `/samantha/v2`; the v1 helper was orphaned. Every existing `api()` callsite was silently 404'ing (try/catch swallowed; page-help, library-releases, admin/roles, password change, workspace settings, etc. degraded). Plus the pre-push API-contract gate was reading from a stale top-level snapshot layout that snap_api.sh no longer wrote to, and oasdiff crashed on a duplicate `/topology/levels` mapping key in openapi.yaml itself.
+
+- ✅ ~~**B20.5.1** Retire legacy `api()` helper, migrate all callers to `apiSite()`. AC: zero `api()` callers remain under `app/`; `api()` export + `API_BASE` removed from `app/lib/api.ts`; no `samantha/v1` string anywhere in app/; TS baseline unchanged (36); backend builds + tests pass; pre-push gate green on both v1 + v2 contract layers.~~ `[P1]`
+  > Shipped 2026-05-19 in commits 1866774 (gate fix) + b70a76a (codemod). 22 files / ~95 callsites migrated. Verified each unique path responds 401/405/400 on `/_site` (i.e. route exists). pre-push.sh now reads snapshots from the canonical `api-snapshots/v1/` and `api-snapshots/v2/` subdirs and runs oasdiff against both spec families. Fresh baselines written.
+  > Last checked: 2026-05-19
 
 ---
 
