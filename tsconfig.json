@@ -47,6 +47,7 @@
   "exclude": [
     "node_modules",
     "dev/cgl-volatile-do-not-commit",
-    "dev/tests/playwright"
+    "dev/tests/playwright",
+    "api-reference"
   ]
 }

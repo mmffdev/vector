@@ -127,7 +127,7 @@ export default function ScopeGroupPanel() {
 
   return (
     <div className="scope-group-panel">
-      {rows.map(({ grant, label, depth, isLast, hasChildren, ancestorMoreChildren }) => {
+      {rows.map(({ grant, label, depth, isLast, hasChildren: _hasChildren, ancestorMoreChildren }) => {
         const isActive = grant.node_id === activeNodeId;
         const isWorkspace = depth === 0;
 

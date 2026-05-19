@@ -123,7 +123,9 @@ export function useTopologyRelationsPayload(
     setLoading(true);
     setError(null);
     try {
-      const res = await topologyApi.tree(undefined, wsRef);
+      // PLA-0053: tree() now reads workspace from JWT, not URL param.
+      void wsRef;
+      const res = await topologyApi.tree();
       setTree(res);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));

@@ -277,7 +277,7 @@ function ColourPickerCell({
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ArtefactTypesPage() {
   const { full } = usePageTitle();
-  const workspaceId = useActiveWorkspace();
+  void useActiveWorkspace();
 
   const [types, setTypes] = useState<ArtefactType[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);

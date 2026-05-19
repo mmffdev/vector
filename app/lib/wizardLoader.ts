@@ -2,7 +2,6 @@
 // Maps component name strings to actual React components/functions.
 // Functions like getParentId and getChildrenCount must be built by the page.
 
-import { buildWorkItemsColumns } from "@/app/components/work-items-tree-config";
 import type { ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
 import type { WorkItem } from "@/app/components/work-items-tree-config";
 
@@ -17,23 +16,14 @@ interface RawWizardConfig extends Partial<ObjectTreeDataConfig> {
   [key: string]: any;
 }
 
-/**
- * Resolves string component references in a p_wizard.json config.
- * For functions like buildWorkItemsColumns, this calls them.
- * For hierarchy/search functions, returns descriptors that pages interpret.
- */
+// Pages own column construction (buildWorkItemsColumns requires runtime
+// flowStates + patchAndApply that JSON can't carry). resolveWizardConfig
+// keeps descriptor strings unmodified — pages dispatch on the
+// columnsComponent / filterChipsComponent / _functions descriptors.
 export function resolveWizardConfig(
   rawConfig: RawWizardConfig
 ): RawWizardConfig {
-  const resolved: RawWizardConfig = { ...rawConfig };
-
-  // Resolve columnsComponent to actual columns array
-  if (rawConfig.columnsComponent === "buildWorkItemsColumns") {
-    resolved.columns = buildWorkItemsColumns();
-  }
-
-  // Keep _functions descriptors so pages can build the actual closures
-  return resolved;
+  return { ...rawConfig };
 }
 
 /**

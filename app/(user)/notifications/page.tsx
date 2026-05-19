@@ -15,9 +15,9 @@ export default function NotificationsManagerPage() {
   return (
     <PageContent>
       <StrictRoute>
-        <PageDescription
-          description="Manage how and when you receive notifications from Vector. The full notifications surface lands in a future release; this stub holds the rail entry and the addressable substrate."
-        />
+        <PageDescription>
+          Manage how and when you receive notifications from Vector. The full notifications surface lands in a future release; this stub holds the rail entry and the addressable substrate.
+        </PageDescription>
         <Panel
           name="panel_notifications_placeholder"
           title="Coming soon"

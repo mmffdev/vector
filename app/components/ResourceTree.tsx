@@ -751,7 +751,7 @@ function ResourceTreeImpl<T>({
   getParentId,
   getChildrenCount,
   fetchChildren,
-  patch,
+  patch: _patch,
   getRowClass,
   // Scaffold
   columns,

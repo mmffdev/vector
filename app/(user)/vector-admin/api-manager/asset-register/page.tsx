@@ -4,7 +4,36 @@ import PageContent from "@/app/components/PageContent";
 import Panel from "@/app/components/Panel";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
+import Table, { type Column } from "@/app/components/Table";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
+
+type PropRow = {
+  id: string;
+  prop: string;
+  type: string;
+  defaultValue: string;
+  notes: string;
+};
+
+const propRows: PropRow[] = [
+  { id: "name", prop: "name", type: "string", defaultValue: "—", notes: "Required. Snake-case, [a-z0-9_]{1,64}. Addressable substrate ID." },
+  { id: "title", prop: "title", type: "ReactNode", defaultValue: "—", notes: "Renders the panel header (h²) with .panel__header / .panel__title CSS when present." },
+  { id: "className", prop: "className", type: "string", defaultValue: "—", notes: "Appended to the root panel class." },
+  { id: "children", prop: "children", type: "ReactNode", defaultValue: "—", notes: "Panel body content." },
+  { id: "helpable", prop: "helpable", type: "boolean", defaultValue: "—", notes: "Pass false to suppress the help icon." },
+  { id: "margin", prop: "margin", type: "[top?, right?, bottom?, left?]", defaultValue: '"0" per slot', notes: "CSS string per slot. Tokens: --gap-block-top/right/bottom/left (20px each)." },
+  { id: "padding", prop: "padding", type: "[top?, right?, bottom?, left?]", defaultValue: "var(--space-4) = 16px per slot", notes: "CSS string per slot." },
+  { id: "border", prop: "border", type: "{ type?, width?, color? }", defaultValue: "solid / 1px / var(--border)", notes: "type: solid | dashed | dotted | none. Omit prop = CSS class default." },
+  { id: "background", prop: "background", type: "string", defaultValue: "transparent", notes: "Any CSS colour — hex, token, rgba." },
+  { id: "radius", prop: "radius", type: "{ top?, right?, bottom?, left? }", defaultValue: '"0" per key', notes: "Maps to border-radius corners TL/TR/BR/BL. CSS string per key." },
+];
+
+const propColumns: Column<PropRow>[] = [
+  { key: "prop", header: "Prop", render: (r) => <code>{r.prop}</code> },
+  { key: "type", header: "Type", render: (r) => r.type },
+  { key: "default", header: "Default", render: (r) => r.defaultValue },
+  { key: "notes", header: "Notes", render: (r) => r.notes },
+];
 
 export default function AssetRegisterPage() {
   const { full } = usePageTitle();
@@ -21,78 +50,14 @@ export default function AssetRegisterPage() {
 
       <section id="panel">
         <Panel name="asset_register_panel" title="Panel">
-          <table className="tree_accordion-dense__table">
-            <thead>
-              <tr>
-                <th className="tree_accordion-dense__th">Prop</th>
-                <th className="tree_accordion-dense__th">Type</th>
-                <th className="tree_accordion-dense__th">Default</th>
-                <th className="tree_accordion-dense__th">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>name</code></td>
-                <td className="tree_accordion-dense__td">string</td>
-                <td className="tree_accordion-dense__td">—</td>
-                <td className="tree_accordion-dense__td">Required. Snake-case, [a-z0-9_]{"{1,64}"}. Addressable substrate ID.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>title</code></td>
-                <td className="tree_accordion-dense__td">ReactNode</td>
-                <td className="tree_accordion-dense__td">—</td>
-                <td className="tree_accordion-dense__td">Renders an &lt;h2&gt; header with .panel__header / .panel__title CSS when present.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>className</code></td>
-                <td className="tree_accordion-dense__td">string</td>
-                <td className="tree_accordion-dense__td">—</td>
-                <td className="tree_accordion-dense__td">Appended to the root panel class.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>children</code></td>
-                <td className="tree_accordion-dense__td">ReactNode</td>
-                <td className="tree_accordion-dense__td">—</td>
-                <td className="tree_accordion-dense__td">Panel body content.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>helpable</code></td>
-                <td className="tree_accordion-dense__td">boolean</td>
-                <td className="tree_accordion-dense__td">—</td>
-                <td className="tree_accordion-dense__td">Pass false to suppress the help icon.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>margin</code></td>
-                <td className="tree_accordion-dense__td">[top?, right?, bottom?, left?]</td>
-                <td className="tree_accordion-dense__td">"0" per slot</td>
-                <td className="tree_accordion-dense__td">CSS string per slot. Tokens: --gap-block-top/right/bottom/left (20px each).</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>padding</code></td>
-                <td className="tree_accordion-dense__td">[top?, right?, bottom?, left?]</td>
-                <td className="tree_accordion-dense__td">var(--space-4) = 16px per slot</td>
-                <td className="tree_accordion-dense__td">CSS string per slot.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>border</code></td>
-                <td className="tree_accordion-dense__td">{"{ type?, width?, color? }"}</td>
-                <td className="tree_accordion-dense__td">solid / 1px / var(--border)</td>
-                <td className="tree_accordion-dense__td">type: solid | dashed | dotted | none. Omit prop = CSS class default.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>background</code></td>
-                <td className="tree_accordion-dense__td">string</td>
-                <td className="tree_accordion-dense__td">transparent</td>
-                <td className="tree_accordion-dense__td">Any CSS colour — hex, token, rgba.</td>
-              </tr>
-              <tr className="tree_accordion-dense__row">
-                <td className="tree_accordion-dense__td"><code>radius</code></td>
-                <td className="tree_accordion-dense__td">{"{ top?, right?, bottom?, left? }"}</td>
-                <td className="tree_accordion-dense__td">"0" per key</td>
-                <td className="tree_accordion-dense__td">Maps to border-radius corners TL/TR/BR/BL. CSS string per key.</td>
-              </tr>
-            </tbody>
-          </table>
+          <Table
+            pageId="vector_admin.api_manager.asset_register"
+            slot="table_panel_props"
+            ariaLabel="Panel props"
+            columns={propColumns}
+            rows={propRows}
+            rowKey={(r) => r.id}
+          />
         </Panel>
       </section>
     </PageContent>

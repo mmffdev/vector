@@ -19,14 +19,6 @@ import Image from "next/image";
 import { useAuth, ApiError, MFAChallengeError } from "@/app/contexts/AuthContext";
 import { apiSite } from "@/app/lib/api";
 
-function LoginBranding() {
-  return (
-    <div className="login-branding">
-      <span className="login-branding__text">Vector</span>
-    </div>
-  );
-}
-
 function LoginForm() {
   const { login, mfaLogin } = useAuth();
   const router = useRouter();

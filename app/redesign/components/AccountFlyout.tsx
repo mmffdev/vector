@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { useNavPrefs, type NavCatalogEntry } from "@/app/contexts/NavPrefsContext";
+import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
 import { useTheme } from "@/app/hooks/useTheme";
 
 function MiniIcon({ d, d2 }: { d: string; d2?: string }) {
@@ -43,7 +43,7 @@ function IconFor({ iconKey }: { iconKey: string }) {
 
 export default function AccountFlyout() {
   const { user, logout } = useAuth();
-  const { catalogue, tags } = useNavPrefs();
+  const { catalogue } = useNavPrefs();
   const { theme, toggle, mounted } = useTheme();
   const pathname = usePathname() ?? "";
 

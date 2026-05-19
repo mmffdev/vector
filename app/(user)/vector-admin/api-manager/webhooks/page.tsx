@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
@@ -98,15 +99,24 @@ export default function WebhooksPage() {
   if (loading) return <div className="p-4">Loading webhooks…</div>;
   if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
 
-  const columns = [
-    { key: "url", label: "URL" },
-    { key: "events", label: "Events" },
-    { key: "status", label: "Status" },
-    { key: "created_at", label: "Created" },
-    { key: "actions", label: "Actions" },
+  type WebhookRow = {
+    id: string;
+    url: React.ReactElement;
+    events: string;
+    status: React.ReactElement;
+    created_at: string;
+    actions: React.ReactElement;
+  };
+
+  const columns: import("@/app/components/Table").Column<WebhookRow>[] = [
+    { key: "url", header: "URL", render: (r) => r.url },
+    { key: "events", header: "Events", render: (r) => r.events },
+    { key: "status", header: "Status", render: (r) => r.status },
+    { key: "created_at", header: "Created", render: (r) => r.created_at },
+    { key: "actions", header: "Actions", render: (r) => r.actions },
   ];
 
-  const rows = webhooks.map((wh) => ({
+  const rows: WebhookRow[] = webhooks.map((wh) => ({
     id: wh.id,
     url: <code className="text-xs break-all">{wh.url}</code>,
     events: wh.events || "(all events)",
@@ -133,6 +143,9 @@ export default function WebhooksPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Configure webhook endpoints for workspace event notifications." />
+      <PageDescription>
+        Manage webhook endpoints that receive event notifications from this workspace.
+      </PageDescription>
       <Panel
         name="panel_webhooks_header"
         className="page-panel-heading"
@@ -158,7 +171,14 @@ export default function WebhooksPage() {
       )}
 
       {webhooks.length > 0 ? (
-        <Table columns={columns} rows={rows} />
+        <Table
+          pageId="vector_admin.api_manager.webhooks"
+          slot="table_webhooks"
+          ariaLabel="Webhooks"
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.id}
+        />
       ) : (
         <div className="rounded border border-neutral-300 bg-neutral-50 p-6 text-center">
           <p className="text-neutral-600">No webhooks yet. Create one to start receiving events.</p>
@@ -166,7 +186,7 @@ export default function WebhooksPage() {
       )}
 
       {unsavedChanges && (
-        <UnsavedChangesBar onSave={() => {}} onDiscard={() => setUnsavedChanges(false)} />
+        <UnsavedChangesBar dirty onAccept={() => {}} onDiscard={() => setUnsavedChanges(false)} />
       )}
     </div>
     </PageContent>

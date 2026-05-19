@@ -9,4 +9,4 @@ export {
   registerObjectTreeConfig,
   getObjectTreeConfig,
   type ObjectTreeConfig,
-} from "./object-tree-registry";
+} from "./p_ObjectTreeRegistry";

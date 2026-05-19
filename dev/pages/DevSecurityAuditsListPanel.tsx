@@ -12,13 +12,6 @@ function pageSizeLabel(n: number) {
   return n === 0 ? "All" : String(n);
 }
 
-const SEV_CLASSES: Record<string, string> = {
-  critical: "dui-sev--critical",
-  high:     "dui-sev--high",
-  medium:   "dui-sev--medium",
-  low:      "dui-sev--low",
-};
-
 function AuditItem({ meta }: { meta: SecurityAuditMeta }) {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState<string | null>(null);
