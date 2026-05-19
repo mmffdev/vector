@@ -11,7 +11,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useHasPermission } from "@/app/contexts/AuthContext";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 
 interface CountResponse {
   count: number;
@@ -41,7 +41,7 @@ export function LibraryReleasesProvider({ children }: { children: React.ReactNod
 
     const fetchCount = async () => {
       try {
-        const data = await api<CountResponse>("/library/releases/count");
+        const data = await apiSite<CountResponse>("/library/releases/count");
         if (!cancelled) {
           setState({ count: data.count, hasBlocking: data.has_blocking });
         }

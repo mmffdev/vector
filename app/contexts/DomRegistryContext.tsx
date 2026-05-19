@@ -30,7 +30,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { useSamanthaSdk } from "@/app/contexts/SamanthaSdkContext";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 // Six closed-vocabulary slots — must mirror backend's ViewportSlot.
 // TypeScript's literal union enforces this at compile time (AC12).
@@ -157,7 +157,7 @@ export function DomRegistryProvider({ children, seed }: DomRegistryProviderProps
     if (seed !== undefined) return; // tests hand us a static seed
     let cancelled = false;
     setReady(false);
-    api<AddressableRow[]>(`/addressables/snapshot?route=${encodeURIComponent(pathname)}`)
+    apiSite<AddressableRow[]>(`/addressables/snapshot?route=${encodeURIComponent(pathname)}`)
       .then((rows) => {
         if (cancelled) return;
         const m = new Map<string, string>();
@@ -397,11 +397,11 @@ export function useRegisterAddressable(
     const sdkBody = sdk.customAppId
       ? { source: "custom_app" as const, custom_app_id: sdk.customAppId }
       : { source: "runtime" as const };
-    // Use api() rather than raw fetch — it injects the X-CSRF-Token
+    // Use apiSite() rather than raw fetch — it injects the X-CSRF-Token
     // header and Bearer token that the backend's CSRF middleware and
     // RequireAuth (when applied elsewhere) require. Raw fetch would
     // pass the cookie but omit the double-submit header → 403.
-    void api<{ id: string; address: string; helpable?: boolean }>(
+    void apiSite<{ id: string; address: string; helpable?: boolean }>(
       "/addressables/register",
       {
         method: "POST",

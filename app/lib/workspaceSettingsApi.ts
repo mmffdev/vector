@@ -17,7 +17,7 @@
 // TD-NAME-001 §2.9 trade-off). Only the TS type names switched from
 // Tenant* → Workspace* — the keys are honest to the Go wire format.
 
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 export type DayCode = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type WeekStart = "mon" | "sun";
@@ -108,10 +108,10 @@ export interface WorkspaceSettingsPatch {
 
 export const workspaceSettingsApi = {
   get() {
-    return api<WorkspaceSettings>(`/workspace-settings`);
+    return apiSite<WorkspaceSettings>(`/workspace-settings`);
   },
   patch(input: WorkspaceSettingsPatch) {
-    return api<WorkspaceSettings>(`/workspace-settings`, {
+    return apiSite<WorkspaceSettings>(`/workspace-settings`, {
       method: "PATCH",
       body: JSON.stringify(input),
     });

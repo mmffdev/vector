@@ -25,7 +25,7 @@ import {
   helpValueAsFragment,
 } from "@/app/contexts/SamanthaSdkContext";
 import HelpDocRenderer, { type HelpDoc } from "@/app/components/HelpDocRenderer";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 
 export type BorderProp = {
   type?:  "solid" | "dashed" | "dotted" | "none";
@@ -136,7 +136,7 @@ export default function Panel({ name, title, description, className, children, h
     if (!addressable_id) return;
     let cancelled = false;
     setBodyLoading(true);
-    api<Partial<HelpDoc> | null>(`/page-help/${addressable_id}`)
+    apiSite<Partial<HelpDoc> | null>(`/page-help/${addressable_id}`)
       .catch((err) => {
         // 404 is expected when no help doc exists yet; return null and let
         // the SDK-defaults fallback below run. Re-throw anything else so the

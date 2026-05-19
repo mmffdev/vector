@@ -12,7 +12,7 @@
 // docs/c_c_db_routing.md. Tenant settings are the per-subscription
 // "London HQ" defaults; workspace settings override them per-workspace.
 
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 export type DayCode = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type WeekStart = "mon" | "sun";
@@ -54,10 +54,10 @@ export interface TenantSettingsPatch {
 
 export const tenantSettingsApi = {
   get() {
-    return api<TenantSettings>(`/tenant-settings`);
+    return apiSite<TenantSettings>(`/tenant-settings`);
   },
   patch(input: TenantSettingsPatch) {
-    return api<TenantSettings>(`/tenant-settings`, {
+    return apiSite<TenantSettings>(`/tenant-settings`, {
       method: "PATCH",
       body: JSON.stringify(input),
     });

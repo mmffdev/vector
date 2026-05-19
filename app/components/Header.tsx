@@ -18,7 +18,7 @@ import {
   resolveSdkHelp,
   helpValueAsFragment,
 } from "@/app/contexts/SamanthaSdkContext";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 
 interface HeaderProps {
   // Snake-case identifier under this parent. Substrate validates against
@@ -96,7 +96,7 @@ export default function Header({
     if (!addressable_id) return;
     let cancelled = false;
     setBodyLoading(true);
-    api<{ body_html?: string } | null>(`/page-help/${addressable_id}`)
+    apiSite<{ body_html?: string } | null>(`/page-help/${addressable_id}`)
       .catch((err) => {
         // 404 = no help doc; fall through to SDK defaults rather than treat
         // as an error. Re-throw anything else.

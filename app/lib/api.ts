@@ -1,17 +1,27 @@
-// Versioned base for data API calls (/samantha/v1 or /samantha/v2 — public).
-// Site/BFF routes (auth, nav, me, roles, admin, workspaces, errors,
-// addressables, page-help, library/releases, custom-pages, user/tab-order)
-// live under /_site (PLA-0039 / B22) — use apiSite() for those.
+// Transport helpers.
+//
+//   apiSite()  — /_site/*    BFF routes (auth, nav, me, roles, admin,
+//                            workspaces, errors, addressables, page-help,
+//                            library/releases, custom-pages, user/tab-order,
+//                            cost-centres, …)
+//   apiRoot()  — root        transport infra (/healthz, /env, /env/switch,
+//                            /status/pipeline, /ws). Lives outside _site/v2.
+//   apiV2()    — /samantha/v2 public data plane (vector_artefacts-backed).
+//
+// The legacy api() helper that used to target /samantha/v1 was retired
+// in B20.5.1 — the backend never had a /samantha/v1 mount, so every
+// caller silently 404'd. PLA-0039 moved BFF routes to /_site, and PLA-
+// 0023 split the public data plane to /samantha/v2. There is no v1
+// data plane today.
 
 import { hasActiveKeypair, mintProof } from "./dpop";
 
 const API_ROOT_BASE = process.env.NEXT_PUBLIC_API_INFRA_BASE ?? "http://localhost:5100";
 export const API_SITE_BASE = API_ROOT_BASE + "/_site";
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/samantha/v1";
 
 let _accessToken: string | null = null;
-// Registered by AuthContext so api() can silently refresh an expired JWT
-// and retry rather than surfacing a 401 to the caller.
+// Registered by AuthContext so the helpers can silently refresh an
+// expired JWT and retry rather than surfacing a 401 to the caller.
 let _refreshCallback: (() => Promise<void>) | null = null;
 // Dedup: only one refresh flight at a time; concurrent 401s share the same promise.
 let _refreshPromise: Promise<void> | null = null;
@@ -247,16 +257,10 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
   return body as T;
 }
 
-export async function api<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
-  return _fetch<T>(API_BASE, path, opts);
-}
-
 // For site/BFF routes mounted under /_site: auth, nav, me, roles, admin,
 // workspaces, errors, addressables, page-help, library/releases, custom-pages,
-// user/tab-order. Root-level transport infra (healthz, env, status/pipeline,
-// env/switch) is reached via API_SITE_BASE without the /_site prefix — pass
-// an absolute path starting with "//" to bypass, or call fetch() directly.
-// PLA-0039 / B22.2.
+// user/tab-order, cost-centres. Root-level transport infra (healthz, env,
+// status/pipeline, env/switch) goes through apiRoot() below. PLA-0039 / B22.2.
 export async function apiSite<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
   return _fetch<T>(API_SITE_BASE, path, opts);
 }

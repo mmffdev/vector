@@ -13,7 +13,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import HelpDocRenderer, { type HelpDoc } from "@/app/components/HelpDocRenderer";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 
 type FetchState =
   | { kind: "loading" }
@@ -30,7 +30,7 @@ export default function HelpPage() {
     if (!id) return;
     let cancelled = false;
     setState({ kind: "loading" });
-    api<Partial<HelpDoc>>(`/page-help/${encodeURIComponent(id)}`)
+    apiSite<Partial<HelpDoc>>(`/page-help/${encodeURIComponent(id)}`)
       .then((data) => {
         if (cancelled) return;
         setState({

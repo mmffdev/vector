@@ -10,7 +10,7 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UserNodeAssignment from "@/app/components/topology/UserNodeAssignment";
 import { useHasPermission } from "@/app/contexts/AuthContext";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { topologyApi, listGrantsByUser, type MyGrant, type OrgNode } from "@/app/lib/topologyApi";
 import { costCentresApi, type CostCentre } from "@/app/lib/costCentresApi";
 import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "@/app/(user)/_shared";
@@ -258,7 +258,7 @@ function UserEditPanel({
 
   useEffect(() => {
     let cancelled = false;
-    api<RoleSummary[]>("/roles/creatable")
+    apiSite<RoleSummary[]>("/roles/creatable")
       .then((rows) => { if (!cancelled) setCreatable(rows); })
       .catch(() => { if (!cancelled) setCreatable([]); });
     return () => { cancelled = true; };
@@ -616,7 +616,7 @@ function CreateUserModal({
 
   useEffect(() => {
     let cancelled = false;
-    api<RoleSummary[]>("/roles/creatable")
+    apiSite<RoleSummary[]>("/roles/creatable")
       .then((rows) => {
         if (cancelled) return;
         setCreatable(rows);
@@ -632,7 +632,7 @@ function CreateUserModal({
     setErr(null);
     setBusy(true);
     try {
-      const resp = await api<{ user: AdminUser; reset_url?: string }>("/admin/users", {
+      const resp = await apiSite<{ user: AdminUser; reset_url?: string }>("/admin/users", {
         method: "POST",
         body: JSON.stringify({ email, role }),
       });
@@ -782,8 +782,8 @@ export default function UsersPage() {
     setErr(null);
     try {
       const [data, roles] = await Promise.all([
-        api<AdminUser[]>("/admin/users"),
-        api<RoleSummary[]>("/roles/"),
+        apiSite<AdminUser[]>("/admin/users"),
+        apiSite<RoleSummary[]>("/roles/"),
       ]);
       setUsers(data);
       setVisibleRoles(roles);
@@ -842,12 +842,12 @@ export default function UsersPage() {
   // pre-B20.4 callsite — keeps the body opaque-pass-through so new
   // panel sections can extend the patch without re-typing this fn.
   async function patchUser(id: string, patch: EditPatch) {
-    await api(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    await apiSite(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
     await load();
   }
 
   async function issueReset(id: string) {
-    const resp = await api<{ email: string; reset_url?: string }>(
+    const resp = await apiSite<{ email: string; reset_url?: string }>(
       `/admin/users/${id}/password-reset`,
       { method: "POST" },
     );
@@ -855,7 +855,7 @@ export default function UsersPage() {
   }
 
   async function deleteUser(id: string) {
-    await api(`/admin/users/${id}`, { method: "DELETE" });
+    await apiSite(`/admin/users/${id}`, { method: "DELETE" });
     await load();
   }
 
@@ -941,7 +941,7 @@ export default function UsersPage() {
     setBulkBusy(true);
     setBulkResult(null);
     const { ok, failed } = await runBulk(targets, 5, async (u) => {
-      await api(`/admin/users/${u.id}/password-reset`, { method: "POST" });
+      await apiSite(`/admin/users/${u.id}/password-reset`, { method: "POST" });
     });
     setBulkBusy(false);
     setBulkResult(
@@ -970,7 +970,7 @@ export default function UsersPage() {
     setBulkBusy(true);
     setBulkResult(null);
     const { ok, failed } = await runBulk(activeTargets, 5, async (u) => {
-      await api(`/admin/users/${u.id}`, {
+      await apiSite(`/admin/users/${u.id}`, {
         method: "PATCH",
         body: JSON.stringify({ is_active: false }),
       });
@@ -997,7 +997,7 @@ export default function UsersPage() {
     setBulkBusy(true);
     setBulkResult(null);
     const { ok, failed } = await runBulk(targets, 5, async (u) => {
-      await api(`/admin/users/${u.id}`, {
+      await apiSite(`/admin/users/${u.id}`, {
         method: "PATCH",
         body: JSON.stringify({ role }),
       });

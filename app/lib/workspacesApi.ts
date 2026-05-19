@@ -15,7 +15,7 @@
 // switcher dropdown (story 00379) refetches without a page reload.
 // Listeners attach via `window.addEventListener('workspaces:changed', …)`.
 
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 export const WORKSPACES_CHANGED_EVENT = "workspaces:changed";
 
@@ -53,7 +53,7 @@ export const workspacesApi = {
   // workspace lands first because migration 099 seeds it before any
   // user-created workspace.
   list() {
-    return api<Workspace[]>(`/workspaces`);
+    return apiSite<Workspace[]>(`/workspaces`);
   },
   // GET /api/workspaces?archived=true — returns the archived
   // workspaces for the caller's tenant. Backend gates this behind
@@ -61,7 +61,7 @@ export const workspacesApi = {
   // SHOULD only invoke after `useHasPermission('workspace.view_archived')`
   // returns true.
   listArchived() {
-    return api<Workspace[]>(`/workspaces?archived=true`);
+    return apiSite<Workspace[]>(`/workspaces?archived=true`);
   },
   // POST /api/workspaces — creates a new live workspace. Backend
   // enforces slug uniqueness among live workspaces only (an archived
@@ -70,7 +70,7 @@ export const workspacesApi = {
   // Caller must follow up with `emitWorkspacesChanged()` so the
   // topology switcher dropdown refetches.
   create(input: CreateInput) {
-    return api<Workspace>(`/workspaces`, {
+    return apiSite<Workspace>(`/workspaces`, {
       method: "POST",
       body: JSON.stringify(input),
     });
@@ -79,7 +79,7 @@ export const workspacesApi = {
   // immutable per handler note; sending slug-only returns 400).
   // Returns 204 No Content on success.
   rename(id: string, name: string) {
-    return api<void>(`/workspaces/${id}`, {
+    return apiSite<void>(`/workspaces/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ name }),
     });
@@ -92,13 +92,13 @@ export const workspacesApi = {
   // `emitWorkspacesChanged()` so the topology switcher dropdown
   // refetches without a page reload.
   archive(id: string) {
-    return api<void>(`/workspaces/${id}/archive`, { method: "POST" });
+    return apiSite<void>(`/workspaces/${id}/archive`, { method: "POST" });
   },
   // POST /api/workspaces/{id}/restore — clears archived_at on a
   // workspace. Gated on `workspace.restore`; non-holders get 403.
   // Caller must follow up with `emitWorkspacesChanged()` so the
   // topology switcher dropdown refetches without a page reload.
   restore(id: string) {
-    return api<void>(`/workspaces/${id}/restore`, { method: "POST" });
+    return apiSite<void>(`/workspaces/${id}/restore`, { method: "POST" });
   },
 };

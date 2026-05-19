@@ -16,7 +16,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { AuthFooter } from "@/app/components/AuthFooter";
 
@@ -43,7 +43,7 @@ export default function ChangePasswordPage() {
     if (pwd !== pwd2) return setErr("Passwords do not match.");
     setBusy(true);
     try {
-      await api("/auth/change-password", {
+      await apiSite("/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ current, new: pwd }),
       });

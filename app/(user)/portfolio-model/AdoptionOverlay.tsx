@@ -54,7 +54,7 @@ import {
   adoptStreamPath,
   type AdoptionStepName,
 } from "./adoptionConstants";
-import { apiSite as api, getApiToken } from "@/app/lib/api";
+import { apiSite, getApiToken } from "@/app/lib/api";
 import { reportError } from "@/app/lib/reportError";
 
 type StepStatus = "idle" | "in-progress" | "complete" | "failed";
@@ -265,7 +265,7 @@ export default function AdoptionOverlay({
       retryTimerRef.current = setTimeout(async () => {
         retryTimerRef.current = null;
         try {
-          await api(adoptModelPath(modelId), { method: "POST" });
+          await apiSite(adoptModelPath(modelId), { method: "POST" });
         } catch {
           // If the re-POST itself errors we still try to reopen the stream;
           // the orchestrator may already be running, in which case the SSE
@@ -426,7 +426,7 @@ export default function AdoptionOverlay({
     // Re-POST + reopen SSE immediately (no backoff for a manual click).
     void (async () => {
       try {
-        await api(adoptModelPath(modelId), { method: "POST" });
+        await apiSite(adoptModelPath(modelId), { method: "POST" });
       } catch {
         // Same as scheduleRetry — fall through to reopen the stream.
       }

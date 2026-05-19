@@ -20,7 +20,7 @@ import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 interface Role {
   id: string;
@@ -87,8 +87,8 @@ export default function AdminRolesPage() {
     setErr(null);
     try {
       const [r, p] = await Promise.all([
-        api<Role[]>("/roles/"),
-        api<Permission[]>("/roles/permissions/catalogue"),
+        apiSite<Role[]>("/roles/"),
+        apiSite<Permission[]>("/roles/permissions/catalogue"),
       ]);
       const sorted = [...r].sort((a, b) => {
         if (a.is_system !== b.is_system) return a.is_system ? -1 : 1;
@@ -121,7 +121,7 @@ export default function AdminRolesPage() {
       return;
     }
     let cancelled = false;
-    api<string[]>(`/roles/${selectedId}/permissions`)
+    apiSite<string[]>(`/roles/${selectedId}/permissions`)
       .then((ids) => {
         if (!cancelled) setGrantedIds(new Set(ids));
       })
@@ -160,7 +160,7 @@ export default function AdminRolesPage() {
       if (draftDescription !== selected.description) body.description = draftDescription;
       // Rank is rejected by service for system rows — only send for tenant.
       if (!selected.is_system && draftRank !== selected.rank) body.rank = draftRank;
-      const updated = await api<Role>(`/roles/${selected.id}`, {
+      const updated = await apiSite<Role>(`/roles/${selected.id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       });
@@ -178,7 +178,7 @@ export default function AdminRolesPage() {
     setBusy(true);
     setErr(null);
     try {
-      await api(`/roles/${selected.id}`, { method: "DELETE" });
+      await apiSite(`/roles/${selected.id}`, { method: "DELETE" });
       setRoles((rs) => rs.filter((r) => r.id !== selected.id));
       setSelectedId(null);
     } catch (e) {
@@ -193,7 +193,7 @@ export default function AdminRolesPage() {
     setBusy(true);
     setErr(null);
     try {
-      const created = await api<Role>("/roles/", {
+      const created = await apiSite<Role>("/roles/", {
         method: "POST",
         body: JSON.stringify({
           code: newCode.trim(),
@@ -228,7 +228,7 @@ export default function AdminRolesPage() {
     setErr(null);
     try {
       if (granted) {
-        await api(`/roles/${selected.id}/permissions`, {
+        await apiSite(`/roles/${selected.id}/permissions`, {
           method: "DELETE",
           body: JSON.stringify({ permission_ids: [permId] }),
         });
@@ -238,7 +238,7 @@ export default function AdminRolesPage() {
           return next;
         });
       } else {
-        await api(`/roles/${selected.id}/permissions`, {
+        await apiSite(`/roles/${selected.id}/permissions`, {
           method: "POST",
           body: JSON.stringify({ permission_ids: [permId] }),
         });

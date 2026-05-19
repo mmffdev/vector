@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
 import { AuthBrand } from "@/app/components/AuthBrand";
 
@@ -24,7 +24,7 @@ export default function ResetRequestPage() {
     if (!email) return setErr("Please enter your email.");
     setBusy(true);
     try {
-      await api("/auth/password-reset", {
+      await apiSite("/auth/password-reset", {
         method: "POST",
         body: JSON.stringify({ email }),
         skipAuth: true,

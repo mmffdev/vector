@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 
 export type ThemePack = "default" | "vector-mono" | "charcoal-amber" | "vector-marine" | "atlas" | "coral-tide" | "slate" | "harbor" | "dusk-mauve" | "sea-glass" | "vesper" | "dusk-slate" | "sundown" | "vector-bloom" | "tideline" | "sorbet" | "kelp" | "linen" | "mesa" | "oyster" | "meadow-pop" | "cobalt-lime" | "cobalt-day" | "abyss" | "tidal-amber" | "taupe-navy" | "chalk-navy" | "buckthorn" | "moonlit" | "nightberry" | "berry-dawn" | "ember-wine" | "saffron-tide" | "spectrum" | "spectrum-dusk" | "stratum" | "coral-chalk" | "oslo" | "blush-steel" | "maritime" | "aurora" | "ironworks" | "rosewood";
 
@@ -102,7 +102,7 @@ export function useThemePack() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await api<ServerThemePack>("/me/theme-pack");
+        const r = await apiSite<ServerThemePack>("/me/theme-pack");
         if (cancelled) return;
         const remote: ThemePack = isValidPack(r.pack) ? r.pack : "default";
         if (remote !== local) {
@@ -135,7 +135,7 @@ export function useThemePack() {
     setSaveError(null);
 
     try {
-      await api("/me/theme-pack", {
+      await apiSite("/me/theme-pack", {
         method: "PUT",
         body: JSON.stringify({ pack: next }),
       });

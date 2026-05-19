@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiSite as api, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
 import Panel from "@/app/components/Panel";
 import {
   PORTFOLIO_MODELS_LIST_PATH,
@@ -96,7 +96,7 @@ export default function WizardModelCardList({
     let cancelled = false;
     (async () => {
       try {
-        const res = await api<ModelListResponse>(PORTFOLIO_MODELS_LIST_PATH);
+        const res = await apiSite<ModelListResponse>(PORTFOLIO_MODELS_LIST_PATH);
         if (cancelled) return;
         const models = res.models ?? [];
         if (models.length === 0) {
@@ -125,7 +125,7 @@ export default function WizardModelCardList({
     setSubmittingId(modelId);
     setSubmitError(null);
     try {
-      const res = await api<AdoptionResult>(adoptModelPath(modelId), {
+      const res = await apiSite<AdoptionResult>(adoptModelPath(modelId), {
         method: "POST",
       });
       onAdoptStarted(res.state_id, res.model_id);

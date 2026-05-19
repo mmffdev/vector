@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
@@ -31,7 +31,7 @@ export default function ProductDetailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await api<EntitiesResp>("/nav/entities");
+        const r = await apiSite<EntitiesResp>("/nav/entities");
         if (cancelled) return;
         const match = (r.entities ?? []).find((e) => e.kind === "product" && e.id === id);
         setName(match?.name ?? null);

@@ -1,11 +1,11 @@
-import { apiSite as api } from "./api";
+import { apiSite } from "./api";
 
 export async function reportError(
   code: string,
   context?: Record<string, unknown>,
 ): Promise<void> {
   try {
-    await api("/errors/report", {
+    await apiSite("/errors/report", {
       method: "POST",
       body: JSON.stringify({ code, context }),
     });

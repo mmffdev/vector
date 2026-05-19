@@ -6,7 +6,7 @@
 // per-workspace whitelist). Frontend MUST NOT recompute admission;
 // callers render whatever this function returns.
 
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 
 // WorkspaceField is the wire shape for one row in the response. Field
 // names mirror artefact_field_library — `name` is the machine identifier
@@ -45,6 +45,6 @@ interface FieldsListResponse {
 // but caller lacks workspace membership / tenant-admin role), 500
 // (plumbing).
 export async function getWorkspaceFields(workspaceId: string): Promise<WorkspaceField[]> {
-  const res = await api<FieldsListResponse>(`/workspaces/${encodeURIComponent(workspaceId)}/fields`);
+  const res = await apiSite<FieldsListResponse>(`/workspaces/${encodeURIComponent(workspaceId)}/fields`);
   return res.fields;
 }

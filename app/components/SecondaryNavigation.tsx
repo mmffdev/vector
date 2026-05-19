@@ -27,7 +27,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { usePathname } from "next/navigation";
 import { MdOutlineSwapVert } from "react-icons/md";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useActiveNav } from "@/app/contexts/ActiveNavContext";
 
@@ -225,7 +225,7 @@ export default function SecondaryNavigation<K extends string = string>({
     let cancelled = false;
     (async () => {
       try {
-        const resp = await api<TabOrderResp>(`/user/tab-order/${encodeURIComponent(pageId)}`);
+        const resp = await apiSite<TabOrderResp>(`/user/tab-order/${encodeURIComponent(pageId)}`);
         if (cancelled) return;
         if (resp.items.length > 0) {
           setOrder(applySavedOrder(items, resp.items.map((r) => r.tab_key)));
@@ -327,7 +327,7 @@ export default function SecondaryNavigation<K extends string = string>({
         const body = {
           items: toSave.map((k, idx) => ({ tab_key: k, position: idx })),
         };
-        api(`/user/tab-order/${encodeURIComponent(pageId)}`, {
+        apiSite(`/user/tab-order/${encodeURIComponent(pageId)}`, {
           method: "PUT",
           body: JSON.stringify(body),
         }).catch(() => {
@@ -350,7 +350,7 @@ export default function SecondaryNavigation<K extends string = string>({
             items: toSave.map((k, idx) => ({ tab_key: k, position: idx })),
           };
           // Best-effort flush; ignore errors.
-          api(`/user/tab-order/${encodeURIComponent(pageId)}`, {
+          apiSite(`/user/tab-order/${encodeURIComponent(pageId)}`, {
             method: "PUT",
             body: JSON.stringify(body),
           }).catch(() => {});

@@ -20,7 +20,7 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { apiSite as api } from "@/app/lib/api";
+import { apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
 type Severity = "info" | "action" | "breaking";
@@ -77,7 +77,7 @@ export default function LibraryReleasesPage() {
   async function loadReleases() {
     setState({ kind: "loading" });
     try {
-      const data = await api<ListResponse>("/library/releases");
+      const data = await apiSite<ListResponse>("/library/releases");
       setState({ kind: "ready", releases: data.releases });
     } catch (e) {
       notify.apiError(e, "Failed to load releases");
@@ -88,7 +88,7 @@ export default function LibraryReleasesPage() {
   async function ack(releaseId: string, actionKey: ActionDTO["action_key"]) {
     setAcking(releaseId);
     try {
-      await api(`/library/releases/${releaseId}/ack`, {
+      await apiSite(`/library/releases/${releaseId}/ack`, {
         method: "POST",
         body: JSON.stringify({ action_taken: actionKey }),
       });
