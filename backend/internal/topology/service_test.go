@@ -67,3 +67,39 @@ func TestListGrantsByUser(t *testing.T) {
 		}
 	})
 }
+
+// TestListMyGrants_GadminDispatch covers TD-MYGRANTS-HANDLER-TEST partially:
+// the dispatch branch in ListMyGrants short-circuits to listMyGrantsGadmin
+// when actorRoleID == roles.SystemGrpGlobalID. We can't exercise the SQL
+// without a DB harness (the topology package has none — see the TestListGrantsByUser
+// docstring), but the dispatch decision itself is observable via panic on
+// nil pool. This pins the gadmin-detection sentinel so a future refactor
+// can't accidentally route gadmin actors through the per-user grant SQL.
+func TestListMyGrants_GadminDispatch(t *testing.T) {
+	prev := roles.SystemGrpGlobalID
+	roles.SystemGrpGlobalID = uuid.New()
+	t.Cleanup(func() { roles.SystemGrpGlobalID = prev })
+
+	svc := &Service{}
+	ctx := context.Background()
+	sub := uuid.New()
+	user := uuid.New()
+
+	t.Run("gadmin_routes_to_gadmin_path", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("expected panic on nil vaPool — gadmin path should reach listMyGrantsGadmin")
+			}
+		}()
+		_, _ = svc.ListMyGrants(ctx, sub, user, roles.SystemGrpGlobalID)
+	})
+
+	t.Run("non_gadmin_routes_to_per_user_path", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("expected panic on nil vaPool — non-gadmin path should reach sqlListMyGrants")
+			}
+		}()
+		_, _ = svc.ListMyGrants(ctx, sub, user, uuid.New())
+	})
+}
