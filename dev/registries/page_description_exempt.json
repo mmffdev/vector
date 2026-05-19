@@ -216,6 +216,10 @@
     {
       "path": "app/(user)/workspace-admin/artefacts/artefact-types/page.tsx",
       "reason": "seeded 2026-05-19 \u2014 copied from /workspace-admin/artefact-types into shell, inherits exemption"
+    },
+    {
+      "path": "app/(user)/user-management/page.tsx",
+      "reason": "B20.4.1 tab-bar landing \u2014 pure redirect to /user-management/users, no content to describe"
     }
   ]
 }

@@ -1,75 +1,70 @@
 {
+  "/library/releases": [
+    "app/(user)/library-releases/page.tsx:80"
+  ],
+  "/auth/password-reset/confirm": [
+    "app/login/reset/confirm/page.tsx:54"
+  ],
   "/nav/bookmark": [
-    "app/contexts/NavPrefsContext.tsx:374",
-    "app/contexts/NavPrefsContext.tsx:385"
+    "app/contexts/NavPrefsContext.tsx:383",
+    "app/contexts/NavPrefsContext.tsx:394"
   ],
-  "/nav/profiles/order": [
-    "app/contexts/NavPrefsContext.tsx:299"
-  ],
-  "/nav/start-page": [
-    "app/login/page.tsx:46"
-  ],
-  "/errors/report": [
-    "app/lib/reportError.ts:8"
+  "/nav/catalogue": [
+    "app/contexts/NavPrefsContext.tsx:189"
   ],
   "/auth/password-reset": [
     "app/login/reset/page.tsx:27"
-  ],
-  "/nav/profiles/active": [
-    "app/contexts/NavPrefsContext.tsx:267"
-  ],
-  "/roles/creatable": [
-    "app/(user)/workspace-settings/users/page.tsx:46",
-    "app/(user)/workspace-settings/users/page.tsx:215",
-    "app/(user)/user-management/page.tsx:46",
-    "app/(user)/user-management/page.tsx:215"
-  ],
-  "/auth/password-reset/confirm": [
-    "app/login/reset/confirm/page.tsx:37"
-  ],
-  "/custom-pages": [
-    "app/lib/customPages.ts:23",
-    "app/lib/customPages.ts:32"
-  ],
-  "/nav/entities": [
-    "app/(user)/product/[id]/page.tsx:34"
-  ],
-  "/library/releases/count": [
-    "app/contexts/LibraryReleasesContext.tsx:44"
-  ],
-  "/auth/change-password": [
-    "app/change-password/page.tsx:46"
   ],
   "/me/theme-pack": [
     "app/hooks/useThemePack.ts:105",
     "app/hooks/useThemePack.ts:138"
   ],
+  "/nav/profiles": [
+    "app/contexts/NavPrefsContext.tsx:188",
+    "app/contexts/NavPrefsContext.tsx:284"
+  ],
+  "/library/releases/count": [
+    "app/contexts/LibraryReleasesContext.tsx:44"
+  ],
+  "/custom-pages": [
+    "app/lib/customPages.ts:23",
+    "app/lib/customPages.ts:32"
+  ],
+  "/admin/users": [
+    "app/(user)/user-management/page.tsx:231",
+    "app/(user)/user-management/page.tsx:333"
+  ],
   "/roles/permissions/catalogue": [
     "app/(user)/admin/roles/page.tsx:91"
   ],
-  "/nav/catalogue": [
-    "app/contexts/NavPrefsContext.tsx:180"
+  "/errors/report": [
+    "app/lib/reportError.ts:8"
   ],
-  "/library/releases": [
-    "app/(user)/library-releases/page.tsx:80"
+  "/nav/prefs": [
+    "app/contexts/NavPrefsContext.tsx:259"
+  ],
+  "/nav/start-page": [
+    "app/login/page.tsx:86"
+  ],
+  "/nav/profiles/order": [
+    "app/contexts/NavPrefsContext.tsx:308"
+  ],
+  "/nav/profiles/active": [
+    "app/contexts/NavPrefsContext.tsx:276"
+  ],
+  "/roles/creatable": [
+    "app/(user)/user-management/page.tsx:46",
+    "app/(user)/user-management/page.tsx:215"
+  ],
+  "/nav/entities": [
+    "app/(user)/product/[id]/page.tsx:34"
   ],
   "/roles": [
-    "app/(user)/workspace-settings/users/page.tsx:334",
     "app/(user)/admin/roles/page.tsx:90",
     "app/(user)/admin/roles/page.tsx:196",
     "app/(user)/user-management/page.tsx:334"
   ],
-  "/nav/prefs": [
-    "app/contexts/NavPrefsContext.tsx:250"
-  ],
-  "/nav/profiles": [
-    "app/contexts/NavPrefsContext.tsx:179",
-    "app/contexts/NavPrefsContext.tsx:275"
-  ],
-  "/admin/users": [
-    "app/(user)/workspace-settings/users/page.tsx:231",
-    "app/(user)/workspace-settings/users/page.tsx:333",
-    "app/(user)/user-management/page.tsx:231",
-    "app/(user)/user-management/page.tsx:333"
+  "/auth/change-password": [
+    "app/change-password/page.tsx:46"
   ]
 }

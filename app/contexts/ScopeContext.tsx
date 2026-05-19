@@ -27,7 +27,7 @@ import React, {
 } from "react";
 import { topologyApi, type MyGrant } from "@/app/lib/topologyApi";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { apiSite, ApiError } from "@/app/lib/api";
+import { apiSite, ApiError, setScopeDirection as apiSetScopeDirection } from "@/app/lib/api";
 import { WORKSPACES_CHANGED_EVENT } from "@/app/lib/workspacesApi";
 import { registerScopeReload, unregisterScopeReload } from "@/app/contexts/Sentinel";
 
@@ -61,10 +61,19 @@ function writeUrlMeg(id: string | null) {
   }
 }
 
+// Scope direction: "descend" = selected node + its children (default,
+// matches how lists "scope into" a node); "ascend" = node + ancestors,
+// used by reports that aggregate up the chain. Kept in module state via
+// setScopeDirection() in app/lib/api.ts so api() can inject scope_dir=
+// without us threading it through every call site.
+export type ScopeDirection = "descend" | "ascend";
+
 interface ScopeValue {
   grants: MyGrant[];
   activeNodeId: string | null;
   activeGrant: MyGrant | null;
+  direction: ScopeDirection;
+  setDirection: (d: ScopeDirection) => void;
   loading: boolean;
   error: string | null;
   setActiveNodeId: (id: string | null) => void;
@@ -99,8 +108,18 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeNodeId, setActiveNodeIdState] = useState<string | null>(null);
+  const [direction, setDirectionState] = useState<ScopeDirection>("descend");
   // Track whether we've done the initial server-profile seed for this session.
   const profileSeededRef = useRef(false);
+
+  // Wrap setDirection so it mirrors into the module-level state read by
+  // api() in app/lib/api.ts — keeps the URL forwarding logic in lockstep
+  // with the React state. No server roundtrip; direction is a presentation
+  // toggle.
+  const setDirection = useCallback((d: ScopeDirection) => {
+    setDirectionState(d);
+    apiSetScopeDirection(d);
+  }, []);
 
   const reload = useCallback(async () => {
     if (!user) {
@@ -215,12 +234,14 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
       grants,
       activeNodeId,
       activeGrant,
+      direction,
+      setDirection,
       loading,
       error,
       setActiveNodeId,
       reload,
     }),
-    [grants, activeNodeId, activeGrant, loading, error, setActiveNodeId, reload],
+    [grants, activeNodeId, activeGrant, direction, setDirection, loading, error, setActiveNodeId, reload],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -233,6 +254,8 @@ export function useScope(): ScopeValue {
       grants: [],
       activeNodeId: null,
       activeGrant: null,
+      direction: "descend",
+      setDirection: () => {},
       loading: false,
       error: null,
       setActiveNodeId: () => {},
