@@ -30,6 +30,7 @@
     "lint:cross-db-writer-test": "python3 dev/scripts/lint_cross_db_writer_test.py",
     "lint:rf1": "npm run lint:sql-in-sqlfile-only && npm run lint:no-empty-route-block && npm run lint:exemption-ratchet && npm run lint:package-naming-convention && npm run lint:cross-db-writer-test && npm run lint:column-prefix-convention",
     "api:snap": "bash dev/scripts/snap_api.sh",
+    "api:sync": "python3 dev/scripts/extract_routes.py && python3 dev/scripts/sync_specs.py",
     "api:check": "bash dev/scripts/check_routes.sh --all && python3 dev/scripts/check_callers.py --all",
     "api:check:v1": "bash dev/scripts/check_routes.sh --spec siteAPI.yaml && python3 dev/scripts/check_callers.py --spec siteAPI.yaml",
     "api:check:v2": "bash dev/scripts/check_routes.sh --spec samanthaAPI.yaml && python3 dev/scripts/check_callers.py --spec samanthaAPI.yaml",
