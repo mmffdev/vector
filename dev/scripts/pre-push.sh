@@ -2,10 +2,10 @@
 # pre-push.sh — Layer 2: API contract gate on every git push.
 # Install with: npm run api:install-hooks
 #
-# 1. check_routes.sh — Go router ↔ openapi.yaml
-# 2. check_callers.py — frontend api(...) callers ↔ openapi.yaml
+# 1. check_routes.sh — Go router ↔ siteAPI.yaml
+# 2. check_callers.py — frontend api(...) callers ↔ siteAPI.yaml
 # 3. oasdiff breaking — spec breaking changes vs latest snapshot for
-#                       BOTH v1 (openapi.yaml) and v2 (openapi-v2.yaml).
+#                       BOTH v1 (siteAPI.yaml) and v2 (samanthaAPI.yaml).
 #                       Snapshots live under api-snapshots/v1/vN.yaml
 #                       and api-snapshots/v2/vN.yaml per snap_api.sh.
 #
@@ -102,9 +102,9 @@ if ! OASDIFF=$(resolve_oasdiff); then
   exit 0
 fi
 
-diff_against_snap "v1" "$REPO_ROOT/openapi.yaml"
-if [[ -f "$REPO_ROOT/openapi-v2.yaml" ]]; then
-  diff_against_snap "v2" "$REPO_ROOT/openapi-v2.yaml"
+diff_against_snap "v1" "$REPO_ROOT/siteAPI.yaml"
+if [[ -f "$REPO_ROOT/samanthaAPI.yaml" ]]; then
+  diff_against_snap "v2" "$REPO_ROOT/samanthaAPI.yaml"
 fi
 
 echo "=== pre-push: OK ==="

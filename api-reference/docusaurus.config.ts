@@ -43,11 +43,23 @@ const config: Config = {
     [
       '@scalar/docusaurus',
       {
-        label: 'API Playground',
-        route: '/openapi',
+        label: 'Site API',
+        route: '/site-api',
         configuration: {
           spec: {
-            url: '/openapi.yaml',
+            url: '/siteAPI.yaml',
+          },
+        },
+      },
+    ],
+    [
+      '@scalar/docusaurus',
+      {
+        label: 'Samantha API',
+        route: '/samantha-api',
+        configuration: {
+          spec: {
+            url: '/samanthaAPI.yaml',
           },
         },
       },
@@ -68,9 +80,14 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: '/openapi',
+          to: '/site-api',
           position: 'left',
-          label: 'API Playground',
+          label: 'Site API',
+        },
+        {
+          to: '/samantha-api',
+          position: 'left',
+          label: 'Samantha API',
         },
       ],
     },

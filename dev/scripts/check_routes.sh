@@ -7,8 +7,8 @@
 # prefix before comparing against the spec path keys.
 #
 # Usage:
-#   check_routes.sh                          # validate v1 routes against openapi.yaml
-#   check_routes.sh --spec openapi-v2.yaml   # validate v2 routes against openapi-v2.yaml
+#   check_routes.sh                          # validate v1 routes against siteAPI.yaml
+#   check_routes.sh --spec samanthaAPI.yaml   # validate v2 routes against samanthaAPI.yaml
 #   check_routes.sh --all                    # validate both specs in sequence
 set -euo pipefail
 
@@ -16,7 +16,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 MAIN_GO="$REPO_ROOT/backend/cmd/server/main.go"
 
 # Default spec
-SPEC="$REPO_ROOT/openapi.yaml"
+SPEC="$REPO_ROOT/siteAPI.yaml"
 RUN_ALL=false
 
 # Parse flags
@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if $RUN_ALL; then
-  "$0" --spec openapi.yaml && "$0" --spec openapi-v2.yaml
+  "$0" --spec siteAPI.yaml && "$0" --spec samanthaAPI.yaml
   exit $?
 fi
 
@@ -52,7 +52,7 @@ INFRA_ALLOW=(
 )
 
 # Determine which version prefix to filter to based on the spec filename.
-# openapi.yaml → v1, openapi-v2.yaml → v2.
+# siteAPI.yaml → v1, samanthaAPI.yaml → v2.
 VERSION_PREFIX="v1"
 if [[ "$SPEC" == *"v2"* ]]; then
   VERSION_PREFIX="v2"
@@ -161,7 +161,7 @@ for p in sorted(paths):
 PY
 }
 
-# Extract all path keys from openapi.yaml (lines starting with "  /")
+# Extract all path keys from siteAPI.yaml (lines starting with "  /")
 spec_paths() {
   grep -E '^  /' "$SPEC" | sed 's/://; s/^  //' | sort -u
 }
@@ -199,7 +199,7 @@ done < <(spec_paths)
 echo "--- Result: $errors error(s), $warnings warning(s)"
 
 if [[ $errors -gt 0 ]]; then
-  echo "FAIL: $errors undocumented route(s) found. Add them to openapi.yaml before pushing." >&2
+  echo "FAIL: $errors undocumented route(s) found. Add them to siteAPI.yaml before pushing." >&2
   exit 1
 fi
 

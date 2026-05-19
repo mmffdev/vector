@@ -25,16 +25,16 @@ jobs:
           python-version: "3.12"
 
       - name: Check Go routes vs v1 spec
-        run: bash dev/scripts/check_routes.sh --spec openapi.yaml
+        run: bash dev/scripts/check_routes.sh --spec siteAPI.yaml
 
       - name: Check Go routes vs v2 spec
-        run: bash dev/scripts/check_routes.sh --spec openapi-v2.yaml
+        run: bash dev/scripts/check_routes.sh --spec samanthaAPI.yaml
 
       - name: Check frontend api() callers vs v1 spec
-        run: python3 dev/scripts/check_callers.py --spec openapi.yaml
+        run: python3 dev/scripts/check_callers.py --spec siteAPI.yaml
 
       - name: Check frontend apiV2() callers vs v2 spec
-        run: python3 dev/scripts/check_callers.py --spec openapi-v2.yaml
+        run: python3 dev/scripts/check_callers.py --spec samanthaAPI.yaml
 
   api-protect:
     name: Breaking Change Gate
@@ -79,17 +79,17 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           SNAP: ${{ steps.snap.outputs.v1_path }}
         run: |
-          if oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR 2>/dev/null; then
+          if oasdiff breaking "$SNAP" siteAPI.yaml --fail-on ERR 2>/dev/null; then
             echo "v1: No breaking changes."
             exit 0
           fi
           if echo "$PR_TITLE $PR_BODY" | grep -q '\[breaking\]'; then
             echo "v1: Breaking changes detected — [breaking] token present. Allowed."
-            oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR 2>/dev/null || true
+            oasdiff breaking "$SNAP" siteAPI.yaml --fail-on ERR 2>/dev/null || true
             exit 0
           fi
-          echo "FAIL: Breaking API changes in openapi.yaml. Add [breaking] to your PR title to allow." >&2
-          oasdiff breaking "$SNAP" openapi.yaml --fail-on ERR >&2 || true
+          echo "FAIL: Breaking API changes in siteAPI.yaml. Add [breaking] to your PR title to allow." >&2
+          oasdiff breaking "$SNAP" siteAPI.yaml --fail-on ERR >&2 || true
           exit 1
 
       - name: Breaking change check — v2 spec
@@ -99,17 +99,17 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           SNAP: ${{ steps.snap.outputs.v2_path }}
         run: |
-          if oasdiff breaking "$SNAP" openapi-v2.yaml --fail-on ERR 2>/dev/null; then
+          if oasdiff breaking "$SNAP" samanthaAPI.yaml --fail-on ERR 2>/dev/null; then
             echo "v2: No breaking changes."
             exit 0
           fi
           if echo "$PR_TITLE $PR_BODY" | grep -q '\[breaking\]'; then
             echo "v2: Breaking changes detected — [breaking] token present. Allowed."
-            oasdiff breaking "$SNAP" openapi-v2.yaml --fail-on ERR 2>/dev/null || true
+            oasdiff breaking "$SNAP" samanthaAPI.yaml --fail-on ERR 2>/dev/null || true
             exit 0
           fi
-          echo "FAIL: Breaking API changes in openapi-v2.yaml. Add [breaking] to your PR title to allow." >&2
-          oasdiff breaking "$SNAP" openapi-v2.yaml --fail-on ERR >&2 || true
+          echo "FAIL: Breaking API changes in samanthaAPI.yaml. Add [breaking] to your PR title to allow." >&2
+          oasdiff breaking "$SNAP" samanthaAPI.yaml --fail-on ERR >&2 || true
           exit 1
 
       - name: No snapshot warning

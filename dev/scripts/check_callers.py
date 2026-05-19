@@ -4,14 +4,14 @@
 Rules:
   - api(...)      caller path not in spec  → exit 1 (hard fail)
   - apiInfra(...) paths                    → tracked, but skipped from hard-fail
-  - apiV2(...)    paths                    → tracked against openapi-v2.yaml when
-                                             --spec openapi-v2.yaml is passed;
+  - apiV2(...)    paths                    → tracked against samanthaAPI.yaml when
+                                             --spec samanthaAPI.yaml is passed;
                                              otherwise skipped from hard-fail
   - Spec path has no matching caller       → warn + dead-apis.txt
 
 Usage:
-  check_callers.py                         # validate api() vs openapi.yaml (v1)
-  check_callers.py --spec openapi-v2.yaml  # validate apiV2() vs openapi-v2.yaml
+  check_callers.py                         # validate api() vs siteAPI.yaml (v1)
+  check_callers.py --spec samanthaAPI.yaml  # validate apiV2() vs samanthaAPI.yaml
   check_callers.py --all                   # run both specs in sequence
 
 Side effects (always written, even on failure):
@@ -36,21 +36,21 @@ DEAD_APIS_FILE = SNAPSHOTS_DIR / "dead-apis.txt"
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--spec", default="openapi.yaml",
+    p.add_argument("--spec", default="siteAPI.yaml",
                    help="Spec file to validate against (relative to repo root)")
     p.add_argument("--all", action="store_true",
-                   help="Run both openapi.yaml and openapi-v2.yaml in sequence")
+                   help="Run both siteAPI.yaml and samanthaAPI.yaml in sequence")
     return p.parse_args()
 
 _ARGS = _parse_args()
 
 if _ARGS.all:
-    rc1 = subprocess.call([sys.executable, __file__, "--spec", "openapi.yaml"])
-    rc2 = subprocess.call([sys.executable, __file__, "--spec", "openapi-v2.yaml"])
+    rc1 = subprocess.call([sys.executable, __file__, "--spec", "siteAPI.yaml"])
+    rc2 = subprocess.call([sys.executable, __file__, "--spec", "samanthaAPI.yaml"])
     sys.exit(0 if (rc1 == 0 and rc2 == 0) else 1)
 
 SPEC = ROOT / _ARGS.spec
-IS_V2_SPEC = _ARGS.spec == "openapi-v2.yaml"
+IS_V2_SPEC = _ARGS.spec == "samanthaAPI.yaml"
 
 # Regex: api("/path") or api('/path') — captures literal path strings only.
 # `(?:<[^>]*>)?` allows the optional TS generic, e.g. `api<Foo>("/x")`.
@@ -131,15 +131,15 @@ def main() -> int:
     exemptions = load_exemptions()
     api_callers, infra_callers, v2_callers = scan_callers()
 
-    # For v2 spec: validate apiV2() callers against openapi-v2.yaml paths
-    # For v1 spec: validate api() callers against openapi.yaml paths
+    # For v2 spec: validate apiV2() callers against samanthaAPI.yaml paths
+    # For v1 spec: validate api() callers against siteAPI.yaml paths
     if IS_V2_SPEC:
         primary_callers = v2_callers
-        spec_label = "openapi-v2.yaml"
+        spec_label = "samanthaAPI.yaml"
         caller_fn = "apiV2()"
     else:
         primary_callers = api_callers
-        spec_label = "openapi.yaml"
+        spec_label = "siteAPI.yaml"
         caller_fn = "api()"
 
     errors: list[str] = []
@@ -170,7 +170,7 @@ def main() -> int:
         if infra_callers:
             print(f"  apiInfra paths:  {len(infra_callers)} (skipped from hard-fail)")
         if v2_callers:
-            print(f"  apiV2 paths:     {len(v2_callers)} (use --spec openapi-v2.yaml to validate)")
+            print(f"  apiV2 paths:     {len(v2_callers)} (use --spec samanthaAPI.yaml to validate)")
     print(f"--- Result: {len(errors)} error(s)")
 
     return 1 if errors else 0

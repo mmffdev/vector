@@ -2,7 +2,7 @@
 # snap_api.sh — Layer 4: bump snapshot + generate blast radius report
 # Usage: npm run api:snap
 #
-# Snapshots both openapi.yaml (v1) and openapi-v2.yaml (v2) into api-snapshots/.
+# Snapshots both siteAPI.yaml (v1) and samanthaAPI.yaml (v2) into api-snapshots/.
 # v1 snapshots: api-snapshots/v1/vN.yaml
 # v2 snapshots: api-snapshots/v2/vN.yaml
 # blast-radius-latest.md covers the v1 diff (v2 diff written to blast-radius-v2-latest.md).
@@ -89,18 +89,18 @@ EOF
 mkdir -p "$SNAP_DIR"
 
 # Snapshot v1 spec
-snap_spec "v1" "$REPO_ROOT/openapi.yaml" "blast-radius-latest.md"
+snap_spec "v1" "$REPO_ROOT/siteAPI.yaml" "blast-radius-latest.md"
 
 # Snapshot v2 spec (if it exists)
-if [[ -f "$REPO_ROOT/openapi-v2.yaml" ]]; then
-  snap_spec "v2" "$REPO_ROOT/openapi-v2.yaml" "blast-radius-v2-latest.md"
+if [[ -f "$REPO_ROOT/samanthaAPI.yaml" ]]; then
+  snap_spec "v2" "$REPO_ROOT/samanthaAPI.yaml" "blast-radius-v2-latest.md"
 else
-  echo "INFO: openapi-v2.yaml not found — skipping v2 snapshot"
+  echo "INFO: samanthaAPI.yaml not found — skipping v2 snapshot"
 fi
 
 # Regenerate caller maps for both specs
 python3 "$SCRIPTS_DIR/check_callers.py" > /dev/null
-python3 "$SCRIPTS_DIR/check_callers.py" --spec openapi-v2.yaml > /dev/null 2>/dev/null || true
+python3 "$SCRIPTS_DIR/check_callers.py" --spec samanthaAPI.yaml > /dev/null 2>/dev/null || true
 echo "  Regenerated api-snapshots/caller-map.json + dead-apis.txt"
 
 echo ""
