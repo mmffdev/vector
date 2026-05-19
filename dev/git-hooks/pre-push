@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# git pre-push hook — Channel A of backup-on-push + soft regression rerun.
+# git pre-push hook — Channel A of backup-on-push + soft regression rerun
+# + API contract gate.
 # Tracked source; .git/hooks/pre-push is a symlink to this file.
 # Never blocks the push: every downstream script runs in fail-open mode,
 # and we also guard each invocation with `|| true` so any accidental
@@ -15,5 +16,15 @@ ROOT="$(git rev-parse --show-toplevel)"
 # Skipped silently if RG_API_KEY is unset or Tracker is unreachable.
 # Set SKIP_RG_RERUN=1 to bypass entirely; set RG_GROUP=<slug> to scope.
 "$ROOT/dev/scripts/rg-rerun.sh" --soft || true
+
+# TD-API-004 (option B) — API contract gate. Runs the three contract
+# checks (Go router ↔ openapi.yaml; frontend api(...) callers ↔
+# openapi.yaml; oasdiff breaking changes) before push so drift surfaces
+# per-commit on long-lived feature branches, not only when a PR opens
+# against main. Soft mode (`|| true`) so the gate never blocks; SKIP it
+# via SKIP_API_CONTRACT=1 if you're pushing infra-only changes.
+if [[ -z "${SKIP_API_CONTRACT:-}" ]]; then
+  "$ROOT/dev/scripts/pre-push.sh" || true
+fi
 
 exit 0
