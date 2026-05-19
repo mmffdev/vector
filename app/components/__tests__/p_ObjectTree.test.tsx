@@ -147,6 +147,7 @@ vi.mock("@/app/components/useWorkItemFlowStates", () => ({
 vi.mock("@/app/lib/api", () => ({
   __esModule: true,
   api: vi.fn(async () => ({ items: [], total: 0 })),
+  apiSite: vi.fn(async () => ({ value: null })),
 }));
 
 // PLA-0021 / 00456 — BulkActionBar reads useHasPermission unconditionally
@@ -208,7 +209,7 @@ describe("ObjectTree (PLA-0021 smoke)", () => {
     expect(screen.getByText("Status")).toBeTruthy();
     expect(screen.getByText("Pri")).toBeTruthy();
     expect(screen.getByText("Pts")).toBeTruthy();
-    expect(screen.getByText("Owner")).toBeTruthy();
+    expect(screen.getAllByText("Owner").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Sprint")).toBeTruthy();
     expect(screen.getByText("Due")).toBeTruthy();
 

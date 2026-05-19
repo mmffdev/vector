@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
 import PageHeading from "@/app/components/PageHeading";
@@ -76,6 +77,9 @@ export default function WorkItemsPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Configure work item types and their workflow settings." />
+      <PageDescription>
+        Review the flow states that drive each work-item type. Edit states from the dedicated Flow States page.
+      </PageDescription>
       <Panel
         name="panel_work_items_settings_header"
         className="page-panel-heading"

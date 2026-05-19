@@ -1,6 +1,7 @@
 "use client";
 
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -16,6 +17,9 @@ export default function ReleasesPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Plan, track, and publish workspace releases." />
+      <PageDescription>
+        Plan and manage workspace releases, track progress, and coordinate delivery timelines.
+      </PageDescription>
       <Panel
         name="panel_releases_header"
         className="page-panel-heading"

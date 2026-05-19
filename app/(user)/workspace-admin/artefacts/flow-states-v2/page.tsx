@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { notify } from "@/app/lib/toast";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
@@ -309,6 +310,9 @@ export default function FlowStatesV2Page() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Configure flow states for the v2 workflow engine." />
+      <PageDescription>
+        Orbit visualisation of flow states across every artefact type. Insert or remove states; changes persist immediately and stay in sync with the v1 pill editor.
+      </PageDescription>
       <Panel
         name="panel_flow_states_v2_header"
         className="page-panel-heading"

@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -130,6 +131,9 @@ export default function CustomContainerPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Custom page view." />
+      <PageDescription>
+        Renders a custom page or view configured for this workspace.
+      </PageDescription>
       <Panel
         name="panel_custom_page_header"
         className="page-panel-heading"

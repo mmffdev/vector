@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import ToggleBtn from "@/app/components/ToggleBtn";
@@ -475,6 +476,9 @@ export default function WorkspaceDetailsPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Review and manage tenant-level configuration and details." />
+      <PageDescription>
+        Workspace-tier settings sidecar. Fields left blank inherit from the tenant-level defaults configured in Tenant Settings.
+      </PageDescription>
       <Panel
         name="panel_tenant_details_header"
         className="page-panel-heading"

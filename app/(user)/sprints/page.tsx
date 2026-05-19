@@ -4,6 +4,7 @@
 // Visible to users with role 'user' or 'padmin' (page_roles in DB).
 
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
@@ -19,6 +20,9 @@ export default function SprintsPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Manage active and planned sprints for the workspace." />
+      <PageDescription>
+        Create and manage sprints, assign work items, and track sprint progress and velocity.
+      </PageDescription>
       <Panel
         name="panel_sprints_header"
         className="page-panel-heading"

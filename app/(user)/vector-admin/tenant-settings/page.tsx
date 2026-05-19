@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import ToggleBtn from "@/app/components/ToggleBtn";
@@ -438,6 +439,9 @@ export default function TenantSettingsPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Tenant-level defaults inherited by every workspace in this subscription." />
+      <PageDescription>
+        Manage the tenant master record — identity, address, and structural configuration inherited by every workspace in this subscription.
+      </PageDescription>
       <Panel
         name="panel_tenant_details_header"
         className="page-panel-heading"

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
@@ -318,6 +319,9 @@ export default function PermissionsPage() {
         title={full}
         subtitle="Grant or revoke page access for each role across the workspace."
       />
+      <PageDescription>
+        Tick a cell to grant a role access to a page. Bucket-row checkboxes toggle every page in the bucket at once. Saves on click.
+      </PageDescription>
 
       <Panel
         name="panel_page_permissions_grid"
