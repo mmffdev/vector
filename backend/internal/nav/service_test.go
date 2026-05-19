@@ -338,9 +338,9 @@ func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	// workspace-settings is gadmin-only; a 'user' role must not pin it.
+	// dev-security-audits is gadmin-only; a 'user' role must not pin it.
 	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
-		{ItemKey: "workspace-settings", Position: 0},
+		{ItemKey: "dev-security-audits", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrRoleForbidden) {
 		t.Fatalf("want ErrRoleForbidden, got %v", err)
@@ -373,10 +373,18 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 	svc := newSvc(t, pool)
 	ctx := context.Background()
 
-	// Seed as gadmin with workspace-settings as start page.
-	startKey := "workspace-settings"
-	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleGAdmin, roleID, []PinnedInput{
-		{ItemKey: "workspace-settings", Position: 0},
+	// Seed as gadmin with a gadmin-only page as start. mkFixtures returns a
+	// grp_team_member roleID, but ReplacePrefs validates against the *given*
+	// roleID — so resolve grp_global explicitly for the seed.
+	var grpGlobalID uuid.UUID
+	if err := pool.QueryRow(ctx,
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_global' AND users_roles_id_subscription IS NULL`,
+	).Scan(&grpGlobalID); err != nil {
+		t.Fatalf("resolve grp_global: %v", err)
+	}
+	startKey := "dev-security-audits"
+	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleGAdmin, grpGlobalID, []PinnedInput{
+		{ItemKey: "dev-security-audits", Position: 0},
 	}, &startKey, nil, nil); err != nil {
 		t.Fatalf("seed as gadmin: %v", err)
 	}
@@ -421,19 +429,19 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 
 	userEntries := reg.CatalogFor(teamMemberID, uuid.Nil)
 	for _, e := range userEntries {
-		if e.Key == "workspace-settings" {
-			t.Fatal("grp_team_member should not see workspace-settings entry")
+		if e.Key == "dev-security-audits" {
+			t.Fatal("grp_team_member should not see dev-security-audits entry")
 		}
 	}
 	gadminEntries := reg.CatalogFor(grpGlobalID, uuid.Nil)
-	foundWS := false
+	foundGadminOnly := false
 	for _, e := range gadminEntries {
-		if e.Key == "workspace-settings" {
-			foundWS = true
+		if e.Key == "dev-security-audits" {
+			foundGadminOnly = true
 		}
 	}
-	if !foundWS {
-		t.Fatal("grp_global should see workspace-settings entry")
+	if !foundGadminOnly {
+		t.Fatal("grp_global should see dev-security-audits entry")
 	}
 }
 

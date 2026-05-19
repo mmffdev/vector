@@ -165,6 +165,12 @@ type Filters struct {
 	ScopeNodeID  *string
 	ActorUserID  *string // required when ScopeNodeID is set
 	ActorRole    string  // required when ScopeNodeID is set (e.g. "user", "padmin", "gadmin")
+	// ScopeDirection controls which nodes the scope clamp resolves to.
+	// "descend" (default, empty string): rootNodeID + all live descendants.
+	// "ascend": strict ancestor chain — rootNodeID + every ancestor up to
+	// the subscription root, no siblings. Stored in the user's server
+	// preference (key "scope.direction"); forwarded via ?dir= query param.
+	ScopeDirection string // "descend" | "ascend"; empty == "descend"
 	// WorkspaceID, when set, clamps reads to artefacts whose
 	// artefact_type belongs to this workspace. PLA-0053 / story 00579.
 	// Populated by the handler from topology.WorkspaceIDFromCtx (seeded

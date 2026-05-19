@@ -20,6 +20,10 @@ import (
 type TopologyScopeResolver interface {
 	CanReadScope(ctx context.Context, subscriptionID, userID, targetNodeID uuid.UUID, actorRole string) (bool, error)
 	DescendantNodeIDs(ctx context.Context, subscriptionID, rootNodeID uuid.UUID) ([]uuid.UUID, error)
+	// AncestorNodeIDs returns rootNodeID plus every live ancestor up to the
+	// subscription root (strict chain — no siblings). Used by the "ascend"
+	// scope direction so users can walk up the tree from a selected node.
+	AncestorNodeIDs(ctx context.Context, subscriptionID, rootNodeID uuid.UUID) ([]uuid.UUID, error)
 }
 
 // Service owns all DB operations for the v2 artefacts domain.
@@ -118,9 +122,15 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		if !ok {
 			return nil, 0, ErrScopeForbidden
 		}
-		ids, descErr := s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
-		if descErr != nil {
-			return nil, 0, descErr
+		var ids []uuid.UUID
+		var resolveErr error
+		if filters.ScopeDirection == "ascend" {
+			ids, resolveErr = s.topology.AncestorNodeIDs(ctx, subscriptionID, scopeNodeID)
+		} else {
+			ids, resolveErr = s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
+		}
+		if resolveErr != nil {
+			return nil, 0, resolveErr
 		}
 		extra = append(extra, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
 		args = append(args, ids)
@@ -131,8 +141,10 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		extra = append(extra, fmt.Sprintf("a.parent_artefact_id = $%d::uuid", n))
 		args = append(args, *filters.ParentID)
 		n++
-	} else if len(filters.ItemType) == 0 {
-		// Default: top-level items only (mirrors v1 ListWorkItems default).
+	} else if len(filters.ItemType) == 0 && filters.ScopeNodeID == nil {
+		// Default: top-level items only when no scope clamp is active.
+		// When scope is active, artefacts at any depth in the topology
+		// subtree are visible (their parents may live outside the node).
 		extra = append(extra, "a.parent_artefact_id IS NULL")
 	}
 	// PLA-0054 / story 00586: multi-value UUID filters. Empty slice is a
@@ -302,6 +314,7 @@ func (s *Service) SummariseWorkItems(
 	scopeNodeID *string,
 	actorUserID *string,
 	actorRole string,
+	scopeDirection string,
 ) (WorkItemsSummary, error) {
 	out := WorkItemsSummary{ByType: map[string]int{}}
 	if s.vectorArtefactsPool == nil {
@@ -350,9 +363,15 @@ func (s *Service) SummariseWorkItems(
 		if !ok {
 			return out, ErrScopeForbidden
 		}
-		ids, descErr := s.topology.DescendantNodeIDs(ctx, subscriptionID, nodeUUID)
-		if descErr != nil {
-			return out, descErr
+		var ids []uuid.UUID
+		var resolveErr error
+		if scopeDirection == "ascend" {
+			ids, resolveErr = s.topology.AncestorNodeIDs(ctx, subscriptionID, nodeUUID)
+		} else {
+			ids, resolveErr = s.topology.DescendantNodeIDs(ctx, subscriptionID, nodeUUID)
+		}
+		if resolveErr != nil {
+			return out, resolveErr
 		}
 		conds = append(conds, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
 		args = append(args, ids)

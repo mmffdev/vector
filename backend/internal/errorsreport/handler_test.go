@@ -68,7 +68,7 @@ func TestReport_OK(t *testing.T) {
 	// Verify a row landed for this subscription with the expected code.
 	var found int
 	err = vecPool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM error_events WHERE subscription_id = $1 AND code = $2 AND context->>'handler' = $3`,
+		`SELECT COUNT(*) FROM errors_events WHERE errors_events_id_subscription = $1 AND errors_events_code = $2 AND errors_events_context->>'handler' = $3`,
 		user.SubscriptionID, "ADOPT_INTERNAL", "smoke_test",
 	).Scan(&found)
 	if err != nil {
@@ -199,33 +199,55 @@ func testLibraryROPool(t *testing.T) *pgxpool.Pool {
 func testVectorPool(t *testing.T) (*pgxpool.Pool, *roletypes.User) {
 	t.Helper()
 	loadEnv()
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=errorsreport_handler_test",
+
+	// The errorsreport service writes errors_events on the "vector" pool,
+	// but post-PLA-0023 errors_events lives in vector_artefacts (field
+	// name kept for back-compat — see service.go comment). The user
+	// lookup still happens against mmff_vector where users/subscriptions
+	// live.
+	mainDSN := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=errorsreport_handler_test_main",
 		envOr("DB_HOST", "localhost"),
 		envOr("DB_PORT", "5434"),
 		envOr("DB_USER", "mmff_dev"),
 		os.Getenv("DB_PASSWORD"),
 		envOr("DB_NAME", "mmff_vector"),
 	)
-	pool, err := pgxpool.New(context.Background(), dsn)
+	mainPool, err := pgxpool.New(context.Background(), mainDSN)
 	if err != nil {
-		t.Skipf("cannot open vector pool: %v", err)
+		t.Skipf("cannot open mmff_vector pool: %v", err)
 	}
-	if err := pool.Ping(context.Background()); err != nil {
-		pool.Close()
+	defer mainPool.Close()
+	if err := mainPool.Ping(context.Background()); err != nil {
 		t.Skipf("cannot ping mmff_vector: %v", err)
 	}
 
 	var u roletypes.User
-	err = pool.QueryRow(context.Background(), `
+	err = mainPool.QueryRow(context.Background(), `
 		SELECT id, subscription_id, email, role, is_active
 		FROM users
 		WHERE is_active = TRUE
 		ORDER BY created_at
 		LIMIT 1`).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive)
 	if err != nil {
-		pool.Close()
 		t.Skipf("no active user available: %v", err)
+	}
+
+	vaDSN := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=errorsreport_handler_test_va",
+		envOr("DB_HOST", "localhost"),
+		envOr("DB_PORT", "5434"),
+		envOr("DB_USER", "mmff_dev"),
+		os.Getenv("DB_PASSWORD"),
+		envOr("VA_DB_NAME", "vector_artefacts"),
+	)
+	pool, err := pgxpool.New(context.Background(), vaDSN)
+	if err != nil {
+		t.Skipf("cannot open vector_artefacts pool: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Skipf("cannot ping vector_artefacts: %v", err)
 	}
 	return pool, &u
 }

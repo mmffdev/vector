@@ -51,14 +51,16 @@ func TestList_OK(t *testing.T) {
 	defer libPool.Close()
 	vecPool, sub, user := testVectorPool(t)
 	defer vecPool.Close()
+	acksPool := testAcksPool(t)
+	defer acksPool.Close()
 
 	// Reset ack so seeded release is in the list.
 	releaseID := uuid.MustParse(seededReleaseID)
-	_, _ = vecPool.Exec(context.Background(),
+	_, _ = acksPool.Exec(context.Background(),
 		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		sub.ID, releaseID)
 
-	h := NewHandler(NewService(libPool, vecPool, vecPool), nil, nil)
+	h := NewHandler(NewService(libPool, vecPool, acksPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -85,8 +87,10 @@ func TestAck_BadAction(t *testing.T) {
 	defer libPool.Close()
 	vecPool, _, user := testVectorPool(t)
 	defer vecPool.Close()
+	acksPool := testAcksPool(t)
+	defer acksPool.Close()
 
-	h := NewHandler(NewService(libPool, vecPool, vecPool), nil, nil)
+	h := NewHandler(NewService(libPool, vecPool, acksPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -109,8 +113,10 @@ func TestAck_NotFound(t *testing.T) {
 	defer libPool.Close()
 	vecPool, _, user := testVectorPool(t)
 	defer vecPool.Close()
+	acksPool := testAcksPool(t)
+	defer acksPool.Close()
 
-	h := NewHandler(NewService(libPool, vecPool, vecPool), nil, nil)
+	h := NewHandler(NewService(libPool, vecPool, acksPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -133,13 +139,15 @@ func TestAck_OK_Then_Idempotent(t *testing.T) {
 	defer libPool.Close()
 	vecPool, sub, user := testVectorPool(t)
 	defer vecPool.Close()
+	acksPool := testAcksPool(t)
+	defer acksPool.Close()
 
 	releaseID := uuid.MustParse(seededReleaseID)
-	_, _ = vecPool.Exec(context.Background(),
+	_, _ = acksPool.Exec(context.Background(),
 		`DELETE FROM library_releases_acknowledgements WHERE library_releases_acknowledgements_id_subscription = $1 AND library_releases_acknowledgements_id_library_release = $2`,
 		sub.ID, releaseID)
 
-	h := NewHandler(NewService(libPool, vecPool, vecPool), nil, nil)
+	h := NewHandler(NewService(libPool, vecPool, acksPool), nil, nil)
 	srv := httptest.NewServer(newRouter(h, user))
 	defer srv.Close()
 
@@ -221,7 +229,8 @@ type subRef struct {
 	Tier string
 }
 
-// testVectorPool returns a pool + a usable gadmin user for ack tests.
+// testVectorPool returns the mmff_vector pool + usable gadmin user.
+// (vectorPool in NewService — used for subscription tier lookup.)
 func testVectorPool(t *testing.T) (*pgxpool.Pool, *subRef, *roletypes.User) {
 	t.Helper()
 	loadEnv()
@@ -255,4 +264,28 @@ func testVectorPool(t *testing.T) (*pgxpool.Pool, *subRef, *roletypes.User) {
 		t.Skipf("no gadmin user available: %v", err)
 	}
 	return pool, &sub, &u
+}
+
+// testAcksPool returns the vector_artefacts pool where
+// library_releases_acknowledgements lives (post-PLA-0023 P1).
+func testAcksPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	loadEnv()
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=libraryreleases_handler_test_acks",
+		envOr("DB_HOST", "localhost"),
+		envOr("DB_PORT", "5434"),
+		envOr("DB_USER", "mmff_dev"),
+		os.Getenv("DB_PASSWORD"),
+		envOr("VA_DB_NAME", "vector_artefacts"),
+	)
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Skipf("cannot open vector_artefacts acks pool: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Skipf("cannot ping vector_artefacts: %v", err)
+	}
+	return pool
 }

@@ -277,11 +277,18 @@ const sqlListWorkScopeFlowStates = `
 // ── CreateWorkItem ─────────────────────────────────────────────────────────
 
 const sqlSelectArtefactTypeIDForCreate = `
-		SELECT artefacts_types_id FROM artefacts_types
-		WHERE artefacts_types_id_subscription = $1
-		  AND artefacts_types_scope = $3
-		  AND lower(artefacts_types_name) = $2
-		  AND artefacts_types_archived_at IS NULL
+		SELECT at.artefacts_types_id FROM artefacts_types at
+		WHERE at.artefacts_types_id_subscription = $1
+		  AND at.artefacts_types_scope = $3
+		  AND lower(at.artefacts_types_name) = $2
+		  AND at.artefacts_types_archived_at IS NULL
+		ORDER BY EXISTS (
+		  SELECT 1 FROM flows f
+		  JOIN flows_states fs ON fs.flows_states_id_flow = f.flows_id
+		  WHERE f.flows_id_artefact_type = at.artefacts_types_id
+		    AND f.flows_is_default = TRUE AND fs.flows_states_is_initial = TRUE
+		    AND f.flows_archived_at IS NULL AND fs.flows_states_archived_at IS NULL
+		) DESC, at.artefacts_types_created_at
 		LIMIT 1
 	`
 

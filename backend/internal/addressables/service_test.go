@@ -55,12 +55,12 @@ func uniqueRoute(prefix string) string {
 func cleanupRoute(t *testing.T, pool *pgxpool.Pool, route string) {
 	t.Helper()
 	ctx := context.Background()
-	// page_help rows first (FK ON DELETE RESTRICT); use the addressable ids.
+	// pages_help rows first (FK ON DELETE RESTRICT); use the addressable ids.
 	_, _ = pool.Exec(ctx, `
-		DELETE FROM page_help WHERE addressable_id IN (
-			SELECT id FROM page_addressables WHERE page_route = $1
+		DELETE FROM pages_help WHERE pages_help_id_pages_addressable IN (
+			SELECT pages_addressables_id FROM pages_addressables WHERE pages_addressables_page_route = $1
 		)`, route)
-	_, _ = pool.Exec(ctx, `DELETE FROM page_addressables WHERE page_route = $1`, route)
+	_, _ = pool.Exec(ctx, `DELETE FROM pages_addressables WHERE pages_addressables_page_route = $1`, route)
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -568,9 +568,9 @@ func TestSeedPlaceholder_NoLibraryDefault_Fallback(t *testing.T) {
 	var seededFrom string
 	var updatedBy *uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		SELECT seeded_from, updated_by_user_id
-		  FROM page_help
-		 WHERE addressable_id = $1 AND locale = 'en' AND soft_archived = FALSE
+		SELECT pages_help_seeded_from, pages_help_id_user_updater
+		  FROM pages_help
+		 WHERE pages_help_id_pages_addressable = $1 AND pages_help_locale = 'en' AND pages_help_soft_archived = FALSE
 	`, addrID).Scan(&seededFrom, &updatedBy); err != nil {
 		t.Fatalf("query seeded_from: %v", err)
 	}
@@ -604,9 +604,9 @@ func TestSeedPlaceholder_IsIdempotentOnReRegister(t *testing.T) {
 	var helpID1 uuid.UUID
 	var updatedAt1 string
 	if err := pool.QueryRow(ctx, `
-		SELECT id, updated_at::text
-		  FROM page_help
-		 WHERE addressable_id = $1 AND locale = 'en' AND soft_archived = FALSE
+		SELECT pages_help_id, pages_help_updated_at::text
+		  FROM pages_help
+		 WHERE pages_help_id_pages_addressable = $1 AND pages_help_locale = 'en' AND pages_help_soft_archived = FALSE
 	`, addrID).Scan(&helpID1, &updatedAt1); err != nil {
 		t.Fatalf("first query: %v", err)
 	}
@@ -620,9 +620,9 @@ func TestSeedPlaceholder_IsIdempotentOnReRegister(t *testing.T) {
 	var updatedAt2 string
 	var seededFrom string
 	if err := pool.QueryRow(ctx, `
-		SELECT id, updated_at::text, seeded_from
-		  FROM page_help
-		 WHERE addressable_id = $1 AND locale = 'en' AND soft_archived = FALSE
+		SELECT pages_help_id, pages_help_updated_at::text, pages_help_seeded_from
+		  FROM pages_help
+		 WHERE pages_help_id_pages_addressable = $1 AND pages_help_locale = 'en' AND pages_help_soft_archived = FALSE
 	`, addrID).Scan(&helpID2, &updatedAt2, &seededFrom); err != nil {
 		t.Fatalf("second query: %v", err)
 	}

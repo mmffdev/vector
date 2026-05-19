@@ -234,13 +234,23 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 		wsID = realWS
 	}
 
+	// Look up any priority for the workspace (artefacts.priority_id is NOT NULL).
+	var priorityID uuid.UUID
+	if err := va.QueryRow(ctx, `
+		SELECT id FROM artefact_priorities
+		WHERE workspace_id=$1 AND archived_at IS NULL
+		ORDER BY sort_order LIMIT 1`, wsID,
+	).Scan(&priorityID); err != nil {
+		t.Skipf("no artefact_priorities row for workspace %s: %v", wsID, err)
+	}
+
 	var id uuid.UUID
 	err := va.QueryRow(ctx, `
 		INSERT INTO artefacts
-			(subscription_id, workspace_id, artefact_type_id, number, title, flow_state_id, position)
-		VALUES ($1,$2,$3,$4,$5,$6,100)
+			(subscription_id, workspace_id, artefact_type_id, number, title, flow_state_id, priority_id, position)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,100)
 		RETURNING id`,
-		subID, wsID, atID, num, title, fsID,
+		subID, wsID, atID, num, title, fsID, priorityID,
 	).Scan(&id)
 	if err != nil {
 		t.Skipf("cannot seed artefact %q (%s): %v", title, itemType, err)
@@ -419,7 +429,7 @@ func TestNilPool_ReturnsEmpty(t *testing.T) {
 		t.Errorf("nil pool ListChildren: got %d err %v, want 0/nil", len(children), err)
 	}
 
-	summary, err := svc.SummariseWorkItems(ctx, sub, nil, nil, nil, "")
+	summary, err := svc.SummariseWorkItems(ctx, sub, nil, nil, nil, "", "")
 	if err != nil || summary.Total != 0 {
 		t.Errorf("nil pool Summary: got %+v err %v, want zeroes/nil", summary, err)
 	}
@@ -727,7 +737,7 @@ func TestSummariseWorkItems_CountsWorkScoped(t *testing.T) {
 	sub := pickTestSubscription(t, va)
 	svc := artefactitems.NewService(va, nil, "work")
 
-	summary, err := svc.SummariseWorkItems(context.Background(), sub, nil, nil, nil, "")
+	summary, err := svc.SummariseWorkItems(context.Background(), sub, nil, nil, nil, "", "")
 	if err != nil {
 		t.Fatalf("SummariseWorkItems: %v", err)
 	}
@@ -911,7 +921,7 @@ func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
 	var strategyTypeCount int
 	if err := va.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts_types
-		 WHERE subscription_id=$1 AND scope='strategy' AND archived_at IS NULL`,
+		 WHERE artefacts_types_id_subscription=$1 AND artefacts_types_scope='strategy' AND artefacts_types_archived_at IS NULL`,
 		sub,
 	).Scan(&strategyTypeCount); err != nil {
 		t.Skipf("cannot probe strategy artefacts_types: %v", err)

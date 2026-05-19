@@ -152,6 +152,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("dir"); v != "" {
 		f.Dir = v
 	}
+	// ?scope_dir=ascend|descend controls the topology traversal direction.
+	// "descend" (default): rootNode + all descendants.
+	// "ascend": rootNode + strict ancestor chain only (no siblings).
+	if v := q.Get("scope_dir"); v == "ascend" || v == "descend" {
+		f.ScopeDirection = v
+	}
 	// PLA-0043 — ?meg=<uuid> clamps reads to the artefacts owned by
 	// this topology node and every live descendant. Invalid UUID is 400
 	// before reaching the service; permission/existence is checked
@@ -301,7 +307,11 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		actorUserID = &userIDStr
 		actorRole = string(actor.Role)
 	}
-	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID, scopeNodeID, actorUserID, actorRole)
+	var scopeDir string
+	if v := q.Get("scope_dir"); v == "ascend" || v == "descend" {
+		scopeDir = v
+	}
+	out, err := h.svc.SummariseWorkItems(r.Context(), subID, sprintID, scopeNodeID, actorUserID, actorRole, scopeDir)
 	if err != nil {
 		if errors.Is(err, ErrScopeForbidden) {
 			w.WriteHeader(http.StatusForbidden)
