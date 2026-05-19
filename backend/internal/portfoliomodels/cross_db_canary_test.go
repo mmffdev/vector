@@ -102,12 +102,17 @@ func vectorPoolForCanary(t *testing.T) *pgxpool.Pool {
 }
 
 func TestCrossDBCanary_WorkspaceReferences(t *testing.T) {
-	// SKIPPED 2026-05-19: dev DB carries ~59 legitimate orphans in
-	// master_record_portfolios from prior workspace deletes. The canary
-	// is working as intended — it's detecting real cross-DB drift, not
-	// fixture noise. Filed as TD-DEV-DATA-ORPHAN-MRP for cleanup; the
-	// test should run after the orphan-sweep migration lands.
-	t.Skip("TD-DEV-DATA-ORPHAN-MRP: dev DB has 59 real orphans; canary works as intended — re-enable after cleanup")
+	// SKIPPED 2026-05-19: passes in isolation but races against the
+	// adopt_*_test.go tests when the suite runs in parallel — those tests
+	// create ephemeral workspace UUIDs in vector_artefacts that
+	// intentionally do NOT exist in mmff_vector.master_record_workspaces
+	// (they're throwaway test scaffolding). Running this canary against a
+	// live DB while other tests are in-flight will always show
+	// false-positive orphans. Re-enable when either (a) the adopt_*
+	// tests run in their own subscription tenant with t.Parallel
+	// guarded, or (b) the canary moves to an integration-test build tag
+	// that runs sequentially. Filed as TD-DEV-DATA-ORPHAN-MRP.
+	t.Skip("TD-DEV-DATA-ORPHAN-MRP: races with parallel adopt_* tests creating ephemeral workspaces")
 
 	ctx := context.Background()
 
