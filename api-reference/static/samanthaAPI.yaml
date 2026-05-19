@@ -128,72 +128,204 @@ paths:
       tags:
       - portfolio-items
       summary: POST /portfolio-items
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postPortfolioItems
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Create
+        file: backend/internal/topology/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspace_id:
+                  type: string
+                  format: uuid
+                parent_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                description:
+                  type: string
+                label_override:
+                  type: string
+                icon:
+                  type: string
+                colour:
+                  type: string
+                avatar_url:
+                  type: string
+                layout_mode:
+                  type: object
+                  x-go-type: LayoutMode
+                manual_x:
+                  type: integer
+                  format: int32
+                manual_y:
+                  type: integer
+                  format: int32
+                collapsed_default:
+                  type: boolean
+                position:
+                  type: integer
+                  format: int32
+              required:
+              - name
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  subscription_id:
+                    type: string
+                    format: uuid
+                  parent_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  label_override:
+                    type: string
+                  icon:
+                    type: string
+                  colour:
+                    type: string
+                  avatar_url:
+                    type: string
+                  layout_mode:
+                    type: object
+                    x-go-type: LayoutMode
+                  manual_x:
+                    type: integer
+                    format: int32
+                  manual_y:
+                    type: integer
+                    format: int32
+                  collapsed_default:
+                    type: boolean
+                  position:
+                    type: integer
+                    format: int32
+                  archived_at:
+                    type: string
+                    format: date-time
+                  archived_descendant_count:
+                    type: integer
+                    format: int32
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - workspace_id
+                - subscription_id
+                - name
+                - description
+                - layout_mode
+                - collapsed_default
+                - position
+                - archived_descendant_count
+                - created_at
+                - updated_at
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /portfolio-items/bulk:
     post:
       tags:
       - portfolio-items
       summary: POST /portfolio-items/bulk
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postPortfolioItemsBulk
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Bulk
+        file: backend/internal/artefactitems/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                op:
+                  type: string
+              required:
+              - ids
+              - op
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
   /portfolio-items/flow-states:
     get:
       tags:
       - portfolio-items
       summary: GET /portfolio-items/flow-states
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getPortfolioItemsFlowStates
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListFlowStates
+        file: backend/internal/artefactitems/handler.go
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
@@ -205,18 +337,24 @@ paths:
       tags:
       - portfolio-items
       summary: GET /portfolio-items/summary
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getPortfolioItemsSummary
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Summary
+        file: backend/internal/artefactitems/handler.go
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
@@ -228,181 +366,306 @@ paths:
       tags:
       - portfolio-items
       summary: DELETE /portfolio-items/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: deletePortfolioItemsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Archive
+        file: backend/internal/topology/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
-          description: 204 (stub response shape — schema not yet curated)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: 204 — no content
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     get:
       tags:
       - portfolio-items
       summary: GET /portfolio-items/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getPortfolioItemsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Get
+        file: backend/internal/usertaborder/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
+                properties:
+                  page_id:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: Row
+                required:
+                - page_id
+                - items
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     patch:
       tags:
       - portfolio-items
       summary: PATCH /portfolio-items/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: patchPortfolioItemsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Patch
+        file: backend/internal/topology/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                parent_id:
+                  type: string
+                  format: uuid
+                clear_root:
+                  type: boolean
+                description:
+                  type: string
+                label_override:
+                  type: string
+                icon:
+                  type: string
+                colour:
+                  type: string
+                avatar_url:
+                  type: string
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /portfolio-items/{id}/children:
     get:
       tags:
       - portfolio-items
       summary: GET /portfolio-items/{id}/children
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getPortfolioItemsIdChildren
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListChildren
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /portfolio-items/{id}/field-values:
     get:
       tags:
       - portfolio-items
       summary: GET /portfolio-items/{id}/field-values
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getPortfolioItemsIdFieldValues
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListFieldValues
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
     put:
       tags:
       - portfolio-items
       summary: PUT /portfolio-items/{id}/field-values
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: putPortfolioItemsIdFieldValues
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.UpsertFieldValues
+        file: backend/internal/artefactitems/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                field_library_id:
+                  type: string
+                string_value:
+                  type: string
+                number_value:
+                  type: string
+                text_value:
+                  type: string
+                date_value:
+                  type: string
+              required:
+              - field_library_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /portfolio-items/{id}/field-values/{field_library_id}:
     delete:
       tags:
       - portfolio-items
       summary: DELETE /portfolio-items/{id}/field-values/{field_library_id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: deletePortfolioItemsIdFieldValuesFieldLibraryId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.DeleteFieldValue
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: field_library_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
-          description: 204 (stub response shape — schema not yet curated)
+          description: 204 — no content
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /rank/move:
     post:
       tags:
@@ -526,42 +789,158 @@ paths:
       tags:
       - timeboxes
       summary: POST /timeboxes/releases
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postTimeboxesReleases
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: releaseH.Create
+        file: backend/internal/topology/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspace_id:
+                  type: string
+                  format: uuid
+                parent_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                description:
+                  type: string
+                label_override:
+                  type: string
+                icon:
+                  type: string
+                colour:
+                  type: string
+                avatar_url:
+                  type: string
+                layout_mode:
+                  type: object
+                  x-go-type: LayoutMode
+                manual_x:
+                  type: integer
+                  format: int32
+                manual_y:
+                  type: integer
+                  format: int32
+                collapsed_default:
+                  type: boolean
+                position:
+                  type: integer
+                  format: int32
+              required:
+              - name
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  subscription_id:
+                    type: string
+                    format: uuid
+                  parent_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  label_override:
+                    type: string
+                  icon:
+                    type: string
+                  colour:
+                    type: string
+                  avatar_url:
+                    type: string
+                  layout_mode:
+                    type: object
+                    x-go-type: LayoutMode
+                  manual_x:
+                    type: integer
+                    format: int32
+                  manual_y:
+                    type: integer
+                    format: int32
+                  collapsed_default:
+                    type: boolean
+                  position:
+                    type: integer
+                    format: int32
+                  archived_at:
+                    type: string
+                    format: date-time
+                  archived_descendant_count:
+                    type: integer
+                    format: int32
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - workspace_id
+                - subscription_id
+                - name
+                - description
+                - layout_mode
+                - collapsed_default
+                - position
+                - archived_descendant_count
+                - created_at
+                - updated_at
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/releases/bulk-create:
     post:
       tags:
       - timeboxes
       summary: POST /timeboxes/releases/bulk-create
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postTimeboxesReleasesBulkCreate
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
+        could not resolve the response or request type from the Go
+        handler (cross-package returns, polymorphic responses, or
+        unrecognised patterns). Open the handler at the file:line
+        below and document the shape manually. Search for
+        `x-needs-curation: true` to find all such operations.
+      x-handler:
+        symbol: releaseH.BulkCreate
+        file: backend/internal/timeboxsprints/handler.go
+        needs_curation: true
+        reasons:
+        - request-struct-struct-not-found
+      x-stub: true
       responses:
         '201':
           description: 201 (stub response shape — schema not yet curated)
@@ -605,54 +984,88 @@ paths:
       tags:
       - timeboxes
       summary: DELETE /timeboxes/releases/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: deleteTimeboxesReleasesId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: releaseH.Delete
+        file: backend/internal/usertaborder/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
-          description: 204 (stub response shape — schema not yet curated)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: 204 — no content
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     put:
       tags:
       - timeboxes
       summary: PUT /timeboxes/releases/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: putTimeboxesReleasesId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: releaseH.Update
+        file: backend/internal/roles/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                description:
+                  type: string
+                rank:
+                  type: integer
+                  format: int32
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /timeboxes/sprints:
     get:
       tags:
@@ -681,42 +1094,158 @@ paths:
       tags:
       - timeboxes
       summary: POST /timeboxes/sprints
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postTimeboxesSprints
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: sprintH.Create
+        file: backend/internal/topology/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspace_id:
+                  type: string
+                  format: uuid
+                parent_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                description:
+                  type: string
+                label_override:
+                  type: string
+                icon:
+                  type: string
+                colour:
+                  type: string
+                avatar_url:
+                  type: string
+                layout_mode:
+                  type: object
+                  x-go-type: LayoutMode
+                manual_x:
+                  type: integer
+                  format: int32
+                manual_y:
+                  type: integer
+                  format: int32
+                collapsed_default:
+                  type: boolean
+                position:
+                  type: integer
+                  format: int32
+              required:
+              - name
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  subscription_id:
+                    type: string
+                    format: uuid
+                  parent_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  label_override:
+                    type: string
+                  icon:
+                    type: string
+                  colour:
+                    type: string
+                  avatar_url:
+                    type: string
+                  layout_mode:
+                    type: object
+                    x-go-type: LayoutMode
+                  manual_x:
+                    type: integer
+                    format: int32
+                  manual_y:
+                    type: integer
+                    format: int32
+                  collapsed_default:
+                    type: boolean
+                  position:
+                    type: integer
+                    format: int32
+                  archived_at:
+                    type: string
+                    format: date-time
+                  archived_descendant_count:
+                    type: integer
+                    format: int32
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - workspace_id
+                - subscription_id
+                - name
+                - description
+                - layout_mode
+                - collapsed_default
+                - position
+                - archived_descendant_count
+                - created_at
+                - updated_at
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints/bulk-create:
     post:
       tags:
       - timeboxes
       summary: POST /timeboxes/sprints/bulk-create
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postTimeboxesSprintsBulkCreate
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
+        could not resolve the response or request type from the Go
+        handler (cross-package returns, polymorphic responses, or
+        unrecognised patterns). Open the handler at the file:line
+        below and document the shape manually. Search for
+        `x-needs-curation: true` to find all such operations.
+      x-handler:
+        symbol: sprintH.BulkCreate
+        file: backend/internal/timeboxsprints/handler.go
+        needs_curation: true
+        reasons:
+        - request-struct-struct-not-found
+      x-stub: true
       responses:
         '201':
           description: 201 (stub response shape — schema not yet curated)
@@ -760,112 +1289,174 @@ paths:
       tags:
       - timeboxes
       summary: DELETE /timeboxes/sprints/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: deleteTimeboxesSprintsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: sprintH.Delete
+        file: backend/internal/usertaborder/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
-          description: 204 (stub response shape — schema not yet curated)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: 204 — no content
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     put:
       tags:
       - timeboxes
       summary: PUT /timeboxes/sprints/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: putTimeboxesSprintsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: sprintH.Update
+        file: backend/internal/roles/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                description:
+                  type: string
+                rank:
+                  type: integer
+                  format: int32
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /timeboxes/sprints/{id}/close:
     post:
       tags:
       - timeboxes
       summary: POST /timeboxes/sprints/{id}/close
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postTimeboxesSprintsIdClose
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: sprintH.Close
+        file: backend/internal/timeboxsprints/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints/{id}/start:
     post:
       tags:
       - timeboxes
       summary: POST /timeboxes/sprints/{id}/start
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postTimeboxesSprintsIdStart
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: sprintH.Start
+        file: backend/internal/timeboxsprints/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /topology/commit:
     get:
       tags:
@@ -1406,26 +1997,78 @@ paths:
       tags:
       - topology
       summary: GET /topology/users/{userId}/grants
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getTopologyUsersUseridGrants
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: orgDesignH.ListGrantsByUser
+        file: backend/internal/topology/handler.go
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
-                type: object
+                type: array
+                items:
+                  type: object
+                  properties:
+                    grant_id:
+                      type: string
+                      format: uuid
+                    node_id:
+                      type: string
+                      format: uuid
+                    workspace_id:
+                      type: string
+                      format: uuid
+                    parent_id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    label_override:
+                      type: string
+                    colour:
+                      type: string
+                    icon:
+                      type: string
+                    role:
+                      type: object
+                      x-go-type: Role
+                    granted_at:
+                      type: string
+                      format: date-time
+                    position:
+                      type: integer
+                      format: int32
+                  required:
+                  - grant_id
+                  - node_id
+                  - workspace_id
+                  - name
+                  - role
+                  - granted_at
+                  - position
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /topology/view-state:
     put:
       tags:
@@ -1536,72 +2179,204 @@ paths:
       tags:
       - work-items
       summary: POST /work-items
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postWorkItems
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Create
+        file: backend/internal/topology/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspace_id:
+                  type: string
+                  format: uuid
+                parent_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                description:
+                  type: string
+                label_override:
+                  type: string
+                icon:
+                  type: string
+                colour:
+                  type: string
+                avatar_url:
+                  type: string
+                layout_mode:
+                  type: object
+                  x-go-type: LayoutMode
+                manual_x:
+                  type: integer
+                  format: int32
+                manual_y:
+                  type: integer
+                  format: int32
+                collapsed_default:
+                  type: boolean
+                position:
+                  type: integer
+                  format: int32
+              required:
+              - name
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  subscription_id:
+                    type: string
+                    format: uuid
+                  parent_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  label_override:
+                    type: string
+                  icon:
+                    type: string
+                  colour:
+                    type: string
+                  avatar_url:
+                    type: string
+                  layout_mode:
+                    type: object
+                    x-go-type: LayoutMode
+                  manual_x:
+                    type: integer
+                    format: int32
+                  manual_y:
+                    type: integer
+                    format: int32
+                  collapsed_default:
+                    type: boolean
+                  position:
+                    type: integer
+                    format: int32
+                  archived_at:
+                    type: string
+                    format: date-time
+                  archived_descendant_count:
+                    type: integer
+                    format: int32
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - workspace_id
+                - subscription_id
+                - name
+                - description
+                - layout_mode
+                - collapsed_default
+                - position
+                - archived_descendant_count
+                - created_at
+                - updated_at
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /work-items/bulk:
     post:
       tags:
       - work-items
       summary: POST /work-items/bulk
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: postWorkItemsBulk
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Bulk
+        file: backend/internal/artefactitems/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                op:
+                  type: string
+              required:
+              - ids
+              - op
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
   /work-items/flow-states:
     get:
       tags:
       - work-items
       summary: GET /work-items/flow-states
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getWorkItemsFlowStates
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListFlowStates
+        file: backend/internal/artefactitems/handler.go
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
@@ -1613,18 +2388,24 @@ paths:
       tags:
       - work-items
       summary: GET /work-items/summary
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getWorkItemsSummary
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Summary
+        file: backend/internal/artefactitems/handler.go
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
@@ -1636,231 +2417,455 @@ paths:
       tags:
       - work-items
       summary: DELETE /work-items/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: deleteWorkItemsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Archive
+        file: backend/internal/topology/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
-          description: 204 (stub response shape — schema not yet curated)
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: 204 — no content
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     get:
       tags:
       - work-items
       summary: GET /work-items/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getWorkItemsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Get
+        file: backend/internal/usertaborder/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
+                properties:
+                  page_id:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: Row
+                required:
+                - page_id
+                - items
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     patch:
       tags:
       - work-items
       summary: PATCH /work-items/{id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: patchWorkItemsId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Patch
+        file: backend/internal/topology/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                parent_id:
+                  type: string
+                  format: uuid
+                clear_root:
+                  type: boolean
+                description:
+                  type: string
+                label_override:
+                  type: string
+                icon:
+                  type: string
+                colour:
+                  type: string
+                avatar_url:
+                  type: string
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /work-items/{id}/children:
     get:
       tags:
       - work-items
       summary: GET /work-items/{id}/children
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getWorkItemsIdChildren
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListChildren
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /work-items/{id}/field-values:
     get:
       tags:
       - work-items
       summary: GET /work-items/{id}/field-values
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getWorkItemsIdFieldValues
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListFieldValues
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
     put:
       tags:
       - work-items
       summary: PUT /work-items/{id}/field-values
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: putWorkItemsIdFieldValues
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.UpsertFieldValues
+        file: backend/internal/artefactitems/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                field_library_id:
+                  type: string
+                string_value:
+                  type: string
+                number_value:
+                  type: string
+                text_value:
+                  type: string
+                date_value:
+                  type: string
+              required:
+              - field_library_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /work-items/{id}/field-values/{field_library_id}:
     delete:
       tags:
       - work-items
       summary: DELETE /work-items/{id}/field-values/{field_library_id}
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: deleteWorkItemsIdFieldValuesFieldLibraryId
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.DeleteFieldValue
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: field_library_id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
-          description: 204 (stub response shape — schema not yet curated)
+          description: 204 — no content
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /workspaces/{id}/fields:
     get:
       tags:
       - workspaces
       summary: GET /workspaces/{id}/fields
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getWorkspacesIdFields
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: fieldsH.List
+        file: backend/internal/fields/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
                 type: object
+                properties:
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  fields:
+                    type: array
+                    items:
+                      type: object
+                required:
+                - workspace_id
+                - fields
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /workspaces/{id}/portfolio/layers:
     get:
       tags:
       - workspaces
       summary: GET /workspaces/{id}/portfolio/layers
-      description: |-
-        AUTO-GENERATED STUB — schema not yet curated.
-        Path exists in main.go; request body, response shape, and error
-        cases need hand-curation. Search for `x-stub: true` to find all
-        stubs awaiting review. See dev/scripts/sync_specs.py.
       operationId: getWorkspacesIdPortfolioLayers
-      x-stub: true
       security:
       - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspaceLayersH.GetWorkspaceLayers
+        file: backend/internal/portfoliomodels/handler_workspace_layers.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
-          description: 200 (stub response shape — schema not yet curated)
+          description: 200 — success response
           content:
             application/json:
               schema:
-                type: object
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    workspace_id:
+                      type: string
+                      format: uuid
+                    source_library_id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    tag:
+                      type: string
+                    sort_order:
+                      type: integer
+                      format: int32
+                    parent_layer_id:
+                      type: string
+                      format: uuid
+                    icon:
+                      type: string
+                    colour:
+                      type: string
+                    description_md:
+                      type: string
+                    help_md:
+                      type: string
+                    allows_children:
+                      type: boolean
+                    is_leaf:
+                      type: boolean
+                    is_placeholder:
+                      type: boolean
+                    archived_at:
+                      type: string
+                      format: date-time
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+                  required:
+                  - id
+                  - workspace_id
+                  - name
+                  - tag
+                  - sort_order
+                  - allows_children
+                  - is_leaf
+                  - is_placeholder
+                  - created_at
+                  - updated_at
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
 components:
   schemas:
     TopologyNode:
