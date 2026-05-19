@@ -19,7 +19,7 @@ import portfolioWizardJson from "@/app/components/ObjectTree/configs/p_wizard_po
 export default function PortfolioItemsPage() {
   const { full } = usePageTitle();
   const { user } = useAuth();
-  const { activeNodeId } = useScope();
+  const { activeNodeId, direction } = useScope();
   useHintOnce("PORTFOLIO_MODEL_FIRST_VISIT");
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [summary, setSummary] = useState<{
@@ -59,7 +59,7 @@ export default function PortfolioItemsPage() {
   // the count from whichever node was active on first mount.
   useEffect(() => {
     void refetchSummary();
-  }, [refetchSummary, activeNodeId]);
+  }, [refetchSummary, activeNodeId, direction]);
 
   const subscriptionID = user?.subscription_id ?? null;
   const topic = subscriptionID

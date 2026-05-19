@@ -20,7 +20,9 @@ import {
   type SortKey,
   type WorkItem,
 } from "@/app/components/work-items-tree-config";
+import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
 import type { ColumnDef } from "@/app/components/ResourceTree";
+import { MdAdd, MdOutlineCategory, MdSearch } from "react-icons/md";
 
 export type { WorkItem };
 
@@ -125,6 +127,21 @@ export default function ObjectTree({
   // decide whether to render itself.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // Action bar — artefact type picker that focuses the "Add new" CTA.
+  // Design-only for now (no create wiring); options come from the workspace
+  // artefact-type catalogue, same source as the filter chips.
+  const actionTypeOptions = useChipTypeOptions("work");
+  const [actionTypeId, setActionTypeId] = useState<string>("");
+  const actionTypeLabel = useMemo(() => {
+    const found = actionTypeOptions.find((o) => o.value === actionTypeId);
+    return found?.label ?? null;
+  }, [actionTypeOptions, actionTypeId]);
+
+  // Search lives at this level so it can render inside the action bar
+  // alongside the create-new chip and filter chips. ResourceTree consumes
+  // it via the controlled searchValue + onSearchChange props.
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Filter or sort changes invalidate the page offset — page 5 of an
   // unfiltered/default-sorted set is meaningless on a filtered/resorted set.
@@ -242,9 +259,350 @@ export default function ObjectTree({
     </header>
   ) : null;
 
+  // Action bar — sits between the dense-grid header and the filter bar.
+  // The artefact-type dropdown IS the create trigger: picking a type opens
+  // the create-flyout below the tree (see createFlyoutNode). Clearing the
+  // dropdown closes it. Design-only — submit isn't wired yet.
+  const actionBarNode = (
+    <div className="tree_accordion-dense__actionbar" role="toolbar" aria-label="Work item actions">
+      <span
+        className={
+          "tree_accordion-dense__filterbar-chip" +
+          (actionTypeId ? " tree_accordion-dense__filterbar-chip--active" : "")
+        }
+        style={{ position: "relative" }}
+      >
+        <span className="tree_accordion-dense__filterbar-chip-icon">
+          {actionTypeId ? <MdAdd size={14} /> : <MdOutlineCategory size={14} />}
+        </span>
+        <span className="tree_accordion-dense__filterbar-chip-label">
+          {actionTypeLabel ? `Add new ${actionTypeLabel}` : "Create New"}
+        </span>
+        <select
+          className="tree_accordion-dense__filterbar-chip-select"
+          aria-label="Add new artefact — pick type"
+          value={actionTypeId}
+          onChange={(e) => setActionTypeId(e.target.value)}
+        >
+          <option value="">Artefact type…</option>
+          {actionTypeOptions.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </span>
+
+      {actionTypeId && (
+        <button
+          type="button"
+          className="btn btn--sm btn--secondary"
+          onClick={() => setActionTypeId("")}
+          aria-label="Cancel new artefact"
+        >
+          Cancel
+        </button>
+      )}
+
+      <div className="tree_accordion-dense__filterbar-search">
+        <span className="tree_accordion-dense__filterbar-search-icon" aria-hidden="true">
+          <MdSearch size={12} />
+        </span>
+        <input
+          type="search"
+          className="tree_accordion-dense__filterbar-search-input"
+          placeholder={config.searchPlaceholder ?? "Search…"}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label={config.searchPlaceholder ?? "Search"}
+        />
+      </div>
+      {config.filterChips}
+      <span className="tree_accordion-dense__filterbar-spacer" />
+    </div>
+  );
+
+  // Always mounted so the slide-down/up animation has both states to
+  // transition between. Visibility is gated by data-open on the wrapper,
+  // which drives grid-template-rows + opacity + translateY in CSS.
+  //
+  // Field inventory below is design-only (PLA-0052 Path A): every column
+  // on `artefacts` (vector_artefacts) plus a custom-fields section that
+  // shows one stub input per `field_library.field_type` so the visual
+  // contract is reviewable. No live data, no submit wiring.
+  const tab = (open: boolean) => (open ? 0 : -1);
+  const createFlyoutNode = (
+    <section
+      className="tree_accordion-dense__createflyout"
+      data-open={actionTypeId ? "true" : "false"}
+      role="region"
+      aria-label={actionTypeLabel ? `New ${actionTypeLabel} form` : "New artefact form"}
+      aria-hidden={!actionTypeId}
+    >
+      <div className="tree_accordion-dense__createflyout-inner">
+        <header className="tree_accordion-dense__createflyout-head">
+          <h3 className="tree_accordion-dense__createflyout-title">
+            New {actionTypeLabel ?? "artefact"}
+          </h3>
+          <button
+            type="button"
+            className="tree_accordion-dense__createflyout-close"
+            aria-label="Close form"
+            tabIndex={tab(!!actionTypeId)}
+            onClick={() => setActionTypeId("")}
+          >
+            ×
+          </button>
+        </header>
+        <form
+          className="tree_accordion-dense__createflyout-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Design-only — surface intent in console until wired.
+            // eslint-disable-next-line no-console
+            console.log("Create artefact", { artefact_type_id: actionTypeId, label: actionTypeLabel });
+            setActionTypeId("");
+          }}
+        >
+          {/* ─── Core (artefacts columns) ──────────────────────────── */}
+          <div className="tree_accordion-dense__createflyout-section">
+            <label className="tree_accordion-dense__createflyout-field">
+              <span className="tree_accordion-dense__createflyout-field-label">
+                Title <span className="tree_accordion-dense__createflyout-required">*</span>
+              </span>
+              <input
+                type="text"
+                className="tree_accordion-dense__createflyout-input"
+                placeholder={actionTypeLabel ? `${actionTypeLabel} title…` : "Title…"}
+                tabIndex={tab(!!actionTypeId)}
+              />
+            </label>
+
+            <label className="tree_accordion-dense__createflyout-field">
+              <span className="tree_accordion-dense__createflyout-field-label">Description</span>
+              <textarea
+                className="tree_accordion-dense__createflyout-input"
+                rows={3}
+                placeholder="Optional rich text"
+                tabIndex={tab(!!actionTypeId)}
+              />
+            </label>
+
+            <div className="tree_accordion-dense__createflyout-row">
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">
+                  Parent artefact
+                </span>
+                <select
+                  className="tree_accordion-dense__createflyout-input"
+                  tabIndex={tab(!!actionTypeId)}
+                  defaultValue=""
+                >
+                  <option value="">— None (root) —</option>
+                  <option value="stub-1">Epic: Onboarding revamp</option>
+                  <option value="stub-2">Feature: Risk register</option>
+                </select>
+              </label>
+
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">
+                  Topology node
+                </span>
+                <select
+                  className="tree_accordion-dense__createflyout-input"
+                  tabIndex={tab(!!actionTypeId)}
+                  defaultValue=""
+                >
+                  <option value="">— Unassigned —</option>
+                  <option value="stub-a">Platform / Identity</option>
+                  <option value="stub-b">Platform / Billing</option>
+                  <option value="stub-c">Revenue / Acquisition</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="tree_accordion-dense__createflyout-row">
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">
+                  Flow state
+                </span>
+                <select
+                  className="tree_accordion-dense__createflyout-input"
+                  tabIndex={tab(!!actionTypeId)}
+                  defaultValue=""
+                >
+                  <option value="">— Initial —</option>
+                  <option value="backlog">Backlog</option>
+                  <option value="ready">Ready</option>
+                  <option value="doing">Doing</option>
+                </select>
+              </label>
+
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">
+                  Position
+                </span>
+                <input
+                  type="number"
+                  className="tree_accordion-dense__createflyout-input"
+                  defaultValue={0}
+                  tabIndex={tab(!!actionTypeId)}
+                />
+              </label>
+            </div>
+
+            <div className="tree_accordion-dense__createflyout-row">
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">
+                  Owner
+                </span>
+                <select
+                  className="tree_accordion-dense__createflyout-input"
+                  tabIndex={tab(!!actionTypeId)}
+                  defaultValue=""
+                >
+                  <option value="">— Me —</option>
+                  <option value="stub-u1">Alex Chen</option>
+                  <option value="stub-u2">Priya Shah</option>
+                </select>
+              </label>
+
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">
+                  Assigned to
+                </span>
+                <select
+                  className="tree_accordion-dense__createflyout-input"
+                  tabIndex={tab(!!actionTypeId)}
+                  defaultValue=""
+                >
+                  <option value="">— Unassigned —</option>
+                  <option value="stub-u1">Alex Chen</option>
+                  <option value="stub-u2">Priya Shah</option>
+                </select>
+              </label>
+            </div>
+
+            <p className="tree_accordion-dense__createflyout-meta">
+              <span>Type: <strong>{actionTypeLabel ?? "—"}</strong></span>
+              <span>Number: <strong>auto</strong></span>
+              <span>Created by: <strong>me</strong></span>
+              <span>Workspace + Subscription: <strong>session-scoped</strong></span>
+            </p>
+          </div>
+
+          {/* ─── Custom fields (per-type field_library bindings) ───── */}
+          <div className="tree_accordion-dense__createflyout-section">
+            <div className="tree_accordion-dense__createflyout-section-head">
+              <span className="cf-tree__section-label">Custom Fields</span>
+              <span className="tree_accordion-dense__createflyout-stub-tag">stub</span>
+            </div>
+
+            <label className="tree_accordion-dense__createflyout-field">
+              <span className="tree_accordion-dense__createflyout-field-label">Short text (textbox)</span>
+              <input type="text" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
+            </label>
+
+            <label className="tree_accordion-dense__createflyout-field">
+              <span className="tree_accordion-dense__createflyout-field-label">Long text (richtext)</span>
+              <textarea rows={2} className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
+            </label>
+
+            <div className="tree_accordion-dense__createflyout-row">
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">Integer</span>
+                <input type="number" step={1} className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
+              </label>
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">Decimal</span>
+                <input type="number" step="0.01" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
+              </label>
+            </div>
+
+            <div className="tree_accordion-dense__createflyout-row">
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">Date</span>
+                <input type="date" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
+              </label>
+              <label className="tree_accordion-dense__createflyout-field tree_accordion-dense__createflyout-field--inline">
+                <input type="checkbox" tabIndex={tab(!!actionTypeId)} />
+                <span className="tree_accordion-dense__createflyout-field-label">Boolean</span>
+              </label>
+            </div>
+
+            <div className="tree_accordion-dense__createflyout-row">
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">Select (one)</span>
+                <select className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} defaultValue="">
+                  <option value="">— Choose —</option>
+                  <option value="a">Option A</option>
+                  <option value="b">Option B</option>
+                </select>
+              </label>
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">Multiselect</span>
+                <select multiple size={3} className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)}>
+                  <option value="a">Option A</option>
+                  <option value="b">Option B</option>
+                  <option value="c">Option C</option>
+                </select>
+              </label>
+            </div>
+
+            <fieldset className="tree_accordion-dense__createflyout-radiogroup">
+              <legend className="tree_accordion-dense__createflyout-field-label">Radio</legend>
+              <label className="tree_accordion-dense__createflyout-radio">
+                <input type="radio" name="stub-radio" tabIndex={tab(!!actionTypeId)} /> One
+              </label>
+              <label className="tree_accordion-dense__createflyout-radio">
+                <input type="radio" name="stub-radio" tabIndex={tab(!!actionTypeId)} /> Two
+              </label>
+              <label className="tree_accordion-dense__createflyout-radio">
+                <input type="radio" name="stub-radio" tabIndex={tab(!!actionTypeId)} /> Three
+              </label>
+            </fieldset>
+
+            <div className="tree_accordion-dense__createflyout-row">
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">User picker</span>
+                <select className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} defaultValue="">
+                  <option value="">— Choose user —</option>
+                  <option value="stub-u1">Alex Chen</option>
+                  <option value="stub-u2">Priya Shah</option>
+                </select>
+              </label>
+              <label className="tree_accordion-dense__createflyout-field">
+                <span className="tree_accordion-dense__createflyout-field-label">URL</span>
+                <input type="url" placeholder="https://…" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
+              </label>
+            </div>
+          </div>
+
+          <div className="tree_accordion-dense__createflyout-actions">
+            <button
+              type="button"
+              className="btn btn--sm btn--secondary"
+              tabIndex={tab(!!actionTypeId)}
+              onClick={() => setActionTypeId("")}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn--sm btn--primary"
+              tabIndex={tab(!!actionTypeId)}
+            >
+              + Create {actionTypeLabel ?? "artefact"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  );
+
   const inner = (
     <>
       {headerNode}
+      {actionBarNode}
+      {createFlyoutNode}
       {/* TODO(00456): wire bulk action handlers in WS3-D */}
       <BulkActionBar selectedIds={selectedIds} onClear={clearSelection} />
       <ResourceTree<WorkItem>
@@ -270,6 +628,9 @@ export default function ObjectTree({
         onPageSizeChange={setPageSize}
         loading={loadingWindow}
         filterChips={config.filterChips}
+        hideFilterBar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
         ariaLabel={config.ariaLabel}
         name={config.treeName}
       />

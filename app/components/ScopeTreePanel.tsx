@@ -78,7 +78,7 @@ function Spine({ depth, isLast, ancestorMoreChildren }: {
 }
 
 export default function ScopeTreePanel() {
-  const { grants, activeNodeId, setActiveNodeId, loading, error } = useScope();
+  const { grants, activeNodeId, setActiveNodeId, direction, setDirection, loading, error } = useScope();
   const { user, switchWorkspace } = useAuth();
 
   const tree = useMemo(() => flattenGrants(grants), [grants]);
@@ -95,6 +95,27 @@ export default function ScopeTreePanel() {
 
   return (
     <div className="scope-tree-panel">
+      {/* Direction toggle — ascend (up the chain) / descend (node + children) */}
+      <div className="scope-tree-panel__direction-bar" role="group" aria-label="Scope direction">
+        <button
+          type="button"
+          className={`scope-tree-panel__dir-btn${direction === "descend" ? " is-active" : ""}`}
+          aria-pressed={direction === "descend"}
+          onClick={() => setDirection("descend")}
+          title="Scope down — selected node and all its children"
+        >
+          ↓ Down
+        </button>
+        <button
+          type="button"
+          className={`scope-tree-panel__dir-btn${direction === "ascend" ? " is-active" : ""}`}
+          aria-pressed={direction === "ascend"}
+          onClick={() => setDirection("ascend")}
+          title="Scope up — selected node and all its ancestors"
+        >
+          ↑ Up
+        </button>
+      </div>
       {tree.map(({ grant, label, depth, isLast, hasChildren, ancestorMoreChildren }) => {
         const isActive = grant.node_id === activeNodeId;
         return (

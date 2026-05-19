@@ -128,6 +128,18 @@ function readCookie(name: string): string | null {
 // render reads the same value, no localStorage race. localStorage is
 // kept as a fallback only for the brief window before ?meg= lands in
 // the URL on first paint (TD-URL-SCOPE-PARAM-CUTOVER).
+//
+// Also forwards ?scope_dir= when a direction other than the default
+// "descend" is set via setScopeDirection() below. Direction is not
+// in the URL (no PLA-0053 carveout needed — it doesn't identify a
+// resource), so it's kept in module state and injected at call time.
+let _scopeDirection: "descend" | "ascend" = "descend";
+
+/** Called by ScopeContext when the user changes direction. */
+export function setScopeDirection(d: "descend" | "ascend"): void {
+  _scopeDirection = d;
+}
+
 function withForwardedMeg(path: string, method: string): string {
   if (method !== "GET") return path;
   if (typeof window === "undefined") return path;
@@ -137,8 +149,9 @@ function withForwardedMeg(path: string, method: string): string {
     let meg = new URLSearchParams(window.location.search).get("meg");
     if (!meg) meg = window.localStorage.getItem("vector.scope.activeNodeId");
     if (!meg) return path;
-    const sep = path.includes("?") ? "&" : "?";
-    return path + sep + "meg=" + encodeURIComponent(meg);
+    let out = path + (path.includes("?") ? "&" : "?") + "meg=" + encodeURIComponent(meg);
+    if (_scopeDirection === "ascend") out += "&scope_dir=ascend";
+    return out;
   } catch {
     return path;
   }

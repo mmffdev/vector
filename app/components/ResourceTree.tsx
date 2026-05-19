@@ -205,6 +205,18 @@ export interface ResourceTreeProps<T> {
   // Filter chips slot — caller-owned (work-items uses Type/Status/Assignee).
   filterChips?: ReactNode;
 
+  // When true, the internal filter bar (search + chips + count) is not
+  // rendered — caller is hoisting search into its own action bar and owns
+  // both `searchValue` + `onSearchChange` below.
+  hideFilterBar?: boolean;
+
+  // Controlled-search hook. When set, ResourceTree skips its internal
+  // useState for search and reads/writes through these instead. Lets the
+  // p_ObjectTree action bar host the input while filtering still happens
+  // inside the tree.
+  searchValue?: string;
+  onSearchChange?: (next: string) => void;
+
   // Accessibility label for the underlying <table>.
   ariaLabel: string;
 
@@ -768,6 +780,9 @@ function ResourceTreeImpl<T>({
   loading = false,
   // Filter chips
   filterChips,
+  hideFilterBar = false,
+  searchValue,
+  onSearchChange,
   // a11y
   ariaLabel,
   // Addressables (00446) — consumed by the wrapper, not the body.
@@ -777,7 +792,12 @@ function ResourceTreeImpl<T>({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [childMap, setChildMap] = useState<Record<string, T[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQueryInternal, setSearchQueryInternal] = useState("");
+  const searchControlled = typeof onSearchChange === "function";
+  const searchQuery = searchControlled ? (searchValue ?? "") : searchQueryInternal;
+  const setSearchQuery = searchControlled
+    ? (onSearchChange as (next: string) => void)
+    : setSearchQueryInternal;
   const [cogMenuOpenId, setCogMenuOpenId] = useState<string | null>(null);
 
   // ── DnD rank (opt-in via `dnd` prop) ─────────────────────────────────────
@@ -1347,31 +1367,33 @@ function ResourceTreeImpl<T>({
 
   return (
     <div>
-      <div className="tree_accordion-dense__filterbar" role="search">
-        {search && (
-          <div className="tree_accordion-dense__filterbar-search">
-            <span
-              className="tree_accordion-dense__filterbar-search-icon"
-              aria-hidden="true"
-            >
-              <MdSearch size={12} />
-            </span>
-            <input
-              type="search"
-              className="tree_accordion-dense__filterbar-search-input"
-              placeholder={search.placeholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label={search.placeholder}
-            />
-          </div>
-        )}
-        {filterChips}
-        <span className="tree_accordion-dense__filterbar-spacer" />
-        <span className="tree_accordion-dense__filterbar-count">
-          {visibleCount} items
-        </span>
-      </div>
+      {!hideFilterBar && (
+        <div className="tree_accordion-dense__filterbar" role="search">
+          {search && (
+            <div className="tree_accordion-dense__filterbar-search">
+              <span
+                className="tree_accordion-dense__filterbar-search-icon"
+                aria-hidden="true"
+              >
+                <MdSearch size={12} />
+              </span>
+              <input
+                type="search"
+                className="tree_accordion-dense__filterbar-search-input"
+                placeholder={search.placeholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label={search.placeholder}
+              />
+            </div>
+          )}
+          {filterChips}
+          <span className="tree_accordion-dense__filterbar-spacer" />
+          <span className="tree_accordion-dense__filterbar-count">
+            {visibleCount} items
+          </span>
+        </div>
+      )}
 
       {pagination && paginationPosition === "both" && (
         <Pagination

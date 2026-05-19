@@ -19,7 +19,7 @@ import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_wo
 export default function WorkItemsPage() {
   const { full } = usePageTitle();
   const { user } = useAuth();
-  const { activeNodeId } = useScope();
+  const { activeNodeId, direction } = useScope();
   useHintOnce("WORK_ITEMS_FIRST_VISIT");
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
@@ -67,7 +67,7 @@ export default function WorkItemsPage() {
   // the wire-request scope clamp; effect must depend on the latter).
   useEffect(() => {
     void refetchSummary();
-  }, [refetchSummary, activeNodeId]);
+  }, [refetchSummary, activeNodeId, direction]);
 
   const subscriptionID = user?.subscription_id ?? null;
   const sprintID = filters.sprint_id || null;
