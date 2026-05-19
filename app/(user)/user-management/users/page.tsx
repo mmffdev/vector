@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PageContent from "@/app/components/PageContent";
+import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
@@ -413,6 +414,13 @@ export default function UsersPage() {
   return (
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Manage workspace users, roles, and access settings." />
+      <PageDescription title="Users">
+        <p className="form__hint">
+          Create and manage user accounts, assign roles, and control workspace access.
+          Click a row to edit a user inline. Use the New User button to invite new
+          accounts; the system emails a one-time reset link to the address you enter.
+        </p>
+      </PageDescription>
       <Panel
         name="panel_user_management_header"
         className="page-panel-heading"
@@ -551,13 +559,26 @@ export default function UsersPage() {
               kind: "custom",
               render: (u) => u.department ?? <span>—</span>,
             },
+            // B20.4.10 — Disabled rendered as a read-only checkbox
+            // (Rally pattern). The actual toggle action lives in the
+            // inline edit-row panel below; surfacing it as a clickable
+            // toggle on the list invited accidental disables. The
+            // checkbox is `disabled` so it cannot be edited from the
+            // row — that's the whole point of the read-only treatment.
             {
-              key: "status",
-              header: "Status",
+              key: "disabled",
+              header: "Disabled",
               width: 110,
-              kind: "pill",
-              pillVariant: (u) => (u.is_active ? "success" : "neutral"),
-              pillLabel: (u) => (u.is_active ? "Active" : "Inactive"),
+              kind: "custom",
+              render: (u) => (
+                <input
+                  type="checkbox"
+                  checked={!u.is_active}
+                  disabled
+                  aria-label={u.is_active ? "Active" : "Disabled"}
+                  // Hand cursor would mislead — keep default.
+                />
+              ),
             },
           ]}
         />
