@@ -125,7 +125,7 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]roletyp
 	out := []roletypes.User{}
 	for rows.Next() {
 		u := roletypes.User{}
-		if err := rows.Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive,
+		if err := rows.Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.RoleID, &u.IsActive,
 			&u.FirstName, &u.LastName, &u.Department,
 			&u.LastLogin, &u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt,
 			&u.CreatedAt, &u.UpdatedAt); err != nil {

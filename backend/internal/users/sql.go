@@ -51,7 +51,7 @@ const sqlInsertPasswordReset = `
 // admin list response; no pagination yet (small tenants only —
 // covered by TD when first multi-thousand-user tenant ships).
 const sqlListUsersBySubscription = `
-		SELECT id, subscription_id, email, role, is_active, first_name, last_name, department,
+		SELECT id, subscription_id, email, role, role_id, is_active, first_name, last_name, department,
 		       last_login, auth_method, force_password_change, password_changed_at,
 		       created_at, updated_at
 		FROM users WHERE subscription_id = $1 ORDER BY created_at DESC
