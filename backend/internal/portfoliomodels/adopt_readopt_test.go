@@ -40,43 +40,51 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	wsID := uuid.New()
 	userID := uuid.New()
 
-	// ── Seed: one OLD strategy type, one OLD strategy artefact, one
-	//    work type, one work artefact whose parent is the strategy
-	//    artefact. All in the same fresh workspace, so nothing else
-	//    on the dev DB collides.
+	// ── Seed: a default priority for the workspace (artefacts now
+	//    require a non-null priority_id), one OLD strategy type, one OLD
+	//    strategy artefact, one work type, one work artefact whose
+	//    parent is the strategy artefact. All in the same fresh
+	//    workspace, so nothing else on the dev DB collides.
 	var (
+		priorityID                               uuid.UUID
 		oldStrategyTypeID, oldStrategyArtefactID uuid.UUID
 		workTypeID, workArtefactID               uuid.UUID
 	)
 	runInVATx(t, ctx, pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO artefacts_types (
-				subscription_id, workspace_id,
-				scope, source, name, prefix,
-				allows_children, sort_order, is_placeholder
-			) VALUES ($1, $2, 'strategy', 'tenant', 'OldRoot', 'OLD',
-			          TRUE, 0, FALSE)
-			RETURNING id`, subID, wsID).Scan(&oldStrategyTypeID); err != nil {
+			INSERT INTO artefact_priorities (workspace_id, name, sort_order)
+			VALUES ($1, 'Medium', 0) RETURNING id`, wsID,
+		).Scan(&priorityID); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO artefacts_types (
-				subscription_id, workspace_id,
-				scope, source, name, prefix,
-				allows_children, sort_order, is_placeholder
+				artefacts_types_id_subscription, artefacts_types_id_workspace,
+				artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix,
+				artefacts_types_allows_children, artefacts_types_sort_order, artefacts_types_is_placeholder
+			) VALUES ($1, $2, 'strategy', 'tenant', 'OldRoot', 'OLD',
+			          TRUE, 0, FALSE)
+			RETURNING artefacts_types_id`, subID, wsID).Scan(&oldStrategyTypeID); err != nil {
+			return err
+		}
+		if err := tx.QueryRow(ctx, `
+			INSERT INTO artefacts_types (
+				artefacts_types_id_subscription, artefacts_types_id_workspace,
+				artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix,
+				artefacts_types_allows_children, artefacts_types_sort_order, artefacts_types_is_placeholder
 			) VALUES ($1, $2, 'work', 'tenant', 'OldStory', 'OST',
 			          FALSE, 0, FALSE)
-			RETURNING id`, subID, wsID).Scan(&workTypeID); err != nil {
+			RETURNING artefacts_types_id`, subID, wsID).Scan(&workTypeID); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO artefacts (
 				subscription_id, workspace_id,
 				artefact_type_id, number, title,
-				parent_artefact_id, position
-			) VALUES ($1, $2, $3, 1, 'Old root artefact', NULL, 0)
+				parent_artefact_id, position, priority_id
+			) VALUES ($1, $2, $3, 1, 'Old root artefact', NULL, 0, $4)
 			RETURNING id`,
-			subID, wsID, oldStrategyTypeID,
+			subID, wsID, oldStrategyTypeID, priorityID,
 		).Scan(&oldStrategyArtefactID); err != nil {
 			return err
 		}
@@ -84,22 +92,23 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 			INSERT INTO artefacts (
 				subscription_id, workspace_id,
 				artefact_type_id, number, title,
-				parent_artefact_id, position
-			) VALUES ($1, $2, $3, 1, 'Story under old root', $4, 0)
+				parent_artefact_id, position, priority_id
+			) VALUES ($1, $2, $3, 1, 'Story under old root', $4, 0, $5)
 			RETURNING id`,
-			subID, wsID, workTypeID, oldStrategyArtefactID,
+			subID, wsID, workTypeID, oldStrategyArtefactID, priorityID,
 		).Scan(&workArtefactID); err != nil {
 			return err
 		}
 		return nil
 	})
 
-	// Cleanup at end: delete artefacts then artefacts_types for this ws.
+	// Cleanup at end: delete artefacts then artefacts_types then priorities for this ws.
 	t.Cleanup(func() {
 		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_, _ = pool.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, wsID)
-		_, _ = pool.Exec(c, `DELETE FROM artefacts_types WHERE workspace_id = $1`, wsID)
+		_, _ = pool.Exec(c, `DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1`, wsID)
+		_, _ = pool.Exec(c, `DELETE FROM artefact_priorities WHERE workspace_id = $1`, wsID)
 	})
 
 	// ── Run the re-adoption flow.
@@ -119,9 +128,9 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	var ct int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts_types
-		 WHERE workspace_id = $1
-		   AND is_placeholder = TRUE
-		   AND archived_at IS NULL`, wsID).Scan(&ct); err != nil {
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_is_placeholder = TRUE
+		   AND artefacts_types_archived_at IS NULL`, wsID).Scan(&ct); err != nil {
 		t.Fatalf("count placeholder types: %v", err)
 	}
 	if ct != 1 {
@@ -171,7 +180,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	// (e) original strategy artefact_type soft-archived.
 	var archivedAt *time.Time
 	if err := pool.QueryRow(ctx, `
-		SELECT archived_at FROM artefacts_types WHERE id = $1`,
+		SELECT artefacts_types_archived_at FROM artefacts_types WHERE artefacts_types_id = $1`,
 		oldStrategyTypeID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("read old strategy type: %v", err)
@@ -196,7 +205,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	// Still exactly one live placeholder type.
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts_types
-		 WHERE workspace_id = $1 AND is_placeholder = TRUE AND archived_at IS NULL`,
+		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_is_placeholder = TRUE AND artefacts_types_archived_at IS NULL`,
 		wsID).Scan(&ct); err != nil {
 		t.Fatalf("count placeholder types (rerun): %v", err)
 	}

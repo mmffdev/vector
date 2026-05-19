@@ -155,7 +155,7 @@ func TestScopeResolver_AdmitDenyMatrix(t *testing.T) {
 	// running the test twice on the same DB leaves no residue.
 	defer func() {
 		_, _ = pool.Exec(ctx,
-			`DELETE FROM artefacts_types WHERE workspace_id = $1`,
+			`DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1`,
 			workspaceID)
 	}()
 
@@ -196,11 +196,11 @@ func probeWrite(
 
 	_, err := pool.Exec(ctx, `
 		INSERT INTO artefacts_types (
-			subscription_id, workspace_id,
-			scope, source,
-			name, prefix, description,
-			parent_type_id, allows_children, sort_order,
-			library_layer_id, library_layer_tag
+			artefacts_types_id_subscription, artefacts_types_id_workspace,
+			artefacts_types_scope, artefacts_types_source,
+			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,
 			$3, 'tenant',
@@ -256,11 +256,11 @@ func probeRead(
 		// Use a separate prefix from the write-cell so they can coexist.
 		_, err := pool.Exec(ctx, `
 			INSERT INTO artefacts_types (
-				subscription_id, workspace_id,
-				scope, source,
-				name, prefix, description,
-				parent_type_id, allows_children, sort_order,
-				library_layer_id, library_layer_tag
+				artefacts_types_id_subscription, artefacts_types_id_workspace,
+				artefacts_types_scope, artefacts_types_source,
+				artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+				artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+				artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 			) VALUES (
 				$1, $2,
 				$3, 'tenant',
@@ -268,8 +268,8 @@ func probeRead(
 				NULL, false, 0,
 				NULL, NULL
 			)
-			ON CONFLICT (workspace_id, scope, prefix)
-				WHERE archived_at IS NULL
+			ON CONFLICT (artefacts_types_id_workspace, artefacts_types_scope, artefacts_types_prefix)
+				WHERE artefacts_types_archived_at IS NULL
 				DO NOTHING`,
 			subscriptionID, workspaceID,
 			cell.scope,
@@ -282,8 +282,8 @@ func probeRead(
 		var n int
 		if err := pool.QueryRow(ctx, `
 			SELECT COUNT(*) FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = $2 AND prefix = $3
-			   AND archived_at IS NULL`,
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = $2 AND artefacts_types_prefix = $3
+			   AND artefacts_types_archived_at IS NULL`,
 			workspaceID, cell.scope, prefix,
 		).Scan(&n); err != nil {
 			t.Fatalf("read probe count (scope=%q): %v", cell.scope, err)
@@ -301,11 +301,11 @@ func probeRead(
 	// admission semantics have changed.
 	_, err := pool.Exec(ctx, `
 		INSERT INTO artefacts_types (
-			subscription_id, workspace_id,
-			scope, source,
-			name, prefix, description,
-			parent_type_id, allows_children, sort_order,
-			library_layer_id, library_layer_tag
+			artefacts_types_id_subscription, artefacts_types_id_workspace,
+			artefacts_types_scope, artefacts_types_source,
+			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,
 			$3, 'tenant',
@@ -324,7 +324,7 @@ func probeRead(
 		t.Errorf("scope=%q op=read: seed UNEXPECTEDLY succeeded — CHECK constraint may have been relaxed.\n  reason: %s",
 			cell.scope, cell.reason)
 		_, _ = pool.Exec(ctx,
-			`DELETE FROM artefacts_types WHERE workspace_id = $1 AND scope = $2 AND prefix = $3`,
+			`DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = $2 AND artefacts_types_prefix = $3`,
 			workspaceID, cell.scope, prefix)
 	}
 }

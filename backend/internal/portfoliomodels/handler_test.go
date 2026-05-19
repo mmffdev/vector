@@ -59,8 +59,10 @@ func TestGetLatestByFamily_OK(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.Model.Key != "mmff" {
-		t.Errorf("model.key: want mmff, got %q", body.Model.Key)
+	// Post-R010: portfolio_templates has no `key` column — the legacy
+	// model_family slug is gone. Assert name + layer count instead.
+	if body.Model.Name == "" {
+		t.Errorf("model.name: empty")
 	}
 	if len(body.Layers) != 5 {
 		t.Errorf("layers: want 5, got %d", len(body.Layers))

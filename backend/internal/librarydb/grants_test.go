@@ -45,12 +45,16 @@ func TestLibraryGrantMatrix(t *testing.T) {
 	roPrivs := []string{"SELECT"}
 	publishWritePrivs := []string{"INSERT", "SELECT", "UPDATE"}
 
-	// publish gets INSERT/SELECT/UPDATE on bundle tables (Phase 1) +
-	// releases + actions (Phase 3); INSERT-only on release_log.
-	publishMap := tableMap(bundleTables, publishWritePrivs)
-	publishMap["library_releases"] = sortedCopy(publishWritePrivs)
-	publishMap["library_releases_actions"] = sortedCopy(publishWritePrivs)
-	publishMap["library_release_logs"] = []string{"INSERT"}
+	// publish gets INSERT/SELECT/UPDATE on releases + actions (Phase 3)
+	// and INSERT-only on release_log. Post-R010 the bundle tables
+	// (portfolio_templates, portfolio_template_layer_definitions) are
+	// seeded via migrations rather than the publish role, so publish has
+	// no grants on them.
+	publishMap := map[string][]string{
+		"library_releases":         sortedCopy(publishWritePrivs),
+		"library_releases_actions": sortedCopy(publishWritePrivs),
+		"library_release_logs":     {"INSERT"},
+	}
 	// Phase-4 prep: publish reads error_codes (reference data), does not write.
 	for _, t := range referenceTables {
 		publishMap[t] = sortedCopy(roPrivs)
@@ -104,16 +108,14 @@ func libraryTables() []string {
 	return out
 }
 
-// bundleTableList — Phase 1 portfolio-model bundle tables.
+// bundleTableList — post-R010 portfolio-template substrate. The legacy
+// portfolio_models* family of tables was dropped by R010 and replaced by
+// a single portfolio_templates row with a JSONB layers column, plus a
+// canonical tag→description lookup in portfolio_template_layer_definitions.
 func bundleTableList() []string {
 	return []string{
-		"portfolio_models",
-		"portfolio_model_layers",
-		"portfolio_model_workflows",
-		"portfolio_model_workflow_transitions",
-		"portfolio_model_artifacts",
-		"portfolio_model_terminology",
-		"portfolio_model_shares",
+		"portfolio_templates",
+		"portfolio_template_layer_definitions",
 	}
 }
 

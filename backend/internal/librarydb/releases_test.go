@@ -191,9 +191,12 @@ func releaseIDs(rels []Release) []uuid.UUID {
 	return out
 }
 
-// testVectorPoolAndSeed opens a pool against mmff_vector as the dev
-// user and resolves a (subscription, user, tier) triple suitable for
-// writing acks. Skips when unreachable.
+// testVectorPoolAndSeed opens a pool against vector_artefacts (acksPool
+// — `library_releases_acknowledgements` was moved there by PLA-0023-P1)
+// and resolves a (subscription, user, tier) triple suitable for writing
+// acks. The (sub,user,tier) triple is looked up via a second short-lived
+// pool against mmff_vector (where users/subscriptions still live). Skips
+// when either DB is unreachable.
 func testVectorPoolAndSeed(t *testing.T) (*pgxpool.Pool, uuid.UUID, uuid.UUID, string) {
 	t.Helper()
 
@@ -207,37 +210,47 @@ func testVectorPoolAndSeed(t *testing.T) (*pgxpool.Pool, uuid.UUID, uuid.UUID, s
 
 	host := envOrDefault("DB_HOST", "localhost")
 	port := envOrDefault("DB_PORT", "5434")
-	dbname := envOrDefault("DB_NAME", "mmff_vector")
 	user := envOrDefault("DB_USER", "mmff_dev")
 	pwd := os.Getenv("DB_PASSWORD")
 
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=librarydb_releases_test",
-		host, port, user, pwd, dbname,
+	// Resolve (sub,user,tier) via mmff_vector — users/subscriptions live there.
+	mainDSN := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=librarydb_releases_test_main",
+		host, port, user, pwd, envOrDefault("DB_NAME", "mmff_vector"),
 	)
-	pool, err := pgxpool.New(context.Background(), dsn)
+	mainPool, err := pgxpool.New(context.Background(), mainDSN)
 	if err != nil {
-		t.Skipf("cannot open vector pool: %v", err)
+		t.Skipf("cannot open mmff_vector pool: %v", err)
 	}
-	if err := pool.Ping(context.Background()); err != nil {
-		pool.Close()
+	defer mainPool.Close()
+	if err := mainPool.Ping(context.Background()); err != nil {
 		t.Skipf("cannot ping mmff_vector: %v", err)
 	}
 
-	// Pick the first gadmin-owned subscription (any seeded subscription
-	// works for the test). If the seed has no gadmin, fall back to any
-	// active subscription + any active user.
 	var subID, userID uuid.UUID
 	var tier string
-	err = pool.QueryRow(context.Background(), `
+	err = mainPool.QueryRow(context.Background(), `
 		SELECT u.subscription_id, u.id, s.tier
 		FROM users u JOIN subscriptions s ON s.id = u.subscription_id
 		WHERE u.is_active = TRUE AND u.role = 'gadmin'
 		ORDER BY u.created_at
 		LIMIT 1`).Scan(&subID, &userID, &tier)
 	if err != nil {
-		pool.Close()
 		t.Skipf("no gadmin user available for ack test: %v", err)
+	}
+
+	// Open the acks pool against vector_artefacts (where the ack table lives).
+	acksDSN := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=librarydb_releases_test_acks",
+		host, port, user, pwd, envOrDefault("VA_DB_NAME", "vector_artefacts"),
+	)
+	pool, err := pgxpool.New(context.Background(), acksDSN)
+	if err != nil {
+		t.Skipf("cannot open vector_artefacts acks pool: %v", err)
+	}
+	if err := pool.Ping(context.Background()); err != nil {
+		pool.Close()
+		t.Skipf("cannot ping vector_artefacts: %v", err)
 	}
 	return pool, subID, userID, tier
 }

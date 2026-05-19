@@ -121,7 +121,7 @@ func mkBundle(suffix string) (*librarydb.Bundle, uuid.UUID, uuid.UUID, uuid.UUID
 func cleanupStrategyTypes(t *testing.T, ctx context.Context, pool *pgxpool.Pool, workspaceID uuid.UUID) {
 	t.Helper()
 	_, _ = pool.Exec(ctx,
-		`DELETE FROM artefacts_types WHERE workspace_id = $1 AND scope = 'strategy'`,
+		`DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'strategy'`,
 		workspaceID)
 }
 
@@ -145,7 +145,7 @@ func TestWriteStrategyArtefactTypes_HappyPath(t *testing.T) {
 	var n int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts_types
-		 WHERE workspace_id = $1 AND scope = 'strategy' AND archived_at IS NULL`,
+		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'strategy' AND artefacts_types_archived_at IS NULL`,
 		workspaceID).Scan(&n); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}
@@ -161,9 +161,9 @@ func TestWriteStrategyArtefactTypes_HappyPath(t *testing.T) {
 		gotParent           *uuid.UUID
 	)
 	if err := pool.QueryRow(ctx, `
-		SELECT scope, source, library_layer_id, library_layer_tag, name, parent_type_id
+		SELECT artefacts_types_scope, artefacts_types_source, artefacts_types_id_library_layer, artefacts_types_library_layer_tag, artefacts_types_name, artefacts_types_id_parent_type
 		  FROM artefacts_types
-		 WHERE workspace_id = $1 AND library_layer_id = $2`,
+		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_id_library_layer = $2`,
 		workspaceID, rootID).Scan(&gotScope, &gotSource, &gotLibID, &gotLibTag, &gotName, &gotParent); err != nil {
 		t.Fatalf("load root row: %v", err)
 	}
@@ -186,16 +186,16 @@ func TestWriteStrategyArtefactTypes_HappyPath(t *testing.T) {
 	// Phase 2: each child's parent_type_id resolves to the root mirror.
 	var rootMirID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		SELECT id FROM artefacts_types
-		 WHERE workspace_id = $1 AND library_layer_id = $2`,
+		SELECT artefacts_types_id FROM artefacts_types
+		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_id_library_layer = $2`,
 		workspaceID, rootID).Scan(&rootMirID); err != nil {
 		t.Fatalf("load root mirror id: %v", err)
 	}
 	for _, libID := range []uuid.UUID{c1ID, c2ID} {
 		var parentMir *uuid.UUID
 		if err := pool.QueryRow(ctx, `
-			SELECT parent_type_id FROM artefacts_types
-			 WHERE workspace_id = $1 AND library_layer_id = $2`,
+			SELECT artefacts_types_id_parent_type FROM artefacts_types
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_id_library_layer = $2`,
 			workspaceID, libID).Scan(&parentMir); err != nil {
 			t.Fatalf("load child %s: %v", libID, err)
 		}
@@ -234,7 +234,7 @@ func TestWriteStrategyArtefactTypes_Idempotent(t *testing.T) {
 	var n int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts_types
-		 WHERE workspace_id = $1 AND scope = 'strategy' AND archived_at IS NULL`,
+		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'strategy' AND artefacts_types_archived_at IS NULL`,
 		workspaceID).Scan(&n); err != nil {
 		t.Fatalf("count after 2x writes: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestWriteStrategyArtefactTypes_SkipsArchivedLayers(t *testing.T) {
 	var n int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts_types
-		 WHERE workspace_id = $1 AND scope = 'strategy' AND archived_at IS NULL`,
+		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'strategy' AND artefacts_types_archived_at IS NULL`,
 		workspaceID).Scan(&n); err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestWriteStrategyArtefactTypes_SkipsArchivedLayers(t *testing.T) {
 	var nC1 int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts_types
-		 WHERE workspace_id = $1 AND library_layer_id = $2`,
+		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_id_library_layer = $2`,
 		workspaceID, c1ID).Scan(&nC1); err != nil {
 		t.Fatalf("count c1: %v", err)
 	}

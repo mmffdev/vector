@@ -13,84 +13,52 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// TestFetchLatestByFamily verifies the bundle-fetcher returns the seeded
-// MMFF Standard model in full. Counts mirror seed/001_mmff_model.sql:
-// 5 layers, 15 workflows (3 per layer × 5 layers), 10 transitions
-// (2 per layer × 5 layers), 3 artifacts, 5 terminology rows.
-func TestFetchLatestByFamily(t *testing.T) {
-	pool := testLibraryRoPool(t)
-	defer pool.Close()
-
-	familyID := uuid.MustParse("00000000-0000-0000-0000-00000000a000")
-	bundle, err := FetchLatestByFamily(context.Background(), pool, familyID)
-	if err != nil {
-		t.Fatalf("FetchLatestByFamily: %v", err)
-	}
-
-	if bundle.Model.Key != "mmff" {
-		t.Errorf("model.key: want %q, got %q", "mmff", bundle.Model.Key)
-	}
-	if bundle.Model.Scope != "system" {
-		t.Errorf("model.scope: want %q, got %q", "system", bundle.Model.Scope)
-	}
-	if bundle.Model.Version != 1 {
-		t.Errorf("model.version: want 1, got %d", bundle.Model.Version)
-	}
-
-	if got := len(bundle.Layers); got != 5 {
-		t.Errorf("layers: want 5, got %d", got)
-	}
-	wantTags := map[string]bool{"PRW": false, "PR": false, "BO": false, "TH": false, "FT": false}
-	for _, l := range bundle.Layers {
-		if _, ok := wantTags[l.Tag]; ok {
-			wantTags[l.Tag] = true
-		}
-	}
-	for tag, seen := range wantTags {
-		if !seen {
-			t.Errorf("missing layer tag %q", tag)
-		}
-	}
-
-	if got := len(bundle.Workflows); got != 15 {
-		t.Errorf("workflows: want 15, got %d", got)
-	}
-	if got := len(bundle.Transitions); got != 10 {
-		t.Errorf("transitions: want 10, got %d", got)
-	}
-	if got := len(bundle.Artifacts); got < 3 {
-		t.Errorf("artifacts: want >=3, got %d", got)
-	}
-	if got := len(bundle.Terminology); got < 5 {
-		t.Errorf("terminology: want >=5, got %d", got)
-	}
-}
-
-func TestFetchByModelID_NotFound(t *testing.T) {
+// TestFetchTemplateByID_NotFound verifies the not-found error mapping
+// against a known-missing UUID. Mirrors the skip-on-unreachable
+// discipline of grants_test.go.
+func TestFetchTemplateByID_NotFound(t *testing.T) {
 	pool := testLibraryRoPool(t)
 	defer pool.Close()
 
 	missing := uuid.MustParse("00000000-0000-0000-0000-0000deadbeef")
-	_, err := FetchByModelID(context.Background(), pool, missing)
+	_, err := FetchTemplateByID(context.Background(), pool, missing)
 	if !errors.Is(err, ErrBundleNotFound) {
 		t.Errorf("want ErrBundleNotFound, got %v", err)
 	}
 }
 
-func TestFetchByModelID_Seeded(t *testing.T) {
+// TestFetchTemplateByID_Seeded loads the Vector Standard template
+// (00000000-0000-0000-0000-00000000aa01) and verifies the bundle shape.
+// Post-R010 the templates table has 5 hierarchical layers; Workflows /
+// Transitions / Artifacts / Terminology are intentionally empty.
+func TestFetchTemplateByID_Seeded(t *testing.T) {
 	pool := testLibraryRoPool(t)
 	defer pool.Close()
 
-	modelID := uuid.MustParse("00000000-0000-0000-0000-00000000aa01")
-	bundle, err := FetchByModelID(context.Background(), pool, modelID)
+	templateID := uuid.MustParse("00000000-0000-0000-0000-00000000aa01")
+	bundle, err := FetchTemplateByID(context.Background(), pool, templateID)
 	if err != nil {
-		t.Fatalf("FetchByModelID: %v", err)
+		t.Fatalf("FetchTemplateByID: %v", err)
 	}
-	if bundle.Model.ID != modelID {
-		t.Errorf("model.id: want %s, got %s", modelID, bundle.Model.ID)
+	if bundle.Model.ID != templateID {
+		t.Errorf("model.id: want %s, got %s", templateID, bundle.Model.ID)
+	}
+	if bundle.Model.Name == "" {
+		t.Error("model.name: empty")
+	}
+	if bundle.Model.Scope != "system" {
+		t.Errorf("model.scope: want %q, got %q", "system", bundle.Model.Scope)
 	}
 	if len(bundle.Layers) != 5 {
 		t.Errorf("layers: want 5, got %d", len(bundle.Layers))
+	}
+	// Templates don't carry workflows/transitions/artifacts/terminology
+	// — the adoption saga steps are no-ops on this path.
+	if len(bundle.Workflows) != 0 {
+		t.Errorf("workflows: want 0 (template path), got %d", len(bundle.Workflows))
+	}
+	if len(bundle.Transitions) != 0 {
+		t.Errorf("transitions: want 0 (template path), got %d", len(bundle.Transitions))
 	}
 }
 

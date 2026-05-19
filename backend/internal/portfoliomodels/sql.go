@@ -333,6 +333,7 @@ const sqlUpsertReadoptPlaceholderArtefact = `
 			number,
 			title, description,
 			parent_artefact_id, flow_state_id,
+			priority_id,
 			created_by_user_id, owned_by_user_id,
 			position
 		) VALUES (
@@ -342,6 +343,7 @@ const sqlUpsertReadoptPlaceholderArtefact = `
 			'Pending re-classification',
 			'These work items were attached to the previous portfolio model. Move each into a layer of the new model, then archive this bin.',
 			NULL, NULL,
+			(SELECT id FROM artefact_priorities WHERE workspace_id = $2 AND archived_at IS NULL ORDER BY sort_order LIMIT 1),
 			$4, $4,
 			0
 		)

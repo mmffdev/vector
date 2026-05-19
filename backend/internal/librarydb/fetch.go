@@ -11,8 +11,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ErrBundleNotFound is returned when no spine row exists for the
-// requested model id or family id.
+// ErrBundleNotFound is returned when no template row exists for the
+// requested id. Post-R010 the library has a single substrate
+// (portfolio_templates) — the legacy portfolio_models* family of tables
+// was dropped, and with them the FetchByModelID / FetchLatestByFamily
+// code paths (deleted 2026-05-19 / TD-LIB-010 closure).
 var ErrBundleNotFound = errors.New("librarydb: bundle not found")
 
 // FetchTemplateByID loads a portfolio_templates row and returns it as a
@@ -22,7 +25,6 @@ var ErrBundleNotFound = errors.New("librarydb: bundle not found")
 // Layer descriptions are resolved from portfolio_template_layer_definitions first;
 // the JSONB layer description is used only as a fallback.
 func FetchTemplateByID(ctx context.Context, pool *pgxpool.Pool, templateID uuid.UUID) (*Bundle, error) {
-	// Load tag → description lookup in one query.
 	tagDefs, err := loadTagDefinitions(ctx, pool)
 	if err != nil {
 		return nil, err
@@ -51,13 +53,9 @@ func FetchTemplateByID(ctx context.Context, pool *pgxpool.Pool, templateID uuid.
 	layers := make([]Layer, n)
 	for i, tl := range tLayers {
 		isLeaf := i == n-1
-		// sort_order must decrease as hierarchy depth increases so that when
-		// the display reverses the array (highest first) the top tier appears
-		// first. Index 0 = top tier → highest sort_order; index n-1 = leaf →
-		// lowest sort_order.
-		layerDesc := tagDefs[tl.Tag] // canonical lookup first
+		layerDesc := tagDefs[tl.Tag]
 		if layerDesc == nil {
-			layerDesc = tl.Description // fall back to JSONB
+			layerDesc = tl.Description
 		}
 		layers[i] = Layer{
 			ID:             uuid.New(),
@@ -73,11 +71,11 @@ func FetchTemplateByID(ctx context.Context, pool *pgxpool.Pool, templateID uuid.
 
 	return &Bundle{
 		Model: Model{
-			ID:      templateID,
-			Name:    name,
+			ID:          templateID,
+			Name:        name,
 			Description: desc,
-			Version: 1,
-			Scope:   "system",
+			Version:     1,
+			Scope:       "system",
 		},
 		Layers:      layers,
 		Workflows:   nil,
@@ -104,217 +102,6 @@ func loadTagDefinitions(ctx context.Context, pool *pgxpool.Pool) (map[string]*st
 		}
 		d := desc
 		out[tag] = &d
-	}
-	return out, rows.Err()
-}
-
-// FetchByModelID loads the full bundle for one model row id.
-// Caller normally passes the RO pool; the fetcher only reads.
-func FetchByModelID(ctx context.Context, pool *pgxpool.Pool, modelID uuid.UUID) (*Bundle, error) {
-	return fetchInTx(ctx, pool, func(tx pgx.Tx) (*Model, error) {
-		return loadModelByID(ctx, tx, modelID)
-	})
-}
-
-// FetchLatestByFamily loads the highest non-archived version for a family.
-func FetchLatestByFamily(ctx context.Context, pool *pgxpool.Pool, familyID uuid.UUID) (*Bundle, error) {
-	return fetchInTx(ctx, pool, func(tx pgx.Tx) (*Model, error) {
-		return loadLatestByFamily(ctx, tx, familyID)
-	})
-}
-
-// fetchInTx wraps the 6 reads in a single REPEATABLE READ tx so the
-// snapshot is consistent across spine + children.
-func fetchInTx(ctx context.Context, pool *pgxpool.Pool, loadSpine func(pgx.Tx) (*Model, error)) (*Bundle, error) {
-	tx, err := pool.BeginTx(ctx, pgx.TxOptions{
-		IsoLevel:   pgx.RepeatableRead,
-		AccessMode: pgx.ReadOnly,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	model, err := loadSpine(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	layers, err := loadLayers(ctx, tx, model.ID)
-	if err != nil {
-		return nil, err
-	}
-	workflows, err := loadWorkflows(ctx, tx, model.ID)
-	if err != nil {
-		return nil, err
-	}
-	transitions, err := loadTransitions(ctx, tx, model.ID)
-	if err != nil {
-		return nil, err
-	}
-	artifacts, err := loadArtifacts(ctx, tx, model.ID)
-	if err != nil {
-		return nil, err
-	}
-	terminology, err := loadTerminology(ctx, tx, model.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("librarydb: commit ro tx: %w", err)
-	}
-
-	return &Bundle{
-		Model:       *model,
-		Layers:      layers,
-		Workflows:   workflows,
-		Transitions: transitions,
-		Artifacts:   artifacts,
-		Terminology: terminology,
-	}, nil
-}
-
-func scanModel(row pgx.Row) (*Model, error) {
-	var m Model
-	err := row.Scan(
-		&m.ID, &m.ModelFamilyID, &m.Key, &m.Name, &m.Description, &m.InstructionsMD,
-		&m.Scope, &m.OwnerSubscriptionID, &m.Visibility, &m.FeatureFlags, &m.DefaultView, &m.Icon,
-		&m.Version, &m.LibraryVersion, &m.ArchivedAt, &m.CreatedAt, &m.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &m, nil
-}
-
-func loadModelByID(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) (*Model, error) {
-	row := tx.QueryRow(ctx, sqlSelectModelByID, modelID)
-	m, err := scanModel(row)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrBundleNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: load model by id: %w", err)
-	}
-	return m, nil
-}
-
-func loadLatestByFamily(ctx context.Context, tx pgx.Tx, familyID uuid.UUID) (*Model, error) {
-	row := tx.QueryRow(ctx, sqlSelectLatestModelByFamily, familyID)
-	m, err := scanModel(row)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrBundleNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: load latest by family: %w", err)
-	}
-	return m, nil
-}
-
-func loadLayers(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Layer, error) {
-	rows, err := tx.Query(ctx, sqlListLayersForModel, modelID)
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: query layers: %w", err)
-	}
-	defer rows.Close()
-
-	var out []Layer
-	for rows.Next() {
-		var l Layer
-		if err := rows.Scan(
-			&l.ID, &l.ModelID, &l.Name, &l.Tag, &l.SortOrder, &l.ParentLayerID, &l.Icon, &l.Colour,
-			&l.DescriptionMD, &l.HelpMD, &l.AllowsChildren, &l.IsLeaf,
-			&l.ArchivedAt, &l.CreatedAt, &l.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("librarydb: scan layer: %w", err)
-		}
-		out = append(out, l)
-	}
-	return out, rows.Err()
-}
-
-func loadWorkflows(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Workflow, error) {
-	rows, err := tx.Query(ctx, sqlListWorkflowsForModel, modelID)
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: query workflows: %w", err)
-	}
-	defer rows.Close()
-
-	var out []Workflow
-	for rows.Next() {
-		var w Workflow
-		if err := rows.Scan(
-			&w.ID, &w.ModelID, &w.LayerID, &w.StateKey, &w.StateLabel, &w.SortOrder,
-			&w.IsInitial, &w.IsTerminal, &w.Colour,
-			&w.ArchivedAt, &w.CreatedAt, &w.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("librarydb: scan workflow: %w", err)
-		}
-		out = append(out, w)
-	}
-	return out, rows.Err()
-}
-
-func loadTransitions(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]WorkflowTransition, error) {
-	rows, err := tx.Query(ctx, sqlListTransitionsForModel, modelID)
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: query transitions: %w", err)
-	}
-	defer rows.Close()
-
-	var out []WorkflowTransition
-	for rows.Next() {
-		var t WorkflowTransition
-		if err := rows.Scan(
-			&t.ID, &t.ModelID, &t.FromStateID, &t.ToStateID,
-			&t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("librarydb: scan transition: %w", err)
-		}
-		out = append(out, t)
-	}
-	return out, rows.Err()
-}
-
-func loadArtifacts(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Artifact, error) {
-	rows, err := tx.Query(ctx, sqlListArtifactsForModel, modelID)
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: query artifacts: %w", err)
-	}
-	defer rows.Close()
-
-	var out []Artifact
-	for rows.Next() {
-		var a Artifact
-		if err := rows.Scan(
-			&a.ID, &a.ModelID, &a.ArtifactKey, &a.Enabled, &a.Config,
-			&a.ArchivedAt, &a.CreatedAt, &a.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("librarydb: scan artifact: %w", err)
-		}
-		out = append(out, a)
-	}
-	return out, rows.Err()
-}
-
-func loadTerminology(ctx context.Context, tx pgx.Tx, modelID uuid.UUID) ([]Terminology, error) {
-	rows, err := tx.Query(ctx, sqlListTerminologyForModel, modelID)
-	if err != nil {
-		return nil, fmt.Errorf("librarydb: query terminology: %w", err)
-	}
-	defer rows.Close()
-
-	var out []Terminology
-	for rows.Next() {
-		var t Terminology
-		if err := rows.Scan(
-			&t.ID, &t.ModelID, &t.Key, &t.Value,
-			&t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("librarydb: scan terminology: %w", err)
-		}
-		out = append(out, t)
 	}
 	return out, rows.Err()
 }

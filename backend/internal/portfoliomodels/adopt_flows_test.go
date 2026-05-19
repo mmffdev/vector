@@ -134,23 +134,23 @@ func cleanFlowsWorkspace(t *testing.T, ctx context.Context, workspaceID uuid.UUI
 	// first, then artefacts_types.
 	_, _ = pool.Exec(ctx, `
 		DELETE FROM flows_transitions
-		 WHERE flow_id IN (
-			SELECT f.id FROM flows f
-			  JOIN artefacts_types t ON t.id = f.artefact_type_id
-			 WHERE t.workspace_id = $1)`, workspaceID)
+		 WHERE flows_transitions_id_flow IN (
+			SELECT f.flows_id FROM flows f
+			  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+			 WHERE t.artefacts_types_id_workspace = $1)`, workspaceID)
 	_, _ = pool.Exec(ctx, `
 		DELETE FROM flows_states
-		 WHERE flow_id IN (
-			SELECT f.id FROM flows f
-			  JOIN artefacts_types t ON t.id = f.artefact_type_id
-			 WHERE t.workspace_id = $1)`, workspaceID)
+		 WHERE flows_states_id_flow IN (
+			SELECT f.flows_id FROM flows f
+			  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+			 WHERE t.artefacts_types_id_workspace = $1)`, workspaceID)
 	_, _ = pool.Exec(ctx, `
 		DELETE FROM flows
-		 WHERE artefact_type_id IN (
-			SELECT id FROM artefacts_types WHERE workspace_id = $1)`,
+		 WHERE flows_id_artefact_type IN (
+			SELECT artefacts_types_id FROM artefacts_types WHERE artefacts_types_id_workspace = $1)`,
 		workspaceID)
 	_, _ = pool.Exec(ctx,
-		`DELETE FROM artefacts_types WHERE workspace_id = $1`, workspaceID)
+		`DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1`, workspaceID)
 }
 
 // seedStrategyAndRun is the common setup: open a SERIALIZABLE va tx,
@@ -203,10 +203,10 @@ func TestWriteFlowsAndStates_HappyPath(t *testing.T) {
 	var nFlows int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows f
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.scope = 'strategy'
-		   AND f.archived_at IS NULL`,
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND t.artefacts_types_scope = 'strategy'
+		   AND f.flows_archived_at IS NULL`,
 		workspaceID).Scan(&nFlows); err != nil {
 		t.Fatalf("count flows: %v", err)
 	}
@@ -218,10 +218,10 @@ func TestWriteFlowsAndStates_HappyPath(t *testing.T) {
 	var nStates int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows_states fs
-		  JOIN flows f ON f.id = fs.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND fs.archived_at IS NULL`,
+		  JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND fs.flows_states_archived_at IS NULL`,
 		workspaceID).Scan(&nStates); err != nil {
 		t.Fatalf("count flows_states: %v", err)
 	}
@@ -232,12 +232,12 @@ func TestWriteFlowsAndStates_HappyPath(t *testing.T) {
 	// flows.library_layer_id is populated for layerA's flow
 	var libLayer uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		SELECT f.library_layer_id
+		SELECT f.flows_id_library_layer
 		  FROM flows f
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND t.library_layer_id = $2
-		   AND f.is_default = TRUE`,
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND t.artefacts_types_id_library_layer = $2
+		   AND f.flows_is_default = TRUE`,
 		workspaceID, layerAID).Scan(&libLayer); err != nil {
 		t.Fatalf("load layerA flow: %v", err)
 	}
@@ -249,9 +249,9 @@ func TestWriteFlowsAndStates_HappyPath(t *testing.T) {
 	var kind string
 	var isInitial bool
 	if err := pool.QueryRow(ctx, `
-		SELECT fs.kind, fs.is_initial
+		SELECT fs.flows_states_kind, fs.flows_states_is_initial
 		  FROM flows_states fs
-		 WHERE fs.library_workflow_id = $1`,
+		 WHERE fs.flows_states_id_library_workflow = $1`,
 		wfB2ID).Scan(&kind, &isInitial); err != nil {
 		t.Fatalf("load wfB2 state: %v", err)
 	}
@@ -266,11 +266,11 @@ func TestWriteFlowsAndStates_HappyPath(t *testing.T) {
 	var nInitial int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows_states fs
-		  JOIN flows f ON f.id = fs.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND fs.is_initial = TRUE
-		   AND fs.archived_at IS NULL`,
+		  JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND fs.flows_states_is_initial = TRUE
+		   AND fs.flows_states_archived_at IS NULL`,
 		workspaceID).Scan(&nInitial); err != nil {
 		t.Fatalf("count initial states: %v", err)
 	}
@@ -282,11 +282,11 @@ func TestWriteFlowsAndStates_HappyPath(t *testing.T) {
 	var nTodo int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows_states fs
-		  JOIN flows f ON f.id = fs.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND fs.kind = 'todo'
-		   AND fs.archived_at IS NULL`,
+		  JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND fs.flows_states_kind = 'todo'
+		   AND fs.flows_states_archived_at IS NULL`,
 		workspaceID).Scan(&nTodo); err != nil {
 		t.Fatalf("count todo states: %v", err)
 	}
@@ -322,9 +322,9 @@ func TestWriteFlowsAndStates_Idempotent(t *testing.T) {
 	var nFlows, nStates int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows f
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND f.archived_at IS NULL`,
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND f.flows_archived_at IS NULL`,
 		workspaceID).Scan(&nFlows); err != nil {
 		t.Fatalf("count flows: %v", err)
 	}
@@ -333,10 +333,10 @@ func TestWriteFlowsAndStates_Idempotent(t *testing.T) {
 	}
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows_states fs
-		  JOIN flows f ON f.id = fs.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1
-		   AND fs.archived_at IS NULL`,
+		  JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1
+		   AND fs.flows_states_archived_at IS NULL`,
 		workspaceID).Scan(&nStates); err != nil {
 		t.Fatalf("count flows_states: %v", err)
 	}
@@ -369,9 +369,9 @@ func TestWriteFlowTransitions_HappyPath(t *testing.T) {
 	var nTr int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows_transitions tr
-		  JOIN flows f ON f.id = tr.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1`,
+		  JOIN flows f ON f.flows_id = tr.flows_transitions_id_flow
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1`,
 		workspaceID).Scan(&nTr); err != nil {
 		t.Fatalf("count transitions: %v", err)
 	}
@@ -385,19 +385,19 @@ func TestWriteFlowTransitions_HappyPath(t *testing.T) {
 		fromState, toState, flowID, fsAFlow, fsBFlow uuid.UUID
 	)
 	if err := pool.QueryRow(ctx, `
-		SELECT tr.from_state_id, tr.to_state_id, tr.flow_id
+		SELECT tr.flows_transitions_id_state_from, tr.flows_transitions_id_state_to, tr.flows_transitions_id_flow
 		  FROM flows_transitions tr
-		  JOIN flows_states fs_from ON fs_from.id = tr.from_state_id
-		 WHERE fs_from.library_workflow_id = $1`,
+		  JOIN flows_states fs_from ON fs_from.flows_states_id = tr.flows_transitions_id_state_from
+		 WHERE fs_from.flows_states_id_library_workflow = $1`,
 		wfA1ID).Scan(&fromState, &toState, &flowID); err != nil {
 		t.Fatalf("load A1→A2 transition: %v", err)
 	}
 	if err := pool.QueryRow(ctx,
-		`SELECT flow_id FROM flows_states WHERE id = $1`, fromState).Scan(&fsAFlow); err != nil {
+		`SELECT flows_states_id_flow FROM flows_states WHERE flows_states_id = $1`, fromState).Scan(&fsAFlow); err != nil {
 		t.Fatalf("load A1 flow: %v", err)
 	}
 	if err := pool.QueryRow(ctx,
-		`SELECT flow_id FROM flows_states WHERE id = $1`, toState).Scan(&fsBFlow); err != nil {
+		`SELECT flows_states_id_flow FROM flows_states WHERE flows_states_id = $1`, toState).Scan(&fsBFlow); err != nil {
 		t.Fatalf("load A2 flow: %v", err)
 	}
 	if fsAFlow != flowID || fsBFlow != flowID {
@@ -407,7 +407,7 @@ func TestWriteFlowTransitions_HappyPath(t *testing.T) {
 	// from_state must be the A1 flow_state (look it up via library_workflow_id).
 	var fromLibID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT library_workflow_id FROM flows_states WHERE id = $1`,
+		`SELECT flows_states_id_library_workflow FROM flows_states WHERE flows_states_id = $1`,
 		fromState).Scan(&fromLibID); err != nil {
 		t.Fatalf("load from-state library_workflow_id: %v", err)
 	}
@@ -416,7 +416,7 @@ func TestWriteFlowTransitions_HappyPath(t *testing.T) {
 	}
 	var toLibID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`SELECT library_workflow_id FROM flows_states WHERE id = $1`,
+		`SELECT flows_states_id_library_workflow FROM flows_states WHERE flows_states_id = $1`,
 		toState).Scan(&toLibID); err != nil {
 		t.Fatalf("load to-state library_workflow_id: %v", err)
 	}
@@ -456,9 +456,9 @@ func TestWriteFlowTransitions_Idempotent(t *testing.T) {
 	var nTr int
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM flows_transitions tr
-		  JOIN flows f ON f.id = tr.flow_id
-		  JOIN artefacts_types t ON t.id = f.artefact_type_id
-		 WHERE t.workspace_id = $1`,
+		  JOIN flows f ON f.flows_id = tr.flows_transitions_id_flow
+		  JOIN artefacts_types t ON t.artefacts_types_id = f.flows_id_artefact_type
+		 WHERE t.artefacts_types_id_workspace = $1`,
 		workspaceID).Scan(&nTr); err != nil {
 		t.Fatalf("count transitions: %v", err)
 	}

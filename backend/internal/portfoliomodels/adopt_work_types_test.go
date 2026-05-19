@@ -90,11 +90,11 @@ func seedSystemWorkTypes(
 		var id uuid.UUID
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO artefacts_types (
-				subscription_id, workspace_id,
-				scope, source,
-				name, prefix, sort_order, allows_children
+				artefacts_types_id_subscription, artefacts_types_id_workspace,
+				artefacts_types_scope, artefacts_types_source,
+				artefacts_types_name, artefacts_types_prefix, artefacts_types_sort_order, artefacts_types_allows_children
 			) VALUES ($1, $1, 'work', 'system', $2, $3, $4, $5)
-			RETURNING id`,
+			RETURNING artefacts_types_id`,
 			subscriptionID, s.name, s.prefix, s.sortOrder, s.allowsChildren,
 		).Scan(&id); err != nil {
 			t.Fatalf("seed system %q: %v", s.name, err)
@@ -110,13 +110,13 @@ func seedSystemWorkTypes(
 		// this DDL is contained.)
 		if _, err := tx.Exec(ctx, `
 			ALTER TABLE artefacts_types
-				DROP CONSTRAINT IF EXISTS artefact_types_work_no_parent`); err != nil {
+				DROP CONSTRAINT IF EXISTS artefacts_types_work_no_parent`); err != nil {
 			t.Fatalf("drop work-no-parent check: %v", err)
 		}
 		// Make Story (US) a child of Epic (EP) — synthetic hierarchy
 		// that exercises Phase 2 parent resolution by prefix.
 		if _, err := tx.Exec(ctx, `
-			UPDATE artefacts_types SET parent_type_id = $1 WHERE id = $2`,
+			UPDATE artefacts_types SET artefacts_types_id_parent_type = $1 WHERE artefacts_types_id = $2`,
 			ids["EP"], ids["US"],
 		); err != nil {
 			t.Fatalf("set synthetic parent: %v", err)
@@ -170,8 +170,8 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 		var n int
 		if err := tx.QueryRow(ctx, `
 			SELECT COUNT(*) FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = 'work'
-			   AND source = 'tenant' AND archived_at IS NULL`,
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work'
+			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID).Scan(&n); err != nil {
 			t.Fatalf("count tenant rows: %v", err)
 		}
@@ -186,10 +186,10 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 			gotLibTag                    *string
 		)
 		if err := tx.QueryRow(ctx, `
-			SELECT scope, source, name, library_layer_id, library_layer_tag
+			SELECT artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 			  FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
-			   AND source = 'tenant' AND archived_at IS NULL`,
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work' AND artefacts_types_prefix = 'US'
+			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID,
 		).Scan(&gotScope, &gotSource, &gotName, &gotLibID, &gotLibTag); err != nil {
 			t.Fatalf("load Story tenant row: %v", err)
@@ -214,17 +214,17 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 		// tenant row's id (via prefix EP).
 		var epicTenantID uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			SELECT id FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'EP'
-			   AND source = 'tenant' AND archived_at IS NULL`,
+			SELECT artefacts_types_id FROM artefacts_types
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work' AND artefacts_types_prefix = 'EP'
+			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID).Scan(&epicTenantID); err != nil {
 			t.Fatalf("load Epic tenant id: %v", err)
 		}
 		var storyParent *uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			SELECT parent_type_id FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
-			   AND source = 'tenant' AND archived_at IS NULL`,
+			SELECT artefacts_types_id_parent_type FROM artefacts_types
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work' AND artefacts_types_prefix = 'US'
+			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID).Scan(&storyParent); err != nil {
 			t.Fatalf("load Story parent: %v", err)
 		}
@@ -264,8 +264,8 @@ func TestWriteWorkArtefactTypes_Idempotent(t *testing.T) {
 		var n int
 		if err := tx.QueryRow(ctx, `
 			SELECT COUNT(*) FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = 'work'
-			   AND source = 'tenant' AND archived_at IS NULL`,
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work'
+			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID).Scan(&n); err != nil {
 			t.Fatalf("count: %v", err)
 		}
@@ -293,9 +293,9 @@ func TestWriteWorkArtefactTypes_PreservesUserEdits(t *testing.T) {
 
 		// Tenant customises the Story name.
 		if _, err := tx.Exec(ctx, `
-			UPDATE artefacts_types SET name = 'User Story (custom)'
-			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
-			   AND source = 'tenant' AND archived_at IS NULL`,
+			UPDATE artefacts_types SET artefacts_types_name = 'User Story (custom)'
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work' AND artefacts_types_prefix = 'US'
+			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID,
 		); err != nil {
 			t.Fatalf("user customisation: %v", err)
@@ -308,9 +308,9 @@ func TestWriteWorkArtefactTypes_PreservesUserEdits(t *testing.T) {
 
 		var name string
 		if err := tx.QueryRow(ctx, `
-			SELECT name FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = 'work' AND prefix = 'US'
-			   AND source = 'tenant' AND archived_at IS NULL`,
+			SELECT artefacts_types_name FROM artefacts_types
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work' AND artefacts_types_prefix = 'US'
+			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID).Scan(&name); err != nil {
 			t.Fatalf("reload Story name: %v", err)
 		}
@@ -337,7 +337,7 @@ func TestWriteWorkArtefactTypes_HandlesEmptySeed(t *testing.T) {
 		var n int
 		if err := tx.QueryRow(ctx, `
 			SELECT COUNT(*) FROM artefacts_types
-			 WHERE workspace_id = $1 AND scope = 'work'`,
+			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work'`,
 			workspaceID).Scan(&n); err != nil {
 			t.Fatalf("count: %v", err)
 		}

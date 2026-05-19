@@ -47,7 +47,7 @@ func cleanupMasterRecord(t *testing.T, ctx context.Context, workspaceID uuid.UUI
 	pool := vaTestPool(t)
 	defer pool.Close()
 	_, _ = pool.Exec(ctx,
-		`DELETE FROM master_record_portfolios WHERE workspace_id = $1`,
+		`DELETE FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`,
 		workspaceID,
 	)
 }
@@ -131,7 +131,7 @@ func TestWriteMasterRecordPortfolio_Idempotent(t *testing.T) {
 
 	var n int
 	if err := pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM master_record_portfolios WHERE workspace_id = $1`,
+		`SELECT COUNT(*) FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`,
 		workspaceID).Scan(&n); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestWriteMasterRecordPortfolio_ReadoptDifferentModel(t *testing.T) {
 	// Single row, identity now reflects B.
 	var n int
 	if err := pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM master_record_portfolios WHERE workspace_id = $1`,
+		`SELECT COUNT(*) FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`,
 		workspaceID).Scan(&n); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}
