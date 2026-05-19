@@ -93,12 +93,24 @@ src = open(sys.argv[1], encoding="utf-8").read()
 mount_prefix = sys.argv[2]  # "/_site" or "/samantha/v2"
 
 route_re   = re.compile(r'r\.Route\(\s*"([^"]+)"\s*,\s*func\s*\(\s*r\s+chi\.Router\s*\)\s*\{')
-verb_re    = re.compile(r'r\.(?:Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
-# Closure declaration: NAME := func(r chi.Router) {
-closure_decl_re = re.compile(r'(\w+)\s*:=\s*func\s*\(\s*r\s+chi\.Router\s*\)\s*\{')
-# Closure invocation: NAME(r)  — terminated by a ) and assumed to splice
-# the closure body under the current r.Route prefix.
-closure_call_re = re.compile(r'(\w+)\s*\(\s*r\s*\)')
+# Verb registration: matched in two steps because middleware chains
+# like r.With(auth.RequirePermission(permResolver, X)).Get("/path")
+# contain nested parens that no simple regex handles. We:
+#   1. Anchor on the verb call: \.(Get|Post|...) followed by `(`.
+#   2. Walk forward into the string literal to extract the path.
+#   3. (For attribution, we don't care about what middleware was
+#      applied — just the path.)
+# verb_call_re finds the verb token + opening "(" of the call.
+verb_call_re = re.compile(r'\.(Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
+# Closure declaration: NAME := func(r chi.Router) {        — single-arg
+#                  or: NAME := func(r chi.Router, ...) {  — multi-arg
+# The body always opens a brace right after the closing ).
+closure_decl_re = re.compile(r'(\w+)\s*:=\s*func\s*\(\s*r\s+chi\.Router\b[^)]*\)\s*\{')
+# Closure invocation: NAME(r)         — single-arg call
+#                 or: NAME(r, X[, Y]) — multi-arg call (e.g. mountArtefactSite(r, workItemsV2H))
+# In both cases we splice the closure body under the current r.Route prefix.
+# The non-greedy [^)]* consumes any remaining args up to the closing ).
+closure_call_re = re.compile(r'(\w+)\s*\(\s*r\s*(?:,\s*[^)]*)?\)')
 
 # Pass 1: walk source. For r.Route blocks track prefix on a stack.
 # For closure declarations, isolate their body and parse the closure
@@ -140,11 +152,13 @@ def skip_token(src, i, n):
             return j + 1
     return None
 
-# First, locate every chi.Router closure body so the main pass can
-# either (a) recurse into it under a parent r.Route, or (b) skip the
-# standalone declaration entirely. Map closure name → (body_start_idx,
-# body_end_idx) where body_start is the position AFTER the opening "{"
-# and body_end is the position OF the matching "}".
+# First, locate every chi.Router closure body. Walk the entire file
+# byte-by-byte (respecting strings + comments) and record every
+# closure_decl_re match — including ones nested inside other closures
+# (e.g. mountArtefactSite lives inside mountSiteRoutes' body, and
+# mountArtefactRoutes lives inside r.Route("/samantha/v2", ...) which
+# is at top level). The previous implementation skipped past matched
+# closure bodies, which hid nested declarations.
 closure_bodies = {}
 i = 0
 n = len(src)
@@ -175,7 +189,11 @@ while i < n:
             j += 1
         # j now points one past the closing "}" — body_end is j-1.
         closure_bodies[name] = (body_start, j - 1)
-        i = j
+        # Advance just past the matched "{" so we continue scanning
+        # the body for nested closures. Don't jump to j (that would
+        # hide nested declarations like mountArtefactSite inside
+        # mountSiteRoutes).
+        i = body_start
         continue
     i += 1
 
@@ -200,6 +218,19 @@ def parse_block(src, start, end, prefix_stack):
         if nxt is not None:
             i = nxt
             continue
+        sub = src[i:i+300]
+        # Skip past nested closure declarations inside this block — we
+        # don't want to emit their routes at the wrong prefix. They'll
+        # be spliced in at their call site (which may be in a different
+        # block entirely, e.g. mountArtefactSite is declared inside
+        # mountSiteRoutes' body but called twice from r.Route blocks
+        # right after).
+        m = closure_decl_re.match(sub)
+        if m and m.group(1) in closure_bodies:
+            _, be = closure_bodies[m.group(1)]
+            if be + 1 <= end:
+                i = be + 1
+                continue
         ch = src[i]
         if ch == "{":
             depth += 1
@@ -212,7 +243,6 @@ def parse_block(src, start, end, prefix_stack):
             i += 1
             continue
 
-        sub = src[i:i+300]
         m = route_re.match(sub)
         if m:
             inner_prefix = m.group(1)
@@ -220,16 +250,21 @@ def parse_block(src, start, end, prefix_stack):
             stack.append((inner_prefix, depth))
             i += m.end()
             continue
-        m = verb_re.match(sub)
+        # Verb call: .Get("/path") etc. May be preceded by an arbitrary
+        # middleware chain like r.With(auth.RequirePermission(X, Y)).Get(...).
+        # The verb_call_re matches the suffix; we don't validate the
+        # chain because there's no false-positive verb-call shape that's
+        # interesting to a routes audit.
+        m = verb_call_re.match(sub)
         if m:
-            leaf = m.group(1)
+            leaf = m.group(2)
             full = "".join(s[0] for s in stack) + leaf
             full = re.sub(r"//+", "/", full)
             paths.add(full)
             i += m.end()
             continue
-        # Closure invocation NAME(r) — splice the closure body here under
-        # the current prefix stack.
+        # Closure invocation NAME(r) [, args] — splice the closure body
+        # here under the current prefix stack.
         m = closure_call_re.match(sub)
         if m and m.group(1) in closure_bodies:
             name = m.group(1)
@@ -295,9 +330,9 @@ def parse_top():
             stack.append((prefix, depth))
             i += m.end()
             continue
-        m = verb_re.match(sub)
+        m = verb_call_re.match(sub)
         if m:
-            leaf = m.group(1)
+            leaf = m.group(2)
             full = "".join(s[0] for s in stack) + leaf
             full = re.sub(r"//+", "/", full)
             paths.add(full)

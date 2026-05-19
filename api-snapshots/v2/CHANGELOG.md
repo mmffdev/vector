@@ -7,3 +7,7 @@ Baseline snapshot of openapi-v2.yaml — initial creation (PLA-0030 Task 1). Con
 ## v2 — 2026-05-19
 
 Snapshot of openapi-v2.yaml at fbe0ea1. Breaking changes: no.
+
+## v3 — 2026-05-19
+
+Snapshot of samanthaAPI.yaml at c32bd04. Breaking changes: no.

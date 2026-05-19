@@ -12,515 +12,96 @@ info:
 
     Routes here use vaPool (the `vector_artefacts` Postgres database).
     Legacy `/samantha/v1` was retired 2026-05-19 — no v1 data plane today.
-
 servers:
-  - url: http://localhost:5100/samantha/v2
-    description: Local development
-  - url: https://api.mmff.dev/samantha/v2
-    description: Production
-
+- url: http://localhost:5100/samantha/v2
+  description: Local development
+- url: https://api.mmff.dev/samantha/v2
+  description: Production
 tags:
-  - name: work-items
-    description: Work items (tasks, epics, bugs, stories) in vector_artefacts
-  - name: ranking
-    description: Generic position management across orderable resources
-  - name: timeboxes
-    description: Timebox management — sprints and releases
-  - name: workspace-fields
-    description: Workspace-scoped admitted field set from artefact_field_library
-  - name: portfolio
-    description: Portfolio layers from artefact_types (scope=strategy)
-  - name: topology
-    description: Federated organisational canvas — topology_nodes in vector_artefacts (M6.1)
-
+- name: work-items
+  description: Work items (tasks, epics, bugs, stories) in vector_artefacts
+- name: ranking
+  description: Generic position management across orderable resources
+- name: timeboxes
+  description: Timebox management — sprints and releases
+- name: workspace-fields
+  description: Workspace-scoped admitted field set from artefact_field_library
+- name: portfolio
+  description: Portfolio layers from artefact_types (scope=strategy)
+- name: topology
+  description: Federated organisational canvas — topology_nodes in vector_artefacts (M6.1)
 paths:
-
-  # ── Work Items ────────────────────────────────────────────────────────────
-
-  /work-items:
+  /flows:
     get:
-      tags: [work-items]
-      summary: List work items
-      operationId: v2_listWorkItems
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: skip
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: sort
-          in: query
-          schema:
-            type: string
-        - name: dir
-          in: query
-          schema:
-            type: string
-            enum: [asc, desc]
-        - name: scope
-          in: query
-          description: |
-            PLA-0043 — Topology scope clamp. When set to a topology_node UUID,
-            the list is filtered to artefacts owned by that node OR any live
-            descendant in the topology tree. Artefacts with no
-            topology_node_id are excluded when scope is active. Grant
-            inheritance: a grant on a node reaches the node and every
-            descendant; gadmin bypasses the check entirely.
-            Errors: 400 if not a UUID; 403 if the caller has no grant
-            covering the node; 404 if the node does not exist in this
-            tenant.
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Work items
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      type: object
-                  total:
-                    type: integer
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Scope read denied — caller has no grant on the requested topology node.
-        '404':
-          description: Scope node not found in this tenant.
-    post:
-      tags: [work-items]
-      summary: Create work item
-      operationId: v2_createWorkItem
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Work item created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /work-items/summary:
-    get:
-      tags: [work-items]
-      summary: Get work items summary
-      operationId: v2_getWorkItemsSummary
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Work items summary
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /work-items/relations:
-    get:
-      tags: [work-items]
-      summary: Work-item relations graph payload
+      tags:
+      - flows
+      summary: List flows for the caller's subscription
+      operationId: v2_listFlows
       description: |
-        Read-only payload for the Work Item Relations 3D graph. Returns every
-        work-scope artefact in the caller's subscription as `nodes`, every
-        parent edge as `edges`, plus a `meta` block with hard-cap and
-        truncation flags. Hub-size on the client is driven by
-        `descendant_count`, computed server-side via a recursive CTE.
-
-        Edge `kind` is currently always `"parent"`. The shape is edge-typed
-        so PLA-0036 (`work_item_links`) typed edges plug in without a client
-        refactor.
-      operationId: v2_getWorkItemRelations
+        Returns every flow for the caller's subscription, grouped by artefact
+        type scope (work / strategy). Each group contains the flow's states
+        ordered by sort_order. Archived flows and states are excluded.
+        Requires the flows.manage permission.
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       responses:
         '200':
-          description: Relations payload
+          description: Flow list grouped by scope
           content:
             application/json:
               schema:
                 type: object
-                required: [nodes, edges, meta]
                 properties:
-                  nodes:
+                  work:
                     type: array
                     items:
-                      type: object
-                      required:
-                        [id, number, prefix, type_name, title, depth, descendant_count]
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        number:
-                          type: integer
-                        prefix:
-                          type: string
-                          description: Artefact-type prefix — EP, US, DE, TA, or tenant prefix
-                        type_name:
-                          type: string
-                        title:
-                          type: string
-                        state_name:
-                          type: string
-                          nullable: true
-                        state_kind:
-                          type: string
-                          nullable: true
-                          description: todo | doing | done | blocked | …
-                        parent_id:
-                          type: string
-                          format: uuid
-                          nullable: true
-                        depth:
-                          type: integer
-                          description: 0 = root, 1 = child of root, …
-                        descendant_count:
-                          type: integer
-                          description: Total transitive descendants under this node
-                  edges:
+                      $ref: '#/components/schemas/FlowGroup'
+                  strategy:
                     type: array
                     items:
-                      type: object
-                      required: [source, target, kind]
-                      properties:
-                        source:
-                          type: string
-                          format: uuid
-                        target:
-                          type: string
-                          format: uuid
-                        kind:
-                          type: string
-                          enum: [parent, blocks, duplicates, relates_to]
-                  meta:
-                    type: object
-                    required:
-                      [subscription_id, generated_at, node_count, edge_count, edge_kinds, truncated, cap]
-                    properties:
-                      subscription_id:
-                        type: string
-                        format: uuid
-                      generated_at:
-                        type: string
-                        format: date-time
-                      node_count:
-                        type: integer
-                      edge_count:
-                        type: integer
-                      edge_kinds:
-                        type: array
-                        items:
-                          type: string
-                          enum: [parent, blocks, duplicates, relates_to]
-                      truncated:
-                        type: boolean
-                      cap:
-                        type: integer
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /work-items/flow-states:
-    get:
-      tags: [work-items]
-      summary: List work item flow states
-      operationId: v2_listWorkItemFlowStates
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Flow states
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /work-items/bulk:
-    post:
-      tags: [work-items]
-      summary: Bulk work item operations
-      operationId: v2_bulkWorkItems
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Bulk operation result
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                      $ref: '#/components/schemas/FlowGroup'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-
-  /work-items/{id}:
-    get:
-      tags: [work-items]
-      summary: Get work item
-      operationId: v2_getWorkItem
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Work item
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      tags: [work-items]
-      summary: Update work item
-      operationId: v2_updateWorkItem
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Work item updated
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [work-items]
-      summary: Archive work item
-      operationId: v2_archiveWorkItem
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Work item archived
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /work-items/{id}/children:
-    get:
-      tags: [work-items]
-      summary: List work item children
-      operationId: v2_listWorkItemChildren
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Child work items
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /work-items/{id}/field-values:
-    get:
-      tags: [work-items]
-      summary: List work item field values
-      operationId: v2_listWorkItemFieldValues
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Field values
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags: [work-items]
-      summary: Upsert work item field values
-      operationId: v2_upsertWorkItemFieldValues
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Field values upserted
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /work-items/{id}/field-values/{field_library_id}:
-    delete:
-      tags: [work-items]
-      summary: Delete work item field value
-      operationId: v2_deleteWorkItemFieldValue
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: field_library_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Field value deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ── Portfolio Items ───────────────────────────────────────────────────────
-  # /portfolio-items shares the artefactitemsv2 handler with /work-items, bound
-  # to scope='strategy' instead of 'work'. The full route shape (`/{id}`,
-  # `/{id}/children`, `/{id}/field-values`, etc.) mirrors /work-items above;
-  # only the collection root is documented here to satisfy the route-drift gate
-  # — the gate's regex sees the closure-mounted leaves as attached to the
-  # function, not the path.
-
+        '503':
+          description: vector_artefacts unavailable
   /portfolio-items:
     get:
-      tags: [portfolio]
+      tags:
+      - portfolio
       summary: List portfolio items
       operationId: v2_listPortfolioItems
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       parameters:
-        - name: skip
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-        - name: sort
-          in: query
-          schema:
-            type: string
-        - name: dir
-          in: query
-          schema:
-            type: string
-            enum: [asc, desc]
-        - name: scope
-          in: query
-          description: Topology scope clamp (UUID) — see /work-items for details.
-          schema:
-            type: string
-            format: uuid
+      - name: skip
+        in: query
+        schema:
+          type: integer
+          default: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+      - name: sort
+        in: query
+        schema:
+          type: string
+      - name: dir
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: scope
+        in: query
+        description: Topology scope clamp (UUID) — see /work-items for details.
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Portfolio items
@@ -544,75 +125,196 @@ paths:
         '404':
           description: Scope node not found in this tenant.
     post:
-      tags: [portfolio]
-      summary: Create portfolio item
-      operationId: v2_createPortfolioItem
+      tags:
+      - uncategorised
+      summary: POST /portfolio-items
+      operationId: postPortfolioItems
       security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Portfolio item created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  # ── Search ────────────────────────────────────────────────────────────────
-
-  /search:
-    post:
-      tags: [search]
-      summary: Fulltext search over artefacts
-      operationId: v2_search
-      description: |
-        Fulltext search via tsvector (plainto_tsquery) over vector_artefacts
-        search columns. Returns 503 when vector_artefacts is unavailable
-        (`searchH` was not constructed at boot).
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                q:
-                  type: string
-                  description: Query text
+      - bearerAuth: []
       responses:
         '200':
-          description: Search results
+          description: OK
           content:
             application/json:
               schema:
                 type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '503':
-          description: search not available
-
-  # ── Ranking ───────────────────────────────────────────────────────────────
-
+  /portfolio-items/bulk:
+    post:
+      tags:
+      - uncategorised
+      summary: POST /portfolio-items/bulk
+      operationId: postPortfolioItemsBulk
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/flow-states:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /portfolio-items/flow-states
+      operationId: getPortfolioItemsFlowStates
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/summary:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /portfolio-items/summary
+      operationId: getPortfolioItemsSummary
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/{id}:
+    delete:
+      tags:
+      - uncategorised
+      summary: DELETE /portfolio-items/{id}
+      operationId: deletePortfolioItemsId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+      - uncategorised
+      summary: GET /portfolio-items/{id}
+      operationId: getPortfolioItemsId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+      - uncategorised
+      summary: PATCH /portfolio-items/{id}
+      operationId: patchPortfolioItemsId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/{id}/children:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /portfolio-items/{id}/children
+      operationId: getPortfolioItemsIdChildren
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/{id}/field-values:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /portfolio-items/{id}/field-values
+      operationId: getPortfolioItemsIdFieldValues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+      - uncategorised
+      summary: PUT /portfolio-items/{id}/field-values
+      operationId: putPortfolioItemsIdFieldValues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/{id}/field-values/{field_library_id}:
+    delete:
+      tags:
+      - uncategorised
+      summary: DELETE /portfolio-items/{id}/field-values/{field_library_id}
+      operationId: deletePortfolioItemsIdFieldValuesFieldLibraryId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /rank/move:
     post:
-      tags: [ranking]
+      tags:
+      - ranking
       summary: Move item in ranking
       operationId: v2_moveRank
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -640,7 +342,9 @@ paths:
                 to_bottom:
                   type: boolean
                   description: Move row to bottom of list
-              required: [resource_type, row_id]
+              required:
+              - resource_type
+              - row_id
       responses:
         '200':
           description: Rank updated
@@ -654,72 +358,27 @@ paths:
                     format: uuid
                   scope:
                     type: string
-                    enum: [backlog, sprint]
+                    enum:
+                    - backlog
+                    - sprint
                   new_position:
                     type: number
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-
-  # ── Timeboxes ─────────────────────────────────────────────────────────────
-
-  /timeboxes/sprints:
-    get:
-      tags: [timeboxes]
-      summary: List sprints
-      operationId: v2_listSprints
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Sprint list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sprints:
-                    type: array
-                    items:
-                      type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '503':
-          description: Timebox sprints not enabled
+  /search:
     post:
-      tags: [timeboxes]
-      summary: Create a sprint
-      operationId: v2_createSprint
+      tags:
+      - search
+      summary: Fulltext search over artefacts
+      operationId: v2_search
+      description: |
+        Fulltext search via tsvector (plainto_tsquery) over vector_artefacts
+        search columns. Returns 503 when vector_artefacts is unavailable
+        (`searchH` was not constructed at boot).
       security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Sprint created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /timeboxes/sprints/bulk-create:
-    post:
-      tags: [timeboxes]
-      summary: Bulk-create sprints
-      operationId: v2_bulkCreateSprints
-      security:
-        - bearerAuth: []
+      - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -727,13 +386,12 @@ paths:
             schema:
               type: object
               properties:
-                sprints:
-                  type: array
-                  items:
-                    type: object
+                q:
+                  type: string
+                  description: Query text
       responses:
-        '201':
-          description: Sprints created
+        '200':
+          description: Search results
           content:
             application/json:
               schema:
@@ -742,100 +400,16 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /timeboxes/sprints/{id}:
-    get:
-      tags: [timeboxes]
-      summary: Get a sprint
-      operationId: v2_getSprint
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Sprint
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags: [timeboxes]
-      summary: Update a sprint
-      operationId: v2_updateSprint
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Sprint updated
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [timeboxes]
-      summary: Delete a sprint
-      operationId: v2_deleteSprint
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Sprint deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ── Timeboxes — Releases ──────────────────────────────────────────────────
-
+        '503':
+          description: search not available
   /timeboxes/releases:
     get:
-      tags: [timeboxes]
+      tags:
+      - timeboxes
       summary: List releases
       operationId: v2_listReleases
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       responses:
         '200':
           description: Release list
@@ -852,46 +426,21 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '503':
           description: Timebox releases not enabled
-    post:
-      tags: [timeboxes]
-      summary: Create a release
-      operationId: v2_createRelease
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '201':
-          description: Release created
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
   /timeboxes/releases/{id}:
     get:
-      tags: [timeboxes]
+      tags:
+      - timeboxes
       summary: Get a release
       operationId: v2_getRelease
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Release
@@ -903,322 +452,112 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-    put:
-      tags: [timeboxes]
-      summary: Update a release
-      operationId: v2_updateRelease
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Release updated
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [timeboxes]
-      summary: Delete a release
-      operationId: v2_deleteRelease
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Release deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ── Workspace Fields ──────────────────────────────────────────────────────
-
-  /workspace/{id}/fields:
+  /timeboxes/sprints:
     get:
-      tags: [workspace-fields]
-      summary: List admitted fields for a workspace
-      operationId: v2_listWorkspaceFields
-      description: |
-        Returns the server-resolved field set for the workspace: global fields
-        ∪ tenant-scoped fields ∪ workspace-whitelisted fields. Tenancy and
-        membership are enforced inside the handler (404 for cross-tenant,
-        403 for non-member).
+      tags:
+      - timeboxes
+      summary: List sprints
+      operationId: v2_listSprints
       security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Workspace ID
+      - bearerAuth: []
       responses:
         '200':
-          description: Admitted field set
+          description: Sprint list
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  workspace_id:
-                    type: string
-                    format: uuid
-                  fields:
+                  sprints:
                     type: array
                     items:
                       type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        subscription_id:
-                          type: string
-                          format: uuid
-                          nullable: true
-                        name:
-                          type: string
-                        label:
-                          type: string
-                        data_type:
-                          type: string
-                        scope:
-                          type: string
-                          enum: [global, tenant, workspace]
-                        options_json:
-                          description: Present when field has predefined options
-                        config_json:
-                          description: Present when field has extra config
-                        description:
-                          type: string
-                        created_at:
-                          type: string
-                          format: date-time
-                        updated_at:
-                          type: string
-                          format: date-time
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ── Portfolio Master Record ───────────────────────────────────────────────
-
-  /portfolio/master_record:
+        '503':
+          description: Timebox sprints not enabled
+  /timeboxes/sprints/{id}:
     get:
-      tags: [portfolio]
-      summary: Get portfolio master record for a workspace
-      operationId: v2_getPortfolioMasterRecord
-      description: |
-        Returns the master_record_portfolio row for the given workspace.
-        404 covers both "workspace not in your tenant" and "no model adopted"
-        (leak-resistant). Tenant admins (padmin/gadmin) bypass workspace
-        membership check.
+      tags:
+      - timeboxes
+      summary: Get a sprint
+      operationId: v2_getSprint
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       parameters:
-        - name: workspace_id
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Workspace ID
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
-          description: Portfolio master record
+          description: Sprint
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  workspace_id:
-                    type: string
-                    format: uuid
-                  model_id:
-                    type: string
-                    format: uuid
-                    nullable: true
-                  model_name:
-                    type: string
-                  model_description:
-                    type: string
-                    nullable: true
-                  adopted_at:
-                    type: string
-                    format: date-time
-                  adopted_by_user_id:
-                    type: string
-                    format: uuid
-                    nullable: true
-                  created_at:
-                    type: string
-                    format: date-time
-                  updated_at:
-                    type: string
-                    format: date-time
-                  archived_at:
-                    type: string
-                    format: date-time
-                    nullable: true
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ── Portfolio Layers ──────────────────────────────────────────────────────
-
-  /workspace/{id}/portfolio/layers:
+  /topology/commit:
     get:
-      tags: [portfolio]
-      summary: List strategy layers for a workspace
-      operationId: v2_listWorkspacePortfolioLayers
-      description: |
-        Returns strategy artefact_types (scope=strategy, archived_at IS NULL)
-        for the workspace, ordered by sort_order. Tenancy and workspace
-        membership are enforced inside the handler.
+      tags:
+      - topology
+      summary: Get commit status
+      operationId: v2_getTopologyCommitStatus
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Workspace ID
+      - name: ws
+        in: query
+        schema:
+          type: string
       responses:
         '200':
-          description: Strategy layer list
+          description: Commit status
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                    workspace_id:
-                      type: string
-                      format: uuid
-                    name:
-                      type: string
-                    sort_order:
-                      type: integer
-                    created_at:
-                      type: string
-                      format: date-time
-                    updated_at:
-                      type: string
-                      format: date-time
+                $ref: '#/components/schemas/TopologyCommitStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - topology
+      summary: Commit topology changes (gadmin only)
+      operationId: v2_commitTopology
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Committed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyCommitStatus'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '503':
-          description: vector_artefacts unavailable
-
-  /flows:
+  /topology/disconnected:
     get:
-      tags: [flows]
-      summary: List flows for the caller's subscription
-      operationId: v2_listFlows
-      description: |
-        Returns every flow for the caller's subscription, grouped by artefact
-        type scope (work / strategy). Each group contains the flow's states
-        ordered by sort_order. Archived flows and states are excluded.
-        Requires the flows.manage permission.
+      tags:
+      - topology
+      summary: List disconnected nodes
+      operationId: v2_listDisconnectedTopologyNodes
       security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Flow list grouped by scope
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  work:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/FlowGroup'
-                  strategy:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/FlowGroup'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '503':
-          description: vector_artefacts unavailable
-
-  # ── Topology ──────────────────────────────────────────────────────────────
-
-  /topology/tree:
-    get:
-      tags: [topology]
-      summary: Get org topology tree
-      operationId: v2_getTopologyTree
-      description: |
-        Returns the tree of live topology nodes for the workspace resolved
-        from ?ws=<slug|uuid>. If ws is absent the backend falls back to the
-        actor's first live workspace. Archived nodes are excluded from the
-        main tree (see /topology/nodes/{id}/archived-descendants).
-      security:
-        - bearerAuth: []
+      - bearerAuth: []
       parameters:
-        - name: ws
-          in: query
-          description: Workspace slug or UUID (absent → actor's first workspace)
-          schema:
-            type: string
-        - name: root
-          in: query
-          description: Root node UUID (absent → tenant root)
-          schema:
-            type: string
-            format: uuid
+      - name: ws
+        in: query
+        schema:
+          type: string
       responses:
         '200':
-          description: Topology node tree
+          description: Disconnected nodes (no parent, not the tenant root)
           content:
             application/json:
               schema:
@@ -1227,12 +566,10 @@ paths:
                   $ref: '#/components/schemas/TopologyNode'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
   /topology/grants/me:
     get:
-      tags: [topology]
+      tags:
+      - topology
       summary: List caller's topology grants
       operationId: v2_getMyTopologyGrants
       description: |
@@ -1240,7 +577,7 @@ paths:
         calling user across the topology. Not workspace-clamped: a user's
         grants may span workspaces inside their subscription.
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       responses:
         '200':
           description: Caller's grants
@@ -1255,14 +592,14 @@ paths:
                       type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-
   /topology/nodes:
     post:
-      tags: [topology]
+      tags:
+      - topology
       summary: Create topology node
       operationId: v2_createTopologyNode
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1282,270 +619,30 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-
-  /topology/nodes/{id}:
-    patch:
-      tags: [topology]
-      summary: Update topology node (rename / move / field patch)
-      operationId: v2_patchTopologyNode
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: Node updated
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [topology]
-      summary: Archive topology node
-      operationId: v2_archiveTopologyNode
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Node archived
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /topology/nodes/{id}/ancestors:
-    get:
-      tags: [topology]
-      summary: Get node ancestors
-      operationId: v2_getTopologyAncestors
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Ancestor list (root first)
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TopologyNode'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /topology/nodes/{id}/archived-descendants:
-    get:
-      tags: [topology]
-      summary: List archived descendants
-      operationId: v2_getArchivedDescendants
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: ws
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Archived descendants in tree order
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ArchivedDescendant'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /topology/nodes/{id}/disconnect:
-    post:
-      tags: [topology]
-      summary: Disconnect node from parent
-      operationId: v2_disconnectTopologyNode
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Node disconnected
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /topology/nodes/{id}/duplicate:
-    post:
-      tags: [topology]
-      summary: Duplicate node subtree
-      operationId: v2_duplicateTopologyNode
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '201':
-          description: Duplicated root node
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TopologyNode'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /topology/nodes/{id}/restore:
-    post:
-      tags: [topology]
-      summary: Restore archived node
-      operationId: v2_restoreTopologyNode
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                new_parent_id:
-                  type: string
-                  format: uuid
-      responses:
-        '204':
-          description: Node restored
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: Parent archived or missing
-
-  /topology/nodes/{id}/roles:
-    post:
-      tags: [topology]
-      summary: Grant role on node
-      operationId: v2_grantTopologyRole
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [user_id, role]
-              properties:
-                user_id:
-                  type: string
-                  format: uuid
-                role:
-                  type: string
-                  enum: [admin, editor, viewer]
-                can_redelegate:
-                  type: boolean
-      responses:
-        '201':
-          description: Role granted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  grant_id:
-                    type: string
-                    format: uuid
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
   /topology/nodes/bulk-position:
     post:
-      tags: [topology]
+      tags:
+      - topology
       summary: Bulk update node positions
       operationId: v2_bulkPositionTopologyNodes
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [updates]
+              required:
+              - updates
               properties:
                 updates:
                   type: array
                   items:
                     type: object
-                    required: [node_id, position]
+                    required:
+                    - node_id
+                    - position
                     properties:
                       node_id:
                         type: string
@@ -1567,54 +664,279 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-
-  /topology/roles/{grant_id}:
-    delete:
-      tags: [topology]
-      summary: Revoke role grant
-      operationId: v2_revokeTopologyRole
+  /topology/nodes/{id}:
+    patch:
+      tags:
+      - topology
+      summary: Update topology node (rename / move / field patch)
+      operationId: v2_patchTopologyNode
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       parameters:
-        - name: grant_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
       responses:
-        '204':
-          description: Grant revoked
+        '200':
+          description: Node updated
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+    delete:
+      tags:
+      - topology
+      summary: Archive topology node
+      operationId: v2_archiveTopologyNode
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Node archived
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /topology/nodes/{id}/ancestors:
+    get:
+      tags:
+      - topology
+      summary: Get node ancestors
+      operationId: v2_getTopologyAncestors
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Ancestor list (root first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopologyNode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /topology/nodes/{id}/archived-descendants:
+    get:
+      tags:
+      - topology
+      summary: List archived descendants
+      operationId: v2_getArchivedDescendants
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: ws
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Archived descendants in tree order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArchivedDescendant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /topology/nodes/{id}/disconnect:
+    post:
+      tags:
+      - topology
+      summary: Disconnect node from parent
+      operationId: v2_disconnectTopologyNode
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Node disconnected
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /topology/nodes/{id}/duplicate:
+    post:
+      tags:
+      - topology
+      summary: Duplicate node subtree
+      operationId: v2_duplicateTopologyNode
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '201':
+          description: Duplicated root node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyNode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /topology/nodes/{id}/restore:
+    post:
+      tags:
+      - topology
+      summary: Restore archived node
+      operationId: v2_restoreTopologyNode
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_parent_id:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Node restored
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Parent archived or missing
+  /topology/nodes/{id}/roles:
+    post:
+      tags:
+      - topology
+      summary: Grant role on node
+      operationId: v2_grantTopologyRole
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - user_id
+              - role
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                role:
+                  type: string
+                  enum:
+                  - admin
+                  - editor
+                  - viewer
+                can_redelegate:
+                  type: boolean
+      responses:
+        '201':
+          description: Role granted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grant_id:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /topology/preview-move:
     get:
-      tags: [topology]
+      tags:
+      - topology
       summary: Preview node move (cycle check)
       operationId: v2_previewTopologyMove
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       parameters:
-        - name: node
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: new_parent
-          in: query
-          schema:
-            type: string
-            format: uuid
-        - name: ws
-          in: query
-          schema:
-            type: string
+      - name: node
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: new_parent
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: ws
+        in: query
+        schema:
+          type: string
       responses:
         '200':
           description: Move preview result
@@ -1627,116 +949,18 @@ paths:
                     type: boolean
                   reason:
                     type: string
-                    enum: [cycle]
+                    enum:
+                    - cycle
         '401':
           $ref: '#/components/responses/Unauthorized'
-
-  /topology/disconnected:
-    get:
-      tags: [topology]
-      summary: List disconnected nodes
-      operationId: v2_listDisconnectedTopologyNodes
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: ws
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Disconnected nodes (no parent, not the tenant root)
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TopologyNode'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /topology/view-state:
-    put:
-      tags: [topology]
-      summary: Upsert canvas viewport state for the caller
-      operationId: v2_setTopologyViewState
-      description: |
-        Stores the canvas pan/zoom viewport for the (workspace, user) pair.
-        workspace_id is resolved from the ?ws query param (WorkspaceClampMiddleware).
-        Replaces the legacy per-node collapsed flag.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: ws
-          in: query
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [viewport_x, viewport_y, viewport_zoom]
-              properties:
-                viewport_x:
-                  type: number
-                viewport_y:
-                  type: number
-                viewport_zoom:
-                  type: number
-      responses:
-        '204':
-          description: View state saved
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /topology/commit:
-    get:
-      tags: [topology]
-      summary: Get commit status
-      operationId: v2_getTopologyCommitStatus
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: ws
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Commit status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TopologyCommitStatus'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags: [topology]
-      summary: Commit topology changes (gadmin only)
-      operationId: v2_commitTopology
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Committed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TopologyCommitStatus'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
   /topology/reset:
     post:
-      tags: [topology]
+      tags:
+      - topology
       summary: Reset topology canvas (gadmin only — mass-archives all live nodes)
       operationId: v2_resetTopology
       security:
-        - bearerAuth: []
+      - bearerAuth: []
       responses:
         '200':
           description: Reset complete
@@ -1751,7 +975,391 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-
+  /topology/roles/{grant_id}:
+    delete:
+      tags:
+      - topology
+      summary: Revoke role grant
+      operationId: v2_revokeTopologyRole
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: grant_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Grant revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /topology/tree:
+    get:
+      tags:
+      - topology
+      summary: Get org topology tree
+      operationId: v2_getTopologyTree
+      description: |
+        Returns the tree of live topology nodes for the workspace resolved
+        from ?ws=<slug|uuid>. If ws is absent the backend falls back to the
+        actor's first live workspace. Archived nodes are excluded from the
+        main tree (see /topology/nodes/{id}/archived-descendants).
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: ws
+        in: query
+        description: Workspace slug or UUID (absent → actor's first workspace)
+        schema:
+          type: string
+      - name: root
+        in: query
+        description: Root node UUID (absent → tenant root)
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Topology node tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopologyNode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /topology/view-state:
+    put:
+      tags:
+      - topology
+      summary: Upsert canvas viewport state for the caller
+      operationId: v2_setTopologyViewState
+      description: |
+        Stores the canvas pan/zoom viewport for the (workspace, user) pair.
+        workspace_id is resolved from the ?ws query param (WorkspaceClampMiddleware).
+        Replaces the legacy per-node collapsed flag.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: ws
+        in: query
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - viewport_x
+              - viewport_y
+              - viewport_zoom
+              properties:
+                viewport_x:
+                  type: number
+                viewport_y:
+                  type: number
+                viewport_zoom:
+                  type: number
+      responses:
+        '204':
+          description: View state saved
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items:
+    get:
+      tags:
+      - work-items
+      summary: List work items
+      operationId: v2_listWorkItems
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: skip
+        in: query
+        schema:
+          type: integer
+          default: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+      - name: sort
+        in: query
+        schema:
+          type: string
+      - name: dir
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: scope
+        in: query
+        description: |
+          PLA-0043 — Topology scope clamp. When set to a topology_node UUID,
+          the list is filtered to artefacts owned by that node OR any live
+          descendant in the topology tree. Artefacts with no
+          topology_node_id are excluded when scope is active. Grant
+          inheritance: a grant on a node reaches the node and every
+          descendant; gadmin bypasses the check entirely.
+          Errors: 400 if not a UUID; 403 if the caller has no grant
+          covering the node; 404 if the node does not exist in this
+          tenant.
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Work items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Scope read denied — caller has no grant on the requested topology node.
+        '404':
+          description: Scope node not found in this tenant.
+    post:
+      tags:
+      - uncategorised
+      summary: POST /work-items
+      operationId: postWorkItems
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/bulk:
+    post:
+      tags:
+      - uncategorised
+      summary: POST /work-items/bulk
+      operationId: postWorkItemsBulk
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/flow-states:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /work-items/flow-states
+      operationId: getWorkItemsFlowStates
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/summary:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /work-items/summary
+      operationId: getWorkItemsSummary
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/{id}:
+    delete:
+      tags:
+      - uncategorised
+      summary: DELETE /work-items/{id}
+      operationId: deleteWorkItemsId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+      - uncategorised
+      summary: GET /work-items/{id}
+      operationId: getWorkItemsId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+      - uncategorised
+      summary: PATCH /work-items/{id}
+      operationId: patchWorkItemsId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/{id}/children:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /work-items/{id}/children
+      operationId: getWorkItemsIdChildren
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/{id}/field-values:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /work-items/{id}/field-values
+      operationId: getWorkItemsIdFieldValues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+      - uncategorised
+      summary: PUT /work-items/{id}/field-values
+      operationId: putWorkItemsIdFieldValues
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/{id}/field-values/{field_library_id}:
+    delete:
+      tags:
+      - uncategorised
+      summary: DELETE /work-items/{id}/field-values/{field_library_id}
+      operationId: deleteWorkItemsIdFieldValuesFieldLibraryId
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /workspaces/{id}/fields:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /workspaces/{id}/fields
+      operationId: getWorkspacesIdFields
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /workspaces/{id}/portfolio/layers:
+    get:
+      tags:
+      - uncategorised
+      summary: GET /workspaces/{id}/portfolio/layers
+      operationId: getWorkspacesIdPortfolioLayers
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 components:
   schemas:
     TopologyNode:
@@ -1788,7 +1396,11 @@ components:
           nullable: true
         layout_mode:
           type: string
-          enum: [auto-horizontal, auto-vertical, auto-radial, manual]
+          enum:
+          - auto-horizontal
+          - auto-vertical
+          - auto-radial
+          - manual
         manual_x:
           type: number
           nullable: true
@@ -1811,7 +1423,6 @@ components:
         updated_at:
           type: string
           format: date-time
-
     ArchivedDescendant:
       type: object
       properties:
@@ -1829,10 +1440,10 @@ components:
           format: date-time
         parent_is_archived:
           type: boolean
-
     CreateTopologyNodeInput:
       type: object
-      required: [name]
+      required:
+      - name
       properties:
         parent_id:
           type: string
@@ -1857,7 +1468,11 @@ components:
           nullable: true
         layout_mode:
           type: string
-          enum: [auto-horizontal, auto-vertical, auto-radial, manual]
+          enum:
+          - auto-horizontal
+          - auto-vertical
+          - auto-radial
+          - manual
         manual_x:
           type: number
           nullable: true
@@ -1868,7 +1483,6 @@ components:
           type: boolean
         sort_order:
           type: integer
-
     TopologyCommitStatus:
       type: object
       properties:
@@ -1886,7 +1500,6 @@ components:
           nullable: true
         dirty_since_commit:
           type: boolean
-
     FlowState:
       type: object
       properties:
@@ -1897,7 +1510,11 @@ components:
           type: string
         kind:
           type: string
-          enum: [todo, in_progress, done, cancelled]
+          enum:
+          - todo
+          - in_progress
+          - done
+          - cancelled
         sort_order:
           type: integer
         is_initial:
@@ -1918,7 +1535,9 @@ components:
           type: string
         type_scope:
           type: string
-          enum: [work, strategy]
+          enum:
+          - work
+          - strategy
         states:
           type: array
           items:
@@ -1947,7 +1566,6 @@ components:
                 type: string
               message:
                 type: string
-
   responses:
     BadRequest:
       description: Bad Request (400)
@@ -1955,35 +1573,30 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-
     Unauthorized:
       description: Unauthorized (401)
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-
     Forbidden:
       description: Forbidden (403)
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-
     NotFound:
       description: Not Found (404)
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-
     UnprocessableEntity:
       description: Unprocessable Entity (422)
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-
   securitySchemes:
     bearerAuth:
       type: http
