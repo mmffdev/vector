@@ -67,6 +67,8 @@ export interface AdminUser {
 
   last_login: string | null;
   force_password_change: boolean;
+  password_changed_at?: string | null;
+  ldap_dn?: string | null;
   created_at: string;
 }
 

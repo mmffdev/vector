@@ -60,7 +60,7 @@ const sqlListUsersBySubscription = `
 		       middle_name, display_name, phone_work, phone_mobile, timezone, date_format,
 		       datetime_format, email_notifications_enabled, password_reset_required,
 		       cost_centre_id, office_location_id, profile_image_url,
-		       last_login, auth_method, force_password_change, password_changed_at,
+		       last_login, auth_method, ldap_dn, force_password_change, password_changed_at,
 		       created_at, updated_at
 		FROM users WHERE subscription_id = $1 ORDER BY created_at DESC
 	`

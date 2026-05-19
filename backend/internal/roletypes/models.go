@@ -76,7 +76,11 @@ type User struct {
 
 	LastLogin           *time.Time `json:"last_login,omitempty"`
 	AuthMethod          string     `json:"auth_method"`
-	LdapDN              *string    `json:"-"`
+	// B20.4.8 — surfaced as "Network ID" in the admin user edit panel.
+	// Auth-managed (set during SSO bind, not editable from the panel).
+	// Returned to admin callers only; the LDAP DN can include
+	// org-revealing structure so it stays gated to users.admin.view.
+	LdapDN              *string    `json:"ldap_dn,omitempty"`
 	ForcePasswordChange bool       `json:"force_password_change"`
 	PasswordChangedAt   *time.Time `json:"password_changed_at,omitempty"`
 	FailedLoginCount    int        `json:"-"`

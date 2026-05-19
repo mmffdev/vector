@@ -133,7 +133,7 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]roletyp
 			&u.Timezone, &u.DateFormat, &u.DatetimeFormat,
 			&u.EmailNotificationsEnabled, &u.PasswordResetRequired,
 			&u.CostCentreID, &u.OfficeLocationID, &u.ProfileImageURL,
-			&u.LastLogin, &u.AuthMethod, &u.ForcePasswordChange, &u.PasswordChangedAt,
+			&u.LastLogin, &u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 			&u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}

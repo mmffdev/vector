@@ -15,6 +15,31 @@ import { Modal, type AdminUser, type AdminUserRole, type RoleSummary } from "@/a
 
 type PageSize = "all" | 10 | 25 | 50 | 100;
 
+// B20.4.8 — inline edit-row panel restructured into 4 sections:
+// Account Information / Display Preferences / Settings / Administrative
+// Fields. Field-to-section mapping follows the plan doc spec
+// (context/plans/USERS-CONSOLIDATION.md). All fields are optional on
+// the wire — the panel sends only changed fields in the PATCH body
+// (Partial<AdminUser> shape).
+type EditPatch = Partial<{
+  role: AdminUserRole;
+  is_active: boolean;
+  first_name: string;
+  last_name: string;
+  department: string;
+  middle_name: string;
+  display_name: string;
+  phone_work: string;
+  phone_mobile: string;
+  timezone: string;
+  date_format: string;
+  datetime_format: string;
+  email_notifications_enabled: boolean;
+  password_reset_required: boolean;
+  cost_centre_id: string;
+  office_location_id: string;
+}>;
+
 function UserEditPanel({
   u,
   onSave,
@@ -22,15 +47,33 @@ function UserEditPanel({
   onDelete,
 }: {
   u: AdminUser;
-  onSave: (id: string, patch: Partial<{ role: AdminUserRole; is_active: boolean; first_name: string; last_name: string; department: string }>) => Promise<void>;
+  onSave: (id: string, patch: EditPatch) => Promise<void>;
   onIssueReset: (id: string) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
-  const [firstName,   setFirstName]   = useState(u.first_name ?? "");
-  const [lastName,    setLastName]    = useState(u.last_name ?? "");
-  const [department,  setDepartment]  = useState(u.department ?? "");
-  const [role,        setRole]        = useState<AdminUserRole>(u.role);
-  const [isActive,    setIsActive]    = useState(u.is_active);
+  // Account Information
+  const [firstName,    setFirstName]    = useState(u.first_name ?? "");
+  const [middleName,   setMiddleName]   = useState(u.middle_name ?? "");
+  const [lastName,     setLastName]     = useState(u.last_name ?? "");
+  const [department,   setDepartment]   = useState(u.department ?? "");
+  const [phoneWork,    setPhoneWork]    = useState(u.phone_work ?? "");
+  const [phoneMobile,  setPhoneMobile]  = useState(u.phone_mobile ?? "");
+  const [role,         setRole]         = useState<AdminUserRole>(u.role);
+  const [isActive,     setIsActive]     = useState(u.is_active);
+  // Display Preferences
+  const [displayName,  setDisplayName]  = useState(u.display_name ?? "");
+  // Settings
+  const [timezone,         setTimezone]         = useState(u.timezone ?? "");
+  const [dateFormat,       setDateFormat]       = useState(u.date_format ?? "");
+  const [datetimeFormat,   setDatetimeFormat]   = useState(u.datetime_format ?? "");
+  const [emailNotif,       setEmailNotif]       = useState(u.email_notifications_enabled ?? true);
+  // Administrative Fields (stub UUID fields; rendered as plain inputs
+  // until B20.4.3 / B20.4.7 land the cost-centre / office-location
+  // typeaheads). ldap_dn is read-only — surfaced as "Network ID" per
+  // spec but the column itself stays auth-managed.
+  const [costCentreId,     setCostCentreId]     = useState(u.cost_centre_id ?? "");
+  const [officeLocId,      setOfficeLocId]      = useState(u.office_location_id ?? "");
+
   const [removeBusy,  setRemoveBusy]  = useState(false);
   const [creatable,   setCreatable]   = useState<RoleSummary[] | null>(null);
   const [busy,        setBusy]        = useState(false);
@@ -52,11 +95,21 @@ function UserEditPanel({
 
   useEffect(() => {
     setFirstName(u.first_name ?? "");
+    setMiddleName(u.middle_name ?? "");
     setLastName(u.last_name ?? "");
     setDepartment(u.department ?? "");
+    setPhoneWork(u.phone_work ?? "");
+    setPhoneMobile(u.phone_mobile ?? "");
     setRole(u.role);
     setIsActive(u.is_active);
-  }, [u.id, u.first_name, u.last_name, u.department, u.role, u.is_active]);
+    setDisplayName(u.display_name ?? "");
+    setTimezone(u.timezone ?? "");
+    setDateFormat(u.date_format ?? "");
+    setDatetimeFormat(u.datetime_format ?? "");
+    setEmailNotif(u.email_notifications_enabled ?? true);
+    setCostCentreId(u.cost_centre_id ?? "");
+    setOfficeLocId(u.office_location_id ?? "");
+  }, [u]);
 
   const roleOptions = useMemo<RoleSummary[]>(() => {
     const list = [...(creatable ?? [])];
@@ -66,12 +119,31 @@ function UserEditPanel({
     return list;
   }, [creatable, u.role]);
 
-  const dirty =
-    firstName  !== (u.first_name  ?? "") ||
-    lastName   !== (u.last_name   ?? "") ||
-    department !== (u.department  ?? "") ||
-    role       !== u.role ||
-    isActive   !== u.is_active;
+  // Build the sparse patch: only include fields that actually changed.
+  // The Update handler in the backend is field-by-field sparse, so we
+  // don't send unchanged fields and the server doesn't update them.
+  const buildPatch = useCallback((): EditPatch => {
+    const p: EditPatch = {};
+    if (firstName       !== (u.first_name ?? ""))                 p.first_name = firstName;
+    if (middleName      !== (u.middle_name ?? ""))                p.middle_name = middleName;
+    if (lastName        !== (u.last_name ?? ""))                  p.last_name = lastName;
+    if (department      !== (u.department ?? ""))                 p.department = department;
+    if (phoneWork       !== (u.phone_work ?? ""))                 p.phone_work = phoneWork;
+    if (phoneMobile     !== (u.phone_mobile ?? ""))               p.phone_mobile = phoneMobile;
+    if (role            !== u.role)                               p.role = role;
+    if (isActive        !== u.is_active)                          p.is_active = isActive;
+    if (displayName     !== (u.display_name ?? ""))               p.display_name = displayName;
+    if (timezone        !== (u.timezone ?? ""))                   p.timezone = timezone;
+    if (dateFormat      !== (u.date_format ?? ""))                p.date_format = dateFormat;
+    if (datetimeFormat  !== (u.datetime_format ?? ""))            p.datetime_format = datetimeFormat;
+    if (emailNotif      !== (u.email_notifications_enabled ?? true)) p.email_notifications_enabled = emailNotif;
+    if (costCentreId    !== (u.cost_centre_id ?? ""))             p.cost_centre_id = costCentreId;
+    if (officeLocId     !== (u.office_location_id ?? ""))         p.office_location_id = officeLocId;
+    return p;
+  }, [u, firstName, middleName, lastName, department, phoneWork, phoneMobile, role, isActive,
+      displayName, timezone, dateFormat, datetimeFormat, emailNotif, costCentreId, officeLocId]);
+
+  const dirty = Object.keys(buildPatch()).length > 0;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,10 +151,16 @@ function UserEditPanel({
     setInfo(null);
     setBusy(true);
     try {
-      await onSave(u.id, { first_name: firstName, last_name: lastName, department, role, is_active: isActive });
+      await onSave(u.id, buildPatch());
       setInfo("Changes saved.");
     } catch (e) {
-      setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Save failed");
+      // E.164 phone validation surfaces as 400 phone.invalid_e164 —
+      // worth a friendlier message than the raw error.
+      if (e instanceof ApiError && e.status === 400 && String(e.body ?? "").includes("phone.invalid_e164")) {
+        setErr("Phone numbers must be in E.164 format (e.g. +447700900123).");
+      } else {
+        setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Save failed");
+      }
     } finally {
       setBusy(false);
     }
@@ -102,26 +180,39 @@ function UserEditPanel({
     }
   }
 
+  // Compact section header — same .users-edit-panel__section_header
+  // CSS pack used across the four blocks. Sub-component to avoid
+  // repetition.
+  const SectionHeader = ({ children }: { children: React.ReactNode }) => (
+    <div className="users-edit-panel__section_header">{children}</div>
+  );
+
   return (
     <div className="users-edit-panel">
       <form className="form" onSubmit={onSubmit}>
+        {/* ── Account Information ─────────────────────────────────── */}
+        <SectionHeader>Account Information</SectionHeader>
         <div className="form__grid">
           <label className="form__label">
             First name
             <input type="text" className="form__input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
           </label>
           <label className="form__label">
-            Last name
-            <input type="text" className="form__input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            Middle name
+            <input type="text" className="form__input" value={middleName} onChange={(e) => setMiddleName(e.target.value)} />
           </label>
           <label className="form__label">
-            Department
-            <input type="text" className="form__input" value={department} onChange={(e) => setDepartment(e.target.value)} />
+            Last name
+            <input type="text" className="form__input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
           </label>
           <label className="form__label">
             Email
             <input type="email" className="form__input" value={u.email} disabled />
             <span className="form__hint">Email cannot be changed from this panel.</span>
+          </label>
+          <label className="form__label">
+            Department
+            <input type="text" className="form__input" value={department} onChange={(e) => setDepartment(e.target.value)} />
           </label>
           <label className="form__label">
             Role
@@ -132,6 +223,130 @@ function UserEditPanel({
                 </option>
               ))}
             </select>
+          </label>
+          <label className="form__label">
+            Phone (work)
+            <input
+              type="tel"
+              className="form__input"
+              placeholder="+447700900123"
+              value={phoneWork}
+              onChange={(e) => setPhoneWork(e.target.value)}
+            />
+            <span className="form__hint">E.164 format only (leading +, country code, digits).</span>
+          </label>
+          <label className="form__label">
+            Phone (mobile)
+            <input
+              type="tel"
+              className="form__input"
+              placeholder="+447700900123"
+              value={phoneMobile}
+              onChange={(e) => setPhoneMobile(e.target.value)}
+            />
+          </label>
+        </div>
+
+        {/* ── Display Preferences ─────────────────────────────────── */}
+        <SectionHeader>Display Preferences</SectionHeader>
+        <div className="form__grid">
+          <label className="form__label">
+            Display name
+            <input type="text" className="form__input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <span className="form__hint">Name shown to other users (e.g. mentions, comments).</span>
+          </label>
+          {/* Profile image upload deferred to B20.4.9 */}
+        </div>
+
+        {/* ── Settings ────────────────────────────────────────────── */}
+        <SectionHeader>Settings</SectionHeader>
+        <div className="form__grid">
+          <label className="form__label">
+            Timezone
+            <input
+              type="text"
+              className="form__input"
+              placeholder="Europe/London"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+            />
+            <span className="form__hint">Inherits the workspace default when blank.</span>
+          </label>
+          <label className="form__label">
+            Date format
+            <input
+              type="text"
+              className="form__input"
+              placeholder="YYYY-MM-DD"
+              value={dateFormat}
+              onChange={(e) => setDateFormat(e.target.value)}
+            />
+          </label>
+          <label className="form__label">
+            Date & time format
+            <input
+              type="text"
+              className="form__input"
+              placeholder="YYYY-MM-DD HH:mm"
+              value={datetimeFormat}
+              onChange={(e) => setDatetimeFormat(e.target.value)}
+            />
+          </label>
+          <label className="form__label form__label--inline">
+            <input
+              type="checkbox"
+              checked={emailNotif}
+              onChange={(e) => setEmailNotif(e.target.checked)}
+            />
+            <span>Email notifications enabled</span>
+          </label>
+          {u.password_changed_at != null && (
+            <label className="form__label">
+              Password last changed
+              <input
+                type="text"
+                className="form__input"
+                value={new Date(u.password_changed_at).toLocaleString()}
+                disabled
+              />
+            </label>
+          )}
+        </div>
+
+        {/* ── Administrative Fields ───────────────────────────────── */}
+        <SectionHeader>Administrative Fields</SectionHeader>
+        <div className="form__grid">
+          <label className="form__label">
+            Network ID
+            <input
+              type="text"
+              className="form__input"
+              value={u.ldap_dn ?? ""}
+              disabled
+            />
+            <span className="form__hint">LDAP/AD bind DN; auth-managed (set during SSO bind, not editable here).</span>
+          </label>
+          <label className="form__label">
+            Cost centre
+            <input
+              type="text"
+              className="form__input"
+              placeholder="(UUID until B20.4.3 lands the picker)"
+              value={costCentreId}
+              onChange={(e) => setCostCentreId(e.target.value)}
+            />
+            <span className="form__hint">Becomes a typeahead dropdown when cost-centres entity ships.</span>
+          </label>
+          <label className="form__label">
+            Office location
+            <input
+              type="text"
+              className="form__input"
+              placeholder="(UUID until B20.4.7 lands the picker)"
+              value={officeLocId}
+              onChange={(e) => setOfficeLocId(e.target.value)}
+            />
+            <span className="form__hint">Vector-admin-managed list; deferred.</span>
           </label>
         </div>
 
@@ -385,10 +600,12 @@ export default function UsersPage() {
   const pageCount  = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / sizeNumber));
   const safePage   = Math.min(page, pageCount);
 
-  async function patchUser(id: string, patch: Partial<{
-    role: AdminUserRole; is_active: boolean;
-    first_name: string; last_name: string; department: string;
-  }>) {
+  // Accepts the full B20.4 EditPatch shape (extended profile + stub
+  // FKs); the server's PATCH /admin/users/{id} is field-by-field
+  // sparse so unchanged fields aren't touched. Wider type than the
+  // pre-B20.4 callsite — keeps the body opaque-pass-through so new
+  // panel sections can extend the patch without re-typing this fn.
+  async function patchUser(id: string, patch: EditPatch) {
     await api(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
     await load();
   }
