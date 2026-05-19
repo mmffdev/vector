@@ -54,7 +54,7 @@ import {
   adoptStreamPath,
   type AdoptionStepName,
 } from "./adoptionConstants";
-import { apiSite, getApiToken } from "@/app/lib/api";
+import { apiSite, apiSiteStream } from "@/app/lib/api";
 import { reportError } from "@/app/lib/reportError";
 
 type StepStatus = "idle" | "in-progress" | "complete" | "failed";
@@ -300,18 +300,15 @@ export default function AdoptionOverlay({
     };
   }, [statuses, allDone, lastFail]);
 
-  // SSE lifecycle: uses fetch() so Authorization: Bearer is sent correctly.
-  // EventSource cannot set custom headers; the backend requires Bearer auth.
+  // SSE lifecycle: opens via apiSiteStream() (the streaming sibling of
+  // apiSite — see app/lib/api.ts). EventSource can't set custom headers,
+  // so the backend Bearer-auth contract requires fetch-style streaming.
+  // The helper composes the URL against API_SITE_BASE and attaches the
+  // Bearer + DPoP proof centrally; we just pass Accept here.
   // Re-runs when streamEpoch bumps (after a retry) so a fresh stream opens.
   useEffect(() => {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-
-    const token = getApiToken();
-    const headers: Record<string, string> = {
-      Accept: "text/event-stream",
-    };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
 
     // Minimal SSE line parser — handles `event:`, `data:`, and blank-line
     // frame boundaries. Comments (`:`) are ignored.
@@ -356,11 +353,8 @@ export default function AdoptionOverlay({
 
     void (async () => {
       try {
-        const API_BASE =
-          (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:5100") + "/_site";
-        const res = await fetch(API_BASE + adoptStreamPath(modelId), {
-          headers,
-          credentials: "include",
+        const res = await apiSiteStream(adoptStreamPath(modelId), {
+          headers: { Accept: "text/event-stream" },
           signal: ctrl.signal,
         });
         if (!res.ok || !res.body) return;

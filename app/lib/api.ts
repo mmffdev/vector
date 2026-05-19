@@ -265,6 +265,55 @@ export async function apiSite<T = unknown>(path: string, opts: ApiOpts = {}): Pr
   return _fetch<T>(API_SITE_BASE, path, opts);
 }
 
+/**
+ * Streaming sibling of apiSite() — for Server-Sent Events and other endpoints
+ * that need direct access to the streamed Response body.
+ *
+ * apiSite() reads the response to completion and JSON-parses it; that's wrong
+ * for SSE because we want to consume frames as they arrive. apiSiteStream()
+ * returns the raw Response so the caller can do `res.body.getReader()` and
+ * drive its own loop. Everything else — Bearer auth, DPoP proof, credentials
+ * — is identical to apiSite().
+ *
+ * Returns the Response so the caller can check `res.ok`, `res.status`, and
+ * spawn the reader as it sees fit. The helper does NOT retry on 401 the way
+ * _fetch() does, because the lifecycle of a long-lived stream isn't a single
+ * RPC — if auth expires mid-stream, the caller wants to know so it can
+ * close + re-open after refresh, not silently retry.
+ *
+ * Use case today: portfolio-model adoption progress (AdoptionOverlay.tsx).
+ * Same path as apiSite() would compose — relative to /_site — so the rule
+ * "every site backend URL is composed inside app/lib/api.ts" still holds.
+ */
+export async function apiSiteStream(
+  path: string,
+  opts: { signal?: AbortSignal; headers?: HeadersInit; skipAuth?: boolean } = {},
+): Promise<Response> {
+  const headers = new Headers(opts.headers);
+  if (!opts.skipAuth && _accessToken) {
+    headers.set("Authorization", `Bearer ${_accessToken}`);
+  }
+  const fullURL = API_SITE_BASE + path;
+
+  // DPoP proof — same logic as _fetch(), keep streaming endpoints honest
+  // under the same key-binding contract once Phase 3 enforces it.
+  if (hasActiveKeypair()) {
+    const proof = await mintProof({
+      htm: "GET",
+      htu: fullURL,
+      accessToken: opts.skipAuth ? undefined : (_accessToken ?? undefined),
+    });
+    if (proof) headers.set("DPoP", proof);
+  }
+
+  return fetch(fullURL, {
+    method: "GET",
+    headers,
+    credentials: "include",
+    signal: opts.signal,
+  });
+}
+
 // Root-level transport infra (NOT site, NOT public): /healthz, /env, /env/switch,
 // /status/pipeline, /ws. These intentionally live outside both /_site and
 // /samantha/v2 because they describe the transport itself.

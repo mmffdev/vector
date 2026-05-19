@@ -3731,32 +3731,6 @@
     "id": 287
   },
   {
-    "group": "PORT.AdoptionOverlay",
-    "location_page": "/portfolio-model/AdoptionOverlay.tsx",
-    "location_file": "app/(user)/portfolio-model/AdoptionOverlay.tsx:303",
-    "fn": "fetch",
-    "path": "<dynamic>",
-    "method": "GET",
-    "kind": "sse-stream",
-    "status": "yellow",
-    "gap": "Acceptable for SSE; ensure URL is constructed from API_SITE_BASE, not hardcoded.",
-    "snippet": "// SSE lifecycle: uses fetch() so Authorization: Bearer is sent correctly.",
-    "id": 288
-  },
-  {
-    "group": "PORT.AdoptionOverlay",
-    "location_page": "/portfolio-model/AdoptionOverlay.tsx",
-    "location_file": "app/(user)/portfolio-model/AdoptionOverlay.tsx:361",
-    "fn": "fetch",
-    "path": "<dynamic>",
-    "method": "GET",
-    "kind": "sse-stream",
-    "status": "yellow",
-    "gap": "Acceptable for SSE; ensure URL is constructed from API_SITE_BASE, not hardcoded.",
-    "snippet": "const res = await fetch(API_BASE + adoptStreamPath(modelId), {",
-    "id": 289
-  },
-  {
     "group": "DEV-PANEL.DevRetrosPanel",
     "location_page": "/dev/pages/DevRetrosPanel.tsx",
     "location_file": "dev/pages/DevRetrosPanel.tsx:49",
@@ -3767,7 +3741,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/retros?view=ledger\");",
-    "id": 290
+    "id": 288
   },
   {
     "group": "DEV-PANEL.DevRetrosPanel",
@@ -3780,7 +3754,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(`/api/dev/retros?id=${encodeURIComponent(meta.id)}`);",
-    "id": 291
+    "id": 289
   },
   {
     "group": "DEV-PANEL.DevRetrosPanel",
@@ -3793,7 +3767,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/retros\");",
-    "id": 292
+    "id": 290
   },
   {
     "group": "DEV-PANEL.DevScopePanel",
@@ -3806,7 +3780,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "fetch(\"/api/dev/scope\", { cache: \"no-store\" })",
-    "id": 293
+    "id": 291
   },
   {
     "group": "DEV-PANEL.DevResearchPanel",
@@ -3819,7 +3793,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(`/api/dev/research?id=${encodeURIComponent(meta.id)}`);",
-    "id": 294
+    "id": 292
   },
   {
     "group": "DEV-PANEL.DevResearchPanel",
@@ -3832,7 +3806,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/research\");",
-    "id": 295
+    "id": 293
   },
   {
     "group": "DEV-PANEL.DevReportsPanel",
@@ -3845,7 +3819,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/memory-reports\");",
-    "id": 296
+    "id": 294
   },
   {
     "group": "DEV-PANEL.DevApiV2TestsPanel",
@@ -3858,7 +3832,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/go-test\", {",
-    "id": 297
+    "id": 295
   },
   {
     "group": "DEV-PANEL.DevOperationsPanel",
@@ -3871,7 +3845,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(`/api/dev/operations?id=${encodeURIComponent(meta.id)}`);",
-    "id": 298
+    "id": 296
   },
   {
     "group": "DEV-PANEL.DevOperationsPanel",
@@ -3884,7 +3858,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/operations\");",
-    "id": 299
+    "id": 297
   },
   {
     "group": "DEV-PANEL.DevPlansPanel",
@@ -3897,7 +3871,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(`/api/dev/plans?id=${encodeURIComponent(meta.id)}`);",
-    "id": 300
+    "id": 298
   },
   {
     "group": "DEV-PANEL.DevPlansPanel",
@@ -3910,7 +3884,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/plans\");",
-    "id": 301
+    "id": 299
   },
   {
     "group": "DEV-PANEL.DevApiChangelogPanel",
@@ -3923,7 +3897,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/api-changelog\");",
-    "id": 302
+    "id": 300
   },
   {
     "group": "DEV-PANEL.DevSecurityAuditsListPanel",
@@ -3936,7 +3910,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(`/api/dev/security-audits?id=${encodeURIComponent(meta.id)}`);",
-    "id": 303
+    "id": 301
   },
   {
     "group": "DEV-PANEL.DevSecurityAuditsListPanel",
@@ -3949,7 +3923,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "const res = await fetch(\"/api/dev/security-audits\");",
-    "id": 304
+    "id": 302
   },
   {
     "group": "DEV-PANEL.LibraryPage",
@@ -3962,7 +3936,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "fetch(\"/api/dev/library\")",
-    "id": 305
+    "id": 303
   },
   {
     "group": "DEV-PANEL.LibraryPage",
@@ -3975,7 +3949,7 @@
     "status": "green",
     "gap": "Investigate.",
     "snippet": "fetch(`/api/dev/library/file?path=${encodeURIComponent(selected.path)}`)",
-    "id": 306
+    "id": 304
   },
   {
     "group": "DEV-PANEL.DevScopePanel",
@@ -3984,11 +3958,11 @@
     "fn": "EventSource",
     "path": "/api/dev/scope/stream",
     "method": "GET",
-    "kind": "sse-stream",
-    "status": "yellow",
-    "gap": "Acceptable for SSE; ensure URL is constructed from API_SITE_BASE.",
+    "kind": "sanctioned-shadow",
+    "status": "green",
+    "gap": "Sanctioned-shadow SSE stream: file-only handler, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "es = new EventSource(\"/api/dev/scope/stream\");",
-    "id": 307
+    "id": 305
   },
   {
     "group": "SHADOW.dev.dev.research",
@@ -4001,7 +3975,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET(request: Request) {",
-    "id": 308
+    "id": 306
   },
   {
     "group": "SHADOW.dev.dev.memory-reports",
@@ -4014,7 +3988,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET() {",
-    "id": 309
+    "id": 307
   },
   {
     "group": "SHADOW.dev.dev.plans",
@@ -4027,7 +4001,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET(request: Request) {",
-    "id": 310
+    "id": 308
   },
   {
     "group": "SHADOW.dev.dev.library.file",
@@ -4040,7 +4014,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET(req: NextRequest) {",
-    "id": 311
+    "id": 309
   },
   {
     "group": "SHADOW.dev.dev.library",
@@ -4053,7 +4027,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET() {",
-    "id": 312
+    "id": 310
   },
   {
     "group": "SHADOW.dev.dev.security-audits",
@@ -4066,20 +4040,20 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET(request: Request) {",
-    "id": 313
+    "id": 311
   },
   {
     "group": "SHADOW.dev.dev.scope.stream",
     "location_page": "/dev/scope/stream",
     "location_file": "app/api/dev/scope/stream/route.ts:8",
     "fn": "route-handler",
-    "path": "(unknown)",
+    "path": "(filesystem reads)",
     "method": "GET",
-    "kind": "fs-only",
-    "status": "grey",
-    "gap": "Unknown handler type; inspect manually.",
+    "kind": "sanctioned-shadow",
+    "status": "green",
+    "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET() {",
-    "id": 314
+    "id": 312
   },
   {
     "group": "SHADOW.dev.dev.scope",
@@ -4092,7 +4066,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET() {",
-    "id": 315
+    "id": 313
   },
   {
     "group": "SHADOW.dev.dev.operations",
@@ -4105,7 +4079,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET(request: Request) {",
-    "id": 316
+    "id": 314
   },
   {
     "group": "SHADOW.dev.dev.api-changelog",
@@ -4118,7 +4092,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET() {",
-    "id": 317
+    "id": 315
   },
   {
     "group": "SHADOW.dev.dev.retros",
@@ -4131,7 +4105,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: filesystem reads only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET(request: Request) {",
-    "id": 318
+    "id": 316
   },
   {
     "group": "SHADOW.dev.dev.services",
@@ -4144,7 +4118,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: TCP health probe only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function GET() {",
-    "id": 319
+    "id": 317
   },
   {
     "group": "SHADOW.dev.dev.go-test",
@@ -4157,7 +4131,7 @@
     "status": "green",
     "gap": "Sanctioned shadow handler: child_process spawn only, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md.",
     "snippet": "export async function POST(req: Request) {",
-    "id": 320
+    "id": 318
   },
   {
     "group": "DEV-SCRIPT.cookbook_harvest",
@@ -4170,7 +4144,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "# cookbook_harvest.sh — pull novel psql queries from ~/.psql_history into staging.",
-    "id": 321
+    "id": 319
   },
   {
     "group": "DEV-SCRIPT.cookbook_harvest",
@@ -4183,7 +4157,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "# Marker: ~/.claude/cookbook_last_harvest stores the byte-offset of psql history",
-    "id": 322
+    "id": 320
   },
   {
     "group": "DEV-SCRIPT.cookbook_harvest",
@@ -4196,7 +4170,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "echo \"no ~/.psql_history yet — run some psql queries first, then rerun\"",
-    "id": 323
+    "id": 321
   },
   {
     "group": "DEV-SCRIPT.cookbook_harvest",
@@ -4209,7 +4183,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "# - psql meta-commands alone: \\d, \\dt, \\q, \\?, \\l, \\du, etc.",
-    "id": 324
+    "id": 322
   },
   {
     "group": "DEV-SCRIPT.cookbook_harvest",
@@ -4222,7 +4196,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "Raw psql queries harvested from ~/.psql_history by `<cookbook>`. Each batch is timestamped.",
-    "id": 325
+    "id": 323
   },
   {
     "group": "DEV-SCRIPT.backup-on-push",
@@ -4235,7 +4209,7 @@
     "status": "green",
     "gap": "",
     "snippet": "PG_DUMP=\"/opt/homebrew/opt/libpq/bin/pg_dump\"",
-    "id": 326
+    "id": 324
   },
   {
     "group": "DEV-SCRIPT.backup-on-push",
@@ -4248,7 +4222,7 @@
     "status": "green",
     "gap": "",
     "snippet": "emit_skip_banner \"pg_dump not found at $PG_DUMP (install libpq)\"",
-    "id": 327
+    "id": 325
   },
   {
     "group": "DEV-SCRIPT.backup-on-push",
@@ -4261,7 +4235,7 @@
     "status": "green",
     "gap": "",
     "snippet": "emit_skip_banner \"pg_dump failed: $ERR_TAIL\"",
-    "id": 328
+    "id": 326
   },
   {
     "group": "DEV-SCRIPT.backup-on-push",
@@ -4274,7 +4248,7 @@
     "status": "green",
     "gap": "",
     "snippet": "emit_skip_banner \"pg_dump mmff_library failed: $ERR_TAIL\"",
-    "id": 329
+    "id": 327
   },
   {
     "group": "DEV-SCRIPT.backup-on-push",
@@ -4287,7 +4261,7 @@
     "status": "green",
     "gap": "",
     "snippet": "emit_skip_banner \"pg_dump vector_artefacts failed: $ERR_TAIL\"",
-    "id": 330
+    "id": 328
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4300,7 +4274,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "step \"libpq (psql / pg_dump)\"",
-    "id": 331
+    "id": 329
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4313,7 +4287,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "if has_cmd psql; then",
-    "id": 332
+    "id": 330
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4326,7 +4300,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "ok \"psql $(psql --version)\"",
-    "id": 333
+    "id": 331
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4339,7 +4313,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "info \"psql not found.\"",
-    "id": 334
+    "id": 332
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4352,7 +4326,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "has_cmd psql && ok \"psql on PATH.\" || { err \"psql still missing after install.\"; return 1; }",
-    "id": 335
+    "id": 333
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4365,7 +4339,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "if ! has_cmd psql; then",
-    "id": 336
+    "id": 334
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4378,7 +4352,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "warn \"psql missing — skipping DB verification.\"",
-    "id": 337
+    "id": 335
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4391,7 +4365,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "count=$(PGPASSWORD=\"$pw\" psql -h localhost -p \"$TUNNEL_PORT\" -U mmff_dev -d mmff_ops -tAc \"SELECT COUNT(*) FROM backlog_items;\" 2>&1) || {",
-    "id": 338
+    "id": 336
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4404,7 +4378,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "if ! has_cmd psql; then",
-    "id": 339
+    "id": 337
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4417,7 +4391,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "warn \"psql missing — skipping pg_stat_statements check.\"",
-    "id": 340
+    "id": 338
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4430,7 +4404,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "preload=$(PGPASSWORD=\"$pw\" psql -h localhost -p \"$TUNNEL_PORT\" -U mmff_dev -d mmff_vector -tAc \"SHOW shared_preload_libraries;\" 2>&1) || {",
-    "id": 341
+    "id": 339
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4443,7 +4417,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "probe=$(PGPASSWORD=\"$pw\" psql -h localhost -p \"$TUNNEL_PORT\" -U mmff_dev -d mmff_vector -tAc \"SELECT 1 FROM pg_stat_statements LIMIT 1;\" 2>&",
-    "id": 342
+    "id": 340
   },
   {
     "group": "DEV-SCRIPT.ssh_manager",
@@ -4456,7 +4430,7 @@
     "status": "green",
     "gap": "",
     "snippet": "step \"libpq (psql / pg_dump)\"",
-    "id": 343
+    "id": 341
   },
   {
     "group": "DEV-SCRIPT.capture_role_grants",
@@ -4469,7 +4443,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "PSQL=\"/opt/homebrew/opt/libpq/bin/psql\"",
-    "id": 344
+    "id": 342
   },
   {
     "group": "DEV-SCRIPT.10_pg",
@@ -4482,7 +4456,7 @@
     "status": "green",
     "gap": "",
     "snippet": "ssh_server 'docker exec mmff-ops-postgres pg_dump -U mmff_dev -Fc mmff_ops' > \"$OUT\"",
-    "id": 345
+    "id": 343
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4495,7 +4469,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "#           1 — at least one orphan found OR psql/connect failure",
-    "id": 346
+    "id": 344
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4508,7 +4482,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "# Locate psql (libpq client; no full postgres install required)",
-    "id": 347
+    "id": 345
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4521,7 +4495,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "PSQL=\"${PSQL:-psql}\"",
-    "id": 348
+    "id": 346
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4534,7 +4508,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "/opt/homebrew/opt/libpq/bin/psql \\",
-    "id": 349
+    "id": 347
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4547,7 +4521,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "/opt/homebrew/Cellar/libpq/*/bin/psql \\",
-    "id": 350
+    "id": 348
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4560,7 +4534,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "/usr/local/opt/libpq/bin/psql \\",
-    "id": 351
+    "id": 349
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4573,7 +4547,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "/Applications/Postgres.app/Contents/Versions/*/bin/psql",
-    "id": 352
+    "id": 350
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4586,7 +4560,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "echo \"FATAL: psql not found in PATH or known brew/Postgres.app locations.\" >&2",
-    "id": 353
+    "id": 351
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4599,7 +4573,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "# Helpers — psql wrappers that emit one column per row (-tA = tuples-only,",
-    "id": 354
+    "id": 352
   },
   {
     "group": "DEV-SCRIPT.cross_db_canary",
@@ -4612,7 +4586,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "echo \"FAIL $table  query error (see psql output above)\"",
-    "id": 355
+    "id": 353
   },
   {
     "group": "DEV-SCRIPT.dry_run_migration",
@@ -4625,7 +4599,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "# Reads DB connection info from backend/.env.dev. Emits the psql",
-    "id": 356
+    "id": 354
   },
   {
     "group": "DEV-SCRIPT.dry_run_migration",
@@ -4638,7 +4612,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "# Locate psql (Homebrew libpq is the canonical path on this machine).",
-    "id": 357
+    "id": 355
   },
   {
     "group": "DEV-SCRIPT.dry_run_migration",
@@ -4651,7 +4625,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "for cand in /opt/homebrew/Cellar/libpq/*/bin/psql /usr/local/opt/libpq/bin/psql /opt/homebrew/bin/psql /usr/local/bin/psql /usr/bin/psql; do",
-    "id": 358
+    "id": 356
   },
   {
     "group": "DEV-SCRIPT.dry_run_migration",
@@ -4664,7 +4638,7 @@
     "status": "green",
     "gap": "Sanctioned ops/diagnostic script: READ-only psql, not invoked from site code paths. Same exemption class as backup tooling.",
     "snippet": "echo \"ERROR: psql not found in standard locations\" >&2",
-    "id": 359
+    "id": 357
   },
   {
     "group": "SKILL.migration",
@@ -4677,7 +4651,7 @@
     "status": "green",
     "gap": "Sanctioned diagnostic skill: READ-only psql, gadmin-only invocation.",
     "snippet": "Skill executes psql in a fenced code block",
-    "id": 360
+    "id": 358
   },
   {
     "group": "SKILL.commands",
@@ -4690,7 +4664,7 @@
     "status": "green",
     "gap": "Sanctioned diagnostic skill: READ-only psql, gadmin-only invocation.",
     "snippet": "Skill executes psql in a fenced code block",
-    "id": 361
+    "id": 359
   },
   {
     "group": "SKILL.commands",
@@ -4703,6 +4677,6 @@
     "status": "green",
     "gap": "Sanctioned diagnostic skill: READ-only psql, gadmin-only invocation.",
     "snippet": "Skill executes psql in a fenced code block",
-    "id": 362
+    "id": 360
   }
 ]

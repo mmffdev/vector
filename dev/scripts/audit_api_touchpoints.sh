@@ -281,6 +281,11 @@ grep -rn --include="*.tsx" --include="*.ts" -E '\bfetch\(' \
   # calls are server-to-server (e.g. TCP probes) and need different
   # classification than a browser-side fetch.
   [[ "$file" == *"/app/api/"* ]] && continue
+  # Skip comment lines — `// SSE uses fetch()` is documentation, not a call.
+  # Tolerates leading whitespace before the `//` or `*`.
+  trimmed_content=$(echo "$content" | sed -E 's/^[[:space:]]+//')
+  [[ "$trimmed_content" == //* ]] && continue
+  [[ "$trimmed_content" == \** ]] && continue
 
   rel=${file#$REPO_ROOT/}
 
@@ -349,14 +354,29 @@ done
 grep -rn --include="*.tsx" --include="*.ts" -E '\bnew EventSource\(' \
   "$REPO_ROOT/app" "$REPO_ROOT/dev" 2>/dev/null | while IFS=: read -r file line content; do
   should_skip_file "$file" && continue
+  # Skip comment lines that document EventSource without calling it.
+  trimmed_content=$(echo "$content" | sed -E 's/^[[:space:]]+//')
+  [[ "$trimmed_content" == //* ]] && continue
+  [[ "$trimmed_content" == \** ]] && continue
+
   rel=${file#$REPO_ROOT/}
   path=$(echo "$content" | sed -nE 's/.*EventSource\("([^"]+)".*/\1/p' | head -1)
   [[ -z "$path" ]] && path="<dynamic>"
   group="$(group_for "$rel")"
   sub=$(sub_for "$rel")
   page=$(url_for "$rel")
-  emit "${group}.${sub}" "$page" "${rel}:${line}" "EventSource" "$path" "GET" "sse-stream" "yellow" \
-    "Acceptable for SSE; ensure URL is constructed from API_SITE_BASE." "$(trim "$content")"
+
+  # Sanctioned-shadow SSE: EventSource against a file-only /api/dev/* path
+  # is green (the handler is already exempted, the SSE composition is
+  # legitimate). Same logic as the fetch() pass.
+  if is_sanctioned_shadow "$path"; then
+    emit "${group}.${sub}" "$page" "${rel}:${line}" "EventSource" "$path" "GET" "sanctioned-shadow" "green" \
+      "Sanctioned-shadow SSE stream: file-only handler, no DB touch. Exempted per docs/c_c_shadow_backend_exceptions.md." \
+      "$(trim "$content")"
+  else
+    emit "${group}.${sub}" "$page" "${rel}:${line}" "EventSource" "$path" "GET" "sse-stream" "yellow" \
+      "Acceptable for SSE; ensure URL is constructed from API_SITE_BASE." "$(trim "$content")"
+  fi
 done
 
 # ─── Pass 4: Next.js shadow backend — app/api/**/route.ts pg-direct queries ───
@@ -368,7 +388,11 @@ if [[ -d "$REPO_ROOT/app/api" ]]; then
 
     # Detect what this route handler does.
     has_pg=$(grep -cE '\bquery<|\bfrom\s+"@/app/lib/v2/db"|\bfrom\s+"@/app/lib/db"|\bnew Pool\(|\bPool\.connect' "$file" 2>/dev/null || true)
-    has_fs=$(grep -cE '\bfs\.\(?readFileSync|readdirSync|readFile|readdir\)|fs/promises' "$file" 2>/dev/null || true)
+    # Match any fs.<method>() call OR an `import * from "fs"`-style line.
+    # Casts a wider net than the original (read*/readdir) so handlers using
+    # fs.watch / fs.statSync / fs.existsSync / etc. classify as fs-only
+    # instead of falling through to "unknown".
+    has_fs=$(grep -cE '\bfs\.[a-zA-Z]+\(|from[[:space:]]+["'"'"']fs(/promises)?["'"'"']|require\(["'"'"']fs(/promises)?["'"'"']\)' "$file" 2>/dev/null || true)
     has_spawn=$(grep -cE '\bspawn\(|\bexec\(|child_process' "$file" 2>/dev/null || true)
     has_socket=$(grep -cE '\bnet\.Socket\(|\.connect\(' "$file" 2>/dev/null || true)
 
