@@ -53,10 +53,12 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<cookbook>` skill** → [`.claude/commands/c_cookbook.md`](commands/c_cookbook.md) — safety-net harvester: scans `~/.psql_history` since last run, drafts novel queries to `c_sql_cookbook_staging.md` for curation. Inline cookbooking is still the primary discipline.
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
 - **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
+- **`<artefacts>` skill** → [`.claude/skills/artefacts/SKILL.md`](skills/artefacts/SKILL.md) — tenant artefacts maintenance via backend API (`/_site/admin/dev/artefacts-{count,wipe}`); `-d` wipe-all with pre-flight count + explicit "yes" prompt; dev-only; never psql-direct.
 - **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — `obj_*` → vector_artefacts ETL.
 - **v2 work-items cutover follow-ups** → [`docs/c_c_v2_workitems_cutover_followups.md`](../docs/c_c_v2_workitems_cutover_followups.md) — PLA-0023 deferral register.
 - **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — per-route-group cutover plan.
 - **Transport segregation (PLA-0039)** → [`docs/c_c_transport_segregation.md`](../docs/c_c_transport_segregation.md) — `/_site` + `/samantha/v2`; lint trio + DTO convention.
+- **Scalar IDE setup (B20.5.K)** → [`docs/c_c_scalar_setup.md`](../docs/c_c_scalar_setup.md) — `DEV_API_KEY` in `backend/.env.dev` + `apikeys.SeedDevKey` boot path; unlocks `/samantha/v2` (64 endpoints). `/_site` dual-mount pending as B20.5.L.
 - **Shared methods catalogue (PLA-0045)** → [`docs/c_shared_methods.md`](../docs/c_shared_methods.md) — `app/lib/shared/` + `backend/internal/shared/` parity.
 - **Wizard sidecar pattern (PLA-0037)** → [`docs/c_c_wizard_sidecar.md`](../docs/c_c_wizard_sidecar.md) — `p_wizard_*.json` declarative `<ObjectTree>` config.
 - **Polymorphic FK pattern** → [`docs/c_polymorphic_writes.md`](../docs/c_polymorphic_writes.md) — writer rules + cleanup registry + canary.
