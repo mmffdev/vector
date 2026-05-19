@@ -36,6 +36,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -442,6 +443,56 @@ func TestPatch_ExplicitValueSetsOverride(t *testing.T) {
 	}
 	if got := s.TenantTimezoneSource; got != "workspace" {
 		t.Errorf("post-set TenantTimezoneSource = %q, want %q", got, "workspace")
+	}
+}
+
+// TestPatch_UpdatedAt_AdvancesOnValueChange (TD-TEST-003 final step):
+// the master_record_workspaces table has a BEFORE UPDATE trigger that
+// bumps updated_at on every row mutation. If that trigger is ever
+// disabled or renamed away, this test catches the drift. A no-op Patch
+// (no fields) must NOT advance updated_at — that path skips the UPDATE.
+func TestPatch_UpdatedAt_AdvancesOnValueChange(t *testing.T) {
+	pool := vaPoolForTest(t)
+	defer pool.Close()
+	fx := makeFixture(t, pool)
+	defer fx.cleanup()
+	ctx := context.Background()
+
+	// Helper: read the row's updated_at directly (Settings DTO doesn't
+	// expose the workspace-row updated_at, only the tenant's).
+	readUpdatedAt := func() time.Time {
+		t.Helper()
+		var ts time.Time
+		if err := pool.QueryRow(ctx,
+			`SELECT master_record_workspaces_updated_at FROM master_record_workspaces WHERE master_record_workspaces_id_workspace = $1`,
+			fx.workspaceID,
+		).Scan(&ts); err != nil {
+			t.Fatalf("read updated_at: %v", err)
+		}
+		return ts
+	}
+
+	svc := makeInheritingSvc(pool, fx)
+
+	before := readUpdatedAt()
+	time.Sleep(2 * time.Millisecond)
+
+	override := "Europe/Berlin"
+	if _, err := svc.Patch(ctx, fx.workspaceID, uuid.Nil, PatchInput{TenantTimezone: &override}); err != nil {
+		t.Fatalf("Patch set: %v", err)
+	}
+	after := readUpdatedAt()
+	if !after.After(before) {
+		t.Fatalf("updated_at did not advance on value Patch: before=%v after=%v (trigger drift?)", before, after)
+	}
+
+	// No-op Patch (no fields) must NOT advance updated_at.
+	if _, err := svc.Patch(ctx, fx.workspaceID, uuid.Nil, PatchInput{}); err != nil {
+		t.Fatalf("Patch no-op: %v", err)
+	}
+	noop := readUpdatedAt()
+	if !noop.Equal(after) {
+		t.Fatalf("updated_at advanced on no-op Patch: after=%v noop=%v (should be no-op)", after, noop)
 	}
 }
 

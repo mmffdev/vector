@@ -31,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -391,5 +392,53 @@ func TestPatch_NoFields_NoOpReadsBack(t *testing.T) {
 	}
 	if got == nil || got.TenantID != subID {
 		t.Fatalf("empty Patch should still return the row, got %+v", got)
+	}
+}
+
+// ─── 11. updated_at trigger advances on value Patch (TD-TEST-003) ─────────
+// The master_record_tenants table has a BEFORE UPDATE trigger that bumps
+// updated_at on every row mutation. If that trigger is ever disabled or
+// renamed away, this test catches the drift. A no-op Patch (no fields)
+// must NOT advance updated_at — that path skips the UPDATE entirely.
+func TestPatch_UpdatedAt_AdvancesOnValueChange(t *testing.T) {
+	pool := vaPoolForTest(t)
+	defer pool.Close()
+	subID, cleanup := makeSub(t, pool)
+	defer cleanup()
+
+	svc := New(pool)
+	ctx := context.Background()
+
+	before, err := svc.Get(ctx, subID)
+	if err != nil {
+		t.Fatalf("Get baseline: %v", err)
+	}
+
+	// Pause so the trigger's NOW() lands in a later microsecond bucket
+	// even on a fast machine.
+	time.Sleep(2 * time.Millisecond)
+
+	newRegion := "euw3"
+	if before.TenantDataRegion == newRegion {
+		newRegion = "euw2"
+	}
+	after, err := svc.Patch(ctx, subID, uuid.New(), PatchInput{TenantDataRegion: &newRegion})
+	if err != nil {
+		t.Fatalf("Patch with value: %v", err)
+	}
+	if !after.TenantUpdatedAt.After(before.TenantUpdatedAt) {
+		t.Fatalf("updated_at did not advance: before=%v after=%v (trigger drift?)",
+			before.TenantUpdatedAt, after.TenantUpdatedAt)
+	}
+
+	// No-op Patch (no fields) must NOT advance updated_at — that path
+	// short-circuits before the UPDATE.
+	noop, err := svc.Patch(ctx, subID, uuid.New(), PatchInput{})
+	if err != nil {
+		t.Fatalf("Patch no-op: %v", err)
+	}
+	if !noop.TenantUpdatedAt.Equal(after.TenantUpdatedAt) {
+		t.Fatalf("updated_at advanced on no-op Patch: after=%v noop=%v (should be no-op)",
+			after.TenantUpdatedAt, noop.TenantUpdatedAt)
 	}
 }
