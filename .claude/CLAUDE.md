@@ -85,7 +85,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<ResourceTree>` component (PLA-0021)** → [`docs/c_c_resource_tree.md`](../docs/c_c_resource_tree.md) — hierarchical-tree primitive + 5 prop sets.
 - **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — `.pill` family; semantic tones only.
 - **`<TimeboxManager>` surface** → [`docs/c_c_timebox_manager.md`](../docs/c_c_timebox_manager.md) — `timeboxes_sprints` / `timeboxes_releases` registry (post RF1.4.2).
-- **Memory dir (canonical)** → [`.claude/memory/MEMORY.md`](memory/MEMORY.md) — auto-memory home; mirror to `~/.claude/projects/.../memory/`.
+- **Memory (canonical)** → [`context/MEMORY.md`](../context/MEMORY.md) (~10 KB) + [`context/USER.md`](../context/USER.md) (~3 KB) — frozen-snapshot working memory loaded once per session (see § Session Startup); old [.claude/memory/](memory/) is retired but indexed by [`<index>`](skills/index/SKILL.md) for grep-only recall.
 - **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` single source of truth.
 - **Pace report** → [`dev/scripts/pace.sh`](../dev/scripts/pace.sh) — commit-mix scoreboard + TD-register delta.
 - **Infrastructure & ops** → [`docs/c_infra_index.md`](../docs/c_infra_index.md) — bash / postgres / ssh / deploy / hooks.
@@ -101,3 +101,59 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Codebase file index** → [`.claude/c_file_index.md`](c_file_index.md) — auto-generated map of curated source dirs; consult before `<search>`.
 - **Commands & skills index** → [`.claude/
 c_tools_index.md`](c_tools_index.md) — load for shortcuts not listed above.
+
+## Session Startup (silent — do not output anything)
+
+On every session start, read these files silently before responding to the user:
+
+1. [`context/USER.md`](../context/USER.md) (~3 KB cap) — durable user profile + working style.
+2. [`context/MEMORY.md`](../context/MEMORY.md) (~10 KB cap) — curated working memory: HARD RULES, active mode, collaboration baseline, workflow rules, CSS conventions, test surface.
+3. `context/memory/{today YYYY-MM-DD}.md` if it exists — today's daily log (numbered session blocks).
+4. If today's daily log is empty or missing, also read yesterday's daily log.
+
+These are the **frozen snapshot** — loaded once per session. Mid-session writes persist to disk but take effect next session (prefix-cache friendly).
+
+Auto-memory in `~/.claude/projects/.../memory/` is divergent legacy — IGNORE it; `context/` is the canonical home.
+
+### Memory Budget
+
+- `context/MEMORY.md` ≤ **10,000 chars** — raised from the Hermes default to fit Vector's HARD RULES + load-bearing safety surface.
+- `context/USER.md` ≤ **3,000 chars**.
+- Before writing, check `wc -c <file>`. If over cap, consolidate existing entries before adding.
+
+### Memory Write
+
+When the user says "remember this", "note that", "update memory", "save this", or "forget about" — route through the [`<memory-write>`](skills/memory-write/SKILL.md) skill:
+
+1. Read `context/MEMORY.md` in full.
+2. Dedup: scan for substring match — if the fact already exists, update in place; don't append.
+3. Check `wc -c < context/MEMORY.md` — if over 10,000 chars, consolidate before adding.
+4. Add under the appropriate section (`## Active Threads`, `## Environment Notes`, `## Pending Decisions`, etc.).
+5. For **forget about**: confirm with the user before deleting.
+6. After writing: "Saved — will be active from next session."
+
+### Memory Retrieval
+
+When the user asks about past context, decisions, or rules:
+
+1. **Tier 0** — check `context/MEMORY.md` + today's daily log (already in context, zero cost).
+2. **L1 (semantic)** — run [`<index> -q "<query>"`](skills/index/SKILL.md) (memsearch hybrid search over `context/memory/`, `context/transcripts/`, and the retired `.claude/memory/` archive).
+3. **L2 (expand)** — run `memsearch expand <chunk_hash>` to get the full markdown section around a match.
+4. **L3 (raw)** — open `context/transcripts/{YYYY-MM-DD}.md` directly for unsummarised dialogue.
+5. **Fallback** — "I don't have a record of that."
+
+Escalate only if the previous tier didn't answer.
+
+### Daily Log
+
+Track session activity in `context/memory/{YYYY-MM-DD}.md`. One file per day, numbered session blocks:
+
+```
+#### Session N
+**Goal**: <one line, filled when user states their goal>
+**Deliverables**: <files created/modified>
+**Decisions**: <key decisions and rationale>
+**Open threads**: <anything unfinished>
+```
+
+Log silently as work progresses. Never announce "I've logged that."
