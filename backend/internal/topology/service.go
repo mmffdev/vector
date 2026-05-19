@@ -1058,7 +1058,37 @@ func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.
 		}
 		out = append(out, g)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	promoteOrphanGrantsToVirtualRoots(out)
+	return out, nil
+}
+
+// promoteOrphanGrantsToVirtualRoots normalises parent_id to nil on any
+// grant whose parent isn't also in the returned set. The shared
+// walkTopology() walker drops orphans (parent_id set but parent absent)
+// rather than re-rooting them, so a user with a single grant on a
+// non-root node would render an empty scope panel. Promoting orphans to
+// virtual roots makes single-node grants visible without changing the
+// authorization model — clamp inheritance still derives downward from
+// the actual node via topology_nodes.parent_id, not from this column.
+func promoteOrphanGrantsToVirtualRoots(grants []MyGrant) {
+	if len(grants) == 0 {
+		return
+	}
+	present := make(map[uuid.UUID]struct{}, len(grants))
+	for _, g := range grants {
+		present[g.NodeID] = struct{}{}
+	}
+	for i := range grants {
+		if grants[i].ParentID == nil {
+			continue
+		}
+		if _, ok := present[*grants[i].ParentID]; !ok {
+			grants[i].ParentID = nil
+		}
+	}
 }
 
 // listMyGrantsGadmin returns a synthetic admin grant for every live
@@ -1123,7 +1153,11 @@ func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUs
 		}
 		out = append(out, g)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	promoteOrphanGrantsToVirtualRoots(out)
+	return out, nil
 }
 
 // ClampPredicate returns the set of live node IDs the user can see —
