@@ -1,0 +1,50 @@
+{
+  "_doc": "Exemptions for lint:route-orphans. Routes listed here are documented in the spec but legitimately have no frontend caller — dev tools, backend-internal infra, cron-driven endpoints, etc. Each entry must include a `reason`. Adding a reason here is a positive act: the human is asserting 'this is backend-only on purpose'. Future-state, every entry here should be auditable by a procurement reviewer.",
+  "_format": "Add entries to `exemptions` only. Path matches dead-apis.txt verbatim.",
+  "exemptions": [
+    {
+      "path": "/admin/dev/adoption-reset",
+      "reason": "dev-only reset tool, invoked manually via curl/Postman — no UI"
+    },
+    {
+      "path": "/admin/dev/master-reset",
+      "reason": "dev-only reset tool, invoked manually — no UI"
+    },
+    {
+      "path": "/admin/dev/seed-risks",
+      "reason": "dev-only seed tool — no UI"
+    },
+    {
+      "path": "/admin/dev/seed-workspace",
+      "reason": "dev-only seed tool — no UI"
+    },
+    {
+      "path": "/admin/dev/artefacts-count",
+      "reason": "dev-only diagnostic — no UI"
+    },
+    {
+      "path": "/admin/dev/artefacts-wipe",
+      "reason": "dev-only destructive tool — no UI"
+    },
+    {
+      "path": "/csp-report",
+      "reason": "CSP violation report endpoint — browsers POST automatically, no frontend caller"
+    },
+    {
+      "path": "/auth/login-required",
+      "reason": "marker endpoint for redirect flows, called by middleware not UI"
+    },
+    {
+      "path": "/auth/password-reset/redeem",
+      "reason": "password-reset link landing — server-rendered, not apiSite()"
+    },
+    {
+      "path": "/healthz",
+      "reason": "kubernetes-style health probe — infra layer, no app caller"
+    },
+    {
+      "path": "/readyz",
+      "reason": "kubernetes-style readiness probe — infra layer, no app caller"
+    }
+  ]
+}

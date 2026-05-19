@@ -337,6 +337,29 @@ def _walk_for_bindings(
             out.append((m.group(1).upper(), full, m.group(3)))
             i += m.end()
             continue
+        # Mount-pattern: `someH.Mount(r)` — splice in the Mount method
+        # body from the handler's package. Bindings recovered there
+        # are emitted as `handlerVar.MethodName` so find_handler_file
+        # resolves correctly via the var_to_pkg map.
+        mm = extract_routes.MOUNT_CALL_RE.match(sub)
+        if mm:
+            handler_var = mm.group(1)
+            resolved = extract_routes.find_mount_method(handler_var, _var_to_pkg())
+            if resolved is not None:
+                foreign_src, fs, fe = resolved
+                # Walk foreign body but emit handler symbols qualified
+                # by the original main.go var (so `func (h *Handler) List`
+                # under workspacesH.Mount becomes `workspacesH.List`).
+                foreign_bindings = _walk_for_bindings(foreign_src, {}, fs, fe, stack)
+                for method, path, sym in foreign_bindings:
+                    # sym was extracted as `h.List` from the foreign file;
+                    # we need to map it to `workspacesH.List`.
+                    if "." in sym:
+                        _, tail = sym.split(".", 1)
+                        sym = f"{handler_var}.{tail}"
+                    out.append((method, path, sym))
+                i += mm.end()
+                continue
         m = extract_routes.CLOSURE_CALL_RE.match(sub)
         if m and m.group(1) in closure_bodies:
             cs, ce = closure_bodies[m.group(1)]

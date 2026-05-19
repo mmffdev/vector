@@ -52,11 +52,16 @@ if _ARGS.all:
 SPEC = ROOT / _ARGS.spec
 IS_V2_SPEC = _ARGS.spec == "samanthaAPI.yaml"
 
-# Regex: api("/path") or api('/path') — captures literal path strings only.
-# `(?:<[^>]*>)?` allows the optional TS generic, e.g. `api<Foo>("/x")`.
-# Strips any query/fragment after the path.
-API_RE = re.compile(r'\bapi(?:<[^>]*>)?\s*\(\s*["\']([^"\'?#`]+)')
-INFRA_RE = re.compile(r'\bapiInfra(?:<[^>]*>)?\s*\(\s*["\']([^"\'?#`]+)')
+# Regex: apiSite("/path") / apiV2("/path") / apiRoot("/path") — captures
+# literal path strings only. `(?:<[^>]*>)?` allows the optional TS
+# generic, e.g. `apiSite<Foo>("/x")`. Strips any query/fragment after
+# the path.
+#
+# History: pre-B20.5.1 this scanned for `api()` (the now-retired helper
+# that targeted /samantha/v1, which never existed on the backend). All
+# callers have been migrated to apiSite/apiV2/apiRoot.
+API_RE = re.compile(r'\bapiSite(?:<[^>]*>)?\s*\(\s*["\']([^"\'?#`]+)')
+INFRA_RE = re.compile(r'\bapiRoot(?:<[^>]*>)?\s*\(\s*["\']([^"\'?#`]+)')
 V2_RE = re.compile(r'\bapiV2(?:<[^>]*>)?\s*\(\s*["\']([^"\'?#`]+)')
 
 # Excluded directories under app/. "api" excludes app/api/{dev,v2}/ (Next.js
@@ -113,6 +118,12 @@ def _scan_file(
     v2_callers: dict[str, list[str]],
 ) -> None:
     rel = str(path.relative_to(ROOT))
+    # Tests legitimately invoke api helpers against fixture paths
+    # (`/admin/something`, `/me/profile`, `/workspaces/ws1`) that
+    # don't exist on the real backend. Skip them; the spec gate is
+    # for production callers, not test scaffolding.
+    if "/__tests__/" in rel or rel.endswith(".test.ts") or rel.endswith(".test.tsx"):
+        return
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -140,7 +151,7 @@ def main() -> int:
     else:
         primary_callers = api_callers
         spec_label = "siteAPI.yaml"
-        caller_fn = "api()"
+        caller_fn = "apiSite()"
 
     errors: list[str] = []
 
@@ -168,7 +179,7 @@ def main() -> int:
     print(f"  dead-apis.txt:   {len(dead)} uncalled spec path(s)")
     if not IS_V2_SPEC:
         if infra_callers:
-            print(f"  apiInfra paths:  {len(infra_callers)} (skipped from hard-fail)")
+            print(f"  apiRoot paths:   {len(infra_callers)} (skipped from hard-fail — root-mount infra)")
         if v2_callers:
             print(f"  apiV2 paths:     {len(v2_callers)} (use --spec samanthaAPI.yaml to validate)")
     print(f"--- Result: {len(errors)} error(s)")

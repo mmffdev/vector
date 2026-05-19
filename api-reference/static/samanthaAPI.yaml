@@ -666,6 +666,51 @@ paths:
           description: 204 — no content
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /portfolio/master_record:
+    get:
+      tags:
+      - portfolio
+      summary: GET /portfolio/master_record
+      operationId: getPortfolioMasterRecord
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: portfolioMasterRecordH.GetMasterRecord
+        file: backend/internal/portfolio/master_record_handler.go
+      parameters:
+      - name: workspace_id
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /rank/move:
     post:
       tags:

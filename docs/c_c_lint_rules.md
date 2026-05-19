@@ -25,6 +25,7 @@ All lints share the same shape:
 | `api:check` | `dev/scripts/check_routes.sh` + `dev/scripts/check_callers.py` | `dev/registries/dead-api-exemptions.txt` | Go chi router routes must be documented in `openapi.yaml`; frontend `api(...)` callers must reference a spec path; `apiInfra` and `apiV2` tracked but not hard-failed (PLA-0029) |
 | `lint:api-caller-discipline` | `dev/scripts/lint_api_caller_discipline.py` | `api_caller_exempt.json` | client-side code MUST NOT compose direct backend URLs (`localhost:5100`, `/_site/...`, `/samantha/v2/...`, `NEXT_PUBLIC_API_BASE`) outside `app/lib/api.ts` — every outbound call routes through `apiSite/apiV2/apiRoot`. Procurement story: defence/finance buyers want one audit chokepoint for backend egress (B20.5.H) |
 | `lint:api-helper-exclusive` | `dev/scripts/lint_api_helper_exclusive.py` | `api_caller_exempt.json` (shared) | client-side code MUST NOT call `fetch()` / `new XMLHttpRequest()` / `new WebSocket()` / `new EventSource()` outside `app/lib/api.ts` family. Relative URLs to `/api/...` (Next.js server routes) are honoured; SSE/realtime exemptions live in the registry (B20.5.H) |
+| `lint:route-orphans` | `dev/scripts/lint_route_orphans.py` | `route_orphan_exempt.json` | every spec route should either have a frontend caller (`apiSite()` / `apiV2()`) OR be in the exemption registry with a reason (backend-only, dev tool, cron-driven, etc.). Reports unexplained orphans; `--strict` makes it fail on any non-exempt. Drift detector for "dead endpoints" (B20.5.J) |
 
 ---
 

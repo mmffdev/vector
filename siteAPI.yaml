@@ -313,6 +313,99 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /admin/dev/artefacts-count:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/artefacts-count
+      operationId: getAdminDevArtefactsCount
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devResetH.ArtefactsCount
+        file: backend/internal/portfoliomodels/dev_reset.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscription_id:
+                    type: object
+                  live:
+                    type: object
+                  archived:
+                    type: object
+                  total:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/artefacts-wipe:
+    post:
+      tags:
+      - admin
+      summary: POST /admin/dev/artefacts-wipe
+      operationId: postAdminDevArtefactsWipe
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devResetH.ArtefactsWipe
+        file: backend/internal/portfoliomodels/dev_reset.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: string
+              required:
+              - confirm
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: object
+                  subscription_id:
+                    type: object
+                  artefacts_deleted:
+                    type: object
+                  artefacts_fields_values_deleted:
+                    type: object
+                  artefacts_number_sequences_reset:
+                    type: object
+                  message:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /admin/dev/master-reset:
     post:
       tags:
@@ -940,6 +1033,400 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /artefact-priorities:
+    get:
+      tags:
+      - artefact-priorities
+      summary: GET /artefact-priorities
+      operationId: getArtefactPriorities
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactPrioritiesH.List
+        file: backend/internal/artefactpriorities/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  priorities:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags:
+      - artefact-priorities
+      summary: POST /artefact-priorities
+      operationId: postArtefactPriorities
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactPrioritiesH.Create
+        file: backend/internal/artefactpriorities/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                sort_order:
+                  type: integer
+                  format: int32
+                colour:
+                  type: string
+              required:
+              - name
+              - sort_order
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  slot:
+                    type: string
+                  sort_order:
+                    type: integer
+                    format: int32
+                  colour:
+                    type: string
+                  archived_at:
+                    type: string
+                    format: date-time
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - workspace_id
+                - name
+                - sort_order
+                - created_at
+                - updated_at
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /artefact-priorities/{id}:
+    delete:
+      tags:
+      - artefact-priorities
+      summary: DELETE /artefact-priorities/{id}
+      operationId: deleteArtefactPrioritiesId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactPrioritiesH.Archive
+        file: backend/internal/artefactpriorities/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: 204 — no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+      - artefact-priorities
+      summary: PATCH /artefact-priorities/{id}
+      operationId: patchArtefactPrioritiesId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactPrioritiesH.Patch
+        file: backend/internal/artefactpriorities/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                sort_order:
+                  type: integer
+                  format: int32
+                colour:
+                  type: string
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  slot:
+                    type: string
+                  sort_order:
+                    type: integer
+                    format: int32
+                  colour:
+                    type: string
+                  archived_at:
+                    type: string
+                    format: date-time
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - workspace_id
+                - name
+                - sort_order
+                - created_at
+                - updated_at
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /artefact-types:
+    get:
+      tags:
+      - artefact-types
+      summary: GET /artefact-types
+      operationId: getArtefactTypes
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactTypesH.List
+        file: backend/internal/artefacttypes/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  types:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /artefact-types/{id}:
+    patch:
+      tags:
+      - artefact-types
+      summary: PATCH /artefact-types/{id}
+      operationId: patchArtefactTypesId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactTypesH.Patch
+        file: backend/internal/artefacttypes/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                prefix:
+                  type: string
+                description:
+                  type: string
+                colour:
+                  type: string
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  scope:
+                    type: string
+                  source:
+                    type: string
+                  name:
+                    type: string
+                  prefix:
+                    type: string
+                  description:
+                    type: string
+                  colour:
+                    type: string
+                  slot:
+                    type: string
+                  parent_type_id:
+                    type: string
+                    format: uuid
+                  allows_children:
+                    type: boolean
+                  layer_depth:
+                    type: integer
+                    format: int32
+                  sort_order:
+                    type: integer
+                    format: int32
+                  archived_at:
+                    type: string
+                    format: date-time
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - scope
+                - source
+                - name
+                - prefix
+                - allows_children
+                - sort_order
+                - created_at
+                - updated_at
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /auth/change-password:
     post:
       tags:
@@ -4623,6 +5110,51 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /portfolio/master_record:
+    get:
+      tags:
+      - portfolio
+      summary: GET /portfolio/master_record
+      operationId: getPortfolioMasterRecord
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: portfolioMasterRecordH.GetMasterRecord
+        file: backend/internal/portfolio/master_record_handler.go
+      parameters:
+      - name: workspace_id
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /rank/move:
     post:
       tags:
@@ -5100,6 +5632,216 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /tenant-settings:
+    get:
+      tags:
+      - tenant-settings
+      summary: GET /tenant-settings
+      operationId: getTenantSettings
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: tenantSettingsH.Get
+        file: backend/internal/tenantmasterrecord/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id:
+                    type: string
+                    format: uuid
+                  tenant_name:
+                    type: string
+                  tenant_description:
+                    type: string
+                  tenant_primary_contact_email:
+                    type: string
+                  tenant_data_region:
+                    type: string
+                  tenant_timezone:
+                    type: string
+                  tenant_date_format:
+                    type: string
+                  tenant_datetime_format:
+                    type: string
+                  tenant_workdays:
+                    type: array
+                    items:
+                      type: string
+                  tenant_week_start:
+                    type: string
+                  tenant_rank_method:
+                    type: string
+                  tenant_build_changeset_tracking:
+                    type: boolean
+                  tenant_notes:
+                    type: string
+                  tenant_created_at:
+                    type: string
+                    format: date-time
+                  tenant_updated_at:
+                    type: string
+                    format: date-time
+                  tenant_archived_at:
+                    type: string
+                    format: date-time
+                required:
+                - tenant_id
+                - tenant_name
+                - tenant_data_region
+                - tenant_timezone
+                - tenant_date_format
+                - tenant_datetime_format
+                - tenant_workdays
+                - tenant_week_start
+                - tenant_rank_method
+                - tenant_build_changeset_tracking
+                - tenant_created_at
+                - tenant_updated_at
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+      - tenant-settings
+      summary: PATCH /tenant-settings
+      operationId: patchTenantSettings
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: tenantSettingsH.Patch
+        file: backend/internal/tenantmasterrecord/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenant_name:
+                  type: string
+                tenant_description:
+                  type: string
+                tenant_data_region:
+                  type: string
+                tenant_timezone:
+                  type: string
+                tenant_date_format:
+                  type: string
+                tenant_datetime_format:
+                  type: string
+                tenant_workdays:
+                  type: array
+                  items:
+                    type: string
+                tenant_week_start:
+                  type: string
+                tenant_rank_method:
+                  type: string
+                tenant_build_changeset_tracking:
+                  type: boolean
+                tenant_notes:
+                  type: string
+                tenant_primary_contact_email:
+                  type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id:
+                    type: string
+                    format: uuid
+                  tenant_name:
+                    type: string
+                  tenant_description:
+                    type: string
+                  tenant_primary_contact_email:
+                    type: string
+                  tenant_data_region:
+                    type: string
+                  tenant_timezone:
+                    type: string
+                  tenant_date_format:
+                    type: string
+                  tenant_datetime_format:
+                    type: string
+                  tenant_workdays:
+                    type: array
+                    items:
+                      type: string
+                  tenant_week_start:
+                    type: string
+                  tenant_rank_method:
+                    type: string
+                  tenant_build_changeset_tracking:
+                    type: boolean
+                  tenant_notes:
+                    type: string
+                  tenant_created_at:
+                    type: string
+                    format: date-time
+                  tenant_updated_at:
+                    type: string
+                    format: date-time
+                  tenant_archived_at:
+                    type: string
+                    format: date-time
+                required:
+                - tenant_id
+                - tenant_name
+                - tenant_data_region
+                - tenant_timezone
+                - tenant_date_format
+                - tenant_datetime_format
+                - tenant_workdays
+                - tenant_week_start
+                - tenant_rank_method
+                - tenant_build_changeset_tracking
+                - tenant_created_at
+                - tenant_updated_at
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /timeboxes/releases:
     get:
       tags:
@@ -7102,6 +7844,421 @@ paths:
           description: 204 — no content
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /workspace-settings:
+    get:
+      tags:
+      - workspace-settings
+      summary: GET /workspace-settings
+      operationId: getWorkspaceSettings
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspaceSettingsH.Get
+        file: backend/internal/workspacemasterrecord/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id:
+                    type: string
+                    format: uuid
+                  tenant_name:
+                    type: string
+                  tenant_description:
+                    type: string
+                  tenant_description_source:
+                    type: string
+                  tenant_owner_user_id:
+                    type: string
+                    format: uuid
+                  tenant_primary_contact_email:
+                    type: string
+                  tenant_primary_contact_email_source:
+                    type: string
+                  tenant_data_region:
+                    type: string
+                  tenant_data_region_source:
+                    type: string
+                  tenant_timezone:
+                    type: string
+                  tenant_timezone_source:
+                    type: string
+                  tenant_date_format:
+                    type: string
+                  tenant_date_format_source:
+                    type: string
+                  tenant_datetime_format:
+                    type: string
+                  tenant_datetime_format_source:
+                    type: string
+                  tenant_workdays:
+                    type: array
+                    items:
+                      type: string
+                  tenant_workdays_source:
+                    type: string
+                  tenant_week_start:
+                    type: string
+                  tenant_week_start_source:
+                    type: string
+                  tenant_rank_method:
+                    type: string
+                  tenant_rank_method_source:
+                    type: string
+                  tenant_build_changeset_tracking:
+                    type: boolean
+                  tenant_build_changeset_tracking_source:
+                    type: string
+                  tenant_notes:
+                    type: string
+                  tenant_notes_source:
+                    type: string
+                  tenant_created_at:
+                    type: string
+                    format: date-time
+                  tenant_updated_at:
+                    type: string
+                    format: date-time
+                  tenant_archived_at:
+                    type: string
+                    format: date-time
+                required:
+                - tenant_id
+                - tenant_name
+                - tenant_data_region
+                - tenant_timezone
+                - tenant_date_format
+                - tenant_datetime_format
+                - tenant_workdays
+                - tenant_week_start
+                - tenant_rank_method
+                - tenant_build_changeset_tracking
+                - tenant_created_at
+                - tenant_updated_at
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+      - workspace-settings
+      summary: PATCH /workspace-settings
+      operationId: patchWorkspaceSettings
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspaceSettingsH.Patch
+        file: backend/internal/workspacemasterrecord/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenant_name:
+                  type: string
+                tenant_description:
+                  type: string
+                tenant_owner_user_id:
+                  type: string
+                tenant_data_region:
+                  type: string
+                tenant_timezone:
+                  type: string
+                tenant_date_format:
+                  type: string
+                tenant_datetime_format:
+                  type: string
+                tenant_workdays:
+                  type: array
+                  items:
+                    type: string
+                tenant_week_start:
+                  type: string
+                tenant_rank_method:
+                  type: string
+                tenant_build_changeset_tracking:
+                  type: boolean
+                tenant_notes:
+                  type: string
+                tenant_primary_contact_email:
+                  type: string
+                clear_overrides:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id:
+                    type: string
+                    format: uuid
+                  tenant_name:
+                    type: string
+                  tenant_description:
+                    type: string
+                  tenant_description_source:
+                    type: string
+                  tenant_owner_user_id:
+                    type: string
+                    format: uuid
+                  tenant_primary_contact_email:
+                    type: string
+                  tenant_primary_contact_email_source:
+                    type: string
+                  tenant_data_region:
+                    type: string
+                  tenant_data_region_source:
+                    type: string
+                  tenant_timezone:
+                    type: string
+                  tenant_timezone_source:
+                    type: string
+                  tenant_date_format:
+                    type: string
+                  tenant_date_format_source:
+                    type: string
+                  tenant_datetime_format:
+                    type: string
+                  tenant_datetime_format_source:
+                    type: string
+                  tenant_workdays:
+                    type: array
+                    items:
+                      type: string
+                  tenant_workdays_source:
+                    type: string
+                  tenant_week_start:
+                    type: string
+                  tenant_week_start_source:
+                    type: string
+                  tenant_rank_method:
+                    type: string
+                  tenant_rank_method_source:
+                    type: string
+                  tenant_build_changeset_tracking:
+                    type: boolean
+                  tenant_build_changeset_tracking_source:
+                    type: string
+                  tenant_notes:
+                    type: string
+                  tenant_notes_source:
+                    type: string
+                  tenant_created_at:
+                    type: string
+                    format: date-time
+                  tenant_updated_at:
+                    type: string
+                    format: date-time
+                  tenant_archived_at:
+                    type: string
+                    format: date-time
+                required:
+                - tenant_id
+                - tenant_name
+                - tenant_data_region
+                - tenant_timezone
+                - tenant_date_format
+                - tenant_datetime_format
+                - tenant_workdays
+                - tenant_week_start
+                - tenant_rank_method
+                - tenant_build_changeset_tracking
+                - tenant_created_at
+                - tenant_updated_at
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /workspaces:
+    get:
+      tags:
+      - workspaces
+      summary: GET /workspaces
+      operationId: getWorkspaces
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspacesH.List
+        file: backend/internal/workspaces/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    subscription_id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    slug:
+                      type: string
+                    description:
+                      type: string
+                    created_by:
+                      type: string
+                      format: uuid
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+                    archived_at:
+                      type: string
+                      format: date-time
+                    archived_by:
+                      type: string
+                      format: uuid
+                  required:
+                  - id
+                  - subscription_id
+                  - name
+                  - slug
+                  - created_by
+                  - created_at
+                  - updated_at
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - workspaces
+      summary: POST /workspaces
+      operationId: postWorkspaces
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspacesH.Create
+        file: backend/internal/workspaces/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+              required:
+              - name
+              - slug
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  subscription_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  description:
+                    type: string
+                  created_by:
+                    type: string
+                    format: uuid
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                  archived_at:
+                    type: string
+                    format: date-time
+                  archived_by:
+                    type: string
+                    format: uuid
+                required:
+                - id
+                - subscription_id
+                - name
+                - slug
+                - created_by
+                - created_at
+                - updated_at
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /workspaces/{id}:
     delete:
       tags:
@@ -7131,6 +8288,90 @@ paths:
       responses:
         '204':
           description: 204 — no content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+      - workspaces
+      summary: PATCH /workspaces/{id}
+      operationId: patchWorkspacesId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspacesH.Patch
+        file: backend/internal/workspaces/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /workspaces/{id}/archive:
+    post:
+      tags:
+      - workspaces
+      summary: POST /workspaces/{id}/archive
+      operationId: postWorkspacesIdArchive
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspacesH.Archive
+        file: backend/internal/workspaces/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -7401,6 +8642,385 @@ paths:
                   - updated_at
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /workspaces/{id}/restore:
+    post:
+      tags:
+      - workspaces
+      summary: POST /workspaces/{id}/restore
+      operationId: postWorkspacesIdRestore
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: workspacesH.Restore
+        file: backend/internal/workspaces/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /workspaces/{workspaceId}/webhooks:
+    get:
+      tags:
+      - workspaces
+      summary: GET /workspaces/{workspaceId}/webhooks
+      operationId: getWorkspacesWorkspaceidWebhooks
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: webhooksH.List
+        file: backend/internal/webhooks/handler.go
+      parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags:
+      - workspaces
+      summary: POST /workspaces/{workspaceId}/webhooks
+      operationId: postWorkspacesWorkspaceidWebhooks
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: webhooksH.Create
+        file: backend/internal/webhooks/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhooks_subscriptions_url:
+                  type: string
+                webhooks_subscriptions_events:
+                  type: string
+                webhooks_subscriptions_secret:
+                  type: string
+              required:
+              - webhooks_subscriptions_url
+      parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks_subscriptions_id:
+                    type: string
+                    format: uuid
+                  webhooks_subscriptions_id_workspace:
+                    type: string
+                    format: uuid
+                  webhooks_subscriptions_url:
+                    type: string
+                  webhooks_subscriptions_events:
+                    type: string
+                  webhooks_subscriptions_is_active:
+                    type: boolean
+                  webhooks_subscriptions_created_at:
+                    type: string
+                    format: date-time
+                  webhooks_subscriptions_updated_at:
+                    type: string
+                    format: date-time
+                  webhooks_subscriptions_archived_at:
+                    type: string
+                    format: date-time
+                required:
+                - webhooks_subscriptions_id
+                - webhooks_subscriptions_id_workspace
+                - webhooks_subscriptions_url
+                - webhooks_subscriptions_is_active
+                - webhooks_subscriptions_created_at
+                - webhooks_subscriptions_updated_at
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /workspaces/{workspaceId}/webhooks/{webhookId}:
+    delete:
+      tags:
+      - workspaces
+      summary: DELETE /workspaces/{workspaceId}/webhooks/{webhookId}
+      operationId: deleteWorkspacesWorkspaceidWebhooksWebhookid
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: webhooksH.Delete
+        file: backend/internal/webhooks/handler.go
+      parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: webhookId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: 204 — no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    get:
+      tags:
+      - workspaces
+      summary: GET /workspaces/{workspaceId}/webhooks/{webhookId}
+      operationId: getWorkspacesWorkspaceidWebhooksWebhookid
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: webhooksH.Get
+        file: backend/internal/webhooks/handler.go
+      parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: webhookId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks_subscriptions_id:
+                    type: string
+                    format: uuid
+                  webhooks_subscriptions_id_workspace:
+                    type: string
+                    format: uuid
+                  webhooks_subscriptions_url:
+                    type: string
+                  webhooks_subscriptions_events:
+                    type: string
+                  webhooks_subscriptions_is_active:
+                    type: boolean
+                  webhooks_subscriptions_created_at:
+                    type: string
+                    format: date-time
+                  webhooks_subscriptions_updated_at:
+                    type: string
+                    format: date-time
+                  webhooks_subscriptions_archived_at:
+                    type: string
+                    format: date-time
+                required:
+                - webhooks_subscriptions_id
+                - webhooks_subscriptions_id_workspace
+                - webhooks_subscriptions_url
+                - webhooks_subscriptions_is_active
+                - webhooks_subscriptions_created_at
+                - webhooks_subscriptions_updated_at
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+      - workspaces
+      summary: PATCH /workspaces/{workspaceId}/webhooks/{webhookId}
+      operationId: patchWorkspacesWorkspaceidWebhooksWebhookid
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: webhooksH.Update
+        file: backend/internal/webhooks/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhooks_subscriptions_url:
+                  type: string
+                webhooks_subscriptions_events:
+                  type: string
+                webhooks_subscriptions_is_active:
+                  type: boolean
+      parameters:
+      - name: workspaceId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: webhookId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks_subscriptions_id:
+                    type: string
+                    format: uuid
+                  webhooks_subscriptions_id_workspace:
+                    type: string
+                    format: uuid
+                  webhooks_subscriptions_url:
+                    type: string
+                  webhooks_subscriptions_events:
+                    type: string
+                  webhooks_subscriptions_is_active:
+                    type: boolean
+                  webhooks_subscriptions_created_at:
+                    type: string
+                    format: date-time
+                  webhooks_subscriptions_updated_at:
+                    type: string
+                    format: date-time
+                  webhooks_subscriptions_archived_at:
+                    type: string
+                    format: date-time
+                required:
+                - webhooks_subscriptions_id
+                - webhooks_subscriptions_id_workspace
+                - webhooks_subscriptions_url
+                - webhooks_subscriptions_is_active
+                - webhooks_subscriptions_created_at
+                - webhooks_subscriptions_updated_at
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 components:
   schemas:
     User:
