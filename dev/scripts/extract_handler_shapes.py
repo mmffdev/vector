@@ -76,13 +76,151 @@ DECODE_RE = re.compile(r'json\.NewDecoder\(r\.Body\)\.Decode\(&(\w+)\)')
 # var req NAME — captures the var name + type
 VAR_DECL_RE = re.compile(r'var\s+(\w+)\s+(\w+(?:\.\w+)?)')
 
-# writeJSON / WriteJSON helper, optionally with status code arg:
-#   writeJSON(w, 200, out)
-#   writeJSON(w, 201, createResp{User: u})
-#   WriteJSON(w, http.StatusOK, body)
-WRITE_JSON_RE = re.compile(
-    r'(?:writeJSON|WriteJSON|httpx\.WriteJSON|httpx\.JSON)\(\s*w\s*,\s*([^,]+?)\s*,\s*([^)]+?)\s*\)'
+# writeJSON / WriteJSON helper opener — we use a brace-aware walker
+# afterwards to capture the full payload expression, since payloads
+# can contain nested braces (`map[string]any{"a": 1, "b": 2}`),
+# function calls, etc. that no flat regex handles.
+WRITE_JSON_OPEN_RE = re.compile(
+    r'(?:writeJSON|WriteJSON|httpx\.WriteJSON|httpx\.JSON)\(\s*w\s*,\s*'
 )
+
+
+def find_write_json_calls(body: str) -> list[tuple[str, str]]:
+    """Walk body, capturing (status_expr, payload_expr) tuples for
+    every writeJSON-family call. Brace/paren aware so map literals
+    and nested struct literals survive intact."""
+    out: list[tuple[str, str]] = []
+    n = len(body)
+    i = 0
+    while i < n:
+        nxt = skip_token(body, i, n)
+        if nxt is not None:
+            i = nxt
+            continue
+        m = WRITE_JSON_OPEN_RE.match(body, i)
+        if not m:
+            i += 1
+            continue
+        # Position right after the opening `(w, `. Now parse:
+        #   <status_expr> , <payload_expr> )
+        j = m.end()
+        # Read status expr up to a top-level `,`.
+        status_start = j
+        depth = 0
+        while j < n:
+            nxt2 = skip_token(body, j, n)
+            if nxt2 is not None:
+                j = nxt2
+                continue
+            ch = body[j]
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+            elif ch == "," and depth == 0:
+                break
+            j += 1
+        status_expr = body[status_start:j].strip()
+        if j >= n or body[j] != ",":
+            i = m.end()
+            continue
+        j += 1  # past the comma
+        # Read payload expr up to the matching closing `)`.
+        payload_start = j
+        depth = 0
+        while j < n:
+            nxt3 = skip_token(body, j, n)
+            if nxt3 is not None:
+                j = nxt3
+                continue
+            ch = body[j]
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                if depth == 0:
+                    break
+                depth -= 1
+            j += 1
+        payload_expr = body[payload_start:j].strip()
+        out.append((status_expr, payload_expr))
+        i = j + 1
+    return out
+
+
+# Map literal: matches the opening of  map[string]<value>{ ...  }.
+# Captures the value-type for OpenAPI mapping; the field list comes
+# from a separate brace-aware walk over the body. The alternation
+# orders longest-first so `interface{}` matches before `interface`
+# (since `\w+` would otherwise grab the prefix and stop). Tolerates
+# whitespace/newlines before the opening brace.
+MAP_LITERAL_OPEN_RE = re.compile(
+    r'map\[string\]\s*(interface\s*\{\s*\}|\w+)\s*\{'
+)
+
+# Field-line inside a map literal body:  "key": expr,
+# We capture the key name. The expr part is too varied to type-infer
+# without a real parser, so we record it verbatim for the human.
+MAP_LITERAL_FIELD_RE = re.compile(r'"([^"]+)"\s*:')
+
+
+def parse_map_literal(payload: str) -> dict | None:
+    """If payload begins with `map[string]<T>{...}`, extract the key
+    names and emit a synthetic struct-equivalent shape. Value type
+    `interface{}` / `any` maps to OpenAPI {} (open object); concrete
+    types like `string` get the proper schema."""
+    m = MAP_LITERAL_OPEN_RE.match(payload)
+    if not m:
+        return None
+    # Normalise `interface { }` → `interface{}` so downstream
+    # equality checks work regardless of source whitespace.
+    value_type = re.sub(r"\s+", "", m.group(1))
+    # Walk the rest of the payload to enumerate "key": entries at
+    # top-level (skip nested ones). Order matters: try the
+    # "key":-pattern BEFORE the skip_token consumes the string,
+    # since that's what we're actually trying to capture.
+    n = len(payload)
+    j = m.end()
+    keys: list[str] = []
+    depth = 1
+    while j < n and depth > 0:
+        ch = payload[j]
+        if ch == '"' and depth == 1:
+            km = MAP_LITERAL_FIELD_RE.match(payload, j)
+            if km:
+                keys.append(km.group(1))
+                j = km.end()
+                continue
+        nxt = skip_token(payload, j, n)
+        if nxt is not None:
+            j = nxt
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    if not keys:
+        return None
+    # Build field list. Value type → schema.
+    inner_schema = go_type_to_openapi(value_type) if value_type != "interface{}" else {}
+    fields = []
+    for k in keys:
+        # We don't know per-key types from a homogeneous map literal;
+        # use the map's value type for all of them.
+        fields.append({
+            "go_name": k,
+            "go_type": value_type if value_type != "interface{}" else "any",
+            "json_name": k,
+            "optional": False,
+        })
+    return {
+        "name": "_map_literal_response",
+        "fields": fields,
+        "kind": "map_literal",
+        "value_type": value_type,
+    }
 
 # httperr.Write(w, r, http.StatusXxx, "code")
 HTTPERR_RE = re.compile(
@@ -442,11 +580,35 @@ def _resolve_response_variable(
     var_name: str, handler_body: str, pkg_dir: pathlib.Path, handler_file_src: str,
 ) -> dict | None:
     """Given a response var like `out`, find its assignment in the
-    handler body (`out, err := h.Svc.List(...)`), follow to the service
-    method definition in the same package directory, capture the return
-    type, and resolve to a struct shape if possible. Returns None if
-    any step fails."""
-    # Step 1: find the assignment line for var_name.
+    handler body and resolve its struct shape. Two patterns supported:
+
+      1. `out, err := h.Svc.List(...)`  — follow to the service method
+         definition, capture its first return type, find that struct.
+      2. `resp := listResponse{...}` — the assignment IS a struct
+         literal; pull the struct directly.
+
+    Returns None if neither pattern matches."""
+    # Pattern 2 (fast path): `<var> := <StructName>{...}`
+    struct_lit_m = re.search(
+        rf'^\s*{re.escape(var_name)}\s*:?=\s*(\w+)\s*\{{',
+        handler_body, flags=re.MULTILINE,
+    )
+    if struct_lit_m:
+        struct_name = struct_lit_m.group(1)
+        # Skip language keywords / common pseudo-names that aren't structs.
+        if struct_name not in ("map", "func", "interface", "struct", "any", "chan"):
+            fields = find_struct(handler_file_src, struct_name)
+            if fields is None:
+                fields = _find_struct_in_package(struct_name, pkg_dir)
+            if fields is not None:
+                return {
+                    "name": struct_name,
+                    "fields": fields,
+                    "kind": "struct",
+                    "variable_name": var_name,
+                }
+
+    # Pattern 1: `<var>[, err] := <call_target>(...)`
     call_target = None
     for m in VAR_FROM_CALL_RE.finditer(handler_body):
         if m.group(1) == var_name:
@@ -529,29 +691,67 @@ def analyse_handler(
     decode_m = DECODE_RE.search(body)
     if decode_m:
         var_name = decode_m.group(1)
-        # Find `var <name> <Type>` in the body to learn the struct name.
-        vm = re.search(rf'var\s+{re.escape(var_name)}\s+(\w+)', body)
-        if vm:
-            struct_name = vm.group(1)
-            fields = find_struct(full_src, struct_name)
-            if fields is None:
-                # Search every other .go file in the same package dir
-                # (struct may be in service.go, types.go, etc.).
-                fields = _find_struct_in_package(struct_name, file_path.parent)
-            if fields is not None:
-                request_struct = {"name": struct_name, "fields": fields}
+        # Pattern A: `var <name> struct {` — anonymous inline struct
+        # (very common in this codebase for create/update bodies).
+        inline_m = re.search(
+            rf'var\s+{re.escape(var_name)}\s+struct\s*\{{', body,
+        )
+        if inline_m:
+            # Brace-match to find the closing }, then parse fields.
+            body_start = inline_m.end()
+            depth = 1
+            j = body_start
+            n = len(body)
+            while j < n and depth > 0:
+                nxt = skip_token(body, j, n)
+                if nxt is not None:
+                    j = nxt
+                    continue
+                if body[j] == "{":
+                    depth += 1
+                elif body[j] == "}":
+                    depth -= 1
+                j += 1
+            inline_body = body[body_start:j - 1]
+            fields = parse_struct_fields(inline_body)
+            if fields:
+                request_struct = {
+                    "name": f"_inline_{method_name}Req",
+                    "fields": fields,
+                    "kind": "inline",
+                }
             else:
                 needs = True
-                reasons.append(f"request-struct-{struct_name}-not-found")
+                reasons.append("request-inline-struct-empty")
         else:
-            needs = True
-            reasons.append("request-var-decl-not-found")
+            # Pattern B: `var <name> <NamedType>` or `var <name> []<NamedType>`.
+            vm = re.search(
+                rf'var\s+{re.escape(var_name)}\s+(\[\])?(\w+)', body,
+            )
+            if vm:
+                is_slice = bool(vm.group(1))
+                struct_name = vm.group(2)
+                fields = find_struct(full_src, struct_name)
+                if fields is None:
+                    # Search every other .go file in the same package dir
+                    # (struct may be in service.go, types.go, etc.).
+                    fields = _find_struct_in_package(struct_name, file_path.parent)
+                if fields is not None:
+                    request_struct = {
+                        "name": struct_name, "fields": fields,
+                        "kind": "slice_of_struct" if is_slice else "struct",
+                    }
+                else:
+                    needs = True
+                    reasons.append(f"request-struct-{struct_name}-not-found")
+            else:
+                needs = True
+                reasons.append("request-var-decl-not-found")
 
-    # --- response: pull every writeJSON call
+    # --- response: pull every writeJSON call (brace-aware walk so
+    # map-literal and nested-struct payloads survive intact)
     response_calls = []
-    for m in WRITE_JSON_RE.finditer(body):
-        code_expr = m.group(1).strip()
-        payload_expr = m.group(2).strip()
+    for code_expr, payload_expr in find_write_json_calls(body):
         # Resolve numeric status code.
         if code_expr.isdigit():
             status = int(code_expr)
@@ -573,44 +773,58 @@ def analyse_handler(
         # Strip leading address-of, casts, &.
         payload = payload.lstrip("&*")
         # Patterns we recognise:
-        #   createResp{...}        — struct literal
-        #   out / list / etc.      — variable; need to resolve type
-        sl_m = re.match(r'(\w+)\s*\{', payload)
-        if sl_m:
-            struct_name = sl_m.group(1)
-            fields = find_struct(full_src, struct_name)
-            if fields is not None:
-                response_struct = {"name": struct_name, "fields": fields, "kind": "struct"}
-            else:
-                # Map-literal like map[string]any{...} — skip.
-                if struct_name not in ("map", "any", "interface"):
-                    needs = True
-                    reasons.append(f"response-struct-{struct_name}-not-found")
+        #   map[string]any{...}    — map literal (handled first since
+        #                             it would otherwise look like a
+        #                             struct-with-name "map")
+        #   createResp{...}        — named struct literal
+        #   out / list / etc.      — variable; resolve via service call
+        map_resp = parse_map_literal(payload)
+        if map_resp is not None:
+            response_struct = map_resp
         else:
-            # Variable form. Resolve via:
-            #   1. find `<var>[, err] := <call_target>(...)` in body
-            #   2. extract method name from call_target tail
-            #   3. find that method's definition in the same package
-            #      directory; capture its first return type
-            #   4. find that type's struct definition; emit fields
-            var_m = re.match(r'^(\w+)$', payload)
-            if var_m:
-                var_name = var_m.group(1)
-                resolved = _resolve_response_variable(
-                    var_name, body, file_path.parent, full_src
-                )
-                if resolved is not None:
-                    response_struct = resolved
-                else:
-                    response_struct = {
-                        "name": None, "fields": None, "kind": "variable",
-                        "variable_name": var_name,
-                    }
+            sl_m = re.match(r'(\w+)\s*\{', payload)
+            if sl_m:
+                struct_name = sl_m.group(1)
+                if struct_name in ("map", "any", "interface"):
+                    # Some other map-ish form we don't handle.
                     needs = True
-                    reasons.append(f"response-from-variable-{var_name}")
+                    reasons.append(f"response-payload-shape-{payload[:40]}")
+                else:
+                    fields = find_struct(full_src, struct_name)
+                    if fields is None:
+                        # Search every other .go file in the same package
+                        # (struct may be in types.go, response.go, etc.).
+                        fields = _find_struct_in_package(struct_name, file_path.parent)
+                    if fields is not None:
+                        response_struct = {"name": struct_name, "fields": fields, "kind": "struct"}
+                    else:
+                        needs = True
+                        reasons.append(f"response-struct-{struct_name}-not-found")
             else:
-                needs = True
-                reasons.append(f"response-payload-shape-{payload[:40]}")
+                # Variable form. Resolve via:
+                #   1. find `<var>[, err] := <call_target>(...)` in body
+                #   2. extract method name from call_target tail
+                #   3. find that method's definition in the same package
+                #      directory; capture its first return type
+                #   4. find that type's struct definition; emit fields
+                var_m = re.match(r'^(\w+)$', payload)
+                if var_m:
+                    var_name = var_m.group(1)
+                    resolved = _resolve_response_variable(
+                        var_name, body, file_path.parent, full_src
+                    )
+                    if resolved is not None:
+                        response_struct = resolved
+                    else:
+                        response_struct = {
+                            "name": None, "fields": None, "kind": "variable",
+                            "variable_name": var_name,
+                        }
+                        needs = True
+                        reasons.append(f"response-from-variable-{var_name}")
+                else:
+                    needs = True
+                    reasons.append(f"response-payload-shape-{payload[:40]}")
 
     # --- query params
     query_params = sorted({m.group(1) for m in QUERY_PARAM_RE.finditer(body)})

@@ -136,6 +136,15 @@ def shape_to_response_schema(response_struct: dict | None) -> dict:
     schema = fields_to_schema(response_struct["fields"])
     if response_struct.get("kind") == "slice_of_struct":
         return {"type": "array", "items": schema}
+    if response_struct.get("kind") == "map_literal":
+        # Map literals declare KNOWN keys (we captured them) but the
+        # Go author may also be adding more dynamically — leave the
+        # door open via additionalProperties=true. The keys we found
+        # are documented as properties; required is intentionally
+        # empty (a map literal doesn't enforce presence the way a
+        # struct does).
+        schema["additionalProperties"] = True
+        schema.pop("required", None)
     return schema
 
 
@@ -276,12 +285,13 @@ def stub_op(verb: str, path: str, shape: dict | None = None) -> dict:
     # Request body (if the handler decodes one).
     req = shape.get("request_struct")
     if req and req.get("fields"):
+        schema = fields_to_schema(req["fields"])
+        if req.get("kind") == "slice_of_struct":
+            schema = {"type": "array", "items": schema}
         op["requestBody"] = {
             "required": True,
             "content": {
-                "application/json": {
-                    "schema": fields_to_schema(req["fields"]),
-                },
+                "application/json": {"schema": schema},
             },
         }
 

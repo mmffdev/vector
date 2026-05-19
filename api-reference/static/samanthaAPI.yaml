@@ -793,32 +793,61 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: releaseH.Create
         file: backend/internal/timeboxreleases/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-struct-not-found
-      x-stub: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeboxes_releases_name:
+                  type: string
+                timeboxes_releases_suffix:
+                  type: string
+                timeboxes_releases_id_user_owner:
+                  type: string
+                timeboxes_releases_cadence_days:
+                  type: integer
+                  format: int32
+                timeboxes_releases_date_start:
+                  type: string
+                timeboxes_releases_date_end:
+                  type: string
+                timeboxes_releases_id_topology_node:
+                  type: string
+              required:
+              - timeboxes_releases_name
+              - timeboxes_releases_cadence_days
+              - timeboxes_releases_date_start
+              - timeboxes_releases_date_end
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/releases/bulk-create:
     post:
       tags:
@@ -828,32 +857,64 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: releaseH.BulkCreate
         file: backend/internal/timeboxreleases/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-struct-not-found
-      x-stub: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeboxes_releases_name:
+                  type: string
+                timeboxes_releases_suffix:
+                  type: string
+                timeboxes_releases_id_user_owner:
+                  type: string
+                timeboxes_releases_cadence_days:
+                  type: integer
+                  format: int32
+                timeboxes_releases_date_start:
+                  type: string
+                timeboxes_releases_date_end:
+                  type: string
+                timeboxes_releases_velocity:
+                  type: integer
+                  format: int32
+                timeboxes_releases_id_topology_node:
+                  type: string
+              required:
+              - timeboxes_releases_name
+              - timeboxes_releases_cadence_days
+              - timeboxes_releases_date_start
+              - timeboxes_releases_date_end
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/releases/{id}:
     get:
       tags:
@@ -926,40 +987,73 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: releaseH.Update
         file: backend/internal/timeboxreleases/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-struct-not-found
-      x-stub: true
-      responses:
-        '200':
-          description: 200 (stub response shape — schema not yet curated)
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeboxes_releases_name:
+                  type: string
+                timeboxes_releases_suffix:
+                  type: string
+                timeboxes_releases_id_user_owner:
+                  type: string
+                timeboxes_releases_cadence_days:
+                  type: integer
+                  format: int32
+                timeboxes_releases_date_start:
+                  type: string
+                timeboxes_releases_date_end:
+                  type: string
+                timeboxes_releases_scope:
+                  type: integer
+                  format: int32
+                timeboxes_releases_velocity:
+                  type: integer
+                  format: int32
+                timeboxes_releases_estimate:
+                  type: integer
+                  format: int32
+                timeboxes_releases_status:
+                  type: string
       parameters:
       - name: id
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints:
     get:
       tags:
@@ -992,32 +1086,61 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: sprintH.Create
         file: backend/internal/timeboxsprints/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-struct-not-found
-      x-stub: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeboxes_sprints_name:
+                  type: string
+                timeboxes_sprints_suffix:
+                  type: string
+                timeboxes_sprints_id_user_owner:
+                  type: string
+                timeboxes_sprints_cadence_days:
+                  type: integer
+                  format: int32
+                timeboxes_sprints_date_start:
+                  type: string
+                timeboxes_sprints_date_end:
+                  type: string
+                timeboxes_sprints_id_topology_node:
+                  type: string
+              required:
+              - timeboxes_sprints_name
+              - timeboxes_sprints_cadence_days
+              - timeboxes_sprints_date_start
+              - timeboxes_sprints_date_end
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints/bulk-create:
     post:
       tags:
@@ -1027,32 +1150,64 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: sprintH.BulkCreate
         file: backend/internal/timeboxsprints/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-struct-not-found
-      x-stub: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeboxes_sprints_name:
+                  type: string
+                timeboxes_sprints_suffix:
+                  type: string
+                timeboxes_sprints_id_user_owner:
+                  type: string
+                timeboxes_sprints_cadence_days:
+                  type: integer
+                  format: int32
+                timeboxes_sprints_date_start:
+                  type: string
+                timeboxes_sprints_date_end:
+                  type: string
+                timeboxes_sprints_velocity:
+                  type: integer
+                  format: int32
+                timeboxes_sprints_id_topology_node:
+                  type: string
+              required:
+              - timeboxes_sprints_name
+              - timeboxes_sprints_cadence_days
+              - timeboxes_sprints_date_start
+              - timeboxes_sprints_date_end
       responses:
         '201':
-          description: 201 (stub response shape — schema not yet curated)
+          description: 201 — success response
           content:
             application/json:
               schema:
                 type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints/{id}:
     get:
       tags:
@@ -1125,40 +1280,73 @@ paths:
       security:
       - bearerAuth: []
       description: |-
-        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
-        could not resolve the response or request type from the Go
-        handler (cross-package returns, polymorphic responses, or
-        unrecognised patterns). Open the handler at the file:line
-        below and document the shape manually. Search for
-        `x-needs-curation: true` to find all such operations.
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
       x-handler:
         symbol: sprintH.Update
         file: backend/internal/timeboxsprints/handler.go
-        needs_curation: true
-        reasons:
-        - request-struct-struct-not-found
-      x-stub: true
-      responses:
-        '200':
-          description: 200 (stub response shape — schema not yet curated)
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '404':
-          $ref: '#/components/responses/NotFound'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeboxes_sprints_name:
+                  type: string
+                timeboxes_sprints_suffix:
+                  type: string
+                timeboxes_sprints_id_user_owner:
+                  type: string
+                timeboxes_sprints_cadence_days:
+                  type: integer
+                  format: int32
+                timeboxes_sprints_date_start:
+                  type: string
+                timeboxes_sprints_date_end:
+                  type: string
+                timeboxes_sprints_scope:
+                  type: integer
+                  format: int32
+                timeboxes_sprints_velocity:
+                  type: integer
+                  format: int32
+                timeboxes_sprints_estimate:
+                  type: integer
+                  format: int32
+                timeboxes_sprints_status:
+                  type: string
       parameters:
       - name: id
         in: path
         required: true
         schema:
           type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /timeboxes/sprints/{id}/close:
     post:
       tags:
