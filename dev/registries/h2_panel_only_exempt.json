@@ -6,6 +6,7 @@
     { "path": "app/(user)/theme/page.tsx", "reason": "design-system showcase using bespoke theme-panel family for demo" },
     { "path": "app/(user)/theme-classic/page.tsx", "reason": "design-system showcase using bespoke theme-panel family for demo — same pattern as theme/page.tsx" },
     { "path": "app/(user)/workspace-settings/_shared.tsx", "reason": "modal__title used by settings modal shells, not a page section" },
-    { "path": "app/(user)/workspace-settings/vector-admin/api-manager/webhooks/page.tsx", "reason": "pending PageDescription migration — page heading + subtitle should move into <PageDescription>; on page_description_exempt.json" }
+    { "path": "app/(user)/workspace-settings/vector-admin/api-manager/webhooks/page.tsx", "reason": "pending PageDescription migration — page heading + subtitle should move into <PageDescription>; on page_description_exempt.json" },
+    { "path": "app/(user)/_shared.tsx", "reason": "modal__title used by the user-admin modal shell, not a page section — mirrors the workspace-settings/_shared.tsx exemption" }
   ]
 }

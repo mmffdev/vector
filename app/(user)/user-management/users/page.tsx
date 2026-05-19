@@ -559,6 +559,31 @@ export default function UsersPage() {
               kind: "custom",
               render: (u) => u.department ?? <span>—</span>,
             },
+            // B20.4.6 — Password-reset-flag column. Renders a flag
+            // icon when the server says password_reset_required=true.
+            // Read-only here; the set/clear UI is deferred to a
+            // future story. When the field is absent from the wire
+            // payload (caller lacks users.admin.view) the column
+            // renders blank — that's the server-side gate doing its
+            // job, not a missing render.
+            {
+              key: "password_reset",
+              header: "Password reset",
+              width: 130,
+              kind: "custom",
+              render: (u) =>
+                u.password_reset_required ? (
+                  <span
+                    className="pill pill--warning"
+                    title="Marked for password reset on next login"
+                    aria-label="Password reset required"
+                  >
+                    reset due
+                  </span>
+                ) : (
+                  <span aria-hidden>—</span>
+                ),
+            },
             // B20.4.10 — Disabled rendered as a read-only checkbox
             // (Rally pattern). The actual toggle action lives in the
             // inline edit-row panel below; surfacing it as a clickable

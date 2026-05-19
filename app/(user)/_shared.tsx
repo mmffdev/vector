@@ -47,6 +47,24 @@ export interface AdminUser {
   first_name: string | null;
   last_name: string | null;
   department: string | null;
+
+  // B20.4.2 extended profile + stub-FK fields. All optional on the
+  // wire (omitempty server-side); UI treats undefined the same as
+  // null. PII fields (phone_*, cost_centre, etc.) only land for
+  // callers with users.admin.view per the backend handler.
+  middle_name?: string | null;
+  display_name?: string | null;
+  phone_work?: string | null;
+  phone_mobile?: string | null;
+  timezone?: string | null;
+  date_format?: string | null;
+  datetime_format?: string | null;
+  email_notifications_enabled?: boolean | null;
+  password_reset_required?: boolean | null;
+  cost_centre_id?: string | null;
+  office_location_id?: string | null;
+  profile_image_url?: string | null;
+
   last_login: string | null;
   force_password_change: boolean;
   created_at: string;
