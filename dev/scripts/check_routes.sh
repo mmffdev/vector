@@ -3,12 +3,19 @@
 # Exit 0 = clean. Exit 1 = undocumented routes found.
 #
 # Reconstructs full paths through nested r.Route("/parent", func(r chi.Router) { ... })
-# blocks by tracking brace depth in main.go. Strips the /samantha/v1 (or /v2) mount
-# prefix before comparing against the spec path keys.
+# blocks by tracking brace depth in main.go. Strips the mount prefix
+# (/_site or /samantha/v2) before comparing against spec path keys.
+#
+# Closure handling (B20.5.x): the PLA-0039 backend defines a closure
+#   mountSiteRoutes := func(r chi.Router) { ... }
+# and invokes it inside r.Route("/_site", func(r) { mountSiteRoutes(r) }).
+# Routes inside the closure are flagged with a sentinel prefix during
+# pass 1; pass 2 splices the closure body wherever the invocation
+# appears under a parent r.Route prefix.
 #
 # Usage:
-#   check_routes.sh                          # validate v1 routes against siteAPI.yaml
-#   check_routes.sh --spec samanthaAPI.yaml   # validate v2 routes against samanthaAPI.yaml
+#   check_routes.sh                          # validate site routes against siteAPI.yaml
+#   check_routes.sh --spec samanthaAPI.yaml  # validate v2 routes against samanthaAPI.yaml
 #   check_routes.sh --all                    # validate both specs in sequence
 set -euo pipefail
 
@@ -42,7 +49,7 @@ if $RUN_ALL; then
   exit $?
 fi
 
-# Infra routes that live outside the versioned block — always skip
+# Infra routes that live outside the mounted block — always skip
 INFRA_ALLOW=(
   "/healthz"
   "/env"
@@ -51,46 +58,65 @@ INFRA_ALLOW=(
   "/ws"
 )
 
-# Determine which version prefix to filter to based on the spec filename.
-# siteAPI.yaml → v1, samanthaAPI.yaml → v2.
-VERSION_PREFIX="v1"
-if [[ "$SPEC" == *"v2"* ]]; then
-  VERSION_PREFIX="v2"
-fi
+# Determine the mount prefix for the spec.
+#   siteAPI.yaml      → /_site
+#   samanthaAPI.yaml  → /samantha/v2
+SPEC_BASENAME="$(basename "$SPEC")"
+case "$SPEC_BASENAME" in
+  siteAPI.yaml)
+    MOUNT_PREFIX="/_site"
+    ;;
+  samanthaAPI.yaml)
+    MOUNT_PREFIX="/samantha/v2"
+    ;;
+  *)
+    # Fallback to legacy v1/v2 mapping for ad-hoc invocations.
+    if [[ "$SPEC_BASENAME" == *"v2"* ]]; then
+      MOUNT_PREFIX="/samantha/v2"
+    else
+      MOUNT_PREFIX="/_site"
+    fi
+    ;;
+esac
 
-# Reconstruct full chi route paths by walking main.go and tracking r.Route(...) nesting.
-# Output: one path per line, deduped, prefix-stripped.
-# Only emits paths from the /samantha/vN block that matches VERSION_PREFIX.
+# Reconstruct full chi route paths by walking main.go and tracking
+# r.Route(...) nesting plus the special mountSiteRoutes closure.
+# Output: one path per line, deduped, with the chosen MOUNT_PREFIX
+# stripped. Only emits paths that live under MOUNT_PREFIX after
+# closure-body splicing.
 go_paths() {
-  python3 - "$MAIN_GO" "$VERSION_PREFIX" <<'PY'
+  python3 - "$MAIN_GO" "$MOUNT_PREFIX" <<'PY'
 import re
 import sys
 
 src = open(sys.argv[1], encoding="utf-8").read()
-version_filter = sys.argv[2]  # "v1" or "v2"
-target_prefix = f"/samantha/{version_filter}"
+mount_prefix = sys.argv[2]  # "/_site" or "/samantha/v2"
 
-route_re = re.compile(r'r\.Route\(\s*"([^"]+)"\s*,\s*func\s*\(\s*r\s+chi\.Router\s*\)\s*\{')
-verb_re  = re.compile(r'r\.(?:Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
+route_re   = re.compile(r'r\.Route\(\s*"([^"]+)"\s*,\s*func\s*\(\s*r\s+chi\.Router\s*\)\s*\{')
+verb_re    = re.compile(r'r\.(?:Get|Post|Put|Patch|Delete|Head)\(\s*"([^"]+)"')
+# Closure declaration: NAME := func(r chi.Router) {
+closure_decl_re = re.compile(r'(\w+)\s*:=\s*func\s*\(\s*r\s+chi\.Router\s*\)\s*\{')
+# Closure invocation: NAME(r)  — terminated by a ) and assumed to splice
+# the closure body under the current r.Route prefix.
+closure_call_re = re.compile(r'(\w+)\s*\(\s*r\s*\)')
 
-stack = []
-depth = 0
-paths = set()
+# Pass 1: walk source. For r.Route blocks track prefix on a stack.
+# For closure declarations, isolate their body and parse the closure
+# in isolation to get the closure's relative routes. For closure
+# invocations inside an r.Route, splice the closure's relative paths
+# under the current prefix.
 
-i = 0
-n = len(src)
-while i < n:
-    # Line comment
+# Common Go-aware token skip (comments, strings, runes).
+def skip_token(src, i, n):
+    """Return the new index after skipping a Go syntactic token starting
+    at i, or None if i is not the start of such a token. Handles line
+    comment, block comment, double-quoted string, raw string, rune."""
     if src[i:i+2] == "//":
         nl = src.find("\n", i)
-        i = nl + 1 if nl != -1 else n
-        continue
-    # Block comment
+        return nl + 1 if nl != -1 else n
     if src[i:i+2] == "/*":
         end = src.find("*/", i+2)
-        i = end + 2 if end != -1 else n
-        continue
-    # Double-quoted string (interpreted)
+        return end + 2 if end != -1 else n
     if src[i] == '"':
         j = i + 1
         while j < n and src[j] != '"':
@@ -100,14 +126,10 @@ while i < n:
             if src[j] == "\n":
                 break
             j += 1
-        i = j + 1
-        continue
-    # Backtick raw string (multi-line, no escapes)
+        return j + 1
     if src[i] == "`":
         end = src.find("`", i+1)
-        i = end + 1 if end != -1 else n
-        continue
-    # Rune literal
+        return end + 1 if end != -1 else n
     if src[i] == "'":
         j = i + 1
         if j < n and src[j] == "\\" and j+1 < n:
@@ -115,44 +137,192 @@ while i < n:
         else:
             j += 1
         if j < n and src[j] == "'":
-            i = j + 1
-            continue
-    ch = src[i]
-    if ch == "{":
-        depth += 1
-        i += 1
-        continue
-    if ch == "}":
-        depth -= 1
-        while stack and stack[-1][1] > depth:
-            stack.pop()
-        i += 1
-        continue
+            return j + 1
+    return None
 
-    sub = src[i:i+300]
-    m = route_re.match(sub)
-    if m:
-        prefix = m.group(1)
-        depth += 1
-        stack.append((prefix, depth))
-        i += m.end()
+# First, locate every chi.Router closure body so the main pass can
+# either (a) recurse into it under a parent r.Route, or (b) skip the
+# standalone declaration entirely. Map closure name → (body_start_idx,
+# body_end_idx) where body_start is the position AFTER the opening "{"
+# and body_end is the position OF the matching "}".
+closure_bodies = {}
+i = 0
+n = len(src)
+while i < n:
+    nxt = skip_token(src, i, n)
+    if nxt is not None:
+        i = nxt
         continue
-    m = verb_re.match(sub)
+    sub = src[i:i+300]
+    m = closure_decl_re.match(sub)
     if m:
-        leaf = m.group(1)
-        full = "".join(s[0] for s in stack) + leaf
-        full = re.sub(r"//+", "/", full)
-        paths.add(full)
-        i += m.end()
+        name = m.group(1)
+        # Position right after the matched "{".
+        body_start = i + m.end()
+        # Walk forward tracking brace depth (respecting comments/strings)
+        # until the matching close.
+        j = body_start
+        bdepth = 1
+        while j < n and bdepth > 0:
+            nxt2 = skip_token(src, j, n)
+            if nxt2 is not None:
+                j = nxt2
+                continue
+            if src[j] == "{":
+                bdepth += 1
+            elif src[j] == "}":
+                bdepth -= 1
+            j += 1
+        # j now points one past the closing "}" — body_end is j-1.
+        closure_bodies[name] = (body_start, j - 1)
+        i = j
         continue
     i += 1
 
-for p in sorted(paths):
-    # Only emit paths that belong to the target version block.
-    if not p.startswith(target_prefix):
+# Helper: parse a slice of source into the set of routes it declares,
+# starting under an initial prefix stack. Returns the set of full paths
+# emitted within that slice. Walks the same way the main pass would,
+# but recurses on closure invocations.
+#
+# Parent stack entries are pinned with depth=-1 so the local brace-pop
+# logic never removes them — only the new entries this block pushes
+# (which use the local depth counter starting at 0) can be popped.
+# Without this pinning the first inner "}" closes the parent's
+# r.Route prefix and every subsequent route in the closure body
+# would emit with the parent prefix dropped.
+def parse_block(src, start, end, prefix_stack):
+    paths = set()
+    stack = [(p, -1) for p, _ in prefix_stack]
+    depth = 0
+    i = start
+    while i < end:
+        nxt = skip_token(src, i, end)
+        if nxt is not None:
+            i = nxt
+            continue
+        ch = src[i]
+        if ch == "{":
+            depth += 1
+            i += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            while stack and stack[-1][1] > depth:
+                stack.pop()
+            i += 1
+            continue
+
+        sub = src[i:i+300]
+        m = route_re.match(sub)
+        if m:
+            inner_prefix = m.group(1)
+            depth += 1
+            stack.append((inner_prefix, depth))
+            i += m.end()
+            continue
+        m = verb_re.match(sub)
+        if m:
+            leaf = m.group(1)
+            full = "".join(s[0] for s in stack) + leaf
+            full = re.sub(r"//+", "/", full)
+            paths.add(full)
+            i += m.end()
+            continue
+        # Closure invocation NAME(r) — splice the closure body here under
+        # the current prefix stack.
+        m = closure_call_re.match(sub)
+        if m and m.group(1) in closure_bodies:
+            name = m.group(1)
+            cb_start, cb_end = closure_bodies[name]
+            paths.update(parse_block(src, cb_start, cb_end, stack))
+            i += m.end()
+            continue
+        i += 1
+    return paths
+
+# Main pass: walk the whole file, but skip over closure declaration
+# bodies (so we don't emit those routes at the wrong prefix). The
+# closure invocations inside r.Route blocks splice the routes in
+# at the right prefix.
+def parse_top():
+    paths = set()
+    stack = []
+    depth = 0
+    i = 0
+    n = len(src)
+    # Build a sorted list of closure body ranges to skip.
+    closure_ranges = sorted(closure_bodies.values())
+    skip_to = -1
+    while i < n:
+        # If we're inside a closure body, jump past it.
+        for s, e in closure_ranges:
+            # Find the closure header start by looking backward — but we
+            # detected closures by their { offset, so the body starts at
+            # s. We want to skip from the closure declaration begin to
+            # past the close. Use a small lookback: the declaration line
+            # starts up to 80 chars before s.
+            if i >= s - 80 and i < e + 1:
+                # Check whether the declaration actually starts before i.
+                # If a declaration regex matches at i, mark the skip range.
+                pass
+        nxt = skip_token(src, i, n)
+        if nxt is not None:
+            i = nxt
+            continue
+        sub = src[i:i+300]
+        # If this is the start of a closure declaration, skip its body.
+        m = closure_decl_re.match(sub)
+        if m and m.group(1) in closure_bodies:
+            _, body_end = closure_bodies[m.group(1)]
+            # Advance past the "}" (body_end is the position OF "}").
+            i = body_end + 1
+            continue
+        ch = src[i]
+        if ch == "{":
+            depth += 1
+            i += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            while stack and stack[-1][1] > depth:
+                stack.pop()
+            i += 1
+            continue
+        m = route_re.match(sub)
+        if m:
+            prefix = m.group(1)
+            depth += 1
+            stack.append((prefix, depth))
+            i += m.end()
+            continue
+        m = verb_re.match(sub)
+        if m:
+            leaf = m.group(1)
+            full = "".join(s[0] for s in stack) + leaf
+            full = re.sub(r"//+", "/", full)
+            paths.add(full)
+            i += m.end()
+            continue
+        # Closure invocation NAME(r) — splice the closure body under the
+        # current prefix.
+        m = closure_call_re.match(sub)
+        if m and m.group(1) in closure_bodies:
+            name = m.group(1)
+            cb_start, cb_end = closure_bodies[name]
+            paths.update(parse_block(src, cb_start, cb_end, stack))
+            i += m.end()
+            continue
+        i += 1
+    return paths
+
+all_paths = parse_top()
+
+for p in sorted(all_paths):
+    # Only emit paths that belong to the target mount prefix.
+    if not p.startswith(mount_prefix):
         continue
-    # Strip the /samantha/vN prefix.
-    p2 = re.sub(r"^/samantha/v[0-9]+", "", p)
+    # Strip the mount prefix.
+    p2 = p[len(mount_prefix):]
     if not p2:
         p2 = "/"
     if len(p2) > 1 and p2.endswith("/"):
@@ -177,7 +347,7 @@ is_infra() {
 errors=0
 warnings=0
 
-echo "=== check_routes: Go router [${VERSION_PREFIX}] ↔ $(basename "$SPEC") ==="
+echo "=== check_routes: Go router under ${MOUNT_PREFIX} ↔ $(basename "$SPEC") ==="
 
 # Hard fail: Go route not in spec
 while IFS= read -r path; do
