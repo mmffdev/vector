@@ -79,3 +79,133 @@ const sqlExistsWorkspaceFieldAdmit = `
 			 WHERE workspace_id = $1 AND field_library_id = $2
 		)
 	`
+
+// ── writers: Create / Update / Archive ─────────────────────────────────────
+
+// sqlInsertFieldLibrary inserts one row into artefacts_fields_library.
+// subscription_id is NULL when scope='global' (the CHECK constraint
+// chk_afl_global_no_subscription enforces this); otherwise it carries
+// the caller's tenant. options_json / config_json / description may be
+// NULL.
+//
+// Returns the full row in the same column order as sqlLoadAdmittedFields
+// so the caller can hydrate a FieldRow without an extra round-trip.
+const sqlInsertFieldLibrary = `
+		INSERT INTO artefacts_fields_library
+			(subscription_id, field_name, label, field_type,
+			 options_json, config_json, description, scope)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING
+			id,
+			subscription_id,
+			field_name,
+			label,
+			field_type,
+			options_json,
+			config_json,
+			description,
+			scope,
+			created_at,
+			updated_at
+	`
+
+// sqlInsertWorkspaceFieldAdmit admits a newly-created scope='workspace'
+// field into the workspace that created it. Without this row the field
+// is invisible to its own workspace (per the resolver's deny-by-default
+// rule). PRIMARY KEY (workspace_id, field_library_id) makes the insert
+// idempotent on retry.
+const sqlInsertWorkspaceFieldAdmit = `
+		INSERT INTO workspaces_fields (workspace_id, field_library_id, created_by)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (workspace_id, field_library_id) DO NOTHING
+	`
+
+// sqlSelectFieldLibraryFull loads one row by id (including the columns
+// the gate needs: scope + subscription_id). Used by Update / Archive to
+// re-fetch the row before mutation so we don't trust the caller's view
+// of what they're editing.
+const sqlSelectFieldLibraryFull = `
+		SELECT
+			id,
+			subscription_id,
+			field_name,
+			label,
+			field_type,
+			options_json,
+			config_json,
+			description,
+			scope,
+			created_at,
+			updated_at,
+			archived_at
+		  FROM artefacts_fields_library
+		 WHERE id = $1
+	`
+
+// sqlCountFieldValues returns the number of artefacts_fields_values
+// rows that reference a given field_library row. Update uses this to
+// block field_type changes once values exist (mirrors Jira's behaviour —
+// a typed-EAV column swap silently corrupts existing values).
+const sqlCountFieldValues = `
+		SELECT COUNT(*)
+		  FROM artefacts_fields_values
+		 WHERE artefacts_fields_values_id_field_library = $1
+	`
+
+// sqlUpdateFieldLibrary is a sparse UPDATE — COALESCE on every nullable
+// patch column lets callers send only the columns they want to change.
+// field_type is patched only when the values-count gate passes.
+//
+// Notes on the JSONB columns: passing NULL via the wire means "leave
+// alone" because we can't distinguish "set to null" from "omit" in a
+// sparse PATCH; if a caller needs to clear options_json they pass the
+// literal JSON null (`null`), which Postgres stores as JSONB null —
+// distinguishable from SQL NULL. config_json + description follow the
+// same convention.
+//
+// Returns the hydrated row so the handler can echo the post-state.
+const sqlUpdateFieldLibrary = `
+		UPDATE artefacts_fields_library SET
+			label        = COALESCE($2, label),
+			field_type   = COALESCE($3, field_type),
+			options_json = COALESCE($4, options_json),
+			config_json  = COALESCE($5, config_json),
+			description  = COALESCE($6, description),
+			updated_at   = now()
+		 WHERE id = $1
+		   AND archived_at IS NULL
+		 RETURNING
+			id,
+			subscription_id,
+			field_name,
+			label,
+			field_type,
+			options_json,
+			config_json,
+			description,
+			scope,
+			created_at,
+			updated_at
+	`
+
+// sqlSelectFieldLibraryGate is the lightweight pre-fetch the Archive
+// writer uses to clamp scope + tenant before the soft-delete. We only
+// need the three discriminator columns; the heavier sqlSelectFieldLibraryFull
+// is for Update which has to round-trip the full row state.
+const sqlSelectFieldLibraryGate = `
+		SELECT subscription_id, scope, archived_at
+		  FROM artefacts_fields_library
+		 WHERE id = $1
+	`
+
+// sqlArchiveFieldLibrary is the soft-delete writer: sets archived_at
+// to now() iff still live. The WHERE archived_at IS NULL clause makes
+// re-archive a no-op (we report not-found if zero rows affected, so the
+// caller doesn't see a 200 for an already-archived row).
+const sqlArchiveFieldLibrary = `
+		UPDATE artefacts_fields_library
+		   SET archived_at = now(),
+		       updated_at  = now()
+		 WHERE id = $1
+		   AND archived_at IS NULL
+	`

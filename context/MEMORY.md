@@ -37,13 +37,11 @@
 
 **Never create debt — fix now, flag if detected.** Detecting existing debt mid-task: one-line flag, propose fixing now. `docs/c_tech_debt.md` is for user-confirmed deferrals only.
 
-**Deferrals → tech-debt register. No gaps left untouched.** Phrases "hold until", "out of scope", "follow-up", "not blocking" → file in `docs/c_tech_debt.md` with severity + trigger BEFORE commit, ID in commit msg. **Diagnose before scoping** — honest size + explicit trigger, never optimistic framing. Boundary regressions fixed SAME session; only genuinely multi-session test-infra debt deferred.
+**Deferrals → tech-debt register.** "hold until" / "out of scope" / "follow-up" / "not blocking" → file in `docs/c_tech_debt.md` with severity + trigger BEFORE commit, ID in commit msg. Diagnose before scoping — honest size + explicit trigger, never optimistic. Boundary regressions fixed SAME session; only multi-session test-infra debt deferred.
 
 **Bracket-tag commits with scope ref.** Always include `[B19.1.4]` (current solo-dev mode: `[solo-dev]`) in commit subject; otherwise scope-commit-note hook can't match → Unmatched.
 
-**Empirical blast radius.** Never rely on a prior agent's summary. Read the actual workflow/script/snapshot files before recommending cross-cutting changes. "An agent said X" is hypothesis, not evidence.
-
-**Read source when stuck.** If a fix doesn't work first attempt OR reasoning without direct evidence: STOP, read 100–200 lines of source around the area. Don't grep / curl / blame cache first. Source is truth.
+**Empirical blast radius.** Never rely on a prior agent's summary. Read the actual workflow/script/snapshot files before recommending cross-cutting changes. "An agent said X" is hypothesis, not evidence. If a fix doesn't work first attempt OR reasoning without direct evidence: STOP, read 100–200 lines of source around the area. Source is truth.
 
 **UUIDs and enum codes are the contract.** Display names drift (workspace, role, topology node). Identify by UUID in SQL. Don't flag name-mismatch as warning (housekeeping). DO stop and ask on real contradiction (UUID resolves to row contradicting plain language).
 
@@ -52,6 +50,10 @@
 **Cookbook every non-trivial SQL + bash.** Append novel psql queries to `docs/c_sql_cookbook.md` and novel bash to `docs/c_bash_cookbook.md` BEFORE moving on. SQL entries name DB + pool. Stop re-deriving same incantations.
 
 **All stories via `/stories` shortcut.** No exceptions. No direct Planka writes. Even "just one card" routes through the skill (solo-dev mode = title + AC only).
+
+**Single-agent ownership per domain.** Never spawn a second agent into a package another is currently/recently working — they adopt different mental models and break the seam. Origin: 2026-05-20 fields-domain — two parallel agents wired workspace-fields writers two different ways; frontend imported names that didn't exist. Before spawning: check if another agent touched the target dir this session. If yes, SendMessage (continues with context), not new Agent.
+
+**Never auto-commit.** Never run `git commit` without explicit user ask. "Done" / "looks good" / "build is green" do NOT authorize a commit — wait for "commit" or equivalent. Tell subagents the same in their prompt.
 
 ## CSS conventions
 
@@ -65,7 +67,7 @@
 
 ## Test surface
 
-**Claude-owned accounts** (free to use, soft rule = don't modify either): `claude@mmffdev.com` / `password` (user, ID `ef289df1-fcc0-4a5b-bf1b-3d3cf59be708`), `claude_1_test@` / `password123!` (user), `claude_2_test@` / `password123!` (padmin), `claude_3_test@` / `password123!` (gadmin). All in fixture sub `00000000-0000-0000-0000-000000000001` on dev `mmff_vector` via tunnel :5435. Login: frontend `http://localhost:5101/login`; backend `POST http://localhost:5100/auth/login`.
+**Claude-owned accounts** (free to use, soft rule = don't modify): `claude@mmffdev.com` / `password` (user, ID `ef289df1-fcc0-4a5b-bf1b-3d3cf59be708`); `claude_1_test@` (user), `claude_2_test@` (padmin), `claude_3_test@` (gadmin) — all `password123!`. Fixture sub `00000000-0000-0000-0000-000000000001`, dev `mmff_vector` via :5435. Login at `:5101/login` or `POST :5100/auth/login`.
 
 ## Active Threads
 
@@ -76,7 +78,7 @@ _(empty — populated as work progresses)_
 - Backend pinned dev. Env file `backend/.env.dev`. DB tunnel `localhost:5435`. Dev VPS 77.68.33.216.
 - Frontend `http://localhost:5101`. Backend `http://localhost:5100`.
 - `<server>` skill handles env switching but is locked off staging/prod.
-- Memory: `context/MEMORY.md` (this file, ~10 KB cap) + `context/USER.md` (~3 KB cap) loaded at session start. Daily logs `context/memory/{YYYY-MM-DD}.md`. Transcripts `context/transcripts/{YYYY-MM-DD}.md` (gitignored). MemSearch vector recall indexes context/memory + context/transcripts + retired `.claude/memory/` (76-file archive). Run `<index>` to re-index; nightly cron at midnight.
+- Memory: this file (~10 KB) + `context/USER.md` (~3 KB) loaded at session start. Daily logs `context/memory/{YYYY-MM-DD}.md`. Transcripts gitignored. `<index>` for semantic recall; nightly cron.
 
 ## Pending Decisions
 

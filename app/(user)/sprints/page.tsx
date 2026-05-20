@@ -9,12 +9,14 @@ import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useScope } from "@/app/contexts/ScopeContext";
 import TimeboxManager from "@/app/components/TimeboxManager";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function SprintsPage() {
   const { full } = usePageTitle();
   const { user } = useAuth();
+  const { activeNodeId } = useScope();
   const workspaceId = user?.subscription_id ?? "";
 
   return (
@@ -31,7 +33,12 @@ export default function SprintsPage() {
       />
     <StrictRoute>
       {workspaceId && (
-        <TimeboxManager kind="sprint" workspaceId={workspaceId} />
+        <TimeboxManager
+          key={activeNodeId ?? "root"}
+          kind="sprint"
+          workspaceId={workspaceId}
+          orgNodeId={activeNodeId ?? undefined}
+        />
       )}
     </StrictRoute>
     </PageContent>
