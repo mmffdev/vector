@@ -1,8 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slice 0 complete, slice 1 starting next
+**Status:** IN PROGRESS — slice 0 + 1 complete, slice 2 next (detail flyout shell + interaction contract)
 **Owner:** Claude (working from Rick's main session)
-**Branch:** `refactor/objecttree-s0-baseline-and-tests` (and follow-on `refactor/objecttree-sNN-*` branches)
+**Active branch:** `refactor/objecttree-s1-flat-row-store` (slice 1 — generic useObjectTreeWindow hook, committed locally not yet pushed)
+**Landed branches:** `refactor/objecttree-s0-baseline-and-tests` (slice 0)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -37,10 +38,12 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - `docs/examples/p_wizard_workitems_v2.json` — schema example
 - This file (`objectTreeRefactor.md`) — the WIP flag itself
 
-### Claimed by SLICE 1 (next up — flat row store + window hook extraction)
+### ~~Claimed by SLICE 1~~ — DONE (flat row store + window hook extraction)
 
-- `app/components/ObjectTreeV2/hooks/useObjectTreeWindow.ts` (new)
-- `app/components/work-items-tree-config.tsx` — extracting `useArtefactItemsWindow` → generic hook (this is a SHARED file with production work-items; read carefully before any edit)
+- ✅ `app/components/ObjectTreeV2/hooks/useObjectTreeWindow.ts` (new) — landed
+- ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — now consumes the new generic hook (V2 only; production ObjectTree untouched)
+- ✅ `app/components/work-items-tree-config.tsx` — UNTOUCHED (production keeps using `useArtefactItemsWindow` here; the legacy hook stays)
+- Note: the old artefact-coupled hook is NOT yet a "thin wrapper over the new one" as the plan called for. That migration happens when production swaps to V2 (Slice 6+). For now, two parallel paths.
 
 ### Claimed by SLICE 1.5 (plugin architecture, registries, context registry)
 
