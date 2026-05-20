@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Panel from "@/app/components/Panel";
 
 type Flag = { label: string; note?: string };
@@ -454,10 +454,86 @@ function LoadPath({ path }: { path: string[] }) {
   );
 }
 
+function matchesQuery(sc: Shortcut, q: string): boolean {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  if (sc.tag.toLowerCase().includes(needle)) return true;
+  if (sc.desc.toLowerCase().includes(needle)) return true;
+  for (const f of sc.flags) {
+    if (f.label.toLowerCase().includes(needle)) return true;
+    if (f.note && f.note.toLowerCase().includes(needle)) return true;
+  }
+  for (const seg of sc.loadPath) {
+    if (seg.toLowerCase().includes(needle)) return true;
+  }
+  return false;
+}
+
 export default function DevShortcutsPanel() {
+  const [query, setQuery] = useState("");
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+
+  const queryFiltered = useMemo<Category[]>(
+    () =>
+      DATA.map((cat) => ({
+        name: cat.name,
+        shortcuts: cat.shortcuts.filter((sc) => matchesQuery(sc, query)),
+      })),
+    [query],
+  );
+
+  const visible = useMemo<Category[]>(
+    () =>
+      queryFiltered
+        .filter((cat) => (activeCat ? cat.name === activeCat : true))
+        .filter((cat) => cat.shortcuts.length > 0),
+    [queryFiltered, activeCat],
+  );
+
+  const totalVisible = visible.reduce((n, cat) => n + cat.shortcuts.length, 0);
+
   return (
     <Panel name="dev_shortcuts" title="Shortcuts">
       <div className="dui-page">
+        <div className="dui-toolbar dui-toolbar--stretchy">
+          <input
+            type="search"
+            className="dui-search"
+            placeholder="Search shortcuts, descriptions, flags…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search shortcuts"
+          />
+          <span className="dui-kbd-list__note">
+            {totalVisible} shortcut{totalVisible === 1 ? "" : "s"}
+          </span>
+        </div>
+        <div className="dui-toolbar">
+          <div className="dui-toolbar__filters">
+            <button
+              type="button"
+              className={`dui-toolbar__filter${activeCat === null ? " is-active" : ""}`}
+              onClick={() => setActiveCat(null)}
+            >
+              All
+              <span className="dui-toolbar__filter-count">
+                {queryFiltered.reduce((n, cat) => n + cat.shortcuts.length, 0)}
+              </span>
+            </button>
+            {queryFiltered.map((cat) => (
+              <button
+                key={cat.name}
+                type="button"
+                className={`dui-toolbar__filter${activeCat === cat.name ? " is-active" : ""}`}
+                onClick={() => setActiveCat(activeCat === cat.name ? null : cat.name)}
+                disabled={cat.shortcuts.length === 0}
+              >
+                {cat.name}
+                <span className="dui-toolbar__filter-count">{cat.shortcuts.length}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <table className="dui-table">
           <thead>
             <tr>
@@ -468,38 +544,46 @@ export default function DevShortcutsPanel() {
             </tr>
           </thead>
           <tbody>
-            {DATA.map((cat) => (
-              <Fragment key={cat.name}>
-                <tr className="dui-table__group">
-                  <td colSpan={4}>{cat.name}</td>
-                </tr>
-                {cat.shortcuts.map((sc) => (
-                  <tr key={sc.tag}>
-                    <td className="dui-table__cell--rich dui-table__cell--shrink">
-                      <span className="dui-tag">{sc.tag}</span>
-                    </td>
-                    <td className="dui-table__cell--rich dui-table__cell--lede">{sc.desc}</td>
-                    <td className="dui-table__cell--rich">
-                      {sc.flags.length === 0 ? (
-                        <span className="dui-kbd-list__empty">—</span>
-                      ) : (
-                        <div className="dui-kbd-list">
-                          {sc.flags.map((f) => (
-                            <div key={f.label} className="dui-kbd-list__row">
-                              <code className="dui-kbd">{f.label}</code>
-                              {f.note && <span className="dui-kbd-list__note">{f.note}</span>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="dui-table__cell--rich">
-                      <LoadPath path={sc.loadPath} />
-                    </td>
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="dui-kbd-list__empty">
+                  No shortcuts match.
+                </td>
+              </tr>
+            ) : (
+              visible.map((cat) => (
+                <Fragment key={cat.name}>
+                  <tr className="dui-table__group">
+                    <td colSpan={4}>{cat.name}</td>
                   </tr>
-                ))}
-              </Fragment>
-            ))}
+                  {cat.shortcuts.map((sc) => (
+                    <tr key={sc.tag}>
+                      <td className="dui-table__cell--rich dui-table__cell--shrink">
+                        <span className="dui-tag">{sc.tag}</span>
+                      </td>
+                      <td className="dui-table__cell--rich dui-table__cell--lede">{sc.desc}</td>
+                      <td className="dui-table__cell--rich">
+                        {sc.flags.length === 0 ? (
+                          <span className="dui-kbd-list__empty">—</span>
+                        ) : (
+                          <div className="dui-kbd-list">
+                            {sc.flags.map((f) => (
+                              <div key={f.label} className="dui-kbd-list__row">
+                                <code className="dui-kbd">{f.label}</code>
+                                {f.note && <span className="dui-kbd-list__note">{f.note}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="dui-table__cell--rich">
+                        <LoadPath path={sc.loadPath} />
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))
+            )}
           </tbody>
         </table>
         <p className="dui-page__subtitle">
