@@ -206,6 +206,13 @@ export default function ObjectTree({
   const resourceUrl =
     wizardConfig?.resourceUrl ?? (mode === "portfolio_items" ? "/portfolio-items" : "/work-items");
 
+  // ResourceTree keeps expanded child rows in its own state; the hook's
+  // patchAndApply only mutates root rows. Without this back-channel a
+  // pill click on a child row updates the backend but not the visible
+  // row. The hook calls this ref's current function on every optimistic
+  // patch; ResourceTree assigns the ref's body on mount.
+  const applyChildPatchRef = useRef<((id: string, partial: Record<string, unknown>) => void) | null>(null);
+
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
     useArtefactItemsWindow({
       resourceUrl,
@@ -215,6 +222,7 @@ export default function ObjectTree({
       sortDir,
       filters,
       onPatched,
+      onLocalPatch: (id, body) => applyChildPatchRef.current?.(id, body),
     });
 
   // Bulk-fetch flow states for every artefact type visible in the
@@ -805,6 +813,7 @@ export default function ObjectTree({
         getChildrenCount={config.getChildrenCount}
         fetchChildren={fetchChildren}
         patch={patchRemote}
+        applyChildPatchRef={applyChildPatchRef}
         columns={config.columns}
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"

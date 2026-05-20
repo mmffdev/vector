@@ -166,6 +166,14 @@ export interface ResourceTreeProps<T> {
   getChildrenCount: (row: T) => number;
   fetchChildren: (parentId: string) => Promise<T[]>;
   patch: (id: string, patch: Record<string, unknown>) => Promise<T>;
+  // Optional mutable ref the host fills with an imperative
+  // "apply this partial to any matching child row" helper. ResourceTree
+  // keeps expanded children in a local Map<parentId, T[]>; the host's
+  // optimistic-patch loop only touches its OWN `roots` state, so child
+  // rows visually stale after an inline edit unless the host can reach
+  // in here. This ref gives it a back-channel without making ResourceTree
+  // controlled.
+  applyChildPatchRef?: React.MutableRefObject<((id: string, partial: Record<string, unknown>) => void) | null>;
   getRowClass?: (row: T) => string | undefined;
 
   // ── Set 2: Scaffold ──
@@ -752,6 +760,7 @@ function ResourceTreeImpl<T>({
   getChildrenCount,
   fetchChildren,
   patch: _patch,
+  applyChildPatchRef,
   getRowClass,
   // Scaffold
   columns,
@@ -792,6 +801,37 @@ function ResourceTreeImpl<T>({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [childMap, setChildMap] = useState<Record<string, T[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  // Imperative back-channel: when the host's patchAndApply optimistic-
+  // update loop fires, it only sees `roots`; child rows in childMap stay
+  // stale. Filling applyChildPatchRef lets the host say "merge this body
+  // into whichever child array contains `id`" without making the whole
+  // childMap a controlled prop.
+  useEffect(() => {
+    if (!applyChildPatchRef) return;
+    applyChildPatchRef.current = (id, partial) => {
+      setChildMap((prev) => {
+        let touched = false;
+        const next: Record<string, T[]> = {};
+        for (const [parentId, kids] of Object.entries(prev)) {
+          let arrChanged = false;
+          const nextKids = kids.map((row) => {
+            if (getId(row) === id) {
+              arrChanged = true;
+              touched = true;
+              return { ...row, ...partial } as T;
+            }
+            return row;
+          });
+          next[parentId] = arrChanged ? nextKids : kids;
+        }
+        return touched ? next : prev;
+      });
+    };
+    return () => {
+      if (applyChildPatchRef.current) applyChildPatchRef.current = null;
+    };
+  }, [applyChildPatchRef, getId]);
   const [searchQueryInternal, setSearchQueryInternal] = useState("");
   const searchControlled = typeof onSearchChange === "function";
   const searchQuery = searchControlled ? (searchValue ?? "") : searchQueryInternal;
@@ -1115,10 +1155,22 @@ function ResourceTreeImpl<T>({
   // Defensive identity in case the server ever includes children in `roots`.
   // When DnD has shadowed the order locally (rootsOverride), use that so the
   // optimistic apply paints before the next refetch catches up.
+  //
+  // A row counts as a root if EITHER it has no parent OR its parent isn't
+  // present in the visible window. The latter case covers cross-scope
+  // parenting (an Epic parented onto a strategy Feature: the FE isn't in
+  // the work-items list, so the EP should still render at the top level
+  // instead of being silently dropped). Without this clause the tree
+  // builder treats any non-null parent_id as "child only, skip" and the
+  // row vanishes from the tree.
   const rootsOnly = useMemo(() => {
     const src = rootsOverride ?? roots;
-    return src.filter((r) => !getParentId(r));
-  }, [roots, rootsOverride, getParentId]);
+    const visibleIds = new Set(src.map((r) => getId(r)));
+    return src.filter((r) => {
+      const pid = getParentId(r);
+      return !pid || !visibleIds.has(pid);
+    });
+  }, [roots, rootsOverride, getParentId, getId]);
 
   const filteredRoots = useMemo(() => {
     if (!search) return rootsOnly;

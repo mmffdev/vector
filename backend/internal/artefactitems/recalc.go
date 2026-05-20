@@ -199,34 +199,46 @@ func (s *Service) loadChildKindBucket(ctx context.Context, subscriptionID, paren
 }
 
 // pickTargetKind applies the rule against the bucket. Returns the
-// flows_states_kind value (`in_progress` / `done` / `backlog` / `todo`)
-// to land the parent on, or "" if no rule fires.
+// flows_states_kind value (`in_progress` / `done` / `backlog`) to land
+// the parent on, or "" when the rule shouldn't move the parent.
 //
-// Precedence (top wins):
-//  1. ANY child in_progress         → in_progress
-//  2. ALL children done OR accepted → done   (accepted is "past done" so
-//     a sibling accepted alongside others done is treated as "all done")
-//  3. ALL children backlog OR todo  → backlog (fallback todo if flow has no
-//     backlog state — handled by firstFlowStateByKind)
+// Semantic (work-flows-up):
+//   - ALL children at the start (backlog only)   → parent backlog
+//   - ALL children at the end   (done/accepted)  → parent done
+//   - ANYTHING ELSE — any progress at all but
+//     not all the way finished                   → parent in_progress
 //
-// Mixed buckets (some done, some backlog, none in_progress) fall
-// through to "" — parent stays put.
+// This is the "anything in flight or mixed = in_progress" rule. It
+// includes the case the prior version missed: a child moved from
+// backlog to done while a sibling is still backlog/todo — work has
+// HAPPENED, so the parent is in_progress, not stuck at backlog.
+//
+// `accepted` is treated as ≥ done for the "all-finished" check (the
+// user manually moved that child past completed; it counts toward the
+// terminal bucket). `accepted` is NEVER set automatically on the
+// parent — only `done` is the auto-terminal state.
 //
 // `cancelled` and `other` are ignored as "doesn't count" — a cancelled
 // child doesn't block the parent from completing.
 func pickTargetKind(b childKindBucket) string {
-	if b.inProgress > 0 {
-		return "in_progress"
-	}
-	// Rule says ALL children must be done. Accepted is treated as ≥ done
-	// because the user already manually moved that child past completed —
-	// it counts toward the "all are finished" check.
-	if b.done+b.accepted > 0 && b.backlog == 0 && b.todo == 0 {
+	// All children are at the terminal bucket → parent done.
+	// (Both done and accepted count as terminal; either or both is fine.)
+	if (b.done+b.accepted) > 0 && b.backlog == 0 && b.todo == 0 && b.inProgress == 0 {
 		return "done"
 	}
-	// All backlog/todo (no done, no in_progress).
-	if b.backlog+b.todo > 0 && b.done == 0 && b.accepted == 0 {
+	// All children are at the start bucket → parent backlog.
+	// (`backlog` strictly here; a single child past backlog flips us to
+	// the in_progress branch below.)
+	if b.backlog > 0 && b.todo == 0 && b.inProgress == 0 && b.done == 0 && b.accepted == 0 {
 		return "backlog"
+	}
+	// Any other shape with at least one live child counts as in_progress.
+	// Includes:
+	//   - any child in 'doing' (was the original rule)
+	//   - any child in 'todo' (pulled from backlog — work has started)
+	//   - mixed buckets (some done, some not) — parent is mid-flight
+	if b.total() > 0 {
+		return "in_progress"
 	}
 	return ""
 }

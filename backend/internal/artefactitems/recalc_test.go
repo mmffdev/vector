@@ -245,12 +245,14 @@ func TestRecalc_AllChildrenDone_PromotesParentToDone(t *testing.T) {
 	reparentArtefact(t, va, taskBID, storyID)
 
 	storyDone := flowStateForType(t, va, storyTypeID, "done")
+	storyInProgress := flowStateForType(t, va, storyTypeID, "in_progress")
 	taskDone := flowStateForType(t, va, taskTypeID, "done")
 	taskDoneStr := taskDone.String()
 
-	// Mark A done. Not enough — B still at initial — so Story should NOT
-	// have cascaded to done yet. (Initial is "todo" for tasks; that mixes
-	// with done, neither bucket fires, parent stays put.)
+	// Mark A done. B still at initial — mixed bucket. Under the
+	// work-flows-up rule "anything not all-start-and-not-all-end" means
+	// the parent is in_progress (work has happened). Story should NOT
+	// be done yet, but SHOULD have moved off backlog to in_progress.
 	if _, err := svc.PatchWorkItem(ctx, sub, taskAID, artefactitems.PatchWorkItemInput{
 		FlowStateID: &taskDoneStr,
 	}); err != nil {
@@ -258,6 +260,9 @@ func TestRecalc_AllChildrenDone_PromotesParentToDone(t *testing.T) {
 	}
 	if got := readFlowStateID(t, va, storyID); got == storyDone {
 		t.Fatalf("Story should NOT yet be done after only 1/2 tasks done; got %s", got)
+	}
+	if got := readFlowStateID(t, va, storyID); got != storyInProgress {
+		t.Fatalf("Story should have moved to in_progress after 1/2 tasks done; got %s", got)
 	}
 
 	// Now mark B done — all children done, Story should land on done.
@@ -373,13 +378,28 @@ func TestRecalc_ArchiveChildRecalcsParent(t *testing.T) {
 		t.Fatalf("Story should be in_progress after A; got %s", got)
 	}
 
-	// Archive A — only sibling left is B at initial (kind=todo). Story
-	// should fall back to its first backlog (or todo) state.
+	// Archive A — only sibling left is B at initial (kind=todo). Under
+	// the work-flows-up rule "any child past nothing/all-end" means
+	// in_progress, so a single todo child still keeps the Story at
+	// in_progress (the work is queued, not finished). The cascade
+	// MUST fire (children set changed), but the resulting state is
+	// idempotent — Story stays at in_progress because that's still the
+	// rule's answer for the new bucket {todo: 1}.
 	if err := svc.ArchiveWorkItem(ctx, sub, taskAID); err != nil {
 		t.Fatalf("archive A: %v", err)
 	}
-	if got := readFlowStateID(t, va, storyID); got == storyInProgress {
-		t.Fatalf("Story should NO longer be in_progress after archiving A; still %s", got)
+	if got := readFlowStateID(t, va, storyID); got != storyInProgress {
+		t.Fatalf("Story should still be in_progress after archiving A (one todo child remains); got %s", got)
+	}
+
+	// Now archive B too — Story has zero live children → rule shouldn't
+	// fire (no derivation). Story stays put (still in_progress) because
+	// the rule explicitly skips when total == 0.
+	if err := svc.ArchiveWorkItem(ctx, sub, taskBID); err != nil {
+		t.Fatalf("archive B: %v", err)
+	}
+	if got := readFlowStateID(t, va, storyID); got != storyInProgress {
+		t.Fatalf("Story should stay where the cascade left it once it has no children; got %s", got)
 	}
 }
 
