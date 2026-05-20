@@ -9711,35 +9711,29 @@ input[type="reset"] {
   box-shadow: inset 0 -2px 0 0 var(--accent);
 }
 
-/* Drag-to-reparent visual language — the candidate field.
-   When a drag starts, every row whose type is a legal parent for the
-   mover gets the #ccff00 ↔ transparent barber-pole stripe overlay on
-   every data cell. Paints the WHOLE field at once so the user sees
-   the full set of valid drops without hunting.
-   No green/red side borders, no drop-onto focus treatment, no red
-   for illegal — absent stripes already tells the user "not here".
-   The 10px type-colour stripe column on the row's leading edge stays
-   visible underneath, so the row's identity isn't lost during the
-   drag. */
-.drag-row--drop-candidate > .tree_accordion-dense__cell {
+/* Drag-to-reparent visual language — confined to the 10px leading
+   stripe column. When a drag starts, every legal drop target's
+   stripe cell paints diagonal #ccffcc ↔ <type colour> bands at -45°,
+   10/10 period, no animation. Non-candidate rows keep their normal
+   solid type-colour stripe.
+   Data cells stay untouched during a drag — no full-row overlay, no
+   animation, nothing else flickering across the tree. The stripe
+   column itself is the entire affordance.
+   Implementation: the row's <td class="...--type-stripe"> already
+   carries the type colour via inline `style.backgroundColor`. We
+   layer a repeating-linear-gradient as `background-image` ONLY when
+   the row is a candidate; the gradient's `transparent` band lets the
+   inline background colour show through underneath, so the stripes
+   naturally take the artefact's own colour without us having to
+   look it up here. */
+.drag-row--drop-candidate > .tree_accordion-dense__cell--type-stripe {
   background-image: repeating-linear-gradient(
     -45deg,
-    #ccff00 0,
-    #ccff00 10px,
+    #ccffcc 0,
+    #ccffcc 10px,
     transparent 10px,
     transparent 20px
   );
-  background-size: 28.284px 28.284px;
-  animation: drag-row-candidate-stripes 2.5s linear infinite;
-}
-@keyframes drag-row-candidate-stripes {
-  from { background-position: 0 0; }
-  to   { background-position: 28.284px 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .drag-row--drop-candidate > .tree_accordion-dense__cell {
-    animation: none;
-  }
 }
 
 /* ── Cog-menu column (per-row actions: edit, duplicate, move, split, delete) ── */
@@ -13581,10 +13575,22 @@ input[type="reset"] {
 .tree_accordion-dense__type-badge:focus-visible {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
 }
-.tree_accordion-dense__type-badge--epic   { background: var(--tree_accordion-dense-type-epic); }
-.tree_accordion-dense__type-badge--story  { background: var(--tree_accordion-dense-type-story); }
-.tree_accordion-dense__type-badge--task   { background: var(--tree_accordion-dense-type-task); }
-.tree_accordion-dense__type-badge--defect { background: var(--tree_accordion-dense-type-defect); }
+/* Type-badge gray ramp. Originally each type had its own colour;
+   that identity moved to the 10px leading stripe column (where the
+   user's per-artefact or per-type colour lives now). The badge here
+   is a quiet hierarchy cue — darkest at the top of the ladder,
+   lighter on the way down. White text on the dark end, near-black
+   text on the light end so each row stays legible.
+   Seven stops total: 3 strategic tiers (top / mid / bottom) + 4
+   execution tiers (epic / story+defect / task). Defect rides at the
+   same gray as Story since they're peers at that level. */
+.tree_accordion-dense__type-badge--strategy-top     { background: #1f1f1f; color: #fff; }
+.tree_accordion-dense__type-badge--strategy-mid     { background: #3a3a3a; color: #fff; }
+.tree_accordion-dense__type-badge--strategy-bottom  { background: #555555; color: #fff; }
+.tree_accordion-dense__type-badge--epic             { background: #707070; color: #fff; }
+.tree_accordion-dense__type-badge--story            { background: #8a8a8a; color: #fff; }
+.tree_accordion-dense__type-badge--defect           { background: #8a8a8a; color: #fff; }
+.tree_accordion-dense__type-badge--task             { background: #a8a8a8; color: #1a1a1a; }
 
 .tree_accordion-dense__title {
   flex: 1;

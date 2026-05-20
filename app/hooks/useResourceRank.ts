@@ -226,10 +226,18 @@ export function useResourceRank(opts: UseResourceRankOptions) {
           setCandidateIds(new Set());
           if (!moverID || moverID === id || !target) return;
           if (target.pos === "onto") {
-            // Illegal drop — silently ignore. The user got the red
-            // outline + no-drop cursor as feedback.
-            if (!target.allowed) return;
-            opts.onReparent?.(moverID, target.id, "onto");
+            // ONTO a candidate row → host owns the dispatch (target
+            // may be a parent candidate OR a sibling candidate; host
+            // resolves which from the row's type vs the mover's
+            // allowed-parent list). target.allowed reflects the
+            // parent-style legality, but candidacy alone is the
+            // sufficient signal here — if the row stripes, it's a
+            // legal drop in SOME sense.
+            if (candidates.has(target.id) && opts.onReparent) {
+              opts.onReparent(moverID, target.id, "onto");
+              return;
+            }
+            // Not a candidate at all — silently ignore.
             return;
           }
           // Above/below: when the target row was painted as a

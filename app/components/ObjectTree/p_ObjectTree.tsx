@@ -483,18 +483,35 @@ export default function ObjectTree({
   // position-on-cross-parent.
   const reparentArtefact = useCallback(
     async (moverID: string, targetID: string, intent: "onto" | "above" | "below") => {
-      let newParentID = targetID;
-      if (intent === "above" || intent === "below") {
-        const get = getRowByIdRef.current;
-        const target = get?.(targetID);
-        if (!target) return;
-        // Above/below an unparented (root) sibling means "parent to
-        // the same root scope" — current data shape has no concept
-        // of root reparenting from a drag, so we no-op. Real fix:
-        // surface a top-of-tree drop zone.
+      const get = getRowByIdRef.current;
+      const mover = get?.(moverID);
+      const target = get?.(targetID);
+      if (!mover || !target) return;
+
+      // Resolve new parent:
+      //   - ABOVE/BELOW any candidate row → that row's parent.
+      //   - ONTO a PARENT candidate (target's type is legal-parent of
+      //     mover) → target itself.
+      //   - ONTO a SIBLING candidate (target's PARENT is legal-parent
+      //     of mover) → target's parent. User dropped on a sibling
+      //     row, expects to land alongside it.
+      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
+      const targetPrefix = target.type_prefix?.toUpperCase() ?? "";
+      const targetIsLegalParent = allowed.includes(targetPrefix);
+
+      let newParentID: string;
+      if (intent === "onto" && targetIsLegalParent) {
+        newParentID = targetID;
+      } else {
+        // Sibling-style drop (above/below, or onto a sibling candidate).
+        // Resolve to target's parent.
         if (!target.parent_id) return;
         newParentID = target.parent_id;
       }
+
+      // Same-parent no-op guard.
+      if (mover.parent_id === newParentID) return;
+
       const bundle = resourceUrl === "/portfolio-items" ? portfolioItemsApi : workItemsApi;
       try {
         await bundle.patch(moverID, { parent_artefact_id: newParentID });

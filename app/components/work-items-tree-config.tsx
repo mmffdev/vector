@@ -18,7 +18,7 @@ import { notify } from "@/app/lib/toast";
 import { useUserPreference } from "@/app/hooks/useUserPreference";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
-import { safeInk, type TypeColourMap } from "@/app/lib/colourUtils";
+import { type TypeColourMap } from "@/app/lib/colourUtils";
 import { artefactTypesApi } from "@/app/lib/artefactTypesApi";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
@@ -116,11 +116,39 @@ export interface WorkItem {
   created_at: string;
   updated_at: string;
   children_count: number;
+  // Per-artefact colour override set via the inline form's ColourPicker
+  // (`artefacts.colour` on the wire). When non-null, takes precedence
+  // over the artefact-type's default colour — used by the 10px leading
+  // stripe on each tree row + the type-badge fill. NULL = inherit
+  // from type. Optional so test fixtures + back-compat consumers don't
+  // need to provide it.
+  colour?: string | null;
 }
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
 
+// Type-badge palette. Originally each type had its own colour; the
+// user-picked artefact colour now lives in the 10px leading stripe
+// column instead, so the badge here reverts to a neutral gray ramp
+// keyed by the type's place in the hierarchy: strategic types sit
+// darker (top of the ladder) and the ramp gets progressively lighter
+// down to Task. Keeps the visual weight aligned with the work flowing
+// up — the heavier the row sits in the hierarchy, the heavier the
+// badge reads.
 const TYPE_VARIANT: Record<string, string> = {
+  // Strategic ladder — darkest. Top of the hierarchy reads heaviest.
+  theme: "tree_accordion-dense__type-badge--strategy-top",
+  "business outcome": "tree_accordion-dense__type-badge--strategy-top",
+  strategy: "tree_accordion-dense__type-badge--strategy-top",
+  "business objective": "tree_accordion-dense__type-badge--strategy-mid",
+  "business epic": "tree_accordion-dense__type-badge--strategy-mid",
+  "portfolio objective": "tree_accordion-dense__type-badge--strategy-mid",
+  "portfolio runway": "tree_accordion-dense__type-badge--strategy-mid",
+  "strategic objective": "tree_accordion-dense__type-badge--strategy-mid",
+  product: "tree_accordion-dense__type-badge--strategy-mid",
+  initiative: "tree_accordion-dense__type-badge--strategy-mid",
+  feature: "tree_accordion-dense__type-badge--strategy-bottom",
+  // Execution layer — progressively lighter down to Task.
   epic: "tree_accordion-dense__type-badge--epic",
   story: "tree_accordion-dense__type-badge--story",
   task: "tree_accordion-dense__type-badge--task",
@@ -265,17 +293,18 @@ function SummaryCell({
   row,
   ctx,
   onPatch,
-  colourMap,
   onTypeBadgeClick,
 }: {
   row: WorkItem;
   ctx: RenderCtx<WorkItem>;
   onPatch: (id: string, body: Record<string, unknown>) => void;
-  colourMap?: TypeColourMap;
   onTypeBadgeClick?: (artefactId: string) => void;
 }) {
   const isEpic = row.item_type === "epic";
-  const colourEntry = colourMap?.get(row.type_prefix);
+  // The badge no longer carries the artefact-type colour — that
+  // identity moved to the 10px leading stripe column. The badge
+  // uses a neutral gray ramp keyed by hierarchy depth, kept clean
+  // so the tree reads as a quiet legend.
   return (
     <span className="tree_accordion-dense__summary">
       <PrimaryCellTreeLines
@@ -288,9 +317,8 @@ function SummaryCell({
         type="button"
         className={
           "tree_accordion-dense__type-badge " +
-          (colourEntry ? "" : (TYPE_VARIANT[row.item_type] ?? ""))
+          (TYPE_VARIANT[row.item_type] ?? "")
         }
-        style={colourEntry ? { background: colourEntry.colour, color: safeInk(colourEntry.colour) } : undefined}
         onClick={(e) => {
           e.stopPropagation();
           onTypeBadgeClick?.(row.id);
@@ -492,7 +520,11 @@ function DueCell({
 export function buildWorkItemsColumns(
   flowStates: WorkItemFlowState[],
   patchAndApply: (id: string, body: Record<string, unknown>) => void,
-  colourMap?: TypeColourMap,
+  // Kept on the call signature for back-compat with current call-sites
+  // even though the badge no longer consumes per-type colours (the
+  // type colour identity moved to the row's 10px leading stripe).
+  // Suffix the binding with `_` so the lint sees it as intentional.
+  _colourMap?: TypeColourMap,
   callbacks?: {
     onTypeBadgeClick?: (artefactId: string) => void;
     flowStatesByType?: Map<string, WorkItemFlowState[]>;
@@ -523,7 +555,6 @@ export function buildWorkItemsColumns(
           row={row}
           ctx={ctx}
           onPatch={patchAndApply}
-          colourMap={colourMap}
           onTypeBadgeClick={callbacks?.onTypeBadgeClick}
         />
       ),
