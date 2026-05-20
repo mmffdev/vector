@@ -8,6 +8,13 @@ export interface WorkItemFlowState {
   flow_position: number;
   name: string;
   canonical_code: string;
+  // Tenant-set hex (#RRGGBB) on the state. NULL when the tenant hasn't
+  // overridden the system default — FlowStatePillRow falls back to the
+  // canonical_code class in that case.
+  colour?: string | null;
+  // Present when the response came from the by-type fetch
+  // (?artefact_type_id=...). useFlowStatesByType groups by this.
+  artefact_type_id?: string;
 }
 
 // Maps canonical_code → pill modifier class suffix (pill--<mod>).

@@ -13129,11 +13129,12 @@ input[type="reset"] {
   transition: background-color 100ms ease;
   background: var(--surface);
 }
-.tree_accordion-dense__table tbody .tree_accordion-dense__row:nth-child(even) {
-  background: color-mix(in srgb, var(--ink) 3%, var(--surface));
-}
-.tree_accordion-dense__row:hover,
-.tree_accordion-dense__table tbody .tree_accordion-dense__row:nth-child(even):hover {
+/* Zebra striping removed 2026-05-20 — the row dividers + artefact-type
+   colour badges are visual rhythm enough; the alternating 3%-ink wash
+   read as heavy. The form-open row marker below still uses what was
+   the zebra colour for its diagonal stripe fill so the highlighted row
+   keeps its connection to the original visual language. */
+.tree_accordion-dense__row:hover {
   background: color-mix(in srgb, var(--ink) 6%, var(--surface));
 }
 .tree_accordion-dense__row--selected,
@@ -13141,6 +13142,75 @@ input[type="reset"] {
 .tree_accordion-dense__table tbody .tree_accordion-dense__row--selected:nth-child(even),
 .tree_accordion-dense__table tbody .tree_accordion-dense__row--selected:nth-child(even):hover {
   background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface));
+}
+/* Form-open row marker — the row whose ArtefactInlineForm is currently
+   expanded gets diagonal stripes painted at -45°. Stripes use what was
+   the old zebra colour (3%-ink-on-surface) for the "on" segments and
+   leave the row's own background showing through the "off" segments
+   so the marker reads as a soft hatching rather than a heavy fill.
+   Stripes pan continuously (barber-pole effect) so the eye is gently
+   drawn to the active row. Selectors stay specific to beat any future
+   row state overrides. */
+.tree_accordion-dense__row--form-open,
+.tree_accordion-dense__row--form-open:hover {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--ink) 3%, var(--surface)) 0,
+    color-mix(in srgb, var(--ink) 3%, var(--surface)) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  /* Slow, hypnotic loop — 20px (one full stripe-pair) per 3s so the
+     motion reads as a drift, not a marquee. Seamless because the
+     repeating gradient tiles on the same 20px period. */
+  background-size: 28.284px 28.284px; /* 20px / cos(45°) — diagonal period */
+  animation: tree_accordion-dense__form-open-stripes 2.5s linear infinite;
+}
+@keyframes tree_accordion-dense__form-open-stripes {
+  from { background-position: 0 0; }
+  to   { background-position: 28.284px 0; }
+}
+/* Orange row-edge marker for the form-open row. Row dividers live on
+   the <td> cells via border-bottom only — so to draw the active row's
+   TOP edge we colour the PREVIOUS row's border-bottom, and the active
+   row's own border-bottom draws its bottom edge. No border-top on the
+   active row itself — that would stack on top of the previous row's
+   border-bottom and render as 2px. */
+.tree_accordion-dense__row--form-open > .tree_accordion-dense__cell {
+  border-bottom: 1px solid #FF6600;
+}
+.tree_accordion-dense__row:has(+ .tree_accordion-dense__row--form-open)
+  > .tree_accordion-dense__cell {
+  border-bottom-color: #FF6600;
+}
+/* Drag-handle cells use a separate border-bottom rule (line 9593) that
+   doesn't pick up the form-open colour without an explicit selector.
+   Match both edges of the active row the same way as the other cells. */
+.tree_accordion-dense__table .tree_accordion-dense__row--form-open
+  > .drag-handle-cell {
+  border-bottom-color: #FF6600;
+}
+.tree_accordion-dense__table .tree_accordion-dense__row:has(+ .tree_accordion-dense__row--form-open)
+  > .drag-handle-cell {
+  border-bottom-color: #FF6600;
+}
+/* The drag-handle icon spans the full 28px row height and would sit
+   visually on top of the orange border. Inset it by 1px so the line
+   runs uninterrupted. Applied both to the active row (its bottom edge)
+   and the row above it (whose bottom edge IS the active row's top edge). */
+.tree_accordion-dense__row--form-open .drag-handle,
+.tree_accordion-dense__row:has(+ .tree_accordion-dense__row--form-open) .drag-handle {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+/* Respect motion preference — stripes stay, animation stops. The
+   marker still works as a static hatching for users who'd rather not
+   see continuous motion (defence/finance accessibility default). */
+@media (prefers-reduced-motion: reduce) {
+  .tree_accordion-dense__row--form-open,
+  .tree_accordion-dense__row--form-open:hover {
+    animation: none;
+  }
 }
 .tree_accordion-dense__row--epic {
   font-weight: 600;
@@ -13315,6 +13385,7 @@ input[type="reset"] {
   min-width: 26px;
   height: 18px;
   padding: 0 4px;
+  border: 0;
   border-radius: 3px;
   display: inline-flex;
   align-items: center;
@@ -13325,6 +13396,15 @@ input[type="reset"] {
   color: var(--surface, #fff);
   background: var(--ink-muted);
   letter-spacing: 0.02em;
+  /* Promoted to <button> 2026-05-20 for the ArtefactInlineForm
+     trigger — explicit cursor + outline reset so the visual stays
+     identical to the original <span>. Focus ring uses the accent
+     token so keyboard navigation is still discoverable. */
+  cursor: pointer;
+  outline: none;
+}
+.tree_accordion-dense__type-badge:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 .tree_accordion-dense__type-badge--epic   { background: var(--tree_accordion-dense-type-epic); }
 .tree_accordion-dense__type-badge--story  { background: var(--tree_accordion-dense-type-story); }
@@ -13422,11 +13502,261 @@ input[type="reset"] {
   color: var(--ink);
   font-weight: 600;
 }
+/* Link-modifier — the ID is a button that opens the ArtefactInlineForm.
+   Dotted underline + pointer cursor signal the affordance; button-tag
+   default styling is stripped so the text reads identically to the
+   surrounding row except for the underline. */
+.tree_accordion-dense__id-text--link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ink-muted);
+}
+.tree_accordion-dense__id-text--link:hover {
+  text-decoration-style: solid;
+  text-decoration-color: var(--ink);
+  color: var(--ink);
+}
+.tree_accordion-dense__id-text--link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 2px;
+}
+.tree_accordion-dense__row--epic .tree_accordion-dense__id-text--link {
+  text-decoration-color: var(--ink);
+}
 
 /* Grid-Tree title/points cells use the shared .inline-edit-trigger
    primitive defined earlier. The block-namespaced selectors are kept
    only as row-class hooks (e.g. .tree_accordion-dense__row--epic …)
    and no longer carry their own visual rules. */
+
+/* ─── ArtefactInlineForm ─────────────────────────────────────────────
+   Inline expand below the action bar when a row's type badge is
+   clicked. Mirrors the .tree_accordion-dense__createflyout animation
+   (grid-template-rows 0fr → 1fr) so opening one auto-replaces any
+   prior open flyout in the same slot. The single-open semantics are
+   enforced by the host (p_ObjectTree). */
+/* The form is a SIBLING of the parent ObjectTree panel — rendered AFTER
+   the panel closes (see p_ObjectTree.tsx). That means the parent's
+   white background ends at the pagination row's rounded bottom, the
+   parent's `margin-bottom: 20px` provides the gap (no double-margin
+   needed here), and the page canvas shows through the gap. The form
+   itself is a self-contained rounded panel matching `.panel`. */
+.artefact-inline-form {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  height: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  transition:
+    grid-template-rows 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease,
+    height 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.artefact-inline-form[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  height: auto;
+  background: #ffffff;
+  border: var(--border-width) solid var(--border);
+  border-radius: 10px;
+}
+.artefact-inline-form__Container {
+  min-height: 0;
+  /* L/R 16px matches the sibling .tree_accordion-dense__createflyout-inner
+     so the form's edges line up with the action bar above and the panel's
+     internal padding. */
+  padding: 16px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transform: translateY(-4px);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  background: var(--surface);
+}
+.artefact-inline-form[data-open="true"] .artefact-inline-form__Container {
+  transform: translateY(0);
+}
+.artefact-inline-form__Container_Loading,
+.artefact-inline-form__Container_Error {
+  min-height: 0;
+  padding: 20px;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.artefact-inline-form__Container_Head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-sunken);
+  margin: -16px -16px 0;
+  padding: 10px 16px;
+  /* Inset rounded corners so the sunken band tucks neatly inside the
+     panel's outer 10px radius. 10px - 1px border = 9px effective. */
+  border-top-left-radius: 9px;
+  border-top-right-radius: 9px;
+}
+/* Action bar — sits directly under the title head, spans edge to edge
+   via the same negative-margin trick. Negative top margin cancels the
+   parent's flex `gap: 14px` so the bar sits flush against the title
+   head (no airy gap above). Bottom padding 9px keeps the user-confirmed
+   spacing to the form fields below. L/R 16px aligns with the rest of
+   the panel. */
+.artefact-inline-form__Actionbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -14px -16px 0;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.artefact-inline-form__Actionbar .btn {
+  background: var(--surface-sunken);
+  border-color: var(--border);
+  color: var(--ink);
+  border-radius: 6px;
+}
+.artefact-inline-form__Actionbar .btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 6%, var(--surface-sunken));
+  border-color: var(--border);
+  color: var(--ink);
+}
+.artefact-inline-form__Actionbar_Spacer {
+  flex: 1;
+}
+.artefact-inline-form__Actionbar_Btn--danger {
+  color: var(--danger, #b91c1c);
+  border-color: color-mix(in srgb, var(--danger, #b91c1c) 35%, var(--border)) !important;
+}
+.artefact-inline-form__Actionbar_Btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger, #b91c1c) 10%, var(--surface-sunken)) !important;
+  color: var(--danger, #b91c1c) !important;
+}
+.artefact-inline-form__Container_Head_Title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.artefact-inline-form__Container_Cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.artefact-inline-form__Container_Cols_Left,
+.artefact-inline-form__Container_Cols_Right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.artefact-inline-form__Field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.artefact-inline-form__Field_Label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.artefact-inline-form__Field_Input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.artefact-inline-form__Field_Input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.artefact-inline-form__Field_Stub {
+  border: 1px dashed var(--border);
+  padding: 12px;
+  border-radius: 6px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.artefact-inline-form__Field_Meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  padding-top: 4px;
+}
+.artefact-inline-form__Field_Meta strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.artefact-inline-form__Blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.artefact-inline-form__Blocked--blocked {
+  border-color: color-mix(in srgb, #ef4444 70%, var(--border));
+  background: color-mix(in srgb, #ef4444 6%, var(--surface));
+}
+.artefact-inline-form__Blocked_Btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: #22c55e;
+  padding: 4px 0;
+}
+.artefact-inline-form__Blocked--blocked .artefact-inline-form__Blocked_Btn {
+  color: #ef4444;
+}
+.artefact-inline-form__Blocked_Btn_Label {
+  font-weight: 600;
+}
+.artefact-inline-form__Blocked_Reason_Field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.artefact-inline-form__Blocked_Reason {
+  min-height: 40px;
+  resize: vertical;
+}
+.artefact-inline-form__Actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 700px) {
+  .artefact-inline-form__Container_Cols {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ── Pagination row ─────────────────────────────────────────────────────
    Three-zone layout: row-range info on the left, pager in the middle,

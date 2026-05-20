@@ -76,6 +76,9 @@ export interface WorkItem {
   key_num: number;
   item_type: string;
   type_prefix: string;
+  // UUID of artefacts.artefact_type_id. Used by StatusCell to pick the
+  // correct per-type flow-state list out of the bulk-by-type cache.
+  artefact_type_id: string;
   title: string;
   status: string;
   flow_state_id: string;
@@ -219,7 +222,15 @@ export function sortRoots(rows: WorkItem[], key: SortKey, dir: SortDir): WorkIte
 
 // ─── Cell renderers ───────────────────────────────────────────────────────────
 
-function IdCell({ row, ctx }: { row: WorkItem; ctx: RenderCtx<WorkItem> }) {
+function IdCell({
+  row,
+  ctx,
+  onOpenForm,
+}: {
+  row: WorkItem;
+  ctx: RenderCtx<WorkItem>;
+  onOpenForm?: (artefactId: string) => void;
+}) {
   const idText = `${row.type_prefix || row.item_type.slice(0, 2).toUpperCase()}-${row.key_num}`;
   return (
     <span className="tree_accordion-dense__id-inner">
@@ -234,7 +245,17 @@ function IdCell({ row, ctx }: { row: WorkItem; ctx: RenderCtx<WorkItem> }) {
         hasChildren={ctx.hasChildren}
         onToggle={ctx.toggle}
       />
-      <span className="tree_accordion-dense__id-text">{idText}</span>
+      <button
+        type="button"
+        className="tree_accordion-dense__id-text tree_accordion-dense__id-text--link"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenForm?.(row.id);
+        }}
+        aria-label={`Edit ${idText}`}
+      >
+        {idText}
+      </button>
     </span>
   );
 }
@@ -244,11 +265,13 @@ function SummaryCell({
   ctx,
   onPatch,
   colourMap,
+  onTypeBadgeClick,
 }: {
   row: WorkItem;
   ctx: RenderCtx<WorkItem>;
   onPatch: (id: string, body: Record<string, unknown>) => void;
   colourMap?: TypeColourMap;
+  onTypeBadgeClick?: (artefactId: string) => void;
 }) {
   const isEpic = row.item_type === "epic";
   const colourEntry = colourMap?.get(row.type_prefix);
@@ -260,15 +283,21 @@ function SummaryCell({
         hasVisibleChildren={ctx.hasVisibleChildren}
         continuations={ctx.continuations}
       />
-      <span
+      <button
+        type="button"
         className={
           "tree_accordion-dense__type-badge " +
           (colourEntry ? "" : (TYPE_VARIANT[row.item_type] ?? ""))
         }
         style={colourEntry ? { background: colourEntry.colour, color: safeInk(colourEntry.colour) } : undefined}
+        onClick={(e) => {
+          e.stopPropagation();
+          onTypeBadgeClick?.(row.id);
+        }}
+        aria-label={`Edit ${row.type_prefix}-${row.key_num}`}
       >
         {row.type_prefix || row.item_type.slice(0, 2).toUpperCase()}
-      </span>
+      </button>
       <span
         className={
           "tree_accordion-dense__title" +
@@ -293,17 +322,25 @@ function SummaryCell({
 function StatusCell({
   row,
   flowStates,
+  flowStatesByType,
   onPatch,
 }: {
   row: WorkItem;
   flowStates: WorkItemFlowState[];
+  flowStatesByType?: Map<string, WorkItemFlowState[]>;
   onPatch: (id: string, body: Record<string, unknown>) => void;
 }) {
+  // Prefer the by-type list when this artefact's type is in the cache;
+  // fall back to the subscription-wide list (legacy) when the bulk
+  // fetch hasn't resolved yet or this row's type missed the cache.
+  const states =
+    (row.artefact_type_id && flowStatesByType?.get(row.artefact_type_id)) ||
+    flowStates;
   return (
     <FlowStatePillRow
       currentId={row.flow_state_id}
       currentCode={row.flow_state_code}
-      states={flowStates}
+      states={states}
       onCommit={(next) => onPatch(row.id, { flow_state_id: next })}
     />
   );
@@ -440,6 +477,10 @@ export function buildWorkItemsColumns(
   flowStates: WorkItemFlowState[],
   patchAndApply: (id: string, body: Record<string, unknown>) => void,
   colourMap?: TypeColourMap,
+  callbacks?: {
+    onTypeBadgeClick?: (artefactId: string) => void;
+    flowStatesByType?: Map<string, WorkItemFlowState[]>;
+  },
 ): ColumnDef<WorkItem>[] {
   return [
     {
@@ -449,7 +490,10 @@ export function buildWorkItemsColumns(
       minWidth: 90,
       align: "mono",
       cellModifier: "id",
-      render: (row, ctx) => <IdCell row={row} ctx={ctx} />,
+      stopClick: true,
+      render: (row, ctx) => (
+        <IdCell row={row} ctx={ctx} onOpenForm={callbacks?.onTypeBadgeClick} />
+      ),
     },
     {
       key: "title",
@@ -459,7 +503,13 @@ export function buildWorkItemsColumns(
       cellModifier: "summary",
       stopClick: true,
       render: (row, ctx) => (
-        <SummaryCell row={row} ctx={ctx} onPatch={patchAndApply} colourMap={colourMap} />
+        <SummaryCell
+          row={row}
+          ctx={ctx}
+          onPatch={patchAndApply}
+          colourMap={colourMap}
+          onTypeBadgeClick={callbacks?.onTypeBadgeClick}
+        />
       ),
     },
     {
@@ -469,7 +519,12 @@ export function buildWorkItemsColumns(
       minWidth: 180,
       stopClick: true,
       render: (row) => (
-        <StatusCell row={row} flowStates={flowStates} onPatch={patchAndApply} />
+        <StatusCell
+          row={row}
+          flowStates={flowStates}
+          flowStatesByType={callbacks?.flowStatesByType}
+          onPatch={patchAndApply}
+        />
       ),
     },
     {

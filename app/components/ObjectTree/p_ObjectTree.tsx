@@ -6,10 +6,12 @@
 // lives in <ResourceTree>; every data-type concern lives in the config.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
 import BulkActionBar from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
+import { useFlowStatesByType } from "@/app/components/useFlowStatesByType";
 import {
   buildWorkItemsColumns,
   useArtefactItemsWindow,
@@ -138,6 +140,21 @@ export default function ObjectTree({
     return found?.label ?? null;
   }, [actionTypeOptions, actionTypeId]);
 
+  // ArtefactInlineForm — single-open state for the inline edit panel
+  // that expands beneath the action bar when the user clicks a row's
+  // coloured type badge. Mutually exclusive with the create flyout
+  // (one effect below force-closes the inline form whenever the
+  // create flyout opens).
+  const [openInlineFormId, setOpenInlineFormId] = useState<string | null>(null);
+  const openInlineForm = useCallback((id: string) => {
+    setActionTypeId("");
+    setOpenInlineFormId((cur) => (cur === id ? null : id));
+  }, []);
+  const closeInlineForm = useCallback(() => setOpenInlineFormId(null), []);
+  useEffect(() => {
+    if (actionTypeId) setOpenInlineFormId(null);
+  }, [actionTypeId]);
+
   // Search lives at this level so it can render inside the action bar
   // alongside the create-new chip and filter chips. ResourceTree consumes
   // it via the controlled searchValue + onSearchChange props.
@@ -174,6 +191,20 @@ export default function ObjectTree({
       onPatched,
     });
 
+  // Bulk-fetch flow states for every artefact type visible in the
+  // current window so each row's Status pill row paints with its OWN
+  // type's flow (Risk gets Risk states, Task gets Task states, etc.).
+  // The legacy `flowStates` (above) stays as a fallback when a row's
+  // type id is missing from the by-type cache.
+  const visibleTypeIds = useMemo(() => {
+    const seen = new Set<string>();
+    for (const r of windowRoots) {
+      if (r.artefact_type_id) seen.add(r.artefact_type_id);
+    }
+    return Array.from(seen);
+  }, [windowRoots]);
+  const flowStatesByType = useFlowStatesByType(visibleTypeIds);
+
   // Patch wrapper to satisfy the ResourceTree contract (returns the row).
   const patchRemote = useCallback(
     async (id: string, body: Record<string, unknown>) => {
@@ -184,8 +215,11 @@ export default function ObjectTree({
   );
 
   const columns = useMemo(
-    () => buildWorkItemsColumns(flowStates, patchAndApply, colourMap),
-    [flowStates, patchAndApply, colourMap],
+    () => buildWorkItemsColumns(flowStates, patchAndApply, colourMap, {
+      onTypeBadgeClick: openInlineForm,
+      flowStatesByType,
+    }),
+    [flowStates, patchAndApply, colourMap, openInlineForm, flowStatesByType],
   );
 
   const handleSortChange = useCallback(
@@ -598,6 +632,18 @@ export default function ObjectTree({
     </section>
   );
 
+  const inlineFormNode = (
+    <ArtefactInlineForm
+      artefactId={openInlineFormId}
+      resourceUrl={resourceUrl}
+      scope={config.scope ?? "work"}
+      onClose={closeInlineForm}
+      onSaved={(body) => {
+        if (openInlineFormId) patchAndApply(openInlineFormId, body);
+      }}
+    />
+  );
+
   const inner = (
     <>
       {headerNode}
@@ -633,19 +679,35 @@ export default function ObjectTree({
         onSearchChange={setSearchQuery}
         ariaLabel={config.ariaLabel}
         name={config.treeName}
+        getRowClass={(row) =>
+          row.id === openInlineFormId
+            ? "tree_accordion-dense__row--form-open"
+            : undefined
+        }
       />
     </>
   );
 
   // When the page passes title + addressableName, ObjectTree owns its own
   // <Panel>. Otherwise (legacy callers still wrapping with their own Panel)
-  // we render bare.
+  // we render bare. The inline form is rendered as a SIBLING after the
+  // panel — not a child — so the panel's white background ends at the
+  // pagination's rounded bottom corners, and the gap above the form
+  // shows the page canvas through (no holdover panel bg).
   if (title && addressableName) {
     return (
-      <Panel name={addressableName} title={title}>
-        {inner}
-      </Panel>
+      <>
+        <Panel name={addressableName} title={title}>
+          {inner}
+        </Panel>
+        {inlineFormNode}
+      </>
     );
   }
-  return <div>{inner}</div>;
+  return (
+    <>
+      <div>{inner}</div>
+      {inlineFormNode}
+    </>
+  );
 }
