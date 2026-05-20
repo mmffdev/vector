@@ -17,7 +17,11 @@ import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import { useFlowStatesByType } from "@/app/components/useFlowStatesByType";
 import {
   buildWorkItemsColumns,
-  useArtefactItemsWindow,
+  // Slice 1 of the refactor — V2 no longer consumes useArtefactItemsWindow.
+  // The generic useObjectTreeWindow<T> hook below replaces it; the work-items-
+  // specific filter shape and cascade-trigger list are layered here at the
+  // call site instead of being baked into the data hook.
+  // useArtefactItemsWindow,
   useArtefactTypeColours,
   useWorkItemsFilters,
   useWorkItemsSort,
@@ -28,6 +32,16 @@ import {
 import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
 import type { ColumnDef } from "@/app/components/ResourceTree";
 import { MdAdd, MdOutlineCategory, MdSearch } from "react-icons/md";
+import { useObjectTreeWindow, ApiError as ObjectTreeApiError } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeWindow";
+import { notify } from "@/app/lib/toast";
+
+// Slice 1 of the ObjectTree refactor — work-items-specific cascade triggers.
+// When a PATCH body contains any of these keys, the data hook refetches the
+// window AND fires onCascadeRefresh so consumers can refresh expanded sub-
+// trees. Was previously hardcoded inside useArtefactItemsWindow; now lives
+// at the V2 call site so other domains (sprints, releases) can pass [] or
+// their own list.
+const WORK_ITEMS_CASCADE_FIELDS = ["flow_state_id", "story_points", "parent_artefact_id"];
 
 export type { WorkItem };
 
@@ -229,17 +243,59 @@ export default function ObjectTree({
   // field of legal drop targets the moment a drag starts.
   const getVisibleIdsRef = useRef<(() => string[]) | null>(null);
 
+  // Build the encoded filter slice from work-items' multi-value array
+  // filter shape. PLA-0054 / story 00585+00586+00587 — ANY($N::uuid[]) /
+  // ANY($N::text[]) backend predicates. The string already starts with
+  // "&" when non-empty so it concatenates cleanly into the query string
+  // the generic data hook builds.
+  const filterQuery = useMemo(() => {
+    const parts: string[] = [];
+    if (filters.type.length)     parts.push(`item_type_id=${filters.type.map(encodeURIComponent).join(",")}`);
+    if (filters.status.length)   parts.push(`flow_state_id=${filters.status.map(encodeURIComponent).join(",")}`);
+    if (filters.priority.length) parts.push(`priority_id=${filters.priority.map(encodeURIComponent).join(",")}`);
+    if (filters.owner_id.length) parts.push(`owner_id=${filters.owner_id.map(encodeURIComponent).join(",")}`);
+    return parts.length ? `&${parts.join("&")}` : "";
+  }, [filters.type, filters.status, filters.priority, filters.owner_id]);
+
+  // Slice 1 of the refactor — V2 now consumes useObjectTreeWindow<T>, the
+  // generic windowed-fetch hook. Filter encoding + cascade-trigger list +
+  // 409 parent_flow_state_derived recovery all live here at the call site
+  // rather than inside the hook. Behaviour is identical to the legacy
+  // useArtefactItemsWindow path; other domains (sprints/releases/risks)
+  // will provide their own filter encoders and cascade lists.
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
-    useArtefactItemsWindow({
+    useObjectTreeWindow<WorkItem>({
       resourceUrl,
       pageSize,
       pageIndex,
       sortKey,
       sortDir,
-      filters,
+      filterQuery,
+      cascadeOnFields: WORK_ITEMS_CASCADE_FIELDS,
       onPatched,
       onLocalPatch: (id, body) => applyChildPatchRef.current?.(id, body),
       onCascadeRefresh: () => { void refetchExpandedChildrenRef.current?.(); },
+      onPatchError: (err) => {
+        // 409 parent_flow_state_derived — backend rejected a manual
+        // flow_state_id write because the row has live children driving
+        // its state. Frontend pill row should be locked for these rows;
+        // this catch is defence-in-depth in case the UI ever misses the
+        // gate. Toast a friendly explanation; the hook will refetch to
+        // revert the optimistic local update.
+        if (
+          err instanceof ObjectTreeApiError &&
+          err.status === 409 &&
+          typeof err.body === "object" &&
+          err.body !== null &&
+          (err.body as { error?: string }).error === "parent_flow_state_derived"
+        ) {
+          notify.hint(
+            "This artefact's state is set by its children — move a child to change this row.",
+          );
+          return true; // handled — hook refetches to revert
+        }
+        return false; // not ours — silent default preserved
+      },
     });
 
   // Bulk-fetch flow states for every artefact type visible in the
