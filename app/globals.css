@@ -9319,68 +9319,142 @@ input[type="reset"] {
   align-items: center;
   white-space: nowrap;
 }
+/* Chevron pill — layered fill.
+   The button paints the border colour and is clipped to the chevron
+   silhouette; ::before paints the interior fill 1px inset on every
+   side, also clipped to the chevron shape. That 1px diff is the
+   visible outline. Custom properties (--pill-border / --pill-fill /
+   --pill-text) drive both layers so a single source of truth (inline
+   style for hex states, --code-<code> classes for canonical states)
+   colours everything in lockstep. */
 .wi-flow-row__btn {
+  --pill-border: var(--border, #d1d5db);
+  --pill-fill: #fff;
+  --pill-text: #000;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 26px;
+  min-width: 32px;        /* chevron notches eat ~6px on each side; +6 vs old 26px */
   height: 18px;
-  padding: 0 4px;
+  padding: 0 10px 0 14px; /* extra left so the letter clears the notch */
   font-size: 10px;
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
-  border: 1px solid transparent;
-  border-radius: 0;
-  background: var(--ink-subtle);
-  color: var(--surface, #fff);
+  border: 0;
+  background: var(--pill-border);   /* outline layer */
+  color: var(--pill-text);
   cursor: pointer;
-  opacity: 0.35;
-  transition: opacity 80ms;
-  margin-left: 2px;
+  transition: background 80ms, color 80ms;
+  margin-left: -6px;        /* pull each pill back so its notch eats the previous point */
+  /* Chevron silhouette: flat top + bottom, point on right edge, notch
+     cut into left edge. 6px deep on both edges. */
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 50%,
+    calc(100% - 6px) 100%,
+    0 100%,
+    6px 50%
+  );
 }
-.wi-flow-row__btn:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
-.wi-flow-row__btn:last-child  { border-radius: 0 3px 3px 0; }
+.wi-flow-row__btn::before {
+  /* Interior fill. Inset 1px on every side so 1px of the button's
+     background colour bleeds around as the chevron outline. Same
+     clip-path so the inner layer matches the chevron silhouette. */
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: var(--pill-fill);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 5.5px) 0,
+    100% 50%,
+    calc(100% - 5.5px) 100%,
+    0 100%,
+    5.5px 50%
+  );
+  z-index: 0;
+}
+/* Letter sits above the ::before fill layer. position:relative is
+   required for z-index to take effect on the inline span. Translated
+   2px left so the glyph sits visually centred between the chevron's
+   left notch and right point (without this it reads slightly right of
+   centre because the right point extends further out than the left
+   notch eats in). */
+.wi-flow-row__btn_Label {
+  position: relative;
+  z-index: 1;
+  transform: translateX(-2px);
+}
+.wi-flow-row__btn:first-child {
+  margin-left: 0;
+  padding-left: 10px;
+  /* First pill has a flat left edge — no notch. */
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 50%,
+    calc(100% - 6px) 100%,
+    0 100%
+  );
+}
+.wi-flow-row__btn:first-child::before {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 5.5px) 0,
+    100% 50%,
+    calc(100% - 5.5px) 100%,
+    0 100%
+  );
+}
+.wi-flow-row__btn:last-child {
+  padding-right: 14px;
+  /* Last pill has a flat right edge — no point. */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    6px 50%
+  );
+}
+.wi-flow-row__btn:last-child::before {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    5.5px 50%
+  );
+}
 .wi-flow-row__btn:hover:not(.wi-flow-row__btn--active) {
-  opacity: 0.6;
-  z-index: 1;
+  /* Tint the interior fill toward the border colour on hover —
+     affordance feedback without the chevron silhouette changing. */
+  --pill-fill: color-mix(in srgb, var(--pill-border) 12%, #fff);
 }
-/* Active variants — keyed to canonical_code, not renamed state names */
+/* Inactive coloured pills for canonical (no-hex) states — set the
+   border custom property to the canonical hue. Active variants
+   additionally swap the fill and text below. */
+.wi-flow-row__btn--code-backlog   { --pill-border: #f97316; }
+.wi-flow-row__btn--code-ready     { --pill-border: #9333ea; }
+.wi-flow-row__btn--code-doing     { --pill-border: #2563eb; }
+.wi-flow-row__btn--code-completed { --pill-border: #16a34a; }
+.wi-flow-row__btn--code-accepted  { --pill-border: #14532d; }
+/* Active variants — keyed to canonical_code, not renamed state names.
+   Each sets --pill-fill = --pill-text = chevron-hue / white so the
+   active pill reads as a fully filled chevron rather than an outline.
+   The --pill-border is already correct from the --code-<code> class. */
 .wi-flow-row__btn--active {
-  z-index: 1;
+  z-index: 2;       /* float above neighbours so the chevron point is unobscured */
   cursor: default;
-  opacity: 1;
 }
-/* backlog — orange */
-.wi-flow-row__btn--active-backlog {
-  background: #f97316;
-  color: #fff;
-  border-color: #f97316;
-}
-/* ready (in progress) — purple */
-.wi-flow-row__btn--active-ready {
-  background: #9333ea;
-  color: #fff;
-  border-color: #9333ea;
-}
-/* doing — blue */
-.wi-flow-row__btn--active-doing {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-}
-/* completed — green */
-.wi-flow-row__btn--active-completed {
-  background: #16a34a;
-  color: #fff;
-  border-color: #16a34a;
-}
-/* accepted — dark green */
-.wi-flow-row__btn--active-accepted {
-  background: #14532d;
-  color: #fff;
-  border-color: #14532d;
-}
+.wi-flow-row__btn--active-backlog   { --pill-fill: #f97316; --pill-text: #fff; }
+.wi-flow-row__btn--active-ready     { --pill-fill: #9333ea; --pill-text: #fff; }
+.wi-flow-row__btn--active-doing     { --pill-fill: #2563eb; --pill-text: #fff; }
+.wi-flow-row__btn--active-completed { --pill-fill: #16a34a; --pill-text: #fff; }
+.wi-flow-row__btn--active-accepted  { --pill-fill: #14532d; --pill-text: #fff; }
 
 /* Numeric input variant — right-aligned, narrow, used in inline points
    editors so the cell layout doesn't jump on edit. */
@@ -13124,10 +13198,13 @@ input[type="reset"] {
    :nth-child(odd) stays on the table's surface colour. Hover and selected
    override the stripe so they remain visually dominant. */
 .tree_accordion-dense__row {
-  height: 28px;
+  height: 30px;
   cursor: pointer;
   transition: background-color 100ms ease;
   background: var(--surface);
+}
+.tree_accordion-dense__row > .tree_accordion-dense__cell {
+  padding-bottom: 3px;
 }
 /* Zebra striping removed 2026-05-20 — the row dividers + artefact-type
    colour badges are visual rhythm enough; the alternating 3%-ink wash
@@ -13178,10 +13255,44 @@ input[type="reset"] {
    border-bottom and render as 2px. */
 .tree_accordion-dense__row--form-open > .tree_accordion-dense__cell {
   border-bottom: 1px solid #FF6600;
+  /* The border-bottom consumes the bottom 1px of the cell, which makes
+     vertical-align:middle content sit slightly above geometric centre —
+     content reads as "closer to the bottom orange line" than to the
+     top one. Extra padding-bottom pushes content up to balance. */
+  padding-bottom: 3px;
 }
 .tree_accordion-dense__row:has(+ .tree_accordion-dense__row--form-open)
   > .tree_accordion-dense__cell {
   border-bottom-color: #FF6600;
+}
+/* First-row fallback — when the active row is the table's first row
+   there's no previous sibling to colour, so the top edge wouldn't
+   render. Paint it on the active row itself in that case only (a
+   border-top here when a previous sibling exists would double up with
+   the previous row's border-bottom). Covers every cell type that may
+   sit on the first row: data cells, selection/cog cells (both share
+   `__cell`), and the drag-handle-cell (separate class). */
+.tree_accordion-dense__row--form-open:first-child > .tree_accordion-dense__cell,
+.tree_accordion-dense__table .tree_accordion-dense__row--form-open:first-child
+  > .drag-handle-cell {
+  border-top: 1px solid #FF6600;
+}
+/* First-row icon clearance — the border-top sits INSIDE each cell's
+   box, so without extra top padding the icons (checkbox, drag grip,
+   cog) render flush against / overlapping the orange line. 1px of
+   padding-top on every affected cell type pushes the icon down a hair
+   so the line draws clean. Matching padding-bottom keeps the icons
+   centred vertically — without it the content rides 1px high of the
+   row's middle. */
+.tree_accordion-dense__row--form-open:first-child > .tree_accordion-dense__cell,
+.tree_accordion-dense__table .tree_accordion-dense__row--form-open:first-child
+  > .drag-handle-cell {
+  padding-top: 1px;
+  padding-bottom: 2px;
+}
+.tree_accordion-dense__row--form-open:first-child .drag-handle {
+  padding-top: 1px;
+  padding-bottom: 2px;
 }
 /* Drag-handle cells use a separate border-bottom rule (line 9593) that
    doesn't pick up the form-open colour without an explicit selector.
@@ -13535,6 +13646,183 @@ input[type="reset"] {
    only as row-class hooks (e.g. .tree_accordion-dense__row--epic …)
    and no longer carry their own visual rules. */
 
+/* ─── RichTextField ─────────────────────────────────────────────────
+   TipTap-backed editor with a persistent Rally-style toolbar.
+   Toolbar sits above the editor surface; both share a 1px border so
+   they read as one bordered field. Active buttons get a subtle ink
+   wash. Group separators between every cluster of related controls. */
+.rich-text-field {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.rich-text-field__Toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+.rich-text-field__Toolbar_Group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-right: 1px solid var(--border);
+}
+.rich-text-field__Toolbar_Group:last-child {
+  border-right: 0;
+}
+.rich-text-field__Toolbar_Btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.rich-text-field__Toolbar_Btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.rich-text-field__Toolbar_Btn--active,
+.rich-text-field__Toolbar_Btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  border-color: var(--border);
+}
+.rich-text-field__Toolbar_Btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.rich-text-field__Toolbar_Btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.rich-text-field__Toolbar_Select {
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.rich-text-field__Toolbar_ColourBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.rich-text-field__Toolbar_ColourBtn:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.rich-text-field__Toolbar_ColourBtn input[type="color"] {
+  /* Native colour picker — hide the swatch, keep the input clickable. */
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.rich-text-field__Content {
+  /* 10 lines @ 13px / 1.5 leading + 10px top + 10px bottom padding.
+     `resize: vertical` lets the user drag the bottom-right corner to
+     grow or shrink the editor; `overflow: auto` is needed for the
+     resize handle to render in WebKit/Blink. min-height keeps the
+     handle from shrinking the field smaller than ~3 lines. */
+  padding: 10px 12px;
+  min-height: 80px;
+  height: calc(13px * 1.5 * 10 + 20px);
+  resize: vertical;
+  overflow: auto;
+  background: var(--surface);
+}
+.rich-text-field__Content .ProseMirror {
+  outline: none;
+  min-height: 100%;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.rich-text-field__Content .ProseMirror p {
+  margin: 0 0 8px 0;
+}
+.rich-text-field__Content .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+.rich-text-field__Content .ProseMirror h1 { font-size: 18px; font-weight: 700; margin: 12px 0 6px; }
+.rich-text-field__Content .ProseMirror h2 { font-size: 16px; font-weight: 700; margin: 10px 0 6px; }
+.rich-text-field__Content .ProseMirror h3 { font-size: 14px; font-weight: 700; margin: 8px 0 4px; }
+.rich-text-field__Content .ProseMirror ul,
+.rich-text-field__Content .ProseMirror ol {
+  margin: 0 0 8px 0;
+  padding-left: 20px;
+}
+.rich-text-field__Content .ProseMirror a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.rich-text-field__Content .ProseMirror code {
+  font-family: var(--font-mono);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.rich-text-field__Content .ProseMirror pre {
+  font-family: var(--font-mono);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  font-size: 12px;
+  overflow-x: auto;
+}
+.rich-text-field__Content .ProseMirror table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+}
+.rich-text-field__Content .ProseMirror th,
+.rich-text-field__Content .ProseMirror td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+}
+.rich-text-field__Content .ProseMirror th {
+  background: var(--surface-sunken);
+  font-weight: 600;
+  text-align: left;
+}
+.rich-text-field__Content .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+/* Placeholder — TipTap's Placeholder extension exposes the text via
+   the data-placeholder attribute and the is-editor-empty class. */
+.rich-text-field__Content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--ink-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
 /* ─── ArtefactInlineForm ─────────────────────────────────────────────
    Inline expand below the action bar when a row's type badge is
    clicked. Mirrors the .tree_accordion-dense__createflyout animation
@@ -13596,13 +13884,53 @@ input[type="reset"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--surface-sunken);
+  background: var(--ink);
+  color: var(--surface);
   margin: -16px -16px 0;
-  padding: 10px 16px;
-  /* Inset rounded corners so the sunken band tucks neatly inside the
-     panel's outer 10px radius. 10px - 1px border = 9px effective. */
+  /* Match the parent panel's header height — `.panel` pads
+     var(--space-4) (16px) and `.panel__title` is var(--text-md) /
+     24px leading. Same numbers here so the two headers line up
+     visually when stacked on the page. */
+  padding: var(--space-4);
   border-top-left-radius: 9px;
   border-top-right-radius: 9px;
+}
+/* Duplicate modifier — applied when the form is showing a freshly-
+   cloned artefact (host computes via title.endsWith("(Duplicate)")).
+   Amber on black so it's visibly distinct from the standard black-on-
+   white head; user explicitly chose #ffcc33. */
+.artefact-inline-form__Container_Head--duplicate {
+  background: #ffcc33;
+  color: #000;
+}
+/* Deleting modifier — applied while the user is confirming a delete.
+   Red on black-text so the danger is unambiguous; takes precedence over
+   --duplicate when both would apply (see ArtefactInlineForm.tsx). */
+.artefact-inline-form__Container_Head--deleting {
+  /* -45° barber-pole stripes alternating the current red with #660000,
+     20px on / 20px off. repeating-linear-gradient draws the band; the
+     header keeps its solid colour as a fallback for older renderers
+     that don't paint the gradient. */
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--danger, #b91c1c) 0,
+    var(--danger, #b91c1c) 20px,
+    #660000 20px,
+    #660000 40px
+  );
+  /* Diagonal period = 40px / cos(45°) ≈ 56.569px — one full red+dark
+     pair on the 45° axis. background-size has to match exactly so the
+     translate by one period is seamless. */
+  background-size: 56.569px 56.569px;
+  animation: artefact-inline-form__delete-stripes 2s linear infinite;
+  color: #fff;
+}
+@keyframes artefact-inline-form__delete-stripes {
+  from { background-position: 0 0; }
+  to   { background-position: 56.569px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artefact-inline-form__Container_Head--deleting { animation: none; }
 }
 /* Action bar — sits directly under the title head, spans edge to edge
    via the same negative-margin trick. Negative top margin cancels the
@@ -13641,11 +13969,27 @@ input[type="reset"] {
   background: color-mix(in srgb, var(--danger, #b91c1c) 10%, var(--surface-sunken)) !important;
   color: var(--danger, #b91c1c) !important;
 }
+/* Confirm-delete state — solid red fill with white text so the committed
+   danger action reads as committed (vs the bordered-only Delete trigger).
+   Stacked after --danger so we override its colour/background. */
+.artefact-inline-form__Actionbar_Btn--confirm {
+  background: var(--danger, #b91c1c) !important;
+  color: #fff !important;
+  border-color: var(--danger, #b91c1c) !important;
+}
+.artefact-inline-form__Actionbar_Btn--confirm:hover:not(:disabled) {
+  background: color-mix(in srgb, #000 12%, var(--danger, #b91c1c)) !important;
+  color: #fff !important;
+}
 .artefact-inline-form__Container_Head_Title {
   margin: 0;
-  font-size: 14px;
+  /* Match .panel__title — same font size + leading so the title head
+     reads as a peer of "Work items" above. */
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-md, 24px);
   font-weight: 600;
-  color: var(--ink);
+  color: inherit;
 }
 .artefact-inline-form__Container_Cols {
   display: grid;
@@ -13705,6 +14049,217 @@ input[type="reset"] {
 .artefact-inline-form__Field_Meta strong {
   color: var(--ink);
   font-weight: 600;
+}
+
+/* ─── ArtefactNodeDiagram ──────────────────────────────────────────
+   Two-layer hierarchy snapshot embedded in the ArtefactInlineForm
+   (under Created / Last updated). Compact — sits at the natural width
+   of its container, no min-width or stretch. Top row: parent chip
+   centred. Vertical connector. Bottom row: selected + siblings,
+   wrapping to multiple rows if they overflow. Orange highlight on the
+   selected chip ties it visually to the form-open row marker in the
+   tree above. */
+.artefact-node-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ink) 2%, var(--surface));
+}
+.artefact-node-diagram--orphan {
+  flex-direction: row;
+  gap: 6px;
+  color: #b91c1c;
+  font-weight: 600;
+  font-size: 12px;
+  background: color-mix(in srgb, #b91c1c 6%, var(--surface));
+  border-color: color-mix(in srgb, #b91c1c 35%, var(--border));
+}
+/* Orphan banner — appears at the top of the diagram when a work-
+   scope artefact has no parent_id. Sits above any siblings row (the
+   selected artefact still renders in the bottom row, so the user can
+   navigate to it / see it). Pinned width matches the diagram's
+   container so it reads as a header strip. */
+.artefact-node-diagram__OrphanBanner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #b91c1c 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, #b91c1c 35%, var(--border));
+  color: #b91c1c;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.artefact-node-diagram__Row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.artefact-node-diagram__Row--parent {
+  /* Single chip; centred. */
+}
+.artefact-node-diagram__Row--siblings {
+  /* Wraps to multiple rows when siblings overflow the available width.
+     Centred so the selected chip + neighbours read as a group. */
+  max-width: 100%;
+}
+.artefact-node-diagram__Connector {
+  width: 1px;
+  height: 12px;
+  background: var(--border);
+}
+/* Trail connector — the vertical hop between two rows in the ancestor
+   chain leading to the selected artefact. Same #FF6600 as the SVG
+   branch into the selected sibling and the row marker in the tree, so
+   the eye reads the whole chain top-to-bottom as one continuous trail.
+   Slightly thicker (2px) so the trail reads as one visual line, not a
+   chain of thin segments. */
+.artefact-node-diagram__Connector--trail {
+  width: 2px;
+  background: #FF6600;
+}
+/* Scope divider — separator between the strategy ladder and the
+   execution ladder. Single neutral hatch band (#999 -45° stripes)
+   with centred "Strategic Zone" / "Execution Zone" labels above and
+   below. Full diagram width. */
+.artefact-node-diagram__ScopeDivider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  margin: 6px -8px;
+}
+.artefact-node-diagram__ScopeDivider_Label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.artefact-node-diagram__ScopeDivider_Label--above {
+  margin-bottom: 10px;
+}
+.artefact-node-diagram__ScopeDivider_Label--below {
+  margin-top: 10px;
+}
+.artefact-node-diagram__ScopeDivider_Stripes {
+  height: 10px;
+  width: 100%;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #ddd 0,
+    #ddd 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  /* Barber-pole pan — 20px (one stripe pair) per 2.5s, left→right.
+     Same period as the form-open row marker in the tree above so the
+     two animations feel like one design system. 28.284px is the
+     diagonal stripe-pair period (20 / cos(45°)) — gives a seamless
+     loop with no jump on each cycle. */
+  background-size: 28.284px 28.284px;
+  animation: artefact-node-diagram__ScopeDivider-pan 2.5s linear infinite;
+}
+@keyframes artefact-node-diagram__ScopeDivider-pan {
+  from { background-position: 0 0; }
+  to   { background-position: 28.284px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .artefact-node-diagram__ScopeDivider_Stripes {
+    animation: none;
+  }
+}
+/* Branches SVG — sits in the gap between the immediate-parent chip and
+   the siblings row, paths fan out to each sibling. Block layout so it
+   takes its own line in the parent column flexbox; pointer-events off
+   so the underlying chips remain clickable through the SVG area. */
+.artefact-node-diagram__Branches {
+  display: block;
+  pointer-events: none;
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+.artefact-node-diagram__Branch {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+.artefact-node-diagram__Branch--selected {
+  /* The branch to the selected sibling picks up the same orange the
+     selected chip wears — a soft visual lead from parent to "you are
+     here". */
+  stroke: #FF6600;
+  stroke-width: 1.5;
+}
+.artefact-node-diagram__Loading {
+  color: var(--ink-muted);
+  font-size: 11px;
+  padding: 4px 0;
+}
+.artefact-node-diagram__Chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 48px;
+}
+.artefact-node-diagram__Chip_Glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 28px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+.artefact-node-diagram__Chip--selected .artefact-node-diagram__Chip_Glyph {
+  /* Selected chip carries the same orange edge the open-row marker
+     uses in the tree so the eye links the two surfaces. */
+  border-color: #FF6600;
+  box-shadow: 0 0 0 1px #FF6600;
+}
+.artefact-node-diagram__Chip_Link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--ink-muted);
+}
+.artefact-node-diagram__Chip_Link:hover {
+  color: var(--ink);
+  text-decoration-style: solid;
+  text-decoration-color: var(--ink);
+}
+.artefact-node-diagram__Chip--selected .artefact-node-diagram__Chip_Link {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: default;
+}
+.artefact-node-diagram__Chip_Link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 2px;
 }
 .artefact-inline-form__Blocked {
   display: flex;

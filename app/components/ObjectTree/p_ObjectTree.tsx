@@ -6,7 +6,10 @@
 // lives in <ResourceTree>; every data-type concern lives in the config.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { workItems as workItemsApi, portfolioItems as portfolioItemsApi } from "@/app/lib/apiSite";
+import { useScope } from "@/app/contexts/ScopeContext";
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
+import type { ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import BulkActionBar from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
@@ -130,6 +133,11 @@ export default function ObjectTree({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
+  // Active topology scope. Used by duplicateArtefact to pin the clone
+  // when the source artefact had no topology_node_id of its own
+  // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
+  const { activeNodeId: activeScopeNodeId } = useScope();
+
   // Action bar — artefact type picker that focuses the "Add new" CTA.
   // Design-only for now (no create wiring); options come from the workspace
   // artefact-type catalogue, same source as the filter chips.
@@ -146,13 +154,31 @@ export default function ObjectTree({
   // (one effect below force-closes the inline form whenever the
   // create flyout opens).
   const [openInlineFormId, setOpenInlineFormId] = useState<string | null>(null);
+  // Set whenever a Duplicate action just inserted this id. Cleared as
+  // soon as the user navigates to a different artefact or closes the
+  // form. The form reads this to flip its title-head to amber so the
+  // user can see they're editing a clone, not the original.
+  const [duplicateOfId, setDuplicateOfId] = useState<string | null>(null);
   const openInlineForm = useCallback((id: string) => {
     setActionTypeId("");
-    setOpenInlineFormId((cur) => (cur === id ? null : id));
+    setOpenInlineFormId((cur) => {
+      const next = cur === id ? null : id;
+      // Navigating away from (or closing) a duplicate clears the flag —
+      // amber only applies to the row that came back from the Duplicate
+      // call this session.
+      if (next !== duplicateOfId) setDuplicateOfId(null);
+      return next;
+    });
+  }, [duplicateOfId]);
+  const closeInlineForm = useCallback(() => {
+    setOpenInlineFormId(null);
+    setDuplicateOfId(null);
   }, []);
-  const closeInlineForm = useCallback(() => setOpenInlineFormId(null), []);
   useEffect(() => {
-    if (actionTypeId) setOpenInlineFormId(null);
+    if (actionTypeId) {
+      setOpenInlineFormId(null);
+      setDuplicateOfId(null);
+    }
   }, [actionTypeId]);
 
   // Search lives at this level so it can render inside the action bar
@@ -180,7 +206,7 @@ export default function ObjectTree({
   const resourceUrl =
     wizardConfig?.resourceUrl ?? (mode === "portfolio_items" ? "/portfolio-items" : "/work-items");
 
-  const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren } =
+  const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
     useArtefactItemsWindow({
       resourceUrl,
       pageSize,
@@ -204,6 +230,116 @@ export default function ObjectTree({
     return Array.from(seen);
   }, [windowRoots]);
   const flowStatesByType = useFlowStatesByType(visibleTypeIds);
+
+  // Duplicate — clone the loaded artefact into a fresh row.
+  //
+  // Wire flow:
+  //   1. Compose the new title. Single (Duplicate) suffix — duplicating
+  //      an already-duplicated artefact stays "Title (Duplicate)" rather
+  //      than "Title (Duplicate)(Duplicate)" (per user requirement).
+  //   2. POST /<resource> with the small set of fields Create accepts
+  //      (item_type, title, description, story_points, sprint_id,
+  //      parent_id). Backend allocates the new id + key_num atomically
+  //      and pins the row to the active ?meg= topology scope (forwarded
+  //      by apiSite()). priority_id defaults to the workspace default.
+  //   3. PATCH /<resource>/{newId} with everything else the form
+  //      surfaces but Create doesn't (description_doc, colour, blocked
+  //      state, milestone_id, release_id, owned_by_user_id, flow_state,
+  //      priority_id, topology override). Two-step because the Create
+  //      endpoint is intentionally minimal — we PATCH the rest into
+  //      place rather than fattening Create with every column.
+  //   4. Refetch the tree window so the new row appears.
+  //   5. Open the form on the new id with isDuplicate=true, flipping
+  //      the title head to amber.
+  const duplicateArtefact = useCallback(
+    async (artefact: ArtefactDetail) => {
+      const bundle = resourceUrl === "/portfolio-items" ? portfolioItemsApi : workItemsApi;
+      // Strip any trailing "(Duplicate …)" suffix (with or without the
+      // "of XX-NNN" tail) — collapse to one. Duplicating an already-
+      // duplicated artefact keeps a single suffix; the new suffix always
+      // names the IMMEDIATE source, not the original original.
+      const stripped = (artefact.title ?? "")
+        .replace(/(?:\s*\(Duplicate(?:\s+of\s+[A-Z]+-\d+)?\))+$/i, "")
+        .trimEnd();
+      const newTitle = `${stripped} (Duplicate of ${artefact.type_prefix}-${artefact.key_num})`;
+
+      const createBody: Record<string, unknown> = {
+        item_type: artefact.item_type,
+        title: newTitle,
+      };
+      if (artefact.description != null) createBody.description = artefact.description;
+      if (artefact.story_points != null) createBody.story_points = artefact.story_points;
+      if (artefact.sprint_id) createBody.sprint_id = artefact.sprint_id;
+      if (artefact.parent_id) createBody.parent_id = artefact.parent_id;
+
+      let created: { id: string };
+      try {
+        created = (await bundle.create(createBody)) as { id: string };
+      } catch (e) {
+        console.error("duplicate: create failed", e);
+        return;
+      }
+      const newId = created.id;
+
+      // Second-pass PATCH for the columns Create doesn't accept. Each
+      // value only goes on the body when the source has it, so we don't
+      // ship "set blocked_reason to empty" for non-blocked sources.
+      const patchBody: Record<string, unknown> = {};
+      if (artefact.description_doc != null) patchBody.description_doc = artefact.description_doc;
+      if (artefact.colour) patchBody.colour = artefact.colour;
+      if (artefact.is_blocked) {
+        patchBody.is_blocked = true;
+        if (artefact.blocked_reason) patchBody.blocked_reason = artefact.blocked_reason;
+      }
+      if (artefact.milestone_id) patchBody.milestone_id = artefact.milestone_id;
+      if (artefact.release_id) patchBody.release_id = artefact.release_id;
+      if (artefact.owner_id) patchBody.owned_by_user_id = artefact.owner_id;
+      if (artefact.priority_id) patchBody.priority_id = artefact.priority_id;
+      // flow_state intentionally NOT copied — duplicates always begin at
+      // the default initial state for the type (CreateWorkItem already
+      // assigns is_initial=TRUE), so a "Done" source spawns a "Todo"
+      // clone rather than dragging finished state into a fresh row.
+      // Topology pin — apiSite.withForwardedMeg only auto-forwards
+      // ?meg= on GETs (api.ts:154), so the POST /work-items above lands
+      // with NULL topology_node_id and the clone drops off-scope. PATCH
+      // it back: source's own node if it had one, else the caller's
+      // active scope node from ScopeContext.
+      const pinTo = artefact.topology_node_id ?? activeScopeNodeId;
+      if (pinTo) patchBody.topology_node_id = pinTo;
+      if (Object.keys(patchBody).length > 0) {
+        try {
+          await bundle.patch(newId, patchBody);
+        } catch (e) {
+          console.error("duplicate: patch failed (row was created)", e);
+        }
+      }
+
+      await refetchWindow();
+      setDuplicateOfId(newId);
+      setOpenInlineFormId(newId);
+    },
+    [resourceUrl, refetchWindow, activeScopeNodeId],
+  );
+
+  // Delete — soft-archive the artefact (backend sets archived_at). The
+  // form has already gated this behind a Confirm step, so by the time we
+  // get here the user is committed. Close the form and refetch so the
+  // row disappears from the visible window.
+  const deleteArtefact = useCallback(
+    async (artefact: ArtefactDetail) => {
+      const bundle = resourceUrl === "/portfolio-items" ? portfolioItemsApi : workItemsApi;
+      try {
+        await bundle.archive(artefact.id);
+      } catch (e) {
+        console.error("delete: archive failed", e);
+        return;
+      }
+      setOpenInlineFormId(null);
+      setDuplicateOfId(null);
+      await refetchWindow();
+    },
+    [resourceUrl, refetchWindow],
+  );
 
   // Patch wrapper to satisfy the ResourceTree contract (returns the row).
   const patchRemote = useCallback(
@@ -641,6 +777,16 @@ export default function ObjectTree({
       onSaved={(body) => {
         if (openInlineFormId) patchAndApply(openInlineFormId, body);
       }}
+      onNavigate={(id) => {
+        setOpenInlineFormId(id);
+        // Manually navigating away from the just-duplicated row clears
+        // the amber state — only the row that came back from Duplicate
+        // this session keeps the marker.
+        if (id !== duplicateOfId) setDuplicateOfId(null);
+      }}
+      onDuplicate={duplicateArtefact}
+      onDelete={deleteArtefact}
+      isDuplicate={openInlineFormId != null && openInlineFormId === duplicateOfId}
     />
   );
 

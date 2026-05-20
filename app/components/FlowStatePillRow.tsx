@@ -33,15 +33,36 @@ export function FlowStatePillRow({
         // when null we fall back to the legacy --active-<code> class so
         // system flows keep their semantic colour palette.
         const hex = s.colour ?? null;
+        // Canonical-code colour class is applied in BOTH states for
+        // no-hex pills:
+        //   - inactive → --code-<code> sets border colour
+        //   - active   → --active-<code> sets bg + border
+        // Hex pills bypass these and use the inline style instead.
+        const codeClass = hex ? "" : " wi-flow-row__btn--code-" + code;
         const className =
           "wi-flow-row__btn" +
+          codeClass +
           (isActive
             ? " wi-flow-row__btn--active" + (hex ? "" : " wi-flow-row__btn--active-" + code)
             : "");
+        // Chevron pills use a layered fill: the button itself paints
+        // the border colour (chevron outline) and ::before paints the
+        // fill colour 1px inset on every side, leaving a 1px outline.
+        // Three CSS custom properties feed both layers — set once here,
+        // consumed by the .wi-flow-row__btn rules. Hex states override
+        // the canonical colour; no-hex states inherit from the
+        // .wi-flow-row__btn--code-<code> classes (which set the
+        // same custom properties).
+        //
+        //   --pill-border : chevron outline colour (always the state's hue)
+        //   --pill-fill   : interior colour (white when inactive, hue when active)
+        //   --pill-text   : letter colour
         const style: React.CSSProperties | undefined = hex
-          ? isActive
-            ? { background: hex, borderColor: hex, color: safeInk(hex) }
-            : { borderColor: hex, color: hex }
+          ? ({
+              "--pill-border": hex,
+              "--pill-fill": isActive ? hex : "#fff",
+              "--pill-text": isActive ? safeInk(hex) : "#000",
+            } as React.CSSProperties)
           : undefined;
         return (
           <button
@@ -54,7 +75,11 @@ export function FlowStatePillRow({
             title={s.name}
             onClick={isActive ? undefined : () => onCommit(s.id)}
           >
-            {s.name[0]}
+            {/* Letter is wrapped so it can sit ABOVE the ::before fill
+                layer. Without this it renders as a bare text node which
+                can't carry a z-index, and the chevron's interior paints
+                over it. */}
+            <span className="wi-flow-row__btn_Label">{s.name[0]}</span>
           </button>
         );
       })}

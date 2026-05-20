@@ -34,6 +34,16 @@ export interface ArtefactInlineFormProps {
   onDiscussion?: (artefact: ArtefactDetail) => void;
   onHistory?: (artefact: ArtefactDetail) => void;
   onDelete?: (artefact: ArtefactDetail) => void;
+  // Navigate the form to a different artefact (e.g. user clicks a
+  // sibling link in the embedded ArtefactNodeDiagram). Host wires this
+  // to whatever opens the form on its surface (in p_ObjectTree's case
+  // setOpenInlineFormId).
+  onNavigate?: (artefactId: string) => void;
+  // True when the currently-loaded artefact is the freshly-inserted
+  // result of a Duplicate action. Switches the title head from black on
+  // white to black on amber (#ffcc33) so the user can see they're
+  // editing a clone, not the original.
+  isDuplicate?: boolean;
 }
 
 // Wire shape returned by workItems.get / portfolioItems.get plus the
@@ -54,6 +64,10 @@ export interface ArtefactDetail {
   artefact_type_id: string;
   title: string;
   description: string | null;
+  // TipTap (ProseMirror) JSON doc for the rich-text description.
+  // When non-null, the RichTextField uses this as the source of truth;
+  // the legacy `description` TEXT column is a plain-text fallback.
+  description_doc: unknown | null;
   status: string;
   flow_state_id: string;
   flow_state_name: string;

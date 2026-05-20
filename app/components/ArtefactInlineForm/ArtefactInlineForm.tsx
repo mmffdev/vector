@@ -16,6 +16,8 @@ import {
 import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { useScope } from "@/app/contexts/ScopeContext";
 import { ColourPicker } from "@/app/components/ColourPicker";
+import { ArtefactNodeDiagram } from "@/app/components/ArtefactNodeDiagram";
+import { RichTextField } from "@/app/components/RichTextField";
 import { BlockedToggle } from "./BlockedToggle";
 import { useArtefactInline } from "./useArtefactInline";
 import { useParentCandidates } from "./useParentCandidates";
@@ -53,6 +55,8 @@ export function ArtefactInlineForm({
   onDiscussion,
   onHistory,
   onDelete,
+  onNavigate,
+  isDuplicate,
 }: ArtefactInlineFormProps) {
   const workspaceId = useActiveWorkspace();
   const { activeNodeId: activeScopeNodeId } = useScope();
@@ -64,18 +68,28 @@ export function ArtefactInlineForm({
 
   // Local mirrors for text fields so the user can type without each
   // keystroke triggering a re-render of the whole form. Committed via
-  // onBlur ⇒ patch().
+  // onBlur ⇒ patch(). Description is owned by the RichTextField itself
+  // (JSON doc) — no draft mirror here.
   const [titleDraft, setTitleDraft] = useState("");
-  const [descDraft, setDescDraft] = useState("");
   const [pointsDraft, setPointsDraft] = useState("");
+
+  // Delete-confirm guard. First Delete click flips this true → the
+  // title head goes red, the Delete button becomes "Confirm Delete",
+  // and the Duplicate slot becomes a "Cancel" that reverts everything.
+  // Auto-cleared whenever the loaded artefact id changes (user navigated
+  // to a different row mid-confirm) so we don't carry a confirm-armed
+  // state across artefacts.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  useEffect(() => {
+    setConfirmingDelete(false);
+  }, [artefactId]);
 
   useEffect(() => {
     setTitleDraft(artefact?.title ?? "");
-    setDescDraft(artefact?.description ?? "");
     setPointsDraft(
       artefact?.story_points == null ? "" : String(artefact.story_points),
     );
-  }, [artefact?.id, artefact?.title, artefact?.description, artefact?.story_points]);
+  }, [artefact?.id, artefact?.title, artefact?.story_points]);
 
   // Right-column dropdown sources.
   const [topologyNodes, setTopologyNodes] = useState<OrgNode[]>([]);
@@ -154,7 +168,19 @@ export function ArtefactInlineForm({
 
   return (
     <div className="artefact-inline-form__Container" key={artefact.id}>
-      <header className="artefact-inline-form__Container_Head">
+      <header
+        className={
+          "artefact-inline-form__Container_Head" +
+          // --deleting wins over --duplicate when both apply: confirming
+          // a delete on a freshly-duplicated row should show the danger
+          // colour, not the amber clone colour.
+          (confirmingDelete
+            ? " artefact-inline-form__Container_Head--deleting"
+            : isDuplicate
+            ? " artefact-inline-form__Container_Head--duplicate"
+            : "")
+        }
+      >
         <h3 className="artefact-inline-form__Container_Head_Title">
           {artefact.type_prefix}-{artefact.key_num} — {artefact.title || "(untitled)"}
         </h3>
@@ -170,51 +196,82 @@ export function ArtefactInlineForm({
         role="toolbar"
         aria-label="Artefact actions"
       >
-        <button
-          type="button"
-          className="btn btn--sm"
-          onClick={() => onDuplicate?.(artefact)}
-        >
-          Duplicate
-        </button>
-        {canAddTasks && (
-          <button
-            type="button"
-            className="btn btn--sm"
-            onClick={() => onAddTasks?.(artefact)}
-          >
-            Add Tasks
-          </button>
+        {/* Two layouts:
+            - Normal: Duplicate | Add Tasks? | Dependencies | Discussion
+              | History | (spacer) | Delete  — Delete moved to be the
+              last left-cluster button (just right of the others, before
+              the flex spacer pushes anything else away). Spacer kept
+              so the bar still stretches edge-to-edge.
+            - Confirming: Cancel | Confirm Delete only, both far-left.
+              Everything else is hidden (not just disabled) so the user
+              focuses on the choice they're making. */}
+        {confirmingDelete ? (
+          <>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => setConfirmingDelete(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn--sm artefact-inline-form__Actionbar_Btn--danger artefact-inline-form__Actionbar_Btn--confirm"
+              onClick={() => onDelete?.(artefact)}
+            >
+              Confirm Delete
+            </button>
+            <span className="artefact-inline-form__Actionbar_Spacer" />
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => onDuplicate?.(artefact)}
+            >
+              Duplicate
+            </button>
+            {canAddTasks && (
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={() => onAddTasks?.(artefact)}
+              >
+                Add Tasks
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => onDependencies?.(artefact)}
+            >
+              Dependencies
+            </button>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => onDiscussion?.(artefact)}
+            >
+              Discussion
+            </button>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => onHistory?.(artefact)}
+            >
+              History
+            </button>
+            <button
+              type="button"
+              className="btn btn--sm artefact-inline-form__Actionbar_Btn--danger"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Delete
+            </button>
+            <span className="artefact-inline-form__Actionbar_Spacer" />
+          </>
         )}
-        <button
-          type="button"
-          className="btn btn--sm"
-          onClick={() => onDependencies?.(artefact)}
-        >
-          Dependencies
-        </button>
-        <button
-          type="button"
-          className="btn btn--sm"
-          onClick={() => onDiscussion?.(artefact)}
-        >
-          Discussion
-        </button>
-        <button
-          type="button"
-          className="btn btn--sm"
-          onClick={() => onHistory?.(artefact)}
-        >
-          History
-        </button>
-        <span className="artefact-inline-form__Actionbar_Spacer" />
-        <button
-          type="button"
-          className="btn btn--sm artefact-inline-form__Actionbar_Btn--danger"
-          onClick={() => onDelete?.(artefact)}
-        >
-          Delete
-        </button>
       </div>
 
       <div className="artefact-inline-form__Container_Cols">
@@ -233,20 +290,34 @@ export function ArtefactInlineForm({
             />
           </label>
 
-          <label className="artefact-inline-form__Field">
+          <div className="artefact-inline-form__Field">
             <span className="artefact-inline-form__Field_Label">Description</span>
-            <textarea
-              className="artefact-inline-form__Field_Input"
-              rows={5}
-              value={descDraft}
-              onChange={(e) => setDescDraft(e.target.value)}
-              onBlur={() => {
-                if (descDraft !== (artefact.description ?? "")) {
-                  patch({ description: descDraft });
-                }
-              }}
+            {/* RichTextField — TipTap-backed editor. JSON doc as source
+                of truth (description_doc); blur-save patches the doc.
+                If the artefact only has a legacy `description` TEXT
+                value (no doc yet) we seed the editor with that text as
+                a single paragraph so existing content survives the
+                cutover. */}
+            <RichTextField
+              key={artefact.id}
+              value={
+                (artefact.description_doc as object | null) ??
+                (artefact.description
+                  ? {
+                      type: "doc",
+                      content: [
+                        {
+                          type: "paragraph",
+                          content: [{ type: "text", text: artefact.description }],
+                        },
+                      ],
+                    }
+                  : null)
+              }
+              onBlur={(doc) => patch({ description_doc: doc })}
+              placeholder="Add a description…"
             />
-          </label>
+          </div>
 
           <div className="artefact-inline-form__Field">
             <span className="artefact-inline-form__Field_Label">Attachments</span>
@@ -259,6 +330,23 @@ export function ArtefactInlineForm({
             <span><strong>Created:</strong> {formatDateTime(artefact.created_at)}</span>
             <span><strong>Last updated:</strong> {formatDateTime(artefact.updated_at)}</span>
           </div>
+
+          {/* Hierarchy snapshot — parent (top) + selected/siblings
+              (bottom). Clicking a sibling's ID link re-loads the form
+              with that artefact via the host's onNavigate handler. */}
+          <ArtefactNodeDiagram
+            artefactId={artefact.id}
+            resourceUrl={resourceUrl}
+            scope={scope}
+            parentId={artefact.parent_id}
+            selected={{
+              id: artefact.id,
+              type_prefix: artefact.type_prefix,
+              key_num: artefact.key_num,
+              title: artefact.title,
+            }}
+            onNavigate={(id) => onNavigate?.(id)}
+          />
         </div>
 
         {/* ── Right column ────────────────────────────────────────── */}
