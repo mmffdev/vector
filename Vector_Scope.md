@@ -2579,6 +2579,7 @@ Full lifecycle management for tasks, bugs, epics.
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
   > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
   > - `POST   /artefacts/:id/reparent` — change parent_id; clamp validates new parent in same tenant/workspace
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > - `POST   /artefacts/:id/restore` — unarchive
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
   > - `POST   /artefacts/:id/move` — change workspace_id (padmin-gated, rare)
@@ -3544,6 +3545,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -3738,6 +3740,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -3764,6 +3768,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `b60012c` (2026-05-18): fix(tests): unblock 4 cached test failures — DPoP signature drift + 1 assertion [TD-RF1-TEST-COLUMN-RENAME-DRIFT]
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
@@ -4168,6 +4173,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -4461,6 +4467,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -4576,6 +4583,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -4706,6 +4714,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -5037,6 +5046,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9435539` (2026-05-18): docs(scope): close RF1 Codebase Recovery — all 7 phases done [RF1] [PLA-0048]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5131,6 +5141,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b60012c` (2026-05-18): fix(tests): unblock 4 cached test failures — DPoP signature drift + 1 assertion [TD-RF1-TEST-COLUMN-RENAME-DRIFT]
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -5198,6 +5209,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 > Commit `9435539` (2026-05-18): docs(scope): close RF1 Codebase Recovery — all 7 phases done [RF1] [PLA-0048]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -5290,6 +5302,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9435539` (2026-05-18): docs(scope): close RF1 Codebase Recovery — all 7 phases done [RF1] [PLA-0048]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -5356,6 +5369,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 > Commit `9435539` (2026-05-18): docs(scope): close RF1 Codebase Recovery — all 7 phases done [RF1] [PLA-0048]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -6009,6 +6023,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
+> Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
