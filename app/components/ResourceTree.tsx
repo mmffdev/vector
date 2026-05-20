@@ -137,7 +137,11 @@ export interface DnDConfig {
    * (same-parent, cycle, allowed-parent type, scope boundary).
    */
   canReparent?: (moverID: string, targetID: string) => boolean;
-  onReparent?: (moverID: string, targetID: string) => void;
+  onReparent?: (
+    moverID: string,
+    targetID: string,
+    intent: "onto" | "above" | "below",
+  ) => void;
   /**
    * Optional eligibility pre-pass: called once on dragstart. Walks
    * the visible row set and returns every id that's a legal reparent

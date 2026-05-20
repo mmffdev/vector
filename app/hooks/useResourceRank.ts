@@ -61,15 +61,25 @@ export type UseResourceRankOptions = {
    *   every dragover so the row can paint itself legal/illegal in
    *   real time. Same-parent, cycle, allowed-parent rules live in
    *   the caller — hook stays generic.
-   * - `onReparent(moverID, targetID)` fires on drop into the middle
-   *   third IF `canReparent` returned true. Caller PATCHes
-   *   parent_artefact_id and runs refetches.
+   * - `onReparent(moverID, targetID, intent)` fires on drop:
+   *     • intent="onto"  → drop into the middle third. targetID IS
+   *       the new parent.
+   *     • intent="above" → drop above targetID, crossing a parent
+   *       boundary. The caller should resolve the new parent from
+   *       targetID's parent_id and PATCH there.
+   *     • intent="below" → same as "above" but below targetID.
+   *   The host is the only place that knows row parent_ids; the
+   *   hook just passes the intent through.
    *
    * When both callbacks are omitted, the hook keeps the previous
    * above/below-only behaviour — middle drops fall back to "below".
    */
   canReparent?: (moverID: string, targetID: string) => boolean;
-  onReparent?: (moverID: string, targetID: string) => void;
+  onReparent?: (
+    moverID: string,
+    targetID: string,
+    intent: "onto" | "above" | "below",
+  ) => void;
   /**
    * Optional: called once on dragstart with the mover's id. Caller
    * walks its visible row set and returns every id that's a legal
@@ -204,17 +214,31 @@ export function useResourceRank(opts: UseResourceRankOptions) {
           e.preventDefault();
           const moverID = draggingRef.current;
           const target = dropTarget;
+          // Capture candidate set BEFORE the dragend clears it so
+          // the cross-parent classification below can see the field
+          // that was active during the drag.
+          const candidates = candidateIds;
           draggingRef.current = null;
           draggingSubtreeRef.current = new Set();
           setDraggingId(null);
           setDraggingSubtree(new Set());
           setDropTarget(null);
+          setCandidateIds(new Set());
           if (!moverID || moverID === id || !target) return;
           if (target.pos === "onto") {
             // Illegal drop — silently ignore. The user got the red
             // outline + no-drop cursor as feedback.
             if (!target.allowed) return;
-            opts.onReparent?.(moverID, target.id);
+            opts.onReparent?.(moverID, target.id, "onto");
+            return;
+          }
+          // Above/below: when the target row was painted as a
+          // candidate (a sibling under a legal-parent row), this is
+          // a cross-parent drop — hand off to onReparent so the host
+          // can resolve the target's parent_id and PATCH. Otherwise
+          // it's a same-parent reorder via /rank/move.
+          if (candidates.has(target.id) && opts.onReparent) {
+            opts.onReparent(moverID, target.id, target.pos);
             return;
           }
           const intent: RankIntent =

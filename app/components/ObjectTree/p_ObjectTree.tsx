@@ -409,16 +409,20 @@ export default function ObjectTree({
     [],
   );
 
-  // Candidate pre-pass — fires once on dragstart. Walks every visible
-  // row, applies the same legality rule canReparent uses, returns the
-  // ids of legal drop targets. ResourceTree paints each one with a
-  // calm 10px green border-left so the user can see the whole field
-  // of valid drops at a glance (not just the hovered row).
+  // Candidate pre-pass — fires once on dragstart. Two kinds of legal
+  // drop target in the visible tree:
+  //   (a) PARENT candidates — rows whose TYPE is in the mover's
+  //       allowed-parent list. Drop onto = reparent under this row.
+  //   (b) SIBLING candidates — rows whose PARENT is itself a parent
+  //       candidate (a). Drop above/below = reparent under the same
+  //       parent the sibling has, replicating the sibling-reorder
+  //       gesture but across a parent boundary. Without these, an
+  //       expanded Epic's existing Story rows wouldn't stripe and
+  //       the user couldn't drop a Story above/below them.
   //
-  // Cost: one pass over the in-memory visible-id list (capped by page
-  // size + however many sub-trees the user has expanded — typically
-  // <200 rows). No fetches, no recursion. Result lives in a hook-local
-  // Set for the lifetime of the drag.
+  // Cost: still O(n) over the visible-id list. One pass to find
+  // parent candidates, second pass to find rows whose parent_id is
+  // in that set. No fetches, no recursion.
   const getDragCandidateIds = useCallback(
     (moverID: string): string[] => {
       const getIds = getVisibleIdsRef.current;
@@ -430,27 +434,67 @@ export default function ObjectTree({
       if (allowed.length === 0) return [];
       const allowedSet = new Set(allowed);
       const ids = getIds();
-      const out: string[] = [];
+      const parentCandidateIds = new Set<string>();
+      // Pass 1 — parent candidates by type.
       for (const id of ids) {
         if (id === moverID) continue;
         const row = get(id);
         if (!row) continue;
-        // Skip mover's current parent — that's a no-op move.
         if (mover.parent_id === row.id) continue;
         const prefix = row.type_prefix?.toUpperCase() ?? "";
-        if (allowedSet.has(prefix)) out.push(id);
+        if (allowedSet.has(prefix)) parentCandidateIds.add(id);
+      }
+      // Pass 2 — sibling candidates: any row whose parent is a parent
+      // candidate. Mover and its descendants are still excluded
+      // (cycle prevention) — useResourceRank's draggingSubtree guard
+      // covers the descendant case at the hover step, but we trim
+      // here too so the visual field is clean.
+      const out: string[] = Array.from(parentCandidateIds);
+      for (const id of ids) {
+        if (id === moverID) continue;
+        if (parentCandidateIds.has(id)) continue; // already added
+        const row = get(id);
+        if (!row || !row.parent_id) continue;
+        if (parentCandidateIds.has(row.parent_id)) {
+          out.push(id);
+        }
       }
       return out;
     },
     [],
   );
 
-  // Drop handler. PATCHes parent_artefact_id; the backend cascade
-  // recalcs both old and new parent. Post-PATCH we refresh roots AND
-  // expanded children so both sub-trees repaint (the mover disappears
-  // from the old parent's branch and appears under the new one).
+  // Drop handler. Two shapes per the hook's `intent`:
+  //   "onto"           — targetID IS the new parent. Drop in middle
+  //                      third of a parent candidate row.
+  //   "above"/"below"  — targetID is a SIBLING under the new parent;
+  //                      resolve the new parent from targetID's
+  //                      parent_id. Drop above/below a sibling
+  //                      candidate row.
+  //
+  // Position semantics: cross-parent drops always land at the end of
+  // the new parent's child list right now (backend's
+  // sqlSelectNextArtefactPosition default fires when no position is
+  // explicitly passed). Same-parent reorders within an existing
+  // parent still go through /rank/move from the hook's above/below
+  // path (the hook only routes here when target was a CANDIDATE — by
+  // construction that means a different parent). See
+  // TD-RANK-PARTITION-PARENT-NOT-SPRINT for the proper fix to
+  // position-on-cross-parent.
   const reparentArtefact = useCallback(
-    async (moverID: string, newParentID: string) => {
+    async (moverID: string, targetID: string, intent: "onto" | "above" | "below") => {
+      let newParentID = targetID;
+      if (intent === "above" || intent === "below") {
+        const get = getRowByIdRef.current;
+        const target = get?.(targetID);
+        if (!target) return;
+        // Above/below an unparented (root) sibling means "parent to
+        // the same root scope" — current data shape has no concept
+        // of root reparenting from a drag, so we no-op. Real fix:
+        // surface a top-of-tree drop zone.
+        if (!target.parent_id) return;
+        newParentID = target.parent_id;
+      }
       const bundle = resourceUrl === "/portfolio-items" ? portfolioItemsApi : workItemsApi;
       try {
         await bundle.patch(moverID, { parent_artefact_id: newParentID });
@@ -932,7 +976,13 @@ export default function ObjectTree({
         refetchExpandedChildrenRef={refetchExpandedChildrenRef}
         getRowByIdRef={getRowByIdRef}
         getVisibleIdsRef={getVisibleIdsRef}
-        getRowStripeColour={(row) => colourMap?.get(row.type_prefix)?.colour ?? null}
+        getRowStripeColour={(row) =>
+          // Per-row override (set via the inline form's ColourPicker)
+          // wins. Falls back to the artefact-type's default colour
+          // when the user hasn't picked one. Null when neither is set,
+          // which leaves the 10px stripe slot transparent.
+          row.colour ?? colourMap?.get(row.type_prefix)?.colour ?? null
+        }
         columns={config.columns}
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"
