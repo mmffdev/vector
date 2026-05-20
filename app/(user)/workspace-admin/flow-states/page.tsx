@@ -26,6 +26,7 @@ import { BsArrowsExpand, BsPencilSquare, BsPlusCircleDotted, BsXCircle } from "r
 import { FaRegTrashCan } from "react-icons/fa6";
 import { notify } from "@/app/lib/toast";
 import { safeInk } from "@/app/lib/colourUtils";
+import { ColourPicker } from "@/app/components/ColourPicker";
 import { useAuth } from "@/app/contexts/AuthContext";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
 import Panel from "@/app/components/Panel";
@@ -56,15 +57,6 @@ function useWorkspaceName(): string {
     ? "MMFFDev"
     : user.subscription_id.slice(0, 8).toUpperCase();
 }
-
-// ── Colour palette ────────────────────────────────────────────────────────────
-const PALETTE = [
-  "#ef4444", "#f97316", "#f59e0b", "#eab308",
-  "#84cc16", "#22c55e", "#10b981", "#14b8a6",
-  "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
-  "#a855f7", "#ec4899", "#f43f5e", "#64748b",
-  "#6b7280", "#78716c",
-];
 
 const KIND_LABEL: Record<string, string> = {
   backlog:     "Backlog",
@@ -497,105 +489,6 @@ function FlowMap({
   );
 }
 
-// ── ColourPicker ──────────────────────────────────────────────────────────────
-function ColourPicker({
-  value,
-  onChange,
-}: {
-  value: string | null | undefined;
-  onChange: (hex: string | null) => void;
-}) {
-  const [open, setOpen]     = useState(false);
-  const [custom, setCustom] = useState(value ?? "");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  const pick  = (hex: string) => { onChange(hex); setCustom(hex); setOpen(false); };
-  const clear = ()            => { onChange(null); setCustom(""); setOpen(false); };
-
-  const bg  = value ?? "var(--surface-sunken)";
-  const ink = value ? safeInk(value) : "var(--ink-muted)";
-
-  return (
-    <div className="at-colour-picker" ref={ref}>
-      <button
-        type="button"
-        className="at-colour-swatch"
-        style={{ background: bg, color: ink }}
-        title={value ?? "No colour set"}
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-haspopup="true"
-      >
-        {value ? value.toUpperCase() : "—"}
-      </button>
-
-      {open && (
-        <div className="at-colour-popover" role="dialog" aria-label="Choose a colour">
-          <div className="at-colour-palette">
-            {PALETTE.map((hex) => (
-              <button
-                key={hex}
-                type="button"
-                className={`at-colour-cell${value === hex ? " at-colour-cell--active" : ""}`}
-                style={{ background: hex }}
-                title={hex}
-                onClick={() => pick(hex)}
-                aria-label={hex}
-                aria-pressed={value === hex}
-              />
-            ))}
-          </div>
-          <div className="at-colour-custom">
-            <label className="at-colour-custom__label">
-              Custom hex
-              <input
-                type="text"
-                className="form__input at-colour-custom__input"
-                value={custom}
-                maxLength={7}
-                placeholder="#3B82F6"
-                onChange={(e) => setCustom(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const v = custom.trim().toUpperCase();
-                    if (/^#[0-9A-F]{6}$/.test(v)) pick(v);
-                  }
-                }}
-              />
-            </label>
-            {/^#[0-9A-Fa-f]{6}$/.test(custom) && custom !== value && (
-              <button
-                type="button"
-                className="btn btn--sm btn--ghost"
-                onClick={() => pick(custom.trim().toUpperCase())}
-              >
-                Apply
-              </button>
-            )}
-          </div>
-          {value && (
-            <button
-              type="button"
-              className="btn btn--sm btn--ghost at-colour-clear"
-              onClick={clear}
-            >
-              Remove colour
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── StateRow ──────────────────────────────────────────────────────────────────
 function StateRow({

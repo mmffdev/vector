@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactDOM from "react-dom";
 import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import InlineEditField from "@/app/components/InlineEditField";
 import PageContent from "@/app/components/PageContent";
@@ -19,130 +18,7 @@ import {
   type ArtefactType,
 } from "@/app/lib/artefactTypesApi";
 import { safeInk } from "@/app/lib/colourUtils";
-
-// ── Palette ───────────────────────────────────────────────────────────────────
-const PALETTE = [
-  "#ef4444", "#f97316", "#f59e0b", "#eab308",
-  "#84cc16", "#22c55e", "#10b981", "#14b8a6",
-  "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
-  "#a855f7", "#ec4899", "#f43f5e", "#64748b",
-  "#6b7280", "#78716c",
-];
-
-// ── ColourPicker ──────────────────────────────────────────────────────────────
-function ColourPicker({
-  value,
-  open,
-  onOpen,
-  onClose,
-  onChange,
-}: {
-  value: string | null;
-  open: boolean;
-  onOpen: () => void;
-  onClose: () => void;
-  onChange: (hex: string | null) => void;
-}) {
-  const [custom, setCustom] = useState(value ?? "");
-  const swatchRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
-
-  // Position the portal popover relative to the swatch button.
-  useEffect(() => {
-    if (!open || !swatchRef.current) return;
-    const r = swatchRef.current.getBoundingClientRect();
-    setPopoverStyle({
-      position: "fixed",
-      top: r.bottom + 6,
-      right: window.innerWidth - r.right,
-      zIndex: 9999,
-    });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (swatchRef.current?.contains(t) || popoverRef.current?.contains(t)) return;
-      onClose();
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, onClose]);
-
-  const pick = (hex: string) => { onChange(hex); setCustom(hex); onClose(); };
-  const clearColour = () => { onChange(null); setCustom(""); onClose(); };
-  const displayBg = value ?? "var(--surface-sunken)";
-  const displayInk = value ? safeInk(value) : "var(--ink-muted)";
-
-  const popover = open ? ReactDOM.createPortal(
-    <div className="at-colour-popover" ref={popoverRef} style={popoverStyle} role="dialog" aria-label="Choose a colour">
-      <div className="at-colour-palette">
-        {PALETTE.map((hex) => (
-          <button
-            key={hex}
-            type="button"
-            className={`at-colour-cell${value === hex ? " at-colour-cell--active" : ""}`}
-            style={{ background: hex }}
-            title={hex}
-            onClick={() => pick(hex)}
-            aria-label={hex}
-            aria-pressed={value === hex}
-          />
-        ))}
-      </div>
-      <div className="at-colour-custom">
-        <label className="at-colour-custom__label">
-          Custom hex
-          <input
-            type="text"
-            className="form__input at-colour-custom__input"
-            value={custom}
-            maxLength={7}
-            placeholder="#3B82F6"
-            onChange={(e) => setCustom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const v = custom.trim().toUpperCase();
-                if (/^#[0-9A-F]{6}$/.test(v)) pick(v);
-              }
-            }}
-          />
-        </label>
-        {/^#[0-9A-Fa-f]{6}$/.test(custom) && custom !== value && (
-          <button type="button" className="btn btn--sm btn--ghost" onClick={() => pick(custom.trim().toUpperCase())}>
-            Apply
-          </button>
-        )}
-      </div>
-      {value && (
-        <button type="button" className="btn btn--sm btn--ghost at-colour-clear" onClick={clearColour}>
-          Remove colour
-        </button>
-      )}
-    </div>,
-    document.body,
-  ) : null;
-
-  return (
-    <div className="at-colour-picker">
-      <button
-        ref={swatchRef}
-        type="button"
-        className="at-colour-swatch"
-        style={{ background: displayBg, color: displayInk }}
-        title={value ?? "No colour set"}
-        onClick={() => open ? onClose() : onOpen()}
-        aria-expanded={open}
-        aria-haspopup="true"
-      >
-        {value ? value.toUpperCase() : "—"}
-      </button>
-      {popover}
-    </div>
-  );
-}
+import { ColourPicker } from "@/app/components/ColourPicker";
 
 // ── Row union ─────────────────────────────────────────────────────────────────
 // All rows are flat roots — no expand/collapse. Scope rows are section dividers.

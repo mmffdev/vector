@@ -865,23 +865,98 @@ export const releases = {
     apiSite<void>(`/timeboxes/releases/${id}`, { method: "DELETE" }),
 };
 
+// Pages: app/components/ArtefactInlineForm/* (form Milestone dropdown)
+// ─── Timeboxes — Milestones  (/timeboxes/milestones) ─────────────────────────
+//
+// Point-in-time markers (no date range, no cadence). Backend handlers in
+// backend/internal/timeboxmilestones; table timeboxes_milestones added by
+// migrations 085 + 087.
+
+export interface Milestone {
+  timeboxes_milestones_id: ID;
+  timeboxes_milestones_id_subscription: ID;
+  timeboxes_milestones_id_workspace: ID;
+  timeboxes_milestones_id_topology_node: ID | null;
+  timeboxes_milestones_name: string;
+  timeboxes_milestones_description: string | null;
+  timeboxes_milestones_id_user_owner: ID | null;
+  timeboxes_milestones_date_target: ISODate;
+  timeboxes_milestones_status: string;
+  timeboxes_milestones_position: number;
+  timeboxes_milestones_created_at: string;
+  timeboxes_milestones_updated_at: string;
+  timeboxes_milestones_archived_at: string | null;
+}
+
+export const milestones = {
+  list: (params?: string) =>
+    apiSite<{ milestones: Milestone[]; count: number }>(
+      params ? `/timeboxes/milestones?${params}` : "/timeboxes/milestones/",
+    ),
+
+  get: (id: ID) => apiSite<Milestone>(`/timeboxes/milestones/${id}`),
+
+  create: (data: unknown) =>
+    apiSite<Milestone>("/timeboxes/milestones/", { method: "POST", body: JSON.stringify(data) }),
+
+  update: (id: ID, data: unknown) =>
+    apiSite<Milestone>(`/timeboxes/milestones/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  delete: (id: ID) =>
+    apiSite<void>(`/timeboxes/milestones/${id}`, { method: "DELETE" }),
+};
+
+// Pages: app/components/ArtefactInlineForm/* (Owner dropdown)
+// ─── Lookups — scope-bound reference data  (/lookups) ────────────────────────
+
+export interface UserInScope {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+export const lookups = {
+  usersInScope: () =>
+    apiSite<{ users: UserInScope[]; count: number }>(`/lookups/users-in-scope`),
+};
+
 // Pages: app/lib/topologyApi.ts (shared helper), app/(user)/topology/page.tsx,
 //        app/components/topology/ (DiagramCanvas nodes)
 // ─── Topology  (/topology) ───────────────────────────────────────────────────
 
+// Wire shape mirrors the Go Node struct in backend/internal/topology/types.go.
+// The handler returns the full row (PLA-0044 — rich fields + sort_order +
+// archive metadata) so the canvas can render layout/colour/icon without a
+// second round-trip. Form callers only need id/parent_id/name/label_override
+// but the rest is included so the type stays in lockstep with the backend.
 export interface OrgNode {
   id: ID;
+  subscription_id?: ID;
   parent_id: ID | null;
-  label: string;
+  name: string;
+  description?: string;
+  label_override: string | null;
+  icon: string | null;
+  colour: string | null;
+  avatar_url?: string | null;
+  position?: number;
   archived_at: ISODate | null;
+  archived_descendant_count?: number;
+  created_at?: ISODate;
+  updated_at?: ISODate;
 }
 
 export const topology = {
-  tree: (workspaceId?: ID) =>
-    apiSite<{ nodes: OrgNode[] }>(workspaceId ? `/topology/tree?workspace_id=${workspaceId}` : "/topology/tree"),
+  // GET /_site/topology/tree[?root=<id>]
+  // Backend resolves workspace via JWT clamp (WorkspaceClampMiddleware) and
+  // narrows the result by the active topology scope via the ?meg= forwarder
+  // in app/lib/api.ts. Empty topology → [], not 500.
+  // Wire shape is a BARE ARRAY of OrgNode — no { nodes: [] } envelope.
+  tree: (rootId?: ID) =>
+    apiSite<OrgNode[]>(rootId ? `/topology/tree?root=${rootId}` : "/topology/tree"),
 
   ancestors: (nodeId: ID) =>
-    apiSite<{ ancestors: OrgNode[] }>(`/topology/nodes/${nodeId}/ancestors`),
+    apiSite<OrgNode[]>(`/topology/nodes/${nodeId}/ancestors`),
 
   archivedDescendants: (nodeId: ID) =>
     apiSite<{ nodes: OrgNode[] }>(`/topology/nodes/${nodeId}/archived-descendants`),
@@ -1025,5 +1100,106 @@ export const addressables = {
     apiSite<void>(`/addressables/admin/${id}/helpable`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    }),
+};
+
+// Pages: app/components/MentionPicker.tsx, app/components/MentionToolbarButton.tsx
+// ─── Mentions  (/mentions) ───────────────────────────────────────────────────
+
+export interface Mentionable {
+  user_id: ID;
+  email: string;
+  display_name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
+export interface MentionRow {
+  users_mentions_id: ID;
+  users_mentions_id_subscription: ID;
+  users_mentions_id_workspace: ID;
+  users_mentions_id_user_author: ID;
+  users_mentions_id_user_mentioned: ID;
+  users_mentions_context_kind: string;
+  users_mentions_context_id: string;
+  users_mentions_context_label: string;
+  users_mentions_snippet: string;
+  users_mentions_created_at: string;
+  users_mentions_read_at?: string | null;
+}
+
+export interface CreateMentionBody {
+  mentioned_user_ids: ID[];
+  context_kind: string;
+  context_id: string;
+  snippet?: string;
+}
+
+export const mentions = {
+  search: (q: string, limit = 10) =>
+    apiSite<{ mentionables: Mentionable[]; count: number }>(
+      `/mentions/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+    ),
+
+  create: (data: CreateMentionBody) =>
+    apiSite<{ mentions: MentionRow[]; count: number }>("/mentions/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  inbox: (onlyUnread = false, limit = 50) =>
+    apiSite<{ mentions: MentionRow[]; count: number }>(
+      `/mentions/inbox?only_unread=${onlyUnread ? "true" : "false"}&limit=${limit}`,
+    ),
+
+  markRead: (id: ID) =>
+    apiSite<void>(`/mentions/${id}/read`, { method: "POST" }),
+};
+
+// Pages: app/components/NotificationBell.tsx, app/hooks/useNotificationsStream.ts
+// ─── Notifications  (/notifications) ─────────────────────────────────────────
+
+export interface UserNotification {
+  users_notifications_id: ID;
+  users_notifications_id_subscription: ID;
+  users_notifications_id_user: ID;
+  users_notifications_kind: string;
+  users_notifications_title: string;
+  users_notifications_body: string;
+  users_notifications_context_kind?: string | null;
+  users_notifications_context_id?: string | null;
+  users_notifications_context_label?: string | null;
+  users_notifications_created_at: string;
+  users_notifications_read_at?: string | null;
+}
+
+export interface NotificationPref {
+  kind: string;
+  channel: "in_app" | "email" | "sse";
+  enabled: boolean;
+}
+
+export const notifications = {
+  list: (onlyUnread = false, limit = 50) =>
+    apiSite<{ notifications: UserNotification[]; count: number }>(
+      `/notifications/?only_unread=${onlyUnread ? "true" : "false"}&limit=${limit}`,
+    ),
+
+  unreadCount: () =>
+    apiSite<{ unread: number }>("/notifications/unread-count"),
+
+  markRead: (id: ID) =>
+    apiSite<void>(`/notifications/${id}/read`, { method: "POST" }),
+
+  markAllRead: () =>
+    apiSite<{ marked_read: number }>("/notifications/read-all", { method: "POST" }),
+
+  listPrefs: () =>
+    apiSite<{ prefs: NotificationPref[]; count: number }>("/notifications/prefs"),
+
+  upsertPref: (kind: string, channel: NotificationPref["channel"], enabled: boolean) =>
+    apiSite<void>("/notifications/prefs", {
+      method: "PUT",
+      body: JSON.stringify({ kind, channel, enabled }),
     }),
 };
