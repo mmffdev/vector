@@ -1,0 +1,454 @@
+{
+  "$schema": "/schemas/object-tree-page.v1.json",
+
+  "_comment": "Example: how the current /work-items page (the screenshot you shared) would be described as a single layout document. Hits every chrome row, every column, every action, every capability the page actually uses today. Refs (the *Ref fields) are string names resolved at load time by the TS registry — components, callbacks, accessors, columns, API bundles. Pure data is inline.",
+
+  "dataType": "work_items",
+  "treeName": "workitems",
+  "addressableName": "work_items_grid_tree_ll",
+  "resourceUrl": "/work-items",
+  "scope": "work",
+
+  "context": {
+    "_comment": "Runtime values the shell resolves at mount via the context registry. Each entry says where the value comes from, whether the grid can render without it, and how it reaches the backend on data fetches. The three dimensions every grid needs: who's logged in (userId), which workspace they're in (workspaceId), and what topology scope they've clamped to (scopeNodeId).",
+
+    "userId": {
+      "from": "auth.user.id",
+      "required": true,
+      "purpose": "audit-trail; included in every write payload server-side via ctx, not sent from client",
+      "onMissing": "render-empty-state"
+    },
+
+    "workspaceId": {
+      "from": "auth.user.subscription_id",
+      "required": true,
+      "onMissing": "render-empty-state",
+      "passToFetchAs": "workspace_id",
+      "passToFetchOn": ["GET", "POST", "PATCH", "DELETE"]
+    },
+
+    "scopeNodeId": {
+      "from": "scope.activeNodeId",
+      "required": false,
+      "default": null,
+      "passToFetchAs": "meg",
+      "passToFetchOn": ["GET"],
+      "_comment": "Today's apiSite.withForwardedMeg behaviour — auto-forward ?meg= on GETs only — becomes declarative here instead of buried in api.ts."
+    },
+
+    "scopeDirection": {
+      "from": "scope.direction",
+      "required": false,
+      "default": "descend",
+      "passToFetchAs": "scope_dir",
+      "passToFetchOn": ["GET"]
+    },
+
+    "remountOnChange": ["workspaceId", "scopeNodeId"]
+  },
+
+  "capabilities": {
+    "dragReorder": true,
+    "dragReparent": true,
+    "multiSelect": true,
+    "bulkActions": true,
+    "inlineEdit": true,
+    "duplicate": true,
+    "archive": true,
+    "cascadeRefresh": true,
+    "scopePropagation": false,
+    "columnPicker": true,
+    "pagination": true,
+    "search": true,
+    "sort": true,
+    "filters": true
+  },
+
+  "perfBudgets": {
+    "initialRenderMs": 100,
+    "sortOptimisticMs": 50,
+    "sortConfirmedMs": 300,
+    "flyoutOpenMs": 50,
+    "addColumnBackfillMs": 350,
+    "dragOptimisticMs": 16,
+    "dragConfirmedMs": 800
+  },
+
+  "layout": [
+    {
+      "kind": "panel",
+      "id": "panel_work_items_heading",
+      "className": "page-panel-heading",
+      "style": {
+        "background": "panel.surface",
+        "padding": "panel.lg",
+        "radius": "panel.md",
+        "marginBottom": "stack.md"
+      },
+      "children": [
+        {
+          "kind": "pageHeading",
+          "level": 1,
+          "titleFromPageTitle": true,
+          "subtitle": "Browse and manage work items across the workspace."
+        },
+        {
+          "kind": "pageDescription",
+          "text": "Browse and manage work items across the workspace."
+        },
+        {
+          "kind": "panelTitle",
+          "text": "Work Items",
+          "description": "View, filter, sort, and manage all work items tracked in this workspace."
+        }
+      ]
+    },
+
+    {
+      "kind": "summaryHeader",
+      "id": "work_items_summary",
+      "dataSource": {
+        "endpoint": "/work-items/summary",
+        "refetchOnScopeChange": true,
+        "params": ["sprint_id"]
+      },
+      "cells": [
+        { "label": "TOTAL ITEMS",  "valuePath": "total" },
+        { "label": "EPICS",        "valuePath": "by_type.epic",   "default": 0 },
+        { "label": "TASKS",        "valuePath": "by_type.task",   "default": 0 },
+        { "label": "DEFECTS",      "valuePath": "by_type.defect", "default": 0, "tone": "warning" },
+        { "label": "RISKS",        "valuePath": "by_type.risk",   "default": 0, "tone": "warning", "glyph": "issue" },
+        { "label": "BLOCKED",      "valuePath": "blocked",        "default": 0, "tone": "warning", "glyph": "issue" }
+      ]
+    },
+
+    {
+      "kind": "panel",
+      "id": "panel_work_items_grid",
+      "style": {
+        "background": "panel.surface",
+        "padding": "panel.none",
+        "radius": "panel.md"
+      },
+      "children": [
+        {
+          "kind": "denseGridHeader",
+          "badge": "05",
+          "subtitle": "Dense grid",
+          "description": "Spreadsheet-fast. 28px rows, single-character status, mono ID column."
+        },
+
+        {
+          "kind": "actionBar",
+          "ariaLabel": "Work item actions",
+          "items": [
+            {
+              "kind": "createButton",
+              "label": "Create New",
+              "mode": "type-picker",
+              "typeOptionsRef": "workItemTypeOptions",
+              "labelWhenTypePicked": "Add new {typeLabel}",
+              "iconWhenIdle": "MdOutlineCategory",
+              "iconWhenActive": "MdAdd"
+            },
+            {
+              "kind": "search",
+              "placeholder": "Search work items…",
+              "icon": "MdSearch",
+              "debounceMs": 0
+            },
+            {
+              "kind": "filterChips",
+              "filterChipsRef": "workItemsFilterChips",
+              "prefKeyTemplate": "{treeName}.filters",
+              "chipDefs": [
+                { "field": "type",     "label": "Type",     "icon": "category" },
+                { "field": "status",   "label": "Status",   "icon": "flag" },
+                { "field": "priority", "label": "Priority", "icon": "priority_high" },
+                { "field": "owner_id", "label": "Owner",    "icon": "person" }
+              ]
+            },
+            { "kind": "spacer" },
+            {
+              "kind": "columnPickerTrigger",
+              "label": "Columns",
+              "icon": "MdViewColumn"
+            }
+          ]
+        },
+
+        {
+          "kind": "tree",
+          "primaryIdColumn": "id",
+
+          "data": {
+            "hookRef": "useObjectTreeWindow",
+            "apiBundleRef": "workItemsApi",
+            "fetchOptions": {
+              "endpoint": "/work-items",
+              "scopeForwardMegOnGet": true,
+              "scopeForwardMegOnPost": false,
+              "pinTopologyOnDuplicateRef": "activeScopeNodeId"
+            },
+            "cascadeRefresh": {
+              "enabled": true,
+              "triggerPaths": [
+                "/work-items/{id} PATCH flow_state_id",
+                "/work-items/{id} PATCH parent_artefact_id"
+              ],
+              "responseTouchedIdsField": "touched_ids"
+            }
+          },
+
+          "row": {
+            "rowHeightPx": 28,
+            "getIdPath": "id",
+            "getParentIdPath": "parent_id",
+            "getChildrenCountPath": "children_count",
+            "stripeColourRef": "rowStripeFromArtefactType",
+            "rowClassRef": "rowClassByType",
+            "searchAccessorTemplate": "{title} vec-{key_num}"
+          },
+
+          "columnCatalogue": {
+            "prefsKey": "workitems.columns",
+            "serverPrefsRef": "userTreePrefs.workitems",
+            "alwaysOn": ["id", "title"],
+            "columns": [
+              {
+                "key": "id",
+                "wireKey": "id",
+                "label": "ID",
+                "width": 160,
+                "minWidth": 90,
+                "align": "mono",
+                "cellModifier": "id",
+                "stopClick": true,
+                "isPrimaryId": true,
+                "cellRendererRef": "IdCell",
+                "addable": false,
+                "defaultVisible": true,
+                "group": "Identity"
+              },
+              {
+                "key": "title",
+                "wireKey": "title",
+                "label": "Summary",
+                "width": null,
+                "minWidth": 200,
+                "cellModifier": "summary",
+                "stopClick": true,
+                "cellRendererRef": "SummaryCell",
+                "addable": false,
+                "defaultVisible": true,
+                "group": "Identity"
+              },
+              {
+                "key": "status",
+                "wireKey": "flow_state_id,flow_state_name",
+                "label": "Status",
+                "width": 220,
+                "minWidth": 180,
+                "stopClick": true,
+                "cellRendererRef": "StatusCell",
+                "addable": true,
+                "defaultVisible": true,
+                "group": "Workflow"
+              },
+              {
+                "key": "priority",
+                "wireKey": "priority",
+                "label": "Pri",
+                "width": 70,
+                "minWidth": 70,
+                "cellRendererRef": "PriorityCell",
+                "addable": true,
+                "defaultVisible": true,
+                "group": "Workflow"
+              },
+              {
+                "key": "points",
+                "wireKey": "story_points",
+                "label": "Pts",
+                "width": 70,
+                "minWidth": 60,
+                "align": "mono",
+                "stopClick": true,
+                "cellRendererRef": "PointsOwnerCell",
+                "addable": true,
+                "defaultVisible": true,
+                "group": "Workflow"
+              },
+              {
+                "key": "owner",
+                "wireKey": "owner",
+                "label": "Owner",
+                "width": 130,
+                "minWidth": 100,
+                "cellModifier": "owner",
+                "cellRendererRef": "OwnerChipCell",
+                "addable": true,
+                "defaultVisible": true,
+                "group": "People"
+              },
+              {
+                "key": "sprint",
+                "wireKey": "sprint",
+                "label": "Sprint",
+                "width": 95,
+                "minWidth": 95,
+                "align": "mono",
+                "cellModifier": "sprint",
+                "cellRendererRef": "SprintCell",
+                "addable": true,
+                "defaultVisible": true,
+                "group": "Planning"
+              },
+              {
+                "key": "due",
+                "wireKey": "due_date",
+                "label": "Due",
+                "width": 100,
+                "minWidth": 80,
+                "align": "mono",
+                "cellModifier": "due",
+                "stopClick": true,
+                "cellRendererRef": "DueCell",
+                "addable": true,
+                "defaultVisible": true,
+                "group": "Planning"
+              },
+              {
+                "key": "description",
+                "wireKey": "description",
+                "label": "Description",
+                "width": 280,
+                "minWidth": 200,
+                "cellRendererRef": "TruncatedTextCell",
+                "addable": true,
+                "defaultVisible": false,
+                "group": "Detail"
+              },
+              {
+                "key": "milestone",
+                "wireKey": "milestone_id,milestone_name",
+                "label": "Milestone",
+                "width": 120,
+                "minWidth": 100,
+                "cellRendererRef": "MilestoneCell",
+                "addable": true,
+                "defaultVisible": false,
+                "group": "Planning"
+              },
+              {
+                "key": "release",
+                "wireKey": "release_id,release_name",
+                "label": "Release",
+                "width": 120,
+                "minWidth": 100,
+                "cellRendererRef": "ReleaseCell",
+                "addable": true,
+                "defaultVisible": false,
+                "group": "Planning"
+              },
+              {
+                "key": "created_at",
+                "wireKey": "created_at",
+                "label": "Created",
+                "width": 110,
+                "align": "mono",
+                "cellRendererRef": "RelativeDateCell",
+                "addable": true,
+                "defaultVisible": false,
+                "group": "Audit"
+              },
+              {
+                "key": "updated_at",
+                "wireKey": "updated_at",
+                "label": "Updated",
+                "width": 110,
+                "align": "mono",
+                "cellRendererRef": "RelativeDateCell",
+                "addable": true,
+                "defaultVisible": false,
+                "group": "Audit"
+              }
+            ]
+          },
+
+          "sort": {
+            "defaultKey": "id",
+            "defaultDir": "asc",
+            "allowedKeys": ["id", "title", "status", "priority", "points", "sprint", "due"],
+            "prefsKey": "workitems.sort"
+          },
+
+          "filters": {
+            "fields": ["type", "status", "priority", "owner_id"],
+            "shape": "multi-value-array",
+            "prefsKey": "workitems.filters"
+          },
+
+          "pagination": {
+            "options": [25, 50, 100],
+            "defaultPageSize": 25,
+            "position": "bottom"
+          },
+
+          "selection": {
+            "mode": "multi",
+            "shiftClickRange": true,
+            "headerCheckboxIndeterminate": true,
+            "bulkActionBarRef": "WorkItemBulkActionBar"
+          },
+
+          "dnd": {
+            "resourceType": "work_item",
+            "canReparentRef": "workItemParentTypeRule",
+            "reparentRulesRef": "PARENT_PREFIX_MAP",
+            "candidatePrePassRef": "workItemDragCandidates",
+            "rankPostUrl": "/rank/move"
+          },
+
+          "detailFlyout": {
+            "componentRef": "ArtefactInlineForm",
+            "getRowDetailRef": "workItemsApi.get",
+            "duplicateRef": "duplicateArtefact",
+            "archiveRef": "deleteArtefact",
+            "duplicateBadgeColour": "amber",
+            "loadingSkeletonRef": "ArtefactFormSkeleton"
+          },
+
+          "cogMenu": {
+            "items": [
+              { "key": "edit",      "label": "Edit",      "onSelectRef": "logCogMenuEdit" },
+              { "key": "duplicate", "label": "Duplicate", "onSelectRef": "logCogMenuDuplicate" },
+              { "key": "move",      "label": "Move",      "onSelectRef": "logCogMenuMove" },
+              { "key": "split",     "label": "Split",     "onSelectRef": "logCogMenuSplit" },
+              { "key": "delete",    "label": "Delete",    "onSelectRef": "logCogMenuDelete" }
+            ]
+          },
+
+          "realtime": {
+            "topicTemplate": "work_item:{subscription_id}:{filterScope}",
+            "filterScope": {
+              "whenSprint": "sprint:{sprint_id}",
+              "default": "backlog:{subscription_id}"
+            },
+            "refetchHookRef": "useRefetchOnPush"
+          },
+
+          "ariaLabel": "Work items dense grid"
+        }
+      ]
+    }
+  ],
+
+  "_notes": {
+    "refs": "Every *Ref field resolves to a TS value via the registry at configs/registry.ts. Strings are stable identifiers; the resolution is one indirection at load time, not per-render.",
+    "alwaysOn": "id and title can't be removed via the column picker. Everything else with defaultVisible:true starts shown but can be hidden. defaultVisible:false starts hidden but is addable.",
+    "wireKey": "The exact field name the backend ?fields= query expects. Comma-separated when the column reads multiple fields (e.g. status reads both flow_state_id and flow_state_name).",
+    "perfBudgets": "Lifted from the plan's budget table. The Slice 0.5 baseline writes measured numbers next to these. CI fails a slice if it regresses any.",
+    "capabilities": "Single source of truth for what this grid can do. Read by the shell to decide what to render, by code-splitting to decide what to dynamic-import, by samanthaAPI to answer agent queries about this grid."
+  }
+}
