@@ -364,6 +364,7 @@ Spec'd here so they're not "novel ideas" later — they're pre-considered fallba
 Each slice is independently mergeable and leaves the app green. No "12 PRs, all needed before anything works." Slices ship in this order:
 
 ### Slice 0 — Boundary tests (1 day)
+**Touches:** frontend tests only · **Backend:** none · **main.go:** no
 **Goal:** Pin the current Work Items behaviour with a test contract BEFORE refactoring.
 
 - Snapshot the rendered chrome for `/work-items` (title, sunken head, action bar) — Playwright or RTL.
@@ -375,6 +376,7 @@ Each slice is independently mergeable and leaves the app green. No "12 PRs, all 
 **Risk:** Low. Pure-add. No production change.
 
 ### Slice 0.5 — Perf baseline (~0.5 day) ★ NEW
+**Touches:** frontend instrumentation only · **Backend:** none · **main.go:** no
 **Goal:** Know the starting line before changing anything. Numbers in the budget table above become measurable, not hypothetical.
 
 - Instrument current `/work-items` with `performance.mark()` + `measure()` around every named action in the budget table.
@@ -387,6 +389,7 @@ Each slice is independently mergeable and leaves the app green. No "12 PRs, all 
 **Risk:** None. Read-only instrumentation.
 
 ### Slice 1 — Carve out `useArtefactItemsWindow` → `useObjectTreeWindow<T>` + flat row store (2 days)
+**Touches:** `app/components/ObjectTreeV2/hooks/` (new), `work-items-tree-config.tsx` · **Backend:** none · **main.go:** no
 **Goal:** Generic data-fetch hook that domains plug into. Today's hook is artefact-only and hardcoded to `/work-items` | `/portfolio-items`.
 
 - Create `app/components/ObjectTree/hooks/useObjectTreeWindow.ts` — generic over `<T>`, takes `{ endpoint, sortKey, sortDir, filters, pageSize, pageIndex, onPatched, onLocalPatch, onCascadeRefresh }`.
@@ -398,6 +401,7 @@ Each slice is independently mergeable and leaves the app green. No "12 PRs, all 
 **Risk:** Medium. Touches the hot path. Boundary tests catch regressions.
 
 ### Slice 1.5 — Plugin architecture, registry, capability flags, context registry (1.5 days) ★ NEW
+**Touches:** `app/components/ObjectTreeV2/{ObjectTree,registry,context,loader,kinds/,plugins/,cells/,flyouts/}.{ts,tsx}` · **Backend:** none · **main.go:** no
 **Goal:** Lock in the JSON-driven architecture so every subsequent slice plugs into a stable pattern. The shell becomes a kind-walker; everything else is a registered handler the JSON references by name.
 
 **Directory + module structure:**
@@ -472,6 +476,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Medium-high. This is the architectural pivot. All subsequent slices ride on it. Slice 0 contract tests are non-negotiable.
 
 ### Slice 2 — Extract `<ObjectTreeDetailFlyout>` shell + pin the interaction contract (1.5 days)
+**Touches:** `app/components/ObjectTreeV2/flyouts/`, `ArtefactInlineForm/*` (props refactor only, no logic change) · **Backend:** none · **main.go:** no
 **Goal:** `ArtefactInlineForm` stops being imported by `<ObjectTree>`. The interaction contract from the UX section above becomes a shared shell that EVERY consumer inherits identically.
 
 - New component `<ObjectTreeDetailFlyout>` owns: trigger detection (ID-cell click + Enter), open/close state, single-open enforcement, Esc + outside-click handlers, the inline-expand animation, the loading skeleton during `getRowDetail` hydration.
@@ -495,6 +500,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Medium-high. The flyout has cascade-refresh, child-patch back-channels, drag-handle refs threaded through. Each side-channel needs to thread through the slot cleanly. The interaction-contract tests are the safety net.
 
 ### Slice 2.5 — Backend `?fields=` contract (1.5 days) ★ NEW
+**Touches:** `backend/internal/{artefactitems,portfolioitems,timeboxsprints,timeboxreleases}/handler.go` + new `columns.go` per package · **Backend:** YES — handler edits + new catalogue files · **main.go:** likely NO (handlers already mounted; only new if we add `GET /<resource>/columns` route — TBD) · **Migration:** none
 **Goal:** Every list endpoint accepts a `?fields=a,b,c` parameter and returns only those columns (plus `id`, always). This is the substrate the column-selector rides on.
 
 **Why first:** The column-selector UI (Slice 4.5) is dead without it. Adding `?fields=` to one endpoint as a proof, then propagating, lets us land the contract before any frontend depends on it.
@@ -510,6 +516,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Low-medium. New convention but bounded scope (one resource first). Cookbook entry mandatory.
 
 ### Slice 3 — Extract chrome to a registered config (1 day)
+**Touches:** `app/components/ObjectTreeV2/kinds/{ActionBar,DenseGridHeader,Panel}.tsx`, work-items config JSON · **Backend:** none · **main.go:** no
 **Goal:** Action bar's "Create New" / type-picker / search / filter-chip slots stop hardcoding work-item concerns.
 
 - `config.chrome.createAction` drives the action bar shape.
@@ -522,6 +529,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Low. Mostly mechanical.
 
 ### Slice 4 — Extract drag/reparent rules into config (1.5 days)
+**Touches:** `app/components/ObjectTreeV2/plugins/DragEngine.tsx`, work-items config (declares its `PARENT_PREFIX_MAP` rule) · **Backend:** none · **main.go:** no
 **Goal:** `PARENT_PREFIX_MAP` and the reparent legality check stop being hardcoded.
 
 - `config.dnd.canReparent: (mover, target) => boolean` — domain provides the rule.
@@ -533,6 +541,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Low. Single-method swap.
 
 ### Slice 4.5 — Column selector + lazy back-fill (2.5 days) ★ NEW
+**Touches:** `app/components/ObjectTreeV2/plugins/ColumnPicker.tsx` + cache-merge logic in `useObjectTreeWindow` · **Backend:** none (rides on 2.5's `?fields=` contract) · **main.go:** no
 **Goal:** A built-in column-picker on every `<ObjectTree>`. User adds "Description" → tree re-fetches the current window with `?fields=…,description`, back-fills the new column on every visible row WITHOUT a full reload. Remove a column → frontend just stops rendering it (no refetch needed; we don't trim previously-fetched data, that'd thrash).
 
 **Where it lives:** In `<ObjectTree>` itself, gated by presence of `config.columnCatalogue`. No domain needs to implement it — they only declare which columns exist.
@@ -574,6 +583,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Medium. The merge-into-cached-rows logic is non-trivial (root window + childMap + in-flight coalescing). Boundary tests in Slice 0 don't cover this — write new ones for the picker behaviour itself.
 
 ### Slice 4.6 — Memoisation pass + cascade-scope reduction (1 day) ★ NEW
+**Touches:** all cell renderers (`React.memo` audit), `useObjectTreeWindow` (coalescing), `backend/internal/artefactitems/handler.go` (PATCH responses carry `touched_ids`), possibly new `GET /<resource>/by-ids` endpoint · **Backend:** YES — handler response shape change + maybe new route · **main.go:** maybe 1–2 new chi routes for by-ids · **Migration:** none
 **Goal:** Close the gap between "all the right architecture" and "actually feels fast." Eliminates the death-by-thousand-re-renders that creeps in once the surface is generic.
 
 **Frontend work:**
@@ -594,6 +604,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Low-medium. Memoisation discipline is mechanical but easy to leave a hole in. Cascade-scope-reduction is contained to the data hook + one new backend response field. Profiling tells the truth.
 
 ### Slice 5 — Backend: timebox scope_propagation column (1.5 days)
+**Touches:** `backend/internal/{timeboxsprints,timeboxreleases}/{handler,service,sql}.go`, `db/vector_artefacts/schema/0NN_*.sql` (new migration) · **Backend:** YES — biggest backend slice in the plan so far · **main.go:** no (services wired the same way) · **Migration:** YES — column + check constraint on `timeboxes_sprints` + `timeboxes_releases`
 **Goal:** Add the inheritance substrate before any UI uses it.
 
 - Migration: `timeboxes_sprints.timeboxes_sprints_scope_propagation TEXT NOT NULL DEFAULT 'this_node_only'` + CHECK (`'this_node_only'` | `'this_node_and_descendants'`). Same on `timeboxes_releases`.
@@ -607,6 +618,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Medium. New migration + non-trivial SQL change. But fully testable in isolation.
 
 ### Slice 6 — Sprint + Release configs, page swap (2 days)
+**Touches:** new `ObjectTreeV2/configs/p_wizard_{sprints,releases}.json`, new `TimeboxInlineForm` flyout, `/app/(user)/sprints/page.tsx`, `/app/(user)/releases/page.tsx`, delete `TimeboxManager.tsx` + `useTimebox.ts` · **Backend:** none (rides on 2.5 + 5's substrate) · **main.go:** no
 **Goal:** /sprints and /releases use `<ObjectTree>`. TimeboxManager deleted.
 
 - Write `configs/sprints.tsx` and `configs/releases.tsx` against the now-generic `<ObjectTree>`.
@@ -619,6 +631,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Medium. New flyout component is the biggest unknown. Lift heavily from ArtefactInlineForm's structure.
 
 ### Slice 7 — Heartbeat: scope_propagation in UI (1 day)
+**Touches:** `TimeboxInlineForm` (propagation radio), inherited-row styling, "edit at source" link · **Backend:** none (Slice 5 already shipped the column + ancestor-walk) · **main.go:** no
 **Goal:** Turn on the inherited-timebox UX.
 
 - Inherited rows render with a "↑ Insurance" badge in the Name column and `is-readonly` class (grey, no inline edit).
@@ -630,6 +643,7 @@ The data hook receives `context.values` as a flat object. It uses `context.works
 **Risk:** Low. Backend already does the heavy lifting in Slice 5.
 
 ### Slice 8 — Milestones consolidation (1 day, optional)
+**Touches:** new `ObjectTreeV2/configs/p_wizard_milestones.json`, milestones page rewrite, possibly `backend/internal/timeboxmilestones/handler.go` if it lacks `?fields=` (catch-up from Slice 2.5) · **Backend:** maybe yes (parity catch-up) · **main.go:** no
 **Goal:** /milestones uses `<ObjectTree>` too. Drops the bespoke `MilestoneManager` (if one exists similar to TimeboxManager).
 
 **Acceptance:** Three pages (sprints, releases, milestones) all render through `<ObjectTree>`.
