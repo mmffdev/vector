@@ -176,9 +176,30 @@ Gates move from `user.role === 'gadmin'`-style compares to `useHasPermission('<c
 
 Three human accounts (`gadmin@`, `padmin@`, `user@mmffdev.com`) carry credentials managed by the human operator. Migration 089 contains an in-transaction snapshot/diff guard that aborts if any of `password_hash`, `email`, `is_active`, `password_changed_at` drift across the role_id backfill. The matching ongoing assertion lives at [`backend/internal/users/protected_accounts_test.go`](../backend/internal/users/protected_accounts_test.go) — the test bcrypt-verifies the seeded plaintext, asserts is_active + email integrity, and asserts each role_id binds to the seeded system role.
 
+## ADR — page-access single-gate model (PLA-0053, 2026-05-19)
+
+**Status:** Accepted; shipped in migration 228 + B5.11–B5.16.
+
+**Context.** Page visibility on the nav rail was originally gated by `users_roles_pages` (per-role × per-page grants written by `/user-management/permissions`). On 2026-05-19 a Trust-No-One lapse — admin tags visible client-side when only filtered there — was patched by adding a *second* server-side gate on `pages_tags.pages_tags_min_auth_level`, with rank-derived `auth_level` on the user side. That introduced redundancy: two independent gates on the same surface, the coarse tag-tier gate short-circuiting the finer per-page grant gate. A Team Member granted access to a `dev_tools` page via the permissions matrix still couldn't see the bucket on the rail because the tier filter dropped it.
+
+**Decision.** Collapse to a single gate. `users_roles_pages` is the **sole authoritative source** for page visibility. The permissions matrix at `/user-management/permissions` is the only authoring surface. `pages_tags.pages_tags_min_auth_level` is retained nullable (no NOT NULL, no default, no CHECK) for rollback only and is not scanned by `nav/registry.go`. Tag-bucket visibility on the rail is derived from page-grant fan-out — a tag appears iff the caller has ≥1 page granted under it.
+
+**Consequences.**
+
+- **One source of truth.** "What can user X see?" answers with `SELECT page FROM users_roles_pages WHERE role_id = X.role_id`. No tier override.
+- **SOC2 / procurement narrative.** Page-grant rows ARE the evidence. Auditor reads `users_roles_pages` and `/user-management/permissions` together; nothing else gates page visibility.
+- **Trust-No-One still honoured.** Server emits zero admin tags to a caller with zero granted pages in them, so client tampering cannot re-introduce admin surfaces — see `Registry.TagsFor` (page-grant fan-out) and `TestTagsFor_PageGrantDerived` / `TestCatalogFor_PageGrantIsSoleGate` in `backend/internal/nav/service_test.go`.
+- **Seed drift exposed.** Removing the tier filter surfaces what the grant table actually contains. `dev/scripts/audit_role_page_grants.sh` writes `dev/audits/role-page-grants.md` flagging non-admin roles with admin-tag grants. Use the permissions matrix to clean stray seed grants.
+- **Frontend simplified.** `ShellContext.tsx` no longer derives an `auth_level` from `user.role.rank`. `NavTagGroup.minAuthLevel` is removed from the typed contract.
+- **`pages_tags_is_admin_menu` is kept** — distinct concern, drives the avatar/notifications dropdown router in `UserAvatarMenu.tsx`, not page-access gating.
+
+**Out of scope.** `users_permissions` / `users_roles_permissions` / `useHasPermission(<code>)` — those gate *actions* (e.g. "can edit a workspace"), not page visibility. They remain unchanged.
+
 ## Related
 
 - [`docs/c_c_lint_rules.md`](c_c_lint_rules.md) — `lint:role-literals` and `lint:writer-boundary`.
 - [`docs/c_c_schema_auth.md`](c_c_schema_auth.md) — `users`, `sessions`, `password_resets` tables.
 - [`docs/c_security.md`](c_security.md) — Trust-No-One posture.
 - [`dev/plans/PLA-0007.json`](../dev/plans/PLA-0007.json) — full plan + story breakdown.
+- [`db/mmff_vector/schema/228_collapse_min_auth_level_gate.sql`](../db/mmff_vector/schema/228_collapse_min_auth_level_gate.sql) — PLA-0053 migration.
+- [`dev/scripts/audit_role_page_grants.sh`](../dev/scripts/audit_role_page_grants.sh) — single-gate audit script.

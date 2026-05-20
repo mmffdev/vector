@@ -209,3 +209,19 @@ B20.4.9	profile image upload multipart mime sniff avatar initials fallback audit
 B20.4.10	disabled column read only checkbox rally pattern toggle edit panel accidental disable
 B20.5	transport hygiene legacy api samantha v1 retire migrate apiSite contract gate snapshot
 B20.5.1	retire legacy api helper samantha v1 migrate apiSite 22 files codemod silently 404 page-help oasdiff snapshot subdir
+B1.9	unified artefacts rest api crud intent verbs clamp tenant scope workspace permission single chokepoint
+B1.9.1	post artefacts route clamp middleware tests artefact_type_id uuid replace item_type create
+B1.9.2	patch artefacts route migrate existing partial update title description priority owner parent
+B1.9.3	delete artefacts soft archived_at restore unarchive
+B1.9.4	intent verbs reprioritise reparent move padmin realtime audit ranking ad-hoc
+B1.9.5	frontend cutover apisite artefacts replace split callers objecttree detail panel bulk drag
+B1.9.6	retire legacy routes work-items portfolio-items post patch delete grep cleanup
+B1.9.7	migrate get surface list artefact_type_id scope param consolidation
+B1.9.8	kill item_type column schema migration drop check index td-itemtype-kill audit
+B1.9.9	audit trail doc procurement narrative single chokepoint soc2 defence finance evidence
+B5.11	migration drop pages_tags min_auth_level is_admin_menu rollback nullable pla-0053
+B5.12	backend registry authlevelfor tagsfor catalogfor tier filter users_roles_pages sole gate pla-0053
+B5.13	frontend shellcontext deriveauthlevel userauthlevel tag bucket pages array pla-0053
+B5.14	permissions page user-management matrix banner copy tier hints surface pla-0053
+B5.15	seed audit role page grants users_roles_pages team member personal planning strategy bookmarks pla-0053
+B5.16	retire td-nav-auth-tier adr roles_permissions single gate soc2 audit narrative pla-0053

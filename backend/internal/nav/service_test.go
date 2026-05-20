@@ -334,12 +334,31 @@ func TestGetStartPageHref_NoneSet(t *testing.T) {
 func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, _, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
-	// dev-security-audits is gadmin-only; a 'user' role must not pin it.
-	err := svc.ReplacePrefs(context.Background(), userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
+	ctx := context.Background()
+
+	// PLA-0053 refresh: previous version relied on grp_team_member having
+	// no dev-security-audits grant. The current seed grants every system
+	// role every dev page, so this test now uses an isolated tenant-custom
+	// role with zero grants — any pin attempt must hit ErrRoleForbidden.
+	var isolatedRoleID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, 'no-grants-role', 'No Grants', 'forbidden-pin test', 5, FALSE, FALSE)
+		RETURNING users_roles_id
+	`, subscriptionID).Scan(&isolatedRoleID); err != nil {
+		t.Fatalf("seed isolated role: %v", err)
+	}
+	// Point the test user at the isolated role so ReplacePrefs sees a
+	// role with no page grants at all.
+	if _, err := pool.Exec(ctx, `UPDATE users SET role_id = $1 WHERE id = $2`, isolatedRoleID, userID); err != nil {
+		t.Fatalf("repoint user role: %v", err)
+	}
+
+	err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, isolatedRoleID, []PinnedInput{
 		{ItemKey: "dev-security-audits", Position: 0},
 	}, nil, nil, nil)
 	if !errors.Is(err, ErrRoleForbidden) {
@@ -367,15 +386,13 @@ func TestReplacePrefs_RejectsTooManyPinned(t *testing.T) {
 func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
-	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
+	subscriptionID, userID, _, cleanup := mkFixtures(t, pool)
 	defer cleanup()
 
 	svc := newSvc(t, pool)
 	ctx := context.Background()
 
-	// Seed as gadmin with a gadmin-only page as start. mkFixtures returns a
-	// grp_team_member roleID, but ReplacePrefs validates against the *given*
-	// roleID — so resolve grp_global explicitly for the seed.
+	// Seed as gadmin with dev-security-audits as start.
 	var grpGlobalID uuid.UUID
 	if err := pool.QueryRow(ctx,
 		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_global' AND users_roles_id_subscription IS NULL`,
@@ -389,8 +406,21 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 		t.Fatalf("seed as gadmin: %v", err)
 	}
 
-	// Now query as a 'user' (role demoted) — must silently fall back.
-	_, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, roletypes.RoleUser, roleID)
+	// PLA-0053 refresh: switch the user to an isolated tenant role with
+	// no grants (previously this test relied on grp_team_member not having
+	// dev-security-audits access — now seeded grants make that false).
+	var isolatedRoleID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, 'no-grants-fallback', 'No Grants Fallback', 'role-loses-access test', 5, FALSE, FALSE)
+		RETURNING users_roles_id
+	`, subscriptionID).Scan(&isolatedRoleID); err != nil {
+		t.Fatalf("seed isolated role: %v", err)
+	}
+
+	// Now query under the isolated role — must silently fall back since
+	// the stored start_page_key references a page the new role cannot reach.
+	_, ok, err := svc.GetStartPageHref(ctx, userID, subscriptionID, roletypes.RoleUser, isolatedRoleID)
 	if err != nil {
 		t.Fatalf("GetStartPageHref: %v", err)
 	}
@@ -399,11 +429,14 @@ func TestGetStartPageHref_FallsBackWhenRoleLosesAccess(t *testing.T) {
 	}
 }
 
-// Refreshed 2026-05-16 (TD-TEST-002): Registry.CatalogFor's signature
-// changed from `(role string, subscriptionID uuid.UUID)` to
-// `(roleID uuid.UUID, subscriptionID uuid.UUID)` during PLA-0049 Phase 0.
-// Resolve grp_global and grp_team_member by code so the test no longer
-// depends on rank-encoded literals.
+// TestCatalogFor_RoleFiltering — PLA-0053 (B5.12) refresh: previously
+// this test asserted hard-coded "grp_team_member can't see dev pages"
+// based on the implicit tier gate. After PLA-0053 the tier gate is gone
+// and seed grants are authoritative — and the current seed grants every
+// system role access to every dev page (a separate issue surfaced by
+// B5.15's audit script). To pin role-grant filtering without depending on
+// fragile seed state, this test creates an isolated tenant-custom role
+// with no page grants, then exercises CatalogFor against it.
 func TestCatalogFor_RoleFiltering(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
@@ -415,23 +448,45 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 		t.Fatalf("registry get: %v", err)
 	}
 
-	var teamMemberID, grpGlobalID uuid.UUID
-	if err := pool.QueryRow(ctx,
-		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' AND users_roles_id_subscription IS NULL`,
-	).Scan(&teamMemberID); err != nil {
-		t.Fatalf("resolve grp_team_member: %v", err)
+	// Create an isolated tenant-custom role with zero page grants. The
+	// subscription scope keeps the row out of the system-role pool and
+	// out of the way of any seeded grants for system roles.
+	tenantID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO subscriptions (id, name, slug, is_active)
+		VALUES ($1, 'nav-test-tenant', $2, true)
+	`, tenantID, fmt.Sprintf("nav-test-%s", tenantID.String()[:8])); err != nil {
+		t.Fatalf("seed subscription: %v", err)
 	}
+	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, tenantID)
+
+	var isolatedRoleID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, 'isolated-test-role', 'Isolated Test Role', 'no grants', 5, FALSE, FALSE)
+		RETURNING users_roles_id
+	`, tenantID).Scan(&isolatedRoleID); err != nil {
+		t.Fatalf("seed isolated role: %v", err)
+	}
+
+	// With no grants, the catalogue must be empty.
+	entries := reg.CatalogFor(isolatedRoleID, uuid.Nil)
+	if len(entries) != 0 {
+		var keys []string
+		for _, e := range entries {
+			keys = append(keys, e.Key)
+		}
+		t.Fatalf("isolated role with no grants must see zero catalogue entries (got %v)", keys)
+	}
+
+	// grp_global is seeded with comprehensive grants; sanity-check we
+	// still see at least one admin-tag page (proves the role filter
+	// admits, not just denies).
+	var grpGlobalID uuid.UUID
 	if err := pool.QueryRow(ctx,
 		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_global' AND users_roles_id_subscription IS NULL`,
 	).Scan(&grpGlobalID); err != nil {
 		t.Fatalf("resolve grp_global: %v", err)
-	}
-
-	userEntries := reg.CatalogFor(teamMemberID, uuid.Nil)
-	for _, e := range userEntries {
-		if e.Key == "dev-security-audits" {
-			t.Fatal("grp_team_member should not see dev-security-audits entry")
-		}
 	}
 	gadminEntries := reg.CatalogFor(grpGlobalID, uuid.Nil)
 	foundGadminOnly := false
@@ -445,51 +500,44 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 	}
 }
 
-// TestTagsFor_AdminTierFiltering — server-side authoritative gate for
-// the admin-tier rail filter. A client cannot tamper its way to seeing
-// admin tag enums; if a user's auth_level is too low the tag is dropped
-// from the /nav/catalogue response entirely.
+// TestTagsFor_PageGrantDerived — PLA-0053 (B5.12): server-side authoritative
+// gate for the nav rail's tag buckets. The previous tier filter (rank →
+// auth_level vs. min_auth_level) is gone; tag visibility is now derived
+// from page-grant fan-out — a tag is emitted iff the caller has at least
+// one page granted under it via users_roles_pages.
 //
-// Migration 221 seeded:
-//   vector_admin    → 1 (Vector Admin)
-//   user_management → 1
-//   dev_tools       → 1
-//   workspace_admin → 2 (Workspace Admin)
-//   everything else → 3 (Everyone)
+// Procurement / SOC2 narrative: a tampered client cannot re-introduce
+// admin tags it has zero granted pages for. The server never emits those
+// tag enums; enumerating admin surfaces is impossible without a grant.
 //
-// Role rank → auth_level mapping (registry.authLevelFor):
-//   grp_global    (rank 70) → 1   — sees levels 1, 2, 3
-//   grp_portfolio (rank 60) → 2   — sees levels 2, 3
-//   grp_team_member (rank 30) → 3 — sees level 3 only
-//
-// This test is the procurement-evidence pin: if anyone changes the
-// thresholds or filtering logic, the assertions below must be updated
-// deliberately, not silently.
-func TestTagsFor_AdminTierFiltering(t *testing.T) {
+// Uses an isolated tenant-custom role rather than system roles so the
+// seeded grant state of grp_team_member / grp_global doesn't drift the
+// assertions over time. The isolated role starts with zero grants and
+// the test grants exactly one page to it; only that tag must surface.
+func TestTagsFor_PageGrantDerived(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
 	svc := newSvc(t, pool)
 
 	ctx := context.Background()
-	reg, err := svc.Registry.Get(ctx)
-	if err != nil {
-		t.Fatalf("registry get: %v", err)
-	}
 
-	resolveRole := func(code string) uuid.UUID {
-		var id uuid.UUID
-		if err := pool.QueryRow(ctx,
-			`SELECT users_roles_id FROM users_roles WHERE users_roles_code = $1 AND users_roles_id_subscription IS NULL`,
-			code,
-		).Scan(&id); err != nil {
-			t.Fatalf("resolve role %q: %v", code, err)
-		}
-		return id
+	tenantID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO subscriptions (id, name, slug, is_active)
+		VALUES ($1, 'tagsfor-test-tenant', $2, true)
+	`, tenantID, fmt.Sprintf("tagsfor-test-%s", tenantID.String()[:8])); err != nil {
+		t.Fatalf("seed subscription: %v", err)
 	}
+	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, tenantID)
 
-	gadminID := resolveRole("grp_global")
-	padminID := resolveRole("grp_portfolio")
-	userID := resolveRole("grp_team_member")
+	var isolatedRoleID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, 'tagsfor-isolated', 'TagsFor Isolated', 'one-grant test role', 5, FALSE, FALSE)
+		RETURNING users_roles_id
+	`, tenantID).Scan(&isolatedRoleID); err != nil {
+		t.Fatalf("seed isolated role: %v", err)
+	}
 
 	enums := func(tags []TagGroup) map[string]bool {
 		m := make(map[string]bool, len(tags))
@@ -499,103 +547,122 @@ func TestTagsFor_AdminTierFiltering(t *testing.T) {
 		return m
 	}
 
-	tier1 := []string{"vector_admin", "user_management", "dev_tools"}
-	tier2 := []string{"workspace_admin"}
-	tier3UserFacing := []string{"personal", "planning", "strategy", "bookmarks"}
-
-	t.Run("gadmin sees every admin tag", func(t *testing.T) {
-		got := enums(reg.TagsFor(gadminID))
-		for _, want := range append(append([]string{}, tier1...), tier2...) {
-			if !got[want] {
-				t.Errorf("gadmin missing admin tag %q (have: %v)", want, got)
-			}
+	t.Run("no grants → empty tag list", func(t *testing.T) {
+		// Refresh the registry so the new role is in the rank map.
+		if _, err := svc.Registry.Load(ctx); err != nil {
+			t.Fatalf("registry load: %v", err)
 		}
-		for _, want := range tier3UserFacing {
-			if !got[want] {
-				t.Errorf("gadmin missing user-facing tag %q (have: %v)", want, got)
+		reg, _ := svc.Registry.Get(ctx)
+		got := enums(reg.TagsFor(isolatedRoleID, uuid.Nil))
+		if len(got) != 0 {
+			t.Errorf("isolated role with zero grants must see no tags (got %v)", got)
+		}
+	})
+
+	t.Run("one grant under personal → only personal tag appears", func(t *testing.T) {
+		// Grant the role exactly one page (dashboard, under 'personal').
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
+			SELECT id, $1 FROM pages WHERE key_enum = 'dashboard' AND created_by IS NULL AND subscription_id IS NULL
+		`, isolatedRoleID); err != nil {
+			t.Fatalf("grant dashboard: %v", err)
+		}
+		if _, err := svc.Registry.Load(ctx); err != nil {
+			t.Fatalf("registry load: %v", err)
+		}
+		reg, _ := svc.Registry.Get(ctx)
+		got := enums(reg.TagsFor(isolatedRoleID, uuid.Nil))
+		if !got["personal"] {
+			t.Errorf("expected 'personal' tag visible (have %v)", got)
+		}
+		for _, banned := range []string{"vector_admin", "user_management", "workspace_admin", "dev_tools", "planning"} {
+			if got[banned] {
+				t.Errorf("tag %q must not appear — no grants under it (have %v)", banned, got)
 			}
 		}
 	})
 
-	t.Run("padmin sees workspace_admin but not Vector-tier admin tags", func(t *testing.T) {
-		got := enums(reg.TagsFor(padminID))
-		for _, banned := range tier1 {
-			if got[banned] {
-				t.Errorf("padmin must not see %q (it is auth_level=1)", banned)
-			}
-		}
-		for _, want := range tier2 {
-			if !got[want] {
-				t.Errorf("padmin missing %q (auth_level=2 should be visible)", want)
-			}
-		}
-		for _, want := range tier3UserFacing {
-			if !got[want] {
-				t.Errorf("padmin missing user-facing tag %q", want)
-			}
-		}
-	})
-
-	t.Run("team member sees no admin tags at all", func(t *testing.T) {
-		got := enums(reg.TagsFor(userID))
-		for _, banned := range append(append([]string{}, tier1...), tier2...) {
-			if got[banned] {
-				t.Errorf("team member must not see admin tag %q", banned)
-			}
-		}
-		for _, want := range tier3UserFacing {
-			if !got[want] {
-				t.Errorf("team member missing user-facing tag %q", want)
-			}
-		}
-	})
-
-	t.Run("unknown roleID falls back to tier 3", func(t *testing.T) {
-		got := enums(reg.TagsFor(uuid.New()))
-		for _, banned := range append(append([]string{}, tier1...), tier2...) {
-			if got[banned] {
-				t.Errorf("unknown role must not see admin tag %q (defaults to tier 3)", banned)
-			}
+	t.Run("unknown roleID sees nothing", func(t *testing.T) {
+		reg, _ := svc.Registry.Get(ctx)
+		got := enums(reg.TagsFor(uuid.New(), uuid.Nil))
+		if len(got) != 0 {
+			t.Errorf("unknown role must not see any tags (got %v)", got)
 		}
 	})
 }
 
-// TestCatalogFor_DropsAdminPagesForLowerTier — the tag gate also applies
-// to catalogue entries. A Team Member's response must not contain pages
-// whose tag is gated above their auth_level, even if those pages would
-// otherwise pass the per-page role grant check. This is the second leg
-// of the procurement-evidence pin (alongside TestTagsFor_AdminTierFiltering).
-func TestCatalogFor_DropsAdminPagesForLowerTier(t *testing.T) {
+// TestCatalogFor_PageGrantIsSoleGate — PLA-0053 (B5.12): the catalogue
+// gate is now exclusively users_roles_pages. A role with one grant must
+// see exactly that page; revoking the grant must remove it. No silent
+// tier override exists.
+func TestCatalogFor_PageGrantIsSoleGate(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
 	svc := newSvc(t, pool)
 
 	ctx := context.Background()
-	reg, err := svc.Registry.Get(ctx)
-	if err != nil {
-		t.Fatalf("registry get: %v", err)
+
+	tenantID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO subscriptions (id, name, slug, is_active)
+		VALUES ($1, 'sole-gate-tenant', $2, true)
+	`, tenantID, fmt.Sprintf("sole-gate-%s", tenantID.String()[:8])); err != nil {
+		t.Fatalf("seed subscription: %v", err)
+	}
+	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, tenantID)
+
+	var roleID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users_roles (users_roles_id_subscription, users_roles_code, users_roles_label, users_roles_description, users_roles_rank, users_roles_is_system, users_roles_is_external)
+		VALUES ($1, 'sole-gate-role', 'Sole Gate Role', 'grant/revoke test', 5, FALSE, FALSE)
+		RETURNING users_roles_id
+	`, tenantID).Scan(&roleID); err != nil {
+		t.Fatalf("seed role: %v", err)
 	}
 
-	var userID uuid.UUID
-	if err := pool.QueryRow(ctx,
-		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' AND users_roles_id_subscription IS NULL`,
-	).Scan(&userID); err != nil {
-		t.Fatalf("resolve grp_team_member: %v", err)
+	// Step 1 — no grants, empty catalogue.
+	if _, err := svc.Registry.Load(ctx); err != nil {
+		t.Fatalf("registry load 1: %v", err)
+	}
+	reg, _ := svc.Registry.Get(ctx)
+	if entries := reg.CatalogFor(roleID, uuid.Nil); len(entries) != 0 {
+		t.Errorf("step 1: expected empty catalogue, got %d entries", len(entries))
 	}
 
-	// Admin tag enums a team member must never see in catalogue entries.
-	forbidden := map[string]bool{
-		"vector_admin":    true,
-		"user_management": true,
-		"workspace_admin": true,
-		"dev_tools":       true,
+	// Step 2 — grant dev-security-audits (an admin-tag page). It must appear.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
+		SELECT id, $1 FROM pages WHERE key_enum = 'dev-security-audits' AND created_by IS NULL AND subscription_id IS NULL
+	`, roleID); err != nil {
+		t.Fatalf("grant dev-security-audits: %v", err)
 	}
-
-	entries := reg.CatalogFor(userID, uuid.Nil)
+	if _, err := svc.Registry.Load(ctx); err != nil {
+		t.Fatalf("registry load 2: %v", err)
+	}
+	reg, _ = svc.Registry.Get(ctx)
+	entries := reg.CatalogFor(roleID, uuid.Nil)
+	foundSA := false
 	for _, e := range entries {
-		if forbidden[e.TagEnum] {
-			t.Errorf("team member must not see catalogue entry %q under admin tag %q", e.Key, e.TagEnum)
+		if e.Key == "dev-security-audits" {
+			foundSA = true
 		}
+	}
+	if !foundSA {
+		t.Error("step 2: after granting dev-security-audits the page must appear in catalogue (no tier override)")
+	}
+
+	// Step 3 — revoke. The page must disappear.
+	if _, err := pool.Exec(ctx, `
+		DELETE FROM users_roles_pages WHERE users_roles_pages_id_role = $1
+	`, roleID); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	if _, err := svc.Registry.Load(ctx); err != nil {
+		t.Fatalf("registry load 3: %v", err)
+	}
+	reg, _ = svc.Registry.Get(ctx)
+	if entries := reg.CatalogFor(roleID, uuid.Nil); len(entries) != 0 {
+		t.Errorf("step 3: after revoke catalogue must be empty (got %d entries)", len(entries))
 	}
 }
 

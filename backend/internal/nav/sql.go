@@ -256,25 +256,17 @@ const sqlListPortfoliosAndProductsInTenant = `
 // sqlListPageTags returns the page_tags catalogue in default order.
 // Used by LoadRegistry as the first hop before joining pages.
 // pages_tags_env_only is TD-NAV-001: env restriction (NULL = visible everywhere).
+// pages_tags_min_auth_level is INERT as of migration 228 (PLA-0053) —
+// the tier gate has been collapsed; tag visibility is derived from
+// page-grant fan-out in Registry.TagsFor. Column is not scanned.
 const sqlListPageTags = `
 		SELECT pages_tags_tag_enum,
 		       pages_tags_display_name,
 		       pages_tags_default_order,
 		       pages_tags_is_admin_menu,
-		       pages_tags_min_auth_level,
 		       pages_tags_env_only
 		FROM pages_tags
 		ORDER BY pages_tags_default_order
-	`
-
-// sqlListRoleRanks returns (id, rank) for every users_roles row, both
-// system and tenant-custom. Used by the nav registry to derive the
-// caller's auth_level at request time without an extra DB round trip.
-// Rank is the privilege number (Global Admin = 70, Portfolio Manager =
-// 60, etc.); the registry maps rank → auth_level (1/2/3) when filtering.
-const sqlListRoleRanks = `
-		SELECT users_roles_id, users_roles_rank
-		FROM users_roles
 	`
 
 // sqlListSystemPagesWithRoles returns every system-scoped or

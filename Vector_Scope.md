@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-19 (Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
-**Doc version:** 2.47
+**Last updated:** 2026-05-19 (Late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
+**Doc version:** 2.49
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -2543,6 +2543,65 @@ Full lifecycle management for tasks, bugs, epics.
   - **B1.8.6** Reports — blocked-time on cycle/lead time and "currently blocked" filter `[P3]`
     > Cycle-time/lead-time reports subtract blocked windows. List views get `blocked = true/false` filter. Blocked items surface at the top of stale-work reports.
     >
+- **B1.9** Unified `/artefacts` REST API — single CRUD surface for every artefact type (work + strategy) `[P2]`
+
+  > **Why:** today's create/edit/delete is split across `/work-items` (work scope) and `/portfolio-items` (strategy scope), each with its own clamp wiring. Same Go service runs behind both, instantiated twice. The flyout being designed for ObjectTree on `/work-items` will also need to work on `/portfolio-items` — without consolidation we either build the flyout twice or hardcode it to the wrong abstraction. Scope (work/strategy) belongs on the `artefact_types` record, not on the URL. One REST surface keeps the client uniform, gives audit/SOC2 a single clamp story ("every write goes through one chokepoint"), and unblocks the kill of the legacy `item_type` string discriminator.
+  >
+  > **What:** one resource `/artefacts` with full CRUD + intent verbs. The payload carries `artefact_type_id` (UUID); the server reads `scope` off the type record and gates accordingly. Tenant/workspace/permission clamp runs as middleware on every route — structurally impossible to bypass.
+  >
+  > **Routes:**
+  > - `POST   /artefacts` — create (was `POST /work-items`, `POST /portfolio-items`)
+  > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
+  > - `GET    /artefacts/:id` — read one
+  > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
+  > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
+  > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
+  > - `POST   /artefacts/:id/reparent` — change parent_id; clamp validates new parent in same tenant/workspace
+  > - `POST   /artefacts/:id/restore` — unarchive
+  > - `POST   /artefacts/:id/move` — change workspace_id (padmin-gated, rare)
+  >
+  > **The clamp (server-side, every route):**
+  > 1. Session → actor (existing middleware)
+  > 2. Tenant clamp — `subscription_id` from actor, never payload
+  > 3. Resolve `artefact_type_id` against `vector_artefacts.artefact_types WHERE subscription_id = $actor` — 404 if not the actor's
+  > 4. Scope derived from type record, not URL
+  > 5. Workspace clamp from actor's grants
+  > 6. Permission check (`users_roles_permissions` join) per action
+  > 7. Parent FK validation (same tenant + workspace if provided)
+  > 8. Custom-field validation (field is assigned to this type; value matches type contract)
+  > 9. Allocate per-type number (existing self-healing allocator)
+  > 10. INSERT inside transaction (artefact + field_values + search_outbox)
+  > 11. Realtime push on commit
+  >
+  > **Migration sequencing (each story independently shippable, no big-bang):**
+  >
+  - **B1.9.1** `POST /artefacts` route + clamp middleware + tests `[P2]`
+    > Build new route alongside existing endpoints. ObjectTree create flyout calls this from day one. Old `POST /work-items` and `POST /portfolio-items` keep working untouched. New `createArtefactReq` accepts `artefact_type_id` (UUID), not `item_type` (string). Service refactor so `CreateArtefact` reads scope off the type record, no longer instantiated twice with hardcoded scope.
+    >
+  - **B1.9.2** `PATCH /artefacts/:id` route — migrate existing patch logic `[P2]`
+    > Existing `/work-items/:id` and `/portfolio-items/:id` PATCH become thin shims that delegate to the unified handler. Tests for both legacy and new during transition.
+    >
+  - **B1.9.3** `DELETE /artefacts/:id` (soft-delete) + `POST /restore` `[P2]`
+    > Sets `archived_at = now()`. Existing soft-delete behaviour preserved. Restore reverses.
+    >
+  - **B1.9.4** Intent verbs — `/reprioritise`, `/reparent`, `/move` `[P3]`
+    > Replaces ad-hoc ranking endpoints listed in `docs/c_c_ranking.md`. Each verb fires realtime + audit. Move is padmin-gated.
+    >
+  - **B1.9.5** Frontend cutover — `apiSite('/artefacts', ...)` replaces split callers `[P2]`
+    > ObjectTree, work-item detail panel, portfolio-item detail panel, bulk-action bar, drag-and-drop hooks. Per the `item_type` audit there are ~13 frontend files referencing the legacy paths.
+    >
+  - **B1.9.6** Retire legacy routes — delete `/work-items` and `/portfolio-items` POST/PATCH/DELETE `[P3]`
+    > Final cleanup once every caller has moved. Grep + delete + test. Leaves `/work-items` and `/portfolio-items` GET (list endpoints) until B1.9.7.
+    >
+  - **B1.9.7** Migrate GET surface — `GET /artefacts?artefact_type_id=…&scope=work` `[P3]`
+    > List endpoint consolidation. The `?item_type_id=` filter param (per the audit, already half-migrated to UUID list) becomes `?artefact_type_id=`. List response shape unchanged.
+    >
+  - **B1.9.8** Kill `item_type` column — schema migration + drop CHECK + drop `idx_o_wi_type` `[P3]`
+    > Per the audit: drops the legacy TEXT discriminator from `o_artefacts_execution_work_items`, removes the CHECK constraint and the `(subscription_id, item_type)` index. Safe once no route reads or writes it. Backfill icon overrides in `subscription_item_type_icons` to use `artefact_type_id` FK. New TD entry `TD-ITEMTYPE-KILL` opens with the audit reference; this story closes it.
+    >
+  - **B1.9.9** Audit-trail doc + procurement narrative `[P3]`
+    > Short doc in `docs/c_c_artefacts_api_clamp.md` explaining the single-chokepoint model for SOC2/defence-finance evidence. Diagrams the middleware chain. Cross-link from `docs/c_security.md` and `docs/c_c_backend_validation.md`.
+    >
 
 ---
 
@@ -2694,6 +2753,12 @@ Full lifecycle management for tasks, bugs, epics.
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
+- **B5.11** Migration: drop `pages_tags.pages_tags_min_auth_level` from the catalogue gate path (PLA-0053; column kept nullable for rollback). `pages_tags_is_admin_menu` is **kept** — still used by `UserAvatarMenu` to route avatar/notification buckets (separate concern from page-access gating). `[P2]`
+- **B5.12** Backend: remove `authLevelFor` / `TagsFor` tier filter / `CatalogFor` tier filter from `backend/internal/nav/registry.go`; `users_roles_pages` becomes the sole catalogue gate (PLA-0053) `[P2]`
+- **B5.13** Frontend: remove `deriveAuthLevel` + `userAuthLevel` filter from `app/redesign/ShellContext.tsx`; tag bucket appears iff it contains ≥1 page in `pages` array (PLA-0053) `[P2]`
+- **B5.14** Permissions page UX: confirm `/user-management/permissions` matrix is the sole authoring surface for `users_roles_pages` — banner copy + remove tier-tier UI hints from related screens (PLA-0053) `[P2]`
+- **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
+- **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
 > Commit `a5237f1` (2026-05-12): feat(PLA-0045): shared methods catalogue substrate — directories, lint allow-list, scope rows [B18.7]
@@ -3863,6 +3928,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 - ✅ ~~**B20.5.L** Dual-mount api-key auth on `/_site` — `apikeys.Middleware` grows an optional `UserSynth` parameter; main.go wires a closure that calls new `auth.Service.FindServiceUserForSubscription` (highest-tier active user by `users_roles_rank`) and seeds `auth.UserFromCtx` via new `auth.WithUserForServiceAuth`. Same key now authenticates against the full 268-endpoint surface for Scalar.~~ `[P1]`
   > Shipped 2026-05-19 in commit 196906a. Backend tests green (apikeys + auth + full suite minus pre-existing unrelated F3_DTO_IncludesSlot failure). Pre-commit auto-sync hook fired correctly during the commit (validation pass).
   > Last checked: 2026-05-19
+
+- ✅ ~~**B20.5.M** `POST /_site/work-items` writer parity + CSRF carve-out for api-key bearer — three holes closed: (1) **`?meg=<topology_node>` writer**: `handler.Create` parses the meg query param (same precedence as List: `meg` preferred, `scope` legacy fallback); `CreateWorkItemInput` gains `TopologyNodeID *string` + `ActorRoleID`; service validates the node belongs to the resolved workspace AND the actor holds a grant on it via `topology.CanReadScope` (mirrors the read-path contract, returns `ErrScopeForbidden`/`ErrScopeNodeNotFound`); `sqlInsertArtefact` adds `topology_node_id` as col #15. Without this, every Create-via-api-key inserted a zombie row with NULL `topology_node_id` — visible to unscoped reads but invisible to per-node clamps (defence/finance Trust-No-One gap). (2) **`X-Act-As: <user-uuid>` header** for api-key callers lets the dev key seed on behalf of any user on the subscription; honoured only when the request authenticated via api-key (CtxKeySubscriptionID present), silently ignored on JWT paths. (3) **CSRF bypass for `Authorization: Bearer sam_live_*`**: `security.CSRF` now skips the cookie double-submit check for api-key bearer callers — cookie-CSRF is structurally inapplicable to header-bearer auth (browsers don't auto-attach cross-origin). SPA cookie-auth paths unchanged. (4) **Wire response**: `WorkItem.topology_node_id *string` added so callers can verify the clamp landed. Specs regenerated; auto-curator drift on POST/GET `/work-items` filed as `TD-SPECSYNC-HANDLER-AMBIGUITY` (closure-mounted routes match symbol-by-name, picks wrong package). Seed verified: 30-item tree (2 epics × 2 stories × {3 tasks + 1 defect × 2 def-tasks}) clamped to Insurance topology node, owned by user@mmffdev.com.~~ `[P1]`
+  > Shipped 2026-05-19. Tests: 4 new artefactitems integration tests (happy + grant-denied + node-not-found + no-resolver-wired); 5 new security tests (api-key bypass + cookie-auth still required + JWT bearer still required + safe methods + isAPIKeyBearer unit). Full artefactitems + security suites green.
 
 ---
 

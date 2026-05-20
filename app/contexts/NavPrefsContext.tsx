@@ -24,11 +24,10 @@ export interface NavTagGroup {
   label: string;
   defaultOrder: number;
   isAdminMenu: boolean;
-  // Minimum admin tier required to see this tag on the primary nav rail.
-  // 1 = Vector Admin (Global Admin role only), 2 = Workspace Admin
-  // (Portfolio Manager and above), 3 = Everyone. ShellContext compares
-  // against the current user's derived auth_level.
-  minAuthLevel: number;
+  // PLA-0053 (B5.13): minAuthLevel was removed. Tag visibility is decided
+  // server-side from users_roles_pages grants — the /nav/catalogue payload
+  // only carries tags the caller has ≥1 page granted in. There is no
+  // client-side tier filter anymore.
 }
 
 export interface PrefRow {

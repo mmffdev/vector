@@ -321,6 +321,8 @@ export default function PermissionsPage() {
       />
       <PageDescription>
         Tick a cell to grant a role access to a page. Bucket-row checkboxes toggle every page in the bucket at once. Saves on click.
+        {" "}
+        <strong>This is the only place page access is configured</strong> — a tick here is the authoritative grant (server enforced via <code>users_roles_pages</code>); a user sees a page if and only if their role has the row.
       </PageDescription>
 
       <Panel

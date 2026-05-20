@@ -56,7 +56,7 @@ func (h *Handler) Catalogue(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, catalogueResp{
 		Catalogue: cat,
-		Tags:      reg.TagsFor(u.RoleID),
+		Tags:      reg.TagsFor(u.RoleID, u.SubscriptionID),
 	})
 }
 

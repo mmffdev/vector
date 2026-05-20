@@ -3,18 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useNavPrefs, type NavCatalogEntry, type NavTagGroup, type PrefRow } from "@/app/contexts/NavPrefsContext";
-import { useAuth } from "@/app/contexts/AuthContext";
 
-// Map the user's role rank to the admin tier used by pages_tags.min_auth_level.
-// Lower number = higher privilege. Global Admin (rank 70) → 1, Portfolio
-// Manager (rank 60) → 2, everyone else → 3. A user sees a tag iff
-// tag.minAuthLevel >= userAuthLevel.
-function deriveAuthLevel(roleRank: number | undefined | null): number {
-  if (roleRank == null) return 3;
-  if (roleRank >= 70) return 1;
-  if (roleRank >= 60) return 2;
-  return 3;
-}
+// PLA-0053 (B5.13): the min_auth_level tier gate has been collapsed.
+// Page-visibility is now decided server-side from users_roles_pages alone —
+// the /nav/catalogue payload only includes pages (and tags) the caller is
+// granted via the permissions matrix at /user-management/permissions. The
+// rail accepts the payload as authoritative; no client-side tier filter.
 
 /** Sentinel ID for the account flyout slot — not a real customGroup. */
 export const ACCOUNT_SECTION_ID = "__account";
@@ -141,11 +135,6 @@ function sectionForPath(sections: ShellSection[], pathname: string): ShellSectio
 export function ShellProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const { prefs, customGroups, catalogue, tags, profileGroups } = useNavPrefs();
-  const { user } = useAuth();
-  const userAuthLevel = useMemo(
-    () => deriveAuthLevel(user?.role?.rank),
-    [user?.role?.rank],
-  );
 
   const catalogueByKey = useMemo(() => {
     const m = new Map<string, NavCatalogEntry>();
@@ -176,11 +165,12 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     for (const p of ordered) {
       if (p.tag_enum) {
         const tag = tagByEnum.get(p.tag_enum);
+        // PLA-0053 (B5.13): tier filter removed. The /nav/catalogue
+        // payload server-side guarantees tags only appear when the
+        // caller has ≥1 granted page in them, so the rail trusts the
+        // payload. isAdminMenu still skipped because those route to
+        // the avatar dropdown, not the rail.
         if (!tag || tag.isAdminMenu) continue;
-        // Admin-tier gate: tag.minAuthLevel = 1 (Vector Admin), 2
-        // (Workspace Admin), 3 (everyone). User passes if their derived
-        // auth_level ≤ the tag's required level.
-        if (userAuthLevel > tag.minAuthLevel) continue;
         placedTags.add(tag.enum);
         out.push({
           id: `tag:${tag.enum}`,
@@ -208,7 +198,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     // that IS in profileGroups is rendered even when empty so the rail
     // honours the user's choice.
     for (const t of [...tags]
-      .filter((tt) => !tt.isAdminMenu && userAuthLevel <= tt.minAuthLevel)
+      .filter((tt) => !tt.isAdminMenu)
       .sort((a, b) => a.defaultOrder - b.defaultOrder)) {
       if (placedTags.has(t.enum)) continue;
       const pages = pagesForTag(t.enum, prefs, catalogueByKey);
@@ -231,7 +221,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     }
 
     return out;
-  }, [profileGroups, tags, customGroups, prefs, catalogueByKey, tagByEnum, customGroupById, userAuthLevel]);
+  }, [profileGroups, tags, customGroups, prefs, catalogueByKey, tagByEnum, customGroupById]);
 
   const bookmarkPages = useMemo<ShellPage[]>(() => {
     const result: ShellPage[] = [];
