@@ -721,6 +721,11 @@ export const workItems = {
   listChildren: (id: ID) =>
     apiSite<{ items: unknown[] }>(`/work-items/${id}/children`),
 
+  // Parent chain — immediate-parent-first up to topmost ancestor.
+  // Slim projection used by ArtefactNodeDiagram.
+  listAncestors: (id: ID) =>
+    apiSite<{ ancestors: unknown[] }>(`/work-items/${id}/ancestors`),
+
   bulk: (data: unknown) =>
     apiSite<unknown>("/work-items/bulk", { method: "POST", body: JSON.stringify(data) }),
 
@@ -775,6 +780,9 @@ export const portfolioItems = {
 
   listChildren: (id: ID) =>
     apiSite<{ items: unknown[] }>(`/portfolio-items/${id}/children`),
+
+  listAncestors: (id: ID) =>
+    apiSite<{ ancestors: unknown[] }>(`/portfolio-items/${id}/ancestors`),
 
   getFieldValues: (id: ID) =>
     apiSite<{ field_values: unknown[] }>(`/portfolio-items/${id}/field-values`),

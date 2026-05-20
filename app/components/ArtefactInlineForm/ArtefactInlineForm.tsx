@@ -405,11 +405,22 @@ export function ArtefactInlineForm({
           </label>
 
           <label className="artefact-inline-form__Field">
-            <span className="artefact-inline-form__Field_Label">Flow state</span>
+            <span className="artefact-inline-form__Field_Label">
+              Flow state
+              {(artefact.children_count ?? 0) > 0 && (
+                <span
+                  className="artefact-inline-form__Field_Label_Hint"
+                  title="Derived from children — change a child's state to update this row"
+                >
+                  &nbsp;(derived from children)
+                </span>
+              )}
+            </span>
             <select
               className="artefact-inline-form__Field_Input"
               value={artefact.flow_state_id ?? ""}
               onChange={(e) => patch({ flow_state_id: e.target.value })}
+              disabled={(artefact.children_count ?? 0) > 0}
             >
               <option value="">— None —</option>
               {flowStates.map((fs) => (

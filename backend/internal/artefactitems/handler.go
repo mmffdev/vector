@@ -272,6 +272,30 @@ func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
 }
 
+// ListAncestors handles GET /_site/work-items/{id}/ancestors. Returns
+// the slim parent chain (immediate-parent-first) used by the
+// ArtefactNodeDiagram to render the hierarchy above the selected row.
+// One round-trip regardless of depth via a recursive CTE on the SQL
+// side. Subscription clamp enforced inside the query, no separate
+// scope check needed for read-by-ancestry.
+func (h *Handler) ListAncestors(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
+		return
+	}
+	ancestors, err := h.svc.ListAncestors(r.Context(), subID, id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"ancestors": ancestors})
+}
+
 // Summary handles GET /api/v2/work-items/summary.
 //
 // PLA-0043 / 2026-05-18 — when `?scope=<uuid>` is on the request, the
@@ -552,6 +576,22 @@ type patchWorkItemReq struct {
 	OwnedByUserID    *string         `json:"owned_by_user_id,omitempty"`
 	ParentArtefactID *string         `json:"parent_artefact_id,omitempty"`
 	TopologyNodeID   *string         `json:"topology_node_id,omitempty"`
+	// DescriptionDoc — TipTap (ProseMirror) JSON. RawMessage so we
+	// don't decode it; pass-through to the service which writes it
+	// verbatim into the JSONB column. nil = field absent; "null" or
+	// "{}" = clear to NULL; any other JSON = store as-is.
+	DescriptionDoc   json.RawMessage `json:"description_doc,omitempty"`
+}
+
+// ptrRawMessage returns a pointer to the raw JSON when the caller sent
+// the field at all (len > 0), nil otherwise. Lets the service-layer
+// three-state convention (nil = skip, present = write) work cleanly
+// against the omitempty JSON tag above.
+func ptrRawMessage(r json.RawMessage) *json.RawMessage {
+	if len(r) == 0 {
+		return nil
+	}
+	return &r
 }
 
 // Patch handles PATCH /api/v2/work-items/{id}.
@@ -603,12 +643,19 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		OwnedByUserID:    req.OwnedByUserID,
 		ParentArtefactID: req.ParentArtefactID,
 		TopologyNodeID:   req.TopologyNodeID,
+		DescriptionDoc:   ptrRawMessage(req.DescriptionDoc),
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"error":"not found"}`))
+		case errors.Is(err, ErrParentFlowStateDerived):
+			// 409 — the row has live children, so its flow state is
+			// derived from them (work flows up). Frontend pill row is
+			// also locked for parented rows; this is defence-in-depth.
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`{"error":"parent_flow_state_derived","detail":"This artefact has children — its state is derived from them and cannot be set manually."}`))
 		case errors.Is(err, ErrInvalidInput):
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write(jsonErrBody(err))

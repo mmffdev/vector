@@ -5,6 +5,7 @@
 package artefactitems
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -25,6 +26,12 @@ var (
 	// ErrScopeNodeNotFound — ?scope=<id> points at a node missing or in
 	// another tenant. Handler maps to 404 (PLA-0043).
 	ErrScopeNodeNotFound = errors.New("scope node not found")
+	// ErrParentFlowStateDerived — caller tried to PATCH flow_state_id on
+	// an artefact that has live children. Per the cascade rule, a parented
+	// row's flow state is derived from its children (work flows UP), so
+	// manual writes are rejected. Handler maps to 409. Server-side gate;
+	// the frontend pill row is also locked but defence-in-depth here.
+	ErrParentFlowStateDerived = errors.New("flow state is derived from children")
 )
 
 // WorkItem is the wire representation of obj_work_items.
@@ -52,6 +59,11 @@ type WorkItem struct {
 	// the "first work-scoped type" fallback). Always non-empty post-
 	// migration (artefacts.artefact_type_id is NOT NULL).
 	ArtefactTypeID string     `json:"artefact_type_id"`
+	// DescriptionDoc — TipTap (ProseMirror) JSON document for the rich
+	// description. When set takes precedence over Description (TEXT).
+	// Wire shape is opaque JSON; the frontend RichTextField owns its
+	// schema validation. Backend just stores/returns it verbatim.
+	DescriptionDoc *json.RawMessage `json:"description_doc"`
 	Title          string     `json:"title"`
 	Description    *string    `json:"description"`
 	Status         string     `json:"status"`
@@ -268,6 +280,11 @@ type PatchWorkItemInput struct {
 	OwnedByUserID     *string
 	ParentArtefactID  *string
 	TopologyNodeID    *string
+	// DescriptionDoc — TipTap JSON. Pointer so PATCH can distinguish
+	// "unchanged" (nil) from "explicit clear" (a json.RawMessage of
+	// length 0 or "null"). The service treats "null" or empty as a
+	// SET to NULL; any other payload is stored verbatim.
+	DescriptionDoc *json.RawMessage
 }
 
 // Sprint is the wire representation of the sprints table.
@@ -392,6 +409,19 @@ type FieldValue struct {
 	NumberValue    *string `json:"number_value,omitempty"`
 	TextValue      *string `json:"text_value,omitempty"`
 	DateValue      *string `json:"date_value,omitempty"`
+}
+
+// AncestorRef is the slim wire shape returned by GET /work-items/{id}/ancestors.
+// Used by ArtefactNodeDiagram on the frontend to render the parent
+// chain above the selected artefact. Ordered immediate-parent-first
+// (depth=1) up to the topmost ancestor — so callers can render top-
+// down by reversing the array.
+type AncestorRef struct {
+	ID         string  `json:"id"`
+	TypePrefix string  `json:"type_prefix"`
+	KeyNum     int64   `json:"key_num"`
+	Title      string  `json:"title"`
+	ParentID   *string `json:"parent_id"`
 }
 
 // WorkItemFlowState is a slim projection of flows_states scoped to the

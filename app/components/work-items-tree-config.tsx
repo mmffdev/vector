@@ -13,7 +13,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/md";
-import { apiSite } from "@/app/lib/api";
+import { apiSite, ApiError } from "@/app/lib/api";
+import { notify } from "@/app/lib/toast";
 import { useUserPreference } from "@/app/hooks/useUserPreference";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
@@ -336,12 +337,18 @@ function StatusCell({
   const states =
     (row.artefact_type_id && flowStatesByType?.get(row.artefact_type_id)) ||
     flowStates;
+  // Execution-zone rows with live children have a DERIVED flow state —
+  // the cascade owns it (work flows up). Lock the pill row so the user
+  // can't try to set it manually (backend also rejects with 409 if they
+  // bypass; this is the friendly UX gate).
+  const isDerived = row.children_count > 0;
   return (
     <FlowStatePillRow
       currentId={row.flow_state_id}
       currentCode={row.flow_state_code}
       states={states}
       onCommit={(next) => onPatch(row.id, { flow_state_id: next })}
+      derived={isDerived}
     />
   );
 }
@@ -968,7 +975,29 @@ export function useArtefactItemsWindow(
           onPatched?.(body);
           if ("story_points" in body) void refetchWindow();
         })
-        .catch(() => { /* swallow — refetch on next push */ });
+        .catch((err: unknown) => {
+          // 409 parent_flow_state_derived — the cascade rejected a
+          // manual flow_state_id write because the row has live
+          // children. The frontend pill row is supposed to be locked
+          // for these rows; this catch is defence-in-depth in case the
+          // UI ever misses the gate. Toast a friendly explanation AND
+          // refetch so the optimistic local update reverts.
+          if (
+            err instanceof ApiError &&
+            err.status === 409 &&
+            typeof err.body === "object" &&
+            err.body !== null &&
+            (err.body as { error?: string }).error === "parent_flow_state_derived"
+          ) {
+            notify.hint(
+              "This artefact's state is set by its children — move a child to change this row.",
+            );
+            void refetchWindow();
+            return;
+          }
+          // Other errors stay silent — same behaviour as before so
+          // unrelated patch failures don't gain a regression here.
+        });
     },
     [resourceUrl, onPatched, refetchWindow],
   );

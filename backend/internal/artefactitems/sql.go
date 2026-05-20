@@ -86,7 +86,8 @@ const sqlWorkItemColumns = `
 	a.is_blocked                            AS is_blocked,
 	a.blocked_reason                        AS blocked_reason,
 	a.artefacts_id_timebox_release::text    AS release_id,
-	a.artefacts_id_timebox_milestone::text  AS milestone_id`
+	a.artefacts_id_timebox_milestone::text  AS milestone_id,
+	a.description_doc                       AS description_doc`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
@@ -115,6 +116,47 @@ const sqlListWorkItemsTemplate = `
 		  AND at.artefacts_types_scope = $2%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
+	`
+
+// sqlSelectAncestors returns the parent chain of an artefact, ordered
+// from immediate parent (depth=1) up to the topmost ancestor. Slim
+// projection — the diagram consumer (ArtefactNodeDiagram) only needs
+// id, type_prefix, key_num, title, parent_id. Uses a recursive CTE so
+// the whole chain comes back in one round-trip regardless of depth.
+//
+// Subscription clamp is enforced on the starting row + walked rows so
+// cross-tenant parent_id values (defensive — shouldn't exist post-RI)
+// halt the walk at the boundary rather than leaking the next row.
+const sqlSelectAncestors = `
+		WITH RECURSIVE chain AS (
+			SELECT
+				a.id, a.parent_artefact_id, a.artefact_type_id, a.number, a.title,
+				1 AS depth
+			FROM artefacts a
+			WHERE a.id = (
+				SELECT parent_artefact_id FROM artefacts
+				WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
+			)
+			  AND a.subscription_id = $2
+			  AND a.archived_at IS NULL
+			UNION ALL
+			SELECT
+				p.id, p.parent_artefact_id, p.artefact_type_id, p.number, p.title,
+				c.depth + 1
+			FROM artefacts p
+			JOIN chain c ON p.id = c.parent_artefact_id
+			WHERE p.subscription_id = $2
+			  AND p.archived_at IS NULL
+		)
+		SELECT
+			c.id::text,
+			at.artefacts_types_prefix AS type_prefix,
+			c.number AS key_num,
+			c.title,
+			c.parent_artefact_id::text AS parent_id
+		FROM chain c
+		JOIN artefacts_types at ON at.artefacts_types_id = c.artefact_type_id
+		ORDER BY c.depth ASC
 	`
 
 // sqlSelectWorkItemByID is the single-row hydration used by GetWorkItem.
@@ -400,6 +442,102 @@ const sqlArchiveArtefact = `
 		UPDATE artefacts
 		SET archived_at = now(), updated_at = now()
 		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
+	`
+
+// ── Flow-state cascade (recalc) ────────────────────────────────────────────
+//
+// Rule (execution-zone artefacts: TA / US / DE / EP only):
+//   - ANY direct live child has flows_states_kind = 'in_progress'
+//     → parent moves to first kind='in_progress' state in its flow.
+//   - ALL direct live children have flows_states_kind = 'done'
+//     → parent moves to first kind='done' state in its flow.
+//   - ALL direct live children have flows_states_kind = 'todo' or 'backlog'
+//     → parent moves to first kind='backlog' (fallback 'todo') in its flow.
+//   - 'accepted' is NEVER set automatically — that's a manual gate.
+//
+// The cascade reads the parent's artefact_type_id (so we know which flow
+// to land in), counts live children, and projects their kinds. A single
+// query returns everything the rule needs in one round-trip.
+//
+// sqlSelectArtefactForRecalc — fetches the row that's about to be recalc'd.
+// Returns: scope (work / strategy), artefact_type_id, current flow_state_id,
+// parent_artefact_id (so the cascade can recurse up), and archived_at
+// (to bail if the row is itself archived — recalc on archived parents
+// is a no-op).
+const sqlSelectArtefactForRecalc = `
+		SELECT
+			at.artefacts_types_scope,
+			a.artefact_type_id,
+			a.flow_state_id,
+			a.parent_artefact_id,
+			a.archived_at
+		FROM artefacts a
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		WHERE a.id = $1 AND a.subscription_id = $2
+	`
+
+// sqlCountChildrenByKind — bucket the parent's LIVE children by canonical
+// kind. Returns one row per kind present. Rows where the child has no
+// flow_state_id (NULL — shouldn't happen post-PLA-0055 but defensive)
+// are bucketed as 'unknown' and ignored by the rule.
+const sqlCountChildrenByKind = `
+		SELECT
+			COALESCE(fs.flows_states_kind, 'unknown') AS kind,
+			count(*) AS n
+		FROM artefacts a
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
+		WHERE a.parent_artefact_id = $1
+		  AND a.subscription_id = $2
+		  AND a.archived_at IS NULL
+		GROUP BY kind
+	`
+
+// sqlSelectFirstFlowStateByKind — finds the first (lowest sort_order)
+// live flow state of the given kind in the artefact-type's default flow.
+// Returns sql.ErrNoRows if the flow doesn't expose that kind (e.g. the
+// Task default flow has no 'backlog' state). The recalc caller treats
+// that as "skip this bucket" rather than fail.
+const sqlSelectFirstFlowStateByKind = `
+		SELECT fs.flows_states_id
+		FROM flows_states fs
+		JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		WHERE f.flows_id_artefact_type = $1
+		  AND f.flows_is_default = TRUE
+		  AND f.flows_archived_at IS NULL
+		  AND fs.flows_states_kind = $2
+		  AND fs.flows_states_archived_at IS NULL
+		ORDER BY fs.flows_states_sort_order ASC
+		LIMIT 1
+	`
+
+// sqlCountLiveChildrenOnly — quick existence check for the manual-edit
+// guard. Returns the count of live children of `id` in the caller's
+// subscription. Used by PatchWorkItem to reject manual flow_state_id
+// writes on parented rows (HARD RULE: SERVER IS THE GATE).
+const sqlCountLiveChildrenOnly = `
+		SELECT count(*) FROM artefacts
+		WHERE parent_artefact_id = $1
+		  AND subscription_id = $2
+		  AND archived_at IS NULL
+	`
+
+// sqlSetFlowStateInternal — UPDATE used by the recalc engine ONLY.
+// Bypasses the per-row "parented → manual edit forbidden" guard because
+// the cascade itself is the system writing, not a user. Sets updated_at
+// to keep the audit trail honest.
+const sqlSetFlowStateInternal = `
+		UPDATE artefacts
+		SET flow_state_id = $1::uuid, updated_at = now()
+		WHERE id = $2 AND subscription_id = $3 AND archived_at IS NULL
+	`
+
+// sqlSelectParentForRecalc — fetch ONLY the parent_artefact_id and
+// subscription_id of an artefact, used when wiring patch/archive into
+// the cascade (we need the parent id BEFORE the row is changed/gone).
+const sqlSelectParentForRecalc = `
+		SELECT parent_artefact_id, subscription_id
+		FROM artefacts
+		WHERE id = $1
 	`
 
 // ── BulkOps ────────────────────────────────────────────────────────────────

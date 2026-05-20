@@ -480,6 +480,33 @@ func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID, 
 	return states, rows.Err()
 }
 
+// ListAncestors returns the parent chain of an artefact, ordered
+// immediate-parent-first (depth=1) up to the topmost ancestor. Empty
+// slice when the artefact has no parent. Subscription clamp is enforced
+// both on the starting row and every walked row by the SQL CTE.
+func (s *Service) ListAncestors(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID) ([]AncestorRef, error) {
+	if s.vectorArtefactsPool == nil {
+		return []AncestorRef{}, nil
+	}
+	rows, err := s.vectorArtefactsPool.Query(ctx, sqlSelectAncestors, id, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AncestorRef
+	for rows.Next() {
+		var r AncestorRef
+		if err := rows.Scan(&r.ID, &r.TypePrefix, &r.KeyNum, &r.Title, &r.ParentID); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	if out == nil {
+		out = []AncestorRef{}
+	}
+	return out, rows.Err()
+}
+
 // CreateWorkItem inserts a new artefact row in vector_artefacts.
 // number is allocated atomically via artefacts_number_sequences.
 // The default flow_state is the is_initial=true state for the subscription's
@@ -655,10 +682,30 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		return nil, err
 	}
 	s.notifier.Fire(subscriptionID, "item.created", item)
+
+	// Cascade — a new child appearing under a parent can flip the
+	// parent's derived state (e.g. an Epic with one Done Story gets a
+	// new Backlog Story added → Epic flips to in_progress eventually,
+	// but immediately the "all done" bucket no longer holds).
+	if parentID != nil {
+		_ = s.recalcParentFlowState(ctx, subscriptionID, *parentID)
+	}
 	return item, nil
 }
 
 // PatchWorkItem applies a partial update to an artefact row.
+//
+// Flow-state cascade integration (recalc.go):
+//   - If the caller PATCHes flow_state_id on a row that has live
+//     children, the request is rejected with ErrParentFlowStateDerived.
+//     Parented rows' states are DERIVED from their children (work
+//     flows up); manual writes are not allowed. Server-side gate;
+//     the frontend pill row is also disabled for parented rows but
+//     this is defence-in-depth (HARD RULE: SERVER IS THE GATE).
+//   - After a successful flow_state_id write, the cascade fires on the
+//     patched row's parent (Task done → Story recalcs → Epic recalcs).
+//   - After a parent_artefact_id write (re-parent), the cascade fires
+//     on BOTH the OLD and NEW parent — either side's child set changed.
 func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID, in PatchWorkItemInput) (*WorkItem, error) {
 	if s.vectorArtefactsPool == nil {
 		return nil, ErrNotFound
@@ -672,6 +719,30 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if in.PriorityID != nil && *in.PriorityID != "" {
 		if _, perr := uuid.Parse(*in.PriorityID); perr != nil {
 			return nil, fmt.Errorf("%w: invalid priority_id", ErrInvalidInput)
+		}
+	}
+
+	// Cascade guard — reject manual flow_state_id writes on parented
+	// rows BEFORE the UPDATE runs (don't half-write, then fail). Skipped
+	// when the request isn't touching flow_state_id at all.
+	if in.FlowStateID != nil {
+		hasKids, gerr := s.hasLiveChildren(ctx, subscriptionID, id)
+		if gerr != nil {
+			return nil, gerr
+		}
+		if hasKids {
+			return nil, ErrParentFlowStateDerived
+		}
+	}
+
+	// If the caller is re-parenting, snapshot the OLD parent_id BEFORE
+	// the UPDATE so we can recalc it afterwards. The UPDATE replaces it,
+	// and post-UPDATE we'd only have the NEW parent. Both need a recalc.
+	var oldParentID *uuid.UUID
+	if in.ParentArtefactID != nil {
+		op, perr := s.loadParentID(ctx, id)
+		if perr == nil {
+			oldParentID = op
 		}
 	}
 
@@ -802,6 +873,18 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 			n++
 		}
 	}
+	if in.DescriptionDoc != nil {
+		raw := string(*in.DescriptionDoc)
+		// "null", "" or "{}" all mean "clear to NULL". Any other JSON
+		// is stored verbatim — pgx maps json.RawMessage to JSONB.
+		if raw == "" || raw == "null" || raw == "{}" {
+			sets = append(sets, "description_doc = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("description_doc = $%d::jsonb", n))
+			args = append(args, *in.DescriptionDoc)
+			n++
+		}
+	}
 
 	// WHERE clause args: id=$N, subscription_id=$N+1
 	args = append(args, id, subscriptionID)
@@ -828,14 +911,49 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		eventType = "item.status_changed"
 	}
 	s.notifier.Fire(subscriptionID, eventType, item)
+
+	// Cascade — fire AFTER the GetWorkItem read so the caller sees the
+	// post-patch state, but BEFORE we return so any state changes the
+	// cascade triggers are durable by the time the response goes out.
+	// Errors are logged-and-swallowed (a recalc failure must NOT undo
+	// the user's patch — the next mutation will retrigger).
+	//
+	// Two cases:
+	//   - flow_state_id was patched      → recalc THIS row's parent
+	//   - parent_artefact_id was patched → recalc OLD parent + NEW parent
+	if in.FlowStateID != nil {
+		if pid, perr := s.loadParentID(ctx, id); perr == nil && pid != nil {
+			_ = s.recalcParentFlowState(ctx, subscriptionID, *pid)
+		}
+	}
+	if in.ParentArtefactID != nil {
+		if oldParentID != nil {
+			_ = s.recalcParentFlowState(ctx, subscriptionID, *oldParentID)
+		}
+		if newPid, perr := s.loadParentID(ctx, id); perr == nil && newPid != nil {
+			_ = s.recalcParentFlowState(ctx, subscriptionID, *newPid)
+		}
+	}
 	return item, nil
 }
 
 // ArchiveWorkItem sets archived_at on an artefact row (soft delete).
+//
+// Cascade integration: the row's parent (if any) is loaded BEFORE the
+// archive so we can recalc it AFTER. Archive sets archived_at — the row
+// still exists but the live-children query filters it out, so the
+// parent's derived state may need to update (e.g. archiving the last
+// in_progress task may flip the Story back to backlog).
 func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID) error {
 	if s.vectorArtefactsPool == nil {
 		return ErrNotFound
 	}
+	// Snapshot the parent BEFORE we archive — same artefact row stays
+	// in the table, but the recalc query filters on archived_at IS NULL,
+	// so reading it post-archive is fine. We do it pre-archive so a
+	// future change to "hard delete" still works without rewiring.
+	parentID, _ := s.loadParentID(ctx, id)
+
 	ct, err := s.vectorArtefactsPool.Exec(ctx, sqlArchiveArtefact,
 		id, subscriptionID,
 	)
@@ -846,6 +964,12 @@ func (s *Service) ArchiveWorkItem(ctx context.Context, subscriptionID uuid.UUID,
 		return ErrNotFound
 	}
 	s.notifier.Fire(subscriptionID, "item.deleted", map[string]string{"id": id.String()})
+
+	// Cascade — the archived row no longer counts as a child for the
+	// parent's bucket, so the parent's derived state may move.
+	if parentID != nil {
+		_ = s.recalcParentFlowState(ctx, subscriptionID, *parentID)
+	}
 	return nil
 }
 
@@ -1193,6 +1317,7 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.BlockedReason,
 		&wi.ReleaseID,
 		&wi.MilestoneID,
+		&wi.DescriptionDoc,
 	)
 	if err != nil {
 		return nil, err

@@ -88,6 +88,11 @@ export interface ArtefactDetail {
   blocked_reason: string | null;
   release_id: string | null;
   milestone_id: string | null;
+  // Count of live (non-archived) direct children. When > 0 in the
+  // execution zone, the row's flow_state is DERIVED from those children
+  // (work flows up) — manual edits are gated by the backend with 409
+  // ErrParentFlowStateDerived, and the frontend pill row is locked.
+  children_count?: number;
 }
 
 export interface ParentOption {

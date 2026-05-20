@@ -9,19 +9,28 @@ export function FlowStatePillRow({
   currentCode,
   states,
   onCommit,
+  // When true, the pill row is rendered locked: pills are non-
+  // interactive (no onClick, cursor:default, aria-disabled) and the
+  // group carries a tooltip explaining the derivation. Used by
+  // execution-zone artefacts that have children — their flow state is
+  // derived from the children (work flows up), so manual edits are
+  // rejected backend-side too (ErrParentFlowStateDerived → 409).
+  derived = false,
 }: {
   currentId: string;
   currentCode: string;
   states: WorkItemFlowState[];
   onCommit: (id: string) => void;
+  derived?: boolean;
 }) {
   if (states.length === 0) return null;
 
   return (
     <span
-      className="wi-flow-row"
+      className={"wi-flow-row" + (derived ? " wi-flow-row--derived" : "")}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
+      title={derived ? "Derived from children — change a child's state to update this row" : undefined}
     >
       {states.map((s) => {
         const isActive = s.id === currentId;
@@ -71,9 +80,13 @@ export function FlowStatePillRow({
             className={className}
             style={style}
             aria-pressed={isActive}
+            aria-disabled={derived || isActive ? true : undefined}
             aria-label={s.name}
             title={s.name}
-            onClick={isActive ? undefined : () => onCommit(s.id)}
+            // Derived rows can't be edited (cascade owns the state) —
+            // drop the handler so the click does nothing AND the cursor
+            // doesn't read as actionable.
+            onClick={derived || isActive ? undefined : () => onCommit(s.id)}
           >
             {/* Letter is wrapped so it can sit ABOVE the ::before fill
                 layer. Without this it renders as a bare text node which

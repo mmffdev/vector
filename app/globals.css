@@ -9319,6 +9319,18 @@ input[type="reset"] {
   align-items: center;
   white-space: nowrap;
 }
+/* Derived row — pill group is non-interactive because the parent's
+   flow state is computed from its children. Cursor + opacity signal
+   "not editable" without hiding the pills (the user still needs to see
+   what state the row is in). aria-disabled on the buttons handles AT. */
+.wi-flow-row--derived .wi-flow-row__btn {
+  cursor: default;
+  opacity: 0.55;
+}
+.wi-flow-row--derived .wi-flow-row__btn:hover:not(.wi-flow-row__btn--active) {
+  /* Cancel the hover tint — there's no action to suggest. */
+  --pill-fill: #fff;
+}
 /* Chevron pill — layered fill.
    The button paints the border colour and is clipped to the chevron
    silhouette; ::before paints the interior fill 1px inset on every
@@ -14014,6 +14026,18 @@ input[type="reset"] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-muted);
+}
+/* Inline hint annotation on a field label — used when the field is
+   non-interactive because its value is derived from elsewhere (e.g.
+   flow state of a parented execution-zone artefact). Lowercase + light
+   to read as supplementary text against the all-caps label. */
+.artefact-inline-form__Field_Label_Hint {
+  text-transform: none;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ink-muted);
+  letter-spacing: 0;
+  font-style: italic;
 }
 .artefact-inline-form__Field_Input {
   width: 100%;
