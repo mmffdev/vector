@@ -210,6 +210,14 @@ export interface ResourceTreeProps<T> {
   // a drag starts. Cheap: snapshots the in-memory row arrays at call
   // time, no API round-trip.
   getVisibleIdsRef?: React.MutableRefObject<(() => string[]) | null>;
+  // Optional per-row colour resolver. When set, ResourceTree renders a
+  // permanent 10px column at the very start of each row, filled with
+  // the returned colour. Used by ObjectTree to mark every row with
+  // its artefact-type colour so the tree reads as a coloured legend
+  // at a glance. Return null to leave the slot transparent (e.g. when
+  // the row's type has no colour configured); the column still
+  // reserves 10px so widths stay consistent across rows.
+  getRowStripeColour?: (row: T) => string | null;
   getRowClass?: (row: T) => string | undefined;
 
   // ── Set 2: Scaffold ──
@@ -800,6 +808,7 @@ function ResourceTreeImpl<T>({
   refetchExpandedChildrenRef,
   getRowByIdRef,
   getVisibleIdsRef,
+  getRowStripeColour,
   getRowClass,
   // Scaffold
   columns,
@@ -1087,13 +1096,18 @@ function ResourceTreeImpl<T>({
   // the user columns so colgroup / thead / tbody share the same column count
   // and the resize maths line up with the rendered DOM. Order is:
   // selection → DnD → cog → user-columns; consumers can enable any subset.
+  const TYPE_STRIPE_COL_WIDTH = 10;
   const SELECTION_COL_WIDTH = 28;
   const DRAG_COL_WIDTH = 22;
   const COG_COL_WIDTH = 32;
+  // Stripe sits FIRST when enabled — appears before every control so
+  // the type colour reads cleanly as the row's leading edge.
+  const stripeEnabled = !!getRowStripeColour;
+  const stripeOffset = stripeEnabled ? 1 : 0;
   const selectionOffset = selection ? 1 : 0;
   const dndOffset = dnd ? 1 : 0;
   const cogOffset = cogMenu ? 1 : 0;
-  const leadOffset = selectionOffset + dndOffset + cogOffset;
+  const leadOffset = stripeOffset + selectionOffset + dndOffset + cogOffset;
   const primaryColIdx = leadOffset;
 
   // ID column width tracks the deepest currently-visible row so tree-line
@@ -1127,20 +1141,22 @@ function ResourceTreeImpl<T>({
     const userWidths = columns.map((c) => (c.width === undefined ? 100 : c.width));
     userWidths[0] = dynamicIdColWidth;
     const lead: Array<number | null> = [];
+    if (stripeEnabled) lead.push(TYPE_STRIPE_COL_WIDTH);
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
     if (cogMenu) lead.push(COG_COL_WIDTH);
     return [...lead, ...userWidths];
-  }, [columns, dnd, selection, cogMenu, dynamicIdColWidth]);
+  }, [columns, dnd, selection, cogMenu, stripeEnabled, dynamicIdColWidth]);
   const minWidthsArr = useMemo<number[]>(() => {
     const userMins = columns.map((c) => c.minWidth ?? 40);
     userMins[0] = dynamicIdColWidth;
     const lead: number[] = [];
+    if (stripeEnabled) lead.push(TYPE_STRIPE_COL_WIDTH);
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
     if (cogMenu) lead.push(COG_COL_WIDTH);
     return [...lead, ...userMins];
-  }, [columns, dnd, selection, cogMenu, dynamicIdColWidth]);
+  }, [columns, dnd, selection, cogMenu, stripeEnabled, dynamicIdColWidth]);
 
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1458,6 +1474,23 @@ function ResourceTreeImpl<T>({
             onDrop={dndProps?.onDrop}
             onClick={() => onSelect?.(item)}
           >
+            {stripeEnabled && (() => {
+              // Per-row type-colour stripe. Inline style is the one
+              // sanctioned exception to the "no inline style" rule
+              // (same exception as the row badge in the Summary cell —
+              // data-driven swatch colours). Falls back to no colour
+              // when the type has no swatch set; the column still
+              // reserves 10px so widths stay aligned.
+              const stripe = getRowStripeColour?.(item) ?? null;
+              return (
+                <td
+                  className="tree_accordion-dense__cell tree_accordion-dense__cell--type-stripe"
+                  style={stripe ? { backgroundColor: stripe } : undefined}
+                  aria-hidden="true"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              );
+            })()}
             {selection && (
               <td
                 className="tree_accordion-dense__cell tree_accordion-dense__cell--selection"
@@ -1607,6 +1640,13 @@ function ResourceTreeImpl<T>({
           </colgroup>
           <thead className="tree_accordion-dense__head">
             <tr>
+              {stripeEnabled && (
+                <th
+                  key="__type-stripe"
+                  className="tree_accordion-dense__th tree_accordion-dense__th--type-stripe"
+                  aria-hidden="true"
+                />
+              )}
               {selection && (
                 <th
                   key="__selection"

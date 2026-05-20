@@ -9711,29 +9711,35 @@ input[type="reset"] {
   box-shadow: inset 0 -2px 0 0 var(--accent);
 }
 
-/* Drag-to-reparent visual language (no animation — kept calm so the
-   ObjectTree doesn't churn pixels during a drag).
-   - --drop-candidate: every legal target gets a 10px green border-left
-     on dragstart. Static, paints once, no perf cost beyond a class
-     diff per row.
-   - --drop-onto: the candidate currently under the cursor. Same 10px
-     green plus a soft tint on the row background so the focus reads.
-   - --drop-onto-illegal: hovered row that's NOT a candidate. 10px red
-     border-left — symmetric language with green.
-   Implemented via inset box-shadow rather than border-left because
-   <tr> ignores border-left across browsers (same pattern as the
-   existing --drop-above / --drop-below rules above). */
-.drag-row--drop-candidate {
-  box-shadow: inset 10px 0 0 0 #16a34a;
+/* Drag-to-reparent visual language — the candidate field.
+   When a drag starts, every row whose type is a legal parent for the
+   mover gets the #ccff00 ↔ transparent barber-pole stripe overlay on
+   every data cell. Paints the WHOLE field at once so the user sees
+   the full set of valid drops without hunting.
+   No green/red side borders, no drop-onto focus treatment, no red
+   for illegal — absent stripes already tells the user "not here".
+   The 10px type-colour stripe column on the row's leading edge stays
+   visible underneath, so the row's identity isn't lost during the
+   drag. */
+.drag-row--drop-candidate > .tree_accordion-dense__cell {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #ccff00 0,
+    #ccff00 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  background-size: 28.284px 28.284px;
+  animation: drag-row-candidate-stripes 2.5s linear infinite;
 }
-.drag-row--drop-onto {
-  /* Same 10px green stripe + a subtle inner tint to mark focus. The
-     row's existing zebra/background still shows through. */
-  box-shadow: inset 10px 0 0 0 #15803d;
-  background-color: color-mix(in srgb, #16a34a 6%, transparent);
+@keyframes drag-row-candidate-stripes {
+  from { background-position: 0 0; }
+  to   { background-position: 28.284px 0; }
 }
-.drag-row--drop-onto-illegal {
-  box-shadow: inset 10px 0 0 0 #b91c1c;
+@media (prefers-reduced-motion: reduce) {
+  .drag-row--drop-candidate > .tree_accordion-dense__cell {
+    animation: none;
+  }
 }
 
 /* ── Cog-menu column (per-row actions: edit, duplicate, move, split, delete) ── */
@@ -13469,6 +13475,25 @@ input[type="reset"] {
 .tree_accordion-dense__cell--numeric { text-align: right; }
 .tree_accordion-dense__cell--center { text-align: center; }
 .tree_accordion-dense__cell--muted { color: var(--ink-muted); }
+
+/* Type-colour stripe column (10px). Sits at the very start of every
+   row, painted with the artefact-type colour resolved by the host.
+   Reserves real space so the checkbox/drag handle/cog appear AFTER
+   the stripe rather than overlapping it. Body cell carries the colour
+   via inline style (data-driven swatch — sanctioned no-inline-style
+   exception); header cell stays transparent.
+   No border-bottom — the per-row dividers on the data cells already
+   carry the visual rhythm, and a divider under the stripe creates a
+   visible notch where the stripe touches the next row. */
+.tree_accordion-dense__th--type-stripe,
+.tree_accordion-dense__cell--type-stripe {
+  padding: 0;
+  border-bottom: 0;
+  width: 10px;
+}
+.tree_accordion-dense__th--type-stripe {
+  background: transparent;
+}
 
 /* PLA-0021 / 00455 — selection checkbox column (28px). Centered in both
    header and body cells; checkbox sits flush against the row gridline. */

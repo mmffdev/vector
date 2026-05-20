@@ -932,6 +932,7 @@ export default function ObjectTree({
         refetchExpandedChildrenRef={refetchExpandedChildrenRef}
         getRowByIdRef={getRowByIdRef}
         getVisibleIdsRef={getVisibleIdsRef}
+        getRowStripeColour={(row) => colourMap?.get(row.type_prefix)?.colour ?? null}
         columns={config.columns}
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"

@@ -135,11 +135,15 @@ export function useResourceRank(opts: UseResourceRankOptions) {
   const rowProps = useCallback(
     (id: string) => {
       const inSubtree = draggingId !== null && (draggingId === id || draggingSubtree.has(id));
-      const isReparentTarget = dropTarget?.id === id && dropTarget.pos === "onto";
       // Candidate = pre-computed legal drop target. Only meaningful
       // while a drag is in flight (candidateIds is cleared on dragend),
       // and skipped for the mover's own row + every row in its
-      // subtree to avoid suggesting illegal cycles.
+      // subtree to avoid suggesting illegal cycles. Paints the
+      // #ccff00 ↔ transparent barber-pole over every candidate — see
+      // .drag-row--drop-candidate in globals.css. No "drop-onto" or
+      // "drop-onto-illegal" classes any more: the candidate field
+      // tells the user where they CAN drop; everywhere else they
+      // can't, no extra visual needed.
       const isCandidate = draggingId !== null && candidateIds.has(id) && !inSubtree;
       return {
         "data-rank-row-id": id,
@@ -147,19 +151,7 @@ export function useResourceRank(opts: UseResourceRankOptions) {
           inSubtree ? "drag-row--dragging" : "",
           dropTarget?.id === id && dropTarget.pos === "above" ? "drag-row--drop-above" : "",
           dropTarget?.id === id && dropTarget.pos === "below" ? "drag-row--drop-below" : "",
-          // Visual language for drop-onto reparent:
-          //   --drop-candidate         — every legal target, painted on
-          //                              dragstart. Soft 10px green
-          //                              border-left, no animation.
-          //   --drop-onto              — the candidate currently under
-          //                              the cursor. Stronger green
-          //                              treatment (CSS owns the diff).
-          //   --drop-onto-illegal      — currently-hovered row that's
-          //                              NOT a candidate. Red border-left.
-          //                              Replaces the prior barber-pole.
           isCandidate ? "drag-row--drop-candidate" : "",
-          isReparentTarget && dropTarget?.allowed ? "drag-row--drop-onto" : "",
-          isReparentTarget && !dropTarget?.allowed ? "drag-row--drop-onto-illegal" : "",
         ]
           .filter(Boolean)
           .join(" "),
