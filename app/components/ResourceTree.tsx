@@ -138,6 +138,14 @@ export interface DnDConfig {
    */
   canReparent?: (moverID: string, targetID: string) => boolean;
   onReparent?: (moverID: string, targetID: string) => void;
+  /**
+   * Optional eligibility pre-pass: called once on dragstart. Walks
+   * the visible row set and returns every id that's a legal reparent
+   * target. The hook paints each one with a calm 10px green border-
+   * left for the duration of the drag, so the user sees the whole
+   * field of valid drops without hunting one row at a time.
+   */
+  getCandidateIds?: (moverID: string) => string[];
 }
 
 // PLA-0021 / 00455 — multi-select. Selection state stays caller-owned; the
@@ -196,6 +204,12 @@ export interface ResourceTreeProps<T> {
   // type prefix and current parent without round-tripping the API.
   // Returns undefined when the id isn't in the visible tree.
   getRowByIdRef?: React.MutableRefObject<((id: string) => T | undefined) | null>;
+  // Sibling lookup — returns every currently-visible row id (roots +
+  // expanded children, flat). Used by the drag-to-reparent candidate
+  // pre-pass to enumerate the field of legal drop targets the moment
+  // a drag starts. Cheap: snapshots the in-memory row arrays at call
+  // time, no API round-trip.
+  getVisibleIdsRef?: React.MutableRefObject<(() => string[]) | null>;
   getRowClass?: (row: T) => string | undefined;
 
   // ── Set 2: Scaffold ──
@@ -785,6 +799,7 @@ function ResourceTreeImpl<T>({
   applyChildPatchRef,
   refetchExpandedChildrenRef,
   getRowByIdRef,
+  getVisibleIdsRef,
   getRowClass,
   // Scaffold
   columns,
@@ -915,6 +930,25 @@ function ResourceTreeImpl<T>({
       if (getRowByIdRef.current) getRowByIdRef.current = null;
     };
   }, [getRowByIdRef, roots, childMap, getId]);
+
+  // Visible-id enumeration — sibling to getRowByIdRef but returns the
+  // FLAT list of ids visible right now. Drag candidate pre-pass walks
+  // this once on dragstart. Same re-bind cadence so the snapshot is
+  // always current.
+  useEffect(() => {
+    if (!getVisibleIdsRef) return;
+    getVisibleIdsRef.current = () => {
+      const out: string[] = [];
+      for (const r of roots) out.push(getId(r));
+      for (const arr of Object.values(childMap)) {
+        for (const r of arr) out.push(getId(r));
+      }
+      return out;
+    };
+    return () => {
+      if (getVisibleIdsRef.current) getVisibleIdsRef.current = null;
+    };
+  }, [getVisibleIdsRef, roots, childMap, getId]);
   const [searchQueryInternal, setSearchQueryInternal] = useState("");
   const searchControlled = typeof onSearchChange === "function";
   const searchQuery = searchControlled ? (searchValue ?? "") : searchQueryInternal;
@@ -1014,6 +1048,7 @@ function ResourceTreeImpl<T>({
     getDescendants,
     canReparent: dnd?.canReparent,
     onReparent: dnd?.onReparent,
+    getCandidateIds: dnd?.getCandidateIds,
   });
 
   // The hook's built-in onDrop only POSTs. Wrap it to apply the local

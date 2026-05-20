@@ -70,6 +70,21 @@ export type UseResourceRankOptions = {
    */
   canReparent?: (moverID: string, targetID: string) => boolean;
   onReparent?: (moverID: string, targetID: string) => void;
+  /**
+   * Optional: called once on dragstart with the mover's id. Caller
+   * walks its visible row set and returns every id that's a legal
+   * reparent target (same rule canReparent applies — but pre-computed
+   * so every candidate row can paint a "you can drop here" marker the
+   * moment the drag begins, not just the hovered one).
+   *
+   * Lightweight: one pass over the in-memory row arrays (no fetches);
+   * Set lookup at render time is O(1). Result is cached for the
+   * lifetime of the drag and cleared on dragend.
+   *
+   * When omitted, the candidate Set stays empty — feature is opt-in
+   * per consumer.
+   */
+  getCandidateIds?: (moverID: string) => string[];
 };
 
 export function useResourceRank(opts: UseResourceRankOptions) {
@@ -84,6 +99,11 @@ export function useResourceRank(opts: UseResourceRankOptions) {
     pos: "above" | "below" | "onto";
     allowed?: boolean;
   } | null>(null);
+  // Set of row IDs eligible to receive the dragged row as a child.
+  // Computed once on dragstart by the caller-supplied resolver; cleared
+  // on dragend. Cheap to membership-check at render time → every row
+  // can paint its "you can drop here" marker without per-row work.
+  const [candidateIds, setCandidateIds] = useState<Set<string>>(() => new Set());
   const draggingRef = useRef<string | null>(null);
   const draggingSubtreeRef = useRef<Set<string>>(new Set());
 
@@ -116,15 +136,28 @@ export function useResourceRank(opts: UseResourceRankOptions) {
     (id: string) => {
       const inSubtree = draggingId !== null && (draggingId === id || draggingSubtree.has(id));
       const isReparentTarget = dropTarget?.id === id && dropTarget.pos === "onto";
+      // Candidate = pre-computed legal drop target. Only meaningful
+      // while a drag is in flight (candidateIds is cleared on dragend),
+      // and skipped for the mover's own row + every row in its
+      // subtree to avoid suggesting illegal cycles.
+      const isCandidate = draggingId !== null && candidateIds.has(id) && !inSubtree;
       return {
         "data-rank-row-id": id,
         className: [
           inSubtree ? "drag-row--dragging" : "",
           dropTarget?.id === id && dropTarget.pos === "above" ? "drag-row--drop-above" : "",
           dropTarget?.id === id && dropTarget.pos === "below" ? "drag-row--drop-below" : "",
-          // Reparent-target classes split into legal/illegal so the
-          // CSS can paint a green vs red barber-pole outline. Same
-          // animation engine as the orange form-open marker.
+          // Visual language for drop-onto reparent:
+          //   --drop-candidate         — every legal target, painted on
+          //                              dragstart. Soft 10px green
+          //                              border-left, no animation.
+          //   --drop-onto              — the candidate currently under
+          //                              the cursor. Stronger green
+          //                              treatment (CSS owns the diff).
+          //   --drop-onto-illegal      — currently-hovered row that's
+          //                              NOT a candidate. Red border-left.
+          //                              Replaces the prior barber-pole.
+          isCandidate ? "drag-row--drop-candidate" : "",
           isReparentTarget && dropTarget?.allowed ? "drag-row--drop-onto" : "",
           isReparentTarget && !dropTarget?.allowed ? "drag-row--drop-onto-illegal" : "",
         ]
@@ -198,7 +231,7 @@ export function useResourceRank(opts: UseResourceRankOptions) {
         },
       };
     },
-    [draggingId, draggingSubtree, dropTarget, move, opts]
+    [draggingId, draggingSubtree, dropTarget, candidateIds, move, opts]
   );
 
   const handleProps = useCallback(
@@ -210,6 +243,13 @@ export function useResourceRank(opts: UseResourceRankOptions) {
         draggingSubtreeRef.current = subtree;
         setDraggingId(id);
         setDraggingSubtree(subtree);
+        // Pre-compute the candidate set once. Caller walks roots +
+        // expanded children, applies the same legality rule
+        // canReparent uses, and returns the legal target ids. Skipped
+        // when the caller hasn't wired the resolver.
+        if (opts.getCandidateIds) {
+          setCandidateIds(new Set(opts.getCandidateIds(id)));
+        }
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", id);
       },
@@ -219,10 +259,11 @@ export function useResourceRank(opts: UseResourceRankOptions) {
         setDraggingId(null);
         setDraggingSubtree(new Set());
         setDropTarget(null);
+        setCandidateIds(new Set());
       },
     }),
     [opts]
   );
 
-  return { rowProps, handleProps, draggingId, draggingSubtree, dropTarget, move };
+  return { rowProps, handleProps, draggingId, draggingSubtree, dropTarget, candidateIds, move };
 }

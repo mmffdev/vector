@@ -224,6 +224,10 @@ export default function ObjectTree({
   // this on mount + on every childMap change so the legality check
   // always sees fresh row data (type_prefix + parent_id).
   const getRowByIdRef = useRef<((id: string) => WorkItem | undefined) | null>(null);
+  // Flat list of every currently-visible row id (roots + expanded
+  // children). Used by the drag candidate pre-pass to enumerate the
+  // field of legal drop targets the moment a drag starts.
+  const getVisibleIdsRef = useRef<(() => string[]) | null>(null);
 
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
     useArtefactItemsWindow({
@@ -401,6 +405,42 @@ export default function ObjectTree({
       const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
       const targetPrefix = target.type_prefix?.toUpperCase() ?? "";
       return allowed.includes(targetPrefix);
+    },
+    [],
+  );
+
+  // Candidate pre-pass — fires once on dragstart. Walks every visible
+  // row, applies the same legality rule canReparent uses, returns the
+  // ids of legal drop targets. ResourceTree paints each one with a
+  // calm 10px green border-left so the user can see the whole field
+  // of valid drops at a glance (not just the hovered row).
+  //
+  // Cost: one pass over the in-memory visible-id list (capped by page
+  // size + however many sub-trees the user has expanded — typically
+  // <200 rows). No fetches, no recursion. Result lives in a hook-local
+  // Set for the lifetime of the drag.
+  const getDragCandidateIds = useCallback(
+    (moverID: string): string[] => {
+      const getIds = getVisibleIdsRef.current;
+      const get = getRowByIdRef.current;
+      if (!getIds || !get) return [];
+      const mover = get(moverID);
+      if (!mover) return [];
+      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
+      if (allowed.length === 0) return [];
+      const allowedSet = new Set(allowed);
+      const ids = getIds();
+      const out: string[] = [];
+      for (const id of ids) {
+        if (id === moverID) continue;
+        const row = get(id);
+        if (!row) continue;
+        // Skip mover's current parent — that's a no-op move.
+        if (mover.parent_id === row.id) continue;
+        const prefix = row.type_prefix?.toUpperCase() ?? "";
+        if (allowedSet.has(prefix)) out.push(id);
+      }
+      return out;
     },
     [],
   );
@@ -891,6 +931,7 @@ export default function ObjectTree({
         applyChildPatchRef={applyChildPatchRef}
         refetchExpandedChildrenRef={refetchExpandedChildrenRef}
         getRowByIdRef={getRowByIdRef}
+        getVisibleIdsRef={getVisibleIdsRef}
         columns={config.columns}
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"
@@ -901,6 +942,7 @@ export default function ObjectTree({
             resourceType: config.dndResourceType,
             canReparent,
             onReparent: reparentArtefact,
+            getCandidateIds: getDragCandidateIds,
           },
         })}
         selection={{ mode: "multi", selectedIds, onSelectionChange: setSelectedIds }}
