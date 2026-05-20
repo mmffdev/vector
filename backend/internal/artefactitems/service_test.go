@@ -13,6 +13,7 @@ package artefactitems_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -558,6 +559,176 @@ func TestCreateWorkItem_EmptyTitleRejected(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected ErrInvalidInput for blank title, got nil")
+	}
+}
+
+// ── PLA-0043 writer path: ?meg= topology clamp on Create ──────────────────
+
+// stubTopologyResolver lets the Create tests drive CanReadScope without
+// pulling in orgdesign (cycle risk) or the live grant tables. Mirrors the
+// artefactitems.TopologyScopeResolver interface.
+type stubTopologyResolver struct {
+	canRead bool
+	notFound bool
+	descendants []uuid.UUID
+	ancestors   []uuid.UUID
+}
+
+func (s stubTopologyResolver) CanReadScope(_ context.Context, _, _, _, _ uuid.UUID) (bool, error) {
+	if s.notFound {
+		return false, fmt.Errorf("node not found")
+	}
+	return s.canRead, nil
+}
+func (s stubTopologyResolver) DescendantNodeIDs(_ context.Context, _, root uuid.UUID) ([]uuid.UUID, error) {
+	if len(s.descendants) > 0 {
+		return s.descendants, nil
+	}
+	return []uuid.UUID{root}, nil
+}
+func (s stubTopologyResolver) AncestorNodeIDs(_ context.Context, _, root uuid.UUID) ([]uuid.UUID, error) {
+	if len(s.ancestors) > 0 {
+		return s.ancestors, nil
+	}
+	return []uuid.UUID{root}, nil
+}
+
+// TestCreateWorkItem_TopologyNodeID_persisted verifies the happy path:
+// when TopologyNodeID + ActorRoleID are set AND the resolver grants
+// CanReadScope, the artefact row inserts with topology_node_id populated
+// (no longer a zombie).
+func TestCreateWorkItem_TopologyNodeID_persisted(t *testing.T) {
+	va := vaPool(t)
+	mp := mainPool(t)
+	sub := pickTestSubscription(t, va)
+	svc := artefactitems.NewService(va, mp, "work")
+	svc.WithTopologyResolver(stubTopologyResolver{canRead: true})
+	ctx := context.Background()
+
+	var ownerID uuid.UUID
+	if err := mp.QueryRow(ctx,
+		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+	).Scan(&ownerID); err != nil {
+		t.Skipf("no active user for sub %s: %v", sub, err)
+	}
+
+	// Pick any live topology_node in this subscription as the target.
+	var nodeID uuid.UUID
+	if err := va.QueryRow(ctx,
+		`SELECT id FROM topology_nodes WHERE subscription_id=$1 AND archived_at IS NULL LIMIT 1`,
+		sub,
+	).Scan(&nodeID); err != nil {
+		t.Skipf("no live topology_node for sub %s: %v", sub, err)
+	}
+
+	nodeStr := nodeID.String()
+	wi, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
+		ItemType:       "story",
+		Title:          "meg-write-" + uuid.New().String()[:8],
+		OwnerID:        ownerID.String(),
+		CreatedBy:      ownerID.String(),
+		TopologyNodeID: &nodeStr,
+		ActorRoleID:    uuid.New(), // any non-nil role; stub ignores
+	})
+	if err != nil {
+		t.Fatalf("CreateWorkItem with meg: %v", err)
+	}
+	t.Cleanup(func() {
+		id, _ := uuid.Parse(wi.ID)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+	})
+
+	// Verify topology_node_id actually landed in the row.
+	var got uuid.UUID
+	if err := va.QueryRow(ctx,
+		`SELECT topology_node_id FROM artefacts WHERE id=$1`, uuid.MustParse(wi.ID),
+	).Scan(&got); err != nil {
+		t.Fatalf("read-back topology_node_id: %v", err)
+	}
+	if got != nodeID {
+		t.Errorf("topology_node_id = %s, want %s", got, nodeID)
+	}
+}
+
+// TestCreateWorkItem_TopologyNodeID_grantDenied verifies that when the
+// resolver returns canRead=false, Create returns ErrScopeForbidden and
+// inserts nothing.
+func TestCreateWorkItem_TopologyNodeID_grantDenied(t *testing.T) {
+	va := vaPool(t)
+	mp := mainPool(t)
+	sub := pickTestSubscription(t, va)
+	svc := artefactitems.NewService(va, mp, "work")
+	svc.WithTopologyResolver(stubTopologyResolver{canRead: false})
+
+	nodeStr := uuid.New().String()
+	_, err := svc.CreateWorkItem(context.Background(), sub, artefactitems.CreateWorkItemInput{
+		ItemType:       "story",
+		Title:          "meg-denied-" + uuid.New().String()[:8],
+		OwnerID:        uuid.New().String(),
+		CreatedBy:      uuid.New().String(),
+		TopologyNodeID: &nodeStr,
+		ActorRoleID:    uuid.New(),
+	})
+	if err == nil {
+		t.Fatal("expected ErrScopeForbidden, got nil")
+	}
+	if !errors.Is(err, artefactitems.ErrScopeForbidden) {
+		t.Errorf("err = %v, want ErrScopeForbidden", err)
+	}
+}
+
+// TestCreateWorkItem_TopologyNodeID_nodeNotFound verifies that when the
+// resolver returns a "node not found" error, Create translates it to
+// ErrScopeNodeNotFound (handler maps to 404).
+func TestCreateWorkItem_TopologyNodeID_nodeNotFound(t *testing.T) {
+	va := vaPool(t)
+	mp := mainPool(t)
+	sub := pickTestSubscription(t, va)
+	svc := artefactitems.NewService(va, mp, "work")
+	svc.WithTopologyResolver(stubTopologyResolver{notFound: true})
+
+	nodeStr := uuid.New().String()
+	_, err := svc.CreateWorkItem(context.Background(), sub, artefactitems.CreateWorkItemInput{
+		ItemType:       "story",
+		Title:          "meg-missing-" + uuid.New().String()[:8],
+		OwnerID:        uuid.New().String(),
+		CreatedBy:      uuid.New().String(),
+		TopologyNodeID: &nodeStr,
+		ActorRoleID:    uuid.New(),
+	})
+	if err == nil {
+		t.Fatal("expected ErrScopeNodeNotFound, got nil")
+	}
+	if !errors.Is(err, artefactitems.ErrScopeNodeNotFound) {
+		t.Errorf("err = %v, want ErrScopeNodeNotFound", err)
+	}
+}
+
+// TestCreateWorkItem_TopologyNodeID_noResolverWired verifies that when a
+// caller passes ?meg= but no topology resolver is wired, the request is
+// rejected as ErrInvalidInput rather than silently dropping the clamp
+// (the same fail-closed shape as the read path).
+func TestCreateWorkItem_TopologyNodeID_noResolverWired(t *testing.T) {
+	va := vaPool(t)
+	mp := mainPool(t)
+	sub := pickTestSubscription(t, va)
+	svc := artefactitems.NewService(va, mp, "work")
+	// No WithTopologyResolver — resolver stays nil.
+
+	nodeStr := uuid.New().String()
+	_, err := svc.CreateWorkItem(context.Background(), sub, artefactitems.CreateWorkItemInput{
+		ItemType:       "story",
+		Title:          "meg-noresolver-" + uuid.New().String()[:8],
+		OwnerID:        uuid.New().String(),
+		CreatedBy:      uuid.New().String(),
+		TopologyNodeID: &nodeStr,
+		ActorRoleID:    uuid.New(),
+	})
+	if err == nil {
+		t.Fatal("expected ErrInvalidInput, got nil")
+	}
+	if !errors.Is(err, artefactitems.ErrInvalidInput) {
+		t.Errorf("err = %v, want ErrInvalidInput", err)
 	}
 }
 

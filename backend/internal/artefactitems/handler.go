@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/mmffdev/vector-backend/internal/apikeys"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/topology"
 )
@@ -380,6 +381,17 @@ type createWorkItemReq struct {
 }
 
 // Create handles POST /api/v2/work-items.
+//
+// PLA-0043 writer path — ?meg=<uuid> (or its legacy alias ?scope=)
+// pins the new artefact to a topology node. Without it the row inserts
+// with NULL topology_node_id and becomes invisible to any per-node
+// clamp (a zombie). Validation runs in the service: the node must
+// exist in the actor's tenant AND the actor must hold a grant on it.
+//
+// X-Act-As: <user-uuid> lets an api-key caller override the owner/
+// created-by attribution. Honored only when the request authenticated
+// via an api-key (the synthetic User otherwise resolves to whoever the
+// key seeds to). Plain JWT callers cannot impersonate.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	u := auth.UserFromCtx(r.Context())
@@ -389,19 +401,67 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"error":"invalid body"}`))
 		return
 	}
+
+	// ?meg=<uuid> — canonical name; ?scope= is the legacy fallback.
+	// Same precedence + parse contract as List() at L167-182.
+	q := r.URL.Query()
+	megVal := q.Get("meg")
+	if megVal == "" {
+		megVal = q.Get("scope")
+	}
+	var topologyNodeID *string
+	if megVal != "" {
+		if _, perr := uuid.Parse(megVal); perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid meg"}`))
+			return
+		}
+		topologyNodeID = &megVal
+	}
+
+	// X-Act-As — owner/created-by override for api-key callers.
+	// Only honored when the request reached us via an api-key (the
+	// CtxKeySubscriptionID context value is set by apikeys.Middleware).
+	// Plain JWT cannot impersonate — the header is silently ignored.
+	ownerID := u.ID.String()
+	createdBy := u.ID.String()
+	if actAs := r.Header.Get("X-Act-As"); actAs != "" {
+		if r.Context().Value(apikeys.CtxKeySubscriptionID) != nil {
+			if _, perr := uuid.Parse(actAs); perr != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid X-Act-As"}`))
+				return
+			}
+			ownerID = actAs
+			createdBy = actAs
+		}
+	}
+
 	wi, err := h.svc.CreateWorkItem(r.Context(), u.SubscriptionID, CreateWorkItemInput{
-		ItemType:    req.ItemType,
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      req.Status,
-		PriorityID:  req.PriorityID,
-		StoryPoints: req.StoryPoints,
-		SprintID:    req.SprintID,
-		ParentID:    req.ParentID,
-		OwnerID:     u.ID.String(),
-		CreatedBy:   u.ID.String(),
+		ItemType:       req.ItemType,
+		Title:          req.Title,
+		Description:    req.Description,
+		Status:         req.Status,
+		PriorityID:     req.PriorityID,
+		StoryPoints:    req.StoryPoints,
+		SprintID:       req.SprintID,
+		ParentID:       req.ParentID,
+		OwnerID:        ownerID,
+		CreatedBy:      createdBy,
+		TopologyNodeID: topologyNodeID,
+		ActorRoleID:    u.RoleID,
 	})
 	if err != nil {
+		if errors.Is(err, ErrScopeForbidden) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"scope_write_denied"}`))
+			return
+		}
+		if errors.Is(err, ErrScopeNodeNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"scope node not found"}`))
+			return
+		}
 		if errors.Is(err, ErrInvalidInput) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write(jsonErrBody(err))

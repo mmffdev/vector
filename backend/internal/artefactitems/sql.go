@@ -79,7 +79,8 @@ const sqlWorkItemColumns = `
 	(SELECT count(*) FROM artefacts child
 	 WHERE child.parent_artefact_id = a.id
 	   AND child.archived_at IS NULL)        AS children_count,
-	COALESCE(rp.rollup_points, a.story_points) AS rollup_points`
+	COALESCE(rp.rollup_points, a.story_points) AS rollup_points,
+	a.topology_node_id::text                AS topology_node_id`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
@@ -334,8 +335,8 @@ const sqlInsertArtefact = `
 		INSERT INTO artefacts
 			(subscription_id, workspace_id, artefact_type_id, number, title, description,
 			 flow_state_id, priority_id, story_points, artefacts_id_timebox_sprint, parent_artefact_id,
-			 owned_by_user_id, created_by_user_id, position)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8::uuid,$9,$10,$11,$12,$13,$14)
+			 owned_by_user_id, created_by_user_id, position, topology_node_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8::uuid,$9,$10,$11,$12,$13,$14,$15)
 		RETURNING id
 	`
 

@@ -557,6 +557,44 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		}
 	}
 
+	// PLA-0043 writer path — when the caller passed ?meg=<uuid>, pin the
+	// new artefact to that topology node. Validation mirrors the read
+	// path (ListWorkItems / Summary): the node must exist in the actor's
+	// tenant AND the actor must hold a role grant that reaches it.
+	// Without this, NULL topology_node_id rows become zombies — visible
+	// to unscoped reads but invisible to any per-node clamp.
+	var topologyNodeID *uuid.UUID
+	if in.TopologyNodeID != nil && *in.TopologyNodeID != "" {
+		if s.topology == nil {
+			return nil, ErrInvalidInput
+		}
+		if in.ActorRoleID == uuid.Nil {
+			return nil, ErrInvalidInput
+		}
+		nodeUUID, parseErr := uuid.Parse(*in.TopologyNodeID)
+		if parseErr != nil {
+			return nil, fmt.Errorf("%w: invalid topology_node_id", ErrInvalidInput)
+		}
+		actorUUID, parseErr := uuid.Parse(in.CreatedBy)
+		if parseErr != nil || actorUUID == uuid.Nil {
+			return nil, ErrInvalidInput
+		}
+		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, in.ActorRoleID)
+		if permErr != nil {
+			if errors.Is(permErr, ErrNotFound) {
+				return nil, ErrScopeNodeNotFound
+			}
+			if strings.Contains(permErr.Error(), "node not found") {
+				return nil, ErrScopeNodeNotFound
+			}
+			return nil, permErr
+		}
+		if !ok {
+			return nil, ErrScopeForbidden
+		}
+		topologyNodeID = &nodeUUID
+	}
+
 	// Append to existing items (position = MAX + 100).
 	var pos int
 	_ = tx.QueryRow(ctx, sqlSelectNextArtefactPosition,
@@ -584,7 +622,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		subscriptionID, workspaceID, artefactTypeID, num,
 		in.Title, in.Description,
 		defaultFlowStateID, priorityID, in.StoryPoints, sprintID, parentID,
-		ownerID, createdBy, pos,
+		ownerID, createdBy, pos, topologyNodeID,
 	).Scan(&newID)
 	if err != nil {
 		return nil, err
@@ -1061,6 +1099,7 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.ArchivedAt,
 		&wi.ChildrenCount,
 		&wi.RollupPoints,
+		&wi.TopologyNodeID,
 	)
 	if err != nil {
 		return nil, err

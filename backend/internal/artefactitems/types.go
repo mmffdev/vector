@@ -80,6 +80,11 @@ type WorkItem struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 	ArchivedAt     *time.Time `json:"archived_at"`
 	ChildrenCount  int        `json:"children_count"`
+	// PLA-0043 — topology node this artefact is pinned to. Nil for
+	// pre-meg-writer rows (zombies that exist in the tenant but are
+	// invisible to any per-node clamp). Read-only on the wire today;
+	// set at insert time via POST /work-items?meg=<uuid>.
+	TopologyNodeID *string `json:"topology_node_id"`
 }
 
 // OwnerRef is the slim user projection embedded on each WorkItem when the
@@ -201,6 +206,18 @@ type CreateWorkItemInput struct {
 	ParentID    *string
 	OwnerID     string
 	CreatedBy   string
+	// TopologyNodeID pins the new artefact to a node in the workspace's
+	// topology tree (PLA-0043 writer path). Nil → row inserts with NULL
+	// topology_node_id (orphan; visible only to unscoped reads).
+	// Non-nil → service validates the node belongs to the resolved
+	// workspace AND that the actor holds a grant on it before insert.
+	// Failures map to ErrScopeForbidden (no grant / cross-workspace)
+	// or ErrScopeNodeNotFound (no such node in tenant).
+	TopologyNodeID *string
+	// ActorRoleID is the role UUID of the caller, required when
+	// TopologyNodeID is set so the per-node CanReadScope grant check
+	// can run. Mirrors Filters.ActorRoleID on the read path.
+	ActorRoleID uuid.UUID
 }
 
 // PatchWorkItemInput holds optional fields for partial update.
