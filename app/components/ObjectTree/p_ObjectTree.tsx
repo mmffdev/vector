@@ -207,11 +207,19 @@ export default function ObjectTree({
     wizardConfig?.resourceUrl ?? (mode === "portfolio_items" ? "/portfolio-items" : "/work-items");
 
   // ResourceTree keeps expanded child rows in its own state; the hook's
-  // patchAndApply only mutates root rows. Without this back-channel a
+  // patchAndApply only mutates root rows. Without these back-channels a
   // pill click on a child row updates the backend but not the visible
-  // row. The hook calls this ref's current function on every optimistic
-  // patch; ResourceTree assigns the ref's body on mount.
+  // row, and cascade-touched ancestor rows that live under expanded
+  // parents go stale until the user collapses + re-expands.
+  //
+  //   applyChildPatchRef         — merge the optimistic patch body into
+  //                                whichever child array holds the id.
+  //   refetchExpandedChildrenRef — after a cascade-triggering PATCH,
+  //                                re-pull every expanded sub-tree from
+  //                                the server so cascade-updated rows
+  //                                (Story/Epic) repaint inline.
   const applyChildPatchRef = useRef<((id: string, partial: Record<string, unknown>) => void) | null>(null);
+  const refetchExpandedChildrenRef = useRef<(() => Promise<void>) | null>(null);
 
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
     useArtefactItemsWindow({
@@ -223,6 +231,7 @@ export default function ObjectTree({
       filters,
       onPatched,
       onLocalPatch: (id, body) => applyChildPatchRef.current?.(id, body),
+      onCascadeRefresh: () => { void refetchExpandedChildrenRef.current?.(); },
     });
 
   // Bulk-fetch flow states for every artefact type visible in the
@@ -322,7 +331,12 @@ export default function ObjectTree({
         }
       }
 
+      // refetchWindow() repaints root rows but ResourceTree caches
+      // expanded children in its own childMap — without the second
+      // call the duplicated row never appears inside an open sub-tree.
+      // Same fix the cascade uses (onCascadeRefresh path).
       await refetchWindow();
+      await refetchExpandedChildrenRef.current?.();
       setDuplicateOfId(newId);
       setOpenInlineFormId(newId);
     },
@@ -332,7 +346,9 @@ export default function ObjectTree({
   // Delete — soft-archive the artefact (backend sets archived_at). The
   // form has already gated this behind a Confirm step, so by the time we
   // get here the user is committed. Close the form and refetch so the
-  // row disappears from the visible window.
+  // row disappears from the visible window. Same dual-refresh as
+  // duplicate: roots + expanded children, otherwise the archived row
+  // lingers inside an open parent.
   const deleteArtefact = useCallback(
     async (artefact: ArtefactDetail) => {
       const bundle = resourceUrl === "/portfolio-items" ? portfolioItemsApi : workItemsApi;
@@ -345,6 +361,7 @@ export default function ObjectTree({
       setOpenInlineFormId(null);
       setDuplicateOfId(null);
       await refetchWindow();
+      await refetchExpandedChildrenRef.current?.();
     },
     [resourceUrl, refetchWindow],
   );
@@ -814,6 +831,7 @@ export default function ObjectTree({
         fetchChildren={fetchChildren}
         patch={patchRemote}
         applyChildPatchRef={applyChildPatchRef}
+        refetchExpandedChildrenRef={refetchExpandedChildrenRef}
         columns={config.columns}
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"

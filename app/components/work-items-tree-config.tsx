@@ -341,7 +341,16 @@ function StatusCell({
   // the cascade owns it (work flows up). Lock the pill row so the user
   // can't try to set it manually (backend also rejects with 409 if they
   // bypass; this is the friendly UX gate).
-  const isDerived = row.children_count > 0;
+  //
+  // EXCEPTION: once the cascade has landed the parent at a TERMINAL
+  // state (completed or accepted), the user takes control again — they
+  // can move it to accepted (manual gate the cascade never auto-fires)
+  // or push it back to an earlier state for further work. Same rule on
+  // the backend (PatchWorkItem skips ErrParentFlowStateDerived when the
+  // current kind is done/accepted).
+  const atTerminal =
+    row.flow_state_code === "completed" || row.flow_state_code === "accepted";
+  const isDerived = row.children_count > 0 && !atTerminal;
   return (
     <FlowStatePillRow
       currentId={row.flow_state_id}
@@ -884,12 +893,17 @@ export interface UseArtefactItemsWindowOptions {
   // ResourceTree's childMap (windowRoots-only optimism leaves
   // expanded-child rows visually stale on inline pill clicks).
   onLocalPatch?: (id: string, body: Record<string, unknown>) => void;
+  // Optional callback fired AFTER a successful PATCH that may have
+  // triggered the flow-state cascade. Hosts use this to re-pull every
+  // expanded sub-tree so cascade-updated ancestor rows (Story, Epic)
+  // repaint without the user having to collapse + re-expand.
+  onCascadeRefresh?: () => void;
 }
 
 export function useArtefactItemsWindow(
   opts: UseArtefactItemsWindowOptions,
 ): UseWorkItemsWindowResult {
-  const { resourceUrl, pageSize, pageIndex, sortKey, sortDir, filters, onPatched, onLocalPatch } = opts;
+  const { resourceUrl, pageSize, pageIndex, sortKey, sortDir, filters, onPatched, onLocalPatch, onCascadeRefresh } = opts;
   // Active topology scope clamps every read in this hook. The actual
   // ?meg= param is appended by withForwardedMeg (api.ts), but the
   // refetch loop needs activeNodeId in its dep list so a scope-picker
@@ -985,7 +999,14 @@ export function useArtefactItemsWindow(
           // After a flow_state_id change, the cascade may have mutated
           // ancestor rows (Task → Story → Epic). Roots may be stale —
           // refetch so the visible parent pills reflect the cascade.
-          if ("flow_state_id" in body || "story_points" in body) void refetchWindow();
+          // ALSO ping the host so it can re-pull every expanded sub-tree
+          // — the bare refetchWindow() only repaints root rows, but
+          // cascade-touched ancestors may be CHILD rows under whatever
+          // root is expanded.
+          if ("flow_state_id" in body || "story_points" in body) {
+            void refetchWindow();
+            onCascadeRefresh?.();
+          }
         })
         .catch((err: unknown) => {
           // 409 parent_flow_state_derived — the cascade rejected a
@@ -1011,7 +1032,7 @@ export function useArtefactItemsWindow(
           // unrelated patch failures don't gain a regression here.
         });
     },
-    [resourceUrl, onPatched, refetchWindow, onLocalPatch],
+    [resourceUrl, onPatched, refetchWindow, onLocalPatch, onCascadeRefresh],
   );
 
   const fetchChildren = useCallback(async (parentId: string) => {

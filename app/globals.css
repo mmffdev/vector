@@ -9450,6 +9450,7 @@ input[type="reset"] {
    border custom property to the canonical hue. Active variants
    additionally swap the fill and text below. */
 .wi-flow-row__btn--code-backlog   { --pill-border: #f97316; }
+.wi-flow-row__btn--code-todo,
 .wi-flow-row__btn--code-ready     { --pill-border: #9333ea; }
 .wi-flow-row__btn--code-doing     { --pill-border: #2563eb; }
 .wi-flow-row__btn--code-completed { --pill-border: #16a34a; }
@@ -9463,6 +9464,7 @@ input[type="reset"] {
   cursor: default;
 }
 .wi-flow-row__btn--active-backlog   { --pill-fill: #f97316; --pill-text: #fff; }
+.wi-flow-row__btn--active-todo,
 .wi-flow-row__btn--active-ready     { --pill-fill: #9333ea; --pill-text: #fff; }
 .wi-flow-row__btn--active-doing     { --pill-fill: #2563eb; --pill-text: #fff; }
 .wi-flow-row__btn--active-completed { --pill-fill: #16a34a; --pill-text: #fff; }

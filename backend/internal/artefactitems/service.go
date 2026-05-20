@@ -725,13 +725,27 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	// Cascade guard — reject manual flow_state_id writes on parented
 	// rows BEFORE the UPDATE runs (don't half-write, then fail). Skipped
 	// when the request isn't touching flow_state_id at all.
+	//
+	// Exception: a parent at a TERMINAL state (done / accepted) is back
+	// in the user's hands. The cascade has finished its job; from here
+	// the user is allowed to move the row to accepted (manual gate the
+	// cascade never auto-fires) OR push it back to an earlier state for
+	// further work. The cascade re-asserts the rule the next time a
+	// child changes — so any pushback is a temporary user override, not
+	// a permanent escape from the derived-state contract.
 	if in.FlowStateID != nil {
 		hasKids, gerr := s.hasLiveChildren(ctx, subscriptionID, id)
 		if gerr != nil {
 			return nil, gerr
 		}
 		if hasKids {
-			return nil, ErrParentFlowStateDerived
+			currentKind, kerr := s.currentFlowStateKind(ctx, subscriptionID, id)
+			if kerr != nil {
+				return nil, kerr
+			}
+			if currentKind != "done" && currentKind != "accepted" {
+				return nil, ErrParentFlowStateDerived
+			}
 		}
 	}
 

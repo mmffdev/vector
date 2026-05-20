@@ -404,30 +404,42 @@ export function ArtefactInlineForm({
             </select>
           </label>
 
-          <label className="artefact-inline-form__Field">
-            <span className="artefact-inline-form__Field_Label">
-              Flow state
-              {(artefact.children_count ?? 0) > 0 && (
-                <span
-                  className="artefact-inline-form__Field_Label_Hint"
-                  title="Derived from children — change a child's state to update this row"
-                >
-                  &nbsp;(derived from children)
+          {(() => {
+            // Lock the Flow State select when the row has live children
+            // AND is NOT at a terminal state. Once the cascade has
+            // landed the parent at done/accepted, control returns to
+            // the user (manual accept, or push back for more work).
+            const atTerminal =
+              artefact.flow_state_code === "completed" ||
+              artefact.flow_state_code === "accepted";
+            const isDerived = (artefact.children_count ?? 0) > 0 && !atTerminal;
+            return (
+              <label className="artefact-inline-form__Field">
+                <span className="artefact-inline-form__Field_Label">
+                  Flow state
+                  {isDerived && (
+                    <span
+                      className="artefact-inline-form__Field_Label_Hint"
+                      title="Derived from children — change a child's state to update this row"
+                    >
+                      &nbsp;(derived from children)
+                    </span>
+                  )}
                 </span>
-              )}
-            </span>
-            <select
-              className="artefact-inline-form__Field_Input"
-              value={artefact.flow_state_id ?? ""}
-              onChange={(e) => patch({ flow_state_id: e.target.value })}
-              disabled={(artefact.children_count ?? 0) > 0}
-            >
-              <option value="">— None —</option>
-              {flowStates.map((fs) => (
-                <option key={fs.id} value={fs.id}>{fs.name}</option>
-              ))}
-            </select>
-          </label>
+                <select
+                  className="artefact-inline-form__Field_Input"
+                  value={artefact.flow_state_id ?? ""}
+                  onChange={(e) => patch({ flow_state_id: e.target.value })}
+                  disabled={isDerived}
+                >
+                  <option value="">— None —</option>
+                  {flowStates.map((fs) => (
+                    <option key={fs.id} value={fs.id}>{fs.name}</option>
+                  ))}
+                </select>
+              </label>
+            );
+          })()}
 
           <label className="artefact-inline-form__Field">
             <span className="artefact-inline-form__Field_Label">Plan estimate (points)</span>

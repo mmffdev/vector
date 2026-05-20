@@ -67,17 +67,18 @@ func (s *Service) recalcParentFlowState(ctx context.Context, subscriptionID, par
 	}
 
 	// Step 1 — load the parent row's recalc context (scope, type, current
-	// flow_state, grandparent id). One round-trip.
+	// flow_state + its kind, grandparent id). One round-trip.
 	var (
 		scope          string
 		artefactTypeID uuid.UUID
 		currentStateID uuid.UUID
+		currentKind    string
 		grandparentID  *uuid.UUID
 		archivedAt     *string
 	)
 	err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectArtefactForRecalc,
 		parentID, subscriptionID,
-	).Scan(&scope, &artefactTypeID, &currentStateID, &grandparentID, &archivedAt)
+	).Scan(&scope, &artefactTypeID, &currentStateID, &currentKind, &grandparentID, &archivedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Parent isn't in this subscription — nothing to do.
@@ -97,6 +98,15 @@ func (s *Service) recalcParentFlowState(ctx context.Context, subscriptionID, par
 	if scope != s.scope {
 		return nil
 	}
+	// IMPORTANT — there is NO "accepted is sacred" skip. The rule is:
+	// every parent follows its children, propagating up. If a child
+	// moves back from done → in_progress, an accepted parent MUST
+	// follow back. Manual acceptance sticks only while the children
+	// still agree with the terminal bucket; the moment they diverge,
+	// the cascade re-asserts. `currentKind` is read for the unused-var
+	// suppression below — kept on the load so future rule tweaks have
+	// it without another SQL change.
+	_ = currentKind
 
 	// Step 2 — bucket the parent's live children by canonical kind.
 	bucket, err := s.loadChildKindBucket(ctx, subscriptionID, parentID)
@@ -117,8 +127,15 @@ func (s *Service) recalcParentFlowState(ctx context.Context, subscriptionID, par
 		return nil
 	}
 
-	// Step 4 — resolve the actual flow_state row to land on.
-	targetStateID, err := s.firstFlowStateByKind(ctx, artefactTypeID, targetKind)
+	// Step 4 — resolve the actual flow_state row to land on. Honours
+	// tenant-customised transition rules: the target must be reachable
+	// from currentStateID via a single flows_transitions edge. If no
+	// legal edge exists, we fall back to the first state of the target
+	// kind on the type's default flow — this is the bootstrapping case
+	// for fresh rows whose currentStateID has no outgoing edges yet, OR
+	// when the tenant hasn't customised transitions. Falls through to
+	// uuid.Nil only when the type has no state of that kind at all.
+	targetStateID, err := s.resolveTargetState(ctx, artefactTypeID, currentStateID, targetKind)
 	if err != nil {
 		return err
 	}
@@ -243,6 +260,78 @@ func pickTargetKind(b childKindBucket) string {
 	return ""
 }
 
+// resolveTargetState picks the flow_state the cascade should land
+// `parent` on given:
+//   - the parent's artefact type (so we can scope to its default flow)
+//   - the parent's CURRENT state (so we can honour transition edges)
+//   - the desired kind ("in_progress" / "done" / "backlog")
+//
+// Precedence:
+//  1. **Reachable via transition edge** — first state of the target
+//     kind that flows_transitions allows from currentStateID. Respects
+//     tenant-customised transition rules. This is the right answer for
+//     a row in mid-flow.
+//  2. **Type-default fallback** — first state of the target kind on
+//     the type's default flow, even if no edge reaches it from
+//     currentStateID. Covers two cases:
+//       (a) bootstrapping — currentStateID has no outgoing edges yet
+//           (e.g. a freshly-created row whose state was set by
+//           CreateWorkItem's is_initial pick, before any user has
+//           authored a transition graph).
+//       (b) backlog fallback — the rule says move parent to backlog,
+//           but the flow's backlog state is unreachable via the user's
+//           edge graph. Still better to land somewhere visible than
+//           leave parent stuck.
+//  3. **Backlog→todo fallback** — when the flow has no kind=backlog
+//     state at all, treat kind=todo as the canonical "pre-work" landing.
+//
+// Returns uuid.Nil when none of the above apply (e.g. the flow has no
+// state of the target kind whatsoever — Task default flow has no
+// 'backlog' state). Caller treats as "skip; no legal move toward this
+// kind right now".
+func (s *Service) resolveTargetState(
+	ctx context.Context,
+	artefactTypeID, currentStateID uuid.UUID,
+	kind string,
+) (uuid.UUID, error) {
+	// 1. Try the edge-respecting path first.
+	id, err := s.lookupReachableStateByKind(ctx, currentStateID, kind)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if id != uuid.Nil {
+		return id, nil
+	}
+	// 2. Fall back to the type-default first-by-kind.
+	id, err = s.firstFlowStateByKind(ctx, artefactTypeID, kind)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
+}
+
+// lookupReachableStateByKind asks: from `currentStateID`, is there a
+// single flows_transitions edge to a state of `kind`? Returns uuid.Nil
+// + nil error when no such edge exists (sql.ErrNoRows is the expected
+// happy-path "no" answer).
+func (s *Service) lookupReachableStateByKind(
+	ctx context.Context,
+	currentStateID uuid.UUID,
+	kind string,
+) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectFirstReachableStateByKind,
+		currentStateID, kind,
+	).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, nil
+		}
+		return uuid.Nil, fmt.Errorf("recalc: lookup reachable %s: %w", kind, err)
+	}
+	return id, nil
+}
+
 // firstFlowStateByKind resolves the first (lowest sort_order) live
 // flow_states_id for the artefact-type's DEFAULT flow with the given
 // kind. Returns uuid.Nil + nil error when no state of that kind exists
@@ -296,6 +385,30 @@ func (s *Service) hasLiveChildren(ctx context.Context, subscriptionID, id uuid.U
 		return false, fmt.Errorf("recalc: count children for guard: %w", err)
 	}
 	return n > 0, nil
+}
+
+// currentFlowStateKind reads the flows_states_kind of an artefact's
+// current state. Returns "" when the row has no flow state (defensive
+// — shouldn't happen post-mig but the LEFT JOIN allows it) or the row
+// doesn't exist. Used by the PatchWorkItem guard so terminal-state
+// parents (done / accepted) can be manually edited — once the cascade
+// has finished its job, the user is back in control (to mark accepted
+// or push the parent back to in_progress for further work).
+func (s *Service) currentFlowStateKind(ctx context.Context, subscriptionID, id uuid.UUID) (string, error) {
+	if s.vectorArtefactsPool == nil {
+		return "", nil
+	}
+	var kind string
+	err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectCurrentFlowKind,
+		id, subscriptionID,
+	).Scan(&kind)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("recalc: read current kind for guard: %w", err)
+	}
+	return kind, nil
 }
 
 // loadParentID resolves the parent_artefact_id of a single artefact

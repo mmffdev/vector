@@ -52,9 +52,11 @@ const sqlWorkItemColumns = `
 	COALESCE(fs.flows_states_id::text, '')        AS flow_state_id,
 	COALESCE(fs.flows_states_name, '')            AS flow_state_name,
 	CASE fs.flows_states_kind
-		WHEN 'todo'        THEN 'backlog'
+		WHEN 'backlog'     THEN 'backlog'
+		WHEN 'todo'        THEN 'todo'
 		WHEN 'in_progress' THEN 'doing'
 		WHEN 'done'        THEN 'completed'
+		WHEN 'accepted'    THEN 'accepted'
 		WHEN 'cancelled'   THEN 'cancelled'
 		ELSE                    'backlog'
 	END                             AS flow_state_code,
@@ -469,10 +471,12 @@ const sqlSelectArtefactForRecalc = `
 			at.artefacts_types_scope,
 			a.artefact_type_id,
 			a.flow_state_id,
+			COALESCE(fs.flows_states_kind, '') AS current_kind,
 			a.parent_artefact_id,
 			a.archived_at
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		WHERE a.id = $1 AND a.subscription_id = $2
 	`
 
@@ -538,6 +542,45 @@ const sqlSelectParentForRecalc = `
 		SELECT parent_artefact_id, subscription_id
 		FROM artefacts
 		WHERE id = $1
+	`
+
+// sqlSelectCurrentFlowKind — reads the current flows_states_kind of an
+// artefact row. Used by the PatchWorkItem cascade guard to allow manual
+// edits on terminal-state parents (done / accepted), so the user can
+// move a finished parent to accepted or push it back for more work.
+// LEFT JOIN tolerates rows that somehow lack a flow_state (defensive —
+// shouldn't happen post-mig, but won't crash if it does).
+const sqlSelectCurrentFlowKind = `
+		SELECT COALESCE(fs.flows_states_kind, '')
+		FROM artefacts a
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
+		WHERE a.id = $1 AND a.subscription_id = $2
+	`
+
+// sqlSelectFirstReachableStateByKind — finds the first state of the
+// target kind that is REACHABLE from `currentStateID` via a single
+// flows_transitions edge. Honours tenant-customised transition rules
+// (set via /workspace-admin/artefacts/transition-rules) — the cascade
+// can't jump backlog→done if the user removed that edge.
+//
+// Lowest sort_order wins when multiple states of the target kind are
+// reachable. Returns sql.ErrNoRows when no edge exists; caller treats
+// as "no legal single-hop move toward this kind — stay put".
+//
+// Why single-hop: the cascade re-fires every time a child changes, so
+// even when the path requires multiple hops, the parent makes
+// incremental progress on each child action. A user could see "1/2 done
+// → Story moves todo→in_progress on next child action" instead of
+// jumping in_progress directly. The graph eventually converges.
+const sqlSelectFirstReachableStateByKind = `
+		SELECT fs.flows_states_id
+		FROM flows_transitions ft
+		JOIN flows_states fs ON fs.flows_states_id = ft.flows_transitions_id_state_to
+		WHERE ft.flows_transitions_id_state_from = $1
+		  AND fs.flows_states_kind = $2
+		  AND fs.flows_states_archived_at IS NULL
+		ORDER BY fs.flows_states_sort_order ASC
+		LIMIT 1
 	`
 
 // ── BulkOps ────────────────────────────────────────────────────────────────

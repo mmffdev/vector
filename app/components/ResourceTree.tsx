@@ -174,6 +174,13 @@ export interface ResourceTreeProps<T> {
   // in here. This ref gives it a back-channel without making ResourceTree
   // controlled.
   applyChildPatchRef?: React.MutableRefObject<((id: string, partial: Record<string, unknown>) => void) | null>;
+  // Sibling back-channel — re-fetches the children of every currently-
+  // expanded parent. Used after the flow-state cascade may have changed
+  // ancestor states server-side: the host's refetchWindow() refreshes
+  // root rows, but expanded children in childMap stay stale. Calling
+  // this re-pulls every expanded sub-tree so cascade results land
+  // visually without the user having to collapse + re-expand.
+  refetchExpandedChildrenRef?: React.MutableRefObject<(() => Promise<void>) | null>;
   getRowClass?: (row: T) => string | undefined;
 
   // ── Set 2: Scaffold ──
@@ -761,6 +768,7 @@ function ResourceTreeImpl<T>({
   fetchChildren,
   patch: _patch,
   applyChildPatchRef,
+  refetchExpandedChildrenRef,
   getRowClass,
   // Scaffold
   columns,
@@ -832,6 +840,43 @@ function ResourceTreeImpl<T>({
       if (applyChildPatchRef.current) applyChildPatchRef.current = null;
     };
   }, [applyChildPatchRef, getId]);
+
+  // Same back-channel pattern for re-fetching every expanded sub-tree.
+  // After a cascade-triggering patch, the host calls this so children
+  // visible under expanded parents repaint with cascade-updated state
+  // (the bare refetchWindow() only refreshes root rows).
+  useEffect(() => {
+    if (!refetchExpandedChildrenRef) return;
+    refetchExpandedChildrenRef.current = async () => {
+      // Snapshot the expanded parents at call time so concurrent
+      // collapse/expand doesn't mutate the loop.
+      const expandedIds = Array.from(expanded);
+      if (expandedIds.length === 0) return;
+      const results = await Promise.all(
+        expandedIds.map(async (parentId) => {
+          try {
+            const items = await fetchChildren(parentId);
+            return { parentId, items };
+          } catch {
+            // Surface failures via the existing loadingId/error UI on
+            // the next interaction — swallow here so one bad parent
+            // doesn't poison the whole refresh batch.
+            return null;
+          }
+        }),
+      );
+      setChildMap((prev) => {
+        const next = { ...prev };
+        for (const r of results) {
+          if (r) next[r.parentId] = r.items;
+        }
+        return next;
+      });
+    };
+    return () => {
+      if (refetchExpandedChildrenRef.current) refetchExpandedChildrenRef.current = null;
+    };
+  }, [refetchExpandedChildrenRef, expanded, fetchChildren]);
   const [searchQueryInternal, setSearchQueryInternal] = useState("");
   const searchControlled = typeof onSearchChange === "function";
   const searchQuery = searchControlled ? (searchValue ?? "") : searchQueryInternal;
