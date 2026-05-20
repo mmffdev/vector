@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -37,7 +38,11 @@ import (
 	"github.com/mmffdev/vector-backend/internal/flows"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
+	"github.com/mmffdev/vector-backend/internal/mentions"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
+	"github.com/mmffdev/vector-backend/internal/notifications"
+	"github.com/mmffdev/vector-backend/internal/notifications/broker"
+	"github.com/mmffdev/vector-backend/internal/notifications/dispatchers"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
@@ -55,6 +60,8 @@ import (
 	"github.com/mmffdev/vector-backend/internal/workspacemasterrecord"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
+	"github.com/mmffdev/vector-backend/internal/lookups"
+	"github.com/mmffdev/vector-backend/internal/timeboxmilestones"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
@@ -585,6 +592,69 @@ func main() {
 	portfolioModelsSvc.WithVAPool(vaPool)
 	workspaceLayersH := portfoliomodels.NewWorkspaceLayersHandler(portfolioModelsSvc)
 
+	// ===== Notifications system (B11.4) =====
+	// AMQP_URL empty → NoopBroker, and producers get a NoopNotifier so the
+	// rest of the backend boots without RMQ. AMQP_URL set → dial RabbitMQ;
+	// dial failure also falls back to noop with a warning, so a broker
+	// outage doesn't take the whole API down.
+	notifLogger := slog.Default()
+	notifPrefs := notifications.NewPrefs(pool)
+	notifTemplates := notifications.NewTemplates()
+	notifications.RegisterMentionDefault(notifTemplates)
+
+	var notifBroker broker.Broker
+	var notifier notifications.Notifier
+	if amqpURL := os.Getenv("AMQP_URL"); amqpURL != "" {
+		rb, err := broker.New(ctx, amqpURL, notifLogger)
+		if err != nil {
+			notifLogger.Warn("notifications: rabbit dial failed, falling back to noop broker",
+				"err", err)
+			notifBroker = broker.NewNoop(notifLogger)
+			notifier = notifications.NewNoop(notifLogger)
+		} else {
+			notifBroker = rb
+			notifier = notifications.NewDBNotifier(pool)
+			// Start the outbox relay (LISTEN/NOTIFY-driven, +30s tick safety net).
+			go func() {
+				if err := notifications.NewRelay(pool, notifBroker, notifLogger).Run(ctx); err != nil && ctx.Err() == nil {
+					notifLogger.Error("notifications.relay: exited", "err", err)
+				}
+			}()
+			// Start dispatchers — one goroutine each, bound to *.<channel>.
+			go func() {
+				if err := dispatchers.NewInApp(pool, notifTemplates, notifPrefs, notifLogger).Run(ctx, notifBroker); err != nil && ctx.Err() == nil {
+					notifLogger.Error("notifications.inapp: exited", "err", err)
+				}
+			}()
+			go func() {
+				if err := dispatchers.NewEmail(pool, mailer, notifTemplates, notifPrefs, notifLogger).Run(ctx, notifBroker); err != nil && ctx.Err() == nil {
+					notifLogger.Error("notifications.email: exited", "err", err)
+				}
+			}()
+			go func() {
+				if err := dispatchers.NewSSE(rtHub, notifPrefs, notifLogger).Run(ctx, notifBroker); err != nil && ctx.Err() == nil {
+					notifLogger.Error("notifications.sse: exited", "err", err)
+				}
+			}()
+			notifLogger.Info("notifications: relay + 3 dispatchers running")
+		}
+	} else {
+		notifLogger.Info("notifications: AMQP_URL unset — using NoopNotifier")
+		notifBroker = broker.NewNoop(notifLogger)
+		notifier = notifications.NewNoop(notifLogger)
+	}
+	_ = notifBroker // currently no main.go-level shutdown hook; relay goroutines exit on ctx
+	notifSvc := notifications.NewService(pool, notifPrefs)
+	notifH := notifications.NewHandler(notifSvc)
+
+	// @-mention scaffold — mounted on both transports per PLA-0039.
+	// vaPool is optional: when nil, the service falls back to
+	// scope='tenant' (master_record_tenants lives in vector_artefacts).
+	// Notifier is now DBNotifier (writes outbox in tx) when AMQP_URL is
+	// set, falls back to NoopNotifier otherwise.
+	mentionsSvc := mentions.NewService(pool, vaPool, notifier)
+	mentionsH := mentions.NewHandler(mentionsSvc)
+
 	// PLA-0027 / Story 00514: timebox sprints REST handler.
 	// Uses the same vaPool as v2 work-items; gracefully degrades when nil.
 	var sprintH *timeboxsprints.Handler
@@ -599,6 +669,17 @@ func main() {
 	if vaPool != nil {
 		releaseH = timeboxreleases.NewHandler(timeboxreleases.NewService(vaPool))
 	}
+
+	// timebox milestones REST handler — point-in-time markers, no
+	// date range / cadence / overlap rule (migration 085).
+	var milestoneH *timeboxmilestones.Handler
+	if vaPool != nil {
+		milestoneH = timeboxmilestones.NewHandler(timeboxmilestones.NewService(vaPool))
+	}
+
+	// Lookups handler — slim scope-bound lookup endpoints (users-in-scope
+	// etc.) used by inline form pickers. Backed by mmff_vector pool.
+	lookupsH := lookups.NewHandler(lookups.NewService(pool))
 
 	var flowsH *flows.Handler
 	if vaPool != nil {
@@ -1197,6 +1278,60 @@ func main() {
 				Delete("/{id}", releaseH.Delete)
 		})
 	}
+	if milestoneH != nil {
+		r.Route("/timeboxes/milestones", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/", milestoneH.List)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Post("/", milestoneH.Create)
+			r.Get("/{id}", milestoneH.Get)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Patch("/{id}", milestoneH.Update)
+			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+				Delete("/{id}", milestoneH.Delete)
+		})
+	}
+
+	// /lookups — slim scope-bound lookup endpoints (users-in-scope etc.).
+	// Every authenticated tenant member can read; subscription clamp is
+	// applied server-side in the SQL.
+	r.Route("/lookups", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Get("/users-in-scope", lookupsH.ListUsersInScope)
+	})
+
+	// /mentions — @-mention scaffold (search + create + inbox).
+	// Tenant isolation lives in the SQL; no extra permission gate beyond
+	// RequireAuth + RequireFreshPassword. Rate-limit matches the other
+	// authenticated read-heavy surfaces.
+	r.Route("/mentions", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		r.Get("/search", mentionsH.SearchMentionables)
+		r.Get("/inbox", mentionsH.ListInbox)
+		r.Post("/", mentionsH.Create)
+		r.Post("/{id}/read", mentionsH.MarkRead)
+	})
+
+	// /notifications — bell + preferences (B11.4).
+	// Read-heavy: list + unread-count poll cycles. Tenant isolation
+	// is in the SQL (every read fences on subscription_id + user_id).
+	r.Route("/notifications", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(240, time.Minute))
+		r.Get("/", notifH.List)
+		r.Get("/unread-count", notifH.UnreadCount)
+		r.Post("/read-all", notifH.MarkAllRead)
+		r.Post("/{id}/read", notifH.MarkRead)
+		r.Get("/prefs", notifH.ListPrefs)
+		r.Put("/prefs", notifH.UpsertPref)
+	})
 
 	// /portfolio + /workspace/{id}/portfolio/layers (B22.19)
 	// Portfolio master record + workspace layer reads — site-only BFF surfaces.
@@ -1259,11 +1394,17 @@ func main() {
 	}
 
 	// /workspace/{id}/fields (B22.21) — admitted field set per workspace.
+	// Writers (POST/PATCH/DELETE) re-pipe the dead /api/dev/artefact-types
+	// shadow surface for workspace-admin Custom Fields management.
+	// Authz/tenancy/scope clamp all inside handler — see fields/handler.go.
 	r.Route("/workspaces/{id}/fields", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Get("/", fieldsH.List)
+		r.Post("/", fieldsH.Create)
+		r.Patch("/{field_id}", fieldsH.Update)
+		r.Delete("/{field_id}", fieldsH.Archive)
 	})
 
 	// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
@@ -1672,6 +1813,59 @@ func main() {
 			})
 		}
 
+		// ---- /timeboxes/milestones ----
+		if milestoneH != nil {
+			r.Route("/timeboxes/milestones", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+
+				r.Get("/", milestoneH.List)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/", milestoneH.Create)
+				r.Get("/{id}", milestoneH.Get)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Patch("/{id}", milestoneH.Update)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Delete("/{id}", milestoneH.Delete)
+			})
+		} else {
+			r.Get("/timeboxes/milestones", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "timebox milestones not enabled", http.StatusServiceUnavailable)
+			})
+		}
+
+		// ---- /mentions — @-mention scaffold ----
+		// Public-transport mount. Same handler as /_site/mentions; the
+		// MapPublic* dto seams (mentions.MapPublicMention,
+		// mentions.MapPublicMentionable) keep the lint:public-dto-mapper
+		// invariant satisfied even though the shapes are currently equal.
+		r.Route("/mentions", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/search", mentionsH.SearchMentionables)
+			r.Get("/inbox", mentionsH.ListInbox)
+			r.Post("/", mentionsH.Create)
+			r.Post("/{id}/read", mentionsH.MarkRead)
+		})
+
+		// ---- /notifications — bell + preferences (B11.4) ----
+		// Public-transport mount. Same handler as /_site/notifications;
+		// MapPublicUserNotification keeps the lint:public-dto-mapper
+		// invariant satisfied even though shapes are currently identical.
+		r.Route("/notifications", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(240, time.Minute))
+			r.Get("/", notifH.List)
+			r.Get("/unread-count", notifH.UnreadCount)
+			r.Post("/read-all", notifH.MarkAllRead)
+			r.Post("/{id}/read", notifH.MarkRead)
+			r.Get("/prefs", notifH.ListPrefs)
+			r.Put("/prefs", notifH.UpsertPref)
+		})
+
 		// ---- /portfolio/master_record (PLA-0026 B9 / PLA-0030 T4a) ----
 		// Per-workspace read of master_record_portfolios (vector_artefacts).
 		// mmff_vector used only for tenancy/membership gate inside handler.
@@ -1686,11 +1880,16 @@ func main() {
 		// ---- /workspace/{id}/fields (PLA-0026 B11 / PLA-0030 T3) ----
 		// Admitted field set for one workspace. Auth + tenancy + membership
 		// gating happens inside the handler (404 for cross-tenant probes).
+		// Writers (POST/PATCH/DELETE) added alongside the read endpoint;
+		// scope clamp + role-tier gate inside the handler.
 		r.Route("/workspaces/{id}/fields", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Get("/", fieldsH.List)
+			r.Post("/", fieldsH.Create)
+			r.Patch("/{field_id}", fieldsH.Update)
+			r.Delete("/{field_id}", fieldsH.Archive)
 		})
 
 		// ---- /workspace/{id}/portfolio/layers (PLA-0026 B10 / PLA-0030 T3) ----

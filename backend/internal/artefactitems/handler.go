@@ -354,17 +354,71 @@ func (h *Handler) RisksSummary(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(out)
 }
 
-// ListFlowStates handles GET /api/v2/work-items/flow-states.
+// ListFlowStates handles GET /_site/work-items/flow-states[?artefact_type_id=<uuid>[,<uuid>...]].
+//
+// Three call patterns:
+//   - No param → legacy "first work-scoped type" fallback. Used by
+//     useWorkItemFlowStates (a single subscription-wide list).
+//   - One uuid → returns just that type's states. Used by the inline
+//     edit form's Flow state dropdown.
+//   - Comma-separated list → returns the union, ordered (type, position).
+//     Used by the ObjectTree to prime a per-type cache for the Status
+//     pill row of every visible row.
+//
+// Response envelope carries:
+//   - `flow_states` (canonical flat list — matches the siteAPI declaration)
+//   - `states` (legacy alias for the useWorkItemFlowStates hook)
+//   - `by_type` (map of artefact_type_id → states[]) populated only when
+//     the by-type branch ran. Frontend bulk caller reads this.
 func (h *Handler) ListFlowStates(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	subID := auth.UserFromCtx(r.Context()).SubscriptionID
-	states, err := h.svc.ListFlowStates(r.Context(), subID)
+
+	var typeIDs []uuid.UUID
+	if raw := r.URL.Query().Get("artefact_type_id"); raw != "" {
+		for _, part := range strings.Split(raw, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			parsed, err := uuid.Parse(part)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid artefact_type_id"}`))
+				return
+			}
+			typeIDs = append(typeIDs, parsed)
+		}
+	}
+
+	states, err := h.svc.ListFlowStates(r.Context(), subID, typeIDs)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"states": states})
+
+	resp := map[string]any{
+		"flow_states": states,
+		"states":      states, // legacy alias
+	}
+	if len(typeIDs) > 0 {
+		byType := make(map[string][]WorkItemFlowState, len(typeIDs))
+		for _, st := range states {
+			byType[st.ArtefactTypeID] = append(byType[st.ArtefactTypeID], st)
+		}
+		// Ensure every requested id appears in the map even if it has
+		// no flow (frontend cache lookup is keyed by id; missing keys
+		// would re-trigger fetches forever).
+		for _, id := range typeIDs {
+			key := id.String()
+			if _, ok := byType[key]; !ok {
+				byType[key] = []WorkItemFlowState{}
+			}
+		}
+		resp["by_type"] = byType
+	}
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 type createWorkItemReq struct {
@@ -485,6 +539,19 @@ type patchWorkItemReq struct {
 	StoryPoints *int            `json:"story_points,omitempty"`
 	SprintID    *string         `json:"sprint_id,omitempty"`
 	DueDate     json.RawMessage `json:"due_date,omitempty"`
+	// ArtefactInlineForm first-class columns. Each follows the
+	// three-state convention: absent ⇒ no change; explicit "" ⇒ clear
+	// to NULL (omitted for IsBlocked which is a strict bool). The
+	// handler decodes them like SprintID/DueDate, then the service
+	// translates "" → NULL and non-empty → UPDATE.
+	Colour           *string         `json:"colour,omitempty"`
+	IsBlocked        *bool           `json:"is_blocked,omitempty"`
+	BlockedReason    *string         `json:"blocked_reason,omitempty"`
+	ReleaseID        *string         `json:"release_id,omitempty"`
+	MilestoneID      *string         `json:"milestone_id,omitempty"`
+	OwnedByUserID    *string         `json:"owned_by_user_id,omitempty"`
+	ParentArtefactID *string         `json:"parent_artefact_id,omitempty"`
+	TopologyNodeID   *string         `json:"topology_node_id,omitempty"`
 }
 
 // Patch handles PATCH /api/v2/work-items/{id}.
@@ -520,14 +587,22 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	wi, err := h.svc.PatchWorkItem(r.Context(), u.SubscriptionID, id, PatchWorkItemInput{
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      req.Status,
-		FlowStateID: req.FlowStateID,
-		PriorityID:  req.PriorityID,
-		StoryPoints: req.StoryPoints,
-		SprintID:    req.SprintID,
-		DueDate:     dueDate,
+		Title:            req.Title,
+		Description:      req.Description,
+		Status:           req.Status,
+		FlowStateID:      req.FlowStateID,
+		PriorityID:       req.PriorityID,
+		StoryPoints:      req.StoryPoints,
+		SprintID:         req.SprintID,
+		DueDate:          dueDate,
+		Colour:           req.Colour,
+		IsBlocked:        req.IsBlocked,
+		BlockedReason:    req.BlockedReason,
+		ReleaseID:        req.ReleaseID,
+		MilestoneID:      req.MilestoneID,
+		OwnedByUserID:    req.OwnedByUserID,
+		ParentArtefactID: req.ParentArtefactID,
+		TopologyNodeID:   req.TopologyNodeID,
 	})
 	if err != nil {
 		switch {

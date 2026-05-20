@@ -46,6 +46,12 @@ type WorkItem struct {
 	KeyNum         int64      `json:"key_num"`
 	ItemType       string     `json:"item_type"`
 	TypePrefix     string     `json:"type_prefix"`
+	// PLA-0052 follow-up — UUID of the artefact's type row in
+	// artefacts_types. Exposed so the inline form can filter the
+	// flow-states dropdown to this artefact's type (instead of getting
+	// the "first work-scoped type" fallback). Always non-empty post-
+	// migration (artefacts.artefact_type_id is NOT NULL).
+	ArtefactTypeID string     `json:"artefact_type_id"`
 	Title          string     `json:"title"`
 	Description    *string    `json:"description"`
 	Status         string     `json:"status"`
@@ -85,6 +91,16 @@ type WorkItem struct {
 	// invisible to any per-node clamp). Read-only on the wire today;
 	// set at insert time via POST /work-items?meg=<uuid>.
 	TopologyNodeID *string `json:"topology_node_id"`
+	// ArtefactInlineForm first-class columns (migration 084 + 085).
+	// Colour: per-artefact hex override; nil ⇒ inherit from
+	// artefact_types.colour. IsBlocked + BlockedReason are independent.
+	// MilestoneID + ReleaseID are wire-stable strings of the
+	// timeboxes_milestones / timeboxes_releases FK.
+	Colour        *string `json:"colour"`
+	IsBlocked     bool    `json:"is_blocked"`
+	BlockedReason *string `json:"blocked_reason"`
+	ReleaseID     *string `json:"release_id"`
+	MilestoneID   *string `json:"milestone_id"`
 }
 
 // OwnerRef is the slim user projection embedded on each WorkItem when the
@@ -239,6 +255,19 @@ type PatchWorkItemInput struct {
 	StoryPoints *int
 	SprintID    *string
 	DueDate     *string
+	// ArtefactInlineForm first-class columns. Three-state convention
+	// (nil ⇒ skip / "" ⇒ clear-to-NULL / non-empty ⇒ write) applies to
+	// the four pointers below. IsBlocked is a true tri-state via the
+	// *bool pointer so the form can PATCH the toggle without touching
+	// reason / colour / FK fields.
+	Colour            *string
+	IsBlocked         *bool
+	BlockedReason     *string
+	ReleaseID         *string
+	MilestoneID       *string
+	OwnedByUserID     *string
+	ParentArtefactID  *string
+	TopologyNodeID    *string
 }
 
 // Sprint is the wire representation of the sprints table.
@@ -365,14 +394,25 @@ type FieldValue struct {
 	DateValue      *string `json:"date_value,omitempty"`
 }
 
-// WorkItemFlowState is a slim projection of obj_flow_tenant scoped to the
-// execution_work_items flow for a subscription. The frontend uses this to
-// populate the Status dropdown without needing flows.manage permission.
+// WorkItemFlowState is a slim projection of flows_states scoped to the
+// default flow of an artefact type. The frontend uses this to populate
+// the Status pill row in the ObjectTree and the Flow state dropdown in
+// the ArtefactInlineForm without needing flows.manage permission.
+//
+// ArtefactTypeID is populated only by the by-type variant of
+// ListFlowStates (when ?artefact_type_id=<list> is supplied). When the
+// legacy fallback path runs it stays empty — that path returns states
+// for a single implicit type, so grouping isn't meaningful.
 type WorkItemFlowState struct {
-	ID            string `json:"id"`
-	Position      int    `json:"flow_position"`
-	Name          string `json:"name"`
-	CanonicalCode string `json:"canonical_code"`
+	ArtefactTypeID string  `json:"artefact_type_id,omitempty"`
+	ID             string  `json:"id"`
+	Position       int     `json:"flow_position"`
+	Name           string  `json:"name"`
+	CanonicalCode  string  `json:"canonical_code"`
+	// Per-state tenant-set hex (#RRGGBB). NULL when the tenant hasn't
+	// overridden the system default — frontend falls back to the
+	// canonical_code colour class in that case.
+	Colour *string `json:"colour"`
 }
 
 // BulkOpResult is the wire shape returned by POST /api/work-items/bulk.

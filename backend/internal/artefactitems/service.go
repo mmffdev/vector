@@ -433,25 +433,44 @@ func (s *Service) SummariseRisks(ctx context.Context, subscriptionID uuid.UUID) 
 	return out, nil
 }
 
-// ListFlowStates returns the flow states for the work artefact type belonging
-// to the subscription. Queries flows_states via the default flow for the
-// first work-scoped artefact_type owned by this subscription.
-func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID) ([]WorkItemFlowState, error) {
+// ListFlowStates returns the flow states for one or more artefact types.
+// When artefactTypeIDs is empty the legacy behaviour applies — picks the
+// first work-scoped artefact type owned by this subscription and returns
+// a flat list. When non-empty the SQL fans out to ANY($1::uuid[]) and
+// returns a flat list ordered (artefact_type_id, sort_order). The handler
+// groups by ArtefactTypeID into a by-type map for the wire response.
+// Subscription clamp is enforced in both branches.
+func (s *Service) ListFlowStates(ctx context.Context, subscriptionID uuid.UUID, artefactTypeIDs []uuid.UUID) ([]WorkItemFlowState, error) {
 	if s.vectorArtefactsPool == nil {
 		return []WorkItemFlowState{}, nil
 	}
-	rows, err := s.vectorArtefactsPool.Query(ctx, sqlListWorkScopeFlowStates,
-		subscriptionID, s.scope,
-	)
+	var rows pgx.Rows
+	var err error
+	if len(artefactTypeIDs) > 0 {
+		rows, err = s.vectorArtefactsPool.Query(ctx, sqlListFlowStatesByArtefactType,
+			artefactTypeIDs, subscriptionID,
+		)
+	} else {
+		rows, err = s.vectorArtefactsPool.Query(ctx, sqlListWorkScopeFlowStates,
+			subscriptionID, s.scope,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var states []WorkItemFlowState
+	byType := len(artefactTypeIDs) > 0
 	for rows.Next() {
 		var st WorkItemFlowState
-		if err := rows.Scan(&st.ID, &st.Position, &st.Name, &st.CanonicalCode); err != nil {
-			return nil, err
+		if byType {
+			if err := rows.Scan(&st.ArtefactTypeID, &st.ID, &st.Position, &st.Name, &st.CanonicalCode, &st.Colour); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := rows.Scan(&st.ID, &st.Position, &st.Name, &st.CanonicalCode, &st.Colour); err != nil {
+				return nil, err
+			}
 		}
 		states = append(states, st)
 	}
@@ -712,6 +731,74 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		} else {
 			sets = append(sets, fmt.Sprintf("due_date = $%d::date", n))
 			args = append(args, *in.DueDate)
+			n++
+		}
+	}
+	if in.Colour != nil {
+		if *in.Colour == "" {
+			sets = append(sets, "colour = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("colour = $%d", n))
+			args = append(args, *in.Colour)
+			n++
+		}
+	}
+	if in.IsBlocked != nil {
+		sets = append(sets, fmt.Sprintf("is_blocked = $%d", n))
+		args = append(args, *in.IsBlocked)
+		n++
+	}
+	if in.BlockedReason != nil {
+		if *in.BlockedReason == "" {
+			sets = append(sets, "blocked_reason = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("blocked_reason = $%d", n))
+			args = append(args, *in.BlockedReason)
+			n++
+		}
+	}
+	if in.ReleaseID != nil {
+		if *in.ReleaseID == "" {
+			sets = append(sets, "artefacts_id_timebox_release = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_id_timebox_release = $%d::uuid", n))
+			args = append(args, *in.ReleaseID)
+			n++
+		}
+	}
+	if in.MilestoneID != nil {
+		if *in.MilestoneID == "" {
+			sets = append(sets, "artefacts_id_timebox_milestone = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_id_timebox_milestone = $%d::uuid", n))
+			args = append(args, *in.MilestoneID)
+			n++
+		}
+	}
+	if in.OwnedByUserID != nil {
+		if *in.OwnedByUserID == "" {
+			sets = append(sets, "owned_by_user_id = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("owned_by_user_id = $%d::uuid", n))
+			args = append(args, *in.OwnedByUserID)
+			n++
+		}
+	}
+	if in.ParentArtefactID != nil {
+		if *in.ParentArtefactID == "" {
+			sets = append(sets, "parent_artefact_id = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("parent_artefact_id = $%d::uuid", n))
+			args = append(args, *in.ParentArtefactID)
+			n++
+		}
+	}
+	if in.TopologyNodeID != nil {
+		if *in.TopologyNodeID == "" {
+			sets = append(sets, "topology_node_id = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("topology_node_id = $%d::uuid", n))
+			args = append(args, *in.TopologyNodeID)
 			n++
 		}
 	}
@@ -1072,6 +1159,7 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.KeyNum,
 		&wi.ItemType,
 		&wi.TypePrefix,
+		&wi.ArtefactTypeID,
 		&wi.Title,
 		&wi.Description,
 		&wi.Status,
@@ -1100,6 +1188,11 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.ChildrenCount,
 		&wi.RollupPoints,
 		&wi.TopologyNodeID,
+		&wi.Colour,
+		&wi.IsBlocked,
+		&wi.BlockedReason,
+		&wi.ReleaseID,
+		&wi.MilestoneID,
 	)
 	if err != nil {
 		return nil, err

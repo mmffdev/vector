@@ -45,6 +45,7 @@ const sqlWorkItemColumns = `
 	a.number                        AS key_num,
 	lower(at.artefacts_types_name)  AS item_type,
 	at.artefacts_types_prefix       AS type_prefix,
+	a.artefact_type_id::text        AS artefact_type_id,
 	a.title,
 	a.description,
 	''                              AS status,
@@ -80,7 +81,12 @@ const sqlWorkItemColumns = `
 	 WHERE child.parent_artefact_id = a.id
 	   AND child.archived_at IS NULL)        AS children_count,
 	COALESCE(rp.rollup_points, a.story_points) AS rollup_points,
-	a.topology_node_id::text                AS topology_node_id`
+	a.topology_node_id::text                AS topology_node_id,
+	a.colour                                AS colour,
+	a.is_blocked                            AS is_blocked,
+	a.blocked_reason                        AS blocked_reason,
+	a.artefacts_id_timebox_release::text    AS release_id,
+	a.artefacts_id_timebox_milestone::text  AS milestone_id`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
@@ -254,8 +260,11 @@ const sqlSummariseRisks = `
 
 // ── ListFlowStates ─────────────────────────────────────────────────────────
 
+// Default-type variant: subscription-scoped, picks the first work-scoped
+// artefact type. Kept for back-compat with callers that don't yet pass
+// ?artefact_type_id (the existing useWorkItemFlowStates hook).
 const sqlListWorkScopeFlowStates = `
-		SELECT fs.flows_states_id, fs.flows_states_sort_order, fs.flows_states_name, fs.flows_states_kind
+		SELECT fs.flows_states_id, fs.flows_states_sort_order, fs.flows_states_name, fs.flows_states_kind, fs.flows_states_colour
 		FROM flows_states fs
 		JOIN flows f ON f.flows_id = fs.flows_states_id_flow
 		WHERE f.flows_id_artefact_type = (
@@ -273,6 +282,32 @@ const sqlListWorkScopeFlowStates = `
 		  AND f.flows_archived_at IS NULL
 		  AND fs.flows_states_archived_at IS NULL
 		ORDER BY fs.flows_states_sort_order ASC
+	`
+
+// By-type variant: returns the default flow's states for one or more
+// artefact_type_ids in a single query. The handler accepts a comma-
+// separated list (?artefact_type_id=<uuid>,<uuid>) so the ObjectTree
+// can prime a per-type cache in one round-trip. Subscription clamp is
+// still enforced (every type row must belong to the caller). Returns
+// flows_id_artefact_type so the caller can group rows by type.
+const sqlListFlowStatesByArtefactType = `
+		SELECT
+			f.flows_id_artefact_type::text AS artefact_type_id,
+			fs.flows_states_id,
+			fs.flows_states_sort_order,
+			fs.flows_states_name,
+			fs.flows_states_kind,
+			fs.flows_states_colour
+		FROM flows_states fs
+		JOIN flows f ON f.flows_id = fs.flows_states_id_flow
+		JOIN artefacts_types at ON at.artefacts_types_id = f.flows_id_artefact_type
+		WHERE f.flows_id_artefact_type = ANY($1::uuid[])
+		  AND at.artefacts_types_id_subscription = $2
+		  AND f.flows_is_default = TRUE
+		  AND f.flows_archived_at IS NULL
+		  AND fs.flows_states_archived_at IS NULL
+		  AND at.artefacts_types_archived_at IS NULL
+		ORDER BY f.flows_id_artefact_type, fs.flows_states_sort_order ASC
 	`
 
 // ── CreateWorkItem ─────────────────────────────────────────────────────────
