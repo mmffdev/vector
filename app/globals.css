@@ -9711,6 +9711,45 @@ input[type="reset"] {
   box-shadow: inset 0 -2px 0 0 var(--accent);
 }
 
+/* Drop-onto target — drag-to-reparent. Distinct from above/below which
+   are sibling reorder. Green when the drop is legal, red when not.
+   Box-shadow inset gives a 2px ring on all four edges (vs the single
+   top/bottom strokes used for reorder). Barber-pole stripe overlay
+   matches the form-open marker's motion language so the user reads
+   "active drop target" the same way they read "active form row". */
+.drag-row--drop-onto,
+.drag-row--drop-onto-illegal {
+  position: relative;
+}
+.drag-row--drop-onto > .tree_accordion-dense__cell,
+.drag-row--drop-onto-illegal > .tree_accordion-dense__cell {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 10px,
+    rgba(0, 0, 0, 0.04) 10px,
+    rgba(0, 0, 0, 0.04) 20px
+  );
+  background-size: 28.284px 28.284px; /* same diagonal period as form-open */
+  animation: drag-row-stripes 2.5s linear infinite;
+}
+.drag-row--drop-onto {
+  box-shadow: inset 0 0 0 2px #16a34a; /* canonical done-green */
+}
+.drag-row--drop-onto-illegal {
+  box-shadow: inset 0 0 0 2px #b91c1c; /* canonical danger-red */
+}
+@keyframes drag-row-stripes {
+  from { background-position: 0 0; }
+  to   { background-position: 28.284px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drag-row--drop-onto > .tree_accordion-dense__cell,
+  .drag-row--drop-onto-illegal > .tree_accordion-dense__cell {
+    animation: none;
+  }
+}
+
 /* ── Cog-menu column (per-row actions: edit, duplicate, move, split, delete) ── */
 .tree_accordion-dense__th--cog,
 .tree_accordion-dense__cell--cog {

@@ -105,8 +105,16 @@ export interface ParentOption {
 // Allowed-parent prefix map. Hard-coded for v1 — promotion to dynamic
 // resolution via artefact_types.parent_type_id is tracked as
 // TD-PARENT-CANDIDATES-DYNAMIC in docs/c_tech_debt.md.
+//
+// Cross-boundary rule (set 2026-05-21): execution rows (TA/US/DE/EP)
+// may parent under the bottommost strategic type (Feature in the
+// default model — tenant-configurable in the portfolio model). Strategic
+// rows stay inside the strategy ladder; execution rows are NEVER legal
+// parents of strategic rows. The drag-and-drop reparent path enforces
+// this gate; the inline form's Parent dropdown uses the same map.
 export const PARENT_PREFIX_MAP: Record<string, string[]> = {
   TA: ["DE", "US"],         // Task → Defect or Story
   US: ["FE", "EP"],         // Story → Feature or Epic
   DE: ["EP", "US"],         // Defect → Epic or Story
+  EP: ["FE"],               // Epic → Feature (cross-boundary anchor)
 };

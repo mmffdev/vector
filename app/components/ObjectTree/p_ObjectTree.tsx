@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { workItems as workItemsApi, portfolioItems as portfolioItemsApi } from "@/app/lib/apiSite";
 import { useScope } from "@/app/contexts/ScopeContext";
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
-import type { ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
+import { PARENT_PREFIX_MAP, type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import BulkActionBar from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
@@ -220,6 +220,10 @@ export default function ObjectTree({
   //                                (Story/Epic) repaint inline.
   const applyChildPatchRef = useRef<((id: string, partial: Record<string, unknown>) => void) | null>(null);
   const refetchExpandedChildrenRef = useRef<(() => Promise<void>) | null>(null);
+  // Row-by-id lookup for the drag-reparent gate. ResourceTree fills
+  // this on mount + on every childMap change so the legality check
+  // always sees fresh row data (type_prefix + parent_id).
+  const getRowByIdRef = useRef<((id: string) => WorkItem | undefined) | null>(null);
 
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
     useArtefactItemsWindow({
@@ -360,6 +364,60 @@ export default function ObjectTree({
       }
       setOpenInlineFormId(null);
       setDuplicateOfId(null);
+      await refetchWindow();
+      await refetchExpandedChildrenRef.current?.();
+    },
+    [resourceUrl, refetchWindow],
+  );
+
+  // ── Drag-to-reparent rule + handler ─────────────────────────────────
+  //
+  // Drop a row ONTO another row → mover becomes a direct child of the
+  // target. Children of the mover come with it (parent_artefact_id is
+  // preserved on every descendant — only the mover's parent_artefact_id
+  // changes). Backend cascade fires on OLD and NEW parent automatically
+  // (PatchWorkItem's parent_artefact_id path).
+  //
+  // Legality rules (v1, frontend-only — backend enforcement deferred
+  // per TD-REPARENT-BACKEND-PARENT-TYPE):
+  //   1. Same-parent → block. No-op move.
+  //   2. Target in mover's subtree → block. Cycle prevention.
+  //      (The hook itself already catches this via getDescendants.)
+  //   3. Target's type prefix NOT in PARENT_PREFIX_MAP[mover prefix] →
+  //      block. Strict cross-boundary rule: a Task can't drop onto an
+  //      Epic, a strategic row can't host an execution row directly
+  //      except where the map permits (EP→FE).
+  const canReparent = useCallback(
+    (moverID: string, targetID: string): boolean => {
+      if (moverID === targetID) return false;
+      const get = getRowByIdRef.current;
+      if (!get) return false;
+      const mover = get(moverID);
+      const target = get(targetID);
+      if (!mover || !target) return false;
+      // Same-parent → no-op (would also be a wasted PATCH).
+      if (mover.parent_id === target.id) return false;
+      // Allowed-parent rule, from the prefix map.
+      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
+      const targetPrefix = target.type_prefix?.toUpperCase() ?? "";
+      return allowed.includes(targetPrefix);
+    },
+    [],
+  );
+
+  // Drop handler. PATCHes parent_artefact_id; the backend cascade
+  // recalcs both old and new parent. Post-PATCH we refresh roots AND
+  // expanded children so both sub-trees repaint (the mover disappears
+  // from the old parent's branch and appears under the new one).
+  const reparentArtefact = useCallback(
+    async (moverID: string, newParentID: string) => {
+      const bundle = resourceUrl === "/portfolio-items" ? portfolioItemsApi : workItemsApi;
+      try {
+        await bundle.patch(moverID, { parent_artefact_id: newParentID });
+      } catch (e) {
+        console.error("reparent: patch failed", e);
+        return;
+      }
       await refetchWindow();
       await refetchExpandedChildrenRef.current?.();
     },
@@ -832,12 +890,19 @@ export default function ObjectTree({
         patch={patchRemote}
         applyChildPatchRef={applyChildPatchRef}
         refetchExpandedChildrenRef={refetchExpandedChildrenRef}
+        getRowByIdRef={getRowByIdRef}
         columns={config.columns}
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"
         search={{ placeholder: config.searchPlaceholder, accessor: config.searchAccessor }}
         sort={{ key: sortKey, dir: sortDir, onChange: handleSortChange }}
-        {...(config.dndEnabled && { dnd: { resourceType: config.dndResourceType } })}
+        {...(config.dndEnabled && {
+          dnd: {
+            resourceType: config.dndResourceType,
+            canReparent,
+            onReparent: reparentArtefact,
+          },
+        })}
         selection={{ mode: "multi", selectedIds, onSelectionChange: setSelectedIds }}
         cogMenu={buildCogMenu}
         selectedId={selectedId}

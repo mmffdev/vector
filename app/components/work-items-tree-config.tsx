@@ -1003,7 +1003,16 @@ export function useArtefactItemsWindow(
           // — the bare refetchWindow() only repaints root rows, but
           // cascade-touched ancestors may be CHILD rows under whatever
           // root is expanded.
-          if ("flow_state_id" in body || "story_points" in body) {
+          // parent_artefact_id covers the inline-form Parent dropdown
+          // path — same dual refresh as flow_state_id so both the old
+          // and new parent's sub-trees repaint with the moved row in
+          // its new home. (Drag-to-reparent goes through a separate
+          // host handler that already does its own refetch pair.)
+          if (
+            "flow_state_id" in body ||
+            "story_points" in body ||
+            "parent_artefact_id" in body
+          ) {
             void refetchWindow();
             onCascadeRefresh?.();
           }

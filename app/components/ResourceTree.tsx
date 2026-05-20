@@ -129,6 +129,15 @@ export interface SortConfig {
 export interface DnDConfig {
   /** Resource type id sent on the rank POST (e.g. "work_item"). */
   resourceType: string;
+  /**
+   * Reparent capability. When both callbacks are present, dropping ONTO
+   * the middle half of a row fires `onReparent`; dropping above/below
+   * still rank-reorders. `canReparent` runs on every dragover so the
+   * row paints legal (green) or illegal (red) — caller owns the rule
+   * (same-parent, cycle, allowed-parent type, scope boundary).
+   */
+  canReparent?: (moverID: string, targetID: string) => boolean;
+  onReparent?: (moverID: string, targetID: string) => void;
 }
 
 // PLA-0021 / 00455 — multi-select. Selection state stays caller-owned; the
@@ -181,6 +190,12 @@ export interface ResourceTreeProps<T> {
   // this re-pulls every expanded sub-tree so cascade results land
   // visually without the user having to collapse + re-expand.
   refetchExpandedChildrenRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  // Lookup back-channel — host can ask ResourceTree for any visible
+  // row by id (roots OR expanded children). Used by the drag-to-
+  // reparent gate so the legality check can read the target row's
+  // type prefix and current parent without round-tripping the API.
+  // Returns undefined when the id isn't in the visible tree.
+  getRowByIdRef?: React.MutableRefObject<((id: string) => T | undefined) | null>;
   getRowClass?: (row: T) => string | undefined;
 
   // ── Set 2: Scaffold ──
@@ -769,6 +784,7 @@ function ResourceTreeImpl<T>({
   patch: _patch,
   applyChildPatchRef,
   refetchExpandedChildrenRef,
+  getRowByIdRef,
   getRowClass,
   // Scaffold
   columns,
@@ -877,6 +893,28 @@ function ResourceTreeImpl<T>({
       if (refetchExpandedChildrenRef.current) refetchExpandedChildrenRef.current = null;
     };
   }, [refetchExpandedChildrenRef, expanded, fetchChildren]);
+
+  // Row-by-id lookup back-channel — host uses this for the drag-to-
+  // reparent legality gate. Walks `roots` first (cheap), then every
+  // childMap array. Effect re-binds whenever the visible row set
+  // changes so the function always sees fresh state at call time.
+  useEffect(() => {
+    if (!getRowByIdRef) return;
+    getRowByIdRef.current = (id) => {
+      for (const r of roots) {
+        if (getId(r) === id) return r;
+      }
+      for (const arr of Object.values(childMap)) {
+        for (const r of arr) {
+          if (getId(r) === id) return r;
+        }
+      }
+      return undefined;
+    };
+    return () => {
+      if (getRowByIdRef.current) getRowByIdRef.current = null;
+    };
+  }, [getRowByIdRef, roots, childMap, getId]);
   const [searchQueryInternal, setSearchQueryInternal] = useState("");
   const searchControlled = typeof onSearchChange === "function";
   const searchQuery = searchControlled ? (searchValue ?? "") : searchQueryInternal;
@@ -974,6 +1012,8 @@ function ResourceTreeImpl<T>({
     onMoved: reconcile,
     onError: rollback,
     getDescendants,
+    canReparent: dnd?.canReparent,
+    onReparent: dnd?.onReparent,
   });
 
   // The hook's built-in onDrop only POSTs. Wrap it to apply the local
@@ -987,7 +1027,17 @@ function ResourceTreeImpl<T>({
         onDrop: (e: React.DragEvent) => {
           const moverId = rank.draggingId;
           const target = rank.dropTarget;
-          if (moverId && target && moverId !== target.id) {
+          // Optimistic local reorder only fires for sibling moves
+          // (above/below). "onto" reparents flow through the host's
+          // onReparent callback in useResourceRank; we don't try to
+          // splice locally — refetchWindow + refetchExpandedChildren
+          // owns that visual update.
+          if (
+            moverId &&
+            target &&
+            moverId !== target.id &&
+            (target.pos === "above" || target.pos === "below")
+          ) {
             applyDrop(moverId, target.pos, target.id);
           }
           baseOnDrop?.(e);
