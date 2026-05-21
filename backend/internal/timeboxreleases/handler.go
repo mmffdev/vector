@@ -4,12 +4,61 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
+
+// ── Slice 2.5: ?fields= projection ───────────────────────────────────────────
+// Mirror of the artefactitems/timeboxsprints projection helpers.
+
+func parseReleaseFieldsParam(raw string) (set map[string]bool, unknown string, ok bool) {
+	if raw == "" {
+		return nil, "", true
+	}
+	out := make(map[string]bool)
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !IsKnownReleaseColumn(name) {
+			return nil, name, false
+		}
+		out[name] = true
+	}
+	for _, alwaysOn := range AlwaysOnReleaseColumns() {
+		out[alwaysOn] = true
+	}
+	return out, "", true
+}
+
+func projectReleases(releases []*Release, set map[string]bool) (any, error) {
+	if set == nil {
+		return releases, nil
+	}
+	out := make([]map[string]any, 0, len(releases))
+	for _, r := range releases {
+		buf, err := json.Marshal(r)
+		if err != nil {
+			return nil, err
+		}
+		var m map[string]any
+		if err := json.Unmarshal(buf, &m); err != nil {
+			return nil, err
+		}
+		for k := range m {
+			if !set[k] {
+				delete(m, k)
+			}
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
 
 // Handler exposes the timeboxreleases domain over HTTP.
 type Handler struct {
@@ -50,16 +99,37 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		f.Status = &v
 	}
 
+	// Slice 2.5 — ?fields= projection.
+	fieldSet, unknownField, fieldsOk := parseReleaseFieldsParam(q.Get("fields"))
+	if !fieldsOk {
+		httperr.Write(w, r, http.StatusBadRequest, "unknown field: "+unknownField)
+		return
+	}
+
 	releases, err := h.svc.List(r.Context(), wsID, f)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
+	projected, projErr := projectReleases(releases, fieldSet)
+	if projErr != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"releases": releases,
+		"releases": projected,
 		"count":    len(releases),
+	})
+}
+
+// Columns handles GET /api/v2/timeboxes/releases/columns — Slice 2.5.
+func (h *Handler) Columns(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"columns": ReleaseColumns,
 	})
 }
 

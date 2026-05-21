@@ -1246,6 +1246,8 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Get("/", sprintH.List)
+			// Slice 2.5 (ObjectTree refactor) — column catalogue.
+			r.Get("/columns", sprintH.Columns)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
 				Post("/", sprintH.Create)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
@@ -1267,6 +1269,8 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Get("/", releaseH.List)
+			// Slice 2.5 (ObjectTree refactor) — column catalogue.
+			r.Get("/columns", releaseH.Columns)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
 				Post("/", releaseH.Create)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
@@ -1425,6 +1429,11 @@ func main() {
 			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
 			r.With(readLimit17).Get("/summary", h.Summary)
 			r.With(readLimit17).Get("/flow-states", h.ListFlowStates)
+			// Slice 2.5 (ObjectTree refactor) — exposes the ?fields=
+			// allow-list catalogue. Frontend column picker / agent
+			// introspection consume this; no subscription clamp on the
+			// catalogue itself, the surface is global to the resource.
+			r.With(readLimit17).Get("/columns", h.Columns)
 			r.With(readLimit17).Get("/{id}", h.Get)
 			r.With(writeLimit17, userWriteLimiter).Patch("/{id}", h.Patch)
 			r.With(writeLimit17, userWriteLimiter).Delete("/{id}", h.Archive)
@@ -1712,6 +1721,9 @@ func main() {
 				r.With(writeLimit, userWriteLimiter).Post("/bulk", h.Bulk)
 				r.With(readLimit).Get("/summary", h.Summary)
 				r.With(readLimit).Get("/flow-states", h.ListFlowStates)
+				// Slice 2.5 (ObjectTree refactor) — agent-introspectable
+				// column catalogue. Same handler as the /_site mount.
+				r.With(readLimit).Get("/columns", h.Columns)
 				r.With(readLimit).Get("/{id}", h.Get)
 				r.With(writeLimit, userWriteLimiter).Patch("/{id}", h.Patch)
 				r.With(writeLimit, userWriteLimiter).Delete("/{id}", h.Archive)

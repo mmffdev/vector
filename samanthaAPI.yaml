@@ -748,6 +748,35 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/columns:
+    get:
+      tags:
+      - portfolio-items
+      summary: GET /portfolio-items/columns
+      operationId: getPortfolioItemsColumns
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Columns
+        file: backend/internal/artefactitems/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /portfolio-items/flow-states:
     get:
       tags:
@@ -3048,6 +3077,35 @@ paths:
       responses:
         '201':
           description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/columns:
+    get:
+      tags:
+      - work-items
+      summary: GET /work-items/columns
+      operationId: getWorkItemsColumns
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.Columns
+        file: backend/internal/artefactitems/handler.go
+      responses:
+        '200':
+          description: 200 — success response
           content:
             application/json:
               schema:

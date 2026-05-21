@@ -4,12 +4,66 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
+
+// ── Slice 2.5: ?fields= projection ───────────────────────────────────────────
+// Mirror of the artefactitems projection helpers. See
+// backend/internal/artefactitems/handler.go for the contract rationale.
+
+// parseSprintFieldsParam reads ?fields= and validates each name against
+// the catalogue. Returns nil on absent param (back-compat).
+func parseSprintFieldsParam(raw string) (set map[string]bool, unknown string, ok bool) {
+	if raw == "" {
+		return nil, "", true
+	}
+	out := make(map[string]bool)
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !IsKnownSprintColumn(name) {
+			return nil, name, false
+		}
+		out[name] = true
+	}
+	for _, alwaysOn := range AlwaysOnSprintColumns() {
+		out[alwaysOn] = true
+	}
+	return out, "", true
+}
+
+// projectSprints applies the field set to a slice of *Sprint. nil set
+// means "no projection — return as-is".
+func projectSprints(sprints []*Sprint, set map[string]bool) (any, error) {
+	if set == nil {
+		return sprints, nil
+	}
+	out := make([]map[string]any, 0, len(sprints))
+	for _, s := range sprints {
+		buf, err := json.Marshal(s)
+		if err != nil {
+			return nil, err
+		}
+		var m map[string]any
+		if err := json.Unmarshal(buf, &m); err != nil {
+			return nil, err
+		}
+		for k := range m {
+			if !set[k] {
+				delete(m, k)
+			}
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
 
 // Handler exposes the timeboxsprints domain over HTTP.
 type Handler struct {
@@ -53,16 +107,39 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		f.Status = &v
 	}
 
+	// Slice 2.5 — ?fields= projection. Parsed BEFORE the service call so
+	// unknown names fail fast (400) without hitting the DB.
+	fieldSet, unknownField, fieldsOk := parseSprintFieldsParam(q.Get("fields"))
+	if !fieldsOk {
+		httperr.Write(w, r, http.StatusBadRequest, "unknown field: "+unknownField)
+		return
+	}
+
 	sprints, err := h.svc.List(r.Context(), wsID, f)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 
+	projected, projErr := projectSprints(sprints, fieldSet)
+	if projErr != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"sprints": sprints,
+		"sprints": projected,
 		"count":   len(sprints),
+	})
+}
+
+// Columns handles GET /api/v2/timeboxes/sprints/columns — Slice 2.5.
+// Returns the allow-list of fields callers may request via ?fields=.
+func (h *Handler) Columns(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"columns": SprintColumns,
 	})
 }
 
