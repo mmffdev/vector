@@ -50,8 +50,8 @@ These are helpers called by other shortcuts but never invoked directly. Do NOT i
 - `.claude/commands/c_addpaper-stories.md`
 - `.claude/commands/c_research-paper-format.md`
 - `.claude/commands/c_write-research-paper.md`
-- `.claude/commands/c_research.md` (protocol detail for `/research` skill)
-- `.claude/commands/c_retro.md` (protocol detail for `<r>` skill)
+- `.claude/commands/c_research.md` (protocol detail for `<report> -r` research crawl)
+- `.claude/commands/c_retro.md` (protocol detail for `<report> -retro`)
 
 The hook at [`.claude/hooks/shortcuts-staleness-check.sh`](../hooks/shortcuts-staleness-check.sh) maintains the same list — keep them in sync.
 
@@ -79,7 +79,7 @@ open "http://localhost:5101/dev/shortcuts"
 
 ## Scope linkage
 
-`<addpaper>` / `<research>` and plan creation each auto-insert a reference line below the matching scope item in `Vector_Scope.md` when the output maps to an existing item. Bespoke / brainstorming outputs with no scope match are silently skipped — not added to Unmatched Commits. The insertion format is:
+`<addpaper>` / `<report> -r` and plan creation each auto-insert a reference line below the matching scope item in `Vector_Scope.md` when the output maps to an existing item. Bespoke / brainstorming outputs with no scope match are silently skipped — not added to Unmatched Commits. The insertion format is:
 
 - Research: `> Research \`RNNN\` (YYYY-MM-DD): {title}`
 - Plan: `> Plan \`PLA-NNNN\` (YYYY-MM-DD): {title}`

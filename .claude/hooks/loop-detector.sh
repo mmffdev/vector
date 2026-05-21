@@ -2,7 +2,7 @@
 # PostToolUse hook — fires after every tool call.
 # Maintains a 10-minute sliding-window state file at /tmp/.claude-retro-loop-state.json.
 # When all 5 signals fire within the window, writes the sentinel /tmp/.claude-retro-loop-trigger
-# so the next UserPromptSubmit hook can inject a system-reminder telling the agent to run <r> --auto-loop.
+# so the next UserPromptSubmit hook can inject a system-reminder telling the agent to run <report> -retro --auto-loop.
 #
 # Signals (must ALL hit within 10-min window):
 #   1. max(tool_repeats.values()) >= 4

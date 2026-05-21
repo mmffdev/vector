@@ -1,6 +1,6 @@
-# `<r>` — Retro Perspective Protocol
+# `<report> -retro` — Retro Perspective Protocol
 
-Full protocol for the retro skill. The skill entrypoint at `.claude/skills/retro/SKILL.md` references this file.
+Full protocol for the retro flag of the `<report>` skill. The skill entrypoint at `.claude/skills/report/SKILL.md` references this file. Was previously a standalone `<r>` / `<retro>` skill — folded into `<report>` 2026-05-21.
 
 > **Standing rule (hard):** every write path in this skill goes through the **sync function** below. Step 8 (self-check + rollback) is non-optional. A retro that "succeeded" but failed self-check is a defect — roll it back and report failure.
 
@@ -348,7 +348,7 @@ When triggered: hook writes sentinel, UserPromptSubmit hook injects a `<system-r
 
 ## Cross-references
 
-- Skill entrypoint: [`.claude/skills/retro/SKILL.md`](../skills/retro/SKILL.md)
+- Skill entrypoint: [`.claude/skills/report/SKILL.md`](../skills/report/SKILL.md) (run via `<report> -retro`)
 - Loop detector hook: [`.claude/hooks/loop-detector.sh`](../hooks/loop-detector.sh)
 - Loop injector hook: [`.claude/hooks/loop-injector.sh`](../hooks/loop-injector.sh)
 - Tech-debt register: [`docs/c_tech_debt.md`](../../docs/c_tech_debt.md)
