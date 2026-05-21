@@ -1160,6 +1160,55 @@ func (s *Service) ListGrantsByUser(ctx context.Context, subscriptionID, targetUs
 	return out, nil
 }
 
+// tenantRootID resolves the subscription's single root topology_node —
+// the node with parent_id IS NULL. Used by ClampMiddleware to decide
+// whether the user's grant set covers the entire tenant.
+//
+// Moved here from middleware.go on 2026-05-21 (per COD002 / W1): a
+// middleware file should not host SQL-running service methods. Callers
+// (the middleware in middleware.go) are unchanged because the receiver
+// is still *Service.
+//
+// Deliberately does NOT read WorkspaceIDFromCtx — the per-node clamp
+// predicate needs the absolute tenant root to detect the "ClampAll"
+// shortcut. Callers that want the workspace-scoped root must use
+// TenantRootID instead.
+func (s *Service) tenantRootID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.vaPool.QueryRow(ctx, sqlSelectTenantRootID, subscriptionID).Scan(&id)
+	return id, err
+}
+
+// TenantRootID resolves the canonical root of subscriptionID — the
+// lowest-sort_order live node with parent_id IS NULL — narrowed to the
+// request's workspace clamp when present (story 00378). Returns
+// pgx.ErrNoRows when the (workspace-scoped) tenant has no root.
+//
+// This is the entry point handlers use when the client did not pass
+// `?root=<id>`: the workspace clamp middleware has already chosen the
+// workspace, so the root resolves WITHIN that workspace and never
+// crosses to a sibling workspace's root in the same subscription.
+func (s *Service) TenantRootID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
+	wsClause, args, _ := workspaceClause(ctx, "topology_nodes", []any{subscriptionID})
+	var id uuid.UUID
+	err := s.vaPool.QueryRow(ctx, fmt.Sprintf(sqlSelectTenantRootIDWorkspaceClampedTemplate, wsClause),
+		args...).Scan(&id)
+	return id, err
+}
+
+// containsID is the inline membership helper ClampMiddleware uses
+// after fetching the user's grant set to decide between ClampAll and
+// ClampSubset. Trivial enough to keep package-local rather than
+// pulling slices.Contains via a Go generics dependency edge.
+func containsID(haystack []uuid.UUID, needle uuid.UUID) bool {
+	for _, h := range haystack {
+		if h == needle {
+			return true
+		}
+	}
+	return false
+}
+
 // ClampPredicate returns the set of live node IDs the user can see —
 // the union of the subtrees rooted at every node they hold an active
 // grant on. Empty result means "no Topology access" and should result
