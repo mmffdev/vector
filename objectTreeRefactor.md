@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 complete. Slice 4.6c next (backend `touched_ids` + by-ids endpoint).
+**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c complete. Slice 4.6b next (cell memoisation audit on shared file).
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s2.5-backend-fields` (slice 2.5 — backend `?fields=` contract + `/columns` endpoint, committed locally not yet pushed)
-**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (request coalescing), s2.5 (backend `?fields=`)
+**Active branch:** `refactor/objecttree-s4.6c-touched-ids` (slice 4.6c — touched_ids + by-ids, committed locally not yet pushed)
+**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend `?fields=`), s4.6c (touched_ids + by-ids)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -87,9 +87,9 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 
 ### Claimed by SLICE 4.6 (memoisation + cascade-scope reduction)
 
-- ALL cell renderers in `app/components/ObjectTreeV2/cells/**` — React.memo audit
-- `backend/internal/artefactitems/handler.go` — PATCH responses gain `touched_ids: string[]`
-- POSSIBLY new `GET /<resource>/by-ids` endpoint and matching `main.go` route
+- ✅ Slice 4.6a (request coalescing in useObjectTreeWindow) — done on `refactor/objecttree-s4.6a-request-coalescing`
+- ✅ Slice 4.6c (backend touched_ids + by-ids endpoint) — done on `refactor/objecttree-s4.6c-touched-ids`
+- ⏳ Slice 4.6b (cell memoisation audit on `work-items-tree-config.tsx`) — next; shared file with production, additive React.memo wrappers
 
 ### Claimed by SLICE 5 (timebox scope_propagation column)
 
