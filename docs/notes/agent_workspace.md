@@ -1,5 +1,10 @@
 # PLA-0043 Handover — Topology Scope Clamp on Artefact Reads
 
+> **Read-before-acting note (added later):** this is a frozen handover from 2026-05-12. Since then:
+> - `artefactitemsv2` was renamed to `artefactitems` (RF1.4.4 / mig 064). All paths in this doc that say `artefactitemsv2` should be read as `artefactitems`.
+> - The `strings.Contains("node not found")` sniff has been deleted; the `TopologyScopeResolver` error contract is now sentinel-based (see § Sentinels below for the current shape).
+> The narrative ("What is DONE on this branch") is preserved as history.
+
 **Date:** 2026-05-12
 **Branch:** `pla-0043-topology-scope-clamp` (pushed to origin, 4 commits ahead of `main`)
 **Last commit:** `a07d3b5`
@@ -154,14 +159,15 @@ cd .. && npx tsc --noEmit  # ignore pre-existing TS errors unrelated to this wor
 
 ## Sentinels & error mapping
 
+> **Updated post-handover:** `artefactitemsv2` was renamed to `artefactitems` (RF1.4.4 / mig 064). The `strings.Contains("node not found")` sniff has been deleted — the `TopologyScopeResolver` interface now declares its own error contract and `cmd/server/main.go`'s `topologyScopeAdapter` translates `topology.ErrNodeNotFound` / `ErrTenantMismatch` → `artefactitems.ErrScopeNodeNotFound` via `errors.Is`. Use the table below.
+
 | Sentinel | HTTP | Meaning |
 |---|---|---|
-| `artefactitemsv2.ErrScopeForbidden` | 403 | Node exists, user has no covering grant |
-| `artefactitemsv2.ErrScopeNodeNotFound` | 404 | Node missing or in another tenant |
-| `artefactitemsv2.ErrInvalidInput` | 400 | Bad UUID, missing actor, resolver not wired |
-| `orgdesign.ErrNodeNotFound` | (translated to 404 above by string-match) | Used inside orgdesign |
+| `artefactitems.ErrScopeForbidden` | 403 | Node exists, user has no covering grant |
+| `artefactitems.ErrScopeNodeNotFound` | 404 | Node missing or in another tenant (or translated from `topology.ErrNodeNotFound` at the wiring seam) |
+| `artefactitems.ErrInvalidInput` | 400 | Bad UUID, missing actor, resolver not wired |
 
-**Important wiring note:** the v2 service detects orgdesign's `ErrNodeNotFound` via `strings.Contains(err.Error(), "node not found")` to avoid importing orgdesign (cycle risk if orgdesign ever reads artefacts). If you refactor, consider exporting a dedicated comparable sentinel or sharing the type via a third package.
+**Wiring contract:** any implementer of [`TopologyScopeResolver`](../../backend/internal/artefactitems/service.go) MUST return one of artefactitems' sentinels. The production wrapper is [`topologyScopeAdapter`](../../backend/cmd/server/main.go) (search for `translateTopologyErr`); test stubs must follow the same contract (see `service_test.go` `stubTopologyResolver`).
 
 ---
 

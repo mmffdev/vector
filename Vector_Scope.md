@@ -334,6 +334,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -586,6 +587,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -750,6 +753,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -969,6 +973,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1070,6 +1076,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -1093,6 +1100,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `94ce536` (2026-05-13): feat(PLA-0044): page template baseline — primitives, PageHeading, Panel description prop [FE-UI-0001]
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **FLOW1.5.1** Snapshot tables in `vector_artefacts` (`flow_defaults`, `flow_state_defaults`, `flow_transition_defaults`) baked at seed time; idempotent rebuild from current live default flows `[P1]` ✅
 > Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1139,6 +1147,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
@@ -1186,6 +1195,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
@@ -1727,6 +1737,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1909,6 +1921,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2085,6 +2098,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2208,6 +2222,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2251,6 +2266,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2728,6 +2744,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
   >
   > **The clamp (server-side, every route):**
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > 1. Session → actor (existing middleware)
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
   > 2. Tenant clamp — `subscription_id` from actor, never payload
@@ -2878,6 +2895,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -2926,11 +2944,13 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **B5.11** Migration: drop `pages_tags.pages_tags_min_auth_level` from the catalogue gate path (PLA-0053; column kept nullable for rollback). `pages_tags_is_admin_menu` is **kept** — still used by `UserAvatarMenu` to route avatar/notification buckets (separate concern from page-access gating). `[P2]`
 - **B5.12** Backend: remove `authLevelFor` / `TagsFor` tier filter / `CatalogFor` tier filter from `backend/internal/nav/registry.go`; `users_roles_pages` becomes the sole catalogue gate (PLA-0053) `[P2]`
 - **B5.13** Frontend: remove `deriveAuthLevel` + `userAuthLevel` filter from `app/redesign/ShellContext.tsx`; tag bucket appears iff it contains ≥1 page in `pages` array (PLA-0053) `[P2]`
@@ -3011,6 +3031,11 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -3102,6 +3127,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -3137,6 +3163,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -3159,6 +3186,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
 > Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
   >
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
@@ -3170,6 +3198,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -3266,6 +3295,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -3436,6 +3466,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3637,6 +3668,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -3783,6 +3816,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -3852,6 +3886,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 
@@ -3930,12 +3965,14 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -3945,6 +3982,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -4250,6 +4288,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Shipped 2026-05-19 in commit 6530c13. Status pill replaced with read-only checkbox; toggle action stays in the inline edit-row panel staged behind "Confirm changes". Also added `<PageDescription>` since the file moved out of legacy `/user-management/page.tsx`.
   > Last checked: 2026-05-19
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
@@ -4258,6 +4297,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 >
 > **Open intent question** — "onboarding topology": does this mean topology grants pre-assigned during the invite/create flow? If yes, a new story wires the CreateUser modal to accept an initial topology-grant payload (server-side: invite carries the grant payload; account creation transaction inserts user row + grant rows atomically).
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
@@ -4496,6 +4536,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -4651,6 +4692,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -4714,6 +4757,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -4818,6 +4863,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -4946,6 +4992,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -5169,6 +5216,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -5332,6 +5380,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -5457,6 +5506,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5738,6 +5789,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -6132,6 +6185,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -6510,6 +6564,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -6791,6 +6846,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
