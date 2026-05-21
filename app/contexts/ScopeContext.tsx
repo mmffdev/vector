@@ -217,6 +217,26 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
           apiSite("/me/active-scope", { method: "PUT", body: JSON.stringify({ node_id: null }) }).catch(() => {});
         }
         const resolved = match ? match.node_id : null;
+
+        // 2026-05-21 (follow-on to first fix attempt) — bootstrap-path
+        // JWT auto-switch. The earlier fix only handled cross-workspace
+        // picks via setActiveNodeId; on a fresh page load, scope hydrates
+        // from URL/server/localStorage straight through seed(), bypassing
+        // setActiveNodeId entirely. If the seeded grant lives in a
+        // different workspace than the JWT, every per-item GET still
+        // 404s (FE-9001 symptom). Run the same switch here, BEFORE
+        // committing the active node + before flipping scopeReady so
+        // gated consumers wait until the JWT is aligned.
+        if (match && user?.workspace_id && match.workspace_id !== user.workspace_id) {
+          try {
+            await switchWorkspace(match.workspace_id);
+          } catch {
+            // Switch failed — fall through to commit anyway (better to
+            // surface "list works, edits 404" than to leave the user
+            // with an unscoped session and no clue what's wrong).
+          }
+        }
+
         setActiveNodeIdState(resolved);
         if (resolved) {
           writeStoredId(resolved);
@@ -236,7 +256,7 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
         return prev;
       });
     }
-  }, [grants]);
+  }, [grants, user?.workspace_id, switchWorkspace]);
 
   const setActiveNodeId = useCallback((id: string | null) => {
     // 2026-05-21 — auto-switch JWT-workspace when scope-picking a node
