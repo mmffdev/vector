@@ -39,6 +39,15 @@ type Sprint struct {
 	SprintDateAdded       time.Time  `json:"timeboxes_sprints_created_at"`
 	SprintDateUpdated     time.Time  `json:"timeboxes_sprints_updated_at"`
 	ArchivedAt            *time.Time `json:"timeboxes_sprints_archived_at"`
+	// Slice 5 of the ObjectTree refactor — heartbeat substrate. Values:
+	//   'this_node_only'           — visible only on the pinned node (default)
+	//   'this_node_and_descendants' — visible on the pinned node AND
+	//                                  every live descendant (computed
+	//                                  at read time via ancestor-walk;
+	//                                  Phase B). The persisted column
+	//                                  controls intent; read-side
+	//                                  visibility is derived from it.
+	ScopePropagation string `json:"timeboxes_sprints_scope_propagation"`
 }
 
 // CreateSprintInput holds required fields to create a sprint.
@@ -53,6 +62,10 @@ type CreateSprintInput struct {
 	SprintDateStart   string
 	SprintDateEnd     string
 	SprintVelocity    *int
+	// Slice 5 — propagation intent. Nil = use the DB default
+	// ('this_node_only'). Valid non-nil values:
+	//   'this_node_only', 'this_node_and_descendants'
+	ScopePropagation *string
 }
 
 // UpdateSprintInput holds optional fields for partial sprint update.
