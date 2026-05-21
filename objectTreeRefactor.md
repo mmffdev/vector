@@ -1,8 +1,8 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A complete (5A fully threaded — mig 091 + Sprint AND Release type fields + Sprint AND Release SQL/scan/INSERT). Slice 5B next (read-side ancestor-walk + origin field on response — deferred awaiting UI sign-off on exact shape). Slice 6 final (sprint/release page swap to V2).
+**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A + 6 (all sub-slices) COMPLETE. Sprint + release production pages now run on `<TimeboxObjectTree>` (V2). `<TimeboxManager>` + `useTimebox` + `timebox/kinds.ts` deleted (−442 net lines). **Slice 5B (read-side ancestor-walk) + Slice 7 (heartbeat UX) queued — both awaiting Rick's design input.**
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s5a-scope-propagation-substrate` (slice 5A — mig 091 + Sprint+Release types + Sprint+Release SQL/scan/INSERT threaded, applied to dev, committed locally not yet pushed)
+**Active branch:** `refactor/objecttree-s6-page-swap` — slices 6.1 → 6.5 committed locally on the worktree; **NOT YET MERGED to `main`**. Rick to decide merge timing.
 **Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend ?fields=), s4.6c (touched_ids + by-ids), s4.5 (column picker), s5a (scope_propagation substrate)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
@@ -103,6 +103,45 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ `backend/internal/timeboxreleases/sql.go` — scope_propagation appended to all 4 column lists; INSERT $1..$11 with COALESCE
 - ✅ `backend/internal/timeboxreleases/service.go` — scanRelease + Create + BulkCreate threaded
 - Phase A complete: column persists + round-trips on every read path. Phase B (read-side ancestor-walk + `{origin}` on response) lands in slice 5B once UI shape is signed off.
+
+### ~~Claimed by SLICE 6.1~~ — DONE (bulk-create sheet substrate, timeboxes-only)
+
+- ✅ `app/components/ObjectTreeV2/kinds/ActionBar.tsx` — `CreateActionConfig` grows `bulk` variant; `ActionBarProps.createAction` widens to `CreateActionConfig | CreateActionConfig[]` so sprints/releases can render single+bulk side-by-side
+- ✅ `app/components/ObjectTreeV2/sheets/ObjectTreeBulkCreateSheet.tsx` (new) — inline sheet shell (per Rick's design decision 2026-05-21: pushes the grid down, not modal). `BulkColumnSpec` + `BulkCreateConfig` are the JSON contract; cascade math hard-coded behind boolean flags
+- **Domain rule (MEMORY.md → ## Active Threads):** bulk-create is TIMEBOXES-ONLY. Never add `bulk` to work-items/portfolio/risks/future kinds.
+
+### ~~Claimed by SLICE 6.2~~ — DONE (TimeboxInlineForm)
+
+- ✅ `app/components/TimeboxInlineForm/index.tsx` (new) — single-row create/edit body for the V2 detail flyout. Handles both kinds via small `KIND_CFG` map (apiBase + rowPrefix + namePrefix). Diff-based PATCH; Start/Close use dedicated transition endpoints, not generic UPDATE
+- Lifecycle matches ArtefactInlineForm: `rowId` nullable, renders nothing when null so the shell can leave the body mounted across opens
+
+### ~~Claimed by SLICE 6.3a + 6.3b~~ — DONE (backend + frontend cutover to `{items,total}`)
+
+**Problem found:** `useObjectTreeWindow<T>` consumes responses shaped `{ items, total }`. Sprint/release handlers returned `{ sprints, count }` / `{ releases, count }` — written before the V2 contract existed, diverged in place.
+
+**Decision: backend cutover (Road A).** Migrate handlers to `{ items, total }`, add paging, update the frontend consumer.
+
+- ✅ `backend/internal/timeboxsprints/handler.go` — List + BulkCreate response cut over; `?limit=`/`?offset=` paging added (in-handler windowing since sprint counts per workspace are <50; if scale changes push LIMIT into SQL)
+- ✅ `backend/internal/timeboxreleases/handler.go` — same cutover
+- ✅ `app/lib/apiSite/index.ts` — `sprints.list` / `sprints.bulkCreate` / `releases.list` / `releases.bulkCreate` return-types updated
+- ✅ `app/components/ArtefactInlineForm/ArtefactInlineForm.tsx` — sprint + release dropdown reads cut over to `data.items` (milestones still on legacy `{milestones,count}` — left for a later slice if milestones move to V2)
+- ✅ `app/hooks/useTimebox.ts` — bridged to the new shape so legacy TimeboxManager keeps working through the transitional commits
+
+### ~~Claimed by SLICE 6.3c~~ — DONE (TimeboxObjectTree + sprint page swap)
+
+- ✅ `app/components/TimeboxObjectTree/index.tsx` (new) — composes V2 primitives (DenseGridHeader, ActionBar single+bulk, ObjectTreeBulkCreateSheet, ObjectTreeDetailFlyout + TimeboxInlineForm). **Sibling to** `ObjectTreeV2/p_ObjectTree.tsx`, not a parameterisation. p_ObjectTree.tsx is still heavily work-items-shaped (flow_states, artefact_types, parent cascade); pushing sprints through it would mean either gutting it or accepting dead branches. A sibling is the honest answer — V2 is a primitives toolkit + a work-items reference composition; new domains pick primitives until painful drift forces convergence.
+- ✅ `app/(user)/sprints/page.tsx` — swapped from `<TimeboxManager>` to `<TimeboxObjectTree kind="sprint">`
+- **No `p_wizard_sprints.json` this slice.** Honest reason: `ObjectTreeDataConfig` today doesn't express bulk-create / status transitions / cadence semantics. Empty JSON would be cargo-cult. Wizard-JSON convergence for timeboxes is a later question when V2's central component generalises.
+
+### ~~Claimed by SLICE 6.4~~ — DONE (releases page swap)
+
+- ✅ `app/(user)/releases/page.tsx` — swapped to `<TimeboxObjectTree kind="release">`. No code change inside TimeboxObjectTree; same component handles both kinds via its KIND_CFG map.
+
+### ~~Claimed by SLICE 6.5~~ — DONE (legacy deletion + scope harness wiring)
+
+- ✅ Deleted: `app/components/TimeboxManager.tsx` (375 lines), `app/hooks/useTimebox.ts` (52 lines), `app/components/timebox/kinds.ts` (31 lines)
+- ✅ `app/(user)/scope/page.tsx` — `ready:false` → `ready:true` on sprints + releases modes; harness now mounts `<TimeboxObjectTree>` for those modes (not ObjectTreeV2's central p_ObjectTree.tsx)
+- **Net: −442 lines.** TimeboxManager's 375-line monolith replaced with composable V2 primitives + a single thin per-domain wrapper.
 
 ### Claimed by SLICE 5B (read-side heartbeat — deferred)
 
