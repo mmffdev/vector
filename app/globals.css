@@ -16348,3 +16348,277 @@ input[type="reset"] {
     transition: none;
   }
 }
+
+/* ============================================================
+   Notifications inbox — /user/notifications/notifications
+   Two-line card list, comfortable density. Token-only styles.
+   ============================================================ */
+
+.notifications-inbox__list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notifications-inbox__state {
+  list-style: none;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.notifications-inbox__state.is-error {
+  color: var(--danger, #d14343);
+  border-color: var(--danger, #d14343);
+}
+
+.notifications-inbox__item {
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.notifications-inbox__item.is-unread {
+  background: var(--surface-raised, var(--surface));
+  border-color: var(--ink-muted);
+}
+.notifications-inbox__item:hover {
+  background: var(--surface-sunken);
+}
+
+.notifications-inbox__item_link {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.notifications-inbox__item_link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.notifications-inbox__item_Lead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: 2px;
+}
+.notifications-inbox__item_Lead_dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--ink-muted);
+}
+.notifications-inbox__item_Lead_dot.is-unread {
+  background: var(--accent, #d14343);
+  border-color: var(--accent, #d14343);
+}
+.notifications-inbox__item_Lead_kind {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.notifications-inbox__item_Body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notifications-inbox__item_Body_TitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.notifications-inbox__item_Body_title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.notifications-inbox__item.is-unread .notifications-inbox__item_Body_title {
+  font-weight: 700;
+}
+.notifications-inbox__item_Body_time {
+  font-size: 12px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.notifications-inbox__item_Body_snippet {
+  font-size: 13px;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.notifications-inbox__item_Body_context {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.notifications-inbox__item_Trail {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.notifications-inbox__pagination {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.notifications-inbox__pagination_meta {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.notifications-inbox__pagination_controls {
+  display: flex;
+  gap: 8px;
+}
+
+/* ============================================================
+   Notification toast host — top-right slide-in stack.
+   Mounted once in the shell. Each toast slides in from the right,
+   stacks downward; "+N more" caps the visible count.
+   ============================================================ */
+
+.notification-toast-host {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  pointer-events: none; /* host doesn't block; toasts re-enable */
+}
+
+.notification-toast {
+  pointer-events: auto;
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent, #d14343);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  animation: notification-toast-slide-in 220ms ease-out;
+  transition: transform 150ms ease, background 150ms ease;
+}
+.notification-toast:hover {
+  background: var(--surface-sunken);
+  transform: translateX(-2px);
+}
+.notification-toast:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.notification-toast--overflow {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-muted);
+  border-left-color: var(--border);
+  padding: 8px 12px;
+}
+
+.notification-toast__Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.notification-toast__Header_kind {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.notification-toast__Header_close {
+  background: transparent;
+  border: 0;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.notification-toast__Header_close:hover { color: var(--ink); }
+
+.notification-toast__Body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.notification-toast__Body_title {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.notification-toast__Body_snippet {
+  font-size: 12px;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.notification-toast__Body_context {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+@keyframes notification-toast-slide-in {
+  from {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-toast {
+    animation: none;
+  }
+  .notification-toast:hover {
+    transform: none;
+  }
+}

@@ -9,6 +9,7 @@ import AccountFlyout from "./AccountFlyout";
 import RedesignTopBar from "./RedesignTopBar";
 import DebugPanel from "./DebugPanel";
 import QRCodeTrigger from "@/app/components/QRCodeTrigger";
+import NotificationToastHost from "@/app/components/NotificationToastHost";
 
 function ShellBody({ children }: { children: React.ReactNode }) {
   const { isAccountActive, isScopeOpen, isDebugOpen } = useShell();
@@ -33,6 +34,10 @@ function ShellBody({ children }: { children: React.ReactNode }) {
           <QRCodeTrigger />
         </div>
       </main>
+      {/* Live notification toast stack — top-right overlay, lives
+          above all other shell chrome. Self-renders nothing when
+          there are no toasts; safe to mount unconditionally. */}
+      <NotificationToastHost />
     </div>
   );
 }
