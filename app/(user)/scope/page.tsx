@@ -22,8 +22,10 @@ import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
 import ObjectTreeV2, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
+import TimeboxObjectTree from "@/app/components/TimeboxObjectTree";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
@@ -38,8 +40,8 @@ const MODES: Array<{ value: Mode; label: string; ready: boolean }> = [
   { value: "work_items", label: "Work items (execution)", ready: true },
   { value: "portfolio_items", label: "Portfolio items (strategic)", ready: true },
   { value: "risks", label: "Risks", ready: true },
-  { value: "sprints", label: "Sprints (timebox)", ready: false },
-  { value: "releases", label: "Releases (timebox)", ready: false },
+  { value: "sprints", label: "Sprints (timebox)", ready: true },
+  { value: "releases", label: "Releases (timebox)", ready: true },
 ];
 
 const STORAGE_KEY = "scope.v2.mode";
@@ -55,8 +57,10 @@ function readStoredMode(): Mode {
 
 export default function ScopePage() {
   const { full } = usePageTitle();
+  const { user } = useAuth();
   const { activeNodeId, activeGrant } = useScope();
   const { types } = useArtefactTypeCatalogue();
+  const workspaceId = user?.subscription_id ?? "";
 
   const [mode, setMode] = useState<Mode>("work_items");
   // Read storage after first paint to avoid hydration mismatch.
@@ -68,10 +72,12 @@ export default function ScopePage() {
 
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
 
-  // Resolve the wizard JSON for the current mode. Sprints/Releases
-  // don't have a wizard config yet (they live behind TimeboxManager
-  // today and will get their JSON in Slice 6 of the refactor plan);
-  // for now they render a placeholder card explaining the gap.
+  // Resolve the wizard JSON for the current mode. Sprints/Releases now
+  // mount a dedicated <TimeboxObjectTree> sibling (slice 6.3c+6.4) — they
+  // intentionally don't go through the wizard-JSON path because
+  // ObjectTreeDataConfig doesn't yet express timebox semantics
+  // (bulk-create + status transitions + cadence). When V2's central
+  // component generalises those, sprints/releases can converge.
   const wizardConfig = useMemo<ObjectTreeDataConfig | null>(() => {
     let raw: unknown = null;
     if (mode === "work_items") raw = workItemsWizardJson;
@@ -151,11 +157,21 @@ export default function ScopePage() {
         />
       )}
 
-      {!wizardConfig && (
+      {(mode === "sprints" || mode === "releases") && workspaceId && (
+        <TimeboxObjectTree
+          key={`${mode}-${activeNodeId ?? "root"}`}
+          kind={mode === "sprints" ? "sprint" : "release"}
+          workspaceId={workspaceId}
+          orgNodeId={activeNodeId ?? undefined}
+          subtitle={`${mode === "sprints" ? "Sprint" : "Release"} grid — harness mount`}
+        />
+      )}
+
+      {!wizardConfig && mode !== "sprints" && mode !== "releases" && (
         <Panel
           name={`panel_scope_v2_${mode}_placeholder`}
           title={`${currentMode?.label ?? mode} — not yet wired`}
-          description="Sprints and Releases live behind TimeboxManager today and get their wizard JSON in Slice 6 of the refactor plan. Pick a ready mode from the dropdown."
+          description="Mode is not yet wired in the V2 harness. Pick a ready mode from the dropdown."
         />
       )}
     </PageContent>
