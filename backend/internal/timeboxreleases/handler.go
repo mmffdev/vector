@@ -292,6 +292,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		ReleaseVelocity    *int    `json:"timeboxes_releases_velocity"`
 		ReleaseEstimate    *int    `json:"timeboxes_releases_estimate"`
 		Status             *string `json:"timeboxes_releases_status"`
+		ScopePropagation   *string `json:"timeboxes_releases_scope_propagation"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
@@ -309,6 +310,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		ReleaseVelocity:    body.ReleaseVelocity,
 		ReleaseEstimate:    body.ReleaseEstimate,
 		Status:             body.Status,
+		ScopePropagation:   body.ScopePropagation,
 	}
 
 	release, err := h.svc.Update(r.Context(), wsID, id, in)

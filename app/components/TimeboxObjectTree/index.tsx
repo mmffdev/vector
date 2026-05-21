@@ -171,6 +171,10 @@ function TimeboxObjectTreeInner({
   const [bulkOpen, setBulkOpen] = useState(false);
   const [singleOpen, setSingleOpen] = useState(false);
 
+  // Slice 7 — passes ?org_node_id= so the backend's slice-5B
+  // ancestor-walk fires; the response stamps origin / from_node_id /
+  // from_node_name on each row when the user is viewing a child node
+  // of a propagated sprint/release.
   const reload = useCallback(async () => {
     if (!workspaceId) return;
     const params = new URLSearchParams({ workspace_id: workspaceId });
@@ -222,30 +226,56 @@ function TimeboxObjectTreeInner({
       render: (r) => {
         const suffix = r[`${p}_suffix`] as string | null;
         const name = String(r[`${p}_name`] ?? "");
+        // Slice 7 — inherited-row treatment. The button label sits
+        // italic + muted so it visually reads as "this row didn't
+        // originate here"; the small badge underneath names the
+        // pinned source. Click behaviour is unchanged — opens the
+        // flyout, which shows the read-only banner.
+        const origin = String(r.origin ?? "local");
+        const isInherited = origin === "inherited";
+        const fromNodeName = (r.from_node_name as string | null) ?? null;
         return (
-          <button
-            type="button"
-            data-objecttree-flyout-trigger="1"
-            className="link-button"
-            style={{
-              background: "none",
-              border: 0,
-              padding: 0,
-              cursor: "pointer",
-              color: "var(--brand-action)",
-              textDecoration: "underline",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              const id = String(r[`${p}_id`] ?? "");
-              setOpenRowId((cur) => (cur === id ? null : id));
-            }}
-          >
-            {name}
-            {suffix && (
-              <span style={{ color: "var(--ink-subtle)" }}> ({suffix})</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <button
+              type="button"
+              data-objecttree-flyout-trigger="1"
+              className="link-button"
+              style={{
+                background: "none",
+                border: 0,
+                padding: 0,
+                cursor: "pointer",
+                textAlign: "left",
+                color: isInherited
+                  ? "var(--ink-muted)"
+                  : "var(--brand-action)",
+                fontStyle: isInherited ? "italic" : "normal",
+                textDecoration: "underline",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const id = String(r[`${p}_id`] ?? "");
+                setOpenRowId((cur) => (cur === id ? null : id));
+              }}
+            >
+              {name}
+              {suffix && (
+                <span style={{ color: "var(--ink-subtle)" }}> ({suffix})</span>
+              )}
+            </button>
+            {isInherited && (
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "var(--ink-subtle)",
+                  fontStyle: "italic",
+                }}
+                title={`Inherited from ${fromNodeName ?? "a parent node"}`}
+              >
+                ↑ from {fromNodeName ?? "parent"}
+              </span>
             )}
-          </button>
+          </div>
         );
       },
     },
@@ -407,6 +437,7 @@ function TimeboxObjectTreeInner({
         bodyProps={{
           kind,
           workspaceId,
+          orgNodeId,
         }}
         onClose={() => setOpenRowId(null)}
         onSaved={handleSaved}

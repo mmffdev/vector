@@ -6968,6 +6968,8 @@ paths:
                   format: int32
                 timeboxes_releases_status:
                   type: string
+                timeboxes_releases_scope_propagation:
+                  type: string
       parameters:
       - name: id
         in: path
@@ -7317,6 +7319,8 @@ paths:
                   type: integer
                   format: int32
                 timeboxes_sprints_status:
+                  type: string
+                timeboxes_sprints_scope_propagation:
                   type: string
       parameters:
       - name: id

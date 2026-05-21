@@ -383,6 +383,12 @@ func (s *Service) Update(ctx context.Context, workspaceID, sprintID string, in U
 		}
 		addField("timeboxes_sprints_status", *in.Status)
 	}
+	if in.ScopePropagation != nil {
+		if *in.ScopePropagation != "this_node_only" && *in.ScopePropagation != "this_node_and_descendants" {
+			return nil, ErrInvalidInput
+		}
+		addField("timeboxes_sprints_scope_propagation", *in.ScopePropagation)
+	}
 
 	if len(sets) == 0 {
 		return s.Get(ctx, workspaceID, sprintID)

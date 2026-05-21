@@ -79,6 +79,9 @@ type UpdateReleaseInput struct {
 	ReleaseVelocity    *int
 	ReleaseEstimate    *int
 	Status             *string
+	// Slice 7 — toggle propagation intent from the edit form.
+	// Valid values: 'this_node_only' | 'this_node_and_descendants'.
+	ScopePropagation *string
 }
 
 // ListFilters holds query parameters for the list endpoint.

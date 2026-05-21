@@ -57,6 +57,15 @@ export interface TimeboxInlineFormProps {
   kind: Kind;
   /** Workspace scope from useAuth — passed through ?workspace_id=. */
   workspaceId: string;
+  /**
+   * Slice 7 — active topology node from useScope. Threaded through every
+   * read AND write call so the backend can identify heartbeat-inherited
+   * rows. When the row is inherited, the form switches to read-only +
+   * shows the propagation banner. When the user PATCHes an inherited
+   * row, the backend returns 409 ErrInheritedReadOnly and the form
+   * surfaces the message via the existing toast path.
+   */
+  orgNodeId?: string;
   /** Called when the user closes the form (Esc / outside-click / X). */
   onClose: () => void;
   /** Called after a successful save — body forwards to the data hook. */
@@ -124,6 +133,7 @@ export default function TimeboxInlineForm({
   rowId,
   kind,
   workspaceId,
+  orgNodeId,
   onClose,
   onSaved,
 }: TimeboxInlineFormProps) {
@@ -134,27 +144,39 @@ export default function TimeboxInlineForm({
   const [row, setRow] = useState<TimeboxRow | null>(null);
   const [original, setOriginal] = useState<EditableState | null>(null);
   const [editable, setEditable] = useState<EditableState | null>(null);
+  const [propagation, setPropagation] = useState<string>("this_node_only");
+  const [originalPropagation, setOriginalPropagation] = useState<string>("this_node_only");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
+
+  // Slice 7 — querystring helper. Every read AND write threads the
+  // active topology node so the backend can identify inherited rows
+  // and (on writes) return 409 ErrInheritedReadOnly when appropriate.
+  const qs = useCallback(() => {
+    const params = new URLSearchParams({ workspace_id: workspaceId });
+    if (orgNodeId) params.set("org_node_id", orgNodeId);
+    return params.toString();
+  }, [workspaceId, orgNodeId]);
 
   const refetch = useCallback(async () => {
     if (!rowId || !workspaceId) return;
     setLoading(true);
     try {
-      const res = await apiSite<TimeboxRow>(
-        `${cfg.apiBase}/${rowId}?workspace_id=${workspaceId}`,
-      );
+      const res = await apiSite<TimeboxRow>(`${cfg.apiBase}/${rowId}?${qs()}`);
       setRow(res);
       const ed = extractEditable(res, p);
       setOriginal(ed);
       setEditable(ed);
+      const prop = String(res[`${p}_scope_propagation`] ?? "this_node_only");
+      setPropagation(prop);
+      setOriginalPropagation(prop);
     } catch (e) {
       notify.apiError(e as ApiError, `Failed to load ${kind}`);
     } finally {
       setLoading(false);
     }
-  }, [rowId, workspaceId, cfg.apiBase, p, kind]);
+  }, [rowId, workspaceId, cfg.apiBase, p, kind, qs]);
 
   useEffect(() => {
     if (rowId) {
@@ -163,6 +185,8 @@ export default function TimeboxInlineForm({
       setRow(null);
       setOriginal(null);
       setEditable(null);
+      setPropagation("this_node_only");
+      setOriginalPropagation("this_node_only");
     }
   }, [rowId, refetch]);
 
@@ -172,8 +196,16 @@ export default function TimeboxInlineForm({
   if (!rowId || !editable || !original) return null;
 
   const status = String(row?.[`${p}_status`] ?? "planned");
+  // Slice 7 — inheritance read. The backend stamps origin/from_* on
+  // the wire (slice 5B). When origin=inherited the form is read-only
+  // and shows a banner with the pinned-node name.
+  const origin = String(row?.origin ?? "local");
+  const isInherited = origin === "inherited";
+  const fromNodeName = (row?.from_node_name as string | null | undefined) ?? null;
+
   const isDirty =
-    Object.keys(diffEditable(editable, original, p)).length > 0;
+    Object.keys(diffEditable(editable, original, p)).length > 0
+    || propagation !== originalPropagation;
 
   const handleChange = (key: keyof EditableState) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,12 +214,15 @@ export default function TimeboxInlineForm({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isDirty) return;
+    if (!isDirty || isInherited) return;
     setSaving(true);
     try {
-      const patch = diffEditable(editable, original, p);
+      const patch: Record<string, unknown> = diffEditable(editable, original, p);
+      if (propagation !== originalPropagation) {
+        patch[`${p}_scope_propagation`] = propagation;
+      }
       const updated = await apiSite<TimeboxRow>(
-        `${cfg.apiBase}/${rowId}?workspace_id=${workspaceId}`,
+        `${cfg.apiBase}/${rowId}?${qs()}`,
         { method: "PATCH", body: JSON.stringify(patch) },
       );
       notify.success(`${cfg.namePrefix} saved`);
@@ -195,6 +230,9 @@ export default function TimeboxInlineForm({
       const ed = extractEditable(updated, p);
       setOriginal(ed);
       setEditable(ed);
+      const newProp = String(updated[`${p}_scope_propagation`] ?? "this_node_only");
+      setPropagation(newProp);
+      setOriginalPropagation(newProp);
       onSaved?.(patch);
     } catch (e) {
       notify.apiError(e as ApiError, `Failed to save ${kind}`);
@@ -204,10 +242,11 @@ export default function TimeboxInlineForm({
   };
 
   const handleTransition = async (action: "start" | "close") => {
+    if (isInherited) return;
     setTransitioning(true);
     try {
       const updated = await apiSite<TimeboxRow>(
-        `${cfg.apiBase}/${rowId}/${action}?workspace_id=${workspaceId}`,
+        `${cfg.apiBase}/${rowId}/${action}?${qs()}`,
         { method: "POST" },
       );
       notify.success(`${cfg.namePrefix} ${action === "start" ? "started" : "closed"}`);
@@ -261,6 +300,32 @@ export default function TimeboxInlineForm({
         </div>
       </header>
 
+      {isInherited && (
+        <div
+          role="status"
+          className="timebox-inline-form__inherited-banner"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "10px 14px",
+            marginBottom: 16,
+            background: "var(--surface-info-tint, var(--surface-2))",
+            border: "1px solid var(--surface-info, var(--surface-3))",
+            borderRadius: 6,
+            color: "var(--ink-muted)",
+            fontSize: 13,
+          }}
+        >
+          <span aria-hidden="true">↑</span>
+          <span>
+            Read-only. This {kind} is inherited from
+            {fromNodeName ? <strong> {fromNodeName}</strong> : " a parent node"} —
+            edit it on its pinned node to make changes.
+          </span>
+        </div>
+      )}
+
       <form className="form" onSubmit={handleSave}>
         <div className="form__row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <label className="form__label">
@@ -271,7 +336,7 @@ export default function TimeboxInlineForm({
               value={editable.suffix}
               onChange={handleChange("suffix")}
               placeholder="e.g. Red Cherry"
-              disabled={busy}
+              disabled={busy || isInherited}
             />
           </label>
           <label className="form__label">
@@ -282,7 +347,7 @@ export default function TimeboxInlineForm({
               min={1}
               value={editable.cadence_days}
               onChange={handleChange("cadence_days")}
-              disabled={busy}
+              disabled={busy || isInherited}
             />
           </label>
         </div>
@@ -295,7 +360,7 @@ export default function TimeboxInlineForm({
               type="date"
               value={editable.date_start}
               onChange={handleChange("date_start")}
-              disabled={busy}
+              disabled={busy || isInherited}
             />
           </label>
           <label className="form__label">
@@ -305,7 +370,7 @@ export default function TimeboxInlineForm({
               type="date"
               value={editable.date_end}
               onChange={handleChange("date_end")}
-              disabled={busy}
+              disabled={busy || isInherited}
             />
           </label>
         </div>
@@ -320,7 +385,7 @@ export default function TimeboxInlineForm({
               value={editable.velocity}
               onChange={handleChange("velocity")}
               placeholder="—"
-              disabled={busy}
+              disabled={busy || isInherited}
             />
           </label>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
@@ -329,7 +394,7 @@ export default function TimeboxInlineForm({
                 type="button"
                 className="btn btn--primary btn--sm"
                 onClick={() => handleTransition("start")}
-                disabled={busy}
+                disabled={busy || isInherited}
               >
                 {transitioning ? "Starting…" : "Start"}
               </button>
@@ -339,13 +404,82 @@ export default function TimeboxInlineForm({
                 type="button"
                 className="btn btn--primary btn--sm"
                 onClick={() => handleTransition("close")}
-                disabled={busy}
+                disabled={busy || isInherited}
               >
                 {transitioning ? "Closing…" : "Close sprint"}
               </button>
             )}
           </div>
         </div>
+
+        <fieldset
+          className="form__fieldset"
+          style={{
+            marginTop: 16,
+            padding: 12,
+            border: "1px solid var(--surface-3)",
+            borderRadius: 6,
+            background: "var(--surface-2)",
+          }}
+          disabled={busy || isInherited}
+        >
+          <legend
+            style={{
+              padding: "0 6px",
+              fontSize: 12,
+              color: "var(--ink-muted)",
+              fontWeight: 500,
+            }}
+          >
+            Scope propagation
+          </legend>
+          <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="radio"
+                name="scope-propagation"
+                value="this_node_only"
+                checked={propagation === "this_node_only"}
+                onChange={(e) => setPropagation(e.target.value)}
+              />
+              <span>
+                <strong>This node only</strong>{" "}
+                <span style={{ color: "var(--ink-subtle)" }}>
+                  — visible only on the pinned node (default).
+                </span>
+              </span>
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="radio"
+                name="scope-propagation"
+                value="this_node_and_descendants"
+                checked={propagation === "this_node_and_descendants"}
+                onChange={(e) => setPropagation(e.target.value)}
+              />
+              <span>
+                <strong>This node and descendants</strong>{" "}
+                <span style={{ color: "var(--ink-subtle)" }}>
+                  — visible on the pinned node AND every live descendant.
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
 
         <div
           style={{
@@ -358,7 +492,7 @@ export default function TimeboxInlineForm({
           <button
             type="submit"
             className="btn btn--primary btn--sm"
-            disabled={busy || !isDirty}
+            disabled={busy || !isDirty || isInherited}
           >
             {saving ? "Saving…" : "Save"}
           </button>

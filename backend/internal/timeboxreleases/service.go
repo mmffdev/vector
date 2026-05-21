@@ -320,6 +320,12 @@ func (s *Service) Update(ctx context.Context, workspaceID, releaseID string, in 
 		}
 		addField("timeboxes_releases_status", *in.Status)
 	}
+	if in.ScopePropagation != nil {
+		if *in.ScopePropagation != "this_node_only" && *in.ScopePropagation != "this_node_and_descendants" {
+			return nil, ErrInvalidInput
+		}
+		addField("timeboxes_releases_scope_propagation", *in.ScopePropagation)
+	}
 
 	if len(sets) == 0 {
 		return s.Get(ctx, workspaceID, releaseID)
