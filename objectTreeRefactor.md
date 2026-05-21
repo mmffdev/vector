@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c complete. Slice 4.6b next (cell memoisation audit on shared file).
+**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 complete. Slice 5 next (backend `scope_propagation` column for timeboxes). Slice 6 final (sprint/release page swap to V2 — depends on Slice 5).
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s4.6c-touched-ids` (slice 4.6c — touched_ids + by-ids, committed locally not yet pushed)
-**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend `?fields=`), s4.6c (touched_ids + by-ids)
+**Active branch:** `refactor/objecttree-s4.5-column-picker` (slice 4.5 — column picker + lazy ?fields=, committed locally not yet pushed)
+**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend ?fields=), s4.6c (touched_ids + by-ids), s4.5 (column picker)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -80,10 +80,12 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — no longer imports `PARENT_PREFIX_MAP`; delegates to the per-domain rules module
 - DragEngine plugin deferred — current direct-import is sufficient; Slice 1.5 will move it into the plugin registry when that lands.
 
-### Claimed by SLICE 4.5 (column selector)
+### ~~Claimed by SLICE 4.5~~ — DONE (column selector + lazy `?fields=`)
 
-- `app/components/ObjectTreeV2/plugins/ColumnPicker.tsx` (new)
-- `app/components/ObjectTreeV2/hooks/useObjectTreeWindow.ts` — cache-merge logic
+- ✅ `app/components/ObjectTreeV2/plugins/ColumnPicker.tsx` (new) — ColumnCatalogue type, useColumnPickerState hook, dropdown UI
+- ✅ `app/components/ObjectTreeV2/hooks/useObjectTreeWindow.ts` — new `fields` opt forwards visible wireKeys as `?fields=`
+- ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — optional `columnCatalogue` prop; mounts picker, filters columns before render, threads visibleWireKeys into the data hook
+- localStorage key: `objecttree-v2.columns.<catalogue.prefsKey>`. Server-side prefs deferred to a follow-up.
 
 ### Claimed by SLICE 4.6 (memoisation + cascade-scope reduction)
 
