@@ -75,6 +75,10 @@ const SqlSelectUserEmail = `
 // read model (users_notifications) — called by the in-app dispatcher.
 // Exported so the `dispatchers` sub-package can use it; in-package
 // callers should still use this constant rather than re-defining.
+//
+// users_notifications_tag is the bell-filter bucket added by mig 236.
+// Mention-kind rows get tag='mention'; rules-fired rows get the rule's
+// type as tag ('artefact', 'note', etc). $10 is the tag.
 const SqlInsertUserNotificationFromEvent = `
 	INSERT INTO users_notifications (
 		users_notifications_id_subscription,
@@ -85,8 +89,9 @@ const SqlInsertUserNotificationFromEvent = `
 		users_notifications_context_kind,
 		users_notifications_context_id,
 		users_notifications_context_label,
-		users_notifications_id_outbox
-	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		users_notifications_id_outbox,
+		users_notifications_tag
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 // sqlListUserNotificationsTemplate — %s holds the composed WHERE; %d

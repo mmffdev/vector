@@ -34,7 +34,9 @@ export default function NotificationsListPage() {
   // Toolbar state.
   const [search, setSearch] = useState("");
   const [unreadFilter, setUnreadFilter] = useState<UnreadFilter>("all");
-  const [kindFilter, setKindFilter] = useState<string>("all");
+  // Tag is the bucket added by migration 236; falls back to kind for
+  // pre-migration rows where tag was backfilled to match kind.
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const [whenFilter, setWhenFilter] = useState<WhenFilter>("any");
   const [page, setPage] = useState(1);
 
@@ -53,11 +55,17 @@ export default function NotificationsListPage() {
     void refresh();
   }, [refresh]);
 
-  // Kinds that actually appear in the data — drives the filter
-  // chip's options so we don't list kinds the user never receives.
-  const kindOptions = useMemo(() => {
+  // Tags that actually appear in the data — drives the filter chip
+  // so we don't list buckets the user never receives. Falls back to
+  // kind when tag is NULL (pre-migration-236 rows).
+  const tagOptions = useMemo(() => {
     const set = new Set<string>();
-    (rows ?? []).forEach((r) => set.add(r.users_notifications_kind));
+    (rows ?? []).forEach((r) => {
+      const t =
+        (r as { users_notifications_tag?: string | null }).users_notifications_tag ??
+        r.users_notifications_kind;
+      if (t) set.add(t);
+    });
     return ["all", ...Array.from(set).sort()];
   }, [rows]);
 
@@ -71,7 +79,12 @@ export default function NotificationsListPage() {
       const isUnread = !r.users_notifications_read_at;
       if (unreadFilter === "unread" && !isUnread) return false;
       if (unreadFilter === "read" && isUnread) return false;
-      if (kindFilter !== "all" && r.users_notifications_kind !== kindFilter) return false;
+      if (tagFilter !== "all") {
+        const t =
+          (r as { users_notifications_tag?: string | null }).users_notifications_tag ??
+          r.users_notifications_kind;
+        if (t !== tagFilter) return false;
+      }
       if (whenFilter !== "any") {
         const age = now - new Date(r.users_notifications_created_at).getTime();
         if (whenFilter === "today" && age > dayMs) return false;
@@ -90,7 +103,7 @@ export default function NotificationsListPage() {
       }
       return true;
     });
-  }, [rows, search, unreadFilter, kindFilter, whenFilter]);
+  }, [rows, search, unreadFilter, tagFilter, whenFilter]);
 
   // Page-window the filtered set.
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -103,7 +116,7 @@ export default function NotificationsListPage() {
   // Reset to page 1 whenever filters change.
   useEffect(() => {
     setPage(1);
-  }, [search, unreadFilter, kindFilter, whenFilter]);
+  }, [search, unreadFilter, tagFilter, whenFilter]);
 
   const unreadCount = useMemo(
     () => (rows ?? []).filter((r) => !r.users_notifications_read_at).length,
@@ -185,15 +198,15 @@ export default function NotificationsListPage() {
               </select>
             </label>
             <label className="u-row u-row--gap-2">
-              <span>Kind</span>
+              <span>Tag</span>
               <select
                 className="form__select form__select--sm"
-                value={kindFilter}
-                onChange={(e) => setKindFilter(e.target.value)}
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
               >
-                {kindOptions.map((k) => (
+                {tagOptions.map((k) => (
                   <option key={k} value={k}>
-                    {k === "all" ? "All kinds" : k}
+                    {k === "all" ? "All tags" : k}
                   </option>
                 ))}
               </select>

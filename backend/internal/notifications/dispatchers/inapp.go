@@ -71,6 +71,13 @@ func (d *InApp) handle(ctx context.Context, env broker.Envelope) error {
 		}
 	}
 
+	// Tag bucket — drives the bell-filter chip in the inbox UI.
+	// Today the only producers are mentions (tag='mention'); future
+	// rules-fired notifications set tag to the rule's type
+	// ('artefact', 'note', 'comment', etc). The dispatcher derives
+	// tag from kind so we don't need a separate event field yet.
+	tag := tagForKind(string(ev.Kind))
+
 	if _, err := d.pool.Exec(ctx, notifications.SqlInsertUserNotificationFromEvent,
 		ev.SubscriptionID,
 		ev.RecipientUserID,
@@ -81,10 +88,24 @@ func (d *InApp) handle(ctx context.Context, env broker.Envelope) error {
 		nullableStr(ev.ContextID),
 		nullableStr(ev.ContextLabel),
 		outboxID,
+		tag,
 	); err != nil {
 		return fmt.Errorf("insert users_notifications: %w", err)
 	}
 	return nil
+}
+
+// tagForKind returns the bell-filter bucket for a notification kind.
+// Mentions stay tag='mention'; everything else inherits its kind as
+// tag for now (artefact-rules-fired notifications will set kind=
+// "artefact" so this still does the right thing).
+func tagForKind(kind string) string {
+	switch kind {
+	case "mention":
+		return "mention"
+	default:
+		return kind
+	}
 }
 
 func nullableStr(s string) any {

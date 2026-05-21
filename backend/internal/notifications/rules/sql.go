@@ -85,6 +85,31 @@ const sqlDeleteRule = `
 	  AND users_notification_rules_id_user = $2
 `
 
+// ── evaluator.go ──────────────────────────────────────────────
+
+// sqlSelectActiveRulesForTarget — the evaluator's hot path.
+// Hits the (subscription_id, type, target) WHERE enabled partial
+// index added by migration 236. Returns every candidate rule
+// regardless of user — the caller fans out per-user matches.
+const sqlSelectActiveRulesForTarget = `
+	SELECT
+		users_notification_rules_id,
+		users_notification_rules_id_subscription,
+		users_notification_rules_id_user,
+		users_notification_rules_name,
+		users_notification_rules_type,
+		users_notification_rules_target,
+		users_notification_rules_conditions,
+		users_notification_rules_enabled,
+		users_notification_rules_created_at,
+		users_notification_rules_updated_at
+	FROM users_notification_rules
+	WHERE users_notification_rules_id_subscription = $1
+	  AND users_notification_rules_type = $2
+	  AND users_notification_rules_target = $3
+	  AND users_notification_rules_enabled = TRUE
+`
+
 // ── schema.go (vaPool — vector_artefacts) ──────────────────────
 
 // sqlSelectArtefactTypes returns the tenant's artefact_types — feeds
