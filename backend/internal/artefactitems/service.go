@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/notifications/rules"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
@@ -41,6 +43,10 @@ type Service struct {
 	notifier            *webhooks.Notifier
 	scope               string
 	topology            TopologyScopeResolver
+	// ruleHook receives ArtefactChangedEvent fan-out on writes
+	// (B11.4 follow-up). Optional — when nil, writes proceed
+	// without rule evaluation. Wire in main.go via WithRuleHook.
+	ruleHook rules.RuleHook
 }
 
 // NewService creates a Service backed by the given pools, scoped to the
@@ -58,6 +64,98 @@ func (s *Service) Scope() string { return s.scope }
 
 // WithNotifier attaches a webhook notifier. Safe to call with nil.
 func (s *Service) WithNotifier(n *webhooks.Notifier) { s.notifier = n }
+
+// WithRuleHook wires the notification-rules engine into the write
+// path. Safe to call with nil — write proceeds, no rules fire.
+func (s *Service) WithRuleHook(h rules.RuleHook) { s.ruleHook = h }
+
+// fireRuleHook builds an ArtefactChangedEvent from before/after
+// snapshots and hands it to the rule engine. Best-effort: any
+// failure (workspace lookup, hook panic, missing field) is logged
+// but never blocks the write. Caller passes nil `before` for Create.
+//
+// The set of fields included in the event covers what users actually
+// build rules against today: flow_state, status, priority, estimate,
+// owner, parent, sprint, milestone, release, due_date, blocked,
+// colour, title. Adding a new field = one line in the diff loop +
+// surface in the schema endpoint.
+func (s *Service) fireRuleHook(ctx context.Context, before, after *WorkItem, authorUserID uuid.UUID) {
+	if s.ruleHook == nil || after == nil || s.vectorArtefactsPool == nil {
+		return
+	}
+	// Look up workspace_id + the artefact type NAME — both required
+	// to scope the rules query (mig 237). Single round-trip.
+	var workspaceID uuid.UUID
+	var typeName string
+	if err := s.vectorArtefactsPool.QueryRow(ctx, sqlArtefactWorkspaceAndTypeName, after.ID).
+		Scan(&workspaceID, &typeName); err != nil {
+		// Best-effort — silently skip rather than block the write.
+		return
+	}
+	subID, _ := uuid.Parse(after.SubscriptionID)
+	artefactID, _ := uuid.Parse(after.ID)
+	ev := rules.ArtefactChangedEvent{
+		SubscriptionID: subID,
+		WorkspaceID:    workspaceID,
+		ArtefactID:     artefactID,
+		ArtefactType:   typeName,
+		AuthorUserID:   authorUserID,
+		Fields:         diffWorkItem(before, after),
+	}
+	s.ruleHook.OnArtefactChanged(ctx, ev)
+}
+
+// diffWorkItem turns before+after snapshots into the field-change map
+// the evaluator reads. `before == nil` (Create) seeds Before=nil for
+// every field — the `changed_to` operator still fires (nil → after).
+func diffWorkItem(before, after *WorkItem) map[string]rules.FieldChange {
+	out := map[string]rules.FieldChange{}
+	add := func(name string, b, a any) { out[name] = rules.FieldChange{Before: b, After: a} }
+	if before == nil {
+		// Create: every populated field is "changed from nil".
+		add("title", nil, after.Title)
+		add("status", nil, after.Status)
+		add("flow_state_id", nil, after.FlowStateID)
+		add("flow_state", nil, after.FlowStateName)
+		add("priority_id", nil, after.PriorityID)
+		add("story_points", nil, valOrNil(after.StoryPoints))
+		add("sprint_id", nil, valOrNil(after.SprintID))
+		add("parent_id", nil, valOrNil(after.ParentID))
+		add("owner_id", nil, after.OwnerID)
+		add("due_date", nil, valOrNil(after.DueDate))
+		add("colour", nil, valOrNil(after.Colour))
+		add("is_blocked", nil, after.IsBlocked)
+		add("blocked_reason", nil, valOrNil(after.BlockedReason))
+		add("milestone_id", nil, valOrNil(after.MilestoneID))
+		add("release_id", nil, valOrNil(after.ReleaseID))
+		return out
+	}
+	add("title", before.Title, after.Title)
+	add("status", before.Status, after.Status)
+	add("flow_state_id", before.FlowStateID, after.FlowStateID)
+	add("flow_state", before.FlowStateName, after.FlowStateName)
+	add("priority_id", before.PriorityID, after.PriorityID)
+	add("story_points", valOrNil(before.StoryPoints), valOrNil(after.StoryPoints))
+	add("sprint_id", valOrNil(before.SprintID), valOrNil(after.SprintID))
+	add("parent_id", valOrNil(before.ParentID), valOrNil(after.ParentID))
+	add("owner_id", before.OwnerID, after.OwnerID)
+	add("due_date", valOrNil(before.DueDate), valOrNil(after.DueDate))
+	add("colour", valOrNil(before.Colour), valOrNil(after.Colour))
+	add("is_blocked", before.IsBlocked, after.IsBlocked)
+	add("blocked_reason", valOrNil(before.BlockedReason), valOrNil(after.BlockedReason))
+	add("milestone_id", valOrNil(before.MilestoneID), valOrNil(after.MilestoneID))
+	add("release_id", valOrNil(before.ReleaseID), valOrNil(after.ReleaseID))
+	return out
+}
+
+// valOrNil unwraps *T → T-or-nil so the evaluator's `any` comparisons
+// don't trip over typed-nil-vs-untyped-nil semantics.
+func valOrNil[T any](p *T) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
 
 // WithTopologyResolver wires the PLA-0043 scope clamp dependency. When
 // nil (or unset) every Filters.ScopeNodeID is rejected as
@@ -690,6 +788,16 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	if parentID != nil {
 		_ = s.recalcParentFlowState(ctx, subscriptionID, *parentID)
 	}
+
+	// Notification-rules hook — Create has no before-state; pass nil
+	// so `changed_to <value>` rules still fire (nil → new value).
+	if s.ruleHook != nil {
+		var authorID uuid.UUID
+		if u := auth.UserFromCtx(ctx); u != nil {
+			authorID = u.ID
+		}
+		s.fireRuleHook(ctx, nil, item, authorID)
+	}
 	return item, nil
 }
 
@@ -712,6 +820,17 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	}
 	if in.Status != nil && !validStatuses[*in.Status] {
 		return nil, fmt.Errorf("%w: invalid status", ErrInvalidInput)
+	}
+
+	// Snapshot the before-state for the notification-rules hook.
+	// Skipped (and cost-free) when no rule hook is wired. Errors
+	// here are best-effort — we don't want a snapshot failure to
+	// block the legitimate write.
+	var beforeSnapshot *WorkItem
+	if s.ruleHook != nil {
+		if snap, snapErr := s.GetWorkItem(ctx, subscriptionID, id); snapErr == nil {
+			beforeSnapshot = snap
+		}
 	}
 	// PLA-0055 / story 00595+00597 — priority is a UUID FK. PriorityID
 	// must be a parseable UUID; the FK constraint guarantees it points
@@ -966,6 +1085,16 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 				_ = s.recalcParentFlowState(ctx, subscriptionID, *newPid)
 			}
 		}
+	}
+
+	// Notification-rules hook — fires once after the write commits.
+	// Best-effort: nil hook skips, all errors are absorbed.
+	if s.ruleHook != nil {
+		var authorID uuid.UUID
+		if u := auth.UserFromCtx(ctx); u != nil {
+			authorID = u.ID
+		}
+		s.fireRuleHook(ctx, beforeSnapshot, item, authorID)
 	}
 	return item, nil
 }

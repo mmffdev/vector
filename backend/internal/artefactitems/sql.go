@@ -666,3 +666,14 @@ const sqlSelectActiveUserDisplayNamesByIDs = `
 		WHERE id::text = ANY($1)
 		  AND is_active = true
 	`
+
+// sqlArtefactWorkspaceAndTypeName — single round-trip lookup driving
+// the notification-rules hook (fireRuleHook in service.go). Reads
+// workspace_id from artefacts and joins to artefacts_types for the
+// type NAME (rules engine targets by name post mig 237).
+const sqlArtefactWorkspaceAndTypeName = `
+		SELECT a.workspace_id, t.artefacts_types_name
+		FROM artefacts a
+		JOIN artefacts_types t ON t.artefacts_types_id = a.artefact_type_id
+		WHERE a.id = $1
+	`

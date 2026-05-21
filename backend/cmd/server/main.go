@@ -386,6 +386,11 @@ func main() {
 	// (no vaPool) — scope reads then fall through to ErrInvalidInput
 	// inside the service.
 	var v2ScopeAttach func(artefactitems.TopologyScopeResolver)
+	// v2RuleHookAttach — same late-binding dance as v2ScopeAttach,
+	// for the notification-rules engine. Wired after the rules
+	// engine + notifier are constructed further down. Nil when v2
+	// is stubbed or when the rules engine isn't initialised.
+	var v2RuleHookAttach func(notifrules.RuleHook)
 	makeStubHandlers := func() {
 		workItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "work"))
 		portfolioItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "strategy"))
@@ -442,6 +447,12 @@ func main() {
 				v2ScopeAttach = func(t artefactitems.TopologyScopeResolver) {
 					wiSvc.WithTopologyResolver(t)
 					piSvc.WithTopologyResolver(t)
+				}
+				// Same late-binding pattern for the notification-rules hook
+				// (see the v2RuleHookAttach declaration above).
+				v2RuleHookAttach = func(h notifrules.RuleHook) {
+					wiSvc.WithRuleHook(h)
+					piSvc.WithRuleHook(h)
 				}
 				// PLA-0026 / story 00502 (B13): attach the VA pool to the
 				// workspaces service so DELETE /api/workspaces/{id} can
@@ -603,6 +614,7 @@ func main() {
 	notifPrefs := notifications.NewPrefs(pool)
 	notifTemplates := notifications.NewTemplates()
 	notifications.RegisterMentionDefault(notifTemplates)
+	notifications.RegisterArtefactDefault(notifTemplates)
 
 	var notifBroker broker.Broker
 	var notifier notifications.Notifier
@@ -656,6 +668,18 @@ func main() {
 	notifRulesSvc := notifrules.NewService(pool)
 	notifRulesH := notifrules.NewHandler(notifRulesSvc)
 	notifSchemaH := notifrules.NewSchemaHandler(notifrules.NewSchema(vaPool))
+	// Evaluator + producer-side hook adapter. The artefactitems
+	// service emits ArtefactChangedEvent via WithRuleHook; this
+	// adapter loads matching rules and fans each match into the
+	// notifications outbox via the existing Notifier. Bridging here
+	// (in main.go) avoids any artefactitems↔rules↔notifications
+	// import cycle — main is the only place that holds all three.
+	notifEvaluator := notifrules.NewEvaluator(pool, notifLogger)
+	v2RuleHook := newRulesProducerHook(notifEvaluator, notifier, notifLogger)
+	if v2RuleHookAttach != nil {
+		v2RuleHookAttach(v2RuleHook)
+		notifLogger.Info("notifications.rules: producer hook attached to artefactitems v2")
+	}
 
 	// @-mention scaffold — mounted on both transports per PLA-0039.
 	// vaPool is optional: when nil, the service falls back to

@@ -48,6 +48,12 @@ func defaultTemplate(e Event, _ string) (string, string) {
 	return fmt.Sprintf("New %s", e.Kind), e.Snippet
 }
 
+// KindArtefact is the rule-fired-on-artefact-write notification kind.
+// Same string value as the rules.RuleType "artefact" so the
+// dispatcher's bell-tag derivation routes both through the artefact
+// bucket. Declared here to keep the kind catalogue in one file.
+const KindArtefact Kind = "artefact"
+
 // RegisterMentionDefault wires the canonical mention template. Called
 // from main.go after the Templates registry is created. Producers can
 // override later by calling Register again with the same kind.
@@ -58,6 +64,23 @@ func RegisterMentionDefault(t *Templates) {
 		title := "You were mentioned"
 		if e.ContextLabel != "" {
 			title = fmt.Sprintf("You were mentioned in %s", e.ContextLabel)
+		}
+		return title, e.Snippet
+	})
+}
+
+// RegisterArtefactDefault wires the rule-fired-on-artefact-write
+// template. The rules producer-hook synthesises ContextLabel with
+// the rule name + artefact type/id, so the title is reasonably
+// informative even without per-rule template customisation.
+func RegisterArtefactDefault(t *Templates) {
+	t.Register(KindArtefact, func(e Event, channel string) (string, string) {
+		// Title format chosen to lead with the most recognisable bit
+		// (the artefact context) since the bell only shows the title:
+		//   "Defect <id> matched 'High-severity defects'"
+		title := "An artefact changed"
+		if e.ContextLabel != "" {
+			title = e.ContextLabel
 		}
 		return title, e.Snippet
 	})
