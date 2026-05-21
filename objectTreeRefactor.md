@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 complete, slice 2.5 next (backend `?fields=` contract — first backend touch)
+**Status:** IN PROGRESS — slices 0–4 + 1.5 complete; slice 2.5 awaits Rick (backend touch needs route decision); slice 4.6 frontend portion is the next pure-frontend candidate.
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s4-reparent-rules-to-config` (slice 4 — reparent rules extracted, committed locally not yet pushed)
-**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules)
+**Active branch:** `refactor/objecttree-s1.5-registries` (slice 1.5 — registries + loader + context resolver, committed locally not yet pushed)
+**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -45,10 +45,12 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ `app/components/work-items-tree-config.tsx` — UNTOUCHED (production keeps using `useArtefactItemsWindow` here; the legacy hook stays)
 - Note: the old artefact-coupled hook is NOT yet a "thin wrapper over the new one" as the plan called for. That migration happens when production swaps to V2 (Slice 6+). For now, two parallel paths.
 
-### Claimed by SLICE 1.5 (plugin architecture, registries, context registry)
+### ~~Claimed by SLICE 1.5~~ — DONE (registries + loader + context resolver)
 
-- `app/components/ObjectTreeV2/{registry,context,loader,ObjectTree}.ts(x)` (new)
-- `app/components/ObjectTreeV2/{kinds,plugins,cells,flyouts}/**` (new subdirs)
+- ✅ `app/components/ObjectTreeV2/registry.ts` (new) — componentRegistry, ruleRegistry, pluginRegistry with strict accessors
+- ✅ `app/components/ObjectTreeV2/context.ts` (new) — auth/scope hook accessors + useResolveContext
+- ✅ `app/components/ObjectTreeV2/loader.ts` (new) — recursive wizard-config walker with *Ref-suffix resolution
+- Note: substrate only at this slice. No existing consumer migrated yet; future slices wire onto these incrementally.
 
 ### ~~Claimed by SLICE 2~~ — DONE (detail flyout shell + interaction contract)
 
