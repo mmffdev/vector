@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a complete. Awaiting Rick: slice 2.5 (backend `?fields=` — route decision), slice 4.6b (cell memo on shared file), slice 4.6c (backend touched_ids).
+**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 complete. Slice 4.6c next (backend `touched_ids` + by-ids endpoint).
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s4.6a-request-coalescing` (slice 4.6a — debounced refetch + stale-response guard, committed locally not yet pushed)
-**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (request coalescing)
+**Active branch:** `refactor/objecttree-s2.5-backend-fields` (slice 2.5 — backend `?fields=` contract + `/columns` endpoint, committed locally not yet pushed)
+**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (request coalescing), s2.5 (backend `?fields=`)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -58,17 +58,14 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — now mounts the shell
 - ✅ `app/components/ArtefactInlineForm/**` — UNTOUCHED. V2 wraps it in an inline `ArtefactBody` adapter; AIF's internals are still mounted via the legacy path for production pages.
 
-### Claimed by SLICE 2.5 (backend `?fields=` contract — first backend touch)
+### ~~Claimed by SLICE 2.5~~ — DONE (backend `?fields=` contract)
 
-- `backend/internal/artefactitems/handler.go` — add `?fields=` parsing
-- `backend/internal/artefactitems/columns.go` (new) — per-resource column catalogue
-- `backend/internal/portfolioitems/handler.go` — same parsing
-- `backend/internal/portfolioitems/columns.go` (new)
-- `backend/internal/timeboxsprints/handler.go` — same parsing
-- `backend/internal/timeboxsprints/columns.go` (new)
-- `backend/internal/timeboxreleases/handler.go` — same parsing
-- `backend/internal/timeboxreleases/columns.go` (new)
-- POSSIBLY `backend/cmd/server/main.go` — only if we add a new `GET /<resource>/columns` route (decision deferred to slice start)
+- ✅ `backend/internal/artefactitems/columns.go` (new), `handler.go` (parse + project + Columns handler)
+- ✅ `backend/internal/timeboxsprints/columns.go` (new), `handler.go` (same shape)
+- ✅ `backend/internal/timeboxreleases/columns.go` (new), `handler.go` (same shape)
+- ✅ `backend/cmd/server/main.go` — `/columns` route added under both `/_site` and `/samantha/v2` for artefactitems; under `/_site` for timeboxes
+- ✅ Tests in `artefactitems/columns_test.go` (allow-list, parseFieldsParam edges, projectItems)
+- Note: portfolioitems doesn't have its own package — it's `artefactitems` with `scope="strategy"`, so it inherits the catalogue automatically.
 
 ### ~~Claimed by SLICE 3~~ — DONE (chrome to kind components)
 
