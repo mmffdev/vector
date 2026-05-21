@@ -73,6 +73,17 @@ const COMPONENTS: TocEntry[] = [
       { id: "qr-code-trigger-cross-component", label: "Cross-component usage" },
     ],
   },
+  {
+    slug: "object-tree-v2",
+    label: "ObjectTreeV2",
+    h2s: [
+      { id: "object-tree-v2-synopsis",      label: "Synopsis" },
+      { id: "object-tree-v2-architecture",  label: "Architecture & file map" },
+      { id: "object-tree-v2-wire-contract", label: "Wire contract" },
+      { id: "object-tree-v2-consumers",     label: "Where it lives" },
+      { id: "object-tree-v2-backlog",       label: "Backlog (logical order)" },
+    ],
+  },
 ];
 
 /* ─── Two-level collapsible TOC ─────────────────────────────────────── */
@@ -1290,6 +1301,354 @@ const { slug } = await createShortLink({
 });
 <QRCodeTrigger value={\`https://vector.app/s/\${slug}\`} />`}</pre>
             </div>
+          </section>
+
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/*                    O B J E C T T R E E V 2                  */}
+          {/* ─────────────────────────────────────────────────────────── */}
+
+          <h1 className="dui-doc__h1" id="object-tree-v2" style={{ marginTop: "var(--space-6)" }}>
+            ObjectTreeV2
+          </h1>
+          <p className="dui-doc__p">
+            Dense-grid surface for hierarchical work-shaped resources. Replaces the legacy
+            <code>&lt;ObjectTree&gt;</code> monolith with a primitives toolkit + per-domain reference
+            compositions. Hosts work-items / portfolio / risks today (via the artefact-shaped
+            <code>&lt;ObjectTreeV2&gt;</code>) and sprints / releases (via the timebox-shaped sibling
+            <code>&lt;TimeboxObjectTree&gt;</code>). Plan archive lives at <code>objectTreeRefactor.md</code>
+            at repo root.
+          </p>
+
+          {/* ── Synopsis ── */}
+          <section id="object-tree-v2-synopsis">
+            <h2 className="dui-doc__h2">Synopsis</h2>
+            <p className="dui-doc__p">
+              The refactor (slices 0–7, merged 2026-05-21) carved the legacy ObjectTree into composable
+              primitives: a generic data hook, a flyout shell, two chrome bars (header + action bar),
+              a bulk-create sheet, a registry/loader substrate, and per-domain reference compositions.
+              The promise was &quot;one component, many JSON configs&quot;; the delivered shape is
+              &quot;primitives toolkit + two sibling compositions.&quot; Honest gap documented in
+              <code>objectTreeRefactor.md</code> § What&apos;s NOT closed.
+            </p>
+            <p className="dui-doc__p">
+              <strong>What it solves:</strong> the legacy ObjectTree was a 1,100-line monolith with
+              hardcoded work-items hooks, no flyout shell, no bulk-create surface, no heartbeat
+              inheritance, and a broken <code>useArtefactItemsWindow</code> contract that couldn&apos;t
+              host non-artefact domains. V2 splits these concerns into reusable substrate so adding a
+              new dense-grid surface becomes a composition exercise, not a fork.
+            </p>
+          </section>
+
+          {/* ── Architecture & file map ── */}
+          <section id="object-tree-v2-architecture">
+            <h2 className="dui-doc__h2">Architecture &amp; file map</h2>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Primitives (importable substrate)</div>
+              <pre className="dui-doc__code">{`app/components/ObjectTreeV2/
+├── hooks/
+│   └── useObjectTreeWindow.ts        // Generic windowed-fetch hook, T-typed.
+│                                     // Owns: pagination, sort, filter querystring,
+│                                     // optimistic PATCH, request coalescing (150ms),
+│                                     // stale-response gen guard, cascade refresh,
+│                                     // ?fields= projection plumbing.
+│                                     // Gated on useScope().scopeReady so first
+│                                     // fetch waits for bootstrap. Consumes {items,total}.
+│
+├── flyouts/
+│   └── ObjectTreeDetailFlyout.tsx    // Generic shell. Esc + outside-click close.
+│                                     // Body is generic over TBody extends DetailFlyoutBodyProps.
+│                                     // Lifecycle preserved across open→close→open
+│                                     // (body stays mounted; renders nothing when rowId is null).
+│
+├── kinds/
+│   ├── DenseGridHeader.tsx           // Sunken band: badge + subtitle + description.
+│   └── ActionBar.tsx                 // Create-action chip + search + filter slot.
+│                                     // CreateActionConfig variants:
+│                                     //   - single (one button)
+│                                     //   - type-picker (dropdown + armed-click)
+│                                     //   - bulk (timeboxes-only — see MEMORY.md)
+│                                     // Accepts single config or array (sprints render
+│                                     // single + bulk side-by-side).
+│
+├── sheets/
+│   └── ObjectTreeBulkCreateSheet.tsx // Inline sheet (pushes grid down, not modal).
+│                                     // TIMEBOXES-ONLY. BulkCreateConfig declares
+│                                     // columns + cascade rules; math lives in code,
+│                                     // config describes WHAT, code describes HOW.
+│
+├── plugins/
+│   └── ColumnPicker.tsx              // Slice 4.5. Plugin pattern: ColumnCatalogue
+│                                     // declares available columns + prefs key;
+│                                     // hook returns visibleKeys + visibleWireKeys;
+│                                     // wireKeys flow into useObjectTreeWindow.fields.
+│
+├── configs/
+│   ├── p_wizard_workitems.json       // JSON config for work-items grid.
+│   ├── p_wizard_portfolio.json
+│   ├── p_wizard_risks.json
+│   ├── p_wizard_strategy.json
+│   └── workItemsReparentRules.ts     // Per-domain rules module (extracted Slice 4).
+│
+├── registry.ts                       // componentRegistry + ruleRegistry + pluginRegistry.
+│                                     // Strict-throw lookups. SUBSTRATE WAITING FOR CONSUMER —
+│                                     // none of the production pages route through it today.
+├── context.ts                        // useResolveContext — bridges auth + scope hooks
+│                                     // into JSON-config-driven mounts.
+├── loader.ts                         // Recursive wizard-config walker. Resolves *Ref
+│                                     // suffixes against the registries. 11 unit tests
+│                                     // in __tests__/loader.test.ts. UNUSED in production.
+│
+└── p_ObjectTree.tsx                  // The artefact-shaped REFERENCE composition.
+                                      // Hosts work-items, portfolio-items, risks.
+                                      // Still imports useWorkItemFlowStates,
+                                      // useArtefactTypeColours, useChipTypeOptions
+                                      // directly — not yet generalised.`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Sibling compositions (per-domain)</div>
+              <pre className="dui-doc__code">{`app/components/TimeboxObjectTree/index.tsx
+  // Sibling to ObjectTreeV2/p_ObjectTree.tsx. Composes V2 primitives
+  // (DenseGridHeader, ActionBar with single+bulk, ObjectTreeBulkCreateSheet,
+  // ObjectTreeDetailFlyout + TimeboxInlineForm) for sprints + releases.
+  // Does NOT use useObjectTreeWindow — has its own reload() hook
+  // because timeboxes were never windowed (typical workspace <50 timeboxes).
+  // Gated on useScope().scopeReady same as the V2 hook.
+
+app/components/TimeboxInlineForm/index.tsx
+  // Detail flyout body for sprints + releases. Single-row create/edit.
+  // Reads row.origin from the wire — when "inherited", switches to
+  // read-only banner. Renders the scope-propagation radio fieldset.
+  // Threads ?org_node_id= through every read AND write so backend
+  // EnsureWritable guard fires on writes against inherited rows.
+
+app/components/ArtefactInlineForm/**
+  // Detail flyout body for work-items/portfolio/risks. Wrapped by
+  // ObjectTreeV2's inline ArtefactBody adapter. Untouched by the refactor —
+  // V2 inherits its full surface (field library, mentions, etc.).`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Backend</div>
+              <pre className="dui-doc__code">{`backend/internal/artefactitems/
+  // Sole writer for the artefact table. Hosts work-items / portfolio / risks
+  // (single service, scope="work"|"strategy"). Slice 2.5 added the ?fields=
+  // contract (columns.go + handler parseFieldsParam + projectItems). Slice
+  // 4.6c added the touched_ids sidecar + /by-ids endpoint for narrow cascade
+  // refresh.
+  //
+  // Workspace-clamped GET (sqlSelectWorkItemByIDInWorkspace) requires the
+  // artefact_type to live in the JWT-clamped workspace. Data drift here
+  // produces 404s (the FE-9001 incident on 2026-05-21).
+
+backend/internal/timeboxsprints/
+backend/internal/timeboxreleases/
+  // Sole writers for the timebox tables. Slice 5A added the
+  // scope_propagation column (mig 091). Slice 5B added topology dep +
+  // List ancestor-walk + EnsureWritable write-side guard.
+  // List + BulkCreate cut over to {items,total} response shape in slice 6.3a.`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">External dependencies (consumed)</div>
+              <pre className="dui-doc__code">{`@/app/components/Panel              // Outer container — every V2 mount sits in one.
+@/app/components/Table              // Used by TimeboxObjectTree's list view.
+@/app/components/ResourceTree       // Used by p_ObjectTree for the hierarchical tree.
+@/app/contexts/AuthContext          // user.subscription_id, user.workspace_id.
+@/app/contexts/ScopeContext         // activeNodeId, direction, scopeReady (new 2026-05-21).
+@/app/contexts/DomRegistryContext   // useRegisterAddressable — Samantha SDK addressing.
+@/app/contexts/ArtefactTypeCatalogueContext  // p_ObjectTree only.
+@/app/lib/api  (apiSite)            // All fetches. Auto-forwards ?meg= on GETs to /work-items
+                                    //   and /portfolio-items routes (withForwardedMeg).
+@/app/lib/toast                     // notify.success / notify.apiError.
+@/app/lib/wizardLoader              // resolveWizardConfig + buildWorkItemsFunctions.
+@/app/lib/sidecarSlotResolver       // resolveSlotRefs.
+@/app/hooks/useWorkItemFlowStates   // p_ObjectTree only — work-items-specific.
+@/app/hooks/useArtefactTypeColours  // p_ObjectTree only.
+@/app/hooks/useChipTypeOptions      // p_ObjectTree only.
+@dnd-kit/*                          // Drag-reparent in p_ObjectTree.
+react-icons/md                      // ActionBar (MdAdd, MdOutlineCategory, MdSearch).`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">
+                <strong>Honest gap:</strong> ObjectTreeV2 is NOT a true generic
+              </div>
+              <p className="dui-doc__p" style={{ margin: 0 }}>
+                <code>p_ObjectTree.tsx</code> still imports work-items-specific hooks at the top.
+                The promise of &quot;one component, many configs&quot; is partly aspirational. What
+                actually shipped: shared primitives + two sibling compositions. Adding a sixth
+                domain that doesn&apos;t fit either sibling is the forcing function to do the real
+                generalisation work (deferred as &quot;V3&quot; in the refactor doc).
+              </p>
+            </div>
+          </section>
+
+          {/* ── Wire contract ── */}
+          <section id="object-tree-v2-wire-contract">
+            <h2 className="dui-doc__h2">Wire contract</h2>
+            <p className="dui-doc__p">
+              All V2 grids consume the same response shape:
+            </p>
+            <pre className="dui-doc__code">{`// GET /work-items?meg=<node>&limit=25&offset=0&fields=…
+// GET /timeboxes/sprints?workspace_id=<ws>&org_node_id=<node>
+{
+  items: T[],     // T is domain-specific row shape
+  total: number   // total non-archived rows (for pagination)
+}`}</pre>
+
+            <p className="dui-doc__p" style={{ marginTop: "var(--space-3)" }}>
+              <strong>?fields= projection (slice 2.5)</strong> — caller picks which columns the
+              backend returns. Allow-list per-resource in <code>columns.go</code>. Always-on
+              columns (id, key fields) are folded in server-side regardless. Used by ColumnPicker
+              to back-fill columns the user toggles on.
+            </p>
+            <p className="dui-doc__p">
+              <strong>touched_ids sidecar (slice 4.6c)</strong> — PATCH responses include a
+              <code>touched_ids: string[]</code> array of rows the backend mutated as side-effects
+              (e.g. parent flow-state recomputation). Consumer feeds these into the
+              <code>/by-ids</code> endpoint for a narrow refetch — no full grid refresh needed.
+            </p>
+            <p className="dui-doc__p">
+              <strong>Heartbeat inheritance (slice 5B)</strong> — timeboxes carry
+              <code>scope_propagation</code> in the persisted row. When set to
+              <code>this_node_and_descendants</code>, the row surfaces in List queries from
+              descendant nodes with <code>origin=&quot;inherited&quot;</code> + <code>from_node_id</code> +
+              <code>from_node_name</code> stamped on the wire shape. Writes against inherited rows
+              return 409 <code>ErrInheritedReadOnly</code> via the handler-side
+              <code>EnsureWritable</code> guard.
+            </p>
+            <p className="dui-doc__p">
+              <strong>Workspace clamp coordination (2026-05-21 fix)</strong> — backend
+              <code>WorkspaceClampMiddleware</code> reads workspace_id straight from the JWT
+              (<code>backend/internal/topology/middleware.go</code>). Frontend ScopeContext
+              auto-calls <code>auth.switchWorkspace()</code> when a scope-picked node lives in a
+              different workspace, both on user pick AND on bootstrap-seed. Without this, list
+              endpoints (which honour <code>?meg=</code>) and per-item GETs (which clamp via JWT)
+              return different workspaces — list shows rows, click 404s.
+            </p>
+          </section>
+
+          {/* ── Where it lives ── */}
+          <section id="object-tree-v2-consumers">
+            <h2 className="dui-doc__h2">Where it lives</h2>
+            <p className="dui-doc__p">Production mount points + dev harness:</p>
+            <pre className="dui-doc__code">{`# Production (artefact-shaped, via p_ObjectTree.tsx)
+app/(user)/work-items/page.tsx       // (uses LEGACY <ObjectTree> — not migrated to V2 yet)
+app/(user)/portfolio-items/page.tsx  // (legacy)
+app/(user)/risk/page.tsx             // (legacy)
+
+# Production (timebox-shaped, via TimeboxObjectTree)
+app/(user)/sprints/page.tsx          // ✅ V2 (slice 6.3c)
+app/(user)/releases/page.tsx         // ✅ V2 (slice 6.4)
+
+# Dev harness — mode dropdown switches the mounted dataType
+app/(user)/scope/page.tsx
+  // work_items / portfolio_items / risks → <ObjectTreeV2>
+  // sprints / releases → <TimeboxObjectTree>`}</pre>
+            <p className="dui-doc__p" style={{ marginTop: "var(--space-3)" }}>
+              <strong>Gotcha:</strong> the work-items / portfolio / risks production pages are
+              STILL on the legacy <code>app/components/ObjectTree/</code> (V1), not V2. The V2
+              refactor only swapped sprints + releases. Migrating work-items to V2 is on the
+              backlog below — it requires generalising <code>p_ObjectTree.tsx</code> (or being
+              honest about a third sibling).
+            </p>
+          </section>
+
+          {/* ── Backlog ── */}
+          <section id="object-tree-v2-backlog">
+            <h2 className="dui-doc__h2">Backlog (logical order)</h2>
+            <p className="dui-doc__p">
+              In the order they should be picked up. Each item is independently shippable; later
+              items unblock as earlier ones land.
+            </p>
+            <ol className="dui-doc__list dui-doc__list--ordered">
+              <li>
+                <strong>Migrate /work-items production page from legacy <code>&lt;ObjectTree&gt;</code> to V2.</strong>
+                {" "}Currently the production work-items / portfolio / risks pages still import from
+                <code>@/app/components/ObjectTree/p_ObjectTree</code> (V1). V2 is only used by the
+                /scope dev harness for these modes. Migration: swap the page imports, run through
+                the existing flows in the browser (drag-reparent, type picker, flyout, column
+                picker, bulk-select bar). Risk: V2 may have subtle behavioural drift from V1 the
+                tests don&apos;t catch. <em>Forcing function: the legacy ObjectTree is a parallel
+                code path eating maintenance.</em>
+              </li>
+              <li>
+                <strong>Wire <code>p_ObjectTreeRegistry.tsx</code> as the production path.</strong>
+                {" "}Slice 1.5 built <code>loader.ts</code> + <code>registry.ts</code> with 11
+                passing unit tests, but no production page routes through them today. Migration:
+                pick one page (probably <code>/risks</code> since it&apos;s the smallest) and route
+                its wizard JSON through the loader instead of direct imports. Once that proves the
+                pattern, migrate the others.
+              </li>
+              <li>
+                <strong>Wizard JSON for timeboxes.</strong> <code>p_wizard_sprints.json</code> +
+                <code>p_wizard_releases.json</code> don&apos;t exist because
+                <code>ObjectTreeDataConfig</code> can&apos;t express bulk-create / status
+                transitions / cadence semantics. Extending the config schema is the lever:
+                <code>bulkCreate?: BulkCreateConfig</code>, <code>statusTransitions?: TransitionMap</code>,
+                <code>cadence?: CadenceRules</code>. Once the schema covers timeboxes, the
+                <code>&lt;TimeboxObjectTree&gt;</code> sibling can collapse into the generic.
+              </li>
+              <li>
+                <strong>Generalise <code>p_ObjectTree.tsx</code>&apos;s hook imports.</strong>
+                {" "}Today: <code>useWorkItemFlowStates</code>, <code>useArtefactTypeColours</code>,
+                <code>useChipTypeOptions</code>, <code>useWorkItemsSort</code>,
+                <code>useWorkItemsFilters</code> are imported directly at the top of the file.
+                They need to become props (or injected via the registry). Without this, V2
+                can&apos;t host any non-artefact domain — which is why
+                <code>&lt;TimeboxObjectTree&gt;</code> had to be a sibling.
+            </li>
+              <li>
+                <strong>Object history (audit trail) on artefacts.</strong> The 2026-05-21
+                FE-9001 incident exposed that we have zero row-level audit on artefacts — no
+                <code>artefacts_history</code> table, no triggers, no &quot;who changed
+                artefact_type_id when&quot; query. Add: append-only history table with
+                row+column+old+new+actor+timestamp, populated by triggers, exposed via
+                <code>GET /work-items/&#123;id&#125;/history</code>. Pays back the next time data
+                drift happens. <em>Forcing function: FE-9001 (already happened).</em>
+              </li>
+              <li>
+                <strong>Slice 4.6b — cell memoisation.</strong> Deferred during the refactor
+                because naive <code>React.memo</code> doesn&apos;t help (context ref changes every
+                render). Real fix: context-splitting OR selector-based subscription so cells
+                re-render only when their own row changes. <em>Forcing function: perf complaints
+                on workspaces with &gt;500 rows. No reports yet.</em>
+              </li>
+              <li>
+                <strong>Slice 8 — milestones consolidation.</strong> Bring
+                <code>app/(user)/milestones/page.tsx</code> onto V2 primitives + add
+                <code>/columns</code> + <code>?fields=</code> to
+                <code>backend/internal/timeboxmilestones</code>. Mostly mechanical; was deferred
+                because milestones don&apos;t share the heartbeat/cadence surface that drove
+                <code>&lt;TimeboxObjectTree&gt;</code>. <em>Forcing function: someone wants
+                milestones to behave like the other timebox grids.</em>
+              </li>
+              <li>
+                <strong>Backend artefact_type/workspace alignment lint.</strong> FE-9001 was a
+                single row with a workspace mismatch between artefact and type. Add a periodic
+                check (cron or admin tool) that scans for
+                <code>artefacts.workspace_id != artefacts_types.workspace_id</code> and surfaces
+                drift before users hit 404s. Pairs with the audit-trail item above.
+              </li>
+              <li>
+                <strong>Re-evaluate sprint/release List paging.</strong> Slice 6.3a added
+                <code>?limit=</code>/<code>?offset=</code> with in-handler slicing (workspaces
+                have &lt;50 timeboxes so SQL-side pagination wasn&apos;t worth it). If
+                workspaces ever scale past that, push LIMIT into the SQL like
+                <code>artefactitems</code> does. <em>Forcing function: a workspace shows up
+                with 500+ sprints.</em>
+              </li>
+              <li>
+                <strong>Release backend integration tests.</strong>
+                {" "}<code>timeboxreleases</code> has no test file. Slice 5B&apos;s ancestor-walk
+                tests live only in <code>timeboxsprints</code>; releases is a mechanical mirror
+                but technically untested. Adding parity tests is belt+braces. <em>Forcing
+                function: a release-specific bug ships to dev that the sprint tests wouldn&apos;t
+                have caught.</em>
+              </li>
+            </ol>
           </section>
         </article>
       </div>
