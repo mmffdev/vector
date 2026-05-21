@@ -6,27 +6,8 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell } from "../ShellContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 
-function LogoutIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="M16 17l5-5-5-5M21 12H9" />
-    </svg>
-  );
-}
-
 export default function AccountFlyout() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { accountSection } = useShell();
   const pathname = usePathname() ?? "";
 
@@ -71,21 +52,6 @@ export default function AccountFlyout() {
               })}
             </div>
           )}
-        </div>
-
-        <div className="rail-2__footer">
-          <div className="rail-2__nav-row rail-2__nav-row-danger">
-            <button
-              type="button"
-              className="rail-2__nav-row_link rail-2__nav-row_link-button"
-              onClick={() => void logout()}
-            >
-              <span className="rail-2__nav-row_icon">
-                <LogoutIcon />
-              </span>
-              <span className="rail-2__nav-row_label">Log out</span>
-            </button>
-          </div>
         </div>
       </div>
     </aside>

@@ -519,8 +519,8 @@
 /* ============================================================
    Rail 2 — Account flyout extensions
    Reuses .rail-2 / .rail-2__nav / .rail-2__nav-row chain. Only the
-   bits unique to the avatar bucket live here: identity card, footer
-   (logout), button-as-link variant, danger-row variant.
+   bits unique to the avatar bucket live here: identity card (email +
+   role). Logout sits in rail-1, not rail-2.
    ============================================================ */
 .rail-2__account-card {
   display: flex;
@@ -539,33 +539,6 @@
 .rail-2__account-card_Role {
   font-size: 11px;
   color: var(--ink-muted);
-}
-
-/* Footer block pinned to the bottom of the flyout column. The avatar
-   bucket uses this for the Log out action; other sections don't render
-   a footer at all. Relies on .rail-2__content being a flex column with
-   .rail-2__top above and the footer below; margin-top:auto pushes it
-   to the bottom regardless of how many pages live in .rail-2__top. */
-.rail-2__footer {
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-
-/* Button styled as a nav-row link (used by Log out). */
-.rail-2__nav-row_link-button {
-  background: none;
-  border: 0;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-}
-
-/* Danger row variant — log out hovers red. */
-.rail-2__nav-row-danger:hover {
-  background: var(--danger-surface, var(--surface-sunken));
-  color: var(--danger, var(--ink));
 }
 
 /* ============================================================
