@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0+1+2 complete, slice 3 next (chrome to config-driven kinds)
+**Status:** IN PROGRESS — slices 0+1+2+3 complete, slice 4 next (drag/reparent rules to config)
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s2-flyout-shell` (slice 2 — ObjectTreeDetailFlyout shell, committed locally not yet pushed)
-**Landed branches:** `refactor/objecttree-s0-baseline-and-tests`, `refactor/objecttree-s1-flat-row-store`
+**Active branch:** `refactor/objecttree-s3-chrome-to-kinds` (slice 3 — DenseGridHeader + ActionBar kind components, committed locally not yet pushed)
+**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -68,9 +68,12 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - `backend/internal/timeboxreleases/columns.go` (new)
 - POSSIBLY `backend/cmd/server/main.go` — only if we add a new `GET /<resource>/columns` route (decision deferred to slice start)
 
-### Claimed by SLICE 3 (chrome as config)
+### ~~Claimed by SLICE 3~~ — DONE (chrome to kind components)
 
-- `app/components/ObjectTreeV2/kinds/{ActionBar,DenseGridHeader,Panel}.tsx`
+- ✅ `app/components/ObjectTreeV2/kinds/DenseGridHeader.tsx` (new)
+- ✅ `app/components/ObjectTreeV2/kinds/ActionBar.tsx` (new) — discriminated-union `CreateActionConfig` covers single + type-picker patterns
+- ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — chrome JSX deleted, replaced with kind component mounts
+- Panel kind deferred — `<Panel>` already exists as a project-wide primitive; V2 doesn't need its own variant.
 
 ### Claimed by SLICE 4 (drag/reparent rules into config)
 
