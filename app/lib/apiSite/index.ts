@@ -818,9 +818,14 @@ export interface Timebox {
   workspace_id: ID;
 }
 
+// Slice 6.3a (2026-05-21) — list + bulk-create responses cut over to
+// the ObjectTreeV2 `{ items, total }` contract. Old shape `{sprints}` /
+// `{releases}` keys removed from the wire; legacy useTimebox +
+// ArtefactInlineForm updated in slice 6.3b.
+
 export const sprints = {
   list: (params?: string) =>
-    apiSite<{ sprints: Timebox[] }>(params ? `/timeboxes/sprints?${params}` : "/timeboxes/sprints/"),
+    apiSite<{ items: Timebox[]; total: number }>(params ? `/timeboxes/sprints?${params}` : "/timeboxes/sprints/"),
 
   get: (id: ID) =>
     apiSite<Timebox>(`/timeboxes/sprints/${id}`),
@@ -829,7 +834,7 @@ export const sprints = {
     apiSite<Timebox>("/timeboxes/sprints/", { method: "POST", body: JSON.stringify(data) }),
 
   bulkCreate: (data: unknown) =>
-    apiSite<{ sprints: Timebox[] }>("/timeboxes/sprints/bulk-create", {
+    apiSite<{ items: Timebox[]; total: number }>("/timeboxes/sprints/bulk-create", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -852,7 +857,7 @@ export const sprints = {
 
 export const releases = {
   list: (params?: string) =>
-    apiSite<{ releases: Timebox[] }>(params ? `/timeboxes/releases?${params}` : "/timeboxes/releases/"),
+    apiSite<{ items: Timebox[]; total: number }>(params ? `/timeboxes/releases?${params}` : "/timeboxes/releases/"),
 
   get: (id: ID) =>
     apiSite<Timebox>(`/timeboxes/releases/${id}`),
@@ -861,7 +866,7 @@ export const releases = {
     apiSite<Timebox>("/timeboxes/releases/", { method: "POST", body: JSON.stringify(data) }),
 
   bulkCreate: (data: unknown) =>
-    apiSite<{ releases: Timebox[] }>("/timeboxes/releases/bulk-create", {
+    apiSite<{ items: Timebox[]; total: number }>("/timeboxes/releases/bulk-create", {
       method: "POST",
       body: JSON.stringify(data),
     }),

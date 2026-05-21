@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -83,7 +84,12 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
-// List handles GET /api/v2/timeboxes/releases
+// List handles GET /api/v2/timeboxes/releases.
+//
+// Slice 6.3a (2026-05-21) — response shape cut over from
+// `{releases, count}` to ObjectTreeV2's `{items, total}` contract, and
+// `?limit=`/`?offset=` paging added. See the matching cutover in
+// timeboxsprints/handler.go for the rationale.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
@@ -112,7 +118,34 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projected, projErr := projectReleases(releases, fieldSet)
+	total := len(releases)
+
+	// Slice 6.3a paging — match the sprint handler's contract.
+	offset := 0
+	if v := q.Get("offset"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			if n > total {
+				n = total
+			}
+			offset = n
+		}
+	}
+	limit := total - offset
+	if v := q.Get("limit"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			limit = n
+		}
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	if offset > end {
+		offset = end
+	}
+	windowed := releases[offset:end]
+
+	projected, projErr := projectReleases(windowed, fieldSet)
 	if projErr != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
@@ -120,8 +153,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"releases": projected,
-		"count":    len(releases),
+		"items": projected,
+		"total": total,
 	})
 }
 
@@ -359,10 +392,11 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Slice 6.3a — response shape cut over to {items,total}.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"releases": releases,
-		"count":    len(releases),
+		"items": releases,
+		"total": len(releases),
 	})
 }

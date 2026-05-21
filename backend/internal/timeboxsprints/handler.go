@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -91,7 +92,15 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
-// List handles GET /api/v2/timeboxes/sprints
+// List handles GET /api/v2/timeboxes/sprints.
+//
+// Slice 6.3a (2026-05-21) — response shape cut over to ObjectTreeV2's
+// canonical contract: `{ items, total }` instead of the legacy
+// `{ sprints, count }`. The legacy keys were the original shape from
+// PLA-0027; ObjectTreeV2's data hook expects `items` + `total` so this
+// handler now matches that contract. ArtefactInlineForm's reads were
+// migrated in the same slice. Add `?limit=` / `?offset=` paging; both
+// default to "return everything" so existing callers stay green.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
@@ -121,7 +130,38 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projected, projErr := projectSprints(sprints, fieldSet)
+	total := len(sprints)
+
+	// Slice 6.3a — apply ?limit=/&offset= window. Defaults: limit=0 means
+	// "no limit" (return all); offset clamped to [0,total]. Sprint counts
+	// per workspace are typically small (<50) so in-handler slicing is
+	// fine; if the workspace ever scales past that we move the LIMIT into
+	// the SQL like work-items does.
+	offset := 0
+	if v := q.Get("offset"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			if n > total {
+				n = total
+			}
+			offset = n
+		}
+	}
+	limit := total - offset
+	if v := q.Get("limit"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			limit = n
+		}
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	if offset > end {
+		offset = end
+	}
+	windowed := sprints[offset:end]
+
+	projected, projErr := projectSprints(windowed, fieldSet)
 	if projErr != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
@@ -129,8 +169,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"sprints": projected,
-		"count":   len(sprints),
+		"items": projected,
+		"total": total,
 	})
 }
 
@@ -423,10 +463,12 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Slice 6.3a — response shape cut over to {items,total} to match the
+	// List endpoint + ObjectTreeV2's data-hook contract.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"sprints": sprints,
-		"count":   len(sprints),
+		"items": sprints,
+		"total": len(sprints),
 	})
 }

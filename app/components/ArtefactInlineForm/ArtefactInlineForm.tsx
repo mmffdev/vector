@@ -124,16 +124,20 @@ export function ArtefactInlineForm({
             .listFlowStates(`artefact_type_id=${encodeURIComponent(artefact.artefact_type_id)}`)
             .catch(() => ({ flow_states: [] as unknown[] })),
           lookups.usersInScope().catch(() => ({ users: [] as UserInScope[], count: 0 })),
-          sprints.list(`workspace_id=${workspaceId}`).catch(() => ({ sprints: [] as Timebox[] })),
-          releases.list(`workspace_id=${workspaceId}`).catch(() => ({ releases: [] as Timebox[] })),
+          // Slice 6.3b — sprint + release List responses cut over to
+          // {items,total} (matching ObjectTreeV2's contract). Milestones
+          // are still on the legacy {milestones,count} shape; cutover for
+          // those is a later slice if/when milestones move to V2.
+          sprints.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
+          releases.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
           milestones.list(`workspace_id=${workspaceId}`).catch(() => ({ milestones: [] as Milestone[], count: 0 })),
         ]);
         if (cancelled) return;
         setTopologyNodes(Array.isArray(topo) ? topo : []);
         setFlowStates(((fs as { flow_states: unknown[] }).flow_states ?? []) as FlowStateLite[]);
         setUsers((us as { users: UserInScope[] }).users ?? []);
-        setSprintList((sp as { sprints: Timebox[] }).sprints ?? []);
-        setReleaseList((rel as { releases: Timebox[] }).releases ?? []);
+        setSprintList((sp as { items?: Timebox[] }).items ?? []);
+        setReleaseList((rel as { items?: Timebox[] }).items ?? []);
         setMilestoneList((ms as { milestones: Milestone[] }).milestones ?? []);
       } catch {
         // Falls through to empty dropdowns; individual catches above
