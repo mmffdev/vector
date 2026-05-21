@@ -72,6 +72,18 @@ export interface UseObjectTreeWindowOptions<T> {
    */
   filterQuery: string;
   /**
+   * Slice 4.5 — caller-owned set of wire field names the backend
+   * should return. When non-null, appended to the request as
+   * `&fields=<a>,<b>,…` matching the Slice 2.5 backend contract;
+   * null = no projection (back-compat — backend returns full payload).
+   *
+   * The hook is dumb about field names; the caller (typically driven
+   * by the column-picker plugin) decides which to send. Always-on
+   * fields like `id` are folded in server-side, so callers can
+   * omit them safely.
+   */
+  fields?: ReadonlyArray<string> | null;
+  /**
    * Field-name allow-list for cascade-triggering PATCH bodies. When a
    * PATCH body contains ANY of these keys, the hook re-runs
    * refetchWindow() AND fires onCascadeRefresh() so consumers can refresh
@@ -161,6 +173,7 @@ export function useObjectTreeWindow<T>(
     onLocalPatch,
     onCascadeRefresh,
     onPatchError,
+    fields,
   } = opts;
 
   // Active topology scope clamps every read. The actual ?meg= param is
@@ -205,6 +218,12 @@ export function useObjectTreeWindow<T>(
   // sees `item_type=risk?limit=25`.
   const sep = resourceUrl.includes("?") ? "&" : "?";
   const sortSlice = sortKey ? `&sort=${sortKey}&dir=${sortDir}` : "";
+  // Slice 4.5 — fields projection slice. Empty when no projection
+  // requested. Caller is responsible for de-duping; we just URI-encode
+  // and join.
+  const fieldsSlice = fields && fields.length
+    ? `&fields=${fields.map(encodeURIComponent).join(",")}`
+    : "";
 
   const refetchWindow = useCallback(async () => {
     // Bump generation + capture our own. On response we'll check that
@@ -220,7 +239,7 @@ export function useObjectTreeWindow<T>(
       if (pageSize === "all") {
         const CHUNK = 1000;
         const first = await apiSite<FetchResponse<T>>(
-          `${resourceUrl}${sep}limit=${CHUNK}&offset=0${sortSlice}${filterQuery}`,
+          `${resourceUrl}${sep}limit=${CHUNK}&offset=0${sortSlice}${filterQuery}${fieldsSlice}`,
         );
         const totalRoots = first.total ?? first.items.length;
         const combined: T[] = [...first.items];
@@ -230,7 +249,7 @@ export function useObjectTreeWindow<T>(
           const rest = await Promise.all(
             offsets.map((o) =>
               apiSite<FetchResponse<T>>(
-                `${resourceUrl}${sep}limit=${CHUNK}&offset=${o}${sortSlice}${filterQuery}`,
+                `${resourceUrl}${sep}limit=${CHUNK}&offset=${o}${sortSlice}${filterQuery}${fieldsSlice}`,
               ),
             ),
           );
@@ -254,7 +273,7 @@ export function useObjectTreeWindow<T>(
       // Paginated mode: one request per page.
       const offset = pageIndex * pageSize;
       const res = await apiSite<FetchResponse<T>>(
-        `${resourceUrl}${sep}limit=${pageSize}&offset=${offset}${sortSlice}${filterQuery}`,
+        `${resourceUrl}${sep}limit=${pageSize}&offset=${offset}${sortSlice}${filterQuery}${fieldsSlice}`,
       );
       // Stale-response guard — see above.
       if (reqGenRef.current !== myGen) return;
@@ -280,6 +299,7 @@ export function useObjectTreeWindow<T>(
     pageIndex,
     sortSlice,
     filterQuery,
+    fieldsSlice,
     activeNodeId,
     direction,
     getId,

@@ -47,6 +47,11 @@ import { useObjectTreeWindow, ApiError as ObjectTreeApiError } from "@/app/compo
 import { ObjectTreeDetailFlyout, type DetailFlyoutBodyProps } from "@/app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout";
 import { DenseGridHeader } from "@/app/components/ObjectTreeV2/kinds/DenseGridHeader";
 import { ActionBar } from "@/app/components/ObjectTreeV2/kinds/ActionBar";
+import {
+  ColumnPicker,
+  useColumnPickerState,
+  type ColumnCatalogue,
+} from "@/app/components/ObjectTreeV2/plugins/ColumnPicker";
 import { notify } from "@/app/lib/toast";
 
 // Slice 1 of the ObjectTree refactor — work-items-specific cascade triggers.
@@ -114,6 +119,7 @@ export default function ObjectTree({
   subtitleBadge,
   subtitle,
   description,
+  columnCatalogue,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
@@ -127,6 +133,12 @@ export default function ObjectTree({
   title?: string;
   addressableName?: string;
   subtitleBadge?: React.ReactNode;
+  // Slice 4.5 — column-picker catalogue. When supplied, V2 mounts the
+  // <ColumnPicker> in the action bar, owns visibleKeys state, persists
+  // to localStorage, filters config.columns before passing to
+  // ResourceTree, AND forwards visible wireKeys to useObjectTreeWindow's
+  // `fields` opt (Slice 2.5 backend ?fields= contract). Omit to disable.
+  columnCatalogue?: ColumnCatalogue;
   subtitle?: React.ReactNode;
   description?: React.ReactNode;
 }) {
@@ -165,6 +177,18 @@ export default function ObjectTree({
   // when the source artefact had no topology_node_id of its own
   // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
   const { activeNodeId: activeScopeNodeId } = useScope();
+
+  // Slice 4.5 — column-picker state. Hook MUST be called every render
+  // (rules of hooks); we feed it an empty-catalogue sentinel when the
+  // caller didn't supply one. Mounting the <ColumnPicker> UI + filtering
+  // config.columns then conditional on `columnCatalogue != null`.
+  const emptyCatalogue = useMemo<ColumnCatalogue>(
+    () => ({ columns: [], prefsKey: "__none__" }),
+    [],
+  );
+  const picker = useColumnPickerState(columnCatalogue ?? emptyCatalogue);
+  const visibleWireKeys = columnCatalogue ? picker.visibleWireKeys : null;
+  const visibleKeySet = columnCatalogue ? picker.visibleKeySet : null;
 
   // Action bar — artefact type picker that focuses the "Add new" CTA.
   // Design-only for now (no create wiring); options come from the workspace
@@ -285,6 +309,11 @@ export default function ObjectTree({
       sortKey,
       sortDir,
       filterQuery,
+      // Slice 4.5 — visible-column-driven ?fields= projection. Empty
+      // unless columnCatalogue is supplied; legacy callers stay on the
+      // full-payload path. Slice 4.6a's coalescing handles rapid
+      // checkbox toggles so flurries collapse to one outgoing request.
+      fields: visibleWireKeys,
       cascadeOnFields: WORK_ITEMS_CASCADE_FIELDS,
       onPatched,
       onLocalPatch: (id, body) => applyChildPatchRef.current?.(id, body),
@@ -661,7 +690,21 @@ export default function ObjectTree({
         value: searchQuery,
         onChange: setSearchQuery,
       }}
-      filterChips={config.filterChips}
+      filterChips={
+        <>
+          {config.filterChips}
+          {columnCatalogue && (
+            // Slice 4.5 — column picker sits at the end of the
+            // filter-chip cluster (right side of the action bar).
+            <ColumnPicker
+              catalogue={columnCatalogue}
+              visibleKeys={picker.visibleKeys}
+              onChange={picker.setVisibleKeys}
+              onResetToDefaults={picker.resetToDefaults}
+            />
+          )}
+        </>
+      }
     />
   );
 
@@ -1025,7 +1068,14 @@ export default function ObjectTree({
           // which leaves the 10px stripe slot transparent.
           row.colour ?? colourMap?.get(row.type_prefix)?.colour ?? null
         }
-        columns={config.columns}
+        columns={
+          // Slice 4.5 — filter columns to the visible set when a
+          // catalogue is mounted. visibleKeySet is null when no
+          // catalogue → pass all columns (back-compat).
+          visibleKeySet
+            ? config.columns.filter((c) => visibleKeySet.has(c.key))
+            : config.columns
+        }
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"
         search={{ placeholder: config.searchPlaceholder, accessor: config.searchAccessor }}
