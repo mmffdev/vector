@@ -34,9 +34,19 @@
 //     work-items-specific behaviour, but threaded through an
 //     onPatchError callback so other domains can opt out.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { useScope } from "@/app/contexts/ScopeContext";
+
+// Slice 4.6a — request coalescing window. Rapid prop changes (sort
+// flip + filter chip toggle + scope change in close succession) all
+// fire refetchWindow effects. Without coalescing each one issues its
+// own outgoing request and we race their responses. With this debounce,
+// every dep-list change within the window collapses to ONE outgoing
+// request after the user settles. Tuned for typical human pacing — 150ms
+// is below the perception threshold for "instant", well above keystroke
+// debounce overlap.
+const REFETCH_DEBOUNCE_MS = 150;
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -168,6 +178,14 @@ export function useObjectTreeWindow<T>(
   const [total, setTotal] = useState(0);
   const [loadingWindow, setLoadingWindow] = useState(false);
 
+  // Slice 4.6a — request generation counter. Every refetch bumps it
+  // and captures its own generation at start; on response we drop
+  // results from any generation older than the most-recent in-flight.
+  // Prevents a stale response from overwriting a newer one after rapid
+  // dep-list changes (e.g. user flips sort then immediately flips
+  // filter — the old sort's response might land second otherwise).
+  const reqGenRef = useRef(0);
+
   // windowRoots is the rendered output — kept as a memoised projection
   // so child re-renders don't churn when an unrelated patch touches a
   // different row.
@@ -189,6 +207,11 @@ export function useObjectTreeWindow<T>(
   const sortSlice = sortKey ? `&sort=${sortKey}&dir=${sortDir}` : "";
 
   const refetchWindow = useCallback(async () => {
+    // Bump generation + capture our own. On response we'll check that
+    // ours is still the latest before applying state — otherwise a
+    // stale response would clobber a newer one (Slice 4.6a guard).
+    reqGenRef.current += 1;
+    const myGen = reqGenRef.current;
     setLoadingWindow(true);
     try {
       // "all" mode: fetch in chunks until total reached. Used by reports
@@ -213,6 +236,8 @@ export function useObjectTreeWindow<T>(
           );
           for (const page of rest) combined.push(...page.items);
         }
+        // Stale-response guard: a newer refetch has started — drop ours.
+        if (reqGenRef.current !== myGen) return;
         const nextMap = new Map<string, T>();
         const nextOrder: string[] = [];
         for (const row of combined) {
@@ -231,6 +256,8 @@ export function useObjectTreeWindow<T>(
       const res = await apiSite<FetchResponse<T>>(
         `${resourceUrl}${sep}limit=${pageSize}&offset=${offset}${sortSlice}${filterQuery}`,
       );
+      // Stale-response guard — see above.
+      if (reqGenRef.current !== myGen) return;
       const nextMap = new Map<string, T>();
       const nextOrder: string[] = [];
       for (const row of res.items) {
@@ -242,7 +269,9 @@ export function useObjectTreeWindow<T>(
       setOrder(nextOrder);
       setTotal(res.total ?? res.items.length);
     } finally {
-      setLoadingWindow(false);
+      // Only clear loading if WE are still the latest gen; otherwise a
+      // newer refetch is in flight and should own the loading flag.
+      if (reqGenRef.current === myGen) setLoadingWindow(false);
     }
   }, [
     resourceUrl,
@@ -256,8 +285,20 @@ export function useObjectTreeWindow<T>(
     getId,
   ]);
 
+  // Slice 4.6a — debounced auto-refetch. Rapid dep-list changes (sort
+  // flip + filter chip toggle + scope change in close succession) all
+  // schedule their own refetch effect; with the debounce they collapse
+  // to ONE outgoing request after the user settles. Cleanup cancels a
+  // pending timer if the deps change again before fire — exactly the
+  // coalescing we want. The first mount fires after the debounce too,
+  // which adds a tiny perceived delay (~150ms) on first paint; in
+  // exchange we don't burn a fetch on the noisy initial-mount cascade
+  // (auth + scope context bootstrap can re-fire deps a few times).
   useEffect(() => {
-    void refetchWindow();
+    const t = setTimeout(() => {
+      void refetchWindow();
+    }, REFETCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
   }, [refetchWindow]);
 
   const patchAndApply = useCallback(
