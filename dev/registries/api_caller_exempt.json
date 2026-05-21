@@ -9,6 +9,10 @@
     {
       "path": "app/hooks/useTopologyHandoffs.ts",
       "reason": "EventSource (SSE) for topology change notifications — same reason as useRealtimeSubscription.ts."
+    },
+    {
+      "path": "app/hooks/useNotificationsStream.ts",
+      "reason": "EventSource (SSE) for per-user notification nudges (B11.4) — same reason as useRealtimeSubscription.ts. Composes API_SITE_BASE + /notifications/stream; access_token query param because EventSource cannot set Authorization headers."
     }
   ]
 }

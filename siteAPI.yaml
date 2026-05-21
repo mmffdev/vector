@@ -4637,6 +4637,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /notifications/stream:
+    get:
+      tags:
+      - notifications
+      summary: GET /notifications/stream
+      operationId: getNotificationsStream
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: notifStreamH.Stream
+        file: backend/internal/portfoliomodels/adopt_stream.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /notifications/unread-count:
     get:
       tags:

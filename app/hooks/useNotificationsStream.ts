@@ -1,36 +1,101 @@
 "use client";
 
 /**
- * useNotificationsStream — subscribes to the per-user notifications
- * topic on the realtime hub and invokes the callback on each nudge.
+ * useNotificationsStream — opens an EventSource against
+ * /_site/notifications/stream and invokes the callback on each
+ * `notification.created` event.
  *
- * Each nudge means "something changed for you — refetch the bell".
- * We deliberately don't pass the full notification payload; the
- * read model (users_notifications) is the source of truth and the
- * caller refetches from there. That keeps the wire payload tiny and
- * dual-write skew impossible.
+ * The payload from the backend is a nudge, not the full body:
+ *   { type: "notification.created", kind: "<kind>" }
  *
- * Resolves to a no-op (no error) when the realtime client is
- * unavailable — the bell falls back to a polling refresh, so the
- * UX still works without the stream.
+ * Callers refetch from notifications.list / unreadCount in response —
+ * the read-model is the source of truth (handover_rmq.md § "Why
+ * nudge-only on SSE").
  *
- * NOTE: this hook intentionally does not own the realtime client
- * lifecycle — when the chrome wires the bell into the shell, it
- * should mount the realtime client at the layout level and this
- * hook reads from it. For now, this is a stub that polls less
- * aggressively than the bell's own fallback poll; the wire-up to
- * the real hub is a follow-up.
+ * EventSource can't set Authorization headers, so the JWT goes in
+ * ?access_token=<...> (same pattern as the WebSocket route uses, see
+ * backend/internal/auth/middleware.go RequireAuth).
+ *
+ * Lifecycle:
+ *   - Reconnects automatically when the EventSource emits `error`
+ *     (the browser also retries by default; we close+reopen to make
+ *     it deterministic across stale auth, network blips).
+ *   - Silently no-ops when there is no auth token (logged-out / boot)
+ *   - Closes on unmount.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-export function useNotificationsStream(_onNudge: () => void) {
+import { API_SITE_BASE, getApiToken } from "@/app/lib/api";
+
+// Streaming endpoints compose their own URL because EventSource
+// isn't a fetch — apiSite() can't be used here. lint:api-caller-
+// discipline + lint:api-helper-exclusive exemption registered in
+// dev/registries/api_caller_exempt.json.
+const STREAM_PATH = "/notifications/stream";
+
+export type StreamEvent =
+  | { type: "notification.created"; kind?: string }
+  | { type: string; [k: string]: unknown };
+
+export function useNotificationsStream(onEvent: (e: StreamEvent) => void) {
+  // Hold the latest callback in a ref so the effect below doesn't
+  // re-subscribe on every render (would tear-down + reopen the SSE
+  // connection on parent re-render, defeating the purpose).
+  const cbRef = useRef(onEvent);
   useEffect(() => {
-    // Wire-up to realtime hub goes here — TODO. For now this hook
-    // exists so the bell can call it without the chrome having to
-    // care whether the real-time path is built yet.
+    cbRef.current = onEvent;
+  }, [onEvent]);
+
+  useEffect(() => {
+    const token = getApiToken();
+    if (!token) return; // not signed in — bell falls back to polling
+
+    const url = `${API_SITE_BASE}${STREAM_PATH}?access_token=${encodeURIComponent(token)}`;
+    let es: EventSource | null = null;
+    let closed = false;
+    let reopenTimer: number | null = null;
+
+    function open() {
+      if (closed) return;
+      try {
+        es = new EventSource(url);
+      } catch {
+        // Browser without EventSource (rare today). Skip silently.
+        return;
+      }
+
+      es.onmessage = (ev) => {
+        if (!ev.data) return;
+        try {
+          const parsed = JSON.parse(ev.data) as StreamEvent;
+          cbRef.current(parsed);
+        } catch {
+          // Malformed payload — ignore.
+        }
+      };
+
+      es.onerror = () => {
+        // EventSource auto-reconnects, but its retry timing isn't
+        // visible from JS. Close and re-open after a small delay so
+        // the wait is bounded; lets us recover from token rotation
+        // (the new token will be picked up on the next open()).
+        if (es) {
+          es.close();
+          es = null;
+        }
+        if (!closed) {
+          reopenTimer = window.setTimeout(open, 3000);
+        }
+      };
+    }
+
+    open();
+
     return () => {
-      // teardown
+      closed = true;
+      if (reopenTimer !== null) window.clearTimeout(reopenTimer);
+      if (es) es.close();
     };
-  }, [_onNudge]);
+  }, []);
 }

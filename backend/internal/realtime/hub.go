@@ -31,7 +31,12 @@ import (
 // package and main.go wires one object.
 type Hub struct {
 	mu       sync.RWMutex
-	subs     map[string]map[*Client]struct{} // topic -> set of subscribers
+	subs     map[string]map[*Client]struct{} // topic -> set of WS subscribers
+	// Parallel registry for non-WebSocket subscribers (SSE bridges,
+	// future test harnesses). Each writer gets a copy of every payload
+	// published to its topic. Kept separate from `subs` so the existing
+	// WebSocket flow stays untouched.
+	writers  map[string]map[chan<- []byte]struct{}
 	registry *SessionRegistry
 }
 
@@ -49,6 +54,7 @@ func NewHub() *Hub {
 func NewHubWithRegistry(registry *SessionRegistry) *Hub {
 	return &Hub{
 		subs:     map[string]map[*Client]struct{}{},
+		writers:  map[string]map[chan<- []byte]struct{}{},
 		registry: registry,
 	}
 }
@@ -120,12 +126,20 @@ func (h *Hub) UnsubscribeAll(c *Client) {
 // each subscriber's send channel. A slow subscriber that fills its
 // channel is dropped silently — better to lose one client than block
 // the publisher loop.
+//
+// Fans out to both WebSocket subscribers (h.subs) and raw-channel
+// writers (h.writers — used by the SSE bridge).
 func (h *Hub) Publish(topic string, payload []byte) {
 	h.mu.RLock()
 	set := h.subs[topic]
 	clients := make([]*Client, 0, len(set))
 	for c := range set {
 		clients = append(clients, c)
+	}
+	wset := h.writers[topic]
+	writers := make([]chan<- []byte, 0, len(wset))
+	for w := range wset {
+		writers = append(writers, w)
 	}
 	h.mu.RUnlock()
 
@@ -137,6 +151,42 @@ func (h *Hub) Publish(topic string, payload []byte) {
 			// publisher. The client will reconcile via refetch on
 			// the next message it does receive.
 		}
+	}
+	for _, w := range writers {
+		select {
+		case w <- payload:
+		default:
+			// Same drop-on-slow policy.
+		}
+	}
+}
+
+// SubscribeWriter registers a raw write channel for fan-out on the
+// given topic. Used by non-WebSocket transports (SSE bridge). Caller
+// is responsible for closing the channel and calling UnsubscribeWriter
+// when the underlying connection ends. Idempotent.
+func (h *Hub) SubscribeWriter(topic string, w chan<- []byte) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	set, ok := h.writers[topic]
+	if !ok {
+		set = map[chan<- []byte]struct{}{}
+		h.writers[topic] = set
+	}
+	set[w] = struct{}{}
+}
+
+// UnsubscribeWriter removes w from topic. Empty topic sets are pruned.
+func (h *Hub) UnsubscribeWriter(topic string, w chan<- []byte) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	set, ok := h.writers[topic]
+	if !ok {
+		return
+	}
+	delete(set, w)
+	if len(set) == 0 {
+		delete(h.writers, topic)
 	}
 }
 

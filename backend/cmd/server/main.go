@@ -43,6 +43,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/notifications"
 	"github.com/mmffdev/vector-backend/internal/notifications/broker"
 	"github.com/mmffdev/vector-backend/internal/notifications/dispatchers"
+	notifresolvers "github.com/mmffdev/vector-backend/internal/notifications/resolvers"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
@@ -646,6 +647,7 @@ func main() {
 	_ = notifBroker // currently no main.go-level shutdown hook; relay goroutines exit on ctx
 	notifSvc := notifications.NewService(pool, notifPrefs)
 	notifH := notifications.NewHandler(notifSvc)
+	notifStreamH := notifications.NewStreamHandler(rtHub)
 
 	// @-mention scaffold — mounted on both transports per PLA-0039.
 	// vaPool is optional: when nil, the service falls back to
@@ -653,6 +655,15 @@ func main() {
 	// Notifier is now DBNotifier (writes outbox in tx) when AMQP_URL is
 	// set, falls back to NoopNotifier otherwise.
 	mentionsSvc := mentions.NewService(pool, vaPool, notifier)
+	// Mention context resolvers — turn (kind, UUID) into a
+	// "PREFIX-NUM — Title" label. Segregated in
+	// notifications/resolvers so the wiring is a single line here;
+	// new artefact kinds get @-mention support by adding their slug
+	// to defaultArtefactKinds in that package (no main.go edit).
+	// Safe to call with vaPool=nil — the resolver returns an error
+	// shape that the mentions handler maps to its existing
+	// unresolved-context response.
+	notifresolvers.RegisterArtefactResolvers(mentionsSvc, vaPool)
 	mentionsH := mentions.NewHandler(mentionsSvc)
 
 	// PLA-0027 / Story 00514: timebox sprints REST handler.
@@ -1331,6 +1342,10 @@ func main() {
 		r.Post("/{id}/read", notifH.MarkRead)
 		r.Get("/prefs", notifH.ListPrefs)
 		r.Put("/prefs", notifH.UpsertPref)
+		// SSE: server-sent events for real-time notification nudges.
+		// One open connection per user; reconnects handled by the
+		// browser's native EventSource.
+		r.Get("/stream", notifStreamH.Stream)
 	})
 
 	// /portfolio + /workspace/{id}/portfolio/layers (B22.19)
