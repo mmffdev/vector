@@ -11,6 +11,7 @@ Current flags:
 | Flag | Script | Snapshot | Dev page |
 |---|---|---|---|
 | `-api` | [`dev/scripts/audit_api_touchpoints.sh`](../../../dev/scripts/audit_api_touchpoints.sh) | [`dev/audits/api-touchpoints.json`](../../../dev/audits/api-touchpoints.json) | [/dev/api-audit](../../../dev/pages/DevApiAuditPanel.tsx) |
+| `-graph` | [`dev/scripts/audit_codegraph.sh`](../../../dev/scripts/audit_codegraph.sh) | [`dev/audits/codegraph.json`](../../../dev/audits/codegraph.json) | [/dev/visualiser](../../../dev/pages/DevVisualiserPanel.tsx) |
 
 Future flags (e.g. `-rbac`, `-routes`, `-css`) will live alongside `-api`; never break the `-api` contract.
 
@@ -74,6 +75,39 @@ Not covered:
 | `jq` not on PATH | "Missing dep: brew install jq. Aborting." |
 | Script exits non-zero | Surface stderr verbatim. The snapshot is overwritten on success only — if the script crashes, the previous snapshot survives. |
 | Script not executable | `chmod +x dev/scripts/audit_api_touchpoints.sh` first. |
+
+---
+
+---
+
+## Flow — `-graph`
+
+### Step 1 — Run the audit
+
+```bash
+bash dev/scripts/audit_codegraph.sh
+```
+
+Walks `app/**/*.{ts,tsx}` + `dev/**/*.{ts,tsx}` for frontend nodes/imports,
+`backend/**/*.go` for backend nodes/imports, and joins the two by matching
+`apiSite/apiV2/apiRoot` calls in TS to handlers in `backend/cmd/server/main.go`.
+Also catches raw `fetch("/api/dev/…")` → `app/api/dev/.../route.ts` shadow
+handlers. Read-only, ~5s on Vector's tree.
+
+### Step 2 — Report the headline
+
+```
+Code graph refreshed —
+  TS files:  <ts>
+  Go files:  <go>
+  Imports:   <import_edges>
+  Bridges:   <bridge_edges>
+
+Snapshot: dev/audits/codegraph.json
+View: /dev/visualiser
+```
+
+The numbers come from the script's stderr summary.
 
 ---
 

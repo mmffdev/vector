@@ -1319,6 +1319,7 @@ func main() {
 				r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
 				r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
 				r.Get("/dev/api-audit", devResetH.ApiAudit)
+				r.Get("/dev/codegraph", devResetH.Codegraph)
 				r.Route("/dev/reporting", devReportsH.Mount)
 			})
 		})

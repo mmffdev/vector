@@ -58,7 +58,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
 - **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
 - **`<artefacts>` skill** → [`.claude/skills/artefacts/SKILL.md`](skills/artefacts/SKILL.md) — tenant artefacts maintenance via backend API (`/_site/admin/dev/artefacts-{count,wipe}`); `-d` wipe-all with pre-flight count + explicit "yes" prompt; dev-only; never psql-direct.
-- **`<audit>` skill** → [`.claude/skills/audit/SKILL.md`](skills/audit/SKILL.md) — repo-wide audits; `-api` regenerates `dev/audits/api-touchpoints.json` (consumed by /dev/api-audit page); read-only grep, ~2s.
+- **`<audit>` skill** → [`.claude/skills/audit/SKILL.md`](skills/audit/SKILL.md) — repo-wide audits; `-api` regenerates `dev/audits/api-touchpoints.json` (/dev/api-audit); `-graph` regenerates `dev/audits/codegraph.json` (/dev/visualiser, unified TS+Go force-directed graph); read-only grep, ~2–5s.
 - **Vector-artefacts cutover** → [`docs/c_c_vector_artefacts_backfill.md`](../docs/c_c_vector_artefacts_backfill.md) — `obj_*` → vector_artefacts ETL.
 - **v2 work-items cutover follow-ups** → [`docs/c_c_v2_workitems_cutover_followups.md`](../docs/c_c_v2_workitems_cutover_followups.md) — PLA-0023 deferral register.
 - **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — per-route-group cutover plan.

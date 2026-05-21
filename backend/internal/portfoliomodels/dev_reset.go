@@ -274,6 +274,47 @@ func (h *DevResetHandler) ApiAudit(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
+// Codegraph — GET /_site/admin/dev/codegraph
+//
+// Serves the unified code-graph snapshot produced by
+// dev/scripts/audit_codegraph.sh. Nodes = source files (TS + Go),
+// edges = imports + HTTP bridges (apiSite/apiV2/apiRoot → backend handler).
+// The page that consumes this lives at /dev/visualiser.
+func (h *DevResetHandler) Codegraph(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	candidates := []string{
+		"dev/audits/codegraph.json",
+		"../dev/audits/codegraph.json",
+		"../../dev/audits/codegraph.json",
+	}
+	var data []byte
+	var err error
+	var found string
+	for _, c := range candidates {
+		abs, _ := filepath.Abs(c)
+		if _, statErr := os.Stat(abs); statErr == nil {
+			data, err = os.ReadFile(abs)
+			found = abs
+			break
+		}
+	}
+	if found == "" || err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"snapshot not found","hint":"run bash dev/scripts/audit_codegraph.sh"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(data)
+}
+
 // SeedRisks — POST /_site/admin/dev/seed-risks
 //
 // Inserts N Risk artefacts assigned to the chosen user (default: the caller).
