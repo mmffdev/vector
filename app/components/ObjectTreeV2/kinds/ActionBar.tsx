@@ -16,11 +16,11 @@ import { MdAdd, MdOutlineCategory, MdSearch } from "react-icons/md";
 
 // ── Create-action variants ──────────────────────────────────────────────────
 //
-// Two patterns cover every grid we have today:
+// Three patterns cover every grid we have today:
 //
 //   single        — one labelled button. No dropdown. Click fires the
-//                   caller's onCreate. Used by sprints, releases,
-//                   milestones (single kind per grid).
+//                   caller's onCreate. Used by milestones (single kind
+//                   per grid), and by sprints/releases for "create one".
 //
 //   type-picker   — a dropdown of options. Picking an option turns the
 //                   button into "Add new <Label>" and exposes a Cancel
@@ -29,7 +29,20 @@ import { MdAdd, MdOutlineCategory, MdSearch } from "react-icons/md";
 //                   work-items, portfolio-items, risks (multi-type
 //                   grids).
 //
-// Adding a third pattern later (e.g. "multi-step wizard") = new variant
+//   bulk          — a labelled button (no dropdown) that fires the
+//                   caller's onCreate which opens the bulk-create
+//                   sheet inline below the ActionBar. TIMEBOXES ONLY:
+//                   bulk-create exists because timebox sequences have
+//                   cadence/date-cascade semantics nothing else shares.
+//                   Never add bulk to work-items / portfolio / risks /
+//                   future kinds.
+//
+// `createAction` may be a single config OR an array of configs (rendered
+// in declared order). Sprints/releases declare BOTH a `single` and a
+// `bulk` action side-by-side so the user can create one timebox at a
+// time OR bulk-create a sequence of N.
+//
+// Adding a fourth pattern later (e.g. "multi-step wizard") = new variant
 // here; existing configs unchanged.
 
 interface CreateActionSingle {
@@ -54,7 +67,18 @@ interface CreateActionTypePicker {
   onCancel: () => void;
 }
 
-export type CreateActionConfig = CreateActionSingle | CreateActionTypePicker;
+interface CreateActionBulk {
+  mode: "bulk";
+  /** Button label, e.g. "Create Sprints" (plural). */
+  label: string;
+  /** Fired when the user clicks the button — caller opens the sheet. */
+  onCreate: () => void;
+}
+
+export type CreateActionConfig =
+  | CreateActionSingle
+  | CreateActionTypePicker
+  | CreateActionBulk;
 
 // ── ActionBar props ─────────────────────────────────────────────────────────
 
@@ -62,10 +86,12 @@ export interface ActionBarProps {
   /** aria-label for the toolbar (e.g. "Work item actions", "Sprint actions"). */
   ariaLabel: string;
   /**
-   * Caller-supplied create-action config. When omitted, no create chip
-   * renders — used by read-only grids.
+   * Caller-supplied create-action config(s). When omitted, no create
+   * chip renders — used by read-only grids. Pass an array to render
+   * multiple chips side-by-side (e.g. sprints render `single` + `bulk`
+   * together).
    */
-  createAction?: CreateActionConfig;
+  createAction?: CreateActionConfig | CreateActionConfig[];
   /** Search placeholder + accessor. When omitted, no search input renders. */
   search?: {
     placeholder: string;
@@ -90,7 +116,11 @@ export function ActionBar({
       role="toolbar"
       aria-label={ariaLabel}
     >
-      {createAction && <CreateActionChip action={createAction} />}
+      {createAction && (
+        Array.isArray(createAction)
+          ? createAction.map((a, i) => <CreateActionChip key={i} action={a} />)
+          : <CreateActionChip action={createAction} />
+      )}
       {search && (
         <div className="tree_accordion-dense__filterbar-search">
           <span
@@ -118,7 +148,7 @@ export function ActionBar({
 // ── Create-action chip ──────────────────────────────────────────────────────
 
 function CreateActionChip({ action }: { action: CreateActionConfig }) {
-  if (action.mode === "single") {
+  if (action.mode === "single" || action.mode === "bulk") {
     return (
       <button
         type="button"
