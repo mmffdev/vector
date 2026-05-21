@@ -418,6 +418,72 @@ export const admin = {
     ),
 };
 
+// Pages: dev/pages/DevReportingPanel.tsx
+// ─── Dev reporting  (/admin/dev/reporting) ───────────────────────────────────
+// Reads/writes the dev_reports table in mmff_dev (research, plan, security,
+// retro, code, api, misc). Backend handler: backend/internal/devreports.
+
+export type DevReportType =
+  | "research" | "plan" | "security" | "retro" | "code" | "api" | "misc";
+
+export interface DevReportMeta {
+  id: string;
+  type: DevReportType;
+  title: string;
+  category: string;
+  topic: string;
+  summary: string;
+  content_text: string;
+  report_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DevReportFull extends DevReportMeta {
+  content: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface DevReportUpsert {
+  id: string;
+  type: DevReportType;
+  title: string;
+  category?: string;
+  topic?: string;
+  summary?: string;
+  content: string;
+  content_text?: string;
+  payload?: Record<string, unknown>;
+  report_date?: string;
+}
+
+export const devReporting = {
+  list: (params: { type?: DevReportType | "all"; q?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.type && params.type !== "all") qs.set("type", params.type);
+    if (params.q) qs.set("q", params.q);
+    const tail = qs.toString();
+    return apiSite<{ reports: DevReportMeta[] }>(
+      `/admin/dev/reporting/${tail ? "?" + tail : ""}`,
+    );
+  },
+
+  get: (id: string) =>
+    apiSite<DevReportFull>(`/admin/dev/reporting/${encodeURIComponent(id)}`),
+
+  upsert: (body: DevReportUpsert) =>
+    apiSite<DevReportFull>("/admin/dev/reporting/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  delete: (id: string) =>
+    apiSite<{ ok: true; id: string }>(
+      `/admin/dev/reporting/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    ),
+};
+
 // Pages: app/(user)/portfolio-model/page.tsx (padmin — list + adopt),
 //        app/components/WizardModelCardList.tsx, app/components/AdoptionOverlay.tsx
 // ─── Portfolio models  (/portfolio-models) ───────────────────────────────────
@@ -1201,11 +1267,25 @@ export const notifications = {
   unreadCount: () =>
     apiSite<{ unread: number }>("/notifications/unread-count"),
 
-  markRead: (id: ID) =>
-    apiSite<void>(`/notifications/${id}/read`, { method: "POST" }),
+  // Mutation helpers dispatch a `notifications:changed` window event
+  // on success so subscribers (the rail bell badge in particular)
+  // refetch immediately instead of waiting up to 60s for the next
+  // poll cycle. Listeners are wired in IconRail.
+  markRead: async (id: ID) => {
+    const out = await apiSite<void>(`/notifications/${id}/read`, { method: "POST" });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("notifications:changed"));
+    }
+    return out;
+  },
 
-  markAllRead: () =>
-    apiSite<{ marked_read: number }>("/notifications/read-all", { method: "POST" }),
+  markAllRead: async () => {
+    const out = await apiSite<{ marked_read: number }>("/notifications/read-all", { method: "POST" });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("notifications:changed"));
+    }
+    return out;
+  },
 
   listPrefs: () =>
     apiSite<{ prefs: NotificationPref[]; count: number }>("/notifications/prefs"),

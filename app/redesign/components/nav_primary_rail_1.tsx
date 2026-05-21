@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Globe, Pencil, Settings } from "lucide-react";
+import { Bell, Globe, LogOut, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
@@ -17,7 +17,7 @@ const UNREAD_POLL_MS = 60_000;
 
 export default function IconRail() {
   const { sections, accountSection, activeSectionId, setActiveSectionId, isScopeOpen, toggleScopeOpen, isDebugOpen, toggleDebugOpen } = useShell();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const accountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const initials = user ? user.email.slice(0, 2).toUpperCase() : "??";
@@ -36,7 +36,16 @@ export default function IconRail() {
     if (!user) return;
     refreshUnread();
     const id = window.setInterval(refreshUnread, UNREAD_POLL_MS);
-    return () => window.clearInterval(id);
+    // Cross-component refresh signal — other surfaces (inbox page,
+    // toast host) dispatch `notifications:changed` after mark-read /
+    // mark-all-read so the bell badge updates immediately instead of
+    // waiting up to 60s for the next poll cycle.
+    const onChanged = () => refreshUnread();
+    window.addEventListener("notifications:changed", onChanged);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("notifications:changed", onChanged);
+    };
   }, [user, refreshUnread]);
 
   const listRef = useRef<HTMLUListElement>(null);
@@ -128,7 +137,7 @@ export default function IconRail() {
             <Bell size={20} strokeWidth={1.75} />
             {unread > 0 && (
               <span className="rail-1__util-btn-bell_badge" aria-hidden="true">
-                {unread > 99 ? "99+" : unread}
+                {unread > 99 ? "100+" : unread}
               </span>
             )}
           </button>
@@ -145,6 +154,15 @@ export default function IconRail() {
             }}
           >
             {initials}
+          </button>
+          <button
+            type="button"
+            className="rail-1__util-btn"
+            title="Log out"
+            aria-label="Log out"
+            onClick={() => void logout()}
+          >
+            <LogOut size={18} strokeWidth={1.75} />
           </button>
         </div>
       </div>
