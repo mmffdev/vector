@@ -16622,3 +16622,130 @@ input[type="reset"] {
     transform: none;
   }
 }
+
+/* ============================================================
+   Notification rules — /user/notifications/settings
+   Top: rules table (uses <Table> primitive).
+   Bottom: create/edit panel with conditions builder.
+   ============================================================ */
+
+.notification-rules__List_Type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.notification-rules__List_target {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.notification-rules__List_summary {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.notification-rules__List_toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.notification-rules__List_toggle input {
+  cursor: pointer;
+}
+.notification-rules__List_actions {
+  display: inline-flex;
+  gap: 4px;
+}
+.notification-rules__List_state {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.notification-rules__List_state.is-error {
+  color: var(--danger, #d14343);
+  border-color: var(--danger, #d14343);
+}
+
+/* Highlight the row currently being edited. */
+.tree_accordion-dense__row.is-editing,
+tr.is-editing {
+  background: var(--surface-sunken);
+}
+
+/* ─── Editor ──────────────────────────────────────────────── */
+
+.notification-rules__Editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.notification-rules__Editor_field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 520px;
+}
+.notification-rules__Editor_field_label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.notification-rules__Editor_Conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notification-rules__Editor_Conditions_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.notification-rules__Editor_Conditions_empty {
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.notification-rules__Editor_Conditions_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.notification-rules__Editor_Conditions_list_item {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.notification-rules__Editor_Conditions_list_item_blank {
+  /* Holds the third grid column when the operator doesn't need a value. */
+}
+
+.notification-rules__Editor_Actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.notification-rules__Editor_error {
+  flex: 1;
+  color: var(--danger, #d14343);
+  font-size: 13px;
+}
