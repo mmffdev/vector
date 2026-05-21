@@ -1,42 +1,52 @@
-# ⚠️ Active Refactor — ObjectTree V2
+# ObjectTree V2 — Refactor Status
 
-**Status:** ALL SLICES COMPLETE on the worktree — 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A + 6 (all sub-slices) + 5B + 7. Sprint + release production pages run on `<TimeboxObjectTree>` (V2). `<TimeboxManager>` + `useTimebox` + `timebox/kinds.ts` deleted (−442 net lines). Heartbeat inheritance ships end-to-end: propagation radio in the inline form → backend read-time ancestor-walk → grid renders inherited rows italic+muted with "↑ from <Parent>" badge → flyout switches to read-only banner on inherited rows → write-side 409 ErrInheritedReadOnly.
-**Owner:** Claude (working from Rick's main session)
-**Active branches (worktree, NOT YET MERGED to main):** `refactor/objecttree-s6-page-swap` (slices 6.1 → 6.5), `refactor/objecttree-s5b` (slice 5B), `refactor/objecttree-s7-heartbeat-ux` (slice 7 — current tip). Rick to decide merge order + timing.
-**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend ?fields=), s4.6c (touched_ids + by-ids), s4.5 (column picker), s5a (scope_propagation substrate)
-**Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
-**Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
-**Started:** 2026-05-20
+**Status:** PLAN COMPLETE — slices 0–7 all landed on `main` via merge `3568956` (2026-05-21). **NOT closed**: the abstraction the plan promised ("one generic component, many JSON configs") is only partially delivered. What shipped is a **sibling-with-shared-primitives** architecture, not a true generic. See § Honest gaps below before treating this as "done."
+
+**What landed on main:**
+- Sprint + release production pages run on `<TimeboxObjectTree>` (V2 primitives sibling)
+- Work-items + portfolio + risks pages run on `<ObjectTreeV2>` (the original target)
+- `<TimeboxManager>` + `useTimebox` + `timebox/kinds.ts` deleted (−442 net lines)
+- Heartbeat inheritance shipping end-to-end: propagation radio → backend ancestor-walk → grid renders inherited rows italic+muted with "↑ from <Parent>" badge → flyout read-only banner → write-side 409 ErrInheritedReadOnly
+- Backend response contract aligned to `{items, total}` + `?limit=`/`?offset=` paging across sprints + releases
+
+**What's NOT closed — known follow-ups (no current forcing function; do not start without one):**
+
+1. **`<ObjectTreeV2>` is still work-items-shaped.** `p_ObjectTree.tsx` imports `useWorkItemFlowStates`, `useArtefactTypeColours`, `useChipTypeOptions`, `useWorkItemsSort`, `useWorkItemsFilters` directly. Works for work-items / portfolio / risks (they share the artefact-type substrate) but cannot host sprints/releases — which is why slice 6.3c built `<TimeboxObjectTree>` as a sibling instead of parameterising.
+2. **Slice 1.5's `loader.ts` + `registry.ts` substrate is dead code with consumers.** Compiles, has 11 passing unit tests, but the production work-items page goes straight to `<ObjectTreeV2>` with hardcoded imports — never through the registry. Waiting for a consumer that wants the JSON-driven loader path.
+3. **Wizard JSON pattern is partial.** `p_wizard_workitems.json` / `_portfolio.json` / `_risks.json` exist and are consumed. Sprints + releases have no JSON because `ObjectTreeDataConfig` doesn't express bulk-create / status transitions / cadence semantics.
+
+**What "true V3" would look like** (do not start without an explicit forcing function):
+- Generalise `p_ObjectTree.tsx` to accept domain-specific hooks via props or the slice-1.5 registry
+- Extend `ObjectTreeDataConfig` to carry bulk-create + status transitions + cadence
+- Wire registry/loader as the production path (every consumer goes through `loader.ts`)
+- Delete `<TimeboxObjectTree>`, mount sprints/releases on `<ObjectTreeV2>` with JSON config
+
+**Forcing function for V3:** a sixth domain shows up that doesn't fit either sibling. Without that pressure, generalising further is speculation — the current shape is honest and clearly named.
+
+**Plan archive:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
+**Started:** 2026-05-20 · **Merged to main:** 2026-05-21 (`3568956`)
 
 ---
 
-## What this file is for
+## What this file is for now
 
-A WIP flag at the repo root so any **other agent** working in this codebase can see, at a glance, which files are being actively refactored — and avoid touching them on `main` until the refactor lands. This file is deleted when the refactor merges.
+Originally a WIP flag for in-flight slices; now a **post-merge index** of where the refactor's artefacts live + a per-slice changelog future-you can grep.
 
-If you are another agent and your task touches any file listed below: **stop, send a SendMessage to the human, ask whether to wait or coordinate.** Do not assume it is safe just because the file builds.
+Slice-by-slice notes below are kept verbatim from the in-flight period because they're useful archaeology — they say what each slice touched and any deferred work, in the words the slice was written in. If you're trying to understand why a file looks the way it does, grep this file for the file path first.
 
----
+## Where the work lives (post-merge)
 
-## The single-agent-ownership rule applies
+- **`app/components/ObjectTreeV2/`** — the V2 primitives toolkit + the artefact-shaped reference composition (`p_ObjectTree.tsx`). Hosts work-items, portfolio, risks.
+- **`app/components/TimeboxObjectTree/`** — the timebox-shaped sibling. Hosts sprints, releases. Composes V2 primitives (DenseGridHeader, ActionBar, ObjectTreeBulkCreateSheet, ObjectTreeDetailFlyout) without going through `<ObjectTreeV2>`.
+- **`app/components/TimeboxInlineForm/`** — single-row edit body for the timebox flyout. Includes the scope-propagation radio.
+- **`app/components/ArtefactInlineForm/`** — single-row edit body for artefact-shaped flyouts. Untouched by the refactor, used via an `ArtefactBody` adapter in `<ObjectTreeV2>`.
+- **`backend/internal/timeboxsprints/` + `timeboxreleases/`** — backend sole writers. Slice 5A added `scope_propagation` column; slice 5B added the topology dep + ancestor-walk + `EnsureWritable`.
+- **`db/vector_artefacts/schema/091_timebox_scope_propagation.sql`** — the substrate migration.
+- **`app/(user)/scope/page.tsx`** — V2 dev harness. Switches between work-items / portfolio / risks (via `<ObjectTreeV2>`) and sprints / releases (via `<TimeboxObjectTree>`).
 
-Per the rule in [context/memory/c_workflow_rules.md](context/memory/c_workflow_rules.md): never spawn a second agent into a package another is currently or recently working — they adopt different mental models and break the seam. This refactor IS that "currently working" condition for everything below.
+## Per-slice changelog (in-flight notes, kept verbatim)
 
-Origin of the rule: 2026-05-20 fields-domain incident where two agents wired the workspace-fields write API two different ways and the frontend imported names that didn't exist.
-
----
-
-## Files I am claiming for this refactor
-
-These are off-limits on `main` until each slice merges. The list grows slice by slice. When a slice lands on `main`, those files are released.
-
-### Claimed for the WHOLE refactor (every slice touches these eventually)
-
-- `app/components/ObjectTreeV2/**` — entire new directory, mine top to bottom
-- `app/(user)/scope/page.tsx` — the dev harness page
-- `docs/c_c_objecttree_refactor_plan.md` — the plan doc
-- `docs/examples/p_wizard_workitems_v2.json` — schema example
-- This file (`objectTreeRefactor.md`) — the WIP flag itself
+The sections below describe what each slice did at the moment it was written. They're frozen snapshots — useful for archaeology, not for current state. Current state is the source code.
 
 ### ~~Claimed by SLICE 1~~ — DONE (flat row store + window hook extraction)
 
@@ -87,11 +97,11 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — optional `columnCatalogue` prop; mounts picker, filters columns before render, threads visibleWireKeys into the data hook
 - localStorage key: `objecttree-v2.columns.<catalogue.prefsKey>`. Server-side prefs deferred to a follow-up.
 
-### Claimed by SLICE 4.6 (memoisation + cascade-scope reduction)
+### SLICE 4.6 (memoisation + cascade-scope reduction) — partial
 
-- ✅ Slice 4.6a (request coalescing in useObjectTreeWindow) — done on `refactor/objecttree-s4.6a-request-coalescing`
-- ✅ Slice 4.6c (backend touched_ids + by-ids endpoint) — done on `refactor/objecttree-s4.6c-touched-ids`
-- ⏳ Slice 4.6b (cell memoisation audit on `work-items-tree-config.tsx`) — next; shared file with production, additive React.memo wrappers
+- ✅ 4.6a (request coalescing in `useObjectTreeWindow`)
+- ✅ 4.6c (backend `touched_ids` + `/by-ids` endpoint)
+- ❌ 4.6b (cell memoisation audit on `work-items-tree-config.tsx`) — **honestly deferred**, never done. Default `React.memo` wouldn't help because the ObjectTreeV2 context reference changes every render, so naive memoisation is a no-op. Real fix needs context-splitting or selector-based subscription. No forcing function yet (perf is fine on current row counts); revisit if/when grids start lagging on large workspaces.
 
 ### ~~Claimed by SLICE 5A~~ — DONE (scope_propagation substrate, fully threaded)
 
@@ -170,13 +180,6 @@ Tests (sprint integration, live dev vector_artefacts):
 
 **For slice 7:** `TimeboxObjectTree` needs to (1) pass `org_node_id=<active scope>` through to GET/PATCH/DELETE/start/close calls so the backend can identify inherited rows, (2) read `row.origin` to apply visual treatment for inherited rows, (3) handle the 409 ErrInheritedReadOnly gracefully (currently it surfaces via the existing toast).
 
-### Claimed by SLICE 6 (sprint + release page swap)
-
-- `app/(user)/sprints/page.tsx`
-- `app/(user)/releases/page.tsx`
-- New `app/components/TimeboxInlineForm/**`
-- DELETE `app/components/TimeboxManager.tsx` and `app/hooks/useTimebox.ts` (after page swap proves green)
-
 ### ~~Claimed by SLICE 7~~ — DONE (heartbeat UX wired end-to-end)
 
 Backend (7.1):
@@ -194,44 +197,6 @@ End-to-end flow:
 3. Grid renders the row italic+muted with "↑ from A" badge; click opens the flyout read-only with banner
 4. Any write attempt (PATCH/Delete/Start/Close) from node B against the inherited sprint → backend's `EnsureWritable` → 409 `ErrInheritedReadOnly`. The frontend toast surfaces the message via the existing `notify.apiError` path.
 
-### Claimed by SLICE 8 (milestones consolidation — optional)
+### SLICE 8 (milestones consolidation) — NOT STARTED
 
-- `app/(user)/milestones/page.tsx` (if exists)
-- Possibly `backend/internal/timeboxmilestones/handler.go` (parity with 2.5)
-
----
-
-## What other agents CAN safely work on
-
-- Any path NOT listed above
-- The ORIGINAL `app/components/ObjectTree/` (NOT the V2 directory) — production pages keep using it
-- `app/(user)/work-items/page.tsx`, `app/(user)/portfolio-items/page.tsx`, `app/(user)/risk/page.tsx` — these stay on the legacy ObjectTree throughout the refactor; only swap to V2 in Slice 6+ AFTER coordination
-- Any backend package NOT listed above
-- All migrations not in the timebox space
-- All docs not in the ObjectTree refactor plan
-
----
-
-## Active branch / commits
-
-```
-refactor/objecttree-s0-baseline-and-tests
-└── c77af29 feat(objecttree-v2): clone ObjectTree + /scope harness [solo-dev]
-    (rebased onto main @ dbf1b98)
-```
-
-VSCode stays on `main`. The refactor lives in the sibling worktree directory. To work in it: `cd "/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0"` — don't switch VSCode's branch.
-
----
-
-## If you (other agent) absolutely need to touch something in my list
-
-1. Don't.
-2. If you really must, SendMessage to me first — the agentID for this work lives in the conversation context.
-3. If I'm not active, leave a one-line note in this file under a new `## Held messages` section at the bottom with: the file you need, the change you need, and the reason. I'll handle it on my next turn.
-
----
-
-## When this file gets deleted
-
-Slice 8 merges (or the user decides to stop) → this file is removed in the same commit as the final slice. Until then, it stays at root as the load-bearing flag.
+Was scoped as an optional follow-up: bring `app/(user)/milestones/page.tsx` onto V2 primitives + give `backend/internal/timeboxmilestones` parity with slice 2.5 (`?fields=` projection + `/columns` endpoint). Never executed because no forcing function — milestones aren't a heartbeat-inheriting timebox and don't share the cadence/propagation surface that drove `<TimeboxObjectTree>`. Revisit if/when you want milestones to share the same surface.
