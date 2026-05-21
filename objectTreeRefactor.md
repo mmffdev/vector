@@ -1,8 +1,8 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A + 6 (all sub-slices) + **5B** COMPLETE. Sprint + release production pages run on `<TimeboxObjectTree>` (V2). `<TimeboxManager>` + `useTimebox` + `timebox/kinds.ts` deleted (−442 net lines). 5B backend ships the heartbeat-inheritance read path + write-side 409. Only **Slice 7 (heartbeat UX polish)** remains.
+**Status:** ALL SLICES COMPLETE on the worktree — 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A + 6 (all sub-slices) + 5B + 7. Sprint + release production pages run on `<TimeboxObjectTree>` (V2). `<TimeboxManager>` + `useTimebox` + `timebox/kinds.ts` deleted (−442 net lines). Heartbeat inheritance ships end-to-end: propagation radio in the inline form → backend read-time ancestor-walk → grid renders inherited rows italic+muted with "↑ from <Parent>" badge → flyout switches to read-only banner on inherited rows → write-side 409 ErrInheritedReadOnly.
 **Owner:** Claude (working from Rick's main session)
-**Active branches (worktree, not yet merged to main):** `refactor/objecttree-s6-page-swap` (slices 6.1 → 6.5) and `refactor/objecttree-s5b` (slice 5B). Rick to decide merge timing.
+**Active branches (worktree, NOT YET MERGED to main):** `refactor/objecttree-s6-page-swap` (slices 6.1 → 6.5), `refactor/objecttree-s5b` (slice 5B), `refactor/objecttree-s7-heartbeat-ux` (slice 7 — current tip). Rick to decide merge order + timing.
 **Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend ?fields=), s4.6c (touched_ids + by-ids), s4.5 (column picker), s5a (scope_propagation substrate)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
@@ -177,9 +177,22 @@ Tests (sprint integration, live dev vector_artefacts):
 - New `app/components/TimeboxInlineForm/**`
 - DELETE `app/components/TimeboxManager.tsx` and `app/hooks/useTimebox.ts` (after page swap proves green)
 
-### Claimed by SLICE 7 (heartbeat UX)
+### ~~Claimed by SLICE 7~~ — DONE (heartbeat UX wired end-to-end)
 
-- `TimeboxInlineForm` — propagation radio + inherited-row styling
+Backend (7.1):
+- ✅ `timeboxsprints/types.go` + `timeboxreleases/types.go` — `ScopePropagation *string` on `UpdateSprintInput` / `UpdateReleaseInput`
+- ✅ `timeboxsprints/service.go` + `timeboxreleases/service.go` — Update SET clause accepts `scope_propagation`, validates against `{this_node_only, this_node_and_descendants}`
+- ✅ `timeboxsprints/handler.go` + `timeboxreleases/handler.go` — Update body struct + UpdateInput mapping wires `timeboxes_<kind>_scope_propagation`
+
+Frontend (7.2 + 7.3 + 7.4):
+- ✅ `app/components/TimeboxObjectTree/index.tsx` — Name column reads `row.origin`; inherited rows render italic + muted with `"↑ from <Parent>"` badge under the name. `orgNodeId` flows through `bodyProps` to TimeboxInlineForm so every flyout write carries the active scope
+- ✅ `app/components/TimeboxInlineForm/index.tsx` — new `orgNodeId` prop threaded through a `qs()` helper appending `?org_node_id=` to every fetch (refetch/save/start/close). Reads `row.origin` from the wire; when `"inherited"` the form is read-only (every input + save + start/close disabled). Banner at the top shows the pinned-node name. New scope-propagation radio fieldset (`this_node_only` | `this_node_and_descendants`) — saving the radio sends `timeboxes_<kind>_scope_propagation` on the PATCH
+
+End-to-end flow:
+1. User pins a sprint to node A with `this_node_and_descendants` via the radio → saves
+2. User scope-clamps to node A's child B → `<TimeboxObjectTree orgNodeId=B>` mounts → List adds `?org_node_id=B` → backend ancestor-walks → returns sprint with `origin="inherited"`, `from_node_id=A`, `from_node_name="A"`
+3. Grid renders the row italic+muted with "↑ from A" badge; click opens the flyout read-only with banner
+4. Any write attempt (PATCH/Delete/Start/Close) from node B against the inherited sprint → backend's `EnsureWritable` → 409 `ErrInheritedReadOnly`. The frontend toast surfaces the message via the existing `notify.apiError` path.
 
 ### Claimed by SLICE 8 (milestones consolidation — optional)
 
