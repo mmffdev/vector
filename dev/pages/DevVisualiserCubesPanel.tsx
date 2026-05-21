@@ -335,22 +335,63 @@ export default function DevVisualiserCubesPanel() {
           .linkThreeObject(linkThreeObject)
           .linkPositionUpdate(linkPositionUpdate)
           .onNodeHover((n: any) => setHoveredNode(n ?? null))
-          // Click a node → re-centre the orbit pivot AND frame the card
-          // dead-on. The cube's card face sits on its local +Z; since the
-          // force layout never rotates nodes (only translates them), local
-          // +Z == world +Z. We position the camera at node.z + standoff and
-          // look back at the node, which puts the card centred + facing the
-          // viewer. Camera's default up vector is world +Y → the card's
-          // top edge maps to screen-up → text reads horizontally.
+          // Click a node → re-centre orbit pivot AND frame the card dead-on
+          // with a STANDARDISED zoom. Three moves to make every click land
+          // the same way regardless of node or prior camera state:
+          //
+          //   1. Reset camera.up to world +Y. OrbitControls preserves the
+          //      camera's up vector across orbits, so without this any
+          //      previous tumble carries into the new framing and the
+          //      card looks skewed in 2D.
+          //   2. Compute standoff from the cube's FIXED width (16) and
+          //      the camera's vertical FOV, with a horizontal-fit term
+          //      using the viewport aspect. Result: same screen-space
+          //      size for every card, regardless of cube depth or which
+          //      node was clicked.
+          //   3. Pin controls.target to the node + update(). The lookAt
+          //      arg to cameraPosition() only sets the look direction
+          //      DURING the flight; OrbitControls.target is what governs
+          //      orbit pivot AFTER.
           .onNodeClick((node: any) => {
             const fg = fgRef.current;
             if (!fg) return;
-            const standoff = 60;
+            const camera = fg.camera() as any;
+            const controls = fg.controls() as any;
+
+            // Reset up so the card sits square to the viewport.
+            camera.up.set(0, 1, 0);
+
+            // Fixed card dimensions in world units (see BoxGeometry above).
+            const CARD_WIDTH = 16;
+            const CARD_HEIGHT = 8;
+            const MARGIN = 1.6; // how much breathing room around the card
+            // Use the camera's actual FOV (perspective) + viewport aspect
+            // to compute the minimum distance that fits the card.
+            const fovRad = ((camera.fov ?? 60) * Math.PI) / 180;
+            const aspect = camera.aspect ?? 16 / 9;
+            const fitHeight = (CARD_HEIGHT / 2) / Math.tan(fovRad / 2);
+            const fitWidth  = (CARD_WIDTH / 2) / (Math.tan(fovRad / 2) * aspect);
+            const standoff = Math.max(fitHeight, fitWidth) * MARGIN;
+
+            const nx = node.x ?? 0;
+            const ny = node.y ?? 0;
+            const nz = node.z ?? 0;
+
             fg.cameraPosition(
-              { x: node.x ?? 0, y: node.y ?? 0, z: (node.z ?? 0) + standoff },
-              { x: node.x ?? 0, y: node.y ?? 0, z: node.z ?? 0 },
+              { x: nx, y: ny, z: nz + standoff },
+              { x: nx, y: ny, z: nz },
               600,
             );
+
+            // Repoint orbit pivot to the new node so post-flight orbit
+            // rotates around it. Done after a microtask so cameraPosition's
+            // own controls.target writes (during the tween) don't fight us.
+            setTimeout(() => {
+              if (controls?.target?.set) {
+                controls.target.set(nx, ny, nz);
+                controls.update?.();
+              }
+            }, 650);
           })
           // Drag the whole connected component as a rigid block, then pin
           // every member on drag-end so the cluster freezes in place.

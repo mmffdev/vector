@@ -237,18 +237,45 @@ function SpheresView() {
           .linkDirectionalParticles((e: any) => (e.kind === "bridge" ? 2 : 0))
           .linkDirectionalParticleWidth(1.5)
           .onNodeHover((n: any) => setHoveredNode(n ?? null))
-          // Click a node → re-centre orbit pivot and frame the node head-on
-          // along world +Z, matching the cubes view's framing rule so both
-          // renderers behave identically on click.
+          // Click a node → re-centre orbit pivot, reset up to world +Y so
+          // the framing isn't skewed by prior camera tumble, fly to a
+          // standardised distance, and repin OrbitControls.target so
+          // post-flight orbit pivots around the clicked node.
           .onNodeClick((node: any) => {
             const fg = fgRef.current;
             if (!fg) return;
-            const standoff = 60;
+            const camera = fg.camera() as any;
+            const controls = fg.controls() as any;
+
+            camera.up.set(0, 1, 0);
+
+            // Sphere "size" is approximate — nodeRelSize(3) renders ~ r=4.
+            // We frame as if it were a card of similar footprint so the
+            // zoom feels identical to the cubes view.
+            const FOOTPRINT = 12;
+            const MARGIN = 1.6;
+            const fovRad = ((camera.fov ?? 60) * Math.PI) / 180;
+            const aspect = camera.aspect ?? 16 / 9;
+            const fitHeight = (FOOTPRINT / 2) / Math.tan(fovRad / 2);
+            const fitWidth  = (FOOTPRINT / 2) / (Math.tan(fovRad / 2) * aspect);
+            const standoff = Math.max(fitHeight, fitWidth) * MARGIN;
+
+            const nx = node.x ?? 0;
+            const ny = node.y ?? 0;
+            const nz = node.z ?? 0;
+
             fg.cameraPosition(
-              { x: node.x ?? 0, y: node.y ?? 0, z: (node.z ?? 0) + standoff },
-              { x: node.x ?? 0, y: node.y ?? 0, z: node.z ?? 0 },
+              { x: nx, y: ny, z: nz + standoff },
+              { x: nx, y: ny, z: nz },
               600,
             );
+
+            setTimeout(() => {
+              if (controls?.target?.set) {
+                controls.target.set(nx, ny, nz);
+                controls.update?.();
+              }
+            }, 650);
           })
           // onNodeDrag fires every tick while dragging. translate is the
           // *cumulative* delta from drag-start. We want to drag the whole
