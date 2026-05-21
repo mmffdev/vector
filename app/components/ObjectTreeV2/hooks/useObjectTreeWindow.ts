@@ -181,7 +181,17 @@ export function useObjectTreeWindow<T>(
   // sure refetchWindow re-fires when the picker flips. Without this dep
   // the tree below the scope picker shows stale rows for the previous
   // clamp (TD-URL-SCOPE-PARAM-CUTOVER).
-  const { activeNodeId, direction } = useScope();
+  //
+  // 2026-05-21 — `scopeReady` gates the initial mount fetch. Before this
+  // gate, the debounced 150ms timer was firing while ScopeContext was
+  // still resolving its first-load seed (server profile + URL/localStorage
+  // fallback), so the first fetch went out with the wrong/empty scope
+  // clamp and returned 0 rows. The stale-response guard then sometimes
+  // suppressed the corrective second fetch. Hard refresh "fixed" it
+  // because localStorage was already populated. The gate makes the
+  // ordering deterministic — first fetch only fires once scope has
+  // settled.
+  const { activeNodeId, direction, scopeReady } = useScope();
 
   // Flat source of truth. Patches mutate one entry. windowRoots is
   // derived from this map preserving the latest fetch order (recorded
@@ -310,16 +320,21 @@ export function useObjectTreeWindow<T>(
   // schedule their own refetch effect; with the debounce they collapse
   // to ONE outgoing request after the user settles. Cleanup cancels a
   // pending timer if the deps change again before fire — exactly the
-  // coalescing we want. The first mount fires after the debounce too,
-  // which adds a tiny perceived delay (~150ms) on first paint; in
-  // exchange we don't burn a fetch on the noisy initial-mount cascade
-  // (auth + scope context bootstrap can re-fire deps a few times).
+  // coalescing we want.
+  //
+  // 2026-05-21 — guarded on `scopeReady`. The previous version fired the
+  // first mount fetch after 150ms regardless of whether ScopeContext had
+  // finished bootstrapping. On cold loads the seed() async was still in
+  // flight, so the first fetch went out with a stale/empty scope clamp
+  // and returned 0 rows. With the gate, the first fetch waits until
+  // scope has settled — eliminating the race entirely.
   useEffect(() => {
+    if (!scopeReady) return;
     const t = setTimeout(() => {
       void refetchWindow();
     }, REFETCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [refetchWindow]);
+  }, [refetchWindow, scopeReady]);
 
   const patchAndApply = useCallback(
     (id: string, body: Record<string, unknown>) => {

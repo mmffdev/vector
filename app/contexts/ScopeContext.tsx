@@ -78,6 +78,13 @@ interface ScopeValue {
   error: string | null;
   setActiveNodeId: (id: string | null) => void;
   reload: () => Promise<void>;
+  // Slice 7 follow-up (fix for first-load empty-grid race, 2026-05-21):
+  // true once auth has settled AND the initial profile-seed step has
+  // finished (or the user has no grants, in which case there's nothing to
+  // seed). Consumers like useObjectTreeWindow gate their initial fetch
+  // on this so the first request goes out with the right `?meg=` clamp,
+  // rather than racing the seed and sending an empty/wrong scope.
+  scopeReady: boolean;
 }
 
 const Ctx = createContext<ScopeValue | null>(null);
@@ -102,7 +109,7 @@ function writeStoredId(id: string | null) {
 }
 
 export function ScopeProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, switchWorkspace } = useAuth();
 
   const [grants, setGrants] = useState<MyGrant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,6 +118,11 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   const [direction, setDirectionState] = useState<ScopeDirection>("descend");
   // Track whether we've done the initial server-profile seed for this session.
   const profileSeededRef = useRef(false);
+  // 2026-05-21 — see ScopeValue.scopeReady. Flips true exactly once per
+  // user-session: after the first `seed()` async resolves OR after we
+  // determine there are no grants to seed. Consumers gate their initial
+  // fetch on this flag to avoid racing the bootstrap.
+  const [scopeReady, setScopeReady] = useState(false);
 
   // Wrap setDirection so it mirrors into the module-level state read by
   // api() in app/lib/api.ts — keeps the URL forwarding logic in lockstep
@@ -144,6 +156,9 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (authLoading) return;
     profileSeededRef.current = false;
+    // Reset the ready flag on user change too: a new user means a new
+    // bootstrap, and consumers need to re-gate their initial fetches.
+    setScopeReady(false);
     void reload();
   }, [authLoading, reload]);
 
@@ -173,6 +188,10 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (grants.length === 0) {
       setActiveNodeIdState(null);
+      // No grants to seed — the bootstrap is "done" by exhaustion.
+      // Consumers gated on scopeReady can proceed (their fetches will
+      // simply run without a `?meg=` clamp).
+      setScopeReady(true);
       return;
     }
 
@@ -203,6 +222,9 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
           writeStoredId(resolved);
           writeUrlMeg(resolved);
         }
+        // Bootstrap complete — gated consumers can fire their first fetch
+        // now that activeNodeId is in its settled state.
+        setScopeReady(true);
       };
       void seed();
     } else {
@@ -217,12 +239,52 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   }, [grants]);
 
   const setActiveNodeId = useCallback((id: string | null) => {
+    // 2026-05-21 — auto-switch JWT-workspace when scope-picking a node
+    // in a different workspace. Closes the desync the B16.8 P3
+    // `sentinel.workspaceInSync` overlay was firing on: the picker
+    // accepts cross-workspace grants but the JWT-stamped workspace
+    // clamp (`WorkspaceClampMiddleware` at backend/internal/topology/
+    // middleware.go:337-343) reads workspace_id straight from the
+    // JWT. Without the switch, list endpoints (which honour `?meg=`)
+    // returned the new workspace's rows, but per-item GETs clamped to
+    // the OLD JWT-workspace and 404'd. Triggering switchWorkspace
+    // reissues the JWT with the right claim BEFORE we commit the new
+    // node — list + get are then aligned.
+    //
+    // Local state writes are deferred until after switchWorkspace
+    // resolves so a failed switch doesn't leave the picker pointing
+    // at a node we couldn't actually authorise into. The function
+    // signature stays sync for caller back-compat; the JWT swap fires
+    // as an async side-effect that the caller doesn't await.
+    if (id) {
+      const targetGrant = grants.find((g) => g.node_id === id);
+      const needsSwap =
+        targetGrant != null &&
+        user?.workspace_id != null &&
+        targetGrant.workspace_id !== user.workspace_id;
+      if (needsSwap && targetGrant) {
+        void (async () => {
+          try {
+            await switchWorkspace(targetGrant.workspace_id);
+          } catch {
+            // Switch failed — stop, don't half-apply. Caller's UI will
+            // see no scope change and can prompt the user to retry.
+            return;
+          }
+          setActiveNodeIdState(id);
+          writeUrlMeg(id);
+          writeStoredId(id);
+          apiSite("/me/active-scope", { method: "PUT", body: JSON.stringify({ node_id: id }) }).catch(() => {});
+        })();
+        return;
+      }
+    }
     setActiveNodeIdState(id);
     writeUrlMeg(id);
     writeStoredId(id);
     // Fire-and-forget — failure is non-fatal; URL + localStorage are the fallbacks.
     apiSite("/me/active-scope", { method: "PUT", body: JSON.stringify({ node_id: id }) }).catch(() => {});
-  }, []);
+  }, [grants, user?.workspace_id, switchWorkspace]);
 
   const activeGrant = useMemo(
     () => grants.find((g) => g.node_id === activeNodeId) ?? null,
@@ -240,8 +302,9 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
       error,
       setActiveNodeId,
       reload,
+      scopeReady,
     }),
-    [grants, activeNodeId, activeGrant, direction, setDirection, loading, error, setActiveNodeId, reload],
+    [grants, activeNodeId, activeGrant, direction, setDirection, loading, error, setActiveNodeId, reload, scopeReady],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -260,6 +323,9 @@ export function useScope(): ScopeValue {
       error: null,
       setActiveNodeId: () => {},
       reload: async () => {},
+      // Fallback used when no provider is mounted (login pages, etc.).
+      // No grants → no bootstrap to wait on → "ready" is the truthful default.
+      scopeReady: true,
     };
   }
   return v;

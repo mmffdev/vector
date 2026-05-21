@@ -29,6 +29,7 @@ import Table, { Column, PillVariant } from "@/app/components/Table";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
+import { useScope } from "@/app/contexts/ScopeContext";
 import { DenseGridHeader } from "@/app/components/ObjectTreeV2/kinds/DenseGridHeader";
 import { ActionBar } from "@/app/components/ObjectTreeV2/kinds/ActionBar";
 import ObjectTreeBulkCreateSheet, {
@@ -163,6 +164,9 @@ function TimeboxObjectTreeInner({
   const cfg = KIND_CFG[kind];
   const p = cfg.rowPrefix;
   const headingTitle = title ?? `${cfg.namePrefix}s`;
+  // 2026-05-21 — gate the initial fetch on scope-bootstrap completion.
+  // See useObjectTreeWindow's matching guard for the rationale.
+  const { scopeReady } = useScope();
 
   // Data state — flat list (sprints are small; no windowing yet)
   const [rows, setRows] = useState<TimeboxRow[] | null>(null);
@@ -190,10 +194,14 @@ function TimeboxObjectTreeInner({
     }
   }, [cfg.apiBase, kind, workspaceId, orgNodeId]);
 
-  // Initial load
+  // Initial load — wait for scope bootstrap so the first fetch carries
+  // a settled clamp. Re-fires when the dep list changes (kind, workspace,
+  // orgNode) regardless of scopeReady, since by definition any change
+  // after first paint happens with scope already settled.
   React.useEffect(() => {
+    if (!scopeReady) return;
     void reload();
-  }, [reload]);
+  }, [reload, scopeReady]);
 
   // Filtered rows (search by name + suffix)
   const filteredRows = useMemo(() => {
