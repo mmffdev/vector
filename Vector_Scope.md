@@ -290,6 +290,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b60012c` (2026-05-18): fix(tests): unblock 4 cached test failures — DPoP signature drift + 1 assertion [TD-RF1-TEST-COLUMN-RENAME-DRIFT]
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -571,6 +572,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -723,6 +731,15 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -935,6 +952,12 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -971,6 +994,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `b60012c` (2026-05-18): fix(tests): unblock 4 cached test failures — DPoP signature drift + 1 assertion [TD-RF1-TEST-COLUMN-RENAME-DRIFT]
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -984,6 +1008,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `72f2430` (2026-05-16): feat(tree): per-row cog menu in dense tree (edit/duplicate/move/split/delete)
 > Commit `bde26f3` (2026-05-18): fix(realtime): sweeper closes orphan WS when users_sessions row deleted [B16.8.12]
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -1030,6 +1056,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -1134,6 +1161,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1485,6 +1513,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1668,6 +1697,12 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1841,6 +1876,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2010,6 +2050,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2127,6 +2172,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2164,6 +2214,11 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2174,6 +2229,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2222,6 +2279,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2574,6 +2633,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9c45ef2` (2026-05-17): chore(tech-debt): triage 2026-05-17 — mark 3 resolved, flag DB-002 trigger
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -2615,21 +2675,27 @@ Full lifecycle management for tasks, bugs, epics.
   >
   > **Routes:**
   > - `POST   /artefacts` — create (was `POST /work-items`, `POST /portfolio-items`)
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
   > - `GET    /artefacts/:id` — read one
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
   > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
   > - `POST   /artefacts/:id/reparent` — change parent_id; clamp validates new parent in same tenant/workspace
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
   > - `POST   /artefacts/:id/restore` — unarchive
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > - `POST   /artefacts/:id/move` — change workspace_id (padmin-gated, rare)
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
   >
   > **The clamp (server-side, every route):**
   > 1. Session → actor (existing middleware)
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
   > 2. Tenant clamp — `subscription_id` from actor, never payload
   > 3. Resolve `artefact_type_id` against `vector_artefacts.artefact_types WHERE subscription_id = $actor` — 404 if not the actor's
   > 4. Scope derived from type record, not URL
@@ -2775,6 +2841,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3946caa` (2026-05-18): feat(scope): persist active scope to user profile; grouped scope panel; backend grant check
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -2836,6 +2903,9 @@ Full lifecycle management for tasks, bugs, epics.
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -2882,6 +2952,22 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -2919,6 +3005,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2882270` (2026-05-14): chore(nav): grant gadmin + padmin universal page visibility (mig 193)
 > Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
   > Rally-validated seed mechanism (R054 §N2): one workspace-level enum `{none, viewer, editor}` (default `none`). When a user is created inside a workspace, the user-creation path issues a grant at this level on the workspace root node so the user is never in a permission vacuum. Adds a column to `master_record_tenant` (the tenant-settings substrate, see B6.1) plus a hook in the user-create service. Distinct from grant-inheritance: this is a per-user seed at creation time, not a live cascade.
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
   >
@@ -2968,6 +3055,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -3002,6 +3092,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -3023,6 +3114,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `7f9416f` (2026-05-14): refactor(PLA-0048 / RF1.4.4): artefactitemsv2 → artefactitems + column-prefix artefacts_fields_values [RF1.4.4.artefacts_fields_values]
 > Commit `9ec3523` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
 > Commit `5eba458` (2026-05-16): fix(test): bulk set_priority payload uses priority_id UUID [00595,00597 fixup]
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
   >
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
@@ -3125,6 +3217,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -3185,6 +3278,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `7839d3d` (2026-05-18): feat(auth): stamp + validate JWT iss/aud claims [B16.8.8]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
@@ -3287,6 +3381,11 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3389,6 +3488,9 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -3481,6 +3583,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -3569,7 +3672,11 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
   - ✅ ~~**B16.8.1** Backend TOTP core~~ `[P1]` > Commit 2026-05-18: `mfa.go` + `roletypes.User` MFA fields + `auth/sql.go` MFA constants; `go build ./...` clean.
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   - ✅ ~~**B16.8.2** Login partial-auth gate~~ `[P1]` > Commit 2026-05-18: `SignChallengeToken`/`ParseChallengeToken` in `tokens.go`; `LoginResult.MFARequired`+`MFAChallengeToken`; `Login()` forks to challenge on `mfa_enrolled=true`; handler returns `mfa_challenge_resp`.
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -3614,6 +3721,11 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -3680,6 +3792,9 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 
@@ -3705,6 +3820,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
@@ -3754,9 +3870,21 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 - **B18.7.1** Directory scaffolds — `app/lib/shared/`, `backend/internal/shared/`, `dev/fixtures/shared/` with `.gitkeep` so paths exist before walker lands. `[P3]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
+> Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -3825,11 +3953,24 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 ---
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
@@ -3853,6 +3994,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b60012c` (2026-05-18): fix(tests): unblock 4 cached test failures — DPoP signature drift + 1 assertion [TD-RF1-TEST-COLUMN-RENAME-DRIFT]
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
@@ -4029,13 +4172,16 @@ Manage per-role access to pages and features. Control what each role (user, padm
   > Last checked: 2026-05-19
 - **B20.4.7** Office locations entity — `[P4 — deferred]` table + stub-to-FK promotion + vector-admin-managed list. AC: vector-admin (`grp_global`) defines the canonical platform-global office-locations list at `/vector-admin/office-locations`; gated by new `office_locations.manage` permission code (vector-admin-only, not tenant gadmin); promotes existing `users.office_location_id` stub to real FK; read endpoint available to any authenticated user for the typeahead. `[P4]`
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
   > Last checked: 2026-05-19
 - **B20.4.9** Profile image upload `[P4 — deferred]`. AC: column stub from B20.4.2 promoted; `POST /_site/users/{id}/profile-image` (multipart, ≤2 MB, png/jpeg, MIME-sniff server-side); avatar column on list renders image with initials fallback; audit row on upload/delete. `[P4]`
 - ✅ ~~**B20.4.10** Disabled column read-only checkbox (Rally pattern). AC: `/users` list shows Disabled state as read-only checkbox; toggle action stays in edit-row panel only; reduces accidental-disable risk; server-side check unchanged.~~ `[P3]`
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > Shipped 2026-05-19 in commit 6530c13. Status pill replaced with read-only checkbox; toggle action stays in the inline edit-row panel staged behind "Confirm changes". Also added `<PageDescription>` since the file moved out of legacy `/user-management/page.tsx`.
   > Last checked: 2026-05-19
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
@@ -4043,6 +4189,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > **Open scoping question** — split into B20.4 core (stories 1–6, 8) + B20.5 procurement-grade refinements (stories 7, 9, 10 + future saved-views/column-picker/density/audit-timeline) once we start hitting the later stories. Default: stay as B20.4 for now.
 >
 > **Open intent question** — "onboarding topology": does this mean topology grants pre-assigned during the invite/create flow? If yes, a new story wires the CreateUser modal to accept an initial topology-grant payload (server-side: invite carries the grant payload; account creation transaction inserts user row + grant rows atomically).
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 ### B20.5 Transport hygiene — retire legacy api()/samantha/v1, refresh contract gate
@@ -4266,6 +4413,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -4410,6 +4566,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -4469,6 +4633,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -4566,6 +4734,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -4685,6 +4856,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -4819,6 +4995,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -4829,6 +5008,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
 > Commit `fa434e2` (2026-05-18): feat(artefactitems): topology scope clamp on Summary [FE-POR-0003]
+> Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
   > Currently returns hardcoded `{total, epics, stories, tasks, defects, blocked}`. Make summary buckets data-driven from artefact-types of the current scope. Strategy summary should return `{total, themes, objectives, features}` per existing portfolio page contract. Pattern: GROUP BY `at.code`, project into stable JSON keys per scope config.
   >
 - **B21.1.7** Register `/portfolio-items` routes against `artefactitemsv2.New(db, "strategy")` in `main.go` `[P1]` `[ ]B21.1.4` `[ ]B21.1.6`
@@ -4896,6 +5076,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `176eef5` (2026-05-18): feat(alerting): webhook fan-out for selected audit_logs actions [B16.8.P5]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -5046,6 +5229,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -5161,6 +5353,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5261,6 +5459,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -5333,6 +5536,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a24c0da` (2026-05-20): feat(tree): drag above/below across parent boundaries — drop into expanded sub-trees as a sibling
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -5428,6 +5632,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -5496,6 +5702,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -5643,6 +5850,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `a24c0da` (2026-05-20): feat(tree): drag above/below across parent boundaries — drop into expanded sub-trees as a sibling
+> Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -5803,6 +6011,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -5902,6 +6119,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a24c0da` (2026-05-20): feat(tree): drag above/below across parent boundaries — drop into expanded sub-trees as a sibling
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -5991,6 +6210,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `a24c0da` (2026-05-20): feat(tree): drag above/below across parent boundaries — drop into expanded sub-trees as a sibling
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -6091,6 +6311,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -6163,6 +6385,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d6c660e` (2026-05-18): docs(claude): add swarm stack pointer to working-practices index
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
+> Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -6233,6 +6459,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -6264,6 +6492,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `8192ec3` (2026-05-16): feat(chip): green — backend UUID wire + frontend catalogue/chip cutover [00585..00592]
 > Commit `4c45fba` (2026-05-16): feat(vector_artefacts): green — artefact_priorities table + seed [00594]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
+> Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -6348,6 +6577,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
+> Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `eb1de26` (2026-05-21): feat(notifications): rules engine fires end-to-end — close the loop
+> Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
+> Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -6400,6 +6633,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `a24c0da` (2026-05-20): feat(tree): drag above/below across parent boundaries — drop into expanded sub-trees as a sibling
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
+> Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
