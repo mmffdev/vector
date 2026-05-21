@@ -26,9 +26,15 @@ tmp_dir = "/tmp/air-vector-backend"
   # in the air log instead of a dead backend.
   stop_on_error = false
   send_interrupt = true
-  # Give the old process 3s to drain before SIGKILL — matches launcher's
-  # ProcessSupervisor TERM→KILL window.
-  kill_delay = "3s"
+  # Give the old process 10s to drain before SIGKILL. Was 3s, but the Go
+  # server advertises a 30s graceful shutdown window (main.go ~2160) and
+  # SIGKILL at 3s prevented WebSocket clients from receiving a 1001 close
+  # frame — they saw 1006 (abnormal close) instead, which used to trip
+  # the auth refresh path and log the user out on every backend bounce.
+  # 10s is the compromise: long enough for HTTP requests to drain and WS
+  # clients to receive a clean Going Away, short enough that a stuck
+  # connection doesn't make rebuilds feel sluggish.
+  kill_delay = "10s"
   log = "build-errors.log"
 
 [log]

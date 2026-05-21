@@ -172,11 +172,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await apiSite<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
         applyLogin(res);
         _bootstrapped = true;
-      } catch {
-        setApiToken(null);
-        setUser(null);
-        clearSessionCookie();
-        _bootstrapped = false;
+      } catch (e) {
+        // Only clear user state on REAL auth failures (backend returned 4xx).
+        // Network errors — TypeError("Failed to fetch") during a dev backend
+        // restart, AbortError mid-navigation — are transient: the session in
+        // Postgres is still valid, and the next request will refresh fine.
+        // Nuking state here was the root cause of the air-restart logout
+        // cascade (1006 WS close → refresh() → fetch throws → logged out).
+        if (e instanceof ApiError) {
+          setApiToken(null);
+          setUser(null);
+          clearSessionCookie();
+          _bootstrapped = false;
+        }
       }
     })().finally(() => {
       refreshInFlight.current = null;

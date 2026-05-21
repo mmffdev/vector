@@ -136,8 +136,13 @@ export function useRealtimeSubscription(opts: UseRealtimeSubscriptionOptions) {
         // bail out instead of reconnecting against a dead session.
         if (handleSessionCloseCode(ev)) return;
         // code 4401 = backend explicit auth rejection (set by WS upgrade handler).
-        // code 1006 = abnormal close (HTTP 401/403 during upgrade — no close frame).
-        const isAuthFailure = ev.code === 4401 || ev.code === 1006;
+        // code 1006 = abnormal close (no close frame). USUALLY a TCP/server
+        // restart, NOT auth — air SIGKILLing the Go binary in dev produces a
+        // storm of 1006s and we used to misclassify each as an auth failure,
+        // firing refresh() against a dead backend → AuthContext caught the
+        // TypeError and logged the user out. Treat 1006 as transient: just
+        // reconnect, don't refresh tokens.
+        const isAuthFailure = ev.code === 4401;
         scheduleReconnect(isAuthFailure);
       });
 
