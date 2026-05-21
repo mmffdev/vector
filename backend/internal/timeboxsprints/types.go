@@ -13,6 +13,11 @@ var (
 	ErrLifecycle      = errors.New("active or completed sprints cannot be deleted")
 	ErrStartLifecycle = errors.New("only planned sprints can be started")
 	ErrCloseLifecycle = errors.New("only active sprints can be closed")
+	// Slice 5B — write rejected because the sprint is being viewed from a
+	// descendant of its pinned topology node (heartbeat inheritance read).
+	// Inherited rows are read-only from the descendant's vantage point;
+	// the user must navigate to the pinned node to edit.
+	ErrInheritedReadOnly = errors.New("inherited sprint is read-only from this scope; edit it on its pinned node")
 )
 
 // Sprint is the wire representation of a timeboxes_sprints row. JSON
@@ -48,6 +53,14 @@ type Sprint struct {
 	//                                  controls intent; read-side
 	//                                  visibility is derived from it.
 	ScopePropagation string `json:"timeboxes_sprints_scope_propagation"`
+	// Slice 5B — non-persisted read-time metadata. Set by Service.List
+	// when the read came from a descendant of the row's pinned topology
+	// node AND scope_propagation = 'this_node_and_descendants'. Empty
+	// string / nil pointers when the row was read from its own pinned
+	// node (origin = "local"). These three fields never touch the DB.
+	Origin       string  `json:"origin,omitempty"`
+	FromNodeID   *string `json:"from_node_id,omitempty"`
+	FromNodeName *string `json:"from_node_name,omitempty"`
 }
 
 // CreateSprintInput holds required fields to create a sprint.
@@ -87,6 +100,14 @@ type UpdateSprintInput struct {
 type ListFilters struct {
 	OrgNodeID *string
 	Status    *string
+	// Slice 5B — when SubscriptionID + OrgNodeID are both non-nil, the
+	// List path activates the ancestor-walk: returns sprints pinned to
+	// OrgNodeID (origin=local) PLUS sprints pinned to any STRICT
+	// ancestor where scope_propagation='this_node_and_descendants'
+	// (origin=inherited). When SubscriptionID is nil, ancestor-walk is
+	// skipped — strict back-compat for callers that haven't been
+	// updated yet.
+	SubscriptionID *string
 }
 
 // validStatuses is the set of allowed sprint status values.

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
@@ -92,6 +93,33 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
+// guardInherited runs the slice-5B write-side check: if the caller is
+// viewing the sprint via heartbeat inheritance (pinned to an ancestor
+// of the org_node_id query param, with scope_propagation flagged), the
+// write is rejected with 409. Returns true when the request can proceed.
+// When org_node_id is absent or the topology dep is nil, the check is a
+// no-op and the request proceeds (back-compat for callers not yet
+// passing the viewing-node param).
+func (h *Handler) guardInherited(w http.ResponseWriter, r *http.Request, wsID, sprintID string) bool {
+	viewingNodeID := r.URL.Query().Get("org_node_id")
+	if viewingNodeID == "" {
+		return true
+	}
+	user := auth.UserFromCtx(r.Context())
+	if user.SubscriptionID == uuid.Nil {
+		return true
+	}
+	if err := h.svc.EnsureWritable(r.Context(), wsID, sprintID, user.SubscriptionID.String(), viewingNodeID); err != nil {
+		if errors.Is(err, ErrInheritedReadOnly) {
+			httperr.Write(w, r, http.StatusConflict, err.Error())
+			return false
+		}
+		// Other errors fall through to the downstream call which will
+		// surface its own status.
+	}
+	return true
+}
+
 // List handles GET /api/v2/timeboxes/sprints.
 //
 // Slice 6.3a (2026-05-21) — response shape cut over to ObjectTreeV2's
@@ -114,6 +142,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	if v := q.Get("status"); v != "" {
 		f.Status = &v
+	}
+	// Slice 5B — pass subscription so List can activate the ancestor-walk
+	// when both OrgNodeID and SubscriptionID are present. Auth context is
+	// already loaded for write endpoints; we read it here too so the read
+	// path can inherit-propagate.
+	user := auth.UserFromCtx(r.Context())
+	if user.SubscriptionID != uuid.Nil {
+		subStr := user.SubscriptionID.String()
+		f.SubscriptionID = &subStr
 	}
 
 	// Slice 2.5 — ?fields= projection. Parsed BEFORE the service call so
@@ -272,6 +309,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	var body struct {
 		SprintName        *string `json:"timeboxes_sprints_name"`
@@ -333,6 +373,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	if err := h.svc.Delete(r.Context(), wsID, id); err != nil {
 		switch {
@@ -356,6 +399,9 @@ func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	sprint, err := h.svc.Start(r.Context(), wsID, id)
 	if err != nil {
@@ -381,6 +427,9 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	sprint, err := h.svc.Close(r.Context(), wsID, id)
 	if err != nil {

@@ -48,6 +48,15 @@ var ReleaseColumns = []ColumnSpec{
 	{Name: "timeboxes_releases_created_at"},
 	{Name: "timeboxes_releases_updated_at"},
 	{Name: "timeboxes_releases_archived_at"},
+
+	// Slice 5A — propagation intent
+	{Name: "timeboxes_releases_scope_propagation"},
+
+	// Slice 5B — non-persisted read-time inheritance metadata. See
+	// timeboxsprints/columns.go for the contract.
+	{Name: "origin"},
+	{Name: "from_node_id"},
+	{Name: "from_node_name"},
 }
 
 var releaseColumnSet = func() map[string]bool {

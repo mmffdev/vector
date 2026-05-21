@@ -48,6 +48,19 @@ var SprintColumns = []ColumnSpec{
 	{Name: "timeboxes_sprints_created_at"},
 	{Name: "timeboxes_sprints_updated_at"},
 	{Name: "timeboxes_sprints_archived_at"},
+
+	// Slice 5A — propagation intent
+	{Name: "timeboxes_sprints_scope_propagation"},
+
+	// Slice 5B — non-persisted read-time inheritance metadata.
+	// These are NOT DB columns; they're stamped onto each row by
+	// Service.List when the read came via heartbeat propagation. Listed
+	// here so the ?fields= allow-list accepts them (callers explicitly
+	// asking for the inheritance fields don't get 400'd) and so they
+	// pass through projectSprints unchanged.
+	{Name: "origin"},
+	{Name: "from_node_id"},
+	{Name: "from_node_name"},
 }
 
 var sprintColumnSet = func() map[string]bool {

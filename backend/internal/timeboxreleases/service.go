@@ -14,16 +14,27 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/topology"
 )
 
 // Service owns all DB operations for timeboxes_releases.
 type Service struct {
 	pool *pgxpool.Pool
+	// Slice 5B — see timeboxsprints.Service for the contract.
+	topo *topology.Service
 }
 
 // NewService creates a Service backed by the given pool.
 func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
+}
+
+// WithTopology attaches a topology service so List can resolve a node's
+// ancestor chain for heartbeat propagation reads (slice 5B). Mirror of
+// timeboxsprints.Service.WithTopology.
+func (s *Service) WithTopology(t *topology.Service) *Service {
+	s.topo = t
+	return s
 }
 
 // Create inserts a new release. Returns ErrConflict if the DB EXCLUDE
@@ -105,8 +116,25 @@ func (s *Service) Get(ctx context.Context, workspaceID, releaseID string) (*Rele
 	return release, nil
 }
 
-// List returns non-archived releases for a workspace, ordered by start date ASC.
+// List returns non-archived releases for a workspace, ordered by start
+// date ASC. Slice 5B — same opt-in ancestor-walk as timeboxsprints.List.
 func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) ([]*Release, error) {
+	var ancestors []topology.Node
+	if f.OrgNodeID != nil && f.SubscriptionID != nil && s.topo != nil {
+		subUUID, perr := uuid.Parse(*f.SubscriptionID)
+		nodeUUID, nerr := uuid.Parse(*f.OrgNodeID)
+		if perr == nil && nerr == nil {
+			chain, terr := s.topo.AncestorsOf(ctx, subUUID, nodeUUID)
+			if terr == nil {
+				for _, n := range chain {
+					if n.ID != nodeUUID {
+						ancestors = append(ancestors, n)
+					}
+				}
+			}
+		}
+	}
+
 	args := []any{workspaceID}
 	conds := []string{
 		"timeboxes_releases_id_workspace = $1",
@@ -115,9 +143,26 @@ func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) (
 	n := 2
 
 	if f.OrgNodeID != nil {
-		conds = append(conds, fmt.Sprintf("timeboxes_releases_id_topology_node = $%d", n))
-		args = append(args, *f.OrgNodeID)
-		n++
+		if len(ancestors) > 0 {
+			ancPlaceholders := make([]string, len(ancestors))
+			for i, a := range ancestors {
+				ancPlaceholders[i] = fmt.Sprintf("$%d", n)
+				args = append(args, a.ID.String())
+				n++
+			}
+			conds = append(conds, fmt.Sprintf(
+				"(timeboxes_releases_id_topology_node = $%d OR "+
+					"(timeboxes_releases_id_topology_node IN (%s) "+
+					"AND timeboxes_releases_scope_propagation = 'this_node_and_descendants'))",
+				n, strings.Join(ancPlaceholders, ","),
+			))
+			args = append(args, *f.OrgNodeID)
+			n++
+		} else {
+			conds = append(conds, fmt.Sprintf("timeboxes_releases_id_topology_node = $%d", n))
+			args = append(args, *f.OrgNodeID)
+			n++
+		}
 	}
 	if f.Status != nil {
 		conds = append(conds, fmt.Sprintf("timeboxes_releases_status = $%d", n))
@@ -145,7 +190,83 @@ func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) (
 	if releases == nil {
 		releases = []*Release{}
 	}
+
+	if f.OrgNodeID != nil {
+		ancestorByID := make(map[string]*topology.Node, len(ancestors))
+		for i := range ancestors {
+			ancestorByID[ancestors[i].ID.String()] = &ancestors[i]
+		}
+		for _, rl := range releases {
+			if rl.OrgNodeID == nil || *rl.OrgNodeID == *f.OrgNodeID {
+				rl.Origin = "local"
+				continue
+			}
+			if anc, ok := ancestorByID[*rl.OrgNodeID]; ok {
+				rl.Origin = "inherited"
+				idStr := anc.ID.String()
+				name := anc.Name
+				rl.FromNodeID = &idStr
+				rl.FromNodeName = &name
+			} else {
+				rl.Origin = "local"
+			}
+		}
+	}
+
 	return releases, rows.Err()
+}
+
+// isInheritedRead — mirror of timeboxsprints.isInheritedRead.
+func (s *Service) isInheritedRead(
+	ctx context.Context, release *Release, subscriptionID, viewingNodeID string,
+) (bool, error) {
+	if s.topo == nil || release.OrgNodeID == nil || viewingNodeID == "" {
+		return false, nil
+	}
+	if *release.OrgNodeID == viewingNodeID {
+		return false, nil
+	}
+	if release.ScopePropagation != "this_node_and_descendants" {
+		return false, nil
+	}
+	subUUID, perr := uuid.Parse(subscriptionID)
+	nodeUUID, nerr := uuid.Parse(viewingNodeID)
+	if perr != nil || nerr != nil {
+		return false, nil
+	}
+	chain, err := s.topo.AncestorsOf(ctx, subUUID, nodeUUID)
+	if err != nil {
+		return false, err
+	}
+	for _, anc := range chain {
+		if anc.ID.String() == *release.OrgNodeID && anc.ID != nodeUUID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// EnsureWritable rejects mutation attempts on rows the caller is only
+// seeing via heartbeat inheritance. Slice 5B — mirror of
+// timeboxsprints.Service.EnsureWritable.
+func (s *Service) EnsureWritable(
+	ctx context.Context, workspaceID, releaseID, subscriptionID, viewingNodeID string,
+) error {
+	if subscriptionID == "" || viewingNodeID == "" || s.topo == nil {
+		return nil
+	}
+	release, err := s.Get(ctx, workspaceID, releaseID)
+	if err != nil {
+		return nil
+	}
+	inherited, ierr := s.isInheritedRead(ctx, release, subscriptionID, viewingNodeID)
+	if ierr != nil {
+		return nil
+	}
+	if inherited {
+		return ErrInheritedReadOnly
+	}
+	return nil
 }
 
 // Update applies partial updates to a release.

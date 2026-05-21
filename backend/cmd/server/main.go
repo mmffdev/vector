@@ -657,17 +657,23 @@ func main() {
 
 	// PLA-0027 / Story 00514: timebox sprints REST handler.
 	// Uses the same vaPool as v2 work-items; gracefully degrades when nil.
+	// Slice 5B (2026-05-21): WithTopology wires the orgDesign service so
+	// Service.List can ancestor-walk for heartbeat-propagated reads.
 	var sprintH *timeboxsprints.Handler
 	if vaPool != nil {
 		sprintSvc := timeboxsprints.NewService(vaPool)
 		sprintSvc.WithNotifier(webhooks.NewNotifier(webhookSvc))
+		sprintSvc.WithTopology(orgDesignSvc)
 		sprintH = timeboxsprints.NewHandler(sprintSvc)
 	}
 
 	// timebox releases REST handler — mirrors sprints, no adjacency rule.
+	// Slice 5B: same WithTopology wiring as sprints for ancestor-walk reads.
 	var releaseH *timeboxreleases.Handler
 	if vaPool != nil {
-		releaseH = timeboxreleases.NewHandler(timeboxreleases.NewService(vaPool))
+		releaseSvc := timeboxreleases.NewService(vaPool)
+		releaseSvc.WithTopology(orgDesignSvc)
+		releaseH = timeboxreleases.NewHandler(releaseSvc)
 	}
 
 	// timebox milestones REST handler — point-in-time markers, no
