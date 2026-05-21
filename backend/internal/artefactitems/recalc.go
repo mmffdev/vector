@@ -180,6 +180,109 @@ func (s *Service) recalcParentFlowState(ctx context.Context, subscriptionID, par
 	return nil
 }
 
+// recalcParentFlowStateCollecting — Slice 4.6c of the ObjectTree refactor.
+// Same cascade logic as recalcParentFlowState but appends every row id
+// the cascade WROTE to `touched`. Used by PatchWorkItem to report
+// touched_ids in the response so the frontend can narrow its refetch
+// to only the rows the cascade actually changed.
+//
+// This is a parallel implementation of the recalc function — same shape,
+// extra slice append at the write site, recursion threads the slice
+// through. Returning `*touched` lets the caller append from multiple
+// recalcs (parent_artefact_id patches recalc OLD + NEW parents).
+//
+// As with the existing recalcParentFlowState, errors are surfaced but
+// the caller is expected to log + swallow.
+func (s *Service) recalcParentFlowStateCollecting(
+	ctx context.Context,
+	subscriptionID, parentID uuid.UUID,
+	touched *[]uuid.UUID,
+) error {
+	if parentID == uuid.Nil {
+		return nil
+	}
+	if s.vectorArtefactsPool == nil {
+		return nil
+	}
+
+	var (
+		scope          string
+		artefactTypeID uuid.UUID
+		currentStateID uuid.UUID
+		currentKind    string
+		grandparentID  *uuid.UUID
+		archivedAt     *string
+	)
+	err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectArtefactForRecalc,
+		parentID, subscriptionID,
+	).Scan(&scope, &artefactTypeID, &currentStateID, &currentKind, &grandparentID, &archivedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return fmt.Errorf("recalc: load parent %s: %w", parentID, err)
+	}
+	if archivedAt != nil {
+		return nil
+	}
+	if scope != s.scope {
+		return nil
+	}
+	_ = currentKind
+
+	bucket, err := s.loadChildKindBucket(ctx, subscriptionID, parentID)
+	if err != nil {
+		return err
+	}
+	if bucket.total() == 0 {
+		return nil
+	}
+
+	targetKind := pickTargetKind(bucket)
+	if targetKind == "" {
+		return nil
+	}
+
+	targetStateID, err := s.resolveTargetState(ctx, artefactTypeID, currentStateID, targetKind)
+	if err != nil {
+		return err
+	}
+	if targetStateID == uuid.Nil {
+		return nil
+	}
+	if targetStateID == currentStateID {
+		return nil
+	}
+
+	ct, err := s.vectorArtefactsPool.Exec(ctx, sqlSetFlowStateInternal,
+		targetStateID, parentID, subscriptionID,
+	)
+	if err != nil {
+		return fmt.Errorf("recalc: write %s: %w", parentID, err)
+	}
+	if ct.RowsAffected() == 0 {
+		return nil
+	}
+
+	// Slice 4.6c — record the touched row id BEFORE recursing so the
+	// cascade order is parent-first, ancestor-after (deepest-changed
+	// last). Frontend doesn't care about order, but predictable order
+	// makes tests easier.
+	*touched = append(*touched, parentID)
+
+	if s.notifier != nil {
+		s.notifier.Fire(subscriptionID, "item.status_changed_by_cascade", map[string]string{
+			"id":            parentID.String(),
+			"flow_state_id": targetStateID.String(),
+		})
+	}
+
+	if grandparentID != nil && *grandparentID != uuid.Nil {
+		return s.recalcParentFlowStateCollecting(ctx, subscriptionID, *grandparentID, touched)
+	}
+	return nil
+}
+
 // loadChildKindBucket runs sqlCountChildrenByKind and projects the rows
 // into a childKindBucket. Unknown kinds fall into `.other`.
 func (s *Service) loadChildKindBucket(ctx context.Context, subscriptionID, parentID uuid.UUID) (childKindBucket, error) {

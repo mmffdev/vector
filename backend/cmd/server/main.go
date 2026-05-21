@@ -1434,6 +1434,10 @@ func main() {
 			// introspection consume this; no subscription clamp on the
 			// catalogue itself, the surface is global to the resource.
 			r.With(readLimit17).Get("/columns", h.Columns)
+			// Slice 4.6c — narrow refetch for cascade-touched rows.
+			// Mounted before /{id} so the literal segment wins over
+			// the param.
+			r.With(readLimit17).Get("/by-ids", h.ByIDs)
 			r.With(readLimit17).Get("/{id}", h.Get)
 			r.With(writeLimit17, userWriteLimiter).Patch("/{id}", h.Patch)
 			r.With(writeLimit17, userWriteLimiter).Delete("/{id}", h.Archive)
@@ -1724,6 +1728,8 @@ func main() {
 				// Slice 2.5 (ObjectTree refactor) — agent-introspectable
 				// column catalogue. Same handler as the /_site mount.
 				r.With(readLimit).Get("/columns", h.Columns)
+				// Slice 4.6c — narrow refetch for cascade-touched rows.
+				r.With(readLimit).Get("/by-ids", h.ByIDs)
 				r.With(readLimit).Get("/{id}", h.Get)
 				r.With(writeLimit, userWriteLimiter).Patch("/{id}", h.Patch)
 				r.With(writeLimit, userWriteLimiter).Delete("/{id}", h.Archive)

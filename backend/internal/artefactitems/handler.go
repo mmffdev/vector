@@ -147,6 +147,104 @@ func (h *Handler) Columns(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
+// ByIDs handles GET /<resource>/by-ids?ids=a,b,c — Slice 4.6c.
+// Returns the listed rows in one response. Honours the ?fields=
+// projection (same contract as List). Used by the frontend cascade-
+// refresh path: after a PATCH whose response includes touched_ids,
+// the client fetches ONLY those rows instead of re-pulling every
+// expanded sub-tree.
+//
+// Per-row access control: each id goes through GetWorkItem (or
+// GetWorkItemInWorkspace under a workspace clamp), so cross-tenant /
+// cross-workspace requests get the same not-found-not-leaked behaviour
+// the rest of the surface uses. Unknown ids silently skipped — the
+// response contains the rows that resolved.
+//
+// At typical cascade widths (1–5 rows) N round-trips is fine; SQL
+// batch-fetch is a Slice 4.5+ optimisation if profiling demands it.
+func (h *Handler) ByIDs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	u := auth.UserFromCtx(r.Context())
+	subID := u.SubscriptionID
+
+	q := r.URL.Query()
+	raw := q.Get("ids")
+	if raw == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"ids query parameter is required"}`))
+		return
+	}
+	idStrs := strings.Split(raw, ",")
+	ids := make([]uuid.UUID, 0, len(idStrs))
+	for _, s := range idStrs {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		id, perr := uuid.Parse(s)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid id in ids parameter"}`))
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	// Slice 2.5's ?fields= projection works here too. Same parse, same
+	// validation against the same catalogue.
+	fieldSet, unknownField, fieldsOk := parseFieldsParam(q.Get("fields"))
+	if !fieldsOk {
+		w.WriteHeader(http.StatusBadRequest)
+		msg, _ := json.Marshal("unknown field: " + unknownField)
+		_, _ = w.Write(append([]byte(`{"error":`), append(msg, '}')...))
+		return
+	}
+
+	wsID, hasWorkspace := topology.WorkspaceIDFromCtx(r.Context())
+
+	items := make([]WorkItem, 0, len(ids))
+	for _, id := range ids {
+		var (
+			wi  *WorkItem
+			err error
+		)
+		if hasWorkspace {
+			wi, err = h.svc.GetWorkItemInWorkspace(r.Context(), subID, wsID, id)
+		} else {
+			wi, err = h.svc.GetWorkItem(r.Context(), subID, id)
+		}
+		if err != nil {
+			// Silently skip not-found / cross-tenant rows. The caller
+			// asked for a list of ids; what they get back is the subset
+			// they're allowed to see. Same shape as the existing
+			// not-found-not-leaked semantics elsewhere on this surface.
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
+			log.Printf("artefactitems.ByIDs: subID=%s id=%s err=%v", subID, id, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"internal"}`))
+			return
+		}
+		if wi != nil {
+			items = append(items, *wi)
+		}
+	}
+
+	projected, projErr := projectItems(items, fieldSet)
+	if projErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"projection_failed"}`))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items": projected,
+		"total": len(items),
+	})
+}
+
 // List handles GET /api/v2/work-items.
 // Requires auth middleware (wired in story 00469); reads subscription_id
 // from the JWT context via auth.UserFromCtx.
@@ -739,7 +837,14 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 			dueDate = &s
 		}
 	}
-	wi, err := h.svc.PatchWorkItem(r.Context(), u.SubscriptionID, id, PatchWorkItemInput{
+	// Slice 4.6c — attach a touched-ids sink so the cascade can report
+	// which ancestor rows it wrote. Frontend uses this to narrow-refetch
+	// instead of re-pulling every expanded sub-tree. Sink is empty when
+	// the cascade didn't fire (e.g. patch didn't touch flow_state_id or
+	// parent_artefact_id) — additive field, no behaviour change.
+	var touchedIDs []uuid.UUID
+	ctx := WithTouchedIDsSink(r.Context(), &touchedIDs)
+	wi, err := h.svc.PatchWorkItem(ctx, u.SubscriptionID, id, PatchWorkItemInput{
 		Title:            req.Title,
 		Description:      req.Description,
 		Status:           req.Status,
@@ -778,7 +883,30 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	_ = json.NewEncoder(w).Encode(wi)
+	// Slice 4.6c — emit the WorkItem with an additional `touched_ids`
+	// field carrying the ancestor row ids the cascade wrote. Marshal-to-
+	// map then add the field — additive, doesn't change WorkItem's own
+	// JSON shape. Empty slice when nothing cascaded; clients can branch
+	// on `touched_ids.length > 0` to decide whether to fire a by-ids
+	// refetch (Slice 4.5 column-picker hook does this).
+	buf, mErr := json.Marshal(wi)
+	if mErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+	var m map[string]any
+	if uErr := json.Unmarshal(buf, &m); uErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+	touchedStrs := make([]string, len(touchedIDs))
+	for i, tid := range touchedIDs {
+		touchedStrs[i] = tid.String()
+	}
+	m["touched_ids"] = touchedStrs
+	_ = json.NewEncoder(w).Encode(m)
 }
 
 // Archive handles DELETE /api/v2/work-items/{id}.
