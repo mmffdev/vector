@@ -1216,3 +1216,121 @@ export const notifications = {
       body: JSON.stringify({ kind, channel, enabled }),
     }),
 };
+
+// Pages: app/user/notifications/settings/page.tsx
+// ─── Notification rules  (/notifications/rules + /rule-schema) ───────────────
+
+export type RuleOperator =
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "contains"
+  | "changed"
+  | "changed_from"
+  | "changed_to"
+  | "was"
+  | "was_not"
+  | "was_in"
+  | "was_not_in";
+
+export interface RuleCondition {
+  field: string;
+  operator: RuleOperator;
+  value?: unknown;
+}
+
+export interface NotificationRule {
+  users_notification_rules_id: ID;
+  users_notification_rules_id_subscription: ID;
+  users_notification_rules_id_user?: ID | null;
+  users_notification_rules_name: string;
+  users_notification_rules_type: string;
+  users_notification_rules_target?: string | null;
+  users_notification_rules_conditions: RuleCondition[];
+  users_notification_rules_enabled: boolean;
+  users_notification_rules_created_at: string;
+  users_notification_rules_updated_at: string;
+}
+
+export interface RuleTypeEntry {
+  value: string;
+  label: string;
+  enabled: boolean;
+  reason?: string;
+}
+
+export interface RuleTargetEntry {
+  value: string;
+  label: string;
+}
+
+export interface RuleOperatorEntry {
+  value: RuleOperator;
+  label: string;
+  needs_value: boolean;
+}
+
+export interface RuleFieldEntry {
+  value: string;
+  label: string;
+  value_type:
+    | "boolean"
+    | "date"
+    | "decimal"
+    | "integer"
+    | "multiselect"
+    | "richtext"
+    | "select"
+    | "textbox"
+    | "user";
+  operators: RuleOperatorEntry[];
+  options?: Array<{ value: string; label: string }>;
+}
+
+export const notificationRules = {
+  list: () =>
+    apiSite<{ rules: NotificationRule[]; count: number }>("/notifications/rules/"),
+
+  get: (id: ID) =>
+    apiSite<NotificationRule>(`/notifications/rules/${id}`),
+
+  create: (body: {
+    name: string;
+    type: string;
+    target?: string;
+    conditions: RuleCondition[];
+  }) =>
+    apiSite<NotificationRule>("/notifications/rules/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  update: (
+    id: ID,
+    body: { name?: string; conditions?: RuleCondition[]; enabled?: boolean },
+  ) =>
+    apiSite<NotificationRule>(`/notifications/rules/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  delete: (id: ID) =>
+    apiSite<void>(`/notifications/rules/${id}`, { method: "DELETE" }),
+
+  // Schema endpoints — drive the rule builder dropdowns.
+  schemaTypes: () =>
+    apiSite<{ types: RuleTypeEntry[] }>("/notifications/rule-schema"),
+
+  schemaTargets: (type: string) =>
+    apiSite<{ targets: RuleTargetEntry[] }>(
+      `/notifications/rule-schema?type=${encodeURIComponent(type)}`,
+    ),
+
+  schemaFields: (type: string, target: string) =>
+    apiSite<{ fields: RuleFieldEntry[] }>(
+      `/notifications/rule-schema?type=${encodeURIComponent(type)}&target=${encodeURIComponent(target)}`,
+    ),
+};

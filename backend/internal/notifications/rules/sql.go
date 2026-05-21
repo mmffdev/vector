@@ -84,3 +84,35 @@ const sqlDeleteRule = `
 	WHERE users_notification_rules_id = $1
 	  AND users_notification_rules_id_user = $2
 `
+
+// ── schema.go (vaPool — vector_artefacts) ──────────────────────
+
+// sqlSelectArtefactTypes returns the tenant's artefact_types — feeds
+// the "target" dropdown in the rule builder.
+const sqlSelectArtefactTypes = `
+	SELECT artefacts_types_id::text, artefacts_types_name
+	FROM artefacts_types
+	WHERE artefacts_types_id_subscription = $1
+	  AND artefacts_types_archived_at IS NULL
+	  AND artefacts_types_is_placeholder = FALSE
+	ORDER BY artefacts_types_sort_order ASC, artefacts_types_name ASC
+`
+
+// sqlSelectArtefactTypeFields returns the fields the tenant has
+// bound to one artefact_type. JOINs the link table to the field
+// library so renamed labels + options_json land in one round-trip.
+const sqlSelectArtefactTypeFields = `
+	SELECT
+		fl.field_name,
+		COALESCE(fl.label, fl.field_name) AS label,
+		fl.field_type,
+		fl.options_json
+	FROM artefacts_types_fields tf
+	JOIN artefacts_fields_library fl ON fl.id = tf.field_library_id
+	JOIN artefacts_types at ON at.artefacts_types_id = tf.artefact_type_id
+	WHERE at.artefacts_types_id_subscription = $1
+	  AND at.artefacts_types_id = $2
+	  AND at.artefacts_types_archived_at IS NULL
+	  AND fl.archived_at IS NULL
+	ORDER BY tf.position ASC, fl.label ASC
+`

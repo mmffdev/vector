@@ -44,6 +44,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/notifications/broker"
 	"github.com/mmffdev/vector-backend/internal/notifications/dispatchers"
 	notifresolvers "github.com/mmffdev/vector-backend/internal/notifications/resolvers"
+	notifrules "github.com/mmffdev/vector-backend/internal/notifications/rules"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
@@ -648,6 +649,13 @@ func main() {
 	notifSvc := notifications.NewService(pool, notifPrefs)
 	notifH := notifications.NewHandler(notifSvc)
 	notifStreamH := notifications.NewStreamHandler(rtHub)
+	// Rules engine — CRUD on users_notification_rules + the per-tenant
+	// field/operator catalogue endpoint the settings UI consumes.
+	// Storage lives on mmff_vector; schema endpoint reads vaPool for
+	// artefact_types + their bound fields (which is why both pools land here).
+	notifRulesSvc := notifrules.NewService(pool)
+	notifRulesH := notifrules.NewHandler(notifRulesSvc)
+	notifSchemaH := notifrules.NewSchemaHandler(notifrules.NewSchema(vaPool))
 
 	// @-mention scaffold — mounted on both transports per PLA-0039.
 	// vaPool is optional: when nil, the service falls back to
@@ -1356,6 +1364,15 @@ func main() {
 		// One open connection per user; reconnects handled by the
 		// browser's native EventSource.
 		r.Get("/stream", notifStreamH.Stream)
+		// Rules engine — CRUD + per-tenant field/operator catalogue.
+		r.Get("/rule-schema", notifSchemaH.Get)
+		r.Route("/rules", func(r chi.Router) {
+			r.Get("/", notifRulesH.List)
+			r.Post("/", notifRulesH.Create)
+			r.Get("/{id}", notifRulesH.Get)
+			r.Patch("/{id}", notifRulesH.Update)
+			r.Delete("/{id}", notifRulesH.Delete)
+		})
 	})
 
 	// /portfolio + /workspace/{id}/portfolio/layers (B22.19)
@@ -1903,6 +1920,15 @@ func main() {
 			r.Post("/{id}/read", notifH.MarkRead)
 			r.Get("/prefs", notifH.ListPrefs)
 			r.Put("/prefs", notifH.UpsertPref)
+			// Rules engine — same surface as /_site mount.
+			r.Get("/rule-schema", notifSchemaH.Get)
+			r.Route("/rules", func(r chi.Router) {
+				r.Get("/", notifRulesH.List)
+				r.Post("/", notifRulesH.Create)
+				r.Get("/{id}", notifRulesH.Get)
+				r.Patch("/{id}", notifRulesH.Update)
+				r.Delete("/{id}", notifRulesH.Delete)
+			})
 		})
 
 		// ---- /portfolio/master_record (PLA-0026 B9 / PLA-0030 T4a) ----

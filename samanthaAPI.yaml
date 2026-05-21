@@ -431,6 +431,368 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /notifications/rule-schema:
+    get:
+      tags:
+      - notifications
+      summary: GET /notifications/rule-schema
+      operationId: getNotificationsRuleSchema
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: notifSchemaH.Get
+        file: backend/internal/timeboxmilestones/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/rules:
+    get:
+      tags:
+      - notifications
+      summary: GET /notifications/rules
+      operationId: getNotificationsRules
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: notifRulesH.List
+        file: backend/internal/libraryreleases/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    format: int32
+                  releases:
+                    type: array
+                    items:
+                      type: object
+                required:
+                - count
+                - releases
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags:
+      - notifications
+      summary: POST /notifications/rules
+      operationId: postNotificationsRules
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: notifRulesH.Create
+        file: backend/internal/topology/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspace_id:
+                  type: string
+                  format: uuid
+                parent_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                description:
+                  type: string
+                label_override:
+                  type: string
+                icon:
+                  type: string
+                colour:
+                  type: string
+                avatar_url:
+                  type: string
+                layout_mode:
+                  type: object
+                  x-go-type: LayoutMode
+                manual_x:
+                  type: integer
+                  format: int32
+                manual_y:
+                  type: integer
+                  format: int32
+                collapsed_default:
+                  type: boolean
+                position:
+                  type: integer
+                  format: int32
+              required:
+              - name
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  subscription_id:
+                    type: string
+                    format: uuid
+                  parent_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  label_override:
+                    type: string
+                  icon:
+                    type: string
+                  colour:
+                    type: string
+                  avatar_url:
+                    type: string
+                  layout_mode:
+                    type: object
+                    x-go-type: LayoutMode
+                  manual_x:
+                    type: integer
+                    format: int32
+                  manual_y:
+                    type: integer
+                    format: int32
+                  collapsed_default:
+                    type: boolean
+                  position:
+                    type: integer
+                    format: int32
+                  archived_at:
+                    type: string
+                    format: date-time
+                  archived_descendant_count:
+                    type: integer
+                    format: int32
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - id
+                - workspace_id
+                - subscription_id
+                - name
+                - description
+                - layout_mode
+                - collapsed_default
+                - position
+                - archived_descendant_count
+                - created_at
+                - updated_at
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/rules/{id}:
+    delete:
+      tags:
+      - notifications
+      summary: DELETE /notifications/rules/{id}
+      operationId: deleteNotificationsRulesId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: notifRulesH.Delete
+        file: backend/internal/timeboxmilestones/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: 204 — no content
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+      - notifications
+      summary: GET /notifications/rules/{id}
+      operationId: getNotificationsRulesId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: notifRulesH.Get
+        file: backend/internal/timeboxmilestones/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+      - notifications
+      summary: PATCH /notifications/rules/{id}
+      operationId: patchNotificationsRulesId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: notifRulesH.Update
+        file: backend/internal/timeboxmilestones/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeboxes_milestones_name:
+                  type: string
+                timeboxes_milestones_description:
+                  type: string
+                timeboxes_milestones_id_user_owner:
+                  type: string
+                timeboxes_milestones_date_target:
+                  type: string
+                timeboxes_milestones_status:
+                  type: string
+                timeboxes_milestones_position:
+                  type: integer
+                  format: int32
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /notifications/unread-count:
     get:
       tags:
