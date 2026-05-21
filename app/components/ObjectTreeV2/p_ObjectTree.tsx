@@ -31,9 +31,12 @@ import {
 } from "@/app/components/work-items-tree-config";
 import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
 import type { ColumnDef } from "@/app/components/ResourceTree";
-import { MdAdd, MdOutlineCategory, MdSearch } from "react-icons/md";
+// Slice 3 — icons moved into the kind components (DenseGridHeader doesn't
+// need any; ActionBar imports MdAdd / MdOutlineCategory / MdSearch itself).
 import { useObjectTreeWindow, ApiError as ObjectTreeApiError } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeWindow";
 import { ObjectTreeDetailFlyout, type DetailFlyoutBodyProps } from "@/app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout";
+import { DenseGridHeader } from "@/app/components/ObjectTreeV2/kinds/DenseGridHeader";
+import { ActionBar } from "@/app/components/ObjectTreeV2/kinds/ActionBar";
 import { notify } from "@/app/lib/toast";
 
 // Slice 1 of the ObjectTree refactor — work-items-specific cascade triggers.
@@ -636,82 +639,38 @@ export default function ObjectTree({
     };
   }, [mode, columns, wizardConfig]);
 
-  // Sunken header band — badge + title + subtitle below the panel title.
-  const headerNode = (subtitleBadge || subtitle || description) ? (
-    <header className="tree_accordion-dense__panel-head">
-      {subtitleBadge && (
-        <span className="tree_accordion-dense__panel-head-num">{subtitleBadge}</span>
-      )}
-      <div className="tree_accordion-dense__panel-head-body">
-        {subtitle && (
-          <h3 className="tree_accordion-dense__panel-head-title">{subtitle}</h3>
-        )}
-        {description && (
-          <p className="tree_accordion-dense__panel-head-subtitle">{description}</p>
-        )}
-      </div>
-    </header>
-  ) : null;
+  // Slice 3 — chrome rows extracted to <DenseGridHeader> + <ActionBar>
+  // kind components. The work-items-specific bits (type-picker options
+  // source, create-action labels) get supplied here at the V2 consumer
+  // level; future configs (sprints, releases) pass their own action
+  // shape (mode: "single", or omit createAction entirely) without
+  // touching the kind components.
+  const headerNode = (
+    <DenseGridHeader
+      badge={subtitleBadge}
+      subtitle={subtitle}
+      description={description}
+    />
+  );
 
-  // Action bar — sits between the dense-grid header and the filter bar.
-  // The artefact-type dropdown IS the create trigger: picking a type opens
-  // the create-flyout below the tree (see createFlyoutNode). Clearing the
-  // dropdown closes it. Design-only — submit isn't wired yet.
   const actionBarNode = (
-    <div className="tree_accordion-dense__actionbar" role="toolbar" aria-label="Work item actions">
-      <span
-        className={
-          "tree_accordion-dense__filterbar-chip" +
-          (actionTypeId ? " tree_accordion-dense__filterbar-chip--active" : "")
-        }
-        style={{ position: "relative" }}
-      >
-        <span className="tree_accordion-dense__filterbar-chip-icon">
-          {actionTypeId ? <MdAdd size={14} /> : <MdOutlineCategory size={14} />}
-        </span>
-        <span className="tree_accordion-dense__filterbar-chip-label">
-          {actionTypeLabel ? `Add new ${actionTypeLabel}` : "Create New"}
-        </span>
-        <select
-          className="tree_accordion-dense__filterbar-chip-select"
-          aria-label="Add new artefact — pick type"
-          value={actionTypeId}
-          onChange={(e) => setActionTypeId(e.target.value)}
-        >
-          <option value="">Artefact type…</option>
-          {actionTypeOptions.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </span>
-
-      {actionTypeId && (
-        <button
-          type="button"
-          className="btn btn--sm btn--secondary"
-          onClick={() => setActionTypeId("")}
-          aria-label="Cancel new artefact"
-        >
-          Cancel
-        </button>
-      )}
-
-      <div className="tree_accordion-dense__filterbar-search">
-        <span className="tree_accordion-dense__filterbar-search-icon" aria-hidden="true">
-          <MdSearch size={12} />
-        </span>
-        <input
-          type="search"
-          className="tree_accordion-dense__filterbar-search-input"
-          placeholder={config.searchPlaceholder ?? "Search…"}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label={config.searchPlaceholder ?? "Search"}
-        />
-      </div>
-      {config.filterChips}
-      <span className="tree_accordion-dense__filterbar-spacer" />
-    </div>
+    <ActionBar
+      ariaLabel="Work item actions"
+      createAction={{
+        mode: "type-picker",
+        label: "Create New",
+        options: actionTypeOptions,
+        selectedTypeId: actionTypeId,
+        onSelectType: setActionTypeId,
+        onCancel: () => setActionTypeId(""),
+      }}
+      search={{
+        placeholder: config.searchPlaceholder ?? "Search…",
+        value: searchQuery,
+        onChange: setSearchQuery,
+      }}
+      filterChips={config.filterChips}
+    />
   );
 
   // Always mounted so the slide-down/up animation has both states to
