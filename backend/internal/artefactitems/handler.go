@@ -3,6 +3,7 @@ package artefactitems
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -862,6 +863,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		ParentArtefactID: req.ParentArtefactID,
 		TopologyNodeID:   req.TopologyNodeID,
 		DescriptionDoc:   ptrRawMessage(req.DescriptionDoc),
+		AuthorUserID:     u.ID,
 	})
 	if err != nil {
 		switch {
@@ -997,6 +999,12 @@ type upsertFieldValueReq struct {
 }
 
 // UpsertFieldValues handles PUT /api/v2/work-items/{id}/field-values.
+//
+// Body shape: accepts BOTH a single object `{...}` AND an array
+// `[{...}, ...]` for back-compat. Frontends today (WorkItemDetailPanel)
+// wrap a single update as `[body]`; the v1 contract was a single object.
+// Both shapes route into the same batched service path that writes
+// inside one transaction and fires ONE rule event covering every field.
 func (h *Handler) UpsertFieldValues(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -1006,20 +1014,38 @@ func (h *Handler) UpsertFieldValues(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
-	var req upsertFieldValueReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"invalid body"}`))
 		return
 	}
-	if err := h.svc.UpsertFieldValue(r.Context(), u.SubscriptionID, id, UpsertFieldValueInput{
-		FieldLibraryID: req.FieldLibraryID,
-		StringValue:    req.StringValue,
-		NumberValue:    req.NumberValue,
-		TextValue:      req.TextValue,
-		DateValue:      req.DateValue,
-	}); err != nil {
+	var reqs []upsertFieldValueReq
+	// Try array first (the live frontend shape); fall back to a single
+	// object (the documented v1 contract). Anything else → 400.
+	if err := json.Unmarshal(raw, &reqs); err != nil {
+		var one upsertFieldValueReq
+		if err := json.Unmarshal(raw, &one); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid body"}`))
+			return
+		}
+		reqs = []upsertFieldValueReq{one}
+	}
+	ins := make([]UpsertFieldValueInput, 0, len(reqs))
+	for _, req := range reqs {
+		ins = append(ins, UpsertFieldValueInput{
+			FieldLibraryID: req.FieldLibraryID,
+			StringValue:    req.StringValue,
+			NumberValue:    req.NumberValue,
+			TextValue:      req.TextValue,
+			DateValue:      req.DateValue,
+			AuthorUserID:   u.ID,
+		})
+	}
+	if err := h.svc.UpsertFieldValues(r.Context(), u.SubscriptionID, id, ins); err != nil {
 		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrInvalidInput) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)

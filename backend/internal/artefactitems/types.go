@@ -285,6 +285,12 @@ type PatchWorkItemInput struct {
 	// length 0 or "null"). The service treats "null" or empty as a
 	// SET to NULL; any other payload is stored verbatim.
 	DescriptionDoc *json.RawMessage
+	// AuthorUserID is the UUID of the caller making the patch. The
+	// handler reads it from the auth-context and passes it in; the
+	// service uses it as the AuthorUserID on the rule-engine event.
+	// uuid.Nil means "unauthenticated path" (rules fire with a zero
+	// author — same as before this field existed).
+	AuthorUserID uuid.UUID
 }
 
 // Sprint is the wire representation of the sprints table.
@@ -517,12 +523,18 @@ type RisksSummaryByLik struct {
 }
 
 // UpsertFieldValueInput holds the value to write for one field on a work item.
+//
+// AuthorUserID is the UUID of the caller making the write. Handler reads
+// it from the auth-context and passes it in; the service uses it as the
+// AuthorUserID on the rule-engine event (same pattern as PatchWorkItemInput).
+// uuid.Nil means "unauthenticated path" — rules fire with a zero author.
 type UpsertFieldValueInput struct {
 	FieldLibraryID string
 	StringValue    *string
 	NumberValue    *string
 	TextValue      *string
 	DateValue      *string
+	AuthorUserID   uuid.UUID
 }
 
 // validFieldTypes is the set of allowed custom field types.

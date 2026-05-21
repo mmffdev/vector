@@ -2,6 +2,7 @@ package artefactitems
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -1301,38 +1302,123 @@ func (s *Service) ListFieldValues(ctx context.Context, subscriptionID uuid.UUID,
 	return fvs, rows.Err()
 }
 
-// UpsertFieldValue writes one field value for an artefact.
-// Enforces type routing and subscription isolation.
+// UpsertFieldValue writes one field value for an artefact. Thin
+// wrapper around UpsertFieldValues for callers that have a single
+// value to write. See UpsertFieldValues for the contract.
 func (s *Service) UpsertFieldValue(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID, in UpsertFieldValueInput) error {
+	return s.UpsertFieldValues(ctx, subscriptionID, artefactID, []UpsertFieldValueInput{in})
+}
+
+// UpsertFieldValues writes N field values for one artefact in a
+// single transaction and fires ONE rule event covering every change.
+// Type routing + subscription isolation are enforced per row; one bad
+// row rolls the whole batch back (matches the user's mental model
+// when they click Save on a multi-field form).
+//
+// Rule-engine integration: when a rule hook is wired, snapshots each
+// field's pre-write value (nil for first writes), executes all
+// upserts inside the transaction, then fires a single
+// ArtefactChangedEvent keyed by the field library's stable wire name
+// (matches what the rules schema endpoint surfaces, so conditions
+// stored against `severity` land on `ev.Fields["severity"]`).
+//
+// AuthorUserID: takes the first non-nil AuthorUserID from the batch.
+// Callers should set it consistently across the slice — it's a
+// per-request property, not per-field.
+//
+// Best-effort hook fan-out — hook failures never block the write.
+func (s *Service) UpsertFieldValues(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID, ins []UpsertFieldValueInput) error {
 	if s.vectorArtefactsPool == nil {
 		return fmt.Errorf("vector_artefacts pool not configured")
+	}
+	if len(ins) == 0 {
+		return nil
 	}
 	if _, err := s.GetWorkItem(ctx, subscriptionID, artefactID); err != nil {
 		return err
 	}
-	fieldID, err := uuid.Parse(in.FieldLibraryID)
-	if err != nil {
-		return fmt.Errorf("%w: invalid field_library_id", ErrInvalidInput)
+
+	// Resolve field-library metadata up front. Doing this before the tx
+	// keeps the rollback cost low when callers send a bad field_library_id.
+	type resolved struct {
+		fieldID   uuid.UUID
+		fieldName string
+		fieldType string
+		input     UpsertFieldValueInput
 	}
-	var fieldType string
-	err = s.vectorArtefactsPool.QueryRow(ctx, sqlSelectFieldLibraryType,
-		fieldID, subscriptionID,
-	).Scan(&fieldType)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("%w: field_library_id not found", ErrInvalidInput)
+	resolveds := make([]resolved, 0, len(ins))
+	var authorUserID uuid.UUID
+	for _, in := range ins {
+		fieldID, err := uuid.Parse(in.FieldLibraryID)
+		if err != nil {
+			return fmt.Errorf("%w: invalid field_library_id", ErrInvalidInput)
+		}
+		var name, ftype string
+		err = s.vectorArtefactsPool.QueryRow(ctx, sqlSelectFieldLibraryNameAndType,
+			fieldID, subscriptionID,
+		).Scan(&name, &ftype)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w: field_library_id not found", ErrInvalidInput)
+		}
+		if err != nil {
+			return err
+		}
+		resolveds = append(resolveds, resolved{fieldID, name, ftype, in})
+		if authorUserID == uuid.Nil && in.AuthorUserID != uuid.Nil {
+			authorUserID = in.AuthorUserID
+		}
 	}
+
+	// Snapshot before-values for the hook BEFORE the transaction so the
+	// diff captures the pre-write state. Skipped when no hook is wired
+	// (zero cost on the unwired path).
+	var beforeValues map[uuid.UUID]any
+	if s.ruleHook != nil {
+		beforeValues = make(map[uuid.UUID]any, len(resolveds))
+		for _, r := range resolveds {
+			beforeValues[r.fieldID] = s.loadFieldValue(ctx, artefactID, r.fieldID, r.fieldType)
+		}
+	}
+
+	tx, err := s.vectorArtefactsPool.Begin(ctx)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(ctx) //nolint:errcheck
 
-	_, err = s.vectorArtefactsPool.Exec(ctx, sqlUpsertFieldValue,
-		artefactID, fieldID,
-		in.StringValue, in.NumberValue, in.TextValue, in.DateValue,
-	)
-	return err
+	for _, r := range resolveds {
+		if _, err := tx.Exec(ctx, sqlUpsertFieldValue,
+			artefactID, r.fieldID,
+			r.input.StringValue, r.input.NumberValue, r.input.TextValue, r.input.DateValue,
+		); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	if s.ruleHook != nil {
+		diff := make(map[string]rules.FieldChange, len(resolveds))
+		for _, r := range resolveds {
+			after := pickFieldValue(r.fieldType,
+				r.input.StringValue, r.input.NumberValue, r.input.TextValue, r.input.DateValue)
+			diff[r.fieldName] = rules.FieldChange{
+				Before: beforeValues[r.fieldID],
+				After:  after,
+			}
+		}
+		s.fireRuleHookForFields(ctx, artefactID, authorUserID, diff)
+	}
+	return nil
 }
 
 // DeleteFieldValue removes a field value row by id, enforcing ownership.
+//
+// Rule-engine integration: snapshots the deleted row's field name +
+// type + value BEFORE the DELETE (the row vanishes afterward), then
+// fires a single event with After=nil so `changed` and `changed_from`
+// operators fire as expected.
 func (s *Service) DeleteFieldValue(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID, fvID uuid.UUID) error {
 	if s.vectorArtefactsPool == nil {
 		return ErrFieldNotFound
@@ -1340,6 +1426,22 @@ func (s *Service) DeleteFieldValue(ctx context.Context, subscriptionID uuid.UUID
 	if _, err := s.GetWorkItem(ctx, subscriptionID, artefactID); err != nil {
 		return err
 	}
+
+	// Snapshot the row's field metadata + value BEFORE the delete so
+	// the rule event has somewhere to source the diff. Skipped when no
+	// hook is wired. A missing row returns pgx.ErrNoRows which we let
+	// fall through to the delete's "0 rows affected" branch below.
+	var snapName, snapType string
+	var snapValue any
+	if s.ruleHook != nil {
+		var sv, nv, tv, dv *string
+		if err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectFieldValueByValueRowID,
+			fvID, artefactID,
+		).Scan(&snapName, &snapType, &sv, &nv, &tv, &dv); err == nil {
+			snapValue = pickFieldValue(snapType, sv, nv, tv, dv)
+		}
+	}
+
 	ct, err := s.vectorArtefactsPool.Exec(ctx, sqlDeleteFieldValue,
 		fvID, artefactID,
 	)
@@ -1349,7 +1451,171 @@ func (s *Service) DeleteFieldValue(ctx context.Context, subscriptionID uuid.UUID
 	if ct.RowsAffected() == 0 {
 		return ErrFieldNotFound
 	}
+
+	if s.ruleHook != nil && snapName != "" {
+		s.fireRuleHookForFields(ctx, artefactID, uuid.Nil, map[string]rules.FieldChange{
+			snapName: {Before: snapValue, After: nil},
+		})
+	}
 	return nil
+}
+
+// fireRuleHookForFields publishes a custom-field-write event. Differs
+// from fireRuleHook in that it accepts a pre-built diff map (the caller
+// has type-aware knowledge that we don't want to duplicate here) and
+// looks up the workspace + artefact-type-name envelope the same way.
+// Best-effort: any lookup failure silently skips. The hook nil-guard
+// is the caller's responsibility (cheap branch on the hot path).
+//
+// Skips fire when the diff is empty OR when every entry has Before==After
+// (no-op writes shouldn't produce notifications — matches the contract
+// PatchWorkItem already honours).
+func (s *Service) fireRuleHookForFields(ctx context.Context, artefactID, authorUserID uuid.UUID, fields map[string]rules.FieldChange) {
+	if len(fields) == 0 {
+		return
+	}
+	changed := false
+	for _, c := range fields {
+		if !fieldChangeIsNoop(c) {
+			changed = true
+			break
+		}
+	}
+	if !changed {
+		return
+	}
+	var workspaceID uuid.UUID
+	var typeName string
+	var subID uuid.UUID
+	if err := s.vectorArtefactsPool.QueryRow(ctx, sqlArtefactWorkspaceAndTypeName, artefactID).
+		Scan(&workspaceID, &typeName); err != nil {
+		return
+	}
+	// Recover subscription_id from the artefact row itself — the
+	// custom-field path doesn't carry a *WorkItem snapshot so we can't
+	// pull it from there. One extra query is acceptable on the cold
+	// custom-field write path.
+	if err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectArtefactSubscriptionID, artefactID).
+		Scan(&subID); err != nil {
+		return
+	}
+	s.ruleHook.OnArtefactChanged(ctx, rules.ArtefactChangedEvent{
+		SubscriptionID: subID,
+		WorkspaceID:    workspaceID,
+		ArtefactID:     artefactID,
+		ArtefactType:   typeName,
+		AuthorUserID:   authorUserID,
+		Fields:         fields,
+	})
+}
+
+// loadFieldValue reads the current value of a (artefact, field_library)
+// pair, returning the typed value (string / float64 / time-as-string /
+// nil for never-written). Best-effort: any error returns nil.
+func (s *Service) loadFieldValue(ctx context.Context, artefactID, fieldID uuid.UUID, fieldType string) any {
+	var sv, nv, tv, dv *string
+	if err := s.vectorArtefactsPool.QueryRow(ctx, sqlSelectFieldValueByArtefactAndField,
+		artefactID, fieldID,
+	).Scan(&sv, &nv, &tv, &dv); err != nil {
+		return nil
+	}
+	return pickFieldValue(fieldType, sv, nv, tv, dv)
+}
+
+// pickFieldValue selects the live value column for a field-type and
+// coerces it for the evaluator. Numeric fields parse to float64 so
+// `>` / `<` / `>=` / `<=` against rule values work without further
+// coercion in the matcher. Date values stay as strings (the matcher
+// falls through to fmt.Sprint for them today). Returns nil when the
+// matching column is unset — equivalent to "field never written".
+func pickFieldValue(fieldType string, sv, nv, tv, dv *string) any {
+	switch fieldType {
+	case "integer", "decimal":
+		if nv != nil && *nv != "" {
+			var f float64
+			if _, err := fmt.Sscanf(*nv, "%g", &f); err == nil {
+				return f
+			}
+		}
+		return nil
+	case "date":
+		if dv != nil && *dv != "" {
+			return *dv
+		}
+		return nil
+	case "textbox":
+		// Convention (matches WorkItemDetailPanel + sqlListFieldValuesForArtefact):
+		// short strings live in string_value. Only richtext uses text_value.
+		if sv != nil {
+			return *sv
+		}
+		return nil
+	case "richtext":
+		if tv != nil {
+			return *tv
+		}
+		return nil
+	case "boolean":
+		// Booleans are stored as the literal strings "true"/"false" in
+		// string_value (consistent with the existing UpsertFieldValue
+		// wire shape). Coerce so the matcher's bool branch fires.
+		if sv != nil {
+			switch *sv {
+			case "true":
+				return true
+			case "false":
+				return false
+			}
+		}
+		return nil
+	case "multiselect":
+		// Stored as a JSON-encoded array in string_value (e.g.
+		// `["urgent","ux"]`). Parse to []any so the evaluator's
+		// containsValue branch fires for `labels contains urgent`.
+		// Malformed JSON falls back to the raw string — the matcher
+		// can still do a substring contains, which is the safe choice
+		// (better than silently dropping the value).
+		if sv == nil || *sv == "" {
+			return nil
+		}
+		var arr []any
+		if err := json.Unmarshal([]byte(*sv), &arr); err == nil {
+			return arr
+		}
+		return *sv
+	default:
+		// select / user / url / radio — string_value carries the
+		// wire form (UUID or slug).
+		if sv != nil {
+			return *sv
+		}
+		return nil
+	}
+}
+
+// fieldChangeIsNoop reports whether a FieldChange represents an
+// actual change. sameValue() lives in the rules package and isn't
+// exported, so we duplicate the minimal nil-aware equality check
+// here. Keeps the no-op suppression in the producer (where it
+// belongs — the evaluator's job is to match, not to filter noise).
+func fieldChangeIsNoop(c rules.FieldChange) bool {
+	if c.Before == nil && c.After == nil {
+		return true
+	}
+	if c.Before == nil || c.After == nil {
+		return false
+	}
+	if bf, ok := c.Before.(float64); ok {
+		if af, ok := c.After.(float64); ok {
+			return bf == af
+		}
+	}
+	if bb, ok := c.Before.(bool); ok {
+		if ab, ok := c.After.(bool); ok {
+			return bb == ab
+		}
+	}
+	return fmt.Sprint(c.Before) == fmt.Sprint(c.After)
 }
 
 // decorateOwners fetches display names for all unique owner UUIDs in items

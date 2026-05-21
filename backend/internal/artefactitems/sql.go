@@ -636,6 +636,61 @@ const sqlSelectFieldLibraryType = `
 		SELECT field_type FROM artefacts_fields_library WHERE id = $1 AND subscription_id = $2
 	`
 
+// sqlSelectFieldLibraryNameAndType returns the field's stable wire name
+// (used as the diff key in ArtefactChangedEvent.Fields) alongside its
+// type (used to pick the correct value column from the four nullable
+// columns in artefacts_fields_values). The rules schema endpoint
+// surfaces the same column to the UI, so a rule condition stored
+// against this key matches the matcher's lookup.
+//
+// NOTE: column is `field_name` in the live schema (migration 006). The
+// sibling sqlListFieldValuesForArtefact selects `fl.name` which would
+// fail at runtime against the same DB — pre-existing latent bug logged
+// separately; do not align without auditing all callers of that query.
+const sqlSelectFieldLibraryNameAndType = `
+		SELECT field_name, field_type FROM artefacts_fields_library WHERE id = $1 AND subscription_id = $2
+	`
+
+// sqlSelectFieldValueByArtefactAndField loads the current row for a
+// (artefact, field_library) pair so the producer can snapshot the
+// before-value ahead of an upsert. Returns ErrNoRows when the field has
+// never been written for this artefact — caller treats that as Before=nil.
+const sqlSelectFieldValueByArtefactAndField = `
+		SELECT artefacts_fields_values_string_value,
+		       artefacts_fields_values_number_value::text,
+		       artefacts_fields_values_text_value,
+		       artefacts_fields_values_date_value::text
+		  FROM artefacts_fields_values
+		 WHERE artefacts_fields_values_id_artefact = $1
+		   AND artefacts_fields_values_id_field_library = $2
+	`
+
+// sqlSelectArtefactSubscriptionID recovers an artefact's owning
+// subscription. Used by the custom-field rule-hook path where the
+// service doesn't carry a *WorkItem snapshot — Patch/Create already
+// have the subscription_id in hand, but UpsertFieldValue / DeleteFieldValue
+// don't, and the rules envelope needs it.
+const sqlSelectArtefactSubscriptionID = `
+		SELECT subscription_id FROM artefacts WHERE id = $1
+	`
+
+// sqlSelectFieldValueByValueRowID is the symmetric lookup for the
+// DELETE path — the handler hands us a value-row id (the PK of the
+// row in artefacts_fields_values), not a field_library id, so we
+// join through to the library row to recover the field name + type
+// and the soon-to-be-deleted value. One round-trip.
+const sqlSelectFieldValueByValueRowID = `
+		SELECT fl.field_name, fl.field_type,
+		       fv.artefacts_fields_values_string_value,
+		       fv.artefacts_fields_values_number_value::text,
+		       fv.artefacts_fields_values_text_value,
+		       fv.artefacts_fields_values_date_value::text
+		  FROM artefacts_fields_values fv
+		  JOIN artefacts_fields_library fl ON fl.id = fv.artefacts_fields_values_id_field_library
+		 WHERE fv.artefacts_fields_values_id = $1
+		   AND fv.artefacts_fields_values_id_artefact = $2
+	`
+
 const sqlUpsertFieldValue = `
 		INSERT INTO artefacts_fields_values (
 			artefacts_fields_values_id_artefact,
