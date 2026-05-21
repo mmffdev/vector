@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/notifications/rules"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
@@ -19,6 +18,12 @@ import (
 // declared here as an interface so artefactitems does not import
 // orgdesign (which would create a cycle once orgdesign starts reading
 // artefacts). Wired by main.go after both services exist.
+//
+// ERROR CONTRACT: implementations MUST return one of artefactitems'
+// sentinels (ErrScopeNodeNotFound, ErrScopeForbidden, ErrNotFound) so
+// the service can switch on errors.Is without sniffing error strings.
+// main.go adapts the underlying topology service to this contract at
+// the wiring seam (see topologyResolverAdapter in main.go).
 type TopologyScopeResolver interface {
 	CanReadScope(ctx context.Context, subscriptionID, userID, targetNodeID uuid.UUID, actorRoleID uuid.UUID) (bool, error)
 	DescendantNodeIDs(ctx context.Context, subscriptionID, rootNodeID uuid.UUID) ([]uuid.UUID, error)
@@ -124,7 +129,11 @@ func diffWorkItem(before, after *WorkItem) map[string]rules.FieldChange {
 		add("owner_id", nil, after.OwnerID)
 		add("due_date", nil, valOrNil(after.DueDate))
 		add("colour", nil, valOrNil(after.Colour))
-		add("is_blocked", nil, after.IsBlocked)
+		// Field name matches the field-library row (subscription's
+		// `blocked` boolean) not the WorkItem Go-struct name. The
+		// schema endpoint surfaces "blocked", so rule conditions
+		// store "blocked" — the diff must use the same key.
+		add("blocked", nil, after.IsBlocked)
 		add("blocked_reason", nil, valOrNil(after.BlockedReason))
 		add("milestone_id", nil, valOrNil(after.MilestoneID))
 		add("release_id", nil, valOrNil(after.ReleaseID))
@@ -141,7 +150,9 @@ func diffWorkItem(before, after *WorkItem) map[string]rules.FieldChange {
 	add("owner_id", before.OwnerID, after.OwnerID)
 	add("due_date", valOrNil(before.DueDate), valOrNil(after.DueDate))
 	add("colour", valOrNil(before.Colour), valOrNil(after.Colour))
-	add("is_blocked", before.IsBlocked, after.IsBlocked)
+	// See note in the Create branch — field name follows the field
+	// library ("blocked"), not WorkItem.IsBlocked.
+	add("blocked", before.IsBlocked, after.IsBlocked)
 	add("blocked_reason", valOrNil(before.BlockedReason), valOrNil(after.BlockedReason))
 	add("milestone_id", valOrNil(before.MilestoneID), valOrNil(after.MilestoneID))
 	add("release_id", valOrNil(before.ReleaseID), valOrNil(after.ReleaseID))
@@ -207,12 +218,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		}
 		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, filters.ActorRoleID)
 		if permErr != nil {
-			if errors.Is(permErr, ErrNotFound) {
-				return nil, 0, ErrScopeNodeNotFound
-			}
-			// orgdesign returns its own ErrNodeNotFound; translate via string match
-			// to avoid importing orgdesign here (cycle risk).
-			if strings.Contains(permErr.Error(), "node not found") {
+			if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
 				return nil, 0, ErrScopeNodeNotFound
 			}
 			return nil, 0, permErr
@@ -354,7 +360,7 @@ func (s *Service) getWorkItemImpl(ctx context.Context, subscriptionID, id uuid.U
 		)
 	}
 	wi, err := scanWorkItemRow(row)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
@@ -450,10 +456,7 @@ func (s *Service) SummariseWorkItems(
 		}
 		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, actorRoleID)
 		if permErr != nil {
-			if errors.Is(permErr, ErrNotFound) {
-				return out, ErrScopeNodeNotFound
-			}
-			if strings.Contains(permErr.Error(), "node not found") {
+			if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
 				return out, ErrScopeNodeNotFound
 			}
 			return out, permErr
@@ -725,10 +728,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		}
 		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, in.ActorRoleID)
 		if permErr != nil {
-			if errors.Is(permErr, ErrNotFound) {
-				return nil, ErrScopeNodeNotFound
-			}
-			if strings.Contains(permErr.Error(), "node not found") {
+			if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
 				return nil, ErrScopeNodeNotFound
 			}
 			return nil, permErr
@@ -790,13 +790,11 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 	}
 
 	// Notification-rules hook — Create has no before-state; pass nil
-	// so `changed_to <value>` rules still fire (nil → new value).
+	// so `changed_to <value>` rules still fire (nil → new value). The
+	// caller is the just-parsed createdBy (handler reads it from the
+	// auth-context at the transport boundary).
 	if s.ruleHook != nil {
-		var authorID uuid.UUID
-		if u := auth.UserFromCtx(ctx); u != nil {
-			authorID = u.ID
-		}
-		s.fireRuleHook(ctx, nil, item, authorID)
+		s.fireRuleHook(ctx, nil, item, createdBy)
 	}
 	return item, nil
 }
@@ -1088,13 +1086,11 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	}
 
 	// Notification-rules hook — fires once after the write commits.
-	// Best-effort: nil hook skips, all errors are absorbed.
+	// Best-effort: nil hook skips, all errors are absorbed. AuthorUserID
+	// comes from the handler (auth-context read happens at the transport
+	// boundary, not in the domain service).
 	if s.ruleHook != nil {
-		var authorID uuid.UUID
-		if u := auth.UserFromCtx(ctx); u != nil {
-			authorID = u.ID
-		}
-		s.fireRuleHook(ctx, beforeSnapshot, item, authorID)
+		s.fireRuleHook(ctx, beforeSnapshot, item, in.AuthorUserID)
 	}
 	return item, nil
 }

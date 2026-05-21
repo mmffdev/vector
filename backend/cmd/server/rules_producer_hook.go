@@ -55,6 +55,14 @@ func (h *rulesProducerHook) OnArtefactChanged(ctx context.Context, ev rules.Arte
 			// ErrAdminScopeUnwired); defensive skip.
 			continue
 		}
+		// Skip self-notifications. If the rule's owner is the author
+		// of the change, don't notify them about their own edit —
+		// matches Slack / Linear / Jira default behaviour. Override
+		// could be a future per-rule "notify me about my own changes"
+		// toggle.
+		if *r.UserID == ev.AuthorUserID {
+			continue
+		}
 		event := notifications.Event{
 			Kind:            notifications.Kind(string(r.Type)), // "artefact"
 			SubscriptionID:  ev.SubscriptionID,
