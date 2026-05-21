@@ -37,7 +37,7 @@ Each sub-agent owns one bucket. They run in a single message with 4 `Agent` tool
 | **infra-docs-tooling** | `docs/`, `.claude/`, `dev/` (excluding `dev/styles/` and `dev/pages/` already in frontend), `bin/`, `scripts/`, top-level `*.md`, top-level config (`Makefile`, `package.json`, `tsconfig.json`, `next.config.*`, etc.) |
 | **assets-other** | `MMFFDev - Vector Assets/`, `local-assets/` (excluding `local-assets/backups/*.sql` — too big, never relevant), and any top-level path not claimed by the other three |
 
-**Hard excludes everywhere:** `node_modules/`, `.git/`, `.next/`, `dist/`, `build/`, `.turbo/`, `*.lock`, binary files (skip via `rg` defaults).
+**Hard excludes everywhere:** `node_modules/`, `.git/`, `.next/`, `dist/`, `build/`, `.turbo/`, `*.lock`, `reference/repos/` (vendored third-party SDK source — grep there explicitly via `<source-code-context>` when needed), binary files (skip via `rg` defaults).
 
 ---
 
@@ -64,7 +64,7 @@ Each sub-agent gets a self-contained prompt that includes:
 > ```
 > rg {CASE_FLAG} --line-number --with-filename --max-columns=200 -- {TERM_ESCAPED} {ROOT1} {ROOT2} ...
 > ```
-> Also explicitly exclude: `node_modules`, `.git`, `.next`, `dist`, `build`, `.turbo`, `*.lock`, `local-assets/backups/*.sql`.
+> Also explicitly exclude: `node_modules`, `.git`, `.next`, `dist`, `build`, `.turbo`, `*.lock`, `local-assets/backups/*.sql`, `reference/repos/`.
 >
 > Return ONLY a markdown list, one line per hit:
 > ```

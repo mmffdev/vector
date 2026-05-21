@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-05-20 01:02:12
+**Generated:** 2026-05-21 01:35:35
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -51,7 +51,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components
-79 file(s) · key: ScopeGroupPanel.tsx, ResourceTree.tsx, SecondaryNavigation.tsx
+85 file(s) · key: work-items-tree-config.tsx, ResourceTree.tsx, FlowStatePillRow.tsx
+Purpose: _(unset)_
+
+### app/components/ArtefactInlineForm
+6 file(s) · key: types.ts, ArtefactInlineForm.tsx, useArtefactInline.ts
 Purpose: _(unset)_
 
 ### app/components/MapRelationship3D
@@ -59,7 +63,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/ObjectTree
-3 file(s) · key: index.tsx, p_ObjectTree.tsx, p_ObjectTreeRegistry.tsx
+3 file(s) · key: p_ObjectTree.tsx, index.tsx, p_ObjectTreeRegistry.tsx
+Purpose: _(unset)_
+
+### app/components/RichTextField
+3 file(s) · key: RichTextField.tsx, RichTextToolbar.tsx, index.tsx
 Purpose: _(unset)_
 
 ### app/components/WorkItemRelations
@@ -87,7 +95,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/hooks
-24 file(s) · key: useTopologyRelationsPayload.ts, useThemePack.ts, useStepUpAction.ts
+25 file(s) · key: useResourceRank.ts, useNotificationsStream.ts, useTopologyRelationsPayload.ts
 Purpose: _(unset)_
 
 ### app/hooks/__tests__
@@ -95,7 +103,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/lib
-26 file(s) · key: api.ts, wizardLoader.ts, reportError.ts
+26 file(s) · key: fieldsApi.ts, api.ts, wizardLoader.ts
 Purpose: _(unset)_
 
 ### app/lib/__tests__
@@ -123,7 +131,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/redesign/components
-8 file(s) · key: AccountFlyout.tsx, RedesignTopBar.tsx, nav_primary_rail_1.tsx
+8 file(s) · key: nav_primary_rail_1.tsx, AccountFlyout.tsx, RedesignTopBar.tsx
 Purpose: _(unset)_
 
 ### app/store/shared
@@ -177,6 +185,8 @@ Purpose: _(unset)_
 - app/(user)/workspace-admin/artefacts/flow-states-v2
 - app/(user)/workspace-admin/artefacts/transition-rules
 - app/(user)/workspace-admin/cost-centres
+- app/(user)/workspace-admin/custom-fields
+- app/(user)/workspace-admin/custom-fields/[id]
 - app/(user)/workspace-admin/flow-states
 - app/(user)/workspace-admin/flow-states-v2
 - app/(user)/workspace-admin/portfolio-model
@@ -290,7 +300,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-11 file(s) · key: service.go, sql.go, types.go
+13 file(s) · key: service_test.go, recalc.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
@@ -342,7 +352,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/fields
-6 file(s) · key: handler_test.go, service.go, sql.go
+7 file(s) · key: handler.go, service.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/flows
@@ -369,12 +379,36 @@ Purpose: _(unset)_
 2 file(s) · key: middleware.go, logger.go
 Purpose: _(unset)_
 
+### backend/internal/lookups
+4 file(s) · key: handler.go, service.go, sql.go
+Purpose: _(unset)_
+
+### backend/internal/mentions
+5 file(s) · key: service.go, dto.go, handler.go
+Purpose: _(unset)_
+
 ### backend/internal/messaging/email
 7 file(s) · key: types.go, transport.go, templates.go
 Purpose: _(unset)_
 
 ### backend/internal/nav
 10 file(s) · key: service_test.go, handler.go, sql.go
+Purpose: _(unset)_
+
+### backend/internal/notifications
+10 file(s) · key: notifier.go, dto.go, handler.go
+Purpose: _(unset)_
+
+### backend/internal/notifications/broker
+3 file(s) · key: rabbit.go, noop.go, broker.go
+Purpose: _(unset)_
+
+### backend/internal/notifications/dispatchers
+3 file(s) · key: sse.go, email.go, inapp.go
+Purpose: _(unset)_
+
+### backend/internal/notifications/resolvers
+2 file(s) · key: sql.go, artefactitems.go
 Purpose: _(unset)_
 
 ### backend/internal/pageaccess
@@ -435,6 +469,10 @@ Purpose: _(unset)_
 
 ### backend/internal/tenantmasterrecord
 4 file(s) · key: service_test.go, sql.go, service.go
+Purpose: _(unset)_
+
+### backend/internal/timeboxmilestones
+4 file(s) · key: handler.go, service.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/timeboxreleases
@@ -522,11 +560,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/registries
-17 file(s) · key: page_description_exempt.json, api_caller_exempt.json, route_orphan_exempt.json
+17 file(s) · key: public_transport_packages.json, page_description_exempt.json, api_caller_exempt.json
 Purpose: _(unset)_
 
 ### dev/reports
-584 file(s) · key: 20260519-234829-addressables.json, 20260519-234233-addressables.json, 20260519-233017-addr
+613 file(s) · key: 20260521-011653-addressables.json, 20260521-011408-addressables.json, 20260521-010955-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -555,11 +593,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/mmff_vector/schema
-226 file(s) · key: 228_collapse_min_auth_level_gate.sql, 227_drop_dead_custom_fields_page.sql, 226_dev_api_au
+230 file(s) · key: 231_restore_custom_fields_page.sql, 232_grant_custom_fields_grp_global.sql, 230_notificati
 Purpose: _(unset)_
 
 ### db/mmff_vector/schema/down
-37 file(s) · key: 228_collapse_min_auth_level_gate_DOWN.sql, 200_drop_broken_master_record_tenant_seed_trigg
+40 file(s) · key: 231_restore_custom_fields_page_DOWN.sql, 230_notifications_DOWN.sql, 229_users_mentions_DO
 Purpose: _(unset)_
 
 ### db/ops
@@ -575,11 +613,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-79 file(s) · key: 082_drop_subscription_prefix_unique.sql, 081_migrate_artefacts_priority_to_uuid.sql, 080_c
+87 file(s) · key: 090_grant_claude_padmin_insurance.sql, 089_grant_padmin_insurance.sql, 088_artefacts_descr
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-26 file(s) · key: 077_adopt_risk_into_existing_workspaces_DOWN.sql, 076_seed_risk_number_sequence_DOWN.sql, 
+34 file(s) · key: 090_grant_claude_padmin_insurance_DOWN.sql, 089_grant_padmin_insurance_DOWN.sql, 088_artef
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/seed
@@ -589,11 +627,11 @@ Purpose: _(unset)_
 ## Documentation indexes
 
 ### .
-9 file(s) · key: Vector_Scope.md, lessons.md, td_handover.md
+12 file(s) · key: objectTreeRefactor.md, Vector_Scope.md, handover_rmq.md
 Purpose: _(unset)_
 
 ### docs
-73 file(s) · key: c_tech_debt.md, c_c_roles_permissions.md, c_c_shadow_backend_exceptions.md
+74 file(s) · key: c_c_objecttree_refactor_plan.md, c_tech_debt.md, c_c_roles_permissions.md
 Purpose: _(unset)_
 
 ### docs/notes

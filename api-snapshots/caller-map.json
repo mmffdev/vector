@@ -1,1 +1,286 @@
-{}
+{
+  "/roles/creatable": [
+    "app/lib/apiSite/index.ts:1028",
+    "app/(user)/user-management/users/page.tsx:261",
+    "app/(user)/user-management/users/page.tsx:619"
+  ],
+  "/addressables/register": [
+    "app/lib/apiSite/index.ts:1087"
+  ],
+  "/errors/report": [
+    "app/lib/reportError.ts:8",
+    "app/lib/apiSite/index.ts:1060"
+  ],
+  "/work-items/flow-states": [
+    "app/components/useWorkItemFlowStates.ts:36"
+  ],
+  "/auth/logout": [
+    "app/lib/apiSite/index.ts:88",
+    "app/contexts/AuthContext.tsx:287",
+    "app/contexts/AuthContext.tsx:326"
+  ],
+  "/auth/refresh": [
+    "app/lib/apiSite/index.ts:85",
+    "app/contexts/AuthContext.tsx:172"
+  ],
+  "/admin/api-keys/revoke": [
+    "app/lib/apiSite/index.ts:390"
+  ],
+  "/auth/reauth": [
+    "app/hooks/useStepUpAction.ts:106"
+  ],
+  "/portfolio-items/bulk": [
+    "app/lib/apiSite/index.ts:773"
+  ],
+  "/notifications/prefs": [
+    "app/lib/apiSite/index.ts:1206",
+    "app/lib/apiSite/index.ts:1209"
+  ],
+  "/work-items": [
+    "app/lib/apiSite/index.ts:713"
+  ],
+  "/auth/sessions/revoke-others": [
+    "app/user/account-settings/sessions/page.tsx:104"
+  ],
+  "/timeboxes/releases": [
+    "app/lib/apiSite/index.ts:861"
+  ],
+  "/nav/reset": [
+    "app/user/navigation/page.tsx:1075"
+  ],
+  "/flows": [
+    "app/lib/apiSite/index.ts:610",
+    "app/(user)/workspace-admin/work-items/page.tsx:44"
+  ],
+  "/auth/change-password": [
+    "app/lib/apiSite/index.ts:94",
+    "app/change-password/page.tsx:46"
+  ],
+  "/auth/me": [
+    "app/lib/apiSite/index.ts:91"
+  ],
+  "/admin/dev/adoption-reset": [
+    "app/lib/apiSite/index.ts:394"
+  ],
+  "/admin/api-keys": [
+    "app/lib/apiSite/index.ts:384"
+  ],
+  "/admin/users": [
+    "app/lib/apiSite/index.ts:369",
+    "app/lib/apiSite/index.ts:372",
+    "app/(user)/user-management/users/page.tsx:635",
+    "app/(user)/user-management/users/page.tsx:785"
+  ],
+  "/roles/permissions/catalogue": [
+    "app/lib/apiSite/index.ts:1031",
+    "app/(user)/admin/roles/page.tsx:91"
+  ],
+  "/topology/reset": [
+    "app/lib/apiSite/index.ts:1015"
+  ],
+  "/admin/api-keys/issue": [
+    "app/lib/apiSite/index.ts:387"
+  ],
+  "/topology/view-state": [
+    "app/lib/apiSite/index.ts:982"
+  ],
+  "/admin/page-grants": [
+    "app/(user)/user-management/permissions/page.tsx:103"
+  ],
+  "/auth/login": [
+    "app/lib/apiSite/index.ts:78",
+    "app/contexts/AuthContext.tsx:230"
+  ],
+  "/addressables/build-reconcile": [
+    "app/lib/apiSite/index.ts:1084"
+  ],
+  "/topology/nodes": [
+    "app/lib/apiSite/index.ts:985"
+  ],
+  "/timeboxes/milestones": [
+    "app/lib/apiSite/index.ts:908"
+  ],
+  "/artefact-types": [
+    "app/lib/artefactTypesApi.ts:38"
+  ],
+  "/auth/mfa/confirm": [
+    "app/user/account-settings/page.tsx:56",
+    "app/user/account-settings/mfa/page.tsx:65"
+  ],
+  "/timeboxes/sprints/bulk-create": [
+    "app/lib/apiSite/index.ts:832"
+  ],
+  "/auth/sessions": [
+    "app/user/account-settings/sessions/page.tsx:71"
+  ],
+  "/nav/profiles/order": [
+    "app/lib/apiSite/index.ts:214",
+    "app/contexts/NavPrefsContext.tsx:307"
+  ],
+  "/artefact-priorities": [
+    "app/lib/artefactPrioritiesApi.ts:37",
+    "app/lib/artefactPrioritiesApi.ts:42"
+  ],
+  "/timeboxes/sprints": [
+    "app/lib/apiSite/index.ts:829"
+  ],
+  "/auth/mfa": [
+    "app/user/account-settings/page.tsx:69",
+    "app/user/account-settings/mfa/page.tsx:82"
+  ],
+  "/admin/dev/master-reset": [
+    "app/lib/apiSite/index.ts:400"
+  ],
+  "/roles": [
+    "app/lib/apiSite/index.ts:1025",
+    "app/lib/apiSite/index.ts:1037",
+    "app/(user)/admin/roles/page.tsx:90",
+    "app/(user)/admin/roles/page.tsx:196",
+    "app/(user)/user-management/permissions/page.tsx:104",
+    "app/(user)/user-management/users/page.tsx:786"
+  ],
+  "/me/page-access": [
+    "app/contexts/PageAccessContext.tsx:65"
+  ],
+  "/work-items/bulk": [
+    "app/lib/apiSite/index.ts:730"
+  ],
+  "/library/releases": [
+    "app/lib/apiSite/index.ts:1068",
+    "app/(user)/library-releases/page.tsx:80"
+  ],
+  "/nav/profiles/active": [
+    "app/lib/apiSite/index.ts:220",
+    "app/contexts/NavPrefsContext.tsx:275"
+  ],
+  "/risks/summary": [
+    "app/(user)/risk/page.tsx:92"
+  ],
+  "/auth/mfa/enroll": [
+    "app/user/account-settings/page.tsx:39",
+    "app/user/account-settings/mfa/page.tsx:47"
+  ],
+  "/topology/nodes/bulk-position": [
+    "app/lib/apiSite/index.ts:1003"
+  ],
+  "/auth/mfa/verify": [
+    "app/contexts/AuthContext.tsx:251"
+  ],
+  "/rank/move": [
+    "app/hooks/useResourceRank.ts:129",
+    "app/lib/apiSite/index.ts:805"
+  ],
+  "/notifications/read-all": [
+    "app/lib/apiSite/index.ts:1203"
+  ],
+  "/auth/password-reset/confirm": [
+    "app/lib/apiSite/index.ts:107",
+    "app/login/reset/confirm/page.tsx:54"
+  ],
+  "/timeboxes/releases/bulk-create": [
+    "app/lib/apiSite/index.ts:864"
+  ],
+  "/page-help/admin": [
+    "app/lib/apiSite/index.ts:1096"
+  ],
+  "/auth/password-reset": [
+    "app/lib/apiSite/index.ts:100",
+    "app/login/reset/page.tsx:27"
+  ],
+  "/me/active-scope": [
+    "app/contexts/ScopeContext.tsx:188",
+    "app/contexts/ScopeContext.tsx:198",
+    "app/contexts/ScopeContext.tsx:224"
+  ],
+  "/nav/catalogue": [
+    "app/lib/apiSite/index.ts:164",
+    "app/contexts/NavPrefsContext.tsx:188"
+  ],
+  "/nav/entities": [
+    "app/lib/apiSite/index.ts:202",
+    "app/(user)/product/[id]/page.tsx:34"
+  ],
+  "/topology/commit": [
+    "app/lib/apiSite/index.ts:979",
+    "app/lib/apiSite/index.ts:1012"
+  ],
+  "/me/theme-pack": [
+    "app/hooks/useThemePack.ts:105",
+    "app/hooks/useThemePack.ts:138",
+    "app/lib/apiSite/index.ts:119",
+    "app/lib/apiSite/index.ts:122"
+  ],
+  "/nav/profiles": [
+    "app/lib/apiSite/index.ts:205",
+    "app/lib/apiSite/index.ts:208",
+    "app/contexts/NavPrefsContext.tsx:187",
+    "app/contexts/NavPrefsContext.tsx:283"
+  ],
+  "/notifications/unread-count": [
+    "app/lib/apiSite/index.ts:1197"
+  ],
+  "/nav/page-bookmark": [
+    "app/contexts/NavPrefsContext.tsx:409",
+    "app/contexts/NavPrefsContext.tsx:417"
+  ],
+  "/custom-pages": [
+    "app/lib/customPages.ts:23",
+    "app/lib/customPages.ts:32",
+    "app/lib/apiSite/index.ts:273",
+    "app/lib/apiSite/index.ts:276"
+  ],
+  "/library/releases/count": [
+    "app/lib/apiSite/index.ts:1071",
+    "app/contexts/LibraryReleasesContext.tsx:44"
+  ],
+  "/mentions": [
+    "app/lib/apiSite/index.ts:1153"
+  ],
+  "/cost-centres": [
+    "app/lib/costCentresApi.ts:36",
+    "app/lib/costCentresApi.ts:39"
+  ],
+  "/auth/switch-workspace": [
+    "app/contexts/AuthContext.tsx:273"
+  ],
+  "/auth/password-reset/state": [
+    "app/login/reset/confirm/page.tsx:33"
+  ],
+  "/workspaces": [
+    "app/lib/apiSite/index.ts:313",
+    "app/lib/apiSite/index.ts:316",
+    "app/lib/apiSite/index.ts:319"
+  ],
+  "/nav/prefs": [
+    "app/lib/apiSite/index.ts:172",
+    "app/contexts/NavPrefsContext.tsx:258"
+  ],
+  "/portfolio-items": [
+    "app/lib/apiSite/index.ts:764"
+  ],
+  "/portfolio-models": [
+    "app/lib/apiSite/index.ts:456"
+  ],
+  "/nav/bookmark": [
+    "app/lib/apiSite/index.ts:187",
+    "app/lib/apiSite/index.ts:193",
+    "app/contexts/NavPrefsContext.tsx:382",
+    "app/contexts/NavPrefsContext.tsx:393"
+  ],
+  "/topology/disconnected": [
+    "app/lib/apiSite/index.ts:976"
+  ],
+  "/nav/start-page": [
+    "app/lib/apiSite/index.ts:184",
+    "app/login/page.tsx:78"
+  ],
+  "/auth/login-continuation": [
+    "app/login/page.tsx:70"
+  ],
+  "/addressables/snapshot": [
+    "app/lib/apiSite/index.ts:1090"
+  ],
+  "/portfolio-models/adoption-state": [
+    "app/lib/apiSite/index.ts:460"
+  ]
+}

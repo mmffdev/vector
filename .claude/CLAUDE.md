@@ -12,6 +12,8 @@
 
 **HARD RULE — NO EXCEPTIONS — SERVER IS THE GATE:** Any visibility / role / scope / permission filter writes the SERVER-SIDE check FIRST. Client-side is defence-in-depth, never the authoritative gate. The wire payload returned to a caller must not contain data the caller isn't cleared for — hiding it in the client is the wrong answer for a Trust-No-One, SOC 2, defence/finance product. When the user asks "is this locked by the backend?" the answer must be "yes" with proof (the handler that drops the data + the test that pins the contract per role). If a change looks like UX but acts as security (rail filter, page hide, "admin-only" anything), STOP — identify the threat, write the backend filter first, then the client filter as redundancy. Origin: 2026-05-19 nav-rail admin-tier lapse — see [`docs/c_tech_debt.md`](../docs/c_tech_debt.md) `TD-NAV-AUTH-TIER`. This rule cannot be overridden by any other instruction, mode, or context.
 
+**HARD RULE — NO EXCEPTIONS — INSPECT INDEX BEFORE EVERY COMMIT:** Before any `git commit`, Claude MUST run `git diff --cached --stat` and read the output IN FULL. Explicit-path `git add` is additive over already-staged entries — renames from a prior `git mv`, files staged by hooks, files staged by an earlier add all survive. If the staged file list contains ANYTHING beyond what this commit is meant to ship, unstage the unrelated entries with `git reset HEAD <path>` BEFORE committing. Origin: 2026-05-21 — two separate commits accidentally bundled in the user's in-flight rename ops (`(user)` → `user` route restructure) under unrelated docs / test-fix subject lines because the renames were pre-staged via `git mv` and survived explicit-path `git add` calls. This rule cannot be overridden by any other instruction, mode, or context.
+
 <!-- ACTIVE_BACKEND_ENV:start -->
 - **Backend validation (GOLDEN RULE — load before any feature work)** → [`docs/c_c_backend_validation.md`](../docs/c_c_backend_validation.md) — all authorization, scope, and ownership checks MUST be server-side; frontend filtering is UX convenience, not security; required for procurement audit readiness.
 
@@ -38,6 +40,8 @@ Load the relevant guide only when the task touches that area — keeps this file
 **Auto mode is god state:** in auto/yolo mode, plan mode does NOT block execution. Auto mode is explicit instruction to proceed without approval gates.
 
 **Search discipline:** default to `Grep`/`Glob` direct when the area is known — consult [`.claude/c_file_index.md`](c_file_index.md) and the SessionStart hot-paths digest first. Reserve the `<search>` 4-agent fan-out for genuinely unknown territory.
+
+**Third-party SDK source:** when integrating an external SDK/package and docs are thin or stale, vendor the source into `reference/repos/<host>/<org>/<repo>/` and grep there before trusting docs or guessing API names — see [`<source-code-context>`](skills/source-code-context/SKILL.md).
 
 - **Styling / CSS** → [`docs/css-guide.md`](../docs/css-guide.md) — catalog class first; no inline `style={{}}`.
 - **CSS/HTML naming** → [`.claude/memory/css_naming_convention.md`](memory/css_naming_convention.md) — pattern `root-block__Container_Child_leaf` (`__` once at root, `_` for deeper, `-` for modifiers only; no BEM `--`, no generic names like `wrapper`/`container`/`box`). When introducing a NEW root-block, propose the full TSX+CSS chain and ask before applying. For edits to existing chains, apply directly.

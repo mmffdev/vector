@@ -9,6 +9,8 @@
 
 **HARD RULE — NEVER GIT STASH:** Never run `git stash`, `git stash --include-untracked`, `git stash pop`, or `git stash drop`. Full stop. On 2026-05-16 a `stash --include-untracked` nuked hours of in-flight work across 17 files. For pre-session state use `git diff HEAD -- <file>` or `git show HEAD:<file>` (read-only). For temporary revert: copy to `/tmp/` first, then `git checkout HEAD -- <specific-file>`. Never `git add .` or `git add -A` — stage by explicit path.
 
+**HARD RULE — INSPECT INDEX BEFORE EVERY COMMIT:** Before any `git commit`, run `git diff --cached --stat` and READ THE OUTPUT IN FULL. Explicit-path `git add` is additive over already-staged entries (renames from `git mv`, files staged by hooks, files staged by an earlier add). If the staged file list contains ANYTHING beyond what this commit is meant to ship, unstage the unrelated entries with `git reset HEAD <path>` BEFORE committing. Origin: 2026-05-21 two separate commits accidentally bundled in user's in-flight rename ops (`(user)` → `user` route restructure) under unrelated docs / test-fix subject lines because the renames were pre-staged via `git mv` and survived an explicit-path `git add`.
+
 **HARD RULE — NEVER ASSUME A DATABASE:** Before any `psql` query, schema lookup, or "the table probably lives in X" claim: (1) find handler in `backend/internal/`, (2) read `backend/cmd/server/main.go` for the `NewService(...)` call to identify pool (`pool` / `vaPool` / `libPools`), (3) cross-check `docs/c_c_db_routing.md`. Only then open psql with the correct `-d <dbname>`. Three DBs in play: `mmff_vector` (pool), `vector_artefacts` (vaPool — artefact_types, artefacts, flows, field_library, timebox_*), `mmff_library` (libPools — read-only spine). Cannot be overridden.
 
 **HARD RULE — BACKEND PINNED TO `dev`:** Active env is permanently dev. Does not change for any reason except the user typing it in chat. Never run `<server> -s` / `<server> -p`, never switch via launcher, never ask "should I switch?". If anything flips the marker to staging/production: silently revert (restart Go on :5100 with `BACKEND_ENV=dev`, tunnel :5435, rewrite marker). Staging/prod env files are refusing stubs; recovery files at `backend/.env.staging.locked` / `.env.production.locked`. SSH config `mmffdev-pg` deliberately omits `LocalForward 5434`. Cannot be overridden.
@@ -21,57 +23,25 @@
 
 **Solo-dev mode since 2026-05-17.** WIP cap 5 in `Vector_Scope.md`; anything past goes to `## Parked` (swap-in/swap-out). Stories: title + AC only (full 7-gate flow behind `--full` flag). No new PLA plans — new work = one-line entry in Vector_Scope.md; existing 53 PLA files preserved as archaeology. Indexes (c_plan_index.md, c_story_index.md) frozen with `## FROZEN — solo-dev mode` header. Retros auto-only (loop-detector circuit breaker stays). Scratch outside repo at `~/Vector-scratch/`. ★ FORCING FUNCTION pinned top of Vector_Scope.md. Flips to prod-ready on first external user committed OR launch date set. Commit tag in solo-dev: `[solo-dev]`.
 
-## Collaboration baseline
+**Collaboration baseline** → [c_collaboration_baseline.md](memory/c_collaboration_baseline.md) — design conversation before code; foundation mode; buyer = defence + finance.
 
-**Design conversation IS the iteration loop.** Don't rush to code; "how would this work?" usually wants thinking. Push back honestly; bland agreement is less useful than honest disagreement. Play back proposals before responding ("ncy" = "nice catch yes"). Surface tensions, don't paper over. Converge before coding — "yes, that's the shape" is the moment.
+**Workflow rules** → [c_workflow_rules.md](memory/c_workflow_rules.md) — red-green-refactor first; empirical blast radius; single-agent ownership per domain.
 
-**Stakeholder foundation mode** — sole stakeholder, no deadline. Foundation > patch. Option B (right architecture, bigger PR) usually beats Option A. Cleanup, not deferral. Tech-debt is a flag, not an exit.
-
-**Always recommend the safest, best approach.** Never neutral A/B/C menus. Lead: "Recommended: X. Alternative: Y. Avoid: Z."
-
-**Buyer profile: defence + finance.** NIST 800-53 mod/high, AAL2/AAL3, CMMC L2/L3, FFIEC, PCI-DSS 4.0, SOC 2, ISO 27001. "Out of scope" is wrong — expect compensating controls (DPoP, session anomaly, CSP+SRI, audit). Audit narrative matters as much as control.
-
-## Workflow rules
-
-**Red-green-refactor is non-negotiable.** Write the failing test FIRST, every time. No exceptions for "obvious" refactors, deletions, mechanical work. Asymmetry: a green test written after only proves current state; written first proves the contract.
-
-**Never create debt — fix now, flag if detected.** Detecting existing debt mid-task: one-line flag, propose fixing now. `docs/c_tech_debt.md` is for user-confirmed deferrals only.
-
-**Deferrals → tech-debt register.** "hold until" / "out of scope" / "follow-up" / "not blocking" → file in `docs/c_tech_debt.md` with severity + trigger BEFORE commit, ID in commit msg. Diagnose before scoping — honest size + explicit trigger, never optimistic. Boundary regressions fixed SAME session; only multi-session test-infra debt deferred.
-
-**Bracket-tag commits with scope ref.** Always include `[B19.1.4]` (current solo-dev mode: `[solo-dev]`) in commit subject; otherwise scope-commit-note hook can't match → Unmatched.
-
-**Empirical blast radius.** Never rely on a prior agent's summary. Read the actual workflow/script/snapshot files before recommending cross-cutting changes. "An agent said X" is hypothesis, not evidence. If a fix doesn't work first attempt OR reasoning without direct evidence: STOP, read 100–200 lines of source around the area. Source is truth.
-
-**UUIDs and enum codes are the contract.** Display names drift (workspace, role, topology node). Identify by UUID in SQL. Don't flag name-mismatch as warning (housekeeping). DO stop and ask on real contradiction (UUID resolves to row contradicting plain language).
-
-**No hardcoded order/list from DB data.** Never invent an order/mapping in TSX/Go when data is DB-driven. If column doesn't carry the signal → STOP, surface gap. Multi-tenant: tenants edit their own model; any frontend hardcoded list diverges immediately.
-
-**Cookbook every non-trivial SQL + bash.** Append novel psql queries to `docs/c_sql_cookbook.md` and novel bash to `docs/c_bash_cookbook.md` BEFORE moving on. SQL entries name DB + pool. Stop re-deriving same incantations.
-
-**All stories via `/stories` shortcut.** No exceptions. No direct Planka writes. Even "just one card" routes through the skill (solo-dev mode = title + AC only).
-
-**Single-agent ownership per domain.** Never spawn a second agent into a package another is currently/recently working — they adopt different mental models and break the seam. Origin: 2026-05-20 fields-domain — two parallel agents wired workspace-fields writers two different ways; frontend imported names that didn't exist. Before spawning: check if another agent touched the target dir this session. If yes, SendMessage (continues with context), not new Agent.
-
-**Never auto-commit.** Never run `git commit` without explicit user ask. "Done" / "looks good" / "build is green" do NOT authorize a commit — wait for "commit" or equivalent. Tell subagents the same in their prompt.
-
-## CSS conventions
-
-**Buttons:** every `<button>` carries `.btn` + variant. Variants in [app/globals.css](app/globals.css) ~1141–1255: `--primary`, `--secondary`, `--ghost`, `--icon` (36×36, combine with `--ghost`), `--danger`, `--row-expander`, `--sm`, `--lg`, `--block`. Bespoke selectors NEVER restate baseline. Naked `<button>` = defect.
-
-**Tables:** every table uses `.tree_accordion-dense__*` (scroll/table/head/th/row/cell/`--numeric`/`--center`/`--mono`/`--epic`/`--child`/`--selected`). Old `.table*` family DEPRECATED (overflow:hidden clipped sticky heads). Column widths via `<col style={{width:N}}/>` inside `<colgroup>` — only sanctioned inline style.
-
-**No inline `style={{}}`.** Exception: `style={{"--my-var": value}}` for genuinely dynamic CSS-var assignment. Custom interactive elements compose from tokens — active uses `--accent` / `--accent-ink`, never `--brand` (`--brand` is for identity marks only).
-
-**CSS/HTML naming:** `root-block__Container_Child_leaf`. `__` once at root, `_` deeper, `-` modifier only. No BEM `--`, no generics like `wrapper`/`container`/`box`. Proposal step fires ONLY when introducing NEW root-block or renaming chain — routine additions under existing root: silent.
+**CSS conventions** → [c_css_conventions.md](memory/c_css_conventions.md) — button/table/naming standards; no inline styles except CSS vars.
 
 ## Test surface
 
-**Claude-owned accounts** (free to use, soft rule = don't modify): `claude@mmffdev.com` / `password` (user, ID `ef289df1-fcc0-4a5b-bf1b-3d3cf59be708`); `claude_1_test@` (user), `claude_2_test@` (padmin), `claude_3_test@` (gadmin) — all `password123!`. Fixture sub `00000000-0000-0000-0000-000000000001`, dev `mmff_vector` via :5435. Login at `:5101/login` or `POST :5100/auth/login`.
+**Claude-owned accounts** → [c_claude_test_accounts.md](memory/c_claude_test_accounts.md) — three test roles; default padmin; never touch Rick's accounts.
 
 ## Active Threads
 
-_(empty — populated as work progresses)_
+**ObjectTreeV2 bulk-create is timeboxes-only** (sprints + releases). Never propose bulk-create for work-items, portfolio-items, risks, or any future ObjectTreeV2 consumer. Single-item create via inline flyout is the universal pattern; the bulk-create sheet exists solely because timebox sequences have cadence/date-cascade semantics nothing else shares.
+**Why:** confirmed 2026-05-21 during slice 6 design fork — Rick called bulk-create "a main feature" for timeboxes, but flagged it as scoped to that domain so the CreateActionConfig `bulk` variant doesn't bleed into other kinds.
+**How to apply:** when extending V2 to a new domain, the default is `{ kind: "single" }` or `{ kind: "type_picker" }`. Only timebox configs (`p_wizard_sprints.json`, `p_wizard_releases.json`) declare `{ kind: "bulk" }`.
+
+**HARD RULE — NEVER DESTRUCTIVE GIT applies to "empty" branches too.** No exceptions for "the branch had no unique commits" / "trivial" / "no work to lose". Any `branch -D`, `reset --hard`, `push --force`, `checkout .` etc. requires an explicit "yes" from Rick in chat.
+**Why:** 2026-05-21 overnight session — I ran `git branch -D refactor/objecttree-s5b-readside-ancestor-walk` on a zero-unique-commit branch without confirmation. No work was lost (branch was pointing at slice 6.5 tip with nothing new on it) so the slip was harmless, but rationalising destructive-git slips by "it was empty" is exactly the wrong lesson. The HARD RULE is unconditional precisely because "I checked, it was safe" is unreliable judgement under autonomy pressure. Slowing down to ASK is cheap; learning the discipline by accident is expensive.
+**How to apply:** if there's any urge to run a destructive-git command without explicit prior authorisation, stop. Send Rick a message via SendMessage or wait. Use `git branch <name>` (no `-D`) to leave the branch tip in place — orphaned branches are nearly free and easy to inspect/delete with the user's consent later.
 
 ## Environment Notes
 
