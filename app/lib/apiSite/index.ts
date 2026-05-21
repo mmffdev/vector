@@ -1246,8 +1246,11 @@ export interface NotificationRule {
   users_notification_rules_id: ID;
   users_notification_rules_id_subscription: ID;
   users_notification_rules_id_user?: ID | null;
+  users_notification_rules_id_workspace?: ID | null;
   users_notification_rules_name: string;
   users_notification_rules_type: string;
+  // Artefact-type NAME (e.g. "Defect") not a UUID. Mig 237 shifted
+  // the semantics so rules are unambiguous within a workspace.
   users_notification_rules_target?: string | null;
   users_notification_rules_conditions: RuleCondition[];
   users_notification_rules_enabled: boolean;
@@ -1300,6 +1303,7 @@ export const notificationRules = {
   create: (body: {
     name: string;
     type: string;
+    workspace_id: string;
     target?: string;
     conditions: RuleCondition[];
   }) =>
@@ -1320,17 +1324,19 @@ export const notificationRules = {
   delete: (id: ID) =>
     apiSite<void>(`/notifications/rules/${id}`, { method: "DELETE" }),
 
-  // Schema endpoints — drive the rule builder dropdowns.
+  // Schema endpoints — drive the rule builder dropdowns. All artefact
+  // queries beyond schemaTypes require workspace_id; the catalogue is
+  // workspace-scoped (one "Defect" per workspace with its own fields).
   schemaTypes: () =>
     apiSite<{ types: RuleTypeEntry[] }>("/notifications/rule-schema"),
 
-  schemaTargets: (type: string) =>
+  schemaTargets: (type: string, workspaceId: string) =>
     apiSite<{ targets: RuleTargetEntry[] }>(
-      `/notifications/rule-schema?type=${encodeURIComponent(type)}`,
+      `/notifications/rule-schema?type=${encodeURIComponent(type)}&workspace_id=${encodeURIComponent(workspaceId)}`,
     ),
 
-  schemaFields: (type: string, target: string) =>
+  schemaFields: (type: string, workspaceId: string, target: string) =>
     apiSite<{ fields: RuleFieldEntry[] }>(
-      `/notifications/rule-schema?type=${encodeURIComponent(type)}&target=${encodeURIComponent(target)}`,
+      `/notifications/rule-schema?type=${encodeURIComponent(type)}&workspace_id=${encodeURIComponent(workspaceId)}&target=${encodeURIComponent(target)}`,
     ),
 };

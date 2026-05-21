@@ -20,9 +20,11 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import {
   notificationRules,
+  workspaces as workspacesApi,
   type NotificationRule,
   type RuleCondition,
   type RuleFieldEntry,
@@ -30,6 +32,7 @@ import {
   type RuleOperatorEntry,
   type RuleTargetEntry,
   type RuleTypeEntry,
+  type Workspace,
 } from "@/app/lib/apiSite";
 
 // ─── Editor state ──────────────────────────────────────────────
@@ -39,6 +42,7 @@ interface EditorState {
   id?: string;
   name: string;
   type: string;
+  workspaceId: string;
   target: string;
   conditions: RuleCondition[];
 }
@@ -47,11 +51,15 @@ const EMPTY_EDITOR: EditorState = {
   mode: "create",
   name: "",
   type: "artefact",
+  workspaceId: "",
   target: "",
   conditions: [],
 };
 
 export default function NotificationsSettingsPage() {
+  const { user } = useAuth();
+  const activeWorkspaceId = user?.workspace_id ?? "";
+
   // List state
   const [rules, setRules] = useState<NotificationRule[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -61,7 +69,11 @@ export default function NotificationsSettingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Schema state — driven by editor.type / editor.target.
+  // Workspace catalogue — for the workspace dropdown. Pre-select the
+  // user's active workspace marked ★ in the dropdown.
+  const [workspaceList, setWorkspaceList] = useState<Workspace[] | null>(null);
+
+  // Schema state — driven by editor.type / editor.workspaceId / editor.target.
   const [types, setTypes] = useState<RuleTypeEntry[] | null>(null);
   const [targets, setTargets] = useState<RuleTargetEntry[] | null>(null);
   const [fields, setFields] = useState<RuleFieldEntry[] | null>(null);
@@ -93,44 +105,75 @@ export default function NotificationsSettingsPage() {
     })();
   }, []);
 
-  // ── Load targets when type changes ────────────────────────
+  // ── Load workspaces the user can access ───────────────────
   useEffect(() => {
-    setTargets(null);
-    if (!editor.type) return;
     void (async () => {
       try {
-        const res = await notificationRules.schemaTargets(editor.type);
+        const list = await workspacesApi.list();
+        setWorkspaceList(list);
+      } catch {
+        setWorkspaceList([]);
+      }
+    })();
+  }, []);
+
+  // Pre-select the user's active workspace once both are known and the
+  // editor doesn't already have one (create mode, first paint).
+  useEffect(() => {
+    if (editor.workspaceId) return;
+    if (!activeWorkspaceId || workspaceList === null) return;
+    const exists = workspaceList.some((w) => w.id === activeWorkspaceId);
+    if (exists) {
+      setEditor((prev) => ({ ...prev, workspaceId: activeWorkspaceId }));
+    }
+  }, [editor.workspaceId, activeWorkspaceId, workspaceList]);
+
+  // ── Load targets when type or workspace changes ───────────
+  useEffect(() => {
+    setTargets(null);
+    if (!editor.type || !editor.workspaceId) return;
+    void (async () => {
+      try {
+        const res = await notificationRules.schemaTargets(editor.type, editor.workspaceId);
         setTargets(res.targets);
       } catch {
         setTargets([]);
       }
     })();
-  }, [editor.type]);
+  }, [editor.type, editor.workspaceId]);
 
-  // ── Load fields when target changes ───────────────────────
+  // ── Load fields when type / workspace / target change ─────
   useEffect(() => {
     setFields(null);
-    if (!editor.type || !editor.target) return;
+    if (!editor.type || !editor.workspaceId || !editor.target) return;
     void (async () => {
       try {
-        const res = await notificationRules.schemaFields(editor.type, editor.target);
+        const res = await notificationRules.schemaFields(
+          editor.type,
+          editor.workspaceId,
+          editor.target,
+        );
         setFields(res.fields);
       } catch {
         setFields([]);
       }
     })();
-  }, [editor.type, editor.target]);
+  }, [editor.type, editor.workspaceId, editor.target]);
 
-  // Quick lookups for the rules table summary line.
-  const targetLabelById = useMemo(() => {
+  // Quick lookup for the rules table — workspace UUID → name so rows
+  // can render "Defect · Workspace A". Target is now the artefact-type
+  // name (mig 237) so we render it directly without a map lookup.
+  const workspaceNameById = useMemo(() => {
     const m = new Map<string, string>();
-    targets?.forEach((t) => m.set(t.value, t.label));
+    workspaceList?.forEach((w) => m.set(w.id, w.name));
     return m;
-  }, [targets]);
+  }, [workspaceList]);
 
   // ── Actions ────────────────────────────────────────────────
 
   function startCreate() {
+    // Reset to empty; the active-workspace pre-select effect refills
+    // editor.workspaceId once the auth + workspace list are loaded.
     setEditor({ ...EMPTY_EDITOR });
     setSubmitError(null);
   }
@@ -141,6 +184,7 @@ export default function NotificationsSettingsPage() {
       id: r.users_notification_rules_id,
       name: r.users_notification_rules_name,
       type: r.users_notification_rules_type,
+      workspaceId: r.users_notification_rules_id_workspace ?? "",
       target: r.users_notification_rules_target ?? "",
       conditions: r.users_notification_rules_conditions ?? [],
     });
@@ -177,6 +221,10 @@ export default function NotificationsSettingsPage() {
       setSubmitError("Name is required.");
       return;
     }
+    if (!editor.workspaceId) {
+      setSubmitError("Workspace is required.");
+      return;
+    }
     if (!editor.target) {
       setSubmitError("Target is required.");
       return;
@@ -196,6 +244,7 @@ export default function NotificationsSettingsPage() {
         await notificationRules.create({
           name: editor.name,
           type: editor.type,
+          workspace_id: editor.workspaceId,
           target: editor.target,
           conditions: editor.conditions,
         });
@@ -268,7 +317,7 @@ export default function NotificationsSettingsPage() {
                 slot="rules_list"
                 ariaLabel="Notification rules"
                 columns={rulesColumns({
-                  targetLabelById,
+                  workspaceNameById,
                   onEdit: startEdit,
                   onDelete: handleDelete,
                   onToggle: handleToggleEnabled,
@@ -326,6 +375,37 @@ export default function NotificationsSettingsPage() {
               </select>
             </label>
 
+            {/* Workspace — required for type=artefact. The active
+                workspace is pre-selected and marked ★ in the list. */}
+            <label className="notification-rules__Editor_field">
+              <span className="notification-rules__Editor_field_label">Workspace</span>
+              <select
+                className="form__select"
+                value={editor.workspaceId}
+                onChange={(e) =>
+                  setEditor({
+                    ...editor,
+                    workspaceId: e.target.value,
+                    target: "",
+                    conditions: [],
+                  })
+                }
+                disabled={editor.mode === "edit" || workspaceList === null}
+              >
+                <option value="">
+                  {workspaceList === null ? "Loading…" : "Choose a workspace…"}
+                </option>
+                {(workspaceList ?? []).map((w) => {
+                  const isActive = w.id === activeWorkspaceId;
+                  return (
+                    <option key={w.id} value={w.id}>
+                      {isActive ? `★ ${w.name}` : w.name}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+
             {/* Target — required for type=artefact */}
             <label className="notification-rules__Editor_field">
               <span className="notification-rules__Editor_field_label">Artefact type</span>
@@ -333,10 +413,14 @@ export default function NotificationsSettingsPage() {
                 className="form__select"
                 value={editor.target}
                 onChange={(e) => setEditor({ ...editor, target: e.target.value, conditions: [] })}
-                disabled={editor.mode === "edit" || targets === null}
+                disabled={editor.mode === "edit" || !editor.workspaceId || targets === null}
               >
                 <option value="">
-                  {targets === null ? "Loading…" : "Choose an artefact type…"}
+                  {!editor.workspaceId
+                    ? "Choose a workspace first…"
+                    : targets === null
+                      ? "Loading…"
+                      : "Choose an artefact type…"}
                 </option>
                 {(targets ?? []).map((t) => (
                   <option key={t.value} value={t.value}>
@@ -679,7 +763,7 @@ function formatVal(v: unknown): string {
 // ─── Rules table column definitions ────────────────────────────
 
 interface RulesColumnsOpts {
-  targetLabelById: Map<string, string>;
+  workspaceNameById: Map<string, string>;
   onEdit: (r: NotificationRule) => void;
   onDelete: (r: NotificationRule) => void;
   onToggle: (r: NotificationRule) => void;
@@ -695,17 +779,22 @@ function rulesColumns(opts: RulesColumnsOpts): Column<NotificationRule>[] {
     {
       key: "type",
       header: "Type",
-      render: (r) => (
-        <span className="notification-rules__List_Type">
-          <span className="pill pill--info">{r.users_notification_rules_type}</span>
-          {r.users_notification_rules_target && (
-            <span className="notification-rules__List_target">
-              {opts.targetLabelById.get(r.users_notification_rules_target) ??
-                r.users_notification_rules_target}
-            </span>
-          )}
-        </span>
-      ),
+      render: (r) => {
+        const wsName = r.users_notification_rules_id_workspace
+          ? opts.workspaceNameById.get(r.users_notification_rules_id_workspace)
+          : null;
+        return (
+          <span className="notification-rules__List_Type">
+            <span className="pill pill--info">{r.users_notification_rules_type}</span>
+            {r.users_notification_rules_target && (
+              <span className="notification-rules__List_target">
+                {r.users_notification_rules_target}
+                {wsName ? ` · ${wsName}` : ""}
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       key: "conditions",

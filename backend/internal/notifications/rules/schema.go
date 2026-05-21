@@ -101,8 +101,16 @@ func (s *Schema) Types() []TypeEntry {
 	}
 }
 
-// Targets — for type='artefact', returns the tenant's artefact_types.
-func (s *Schema) Targets(ctx context.Context, subscriptionID uuid.UUID, ruleType RuleType) ([]TargetEntry, error) {
+// Targets — for type='artefact', returns the workspace's distinct
+// artefact-type names. Value + Label are both the name (e.g.
+// "Defect") — the rule stores the name as its target, and the
+// evaluator joins on (workspace_id, target=name).
+//
+// Pre mig 237 this returned UUIDs; now returns names so a rule on
+// "Defect" matches every Defect-named type row in the chosen
+// workspace (defensive against future schema where a workspace
+// might have multiple type rows sharing a name).
+func (s *Schema) Targets(ctx context.Context, subscriptionID, workspaceID uuid.UUID, ruleType RuleType) ([]TargetEntry, error) {
 	if ruleType != TypeArtefact {
 		return nil, fmt.Errorf("%w: targets only supported for type='artefact' today", ErrUnsupportedType)
 	}
@@ -110,44 +118,44 @@ func (s *Schema) Targets(ctx context.Context, subscriptionID uuid.UUID, ruleType
 		// vector_artefacts unavailable — return empty rather than 500.
 		return []TargetEntry{}, nil
 	}
-	rows, err := s.vaPool.Query(ctx, sqlSelectArtefactTypes, subscriptionID)
+	rows, err := s.vaPool.Query(ctx, sqlSelectArtefactTypesByWorkspace, subscriptionID, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list artefact types: %w", err)
 	}
 	defer rows.Close()
 	out := []TargetEntry{}
 	for rows.Next() {
-		var t TargetEntry
-		if err := rows.Scan(&t.Value, &t.Label); err != nil {
+		var name string
+		if err := rows.Scan(&name); err != nil {
 			return nil, err
 		}
-		out = append(out, t)
+		out = append(out, TargetEntry{Value: name, Label: name})
 	}
 	return out, rows.Err()
 }
 
-// Fields — for type='artefact' + target=<artefact_type_id>, returns
-// the fields the tenant has bound to that type (including custom and
-// renamed-label fields).
-func (s *Schema) Fields(ctx context.Context, subscriptionID uuid.UUID, ruleType RuleType, targetID string) ([]FieldEntry, error) {
+// Fields — for type='artefact' + workspace + target name, returns
+// the fields bound to that named type in that workspace.
+//
+// De-duplicates by field_name in-memory because the SQL ORDER BY can
+// return the same field_name twice if multiple type rows in the
+// workspace share the name (rare; defensive).
+func (s *Schema) Fields(ctx context.Context, subscriptionID, workspaceID uuid.UUID, ruleType RuleType, targetName string) ([]FieldEntry, error) {
 	if ruleType != TypeArtefact {
 		return nil, fmt.Errorf("%w: fields only supported for type='artefact' today", ErrUnsupportedType)
 	}
-	if targetID == "" {
+	if targetName == "" {
 		return nil, fmt.Errorf("%w: target is required", ErrInvalidInput)
 	}
 	if s.vaPool == nil {
 		return []FieldEntry{}, nil
 	}
-	targetUUID, err := uuid.Parse(targetID)
-	if err != nil {
-		return nil, fmt.Errorf("%w: invalid target id", ErrInvalidInput)
-	}
-	rows, err := s.vaPool.Query(ctx, sqlSelectArtefactTypeFields, subscriptionID, targetUUID)
+	rows, err := s.vaPool.Query(ctx, sqlSelectArtefactTypeFieldsByName, subscriptionID, workspaceID, targetName)
 	if err != nil {
 		return nil, fmt.Errorf("list fields: %w", err)
 	}
 	defer rows.Close()
+	seen := map[string]struct{}{}
 	out := []FieldEntry{}
 	for rows.Next() {
 		var f FieldEntry
@@ -155,6 +163,10 @@ func (s *Schema) Fields(ctx context.Context, subscriptionID uuid.UUID, ruleType 
 		if err := rows.Scan(&f.Value, &f.Label, &f.ValueType, &optionsRaw); err != nil {
 			return nil, err
 		}
+		if _, dup := seen[f.Value]; dup {
+			continue
+		}
+		seen[f.Value] = struct{}{}
 		f.Operators = operatorsByFieldType(f.ValueType)
 		if len(optionsRaw) > 0 {
 			// Best-effort parse — silently empty if malformed.
@@ -164,17 +176,14 @@ func (s *Schema) Fields(ctx context.Context, subscriptionID uuid.UUID, ruleType 
 			}
 			if err := json.Unmarshal(optionsRaw, &raw); err == nil {
 				for _, o := range raw {
-					out := OptionEntry{Value: o.Value, Label: o.Label}
-					if out.Label == "" {
-						out.Label = out.Value
+					opt := OptionEntry{Value: o.Value, Label: o.Label}
+					if opt.Label == "" {
+						opt.Label = opt.Value
 					}
-					f.Options = append(f.Options, out)
+					f.Options = append(f.Options, opt)
 				}
 			}
 		}
-		// Add built-in "core" fields that aren't in the field library
-		// but every artefact has (flow_state, owner, sprint, etc).
-		// Deferred — wire when the evaluator needs them.
 		out = append(out, f)
 	}
 	return out, rows.Err()
@@ -281,6 +290,7 @@ func (h *SchemaHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	typeParam := r.URL.Query().Get("type")
+	workspaceParam := r.URL.Query().Get("workspace_id")
 	target := r.URL.Query().Get("target")
 
 	// No type → return the type list (drives the UI's first dropdown).
@@ -295,9 +305,25 @@ func (h *SchemaHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// type but no target → return target options for that type.
+	// type=artefact requires a workspace_id to scope the catalogue.
+	if workspaceParam == "" {
+		httperr.WriteValidation(w, r, []httperr.Violation{
+			{Field: "workspace_id", Message: "workspace_id is required for artefact rules"},
+		})
+		return
+	}
+	workspaceID, err := uuid.Parse(workspaceParam)
+	if err != nil {
+		httperr.WriteValidation(w, r, []httperr.Violation{
+			{Field: "workspace_id", Message: "must be a valid uuid"},
+		})
+		return
+	}
+
+	// type + workspace, no target → return target options for that
+	// (type, workspace).
 	if target == "" {
-		targets, err := h.schema.Targets(r.Context(), user.SubscriptionID, ruleType)
+		targets, err := h.schema.Targets(r.Context(), user.SubscriptionID, workspaceID, ruleType)
 		if err != nil {
 			if errors.Is(err, ErrUnsupportedType) {
 				httperr.Write(w, r, http.StatusNotImplemented, err.Error())
@@ -310,8 +336,8 @@ func (h *SchemaHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// type + target → return fields + operators.
-	fields, err := h.schema.Fields(r.Context(), user.SubscriptionID, ruleType, target)
+	// type + workspace + target → return fields + operators.
+	fields, err := h.schema.Fields(r.Context(), user.SubscriptionID, workspaceID, ruleType, target)
 	if err != nil {
 		if errors.Is(err, ErrUnsupportedType) || errors.Is(err, ErrInvalidInput) {
 			httperr.WriteValidation(w, r, []httperr.Violation{

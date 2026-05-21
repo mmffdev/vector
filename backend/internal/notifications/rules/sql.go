@@ -1,19 +1,37 @@
 // Package rules SQL constants. Sole writer for users_notification_rules.
 package rules
 
+// Hydration column list — single source of truth so the SELECTs and
+// scanRule() stay aligned. Tx: also matches RETURNING blocks below.
+const ruleCols = `
+	users_notification_rules_id,
+	users_notification_rules_id_subscription,
+	users_notification_rules_id_user,
+	users_notification_rules_id_workspace,
+	users_notification_rules_name,
+	users_notification_rules_type,
+	users_notification_rules_target,
+	users_notification_rules_conditions,
+	users_notification_rules_enabled,
+	users_notification_rules_created_at,
+	users_notification_rules_updated_at
+`
+
 const sqlInsertRule = `
 	INSERT INTO users_notification_rules (
 		users_notification_rules_id_subscription,
 		users_notification_rules_id_user,
+		users_notification_rules_id_workspace,
 		users_notification_rules_name,
 		users_notification_rules_type,
 		users_notification_rules_target,
 		users_notification_rules_conditions
-	) VALUES ($1,$2,$3,$4,$5,$6)
+	) VALUES ($1,$2,$3,$4,$5,$6,$7)
 	RETURNING
 		users_notification_rules_id,
 		users_notification_rules_id_subscription,
 		users_notification_rules_id_user,
+		users_notification_rules_id_workspace,
 		users_notification_rules_name,
 		users_notification_rules_type,
 		users_notification_rules_target,
@@ -28,6 +46,7 @@ const sqlSelectRulesByUser = `
 		users_notification_rules_id,
 		users_notification_rules_id_subscription,
 		users_notification_rules_id_user,
+		users_notification_rules_id_workspace,
 		users_notification_rules_name,
 		users_notification_rules_type,
 		users_notification_rules_target,
@@ -46,6 +65,7 @@ const sqlSelectRuleByID = `
 		users_notification_rules_id,
 		users_notification_rules_id_subscription,
 		users_notification_rules_id_user,
+		users_notification_rules_id_workspace,
 		users_notification_rules_name,
 		users_notification_rules_type,
 		users_notification_rules_target,
@@ -70,6 +90,7 @@ const sqlUpdateRuleTemplate = `
 		users_notification_rules_id,
 		users_notification_rules_id_subscription,
 		users_notification_rules_id_user,
+		users_notification_rules_id_workspace,
 		users_notification_rules_name,
 		users_notification_rules_type,
 		users_notification_rules_target,
@@ -87,15 +108,16 @@ const sqlDeleteRule = `
 
 // ── evaluator.go ──────────────────────────────────────────────
 
-// sqlSelectActiveRulesForTarget — the evaluator's hot path.
-// Hits the (subscription_id, type, target) WHERE enabled partial
-// index added by migration 236. Returns every candidate rule
-// regardless of user — the caller fans out per-user matches.
+// sqlSelectActiveRulesForTarget — the evaluator's hot path. Hits
+// the (subscription_id, workspace_id, type, target) partial index
+// added by migration 237. Returns every candidate rule regardless of
+// user — the caller fans out per-user matches.
 const sqlSelectActiveRulesForTarget = `
 	SELECT
 		users_notification_rules_id,
 		users_notification_rules_id_subscription,
 		users_notification_rules_id_user,
+		users_notification_rules_id_workspace,
 		users_notification_rules_name,
 		users_notification_rules_type,
 		users_notification_rules_target,
@@ -105,28 +127,35 @@ const sqlSelectActiveRulesForTarget = `
 		users_notification_rules_updated_at
 	FROM users_notification_rules
 	WHERE users_notification_rules_id_subscription = $1
-	  AND users_notification_rules_type = $2
-	  AND users_notification_rules_target = $3
+	  AND users_notification_rules_id_workspace = $2
+	  AND users_notification_rules_type = $3
+	  AND users_notification_rules_target = $4
 	  AND users_notification_rules_enabled = TRUE
 `
 
 // ── schema.go (vaPool — vector_artefacts) ──────────────────────
 
-// sqlSelectArtefactTypes returns the tenant's artefact_types — feeds
-// the "target" dropdown in the rule builder.
-const sqlSelectArtefactTypes = `
-	SELECT artefacts_types_id::text, artefacts_types_name
+// sqlSelectArtefactTypesByWorkspace returns the distinct type NAMES
+// in a single workspace. Drives the "target" dropdown after the user
+// picks a workspace. DISTINCT defends against any future situation
+// where one workspace has multiple rows for the same type name.
+const sqlSelectArtefactTypesByWorkspace = `
+	SELECT DISTINCT artefacts_types_name
 	FROM artefacts_types
 	WHERE artefacts_types_id_subscription = $1
+	  AND artefacts_types_id_workspace    = $2
 	  AND artefacts_types_archived_at IS NULL
-	  AND artefacts_types_is_placeholder = FALSE
-	ORDER BY artefacts_types_sort_order ASC, artefacts_types_name ASC
+	  AND artefacts_types_is_placeholder  = FALSE
+	ORDER BY artefacts_types_name ASC
 `
 
-// sqlSelectArtefactTypeFields returns the fields the tenant has
-// bound to one artefact_type. JOINs the link table to the field
-// library so renamed labels + options_json land in one round-trip.
-const sqlSelectArtefactTypeFields = `
+// sqlSelectArtefactTypeFieldsByName returns the distinct fields bound
+// to type-name X within workspace Y. DISTINCT collapses cases where
+// the same field_name is bound to multiple type rows under the same
+// name (rare but possible). Renamed labels + options_json are picked
+// from whichever binding came first (deterministic via field_name
+// alpha-order tie-break).
+const sqlSelectArtefactTypeFieldsByName = `
 	SELECT
 		fl.field_name,
 		COALESCE(fl.label, fl.field_name) AS label,
@@ -136,8 +165,9 @@ const sqlSelectArtefactTypeFields = `
 	JOIN artefacts_fields_library fl ON fl.id = tf.field_library_id
 	JOIN artefacts_types at ON at.artefacts_types_id = tf.artefact_type_id
 	WHERE at.artefacts_types_id_subscription = $1
-	  AND at.artefacts_types_id = $2
+	  AND at.artefacts_types_id_workspace    = $2
+	  AND at.artefacts_types_name            = $3
 	  AND at.artefacts_types_archived_at IS NULL
 	  AND fl.archived_at IS NULL
-	ORDER BY tf.position ASC, fl.label ASC
+	ORDER BY fl.field_name ASC, tf.position ASC
 `

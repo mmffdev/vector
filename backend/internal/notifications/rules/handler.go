@@ -82,18 +82,27 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Name       string      `json:"name"`
-		Type       string      `json:"type"`
-		Target     *string     `json:"target,omitempty"`
-		Conditions []Condition `json:"conditions"`
+		Name        string      `json:"name"`
+		Type        string      `json:"type"`
+		WorkspaceID string      `json:"workspace_id"`
+		Target      *string     `json:"target,omitempty"`
+		Conditions  []Condition `json:"conditions"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
+	wsID, err := uuid.Parse(body.WorkspaceID)
+	if err != nil {
+		httperr.WriteValidation(w, r, []httperr.Violation{
+			{Field: "workspace_id", Message: "must be a valid uuid"},
+		})
+		return
+	}
 	rule, err := h.svc.Create(r.Context(), CreateInput{
 		SubscriptionID: user.SubscriptionID,
 		UserID:         user.ID,
+		WorkspaceID:    wsID,
 		Name:           body.Name,
 		Type:           RuleType(body.Type),
 		Target:         body.Target,

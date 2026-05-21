@@ -31,6 +31,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*Rule, error) {
 	if in.UserID == uuid.Nil {
 		return nil, ErrAdminScopeUnwired
 	}
+	if in.WorkspaceID == uuid.Nil {
+		return nil, fmt.Errorf("%w: workspace_id is required", ErrInvalidInput)
+	}
 	if err := validateCreate(in); err != nil {
 		return nil, err
 	}
@@ -39,7 +42,8 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*Rule, error) {
 		return nil, fmt.Errorf("marshal conditions: %w", err)
 	}
 	row := s.pool.QueryRow(ctx, sqlInsertRule,
-		in.SubscriptionID, in.UserID, in.Name, string(in.Type), in.Target, condBytes,
+		in.SubscriptionID, in.UserID, in.WorkspaceID,
+		in.Name, string(in.Type), in.Target, condBytes,
 	)
 	return scanRule(row)
 }
@@ -181,7 +185,7 @@ func scanRule(row scannable) (*Rule, error) {
 	var typ string
 	var condRaw []byte
 	if err := row.Scan(
-		&r.ID, &r.SubscriptionID, &r.UserID, &r.Name,
+		&r.ID, &r.SubscriptionID, &r.UserID, &r.WorkspaceID, &r.Name,
 		&typ, &r.Target, &condRaw, &r.Enabled, &r.CreatedAt, &r.UpdatedAt,
 	); err != nil {
 		return nil, err

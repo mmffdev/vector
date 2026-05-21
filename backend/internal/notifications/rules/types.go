@@ -112,20 +112,31 @@ type Condition struct {
 }
 
 // Rule is the persisted entity + the wire shape returned by the API.
+//
+// SCHEMA NOTE (mig 237): Target is the artefact-type NAME (e.g.
+// "Defect"), not a UUID. The artefact types catalogue is per-workspace
+// in vector_artefacts — one "Defect" row per workspace, possibly with
+// different field bindings. A rule pins (WorkspaceID, Target=name) and
+// the evaluator joins on those two to find the matching type rows
+// inside that workspace.
 type Rule struct {
-	ID             uuid.UUID   `json:"users_notification_rules_id"`
-	SubscriptionID uuid.UUID   `json:"users_notification_rules_id_subscription"`
+	ID             uuid.UUID `json:"users_notification_rules_id"`
+	SubscriptionID uuid.UUID `json:"users_notification_rules_id_subscription"`
 	// UserID is nullable in the schema for FUTURE admin-defaults
 	// support. The service rejects nil today; this field stays
 	// pointer-typed so the wire shape doesn't lie about nullability.
-	UserID     *uuid.UUID  `json:"users_notification_rules_id_user,omitempty"`
-	Name       string      `json:"users_notification_rules_name"`
-	Type       RuleType    `json:"users_notification_rules_type"`
-	Target     *string     `json:"users_notification_rules_target,omitempty"`
-	Conditions []Condition `json:"users_notification_rules_conditions"`
-	Enabled    bool        `json:"users_notification_rules_enabled"`
-	CreatedAt  time.Time   `json:"users_notification_rules_created_at"`
-	UpdatedAt  time.Time   `json:"users_notification_rules_updated_at"`
+	UserID *uuid.UUID `json:"users_notification_rules_id_user,omitempty"`
+	// WorkspaceID is nullable in the schema for FUTURE "any workspace
+	// I can see" rule scope. Today the service rejects nil — see
+	// validateCreate. Pointer-typed for the same reason as UserID.
+	WorkspaceID *uuid.UUID  `json:"users_notification_rules_id_workspace,omitempty"`
+	Name        string      `json:"users_notification_rules_name"`
+	Type        RuleType    `json:"users_notification_rules_type"`
+	Target      *string     `json:"users_notification_rules_target,omitempty"`
+	Conditions  []Condition `json:"users_notification_rules_conditions"`
+	Enabled     bool        `json:"users_notification_rules_enabled"`
+	CreatedAt   time.Time   `json:"users_notification_rules_created_at"`
+	UpdatedAt   time.Time   `json:"users_notification_rules_updated_at"`
 }
 
 // CreateInput / UpdateInput separate the service-layer payload from
@@ -133,9 +144,10 @@ type Rule struct {
 type CreateInput struct {
 	SubscriptionID uuid.UUID
 	UserID         uuid.UUID
+	WorkspaceID    uuid.UUID
 	Name           string
 	Type           RuleType
-	Target         *string
+	Target         *string // artefact-type name for type='artefact'
 	Conditions     []Condition
 }
 
