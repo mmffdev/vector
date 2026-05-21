@@ -9,7 +9,17 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { workItems as workItemsApi, portfolioItems as portfolioItemsApi } from "@/app/lib/apiSite";
 import { useScope } from "@/app/contexts/ScopeContext";
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
-import { PARENT_PREFIX_MAP, type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
+// Slice 4 — PARENT_PREFIX_MAP no longer imported here. The reparent
+// legality rule moves into a per-domain rules module so V2's shell
+// doesn't know about artefact type prefixes. Only the ArtefactDetail
+// type stays — used by the duplicate/delete handlers which are still
+// work-items-shaped at this slice (carved later, alongside the flyout
+// adapter generalisation).
+import { type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
+import {
+  workItemsCanReparent,
+  workItemsGetCandidateIds,
+} from "@/app/components/ObjectTreeV2/configs/workItemsReparentRules";
 import BulkActionBar from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
@@ -451,20 +461,19 @@ export default function ObjectTree({
   //      block. Strict cross-boundary rule: a Task can't drop onto an
   //      Epic, a strategic row can't host an execution row directly
   //      except where the map permits (EP→FE).
+  // Slice 4 — legality check delegated to the work-items reparent
+  // rules module. V2's shell only resolves the rows (via the ref-based
+  // back-channel into ResourceTree) and passes them to the predicate.
+  // The rule itself lives next to the work-items config — sprints
+  // would pass a different rule, or skip dnd entirely.
   const canReparent = useCallback(
     (moverID: string, targetID: string): boolean => {
-      if (moverID === targetID) return false;
       const get = getRowByIdRef.current;
       if (!get) return false;
       const mover = get(moverID);
       const target = get(targetID);
       if (!mover || !target) return false;
-      // Same-parent → no-op (would also be a wasted PATCH).
-      if (mover.parent_id === target.id) return false;
-      // Allowed-parent rule, from the prefix map.
-      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
-      const targetPrefix = target.type_prefix?.toUpperCase() ?? "";
-      return allowed.includes(targetPrefix);
+      return workItemsCanReparent(mover, target);
     },
     [],
   );
@@ -483,6 +492,10 @@ export default function ObjectTree({
   // Cost: still O(n) over the visible-id list. One pass to find
   // parent candidates, second pass to find rows whose parent_id is
   // in that set. No fetches, no recursion.
+  // Slice 4 — candidate pre-pass delegated to the work-items rules
+  // module. V2 resolves the visible rows via the ref-back-channels
+  // then passes them to the pure function. The two-pass parent +
+  // sibling resolution lives next to the work-items config.
   const getDragCandidateIds = useCallback(
     (moverID: string): string[] => {
       const getIds = getVisibleIdsRef.current;
@@ -490,36 +503,15 @@ export default function ObjectTree({
       if (!getIds || !get) return [];
       const mover = get(moverID);
       if (!mover) return [];
-      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
-      if (allowed.length === 0) return [];
-      const allowedSet = new Set(allowed);
+      // Materialise the visible rows once; the rules module wants a
+      // flat readonly array.
       const ids = getIds();
-      const parentCandidateIds = new Set<string>();
-      // Pass 1 — parent candidates by type.
+      const visible: typeof mover[] = [];
       for (const id of ids) {
-        if (id === moverID) continue;
         const row = get(id);
-        if (!row) continue;
-        if (mover.parent_id === row.id) continue;
-        const prefix = row.type_prefix?.toUpperCase() ?? "";
-        if (allowedSet.has(prefix)) parentCandidateIds.add(id);
+        if (row) visible.push(row);
       }
-      // Pass 2 — sibling candidates: any row whose parent is a parent
-      // candidate. Mover and its descendants are still excluded
-      // (cycle prevention) — useResourceRank's draggingSubtree guard
-      // covers the descendant case at the hover step, but we trim
-      // here too so the visual field is clean.
-      const out: string[] = Array.from(parentCandidateIds);
-      for (const id of ids) {
-        if (id === moverID) continue;
-        if (parentCandidateIds.has(id)) continue; // already added
-        const row = get(id);
-        if (!row || !row.parent_id) continue;
-        if (parentCandidateIds.has(row.parent_id)) {
-          out.push(id);
-        }
-      }
-      return out;
+      return workItemsGetCandidateIds(mover, visible);
     },
     [],
   );
