@@ -33,6 +33,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/bootstatus"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
+	"github.com/mmffdev/vector-backend/internal/devreports"
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
 	"github.com/mmffdev/vector-backend/internal/fields"
 	"github.com/mmffdev/vector-backend/internal/flows"
@@ -468,6 +469,43 @@ func main() {
 		makeStubHandlers()
 	}
 
+	// mmff_dev pool — holds dev_reports (research/plan/security/retro/code/api).
+	// Optional: when MMFF_DEV_DB_URL is unset the service degrades to empty
+	// lists / not-found, so /dev/reporting stays reachable without errors.
+	// Same pattern as the vaPool block above.
+	var devPool *pgxpool.Pool
+	devReportsH := devreports.NewHandler(devreports.NewService(nil))
+	if devURL := os.Getenv("MMFF_DEV_DB_URL"); devURL != "" {
+		devCfg, devErr := pgxpool.ParseConfig(devURL)
+		if devErr != nil {
+			logger.Warn("mmff_dev pool config error — /dev/reporting will return empty", "err", devErr)
+		} else {
+			devCfg.MinConns = 1
+			devCfg.MaxConnIdleTime = 5 * time.Minute
+			p, devErr := pgxpool.NewWithConfig(ctx, devCfg)
+			if devErr != nil {
+				logger.Warn("mmff_dev pool connect failed — /dev/reporting will return empty", "err", devErr)
+			} else if devErr = p.Ping(ctx); devErr != nil {
+				logger.Warn("mmff_dev pool ping failed — /dev/reporting will return empty", "err", devErr)
+				p.Close()
+			} else {
+				devPool = p
+				defer devPool.Close()
+				maskedURL := devURL
+				if i := strings.Index(devURL, "@"); i > 0 {
+					if j := strings.LastIndex(devURL[:i], ":"); j > 0 {
+						maskedURL = devURL[:j+1] + "***" + devURL[i:]
+					}
+				}
+				logger.Info("mmff_dev pool connected", "url", maskedURL)
+				devReportsH = devreports.NewHandler(devreports.NewService(devPool))
+				bootstatus.Set("mmff_dev_db", true, "")
+			}
+		}
+	} else {
+		logger.Warn("MMFF_DEV_DB_URL unset — /dev/reporting will return empty")
+	}
+
 	// Topology service (PLA-0006 / M6.2.7). Constructed here, after
 	// the vaPool block, because every topology read/write goes through
 	// vector_artefacts. The legacy `pool` (mmff_vector) is retained on
@@ -492,8 +530,12 @@ func main() {
 	// + every descendant" and emit 403 when the caller has no grant.
 	// v2ScopeAttach is nil when vaPool is unset (stub handlers) — scope
 	// reads then fall through to ErrInvalidInput inside the service.
+	//
+	// Wrapped in topologyScopeAdapter so topology.ErrNodeNotFound is
+	// translated to artefactitems.ErrScopeNodeNotFound at the seam —
+	// the service then uses errors.Is, no string-match sniffing.
 	if v2ScopeAttach != nil {
-		v2ScopeAttach(orgDesignSvc)
+		v2ScopeAttach(topologyScopeAdapter{inner: orgDesignSvc})
 	}
 
 	// Portfolio adopt handler — wired AFTER vaPool so PLA-0026 dual-
@@ -1277,6 +1319,7 @@ func main() {
 				r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
 				r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
 				r.Get("/dev/api-audit", devResetH.ApiAudit)
+				r.Route("/dev/reporting", devReportsH.Mount)
 			})
 		})
 
@@ -2122,4 +2165,38 @@ func main() {
 			log.Printf("graceful shutdown failed: %v", err)
 		}
 	}
+}
+
+// topologyScopeAdapter wraps *topology.Service to satisfy
+// artefactitems.TopologyScopeResolver, translating topology's own
+// sentinels (ErrNodeNotFound, ErrTenantMismatch) into the artefactitems
+// sentinels the service compares with errors.Is. Keeps the boundary
+// clean: artefactitems never imports topology, never sniffs strings.
+type topologyScopeAdapter struct {
+	inner *topology.Service
+}
+
+func (a topologyScopeAdapter) CanReadScope(ctx context.Context, subscriptionID, userID, targetNodeID uuid.UUID, actorRoleID uuid.UUID) (bool, error) {
+	ok, err := a.inner.CanReadScope(ctx, subscriptionID, userID, targetNodeID, actorRoleID)
+	return ok, translateTopologyErr(err)
+}
+
+func (a topologyScopeAdapter) DescendantNodeIDs(ctx context.Context, subscriptionID, rootNodeID uuid.UUID) ([]uuid.UUID, error) {
+	ids, err := a.inner.DescendantNodeIDs(ctx, subscriptionID, rootNodeID)
+	return ids, translateTopologyErr(err)
+}
+
+func (a topologyScopeAdapter) AncestorNodeIDs(ctx context.Context, subscriptionID, rootNodeID uuid.UUID) ([]uuid.UUID, error) {
+	ids, err := a.inner.AncestorNodeIDs(ctx, subscriptionID, rootNodeID)
+	return ids, translateTopologyErr(err)
+}
+
+func translateTopologyErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, topology.ErrNodeNotFound) || errors.Is(err, topology.ErrTenantMismatch) {
+		return artefactitems.ErrScopeNodeNotFound
+	}
+	return err
 }

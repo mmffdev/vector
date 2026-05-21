@@ -5773,25 +5773,6 @@ paths:
       x-handler:
         symbol: h.UpsertFieldValues
         file: backend/internal/artefactitems/handler.go
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                field_library_id:
-                  type: string
-                string_value:
-                  type: string
-                number_value:
-                  type: string
-                text_value:
-                  type: string
-                date_value:
-                  type: string
-              required:
-              - field_library_id
       parameters:
       - name: id
         in: path
@@ -9081,25 +9062,6 @@ paths:
       x-handler:
         symbol: h.UpsertFieldValues
         file: backend/internal/artefactitems/handler.go
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                field_library_id:
-                  type: string
-                string_value:
-                  type: string
-                number_value:
-                  type: string
-                text_value:
-                  type: string
-                date_value:
-                  type: string
-              required:
-              - field_library_id
       parameters:
       - name: id
         in: path

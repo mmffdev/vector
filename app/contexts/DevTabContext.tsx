@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-type DevTab = "setup" | "shortcuts" | "reports" | "research" | "operations" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog" | "api-v2-tests" | "api-changelog" | "api-audit" | "scope" | "security-audits";
+type DevTab = "setup" | "shortcuts" | "reports" | "reporting" | "research" | "operations" | "icons" | "plans" | "page-help" | "retros" | "ui-catalog" | "api-v2-tests" | "api-changelog" | "api-audit" | "scope" | "security-audits" | "code";
 
 interface DevTabContextValue {
   activeTab: DevTab;
@@ -12,16 +12,19 @@ interface DevTabContextValue {
   toggleResearchPaper: (paperId: string, open: boolean) => void;
   openOperations: Set<string>;
   toggleOperation: (operationId: string, open: boolean) => void;
+  openReports: Set<string>;
+  toggleReport: (reportId: string, open: boolean) => void;
 }
 
 const DevTabContext = createContext<DevTabContextValue | null>(null);
 const RESEARCH_STORAGE_KEY = "dev-setup-open-research";
 const OPERATIONS_STORAGE_KEY = "dev-setup-open-operations";
+const REPORTING_STORAGE_KEY = "dev-reporting-open-reports";
 
 const VALID_TABS = new Set<DevTab>([
-  "setup", "shortcuts", "reports", "research", "operations", "icons",
+  "setup", "shortcuts", "reports", "reporting", "research", "operations", "icons",
   "plans", "page-help", "retros", "ui-catalog", "api-v2-tests", "api-changelog", "api-audit", "scope",
-  "security-audits",
+  "security-audits", "code",
 ]);
 
 function tabFromPath(pathname: string): DevTab {
@@ -39,6 +42,7 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const [openResearchPapers, setOpenResearchPapers] = useState<Set<string>>(new Set());
   const [openOperations, setOpenOperations] = useState<Set<string>>(new Set());
+  const [openReports, setOpenReports] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const savedResearch = localStorage.getItem(RESEARCH_STORAGE_KEY);
@@ -53,6 +57,13 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
       try {
         const ops = JSON.parse(savedOperations);
         if (Array.isArray(ops)) setOpenOperations(new Set(ops));
+      } catch { /* ignore */ }
+    }
+    const savedReports = localStorage.getItem(REPORTING_STORAGE_KEY);
+    if (savedReports) {
+      try {
+        const ids = JSON.parse(savedReports);
+        if (Array.isArray(ids)) setOpenReports(new Set(ids));
       } catch { /* ignore */ }
     }
   }, []);
@@ -82,8 +93,22 @@ export function DevTabProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const toggleReport = useCallback((reportId: string, open: boolean) => {
+    setOpenReports(prev => {
+      const updated = new Set(prev);
+      if (open) updated.add(reportId); else updated.delete(reportId);
+      localStorage.setItem(REPORTING_STORAGE_KEY, JSON.stringify(Array.from(updated)));
+      return updated;
+    });
+  }, []);
+
   return (
-    <DevTabContext.Provider value={{ activeTab, setActiveTab, openResearchPapers, toggleResearchPaper, openOperations, toggleOperation }}>
+    <DevTabContext.Provider value={{
+      activeTab, setActiveTab,
+      openResearchPapers, toggleResearchPaper,
+      openOperations, toggleOperation,
+      openReports, toggleReport,
+    }}>
       {children}
     </DevTabContext.Provider>
   );

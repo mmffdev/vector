@@ -9,6 +9,7 @@ import DevSetupPage from "@dev/pages/DevPage";
 import DevShortcutsPanel from "@dev/pages/DevShortcutsPanel";
 import DevReportsPanel from "@dev/pages/DevReportsPanel";
 import DevResearchPanel from "@dev/pages/DevResearchPanel";
+import DevReportingPanel from "@dev/pages/DevReportingPanel";
 import DevOperationsPanel from "@dev/pages/DevOperationsPanel";
 import DevPlansPanel from "@dev/pages/DevPlansPanel";
 import DevRetrosPanel from "@dev/pages/DevRetrosPanel";
@@ -20,6 +21,7 @@ import DevApiAuditPanel from "@dev/pages/DevApiAuditPanel";
 import DevScopePanel from "@dev/pages/DevScopePanel";
 import DevComponentsPanel from "@dev/pages/DevComponentsPanel";
 import DevSecurityAuditsPanel from "@dev/pages/DevSecurityAuditsPanel";
+import DevCodePanel from "@dev/pages/DevCodePanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 const TAB_TITLES: Record<string, string> = {
@@ -28,6 +30,7 @@ const TAB_TITLES: Record<string, string> = {
   retros:        "Retros",
   scope:         "Scope",
   research:      "Research",
+  reporting:     "Reporting",
   reports:       "Reports",
   shortcuts:     "Shortcuts",
   operations:    "Operations",
@@ -39,6 +42,7 @@ const TAB_TITLES: Record<string, string> = {
   "api-audit":     "API Audit",
   "components":       "Components",
   "security-audits":  "Security Audits",
+  "code":             "Code",
 };
 
 export default function DevTabPage() {
@@ -59,6 +63,7 @@ export default function DevTabPage() {
         {tab === "shortcuts"     && <DevShortcutsPanel />}
         {tab === "reports"       && <DevReportsPanel />}
         {tab === "research"      && <DevResearchPanel />}
+        {tab === "reporting"     && <DevReportingPanel />}
         {tab === "operations"    && <DevOperationsPanel />}
         {tab === "plans"         && <DevPlansPanel />}
         {tab === "retros"        && <DevRetrosPanel />}
@@ -70,6 +75,7 @@ export default function DevTabPage() {
         {tab === "scope"         && <DevScopePanel onTick={() => {}} />}
         {tab === "components"      && <DevComponentsPanel />}
         {tab === "security-audits" && <DevSecurityAuditsPanel />}
+        {tab === "code"            && <DevCodePanel />}
         {tab === "icons"           && (
           <div className="dui-icons-host">
             <UiAppIconbrowser />

@@ -1313,6 +1313,86 @@ table.tbl tbody tr:hover td {
   color: var(--ink);
   font-weight: 500;
 }
+
+/* When the panel decides a TOC sidebar isn't worth showing (e.g. a
+   plan with only one heading), it strips the .r-toc / .dui-toc aside
+   and marks the layout with .is-no-toc. Collapse the grid to a single
+   column so the body fills the row instead of leaving a phantom gap. */
+.r-toc-layout.is-no-toc,
+.dui-toc-layout.is-no-toc {
+  grid-template-columns: 1fr;
+}
+
+/* Nested TOC entries (DevReportingPanel rebuilds the TOC from the
+   actual h1/h2/h3 in the body, so each item gets a level class that
+   controls the indent. h1 is the main element, h2 nests under it,
+   h3 nests under h2.) */
+.r-toc__list--nested {
+  margin: 0 0 var(--space-1) 0;
+  padding: 0;
+}
+.r-toc__item--h1 > a { font-weight: 600; color: var(--ink); }
+.r-toc__item--h2 > a { padding-left: calc(var(--space-3) + 12px); }
+.r-toc__item--h3 > a { padding-left: calc(var(--space-3) + 24px); font-size: 12px; }
+
+/* Dev Reporting — type-filter tab strip above the search/page-size row.
+   Renders the report-type segmentation (Research / Plan / Codebase / …).
+   Visually distinct from the main dev-tab nav so it reads as a sub-filter
+   rather than route navigation. */
+.dui-typetabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 var(--space-3);
+  padding: var(--space-1);
+  background: var(--surface-sunken);
+  border-radius: 8px;
+}
+.dui-typetabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.dui-typetabs__tab:hover {
+  color: var(--ink);
+  background: var(--surface-raised);
+}
+.dui-typetabs__tab.is-active {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.dui-typetabs__tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dui-typetabs__count {
+  min-width: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  text-align: center;
+  line-height: 18px;
+}
+.dui-typetabs__tab.is-active .dui-typetabs__count {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
 /* ─── Dev Plans panel ─────────────────────────────────────────── */
 
 .dev-plans-panel .accordion__toggle {
