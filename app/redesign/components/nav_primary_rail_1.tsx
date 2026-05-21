@@ -1,20 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Globe, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
+import { notifications } from "@/app/lib/apiSite";
+
+// 60s polling fallback — real-time wire-up via useNotificationsStream
+// is deferred (handover_rmq.md § stubs). Bell still updates within a
+// minute without it.
+const UNREAD_POLL_MS = 60_000;
 
 export default function IconRail() {
-  const { sections, activeSectionId, setActiveSectionId, isScopeOpen, toggleScopeOpen, isDebugOpen, toggleDebugOpen } = useShell();
+  const { sections, accountSection, activeSectionId, setActiveSectionId, isScopeOpen, toggleScopeOpen, isDebugOpen, toggleDebugOpen } = useShell();
   const { user } = useAuth();
   const router = useRouter();
   const accountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const initials = user ? user.email.slice(0, 2).toUpperCase() : "??";
+
+  // Bell unread-count poll. Silent on errors — the count is non-critical UI.
+  const [unread, setUnread] = useState(0);
+  const refreshUnread = useCallback(async () => {
+    try {
+      const res = await notifications.unreadCount();
+      setUnread(res.unread);
+    } catch {
+      // Silent — keeps the rail working when the backend is down.
+    }
+  }, []);
+  useEffect(() => {
+    if (!user) return;
+    refreshUnread();
+    const id = window.setInterval(refreshUnread, UNREAD_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [user, refreshUnread]);
 
   const listRef = useRef<HTMLUListElement>(null);
   const { indicator, phase, setTarget } = useTravelIndicator(
@@ -81,7 +104,7 @@ export default function IconRail() {
 
         <div className="rail-1__bottom">
           <Link
-            href="/preferences/navigation"
+            href="/user/navigation"
             className="rail-1__util-btn"
             title="Edit navigation"
             aria-label="Edit navigation"
@@ -98,11 +121,16 @@ export default function IconRail() {
           </Link>
           <button
             type="button"
-            className="rail-1__util-btn"
-            title="Notifications"
-            aria-label="Notifications"
+            className="rail-1__util-btn rail-1__util-btn-bell"
+            title={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
+            aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
           >
             <Bell size={20} strokeWidth={1.75} />
+            {unread > 0 && (
+              <span className="rail-1__util-btn-bell_badge" aria-hidden="true">
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
           </button>
           <button
             type="button"
@@ -110,7 +138,11 @@ export default function IconRail() {
             title={user ? `Account — ${user.email}` : "Account"}
             aria-label="Account"
             aria-pressed={accountActive}
-            onClick={() => setActiveSectionId(ACCOUNT_SECTION_ID)}
+            onClick={() => {
+              setActiveSectionId(ACCOUNT_SECTION_ID);
+              const first = accountSection?.pages[0]?.href;
+              if (first) router.push(first);
+            }}
           >
             {initials}
           </button>

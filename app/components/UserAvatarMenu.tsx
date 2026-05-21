@@ -129,7 +129,7 @@ export default function UserAvatarMenu() {
           ))}
           <div className="avatar-menu__group">
             <Link
-              href="/theme"
+              href="/user/theme"
               className="sidebar-item avatar-menu__item"
               role="menuitem"
               onClick={() => setOpen(false)}

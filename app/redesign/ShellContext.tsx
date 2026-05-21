@@ -48,11 +48,19 @@ export interface ShellSection {
 
 interface ShellState {
   sections: ShellSection[];
+  /**
+   * Synthetic section for the avatar bucket (tag_enum='avatar_menu').
+   * Kept off `sections[]` so the primary rail-1 nav doesn't render an
+   * avatar icon inline with Workspace/Personal/Planning — the dedicated
+   * avatar button at the bottom of rail-1 flips activeSectionId to
+   * ACCOUNT_SECTION_ID and `activeSection` resolves to this.
+   */
+  accountSection: ShellSection | undefined;
   bookmarkPages: ShellPage[];
   activeSectionId: string;
   setActiveSectionId: (id: string) => void;
   activeSection: ShellSection | undefined;
-  /** True when the account flyout should render instead of the section flyout. */
+  /** True when activeSectionId is the avatar (account) section. */
   isAccountActive: boolean;
   /** True when the workspace scope panel is open in Rail 2. */
   isScopeOpen: boolean;
@@ -223,6 +231,31 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     return out;
   }, [profileGroups, tags, customGroups, prefs, catalogueByKey, tagByEnum, customGroupById]);
 
+  // Avatar bucket. Kept out of `sections[]` so the main rail-1 nav list
+  // doesn't render it. Pages come straight from the catalogue ordered by
+  // their declared default_order (no user-pref overlay — this bucket is
+  // not currently user-reorderable).
+  const accountSection = useMemo<ShellSection | undefined>(() => {
+    const pages: ShellPage[] = catalogue
+      .filter((e) => e.tagEnum === "avatar_menu")
+      .sort((a, b) => a.defaultOrder - b.defaultOrder)
+      .map<ShellPage>((e) => ({
+        itemKey: e.key,
+        name: e.label,
+        href: e.href,
+        icon: e.icon,
+        parentItemKey: null,
+        position: e.defaultOrder,
+      }));
+    if (pages.length === 0) return undefined;
+    return {
+      id: ACCOUNT_SECTION_ID,
+      name: "Account",
+      icon: "user",
+      pages,
+    };
+  }, [catalogue]);
+
   const bookmarkPages = useMemo<ShellPage[]>(() => {
     const result: ShellPage[] = [];
     for (const p of prefs) {
@@ -233,7 +266,14 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     return result.sort((a, b) => a.position - b.position);
   }, [prefs, catalogueByKey]);
 
-  const urlSection = sectionForPath(sections, pathname);
+  // Include the account section in URL → section matching so visiting
+  // /user/account-settings (or any avatar bucket page) activates the
+  // avatar flyout, not whichever section the user last clicked.
+  const sectionsForMatch = useMemo(
+    () => (accountSection ? [...sections, accountSection] : sections),
+    [sections, accountSection],
+  );
+  const urlSection = sectionForPath(sectionsForMatch, pathname);
 
   // Track the section the rail is currently "showing". Defaults to the URL's
   // section, but rail clicks override (so a user can browse one section's
@@ -251,7 +291,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     manualSectionId || urlSection?.id || sections[0]?.id || "";
   const isAccountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const activeSection = isAccountActive
-    ? undefined
+    ? accountSection
     : sections.find((s) => s.id === activeSectionId) ?? sections[0];
 
   const setActiveSectionId = useCallback((id: string) => {
@@ -268,6 +308,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
     <ShellContext.Provider
       value={{
         sections,
+        accountSection,
         bookmarkPages,
         activeSectionId,
         setActiveSectionId,

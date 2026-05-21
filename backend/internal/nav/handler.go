@@ -240,7 +240,7 @@ func (h *Handler) DeletePrefs(w http.ResponseWriter, r *http.Request) {
 // pins everything pages.default_pinned=TRUE that users_roles_pages
 // allows for the user's role.
 //
-// 204 on success. No body. Backed by the button on /preferences/navigation.
+// 204 on success. No body. Backed by the button on /navigation.
 func (h *Handler) ResetAll(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	if err := h.Svc.ResetAllForUser(r.Context(), u.ID, u.SubscriptionID); err != nil {

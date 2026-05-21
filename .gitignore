@@ -8,6 +8,8 @@ local-assets/security-flags.jsonl
 .playwright-mcp/
 .claude/scheduled_tasks.lock
 prefs-nav-*.png
+avatar-flyout-*.png
+notifications-tabs.png
 backend/.env.local
 backend/.env.dev
 backend/.env.staging

@@ -103,6 +103,7 @@
 
 .rail-1__bottom {
   margin-top: auto;
+  margin-bottom: 30px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -182,6 +183,28 @@
 .rail-1__util-btn:hover {
   background: var(--surface-sunken);
   color: var(--ink);
+}
+
+/* Bell + unread-count badge. Position absolutely so the badge sits
+   on the top-right of the 44x44 button without affecting layout. */
+.rail-1__util-btn-bell {
+  position: relative;
+}
+.rail-1__util-btn-bell_badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent, #d14343);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
 }
 
 .rail-1__user-btn {
@@ -491,6 +514,58 @@
   color: var(--ink-subtle);
   padding: 0 22px 4px;
   font-weight: 600;
+}
+
+/* ============================================================
+   Rail 2 — Account flyout extensions
+   Reuses .rail-2 / .rail-2__nav / .rail-2__nav-row chain. Only the
+   bits unique to the avatar bucket live here: identity card, footer
+   (logout), button-as-link variant, danger-row variant.
+   ============================================================ */
+.rail-2__account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 22px 4px;
+}
+.rail-2__account-card_Email {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail-2__account-card_Role {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* Footer block pinned to the bottom of the flyout column. The avatar
+   bucket uses this for the Log out action; other sections don't render
+   a footer at all. Relies on .rail-2__content being a flex column with
+   .rail-2__top above and the footer below; margin-top:auto pushes it
+   to the bottom regardless of how many pages live in .rail-2__top. */
+.rail-2__footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Button styled as a nav-row link (used by Log out). */
+.rail-2__nav-row_link-button {
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* Danger row variant — log out hovers red. */
+.rail-2__nav-row-danger:hover {
+  background: var(--danger-surface, var(--surface-sunken));
+  color: var(--danger, var(--ink));
 }
 
 /* ============================================================
