@@ -435,7 +435,7 @@ func TestNilPool_ReturnsEmpty(t *testing.T) {
 		t.Errorf("nil pool Summary: got %+v err %v, want zeroes/nil", summary, err)
 	}
 
-	states, err := svc.ListFlowStates(ctx, sub)
+	states, err := svc.ListFlowStates(ctx, sub, nil)
 	if err != nil || len(states) != 0 {
 		t.Errorf("nil pool FlowStates: got %d err %v, want 0/nil", len(states), err)
 	}
@@ -934,7 +934,7 @@ func TestListFlowStates_ReturnsStates(t *testing.T) {
 	sub := pickTestSubscription(t, va)
 	svc := artefactitems.NewService(va, nil, "work")
 
-	states, err := svc.ListFlowStates(context.Background(), sub)
+	states, err := svc.ListFlowStates(context.Background(), sub, nil)
 	if err != nil {
 		t.Fatalf("ListFlowStates: %v", err)
 	}
@@ -1147,11 +1147,11 @@ func TestScopeLeak_WorkServiceCannotSeeStrategyArtefacts(t *testing.T) {
 	}
 
 	// 3. ListFlowStates must also be scope-isolated.
-	workStates, err := workSvc.ListFlowStates(ctx, sub)
+	workStates, err := workSvc.ListFlowStates(ctx, sub, nil)
 	if err != nil {
 		t.Fatalf("workSvc.ListFlowStates: %v", err)
 	}
-	stratStates, err := stratSvc.ListFlowStates(ctx, sub)
+	stratStates, err := stratSvc.ListFlowStates(ctx, sub, nil)
 	if err != nil {
 		t.Fatalf("stratSvc.ListFlowStates: %v", err)
 	}
