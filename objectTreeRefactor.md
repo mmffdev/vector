@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0+1+2+3 complete, slice 4 next (drag/reparent rules to config)
+**Status:** IN PROGRESS — slices 0–4 complete, slice 2.5 next (backend `?fields=` contract — first backend touch)
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s3-chrome-to-kinds` (slice 3 — DenseGridHeader + ActionBar kind components, committed locally not yet pushed)
-**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds)
+**Active branch:** `refactor/objecttree-s4-reparent-rules-to-config` (slice 4 — reparent rules extracted, committed locally not yet pushed)
+**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -75,10 +75,11 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — chrome JSX deleted, replaced with kind component mounts
 - Panel kind deferred — `<Panel>` already exists as a project-wide primitive; V2 doesn't need its own variant.
 
-### Claimed by SLICE 4 (drag/reparent rules into config)
+### ~~Claimed by SLICE 4~~ — DONE (drag/reparent rules into per-domain config)
 
-- `app/components/ObjectTreeV2/plugins/DragEngine.tsx`
-- Work-items config JSON (`p_wizard_workitems_v2.json`)
+- ✅ `app/components/ObjectTreeV2/configs/workItemsReparentRules.ts` (new) — pure-function predicates lifted from V2's inline implementation
+- ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — no longer imports `PARENT_PREFIX_MAP`; delegates to the per-domain rules module
+- DragEngine plugin deferred — current direct-import is sufficient; Slice 1.5 will move it into the plugin registry when that lands.
 
 ### Claimed by SLICE 4.5 (column selector)
 
