@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 complete; slice 2.5 awaits Rick (backend touch needs route decision); slice 4.6 frontend portion is the next pure-frontend candidate.
+**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a complete. Awaiting Rick: slice 2.5 (backend `?fields=` — route decision), slice 4.6b (cell memo on shared file), slice 4.6c (backend touched_ids).
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s1.5-registries` (slice 1.5 — registries + loader + context resolver, committed locally not yet pushed)
-**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries)
+**Active branch:** `refactor/objecttree-s4.6a-request-coalescing` (slice 4.6a — debounced refetch + stale-response guard, committed locally not yet pushed)
+**Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (request coalescing)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
