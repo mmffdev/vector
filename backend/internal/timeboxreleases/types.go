@@ -34,6 +34,11 @@ type Release struct {
 	ReleaseDateAdded       time.Time  `json:"timeboxes_releases_created_at"`
 	ReleaseDateUpdated     time.Time  `json:"timeboxes_releases_updated_at"`
 	ArchivedAt             *time.Time `json:"timeboxes_releases_archived_at"`
+	// Slice 5 of the ObjectTree refactor — heartbeat substrate. See
+	// the matching field on Sprint (backend/internal/timeboxsprints/
+	// types.go) for the contract. Values: 'this_node_only' (default)
+	// or 'this_node_and_descendants'.
+	ScopePropagation string `json:"timeboxes_releases_scope_propagation"`
 }
 
 // CreateReleaseInput holds required fields to create a release.
@@ -48,6 +53,10 @@ type CreateReleaseInput struct {
 	ReleaseDateStart   string
 	ReleaseDateEnd     string
 	ReleaseVelocity    *int
+	// Slice 5 — propagation intent. Nil = use the DB default
+	// ('this_node_only'). Valid non-nil values:
+	//   'this_node_only', 'this_node_and_descendants'
+	ScopePropagation *string
 }
 
 // UpdateReleaseInput holds optional fields for partial release update.

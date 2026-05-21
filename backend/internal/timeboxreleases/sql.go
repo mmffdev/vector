@@ -16,8 +16,9 @@ const sqlInsertRelease = `
 			timeboxes_releases_cadence_days,
 			timeboxes_releases_date_start,
 			timeboxes_releases_date_end,
-			timeboxes_releases_velocity
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+			timeboxes_releases_velocity,
+			timeboxes_releases_scope_propagation
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11,'this_node_only'))
 		RETURNING
 			timeboxes_releases_id,
 			timeboxes_releases_id_subscription,
@@ -37,7 +38,8 @@ const sqlInsertRelease = `
 			timeboxes_releases_status,
 			timeboxes_releases_created_at,
 			timeboxes_releases_updated_at,
-			timeboxes_releases_archived_at
+			timeboxes_releases_archived_at,
+			timeboxes_releases_scope_propagation
 	`
 
 // sqlSelectReleaseByID returns one live release scoped to workspace.
@@ -123,7 +125,8 @@ const sqlUpdateReleaseTemplate = `
 			timeboxes_releases_status,
 			timeboxes_releases_created_at,
 			timeboxes_releases_updated_at,
-			timeboxes_releases_archived_at
+			timeboxes_releases_archived_at,
+			timeboxes_releases_scope_propagation
 	`
 
 // sqlArchiveRelease soft-deletes one release scoped to workspace.

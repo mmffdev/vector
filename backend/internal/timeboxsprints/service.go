@@ -55,6 +55,7 @@ func (s *Service) Create(ctx context.Context, in CreateSprintInput) (*Sprint, er
 		in.SprintName, in.SprintSuffix, in.SprintOwner,
 		in.SprintCadenceDays, in.SprintDateStart, in.SprintDateEnd,
 		velocity,
+		in.ScopePropagation, // Slice 5A — nil → COALESCE to DB default 'this_node_only'
 	)
 	sprint, err := scanSprint(row)
 	if err != nil {
@@ -95,6 +96,7 @@ func (s *Service) BulkCreate(ctx context.Context, inputs []CreateSprintInput) ([
 			in.SprintName, in.SprintSuffix, in.SprintOwner,
 			in.SprintCadenceDays, in.SprintDateStart, in.SprintDateEnd,
 			velocity,
+			in.ScopePropagation, // Slice 5A — nil → COALESCE to DB default 'this_node_only'
 		)
 		sprint, err := scanSprint(row)
 		if err != nil {
@@ -418,6 +420,9 @@ func scanSprint(row scannable) (*Sprint, error) {
 		&s.SprintScope, &s.SprintVelocity, &s.SprintEstimate,
 		&s.SprintCreepByCount, &s.SprintCreepByEstimate,
 		&s.Status, &s.SprintDateAdded, &s.SprintDateUpdated, &s.ArchivedAt,
+		// Slice 5A — column appended after archived_at in every SELECT/RETURNING
+		// (see sql.go). Order MUST match the column-list there.
+		&s.ScopePropagation,
 	)
 	if err != nil {
 		return nil, err

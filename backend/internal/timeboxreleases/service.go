@@ -38,6 +38,7 @@ func (s *Service) Create(ctx context.Context, in CreateReleaseInput) (*Release, 
 		in.ReleaseName, in.ReleaseSuffix, in.ReleaseOwner,
 		in.ReleaseCadenceDays, in.ReleaseDateStart, in.ReleaseDateEnd,
 		in.ReleaseVelocity,
+		in.ScopePropagation,
 	)
 	release, err := scanRelease(row)
 	if err != nil {
@@ -73,6 +74,7 @@ func (s *Service) BulkCreate(ctx context.Context, inputs []CreateReleaseInput) (
 			in.ReleaseName, in.ReleaseSuffix, in.ReleaseOwner,
 			in.ReleaseCadenceDays, in.ReleaseDateStart, in.ReleaseDateEnd,
 			in.ReleaseVelocity,
+			in.ScopePropagation,
 		)
 		release, err := scanRelease(row)
 		if err != nil {
@@ -292,6 +294,7 @@ func scanRelease(row scannable) (*Release, error) {
 		&r.ReleaseScope, &r.ReleaseVelocity, &r.ReleaseEstimate,
 		&r.ReleaseCreepByCount, &r.ReleaseCreepByEstimate,
 		&r.Status, &r.ReleaseDateAdded, &r.ReleaseDateUpdated, &r.ArchivedAt,
+		&r.ScopePropagation,
 	)
 	if err != nil {
 		return nil, err
