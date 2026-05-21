@@ -1,9 +1,9 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slice 0 + 1 complete, slice 2 next (detail flyout shell + interaction contract)
+**Status:** IN PROGRESS — slices 0+1+2 complete, slice 3 next (chrome to config-driven kinds)
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s1-flat-row-store` (slice 1 — generic useObjectTreeWindow hook, committed locally not yet pushed)
-**Landed branches:** `refactor/objecttree-s0-baseline-and-tests` (slice 0)
+**Active branch:** `refactor/objecttree-s2-flyout-shell` (slice 2 — ObjectTreeDetailFlyout shell, committed locally not yet pushed)
+**Landed branches:** `refactor/objecttree-s0-baseline-and-tests`, `refactor/objecttree-s1-flat-row-store`
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
 **Started:** 2026-05-20
@@ -50,10 +50,11 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - `app/components/ObjectTreeV2/{registry,context,loader,ObjectTree}.ts(x)` (new)
 - `app/components/ObjectTreeV2/{kinds,plugins,cells,flyouts}/**` (new subdirs)
 
-### Claimed by SLICE 2 (detail flyout shell + interaction contract)
+### ~~Claimed by SLICE 2~~ — DONE (detail flyout shell + interaction contract)
 
-- `app/components/ObjectTreeV2/flyouts/**`
-- `app/components/ArtefactInlineForm/**` — refactoring how it's consumed, NOT changing its internals. **If another agent needs to edit ArtefactInlineForm's logic, talk to me first.**
+- ✅ `app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout.tsx` (new)
+- ✅ `app/components/ObjectTreeV2/p_ObjectTree.tsx` — now mounts the shell
+- ✅ `app/components/ArtefactInlineForm/**` — UNTOUCHED. V2 wraps it in an inline `ArtefactBody` adapter; AIF's internals are still mounted via the legacy path for production pages.
 
 ### Claimed by SLICE 2.5 (backend `?fields=` contract — first backend touch)
 
