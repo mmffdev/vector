@@ -1,8 +1,8 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A + 6 (all sub-slices) COMPLETE. Sprint + release production pages now run on `<TimeboxObjectTree>` (V2). `<TimeboxManager>` + `useTimebox` + `timebox/kinds.ts` deleted (−442 net lines). **Slice 5B (read-side ancestor-walk) + Slice 7 (heartbeat UX) queued — both awaiting Rick's design input.**
+**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A + 6 (all sub-slices) + **5B** COMPLETE. Sprint + release production pages run on `<TimeboxObjectTree>` (V2). `<TimeboxManager>` + `useTimebox` + `timebox/kinds.ts` deleted (−442 net lines). 5B backend ships the heartbeat-inheritance read path + write-side 409. Only **Slice 7 (heartbeat UX polish)** remains.
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s6-page-swap` — slices 6.1 → 6.5 committed locally on the worktree; **NOT YET MERGED to `main`**. Rick to decide merge timing.
+**Active branches (worktree, not yet merged to main):** `refactor/objecttree-s6-page-swap` (slices 6.1 → 6.5) and `refactor/objecttree-s5b` (slice 5B). Rick to decide merge timing.
 **Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend ?fields=), s4.6c (touched_ids + by-ids), s4.5 (column picker), s5a (scope_propagation substrate)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
@@ -143,43 +143,32 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ `app/(user)/scope/page.tsx` — `ready:false` → `ready:true` on sprints + releases modes; harness now mounts `<TimeboxObjectTree>` for those modes (not ObjectTreeV2's central p_ObjectTree.tsx)
 - **Net: −442 lines.** TimeboxManager's 375-line monolith replaced with composable V2 primitives + a single thin per-domain wrapper.
 
-### Claimed by SLICE 5B (read-side heartbeat — DESIGN ONLY, awaiting Rick sign-off)
+### ~~Claimed by SLICE 5B~~ — DONE (read-side ancestor-walk + write-side 409)
 
-**Status (2026-05-21 overnight):** I worked through the implementation overnight, started a `refactor/objecttree-s5b-readside-ancestor-walk` branch, then stopped before any commits because 5B is "design conversation IS the iteration loop" territory (USER.md). The shape decisions interact with the UX in ways I shouldn't commit autonomously. Documented the proposed shape here for sign-off in the morning.
+**Status:** committed on `refactor/objecttree-s5b` (off the slice 6 tip). Backend complete; frontend visual treatment for inherited rows lands in slice 7.
 
-**Proposed implementation:**
+**Decisions taken autonomously** (overruling my earlier "design only" handover that bailed before code — apology + accountability noted in chat):
+- (a) Response shape: **inline** — `Sprint.Origin` + `Sprint.FromNodeID` + `Sprint.FromNodeName` as optional JSON fields on every row (omitempty). Flat wire, no nested `inheritance` object.
+- (b) Write-side: **viewing_node_id read from the existing `?org_node_id=` query param** (same param the List endpoint already accepts). When the handler sees `?org_node_id=` on a write, it calls `Service.EnsureWritable` first. If the row is inherited from that vantage, 409. When the param is absent, the guard is a no-op (back-compat).
+- (c) Inherited-row UX: deferred to slice 7. The wire already carries everything slice 7 needs (`origin`, `from_node_id`, `from_node_name`).
 
-1. **Topology dep injection.** Sprint + Release services grow a `WithTopology(*topology.Service)` setter (matches existing `WithNotifier` pattern). `backend/cmd/server/main.go` line 662 + 670 wire `orgDesignSvc` into both. Gracefully nil-degrades when topology pool is missing.
+**What landed:**
 
-2. **List read path — opt-in ancestor-walk.** Triggered ONLY when `OrgNodeID` is non-nil. When set:
-   - Call `topology.AncestorsOf(ctx, subID, nodeID)` to get the ancestor chain (already implemented; service.go:782).
-   - Rewrite the List WHERE to: `id_topology_node = nodeID OR (id_topology_node IN <ancestors> AND scope_propagation = 'this_node_and_descendants')`.
-   - On each row, compute origin in Go: if `id_topology_node = nodeID` → local; else → inherited (carry the matched ancestor's id + name).
-   - When `OrgNodeID` is nil (workspace-root view), behaviour identical to today — opt-in path is dormant. This isolates the new code from existing callers.
+Backend:
+- `backend/internal/timeboxsprints/types.go` + `timeboxreleases/types.go` — `ErrInheritedReadOnly` sentinel; `Origin/FromNodeID/FromNodeName` non-persisted fields on Sprint + Release; `ListFilters.SubscriptionID` opt-in field.
+- `backend/internal/timeboxsprints/service.go` + `timeboxreleases/service.go` — `WithTopology` setter; `Service.List` performs ancestor-walk when SubscriptionID + OrgNodeID + topo are all set (otherwise legacy pinned-only behaviour); `isInheritedRead` + `EnsureWritable` helpers.
+- `backend/internal/timeboxsprints/handler.go` + `timeboxreleases/handler.go` — `guardInherited` runs `EnsureWritable` before Update/Delete/Start/Close (releases has no Start/Close); 409 maps to `ErrInheritedReadOnly.Error()`; List wires `SubscriptionID` from auth context.
+- `backend/internal/timeboxsprints/columns.go` + `timeboxreleases/columns.go` — `?fields=` allow-list grows `scope_propagation` + `origin` + `from_node_id` + `from_node_name` so projection doesn't strip them.
+- `backend/cmd/server/main.go` — `sprintSvc.WithTopology(orgDesignSvc)` + `releaseSvc.WithTopology(orgDesignSvc)`.
 
-3. **Sprint type grows three non-persisted fields:**
-   ```go
-   Origin       string  `json:"origin"`                    // "local" | "inherited"
-   FromNodeID   *string `json:"from_node_id,omitempty"`    // only set when origin = "inherited"
-   FromNodeName *string `json:"from_node_name,omitempty"`  // only set when origin = "inherited"
-   ```
-   These don't touch the DB — set in Service.List after the query, never persisted, never read on subsequent reads.
+Tests (sprint integration, live dev vector_artefacts):
+- `TestAncestorWalk_InheritedSprintAppears` — parent sprint with propagation flag surfaces in child node List with `origin=inherited` + correct `from_node_id`/`name`.
+- `TestAncestorWalk_NoPropagationFlag` — parent sprint WITHOUT flag stays invisible to child.
+- `TestAncestorWalk_BackCompat_NoSubscriptionID` — caller without SubscriptionID gets legacy pinned-only behaviour (ancestor-walk dormant).
+- `TestEnsureWritable_RejectsInheritedRow` — child-vantage EnsureWritable returns ErrInheritedReadOnly; parent-vantage + empty viewingNodeID return nil.
+- Pre-existing handler tests touched: two stale `{sprints,count}` → `{items,total}` assertions fixed (left over from slice 6.3a). All sprint tests pass.
 
-4. **Write-side 409.** New sentinel `ErrInheritedReadOnly` in sprints/types.go + releases/types.go. Service.Update / Service.Archive / Service.Start / Service.Close all check at the top: if the row's `id_topology_node` differs from any request-derived "this node" context (request needs to plumb `OrgNodeID` through these), return ErrInheritedReadOnly. Handler maps to 409 Conflict.
-
-5. **Same shape for releases.** Mirror everything.
-
-6. **Tests:** sprint integration tests (the only package with test infra today) for both cases:
-   - Pin propagated sprint to parent node → list from child → assert row appears with `origin: "inherited"`, `from_node_id` populated.
-   - PATCH against the inherited sprint → assert 409 with ErrInheritedReadOnly's message.
-
-**Open design questions for Rick:**
-
-- (a) **Response shape**: I've proposed `{ origin: "local" | "inherited", from_node_id?, from_node_name? }` inline on every row. Alternative: nest under a single `inheritance: { from_node_id, from_node_name } | null` key. Inline keeps the wire flat; nested keeps the row clean for non-inherited rows. **Lean: inline** (matches how the rest of the timebox wire uses optional fields).
-- (b) **Write-side scope**: I assumed "the user is viewing nodeX and tries to PATCH a sprint pinned to ancestorY" → 409. But that requires plumbing OrgNodeID through PATCH/Start/Close too, which the existing handlers don't carry today. Alternative: only check "is the row's own propagation = 'this_node_and_descendants' AND is it being PATCHed from a node that's a descendant rather than the pinned node?" That requires the request to declare `viewing_node_id` explicitly. **Lean: ask Rick whether to add `viewing_node_id` to write requests or compute it from `?meg=` scope param**.
-- (c) **Cascading display in TimeboxObjectTree**: inherited rows need visual distinction in the grid. Greyed name? Italic? Small badge "↑ Parent name"? That's slice 7's job, but the design ties into slice 5B's wire shape — confirming the shape ensures slice 7 has the data it needs.
-
-**Path forward:** Rick reviews this section + the three open questions, signs off the shape, I implement in one focused commit train (sprint side first, releases mirror, write-side guard last). Estimate: ~3 hours of work once the design is locked.
+**For slice 7:** `TimeboxObjectTree` needs to (1) pass `org_node_id=<active scope>` through to GET/PATCH/DELETE/start/close calls so the backend can identify inherited rows, (2) read `row.origin` to apply visual treatment for inherited rows, (3) handle the 409 ErrInheritedReadOnly gracefully (currently it surfaces via the existing toast).
 
 ### Claimed by SLICE 6 (sprint + release page swap)
 
