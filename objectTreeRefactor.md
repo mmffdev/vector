@@ -1,8 +1,8 @@
 # ⚠️ Active Refactor — ObjectTree V2
 
-**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A complete. Slice 5B next (read-side ancestor-walk + origin field on response — deferred awaiting UI sign-off on exact shape). Slice 6 final (sprint/release page swap to V2).
+**Status:** IN PROGRESS — slices 0–4 + 1.5 + 4.6a + 2.5 + 4.6c + 4.5 + 5A complete (5A fully threaded — mig 091 + Sprint AND Release type fields + Sprint AND Release SQL/scan/INSERT). Slice 5B next (read-side ancestor-walk + origin field on response — deferred awaiting UI sign-off on exact shape). Slice 6 final (sprint/release page swap to V2).
 **Owner:** Claude (working from Rick's main session)
-**Active branch:** `refactor/objecttree-s5a-scope-propagation-substrate` (slice 5A — mig 091 + Sprint type field, applied to dev, committed locally not yet pushed)
+**Active branch:** `refactor/objecttree-s5a-scope-propagation-substrate` (slice 5A — mig 091 + Sprint+Release types + Sprint+Release SQL/scan/INSERT threaded, applied to dev, committed locally not yet pushed)
 **Landed branches:** s0 (baseline), s1 (data hook), s2 (flyout shell), s3 (chrome kinds), s4 (reparent rules), s1.5 (registries), s4.6a (coalescing), s2.5 (backend ?fields=), s4.6c (touched_ids + by-ids), s4.5 (column picker), s5a (scope_propagation substrate)
 **Worktree:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector-refactor-objecttree-s0/`
 **Plan:** [docs/c_c_objecttree_refactor_plan.md](docs/c_c_objecttree_refactor_plan.md)
@@ -93,11 +93,16 @@ These are off-limits on `main` until each slice merges. The list grows slice by 
 - ✅ Slice 4.6c (backend touched_ids + by-ids endpoint) — done on `refactor/objecttree-s4.6c-touched-ids`
 - ⏳ Slice 4.6b (cell memoisation audit on `work-items-tree-config.tsx`) — next; shared file with production, additive React.memo wrappers
 
-### ~~Claimed by SLICE 5A~~ — DONE (scope_propagation substrate)
+### ~~Claimed by SLICE 5A~~ — DONE (scope_propagation substrate, fully threaded)
 
 - ✅ `db/vector_artefacts/schema/091_timebox_scope_propagation.sql` (new) + DOWN — column + check + partial indexes on both timeboxes_sprints + timeboxes_releases. APPLIED to dev DB; schema_migrations row inserted.
-- ✅ `backend/internal/timeboxsprints/types.go` — Sprint.ScopePropagation field + CreateSprintInput.ScopePropagation
-- Note: Sprint SELECT/INSERT/UPDATE SQL doesn't yet read the new column (scanSprint won't populate the JSON-tagged field). Picked up by the SQL-thread commit on this same branch when work resumes.
+- ✅ `backend/internal/timeboxsprints/types.go` — Sprint.ScopePropagation + CreateSprintInput.ScopePropagation
+- ✅ `backend/internal/timeboxsprints/sql.go` — scope_propagation appended to all 6 column lists; INSERT $1..$11 with COALESCE
+- ✅ `backend/internal/timeboxsprints/service.go` — scanSprint scans new field; Create + BulkCreate pass 11th arg
+- ✅ `backend/internal/timeboxreleases/types.go` — Release.ScopePropagation + CreateReleaseInput.ScopePropagation
+- ✅ `backend/internal/timeboxreleases/sql.go` — scope_propagation appended to all 4 column lists; INSERT $1..$11 with COALESCE
+- ✅ `backend/internal/timeboxreleases/service.go` — scanRelease + Create + BulkCreate threaded
+- Phase A complete: column persists + round-trips on every read path. Phase B (read-side ancestor-walk + `{origin}` on response) lands in slice 5B once UI shape is signed off.
 
 ### Claimed by SLICE 5B (read-side heartbeat — deferred)
 
