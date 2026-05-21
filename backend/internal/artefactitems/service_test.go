@@ -576,7 +576,11 @@ type stubTopologyResolver struct {
 
 func (s stubTopologyResolver) CanReadScope(_ context.Context, _, _, _, _ uuid.UUID) (bool, error) {
 	if s.notFound {
-		return false, fmt.Errorf("node not found")
+		// Per the TopologyScopeResolver error contract (service.go),
+		// implementations return artefactitems' own sentinels. main.go
+		// adapts the real *topology.Service via topologyScopeAdapter so
+		// topology.ErrNodeNotFound lands here as ErrScopeNodeNotFound.
+		return false, artefactitems.ErrScopeNodeNotFound
 	}
 	return s.canRead, nil
 }
