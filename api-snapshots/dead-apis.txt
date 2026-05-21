@@ -33,10 +33,13 @@
 /nav/profiles/{id}
 /nav/profiles/{id}/groups
 /notifications
+/notifications/rules/{id}
 /notifications/stream
 /notifications/{id}/read
 /page-help/admin/{addressable_id}
 /page-help/{addressable_id}
+/portfolio-items/by-ids
+/portfolio-items/columns
 /portfolio-items/flow-states
 /portfolio-items/summary
 /portfolio-items/{id}
@@ -52,7 +55,9 @@
 /roles/{id}/permissions
 /tenant-settings
 /timeboxes/milestones/{id}
+/timeboxes/releases/columns
 /timeboxes/releases/{id}
+/timeboxes/sprints/columns
 /timeboxes/sprints/{id}
 /timeboxes/sprints/{id}/close
 /timeboxes/sprints/{id}/start
@@ -69,6 +74,8 @@
 /topology/tree
 /topology/users/{userId}/grants
 /user/tab-order/{pageId}
+/work-items/by-ids
+/work-items/columns
 /work-items/summary
 /work-items/{id}
 /work-items/{id}/children
