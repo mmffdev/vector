@@ -1651,6 +1651,569 @@ app/(user)/scope/page.tsx
             </ol>
           </section>
         </article>
+
+        {/* ══════════════════════════════════════════════════════
+            NOTIFICATIONS SYSTEM
+        ══════════════════════════════════════════════════════ */}
+        <article style={{ marginTop: "var(--space-6)" }}>
+          <h1 className="dui-doc__h1" id="notifications">Notifications system</h1>
+          <p className="dui-doc__lead">
+            The end-to-end notification surface — bell, toast, inbox, settings, rules engine,
+            broker, dispatchers, and SSE stream. Spans both repos: <code>backend/internal/notifications/</code>
+            (Go) and <code>app/components/Notification*</code> + <code>app/user/notifications/</code> (Next.js).
+            Domain-event-driven (transactional outbox → topic exchange → per-channel dispatchers),
+            with a user-authored rules layer on top.
+          </p>
+
+          {/* ── Synopsis ── */}
+          <section id="notifications-synopsis">
+            <h2 className="dui-doc__h2">Synopsis</h2>
+            <p className="dui-doc__p">
+              The system answers two distinct questions:
+            </p>
+            <ol className="dui-doc__list dui-doc__list--ordered">
+              <li>
+                <strong>How does a domain event become a user-facing notification?</strong> Producers
+                (today: <code>mentions.Service</code>, <code>artefactitems.Service</code> via the
+                rules hook) call <code>Notifier.Enqueue</code> inside their write transaction. That
+                writes one row to <code>notifications_outbox</code>. A relay drains the outbox to
+                a RabbitMQ topic exchange. Three dispatchers (in-app, email, SSE) consume the
+                exchange on routing keys <code>*.in_app</code> / <code>*.email</code> / <code>*.sse</code>,
+                each checking the user&apos;s prefs before delivering.
+              </li>
+              <li>
+                <strong>How does the user shape what they want to be notified about?</strong> The
+                rules engine (<code>internal/notifications/rules/</code>) lets users build
+                JIRA-style predicates against domain events (&quot;notify me when any Defect&apos;s
+                priority is set to High&quot;). Rules are evaluated at write-time by a hook the
+                producer service exposes (<code>artefactitems.Service.WithRuleHook</code>). Matches
+                fan into the same outbox path above, tagged with the rule&apos;s bucket so the bell
+                inbox can group them.
+              </li>
+            </ol>
+            <p className="dui-doc__p">
+              The bell + toast read the resulting <code>users_notifications</code> rows. The bell is
+              built but not yet wired into the chrome; the toast is mounted in
+              <code>RedesignShell</code> and live in the redesigned routes.
+            </p>
+          </section>
+
+          {/* ── Architecture & file map ── */}
+          <section id="notifications-architecture">
+            <h2 className="dui-doc__h2">Architecture &amp; file map</h2>
+            <p className="dui-doc__p">
+              Two halves — producer/transport (backend) and consumer/UI (frontend) — joined by a
+              SQL outbox + a Rabbit topic exchange.
+            </p>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Backend (<code>backend/internal/notifications/</code>)</div>
+              <pre className="dui-doc__code">{`notifications/
+├── notifier.go       — Notifier + TxNotifier interfaces; Event struct (Kind, sub, recipient, context, snippet)
+├── dbnotifier.go     — Production Notifier impl. Enqueue / EnqueueTx → notifications_outbox row
+├── relay.go          — Goroutine. Postgres LISTEN('notifications_outbox_inserted') + 30s tick.
+│                       Claims a batch via UPDATE…SKIP LOCKED, publishes envelopes to the broker,
+│                       marks delivered or fails-with-retry.
+├── service.go        — Bell read-model: List / UnreadCount / MarkRead / MarkAllRead
+├── handler.go        — HTTP for the bell + prefs. Mounted on /_site/notifications and /samantha/v2.
+├── stream.go         — GET /notifications/stream — SSE. Subscribes to realtime hub topic
+│                       "notifications:<user_id>"; forwards every Publish as a "data:" line.
+├── prefs.go          — Per-user (kind, channel) opt-out matrix with tiny in-process cache.
+├── templates.go      — Kind → (title, body) renderer per channel. Defaults registered at boot:
+│                       RegisterMentionDefault + RegisterArtefactDefault.
+├── sql.go            — All query constants (incl. users_notifications_tag column from mig 236).
+├── dto.go / errors.go — wire helpers + sentinels.
+│
+├── broker/
+│   ├── broker.go     — Broker interface (Publish / Consume / Close) + Envelope + ErrBrokerUnavailable
+│   ├── rabbit.go     — RabbitBroker (AMQP 0.9.1, github.com/rabbitmq/amqp091-go). Single topic
+│   │                   exchange "notifications". Channel-recovery on each call.
+│   └── noop.go       — NoopBroker fallback when AMQP_URL is unset (CI / dev-without-rmq).
+│
+├── dispatchers/
+│   ├── inapp.go      — Binds *.in_app. Persists to users_notifications (the bell read-model).
+│   ├── sse.go        — Binds *.sse. Publishes a nudge (no body) to the realtime hub per-user topic.
+│   └── email.go      — Binds *.email. Lookups recipient address; delegates to messaging/email.Service.
+│                       Honors per-channel kill-switch (messaging/email/flags.go ChannelUserUpdate).
+│
+├── resolvers/
+│   ├── artefactitems.go — Mention context resolver factory. (kind, UUID) → "DE-101 — Title".
+│   │                      Does NOT import artefactitems — pure SQL on artefacts table. Type-kind
+│   │                      guardrail prevents cross-kind label leaks.
+│   └── sql.go        — query constants.
+│
+└── rules/             — User-defined notification-rule engine.
+    ├── types.go      — Rule, Condition, RuleType (artefact|mention|note|comment|owner_proposed),
+    │                   Operator catalogue (JQL-style: = != > < IN WAS CHANGED CHANGED_TO …)
+    ├── service.go    — CRUD on users_notification_rules
+    ├── schema.go     — GET /notifications/rule-schema — UI catalogue (types × fields × operators)
+    ├── evaluator.go  — MatchEvent(ArtefactChangedEvent) → []Rule. AND across conditions, OR across rules.
+    │                   RuleHook interface used by producers. Conditions persisted as JSONB.
+    ├── handler.go    — HTTP CRUD surface
+    └── sql.go        — query constants`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Backend wiring (<code>backend/cmd/server/main.go</code>)</div>
+              <pre className="dui-doc__code">{`// ~line 615 — boot path:
+notifPrefs     := notifications.NewPrefs(pool)
+notifTemplates := notifications.NewTemplates()
+notifications.RegisterMentionDefault(notifTemplates)
+notifications.RegisterArtefactDefault(notifTemplates)
+
+if amqpURL := os.Getenv("AMQP_URL"); amqpURL != "" {
+    rb, err := broker.New(ctx, amqpURL, notifLogger)
+    if err == nil {
+        notifBroker = rb
+        notifier    = notifications.NewDBNotifier(pool)       // outbox writer
+        go notifications.NewRelay(pool, notifBroker, …).Run(ctx)
+        go dispatchers.NewInApp(pool, notifTemplates, notifPrefs, …).Run(ctx, notifBroker)
+        go dispatchers.NewEmail(pool, mailer, notifTemplates, notifPrefs, …).Run(ctx, notifBroker)
+        go dispatchers.NewSSE(rtHub, notifPrefs, …).Run(ctx, notifBroker)
+    } else { notifier = notifications.NewNoop(…) }              // dial fail → noop
+} else {     notifier = notifications.NewNoop(…) }              // unset    → noop
+
+// Rules — CRUD + schema + producer hook
+notifRulesSvc  := notifrules.NewService(pool)
+notifEvaluator := notifrules.NewEvaluator(pool, notifLogger)
+v2RuleHook     := newRulesProducerHook(notifEvaluator, notifier, notifLogger)
+v2RuleHookAttach(v2RuleHook)  // wires artefactitems.Service.WithRuleHook
+
+// Mention resolvers — turn (kind, UUID) into "DE-101 — Title"
+notifresolvers.RegisterArtefactResolvers(mentionsSvc, vaPool)
+
+// Routes — mounted twice (both transports)
+r.Route("/notifications", func(r chi.Router) {
+    r.Get("/", notifH.List)
+    r.Get("/unread-count", notifH.UnreadCount)
+    r.Post("/read-all", notifH.MarkAllRead)
+    r.Post("/{id}/read", notifH.MarkRead)
+    r.Get("/prefs", notifH.ListPrefs)
+    r.Put("/prefs", notifH.UpsertPref)
+    r.Get("/stream", notifStreamH.Stream)
+    r.Get("/rule-schema", notifSchemaH.Get)
+    r.Route("/rules", func(r chi.Router) { /* CRUD */ })
+})`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Frontend (<code>app/</code>)</div>
+              <pre className="dui-doc__code">{`app/
+├── components/
+│   ├── NotificationBell.tsx          — Bell + dropdown. Polls + subscribes to SSE.
+│   │                                   ⚠ Defined but NOT mounted anywhere yet — backlog #4.
+│   └── NotificationToastHost.tsx     — Top-right toast stack. Mounted in RedesignShell.
+│                                       Max 3 visible; 5s auto-dismiss; SSE nudge → fetch newest unread.
+│
+├── hooks/
+│   ├── useNotificationsStream.ts     — EventSource against /notifications/stream?access_token=
+│   │                                   (EventSource can't set headers → JWT in query string).
+│   │                                   Auto-reconnect on error.
+│   └── useRefetchOnPush.ts           — Generic debounced-refetch-on-realtime-push helper.
+│                                       Used by list views (sprint board, tree, etc).
+│
+├── user/notifications/
+│   ├── layout.tsx                    — TabBar: Notifications / Settings
+│   ├── page.tsx                      — Redirects to /user/notifications/notifications
+│   ├── notifications/page.tsx        — Inbox list. Pre-fetched 200 rows, client-side
+│   │                                   filter+search+page. Tag-aware (uses mig 236 column).
+│   └── settings/page.tsx             — Two surfaces: rules CRUD + prefs matrix
+│                                       (kind × channel checkboxes).
+│
+└── lib/apiSite/index.ts              — typed client wrappers:
+    ├── notifications.list / unreadCount / markRead / markAllRead / listPrefs / upsertPref
+    └── notificationRules.list / get / create / update / delete / schema`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Database</div>
+              <pre className="dui-doc__code">{`db/mmff_vector/schema/
+├── 230_notifications.sql                   — users_notifications (bell read-model),
+│                                              notifications_outbox, users_notifications_prefs,
+│                                              pg_notify trigger on outbox INSERT
+├── 236_notification_rules.sql              — users_notification_rules table +
+│                                              users_notifications.users_notifications_tag column
+│                                              + users_notifications.users_notifications_rule_id
+│                                              (trace which rule fired this row)
+└── 237_notification_rules_workspace.sql    — adds users_notification_rules_id_workspace,
+                                              flips rule target from artefact UUID → type name`}</pre>
+            </div>
+          </section>
+
+          {/* ── Wire contract ── */}
+          <section id="notifications-wire">
+            <h2 className="dui-doc__h2">Wire contract &amp; endpoints</h2>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Bell + prefs (<code>/_site/notifications</code> · <code>/samantha/v2/notifications</code>)</div>
+              <pre className="dui-doc__code">{`GET    /notifications/?only_unread=<bool>&limit=<n>   → { notifications: [], count }
+GET    /notifications/unread-count                    → { unread: number }
+POST   /notifications/{id}/read                       → 204
+POST   /notifications/read-all                        → { marked_read: number }
+GET    /notifications/prefs                           → { prefs: [], count }
+PUT    /notifications/prefs                           → 204  (body: {kind, channel, enabled})
+GET    /notifications/stream                          → SSE; ?access_token=<jwt>
+                                                        events: { type:"notification.created", kind }`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Rules engine (<code>/_site/notifications/rules</code>)</div>
+              <pre className="dui-doc__code">{`GET    /notifications/rule-schema     → { types: [{ type, fields:[…], operators:[…] }] }
+GET    /notifications/rules/          → { rules: [], count }
+POST   /notifications/rules/          → { rule }
+GET    /notifications/rules/{id}      → { rule }
+PATCH  /notifications/rules/{id}      → { rule }
+DELETE /notifications/rules/{id}      → 204`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Core wire types (TypeScript, from <code>app/lib/apiSite/index.ts</code>)</div>
+              <pre className="dui-doc__code">{`interface UserNotification {
+  users_notifications_id:              ID;
+  users_notifications_id_subscription: ID;
+  users_notifications_id_user:         ID;
+  users_notifications_kind:            string;   // "mention" | "artefact" | …
+  users_notifications_tag?:            string;   // bell-filter bucket (mig 236)
+  users_notifications_title:           string;
+  users_notifications_body:            string;
+  users_notifications_context_kind?:   string;
+  users_notifications_context_id?:     string;
+  users_notifications_context_label?:  string;   // "DE-101 — Login fails on Safari"
+  users_notifications_created_at:      string;
+  users_notifications_read_at?:        string | null;
+}
+
+interface NotificationRule {
+  users_notification_rules_id:              ID;
+  users_notification_rules_id_subscription: ID;
+  users_notification_rules_id_user?:        ID | null;   // NULL = admin scope (not yet wired)
+  users_notification_rules_id_workspace?:   ID | null;
+  users_notification_rules_name:            string;
+  users_notification_rules_type:            string;     // "artefact" | "mention" | …
+  users_notification_rules_target?:         string;     // type name post mig 237
+  users_notification_rules_conditions:      RuleCondition[];   // JSONB; AND across conditions
+  users_notification_rules_enabled:         boolean;
+  users_notification_rules_created_at:      string;
+  users_notification_rules_updated_at:      string;
+}`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Producer-side event (<code>internal/notifications/notifier.go</code>)</div>
+              <pre className="dui-doc__code">{`type Event struct {
+    Kind            Kind        // "mention" | "artefact" | …
+    SubscriptionID  uuid.UUID
+    WorkspaceID     uuid.UUID
+    AuthorUserID    uuid.UUID
+    RecipientUserID uuid.UUID
+    ContextKind     string      // "defect" | "story" | …
+    ContextID       string      // artefact UUID
+    ContextLabel    string      // resolved by mentions resolver: "DE-101 — Title"
+    Snippet         string      // text body / surrounding text
+}
+
+type Notifier interface { Enqueue(ctx, e Event) error }
+type TxNotifier interface { EnqueueTx(ctx, tx pgx.Tx, e Event) error }`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Rules-side event (<code>internal/notifications/rules/evaluator.go</code>)</div>
+              <pre className="dui-doc__code">{`type ArtefactChangedEvent struct {
+    SubscriptionID uuid.UUID
+    WorkspaceID    uuid.UUID
+    ArtefactID     uuid.UUID
+    ArtefactType   string     // type NAME, e.g. "Defect" (post mig 237)
+    AuthorUserID   uuid.UUID
+    Fields         map[string]FieldChange   // {Before, After} per field
+}
+
+type RuleHook interface { OnArtefactChanged(ctx, ev ArtefactChangedEvent) }`}</pre>
+            </div>
+          </section>
+
+          {/* ── Runtime flow ── */}
+          <section id="notifications-runtime">
+            <h2 className="dui-doc__h2">Runtime flow</h2>
+
+            <p className="dui-doc__p">
+              <strong>1. Mention path (live today).</strong> User types <code>@alice</code> in a
+              defect comment.
+            </p>
+            <pre className="dui-doc__code">{`mentions.Service.Create(tx, …)
+   └─ writes users_mentions row
+   └─ DBNotifier.EnqueueTx(tx, Event{Kind:"mention", …})  ← same tx
+       └─ INSERT INTO notifications_outbox (…) VALUES (…)
+           └─ AFTER INSERT trigger: pg_notify('notifications_outbox_inserted', '')
+
+Relay (goroutine, started at boot)
+   ├─ LISTEN connection wakes on NOTIFY (or 30s tick)
+   ├─ drainOnce(): UPDATE notifications_outbox SET status='claimed'
+   │               WHERE id IN (SELECT id … FOR UPDATE SKIP LOCKED LIMIT 100)
+   ├─ for each claimed row → broker.Publish(Envelope{RoutingKey:"mention.in_app", payload})
+   │                          broker.Publish(Envelope{RoutingKey:"mention.email",   payload})
+   │                          broker.Publish(Envelope{RoutingKey:"mention.sse",     payload})
+   └─ UPDATE notifications_outbox SET status='delivered'
+
+InApp dispatcher  (binds "*.in_app")
+   ├─ prefs.Enabled(recipient, "mention", "in_app")? → if no, drop
+   ├─ Templates.Render(event, "in_app") → (title, body)
+   └─ INSERT INTO users_notifications (…, tag='mention') VALUES (…)
+
+SSE dispatcher    (binds "*.sse")
+   ├─ prefs.Enabled(recipient, "mention", "sse")? → if no, drop
+   └─ hub.Publish("notifications:<recipient_id>", { type:"notification.created", kind })
+       └─ EventSource in browser fires onmessage
+           └─ NotificationToastHost.useNotificationsStream callback
+               └─ notifications.list(true, 1).then(push toast)
+           └─ NotificationBell.useNotificationsStream callback (when mounted)
+               └─ refresh count + list
+
+Email dispatcher  (binds "*.email")
+   ├─ prefs.Enabled(recipient, "mention", "email")? → if no, drop
+   ├─ recipientEmail(uuid) → users.email (cross-DB)
+   └─ messaging/email.Service.SendUserUpdate(...)`}</pre>
+
+            <p className="dui-doc__p">
+              <strong>2. Rules path (wired end-to-end, simple operators only).</strong> User PATCHes
+              a Defect&apos;s priority from Low → High.
+            </p>
+            <pre className="dui-doc__code">{`artefactitems.Service.PatchWorkItem(ctx, …, PatchWorkItemInput{ AuthorUserID, … })
+   ├─ snapshot beforeWorkItem (if ruleHook != nil)
+   ├─ UPDATE artefacts SET priority_id=…
+   ├─ cascade flow-state recalc (separate concern)
+   └─ s.fireRuleHook(ctx, before, after, AuthorUserID)
+       └─ resolves workspace_id + artefact type name
+       └─ builds ArtefactChangedEvent{ Fields: diffWorkItem(before, after) }
+       └─ rulesProducerHook.OnArtefactChanged(ctx, ev)        (cmd/server/rules_producer_hook.go)
+            └─ evaluator.MatchEvent(ev) → []Rule
+            │     ├─ SELECT rules WHERE id_subscription=$1 AND id_workspace=$2
+            │     │                  AND type=$3 AND target=$4 AND enabled=true
+            │     └─ for each rule: matchConditions(rule.conditions, ev) AND-fold
+            └─ for each matched rule → Notifier.Enqueue(Event{Kind:"artefact", tag=rule.type, …})
+                  └─ outbox row → relay → dispatchers (same path as mentions)`}</pre>
+
+            <p className="dui-doc__p">
+              <strong>Failure modes &amp; graceful degradation:</strong>
+            </p>
+            <ul className="dui-doc__list">
+              <li><code>AMQP_URL</code> unset → <code>NoopBroker</code> + <code>NoopNotifier</code>: outbox is never written, no delivery, no errors. Useful in CI.</li>
+              <li>AMQP dial fails at boot → falls back to <code>NoopBroker</code>, logged WARN. Outbox stays empty (since notifier is also Noop in that branch).</li>
+              <li>Broker connection drops mid-run → <code>RabbitBroker</code> reopens the channel on next Publish/Consume call. Outbox rows queue up; relay drains them on next tick.</li>
+              <li>Dispatcher returns error → broker re-queues envelope (Rabbit&apos;s default re-deliver). Repeated failures eventually dead-letter (TODO: DLX not yet declared).</li>
+              <li>Per-channel kill-switch (email): <code>messaging/email/flags.go</code> <code>ChannelUserUpdate</code> can hard-disable email at the dispatcher entry point — legal / compliance hook.</li>
+              <li>Per-user pref off → dispatcher silently drops the envelope. Outbox row is still marked delivered (the broker delivery succeeded; the user opted out).</li>
+            </ul>
+          </section>
+
+          {/* ── Env, deps, schema ── */}
+          <section id="notifications-env">
+            <h2 className="dui-doc__h2">Env, deps, schema</h2>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Environment variables</div>
+              <pre className="dui-doc__code">{`AMQP_URL=amqp://guest:guest@localhost:5672/        # if unset → noop everything
+VECTOR_ARTEFACTS_DB_URL=postgres://…/vector_artefacts   # vaPool — required by rule-schema endpoint
+                                                        # (lists artefact_types + their fields)
+# Outbox + bell read-model + prefs live in mmff_vector (the main pool — no extra env).
+# Email dispatcher depends on the same SMTP config as the rest of messaging/email.`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Internal package dependencies</div>
+              <pre className="dui-doc__code">{`backend/internal/notifications              ← stdlib + pgx + uuid + slog
+backend/internal/notifications/broker       ← amqp091-go
+backend/internal/notifications/dispatchers  ← notifications, notifications/broker, messaging/email
+backend/internal/notifications/resolvers    ← mentions (pure interface), pgx
+backend/internal/notifications/rules        ← stdlib + pgx + uuid + chi (handler only)
+                                              ↳ no import of notifications/ (would cycle —
+                                                 producer hook adapter lives in cmd/server/ instead)
+
+backend/internal/realtime                    ← consumed by stream.go (SSE → per-user topic)
+backend/internal/messaging/email             ← consumed by dispatchers/email.go
+backend/internal/auth                        ← consumed by handler.go (UserFromCtx)
+backend/internal/artefactitems               ← producer; exposes WithRuleHook(rules.RuleHook).
+                                              The adapter is cmd/server/rules_producer_hook.go.
+backend/internal/mentions                    ← producer; calls DBNotifier.EnqueueTx in its own tx`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">External libraries</div>
+              <pre className="dui-doc__code">{`github.com/rabbitmq/amqp091-go   — AMQP 0.9.1 client (broker/rabbit.go)
+github.com/jackc/pgx/v5          — Postgres driver + LISTEN/NOTIFY
+github.com/go-chi/chi/v5          — HTTP routing (handlers)
+github.com/google/uuid            — IDs everywhere`}</pre>
+            </div>
+
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Database (mmff_vector)</div>
+              <pre className="dui-doc__code">{`notifications_outbox
+  id, subscription_id, recipient_user_id, kind, payload (jsonb),
+  status (pending|claimed|delivered|failed), claimed_at, delivered_at,
+  retry_count, last_error
+  → AFTER INSERT trigger: pg_notify('notifications_outbox_inserted')
+
+users_notifications  -- bell read-model
+  users_notifications_id, …_id_subscription, …_id_user,
+  …_kind, …_tag (mig 236), …_title, …_body,
+  …_context_kind, …_context_id, …_context_label,
+  …_rule_id (mig 236; trace which rule fired),
+  …_created_at, …_read_at
+
+users_notifications_prefs
+  user_id, kind, channel (in_app|email|sse), enabled, …
+
+users_notification_rules                                -- mig 236+237
+  …_id, …_id_subscription, …_id_user, …_id_workspace,
+  …_name, …_type, …_target (type NAME post mig 237),
+  …_conditions (jsonb), …_enabled, …_created_at, …_updated_at`}</pre>
+            </div>
+          </section>
+
+          {/* ── Where it lives ── */}
+          <section id="notifications-consumers">
+            <h2 className="dui-doc__h2">Where it lives</h2>
+            <p className="dui-doc__p">
+              Surfaces in the UI (today, after the rules wiring landed on this branch):
+            </p>
+            <ul className="dui-doc__list">
+              <li>
+                <strong>Toast — <code>app/redesign/components/RedesignShell.tsx</code></strong>:
+                <code>&lt;NotificationToastHost /&gt;</code> mounted once at the shell. Live in every
+                redesigned route. Listens on the SSE stream; on each nudge fetches newest unread and
+                stacks a toast (max 3, 5s auto-dismiss).
+              </li>
+              <li>
+                <strong>Inbox — <code>/user/notifications/notifications</code></strong>: client-side
+                paged list of 200 most-recent rows, with search + unread filter + tag chip filter +
+                relative-date filter. Tag-aware via the <code>users_notifications_tag</code> column.
+              </li>
+              <li>
+                <strong>Settings — <code>/user/notifications/settings</code></strong>: two
+                surfaces in one page — the rules editor (create/edit/disable user-authored rules
+                using the schema endpoint to populate field/operator pickers) AND the
+                per-(kind, channel) prefs matrix.
+              </li>
+              <li>
+                <strong>Producers</strong>: <code>mentions.Service</code> (live), <code>artefactitems.Service</code>
+                via <code>WithRuleHook</code> wired in <code>backend/cmd/server/main.go</code>
+                (rules-engine producer hook attached when the v2 work-items service constructs).
+              </li>
+              <li>
+                <strong>NotificationBell — defined, NOT mounted yet</strong>:
+                <code>app/components/NotificationBell.tsx</code> is the bell dropdown component but
+                no caller imports it. Top backlog item to drop into the user-rail (probably next
+                to the avatar in <code>nav_primary_rail_1</code>).
+              </li>
+            </ul>
+          </section>
+
+          {/* ── Backlog ── */}
+          <section id="notifications-backlog">
+            <h2 className="dui-doc__h2">Backlog (logical order)</h2>
+            <p className="dui-doc__p">
+              Ordered so each item unblocks the next. Pick from the top — earlier items have no
+              upstream dependencies; later items assume the earlier ones landed.
+            </p>
+
+            <ol className="dui-doc__list dui-doc__list--ordered">
+              <li>
+                <strong>Replace the evaluator stub with real condition matching.</strong>
+                <code>rules/evaluator.go</code>&apos;s <code>MatchEvent</code> currently loads the
+                candidate rules but the <code>matchConditions</code> + per-operator switch are
+                no-ops — it logs and returns empty. This is THE blocker for the rules engine being
+                useful. Implement the operator catalogue (=, !=, &gt;, &lt;, IN, CHANGED, CHANGED_TO …)
+                against <code>FieldChange</code>. JQL-style WAS/WAS_IN can stay disabled (needs
+                history surface). One file, one PR. Add a table-driven test per operator.
+              </li>
+              <li>
+                <strong>Mount <code>&lt;NotificationBell /&gt;</code> in the user rail.</strong>
+                The component exists in <code>app/components/NotificationBell.tsx</code> but is
+                imported by nothing. Drop it into <code>app/redesign/components/nav_primary_rail_1.tsx</code>
+                (or the AccountFlyout) next to the avatar so users have a visible count + dropdown
+                without leaving the page. Same hook (<code>useNotificationsStream</code>) the toast
+                already uses — no new backend work.
+              </li>
+              <li>
+                <strong>Server-side filtering for the inbox.</strong>
+                <code>/user/notifications/notifications</code> fetches 200 rows then filters client-side.
+                That breaks past a few hundred notifications per user. Add query params (<code>tag</code>,
+                <code>q</code>, <code>before</code>, <code>after</code>) to <code>GET /notifications/</code>
+                + matching SQL. Pagination cursor at the same time — offset paging on a
+                rapidly-growing table is a known anti-pattern.
+              </li>
+              <li>
+                <strong>Dead-letter exchange for the dispatchers.</strong>
+                Today a dispatcher that returns an error nacks the envelope and Rabbit re-queues.
+                Without a DLX a poisoned message loops forever. Declare a DLX on each queue (or
+                one shared one); after N redeliveries the envelope lands there with the error
+                attached. Wire an admin endpoint (<code>/dev/notifications/dlx</code>) to inspect +
+                requeue.
+              </li>
+              <li>
+                <strong>Outbox retry budget + status surface.</strong>
+                <code>notifications_outbox.retry_count</code> exists but the relay doesn&apos;t increment
+                it or stop retrying. Add: bounded retry (e.g. 5), exponential backoff
+                (<code>next_retry_at</code> column), terminal &quot;failed&quot; status with the last
+                error. Expose a <code>/dev/notifications/outbox</code> panel for triage.
+              </li>
+              <li>
+                <strong>Wire the remaining producers / rule types.</strong>
+                <code>RuleType</code> includes <code>mention | note | comment | owner_proposed</code>
+                — only <code>artefact</code> is wired. For each: ① extend <code>schema.go</code>
+                with the field catalogue, ② have the producer service expose a <code>WithRuleHook</code>
+                surface mirroring artefactitems&apos;, ③ adapter in <code>cmd/server/rules_producer_hook.go</code>.
+                Suggested order: mentions (smallest surface, predicate is just
+                <em>author/context/recipient</em>) → comments → notes → owner_proposed.
+              </li>
+              <li>
+                <strong>Admin-scoped rules (tenant defaults).</strong>
+                <code>users_notification_rules.id_user</code> nullable column already exists; the
+                schema returns <code>ErrAdminScopeUnwired</code> for now. Build the padmin UI under
+                <code>/workspace-admin</code> (or <code>/vector-admin</code> if cross-workspace) to
+                let admins seed baseline rules new users inherit. Permissioning: needs a new
+                <code>permissions.NotificationRulesManage</code> entry + role grant.
+              </li>
+              <li>
+                <strong>Notification grouping / digest mode.</strong>
+                A noisy rule (e.g. &quot;any Defect changes&quot;) can spam the bell. Add a
+                <code>digest</code> channel preference: rolls matching events into one row per
+                hour/day instead of one row per event. Persist a digest accumulator table; the
+                dispatchers route <code>*.digest</code> instead of <code>*.in_app</code>; a
+                scheduled job flushes accumulators to <code>users_notifications</code>.
+              </li>
+              <li>
+                <strong>Audit + observability.</strong>
+                The audit log (<code>internal/audit</code>) is not wired into the notifications path.
+                For SOC2 / defence/finance posture every rule fire AND every dispatch decision
+                (delivered / dropped-by-pref / failed) needs an audit row. Add a thin layer in each
+                dispatcher; tag with <code>rule_id</code> + <code>outbox_id</code> for traceability.
+              </li>
+              <li>
+                <strong>Inbox grouping + threading.</strong>
+                When a rule fires repeatedly on the same artefact (e.g. status oscillates), the
+                inbox shows N independent rows. Group by <code>(rule_id, context_id)</code> with a
+                rollup count + last-event timestamp. Storage stays per-row; the change is a
+                <code>GROUP BY</code> in the inbox query + a UI tweak.
+              </li>
+              <li>
+                <strong>Per-channel template overrides.</strong>
+                <code>Templates.Register</code> stores one template per kind that renders all
+                channels. Email needs more formatting headroom than in-app. Extend to
+                <code>Register(kind, channel, template)</code> and let kinds register per-channel
+                variants. Default behaviour unchanged when a channel-specific variant isn&apos;t
+                registered.
+              </li>
+              <li>
+                <strong>Push notifications (mobile / desktop) channel.</strong>
+                The dispatcher pattern is open: <code>dispatchers/push.go</code> binds <code>*.push</code>,
+                checks prefs, delegates to a push provider (FCM / APNs / Web Push). Add the prefs
+                row (<code>channel='push'</code>), the dispatcher, and a device-registration
+                endpoint. Largest single item — should probably wait until at least items 1–6 are
+                stable.
+              </li>
+            </ol>
+          </section>
+        </article>
       </div>
     </div>
   );
