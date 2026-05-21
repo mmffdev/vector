@@ -2,15 +2,21 @@
 
 // PLA-0027 / Story 00517+00518 — Sprint timebox management page.
 // Visible to users with role 'user' or 'padmin' (page_roles in DB).
+//
+// Slice 6.3c of the ObjectTree refactor (2026-05-21) — swapped from the
+// legacy <TimeboxManager> to <TimeboxObjectTree>, which composes V2
+// primitives (DenseGridHeader, ActionBar with single + bulk, the inline
+// BulkCreateSheet, ObjectTreeDetailFlyout + TimeboxInlineForm).
+// TimeboxManager + useTimebox + timebox/kinds.ts are deleted in slice
+// 6.5 once the release page has swapped too.
 
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
-import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
-import TimeboxManager from "@/app/components/TimeboxManager";
+import TimeboxObjectTree from "@/app/components/TimeboxObjectTree";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function SprintsPage() {
@@ -25,22 +31,16 @@ export default function SprintsPage() {
       <PageDescription>
         Create and manage sprints, assign work items, and track sprint progress and velocity.
       </PageDescription>
-      <Panel
-        name="panel_sprints_header"
-        className="page-panel-heading"
-        title="Sprints"
-        description="Create and manage sprints, assign work items, and track sprint progress and velocity."
-      />
-    <StrictRoute>
-      {workspaceId && (
-        <TimeboxManager
-          key={activeNodeId ?? "root"}
-          kind="sprint"
-          workspaceId={workspaceId}
-          orgNodeId={activeNodeId ?? undefined}
-        />
-      )}
-    </StrictRoute>
+      <StrictRoute>
+        {workspaceId && (
+          <TimeboxObjectTree
+            key={activeNodeId ?? "root"}
+            kind="sprint"
+            workspaceId={workspaceId}
+            orgNodeId={activeNodeId ?? undefined}
+          />
+        )}
+      </StrictRoute>
     </PageContent>
   );
 }

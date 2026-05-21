@@ -4,12 +4,63 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
+
+// ── Slice 2.5: ?fields= projection ───────────────────────────────────────────
+// Mirror of the artefactitems/timeboxsprints projection helpers.
+
+func parseReleaseFieldsParam(raw string) (set map[string]bool, unknown string, ok bool) {
+	if raw == "" {
+		return nil, "", true
+	}
+	out := make(map[string]bool)
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !IsKnownReleaseColumn(name) {
+			return nil, name, false
+		}
+		out[name] = true
+	}
+	for _, alwaysOn := range AlwaysOnReleaseColumns() {
+		out[alwaysOn] = true
+	}
+	return out, "", true
+}
+
+func projectReleases(releases []*Release, set map[string]bool) (any, error) {
+	if set == nil {
+		return releases, nil
+	}
+	out := make([]map[string]any, 0, len(releases))
+	for _, r := range releases {
+		buf, err := json.Marshal(r)
+		if err != nil {
+			return nil, err
+		}
+		var m map[string]any
+		if err := json.Unmarshal(buf, &m); err != nil {
+			return nil, err
+		}
+		for k := range m {
+			if !set[k] {
+				delete(m, k)
+			}
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
 
 // Handler exposes the timeboxreleases domain over HTTP.
 type Handler struct {
@@ -34,7 +85,31 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
-// List handles GET /api/v2/timeboxes/releases
+// guardInherited — slice 5B mirror of timeboxsprints.guardInherited.
+func (h *Handler) guardInherited(w http.ResponseWriter, r *http.Request, wsID, releaseID string) bool {
+	viewingNodeID := r.URL.Query().Get("org_node_id")
+	if viewingNodeID == "" {
+		return true
+	}
+	user := auth.UserFromCtx(r.Context())
+	if user.SubscriptionID == uuid.Nil {
+		return true
+	}
+	if err := h.svc.EnsureWritable(r.Context(), wsID, releaseID, user.SubscriptionID.String(), viewingNodeID); err != nil {
+		if errors.Is(err, ErrInheritedReadOnly) {
+			httperr.Write(w, r, http.StatusConflict, err.Error())
+			return false
+		}
+	}
+	return true
+}
+
+// List handles GET /api/v2/timeboxes/releases.
+//
+// Slice 6.3a (2026-05-21) — response shape cut over from
+// `{releases, count}` to ObjectTreeV2's `{items, total}` contract, and
+// `?limit=`/`?offset=` paging added. See the matching cutover in
+// timeboxsprints/handler.go for the rationale.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
@@ -49,6 +124,19 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("status"); v != "" {
 		f.Status = &v
 	}
+	// Slice 5B — pass subscription so List activates ancestor-walk.
+	user := auth.UserFromCtx(r.Context())
+	if user.SubscriptionID != uuid.Nil {
+		subStr := user.SubscriptionID.String()
+		f.SubscriptionID = &subStr
+	}
+
+	// Slice 2.5 — ?fields= projection.
+	fieldSet, unknownField, fieldsOk := parseReleaseFieldsParam(q.Get("fields"))
+	if !fieldsOk {
+		httperr.Write(w, r, http.StatusBadRequest, "unknown field: "+unknownField)
+		return
+	}
 
 	releases, err := h.svc.List(r.Context(), wsID, f)
 	if err != nil {
@@ -56,10 +144,51 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	total := len(releases)
+
+	// Slice 6.3a paging — match the sprint handler's contract.
+	offset := 0
+	if v := q.Get("offset"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			if n > total {
+				n = total
+			}
+			offset = n
+		}
+	}
+	limit := total - offset
+	if v := q.Get("limit"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			limit = n
+		}
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	if offset > end {
+		offset = end
+	}
+	windowed := releases[offset:end]
+
+	projected, projErr := projectReleases(windowed, fieldSet)
+	if projErr != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"releases": releases,
-		"count":    len(releases),
+		"items": projected,
+		"total": total,
+	})
+}
+
+// Columns handles GET /api/v2/timeboxes/releases/columns — Slice 2.5.
+func (h *Handler) Columns(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"columns": ReleaseColumns,
 	})
 }
 
@@ -148,6 +277,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	var body struct {
 		ReleaseName        *string `json:"timeboxes_releases_name"`
@@ -160,6 +292,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		ReleaseVelocity    *int    `json:"timeboxes_releases_velocity"`
 		ReleaseEstimate    *int    `json:"timeboxes_releases_estimate"`
 		Status             *string `json:"timeboxes_releases_status"`
+		ScopePropagation   *string `json:"timeboxes_releases_scope_propagation"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
@@ -177,6 +310,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		ReleaseVelocity:    body.ReleaseVelocity,
 		ReleaseEstimate:    body.ReleaseEstimate,
 		Status:             body.Status,
+		ScopePropagation:   body.ScopePropagation,
 	}
 
 	release, err := h.svc.Update(r.Context(), wsID, id, in)
@@ -209,6 +343,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	if err := h.svc.Delete(r.Context(), wsID, id); err != nil {
 		switch {
@@ -289,10 +426,11 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Slice 6.3a — response shape cut over to {items,total}.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"releases": releases,
-		"count":    len(releases),
+		"items": releases,
+		"total": len(releases),
 	})
 }

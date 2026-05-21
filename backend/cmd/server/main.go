@@ -668,17 +668,23 @@ func main() {
 
 	// PLA-0027 / Story 00514: timebox sprints REST handler.
 	// Uses the same vaPool as v2 work-items; gracefully degrades when nil.
+	// Slice 5B (2026-05-21): WithTopology wires the orgDesign service so
+	// Service.List can ancestor-walk for heartbeat-propagated reads.
 	var sprintH *timeboxsprints.Handler
 	if vaPool != nil {
 		sprintSvc := timeboxsprints.NewService(vaPool)
 		sprintSvc.WithNotifier(webhooks.NewNotifier(webhookSvc))
+		sprintSvc.WithTopology(orgDesignSvc)
 		sprintH = timeboxsprints.NewHandler(sprintSvc)
 	}
 
 	// timebox releases REST handler — mirrors sprints, no adjacency rule.
+	// Slice 5B: same WithTopology wiring as sprints for ancestor-walk reads.
 	var releaseH *timeboxreleases.Handler
 	if vaPool != nil {
-		releaseH = timeboxreleases.NewHandler(timeboxreleases.NewService(vaPool))
+		releaseSvc := timeboxreleases.NewService(vaPool)
+		releaseSvc.WithTopology(orgDesignSvc)
+		releaseH = timeboxreleases.NewHandler(releaseSvc)
 	}
 
 	// timebox milestones REST handler — point-in-time markers, no
@@ -1257,6 +1263,8 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Get("/", sprintH.List)
+			// Slice 2.5 (ObjectTree refactor) — column catalogue.
+			r.Get("/columns", sprintH.Columns)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
 				Post("/", sprintH.Create)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
@@ -1278,6 +1286,8 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Get("/", releaseH.List)
+			// Slice 2.5 (ObjectTree refactor) — column catalogue.
+			r.Get("/columns", releaseH.Columns)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
 				Post("/", releaseH.Create)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
@@ -1440,6 +1450,15 @@ func main() {
 			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
 			r.With(readLimit17).Get("/summary", h.Summary)
 			r.With(readLimit17).Get("/flow-states", h.ListFlowStates)
+			// Slice 2.5 (ObjectTree refactor) — exposes the ?fields=
+			// allow-list catalogue. Frontend column picker / agent
+			// introspection consume this; no subscription clamp on the
+			// catalogue itself, the surface is global to the resource.
+			r.With(readLimit17).Get("/columns", h.Columns)
+			// Slice 4.6c — narrow refetch for cascade-touched rows.
+			// Mounted before /{id} so the literal segment wins over
+			// the param.
+			r.With(readLimit17).Get("/by-ids", h.ByIDs)
 			r.With(readLimit17).Get("/{id}", h.Get)
 			r.With(writeLimit17, userWriteLimiter).Patch("/{id}", h.Patch)
 			r.With(writeLimit17, userWriteLimiter).Delete("/{id}", h.Archive)
@@ -1727,6 +1746,11 @@ func main() {
 				r.With(writeLimit, userWriteLimiter).Post("/bulk", h.Bulk)
 				r.With(readLimit).Get("/summary", h.Summary)
 				r.With(readLimit).Get("/flow-states", h.ListFlowStates)
+				// Slice 2.5 (ObjectTree refactor) — agent-introspectable
+				// column catalogue. Same handler as the /_site mount.
+				r.With(readLimit).Get("/columns", h.Columns)
+				// Slice 4.6c — narrow refetch for cascade-touched rows.
+				r.With(readLimit).Get("/by-ids", h.ByIDs)
 				r.With(readLimit).Get("/{id}", h.Get)
 				r.With(writeLimit, userWriteLimiter).Patch("/{id}", h.Patch)
 				r.With(writeLimit, userWriteLimiter).Delete("/{id}", h.Archive)

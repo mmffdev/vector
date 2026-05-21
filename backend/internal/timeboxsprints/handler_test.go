@@ -89,15 +89,16 @@ func TestHandlerList(t *testing.T) {
 		t.Errorf("expected 200, got %d: %s", w.Code, w.Body)
 	}
 
+	// Slice 6.3a — response shape cut over from {sprints,count}.
 	var resp struct {
-		Sprints []any `json:"sprints"`
-		Count   int   `json:"count"`
+		Items []any `json:"items"`
+		Total int   `json:"total"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if resp.Count != 1 {
-		t.Errorf("expected count=1, got %d", resp.Count)
+	if resp.Total != 1 {
+		t.Errorf("expected total=1, got %d", resp.Total)
 	}
 }
 
@@ -249,14 +250,16 @@ func TestHandlerBulkCreate(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Errorf("expected 201, got %d: %s", w.Code, w.Body)
 	}
+	// Slice 6.3a — response shape cut over from {sprints,count} to
+	// {items,total} to match the ObjectTreeV2 data-hook contract.
 	var resp struct {
-		Count int `json:"count"`
+		Total int `json:"total"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if resp.Count != 2 {
-		t.Errorf("expected count=2, got %d", resp.Count)
+	if resp.Total != 2 {
+		t.Errorf("expected total=2, got %d", resp.Total)
 	}
 }
 

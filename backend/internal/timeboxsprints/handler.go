@@ -4,12 +4,68 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
+
+// ── Slice 2.5: ?fields= projection ───────────────────────────────────────────
+// Mirror of the artefactitems projection helpers. See
+// backend/internal/artefactitems/handler.go for the contract rationale.
+
+// parseSprintFieldsParam reads ?fields= and validates each name against
+// the catalogue. Returns nil on absent param (back-compat).
+func parseSprintFieldsParam(raw string) (set map[string]bool, unknown string, ok bool) {
+	if raw == "" {
+		return nil, "", true
+	}
+	out := make(map[string]bool)
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !IsKnownSprintColumn(name) {
+			return nil, name, false
+		}
+		out[name] = true
+	}
+	for _, alwaysOn := range AlwaysOnSprintColumns() {
+		out[alwaysOn] = true
+	}
+	return out, "", true
+}
+
+// projectSprints applies the field set to a slice of *Sprint. nil set
+// means "no projection — return as-is".
+func projectSprints(sprints []*Sprint, set map[string]bool) (any, error) {
+	if set == nil {
+		return sprints, nil
+	}
+	out := make([]map[string]any, 0, len(sprints))
+	for _, s := range sprints {
+		buf, err := json.Marshal(s)
+		if err != nil {
+			return nil, err
+		}
+		var m map[string]any
+		if err := json.Unmarshal(buf, &m); err != nil {
+			return nil, err
+		}
+		for k := range m {
+			if !set[k] {
+				delete(m, k)
+			}
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
 
 // Handler exposes the timeboxsprints domain over HTTP.
 type Handler struct {
@@ -37,7 +93,42 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
-// List handles GET /api/v2/timeboxes/sprints
+// guardInherited runs the slice-5B write-side check: if the caller is
+// viewing the sprint via heartbeat inheritance (pinned to an ancestor
+// of the org_node_id query param, with scope_propagation flagged), the
+// write is rejected with 409. Returns true when the request can proceed.
+// When org_node_id is absent or the topology dep is nil, the check is a
+// no-op and the request proceeds (back-compat for callers not yet
+// passing the viewing-node param).
+func (h *Handler) guardInherited(w http.ResponseWriter, r *http.Request, wsID, sprintID string) bool {
+	viewingNodeID := r.URL.Query().Get("org_node_id")
+	if viewingNodeID == "" {
+		return true
+	}
+	user := auth.UserFromCtx(r.Context())
+	if user.SubscriptionID == uuid.Nil {
+		return true
+	}
+	if err := h.svc.EnsureWritable(r.Context(), wsID, sprintID, user.SubscriptionID.String(), viewingNodeID); err != nil {
+		if errors.Is(err, ErrInheritedReadOnly) {
+			httperr.Write(w, r, http.StatusConflict, err.Error())
+			return false
+		}
+		// Other errors fall through to the downstream call which will
+		// surface its own status.
+	}
+	return true
+}
+
+// List handles GET /api/v2/timeboxes/sprints.
+//
+// Slice 6.3a (2026-05-21) — response shape cut over to ObjectTreeV2's
+// canonical contract: `{ items, total }` instead of the legacy
+// `{ sprints, count }`. The legacy keys were the original shape from
+// PLA-0027; ObjectTreeV2's data hook expects `items` + `total` so this
+// handler now matches that contract. ArtefactInlineForm's reads were
+// migrated in the same slice. Add `?limit=` / `?offset=` paging; both
+// default to "return everything" so existing callers stay green.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
@@ -52,6 +143,23 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if v := q.Get("status"); v != "" {
 		f.Status = &v
 	}
+	// Slice 5B — pass subscription so List can activate the ancestor-walk
+	// when both OrgNodeID and SubscriptionID are present. Auth context is
+	// already loaded for write endpoints; we read it here too so the read
+	// path can inherit-propagate.
+	user := auth.UserFromCtx(r.Context())
+	if user.SubscriptionID != uuid.Nil {
+		subStr := user.SubscriptionID.String()
+		f.SubscriptionID = &subStr
+	}
+
+	// Slice 2.5 — ?fields= projection. Parsed BEFORE the service call so
+	// unknown names fail fast (400) without hitting the DB.
+	fieldSet, unknownField, fieldsOk := parseSprintFieldsParam(q.Get("fields"))
+	if !fieldsOk {
+		httperr.Write(w, r, http.StatusBadRequest, "unknown field: "+unknownField)
+		return
+	}
 
 	sprints, err := h.svc.List(r.Context(), wsID, f)
 	if err != nil {
@@ -59,10 +167,56 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	total := len(sprints)
+
+	// Slice 6.3a — apply ?limit=/&offset= window. Defaults: limit=0 means
+	// "no limit" (return all); offset clamped to [0,total]. Sprint counts
+	// per workspace are typically small (<50) so in-handler slicing is
+	// fine; if the workspace ever scales past that we move the LIMIT into
+	// the SQL like work-items does.
+	offset := 0
+	if v := q.Get("offset"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			if n > total {
+				n = total
+			}
+			offset = n
+		}
+	}
+	limit := total - offset
+	if v := q.Get("limit"); v != "" {
+		if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+			limit = n
+		}
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	if offset > end {
+		offset = end
+	}
+	windowed := sprints[offset:end]
+
+	projected, projErr := projectSprints(windowed, fieldSet)
+	if projErr != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"sprints": sprints,
-		"count":   len(sprints),
+		"items": projected,
+		"total": total,
+	})
+}
+
+// Columns handles GET /api/v2/timeboxes/sprints/columns — Slice 2.5.
+// Returns the allow-list of fields callers may request via ?fields=.
+func (h *Handler) Columns(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"columns": SprintColumns,
 	})
 }
 
@@ -155,6 +309,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	var body struct {
 		SprintName        *string `json:"timeboxes_sprints_name"`
@@ -167,6 +324,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		SprintVelocity    *int    `json:"timeboxes_sprints_velocity"`
 		SprintEstimate    *int    `json:"timeboxes_sprints_estimate"`
 		Status            *string `json:"timeboxes_sprints_status"`
+		ScopePropagation  *string `json:"timeboxes_sprints_scope_propagation"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
@@ -184,6 +342,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		SprintVelocity:    body.SprintVelocity,
 		SprintEstimate:    body.SprintEstimate,
 		Status:            body.Status,
+		ScopePropagation:  body.ScopePropagation,
 	}
 
 	sprint, err := h.svc.Update(r.Context(), wsID, id, in)
@@ -216,6 +375,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	if err := h.svc.Delete(r.Context(), wsID, id); err != nil {
 		switch {
@@ -239,6 +401,9 @@ func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	sprint, err := h.svc.Start(r.Context(), wsID, id)
 	if err != nil {
@@ -264,6 +429,9 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	if !h.guardInherited(w, r, wsID, id) {
+		return
+	}
 
 	sprint, err := h.svc.Close(r.Context(), wsID, id)
 	if err != nil {
@@ -346,10 +514,12 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Slice 6.3a — response shape cut over to {items,total} to match the
+	// List endpoint + ObjectTreeV2's data-hook contract.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"sprints": sprints,
-		"count":   len(sprints),
+		"items": sprints,
+		"total": len(sprints),
 	})
 }

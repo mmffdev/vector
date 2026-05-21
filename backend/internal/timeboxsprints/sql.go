@@ -29,6 +29,9 @@ const sprintCols = `
 	`
 
 // sqlInsertSprint creates a new sprint and returns the hydrated row.
+// Slice 5A — scope_propagation is the 11th input column. Caller passes
+// either the explicit value or COALESCEs to the DB default
+// ('this_node_only') via NULL.
 const sqlInsertSprint = `
 		INSERT INTO timeboxes_sprints (
 			timeboxes_sprints_id_subscription,
@@ -40,8 +43,9 @@ const sqlInsertSprint = `
 			timeboxes_sprints_cadence_days,
 			timeboxes_sprints_date_start,
 			timeboxes_sprints_date_end,
-			timeboxes_sprints_velocity
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+			timeboxes_sprints_velocity,
+			timeboxes_sprints_scope_propagation
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11,'this_node_only'))
 		RETURNING
 			timeboxes_sprints_id,
 			timeboxes_sprints_id_subscription,
@@ -61,7 +65,8 @@ const sqlInsertSprint = `
 			timeboxes_sprints_status,
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
-			timeboxes_sprints_archived_at
+			timeboxes_sprints_archived_at,
+			timeboxes_sprints_scope_propagation
 	`
 
 // sqlSelectSprintByID returns one live sprint scoped to workspace.
@@ -85,7 +90,8 @@ const sqlSelectSprintByID = `
 			timeboxes_sprints_status,
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
-			timeboxes_sprints_archived_at
+			timeboxes_sprints_archived_at,
+			timeboxes_sprints_scope_propagation
 		FROM timeboxes_sprints
 		WHERE timeboxes_sprints_id = $1
 		  AND timeboxes_sprints_id_workspace = $2
@@ -114,7 +120,8 @@ const sqlListSprintsTemplate = `
 			timeboxes_sprints_status,
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
-			timeboxes_sprints_archived_at
+			timeboxes_sprints_archived_at,
+			timeboxes_sprints_scope_propagation
 		FROM timeboxes_sprints
 		WHERE %s
 		ORDER BY timeboxes_sprints_date_start ASC
@@ -147,7 +154,8 @@ const sqlUpdateSprintTemplate = `
 			timeboxes_sprints_status,
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
-			timeboxes_sprints_archived_at
+			timeboxes_sprints_archived_at,
+			timeboxes_sprints_scope_propagation
 	`
 
 // sqlArchiveSprint soft-deletes one sprint scoped to workspace.
@@ -187,7 +195,8 @@ const sqlStartSprint = `
 			timeboxes_sprints_status,
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
-			timeboxes_sprints_archived_at
+			timeboxes_sprints_archived_at,
+			timeboxes_sprints_scope_propagation
 	`
 
 // sqlCloseSprint atomically transitions active → completed.
@@ -217,7 +226,8 @@ const sqlCloseSprint = `
 			timeboxes_sprints_status,
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
-			timeboxes_sprints_archived_at
+			timeboxes_sprints_archived_at,
+			timeboxes_sprints_scope_propagation
 	`
 
 // sqlSelectLastSprintEndDateRoot returns the latest end-date for

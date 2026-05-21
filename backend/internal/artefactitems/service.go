@@ -935,20 +935,66 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	// Two cases:
 	//   - flow_state_id was patched      → recalc THIS row's parent
 	//   - parent_artefact_id was patched → recalc OLD parent + NEW parent
+	//
+	// Slice 4.6c — touched_ids surfaced via a per-call sidecar slice the
+	// callers attached to the context. The cascade appends every row id
+	// it actually wrote to. Pure additive — when no sidecar is present
+	// (e.g. ArchiveWorkItem still uses the unbothered recalcParentFlowState),
+	// behaviour is identical to before.
+	touched := touchedIDsFromCtx(ctx)
 	if in.FlowStateID != nil {
 		if pid, perr := s.loadParentID(ctx, id); perr == nil && pid != nil {
-			_ = s.recalcParentFlowState(ctx, subscriptionID, *pid)
+			if touched != nil {
+				_ = s.recalcParentFlowStateCollecting(ctx, subscriptionID, *pid, touched)
+			} else {
+				_ = s.recalcParentFlowState(ctx, subscriptionID, *pid)
+			}
 		}
 	}
 	if in.ParentArtefactID != nil {
 		if oldParentID != nil {
-			_ = s.recalcParentFlowState(ctx, subscriptionID, *oldParentID)
+			if touched != nil {
+				_ = s.recalcParentFlowStateCollecting(ctx, subscriptionID, *oldParentID, touched)
+			} else {
+				_ = s.recalcParentFlowState(ctx, subscriptionID, *oldParentID)
+			}
 		}
 		if newPid, perr := s.loadParentID(ctx, id); perr == nil && newPid != nil {
-			_ = s.recalcParentFlowState(ctx, subscriptionID, *newPid)
+			if touched != nil {
+				_ = s.recalcParentFlowStateCollecting(ctx, subscriptionID, *newPid, touched)
+			} else {
+				_ = s.recalcParentFlowState(ctx, subscriptionID, *newPid)
+			}
 		}
 	}
 	return item, nil
+}
+
+// ── Slice 4.6c — touched-ids context channel ──────────────────────────────
+//
+// The handler that wants touched_ids back from PatchWorkItem attaches
+// a slice via WithTouchedIDsSink(ctx) and reads from it after the call
+// returns. The slice escapes through context because PatchWorkItem's
+// signature stays untouched — keeps every existing caller (tests,
+// admin tooling) unaware of the new sidecar. Callers that DON'T set
+// the sink see identical behaviour: the cascade uses the non-collect
+// recalc, no allocation, no extra path.
+
+type touchedIDsKey struct{}
+
+// WithTouchedIDsSink attaches a *[]uuid.UUID sink to ctx. After
+// PatchWorkItem returns, *sink contains every ancestor row id the
+// cascade wrote (parent-first, deepest-last). Pass nil to disable.
+func WithTouchedIDsSink(ctx context.Context, sink *[]uuid.UUID) context.Context {
+	if sink == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, touchedIDsKey{}, sink)
+}
+
+func touchedIDsFromCtx(ctx context.Context) *[]uuid.UUID {
+	v, _ := ctx.Value(touchedIDsKey{}).(*[]uuid.UUID)
+	return v
 }
 
 // ArchiveWorkItem sets archived_at on an artefact row (soft delete).

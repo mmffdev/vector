@@ -21,6 +21,78 @@ func jsonErrBody(err error) []byte {
 	return append([]byte(`{"error":`), append(msg, '}')...)
 }
 
+// ── Slice 2.5: ?fields= projection ───────────────────────────────────────────
+//
+// parseFieldsParam reads `?fields=a,b,c` and returns the set of requested
+// field names, OR nil to mean "no projection — return the full payload"
+// (back-compat: absent param keeps current behaviour). Validates every
+// name against the columns catalogue; on unknown name returns the
+// offending entry so the handler can 400 with a clear message.
+//
+// Always-on fields (catalogue marks `AlwaysOn: true`, currently just
+// "id") are folded into the result regardless of what the client asked
+// for — the contract is "you get what you asked for PLUS id, always".
+func parseFieldsParam(raw string) (set map[string]bool, unknown string, ok bool) {
+	if raw == "" {
+		return nil, "", true // no projection
+	}
+	out := make(map[string]bool)
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !IsKnownArtefactItemColumn(name) {
+			return nil, name, false
+		}
+		out[name] = true
+	}
+	// Fold in always-on fields.
+	for _, alwaysOn := range AlwaysOnArtefactItemColumns() {
+		out[alwaysOn] = true
+	}
+	return out, "", true
+}
+
+// projectItems applies the field set to a slice of WorkItems, returning
+// a slice of maps with only the requested keys. When `set` is nil (no
+// projection requested), returns the input unchanged for the JSON
+// encoder to handle directly — saves a marshal/unmarshal round-trip on
+// the hot path.
+//
+// Cost: O(items × fields). The marshal-then-filter round-trip is the
+// price for Slice 2.5's wire-level projection without rewriting the
+// SQL layer. Slice 4.5+ may push projection down to SQL when the
+// allow-list is stable and join cost is meaningful.
+func projectItems(items []WorkItem, set map[string]bool) (any, error) {
+	if set == nil {
+		return items, nil
+	}
+	out := make([]map[string]any, 0, len(items))
+	for i := range items {
+		item := &items[i]
+		// Marshal then re-parse to a generic map so we can filter by
+		// the catalogue keys, which match the json:"..." tags. Slightly
+		// allocation-heavy; acceptable for slice 2.5 — Slice 4.5 will
+		// optimise via SQL projection if needed.
+		buf, err := json.Marshal(item)
+		if err != nil {
+			return nil, err
+		}
+		var m map[string]any
+		if err := json.Unmarshal(buf, &m); err != nil {
+			return nil, err
+		}
+		for k := range m {
+			if !set[k] {
+				delete(m, k)
+			}
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
+
 // parseUUIDList splits a comma-separated query param into a slice of
 // uuid.UUID, rejecting the whole list on the first malformed entry.
 // Empty input → nil slice + nil error (caller treats absence + empty
@@ -57,6 +129,120 @@ func NewHandler(svc *Service) *Handler {
 type listResponse struct {
 	Items []WorkItem `json:"items"`
 	Total int        `json:"total"`
+}
+
+// Columns handles GET /<resource>/columns — Slice 2.5 of the ObjectTree
+// refactor. Returns the allow-list of fields callers may request via
+// ?fields=. The frontend column picker consumes this to know what's
+// available (e.g. ObjectTreeV2's wizard config can ship a static
+// catalogue; agents/samanthaAPI can introspect at runtime).
+//
+// Auth: requires the same RequireAuth gate as the rest of the surface
+// (mounted in main.go under the same group). No subscription clamp on
+// the catalogue itself — the columns are global to the resource.
+func (h *Handler) Columns(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"columns": ArtefactItemColumns,
+	})
+}
+
+// ByIDs handles GET /<resource>/by-ids?ids=a,b,c — Slice 4.6c.
+// Returns the listed rows in one response. Honours the ?fields=
+// projection (same contract as List). Used by the frontend cascade-
+// refresh path: after a PATCH whose response includes touched_ids,
+// the client fetches ONLY those rows instead of re-pulling every
+// expanded sub-tree.
+//
+// Per-row access control: each id goes through GetWorkItem (or
+// GetWorkItemInWorkspace under a workspace clamp), so cross-tenant /
+// cross-workspace requests get the same not-found-not-leaked behaviour
+// the rest of the surface uses. Unknown ids silently skipped — the
+// response contains the rows that resolved.
+//
+// At typical cascade widths (1–5 rows) N round-trips is fine; SQL
+// batch-fetch is a Slice 4.5+ optimisation if profiling demands it.
+func (h *Handler) ByIDs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	u := auth.UserFromCtx(r.Context())
+	subID := u.SubscriptionID
+
+	q := r.URL.Query()
+	raw := q.Get("ids")
+	if raw == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"ids query parameter is required"}`))
+		return
+	}
+	idStrs := strings.Split(raw, ",")
+	ids := make([]uuid.UUID, 0, len(idStrs))
+	for _, s := range idStrs {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		id, perr := uuid.Parse(s)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid id in ids parameter"}`))
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	// Slice 2.5's ?fields= projection works here too. Same parse, same
+	// validation against the same catalogue.
+	fieldSet, unknownField, fieldsOk := parseFieldsParam(q.Get("fields"))
+	if !fieldsOk {
+		w.WriteHeader(http.StatusBadRequest)
+		msg, _ := json.Marshal("unknown field: " + unknownField)
+		_, _ = w.Write(append([]byte(`{"error":`), append(msg, '}')...))
+		return
+	}
+
+	wsID, hasWorkspace := topology.WorkspaceIDFromCtx(r.Context())
+
+	items := make([]WorkItem, 0, len(ids))
+	for _, id := range ids {
+		var (
+			wi  *WorkItem
+			err error
+		)
+		if hasWorkspace {
+			wi, err = h.svc.GetWorkItemInWorkspace(r.Context(), subID, wsID, id)
+		} else {
+			wi, err = h.svc.GetWorkItem(r.Context(), subID, id)
+		}
+		if err != nil {
+			// Silently skip not-found / cross-tenant rows. The caller
+			// asked for a list of ids; what they get back is the subset
+			// they're allowed to see. Same shape as the existing
+			// not-found-not-leaked semantics elsewhere on this surface.
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
+			log.Printf("artefactitems.ByIDs: subID=%s id=%s err=%v", subID, id, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"internal"}`))
+			return
+		}
+		if wi != nil {
+			items = append(items, *wi)
+		}
+	}
+
+	projected, projErr := projectItems(items, fieldSet)
+	if projErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"projection_failed"}`))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items": projected,
+		"total": len(items),
+	})
 }
 
 // List handles GET /api/v2/work-items.
@@ -191,6 +377,17 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		f.WorkspaceID = &wsStr
 	}
 
+	// Slice 2.5 — ?fields=a,b,c projection. Parsed BEFORE the service
+	// call so unknown names fail fast (400) without hitting the DB.
+	// Absent param keeps current behaviour (full payload).
+	fieldSet, unknownField, fieldsOk := parseFieldsParam(q.Get("fields"))
+	if !fieldsOk {
+		w.WriteHeader(http.StatusBadRequest)
+		msg, _ := json.Marshal("unknown field: " + unknownField)
+		_, _ = w.Write(append([]byte(`{"error":`), append(msg, '}')...))
+		return
+	}
+
 	items, total, err := h.svc.ListWorkItems(r.Context(), subID, f)
 	if err != nil {
 		if errors.Is(err, ErrScopeForbidden) {
@@ -214,8 +411,22 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Slice 2.5 — apply projection if ?fields= was supplied. When nil
+	// (back-compat path), projected is the original []*WorkItem and
+	// the encoder serialises it via the existing json:"..." tags.
+	projected, projErr := projectItems(items, fieldSet)
+	if projErr != nil {
+		log.Printf("artefactitems.List: projection failed subID=%s err=%v", subID, projErr)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"projection_failed"}`))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(listResponse{Items: items, Total: total})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items": projected,
+		"total": total,
+	})
 }
 
 // Get handles GET /api/v2/work-items/{id}.
@@ -626,7 +837,14 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 			dueDate = &s
 		}
 	}
-	wi, err := h.svc.PatchWorkItem(r.Context(), u.SubscriptionID, id, PatchWorkItemInput{
+	// Slice 4.6c — attach a touched-ids sink so the cascade can report
+	// which ancestor rows it wrote. Frontend uses this to narrow-refetch
+	// instead of re-pulling every expanded sub-tree. Sink is empty when
+	// the cascade didn't fire (e.g. patch didn't touch flow_state_id or
+	// parent_artefact_id) — additive field, no behaviour change.
+	var touchedIDs []uuid.UUID
+	ctx := WithTouchedIDsSink(r.Context(), &touchedIDs)
+	wi, err := h.svc.PatchWorkItem(ctx, u.SubscriptionID, id, PatchWorkItemInput{
 		Title:            req.Title,
 		Description:      req.Description,
 		Status:           req.Status,
@@ -665,7 +883,30 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	_ = json.NewEncoder(w).Encode(wi)
+	// Slice 4.6c — emit the WorkItem with an additional `touched_ids`
+	// field carrying the ancestor row ids the cascade wrote. Marshal-to-
+	// map then add the field — additive, doesn't change WorkItem's own
+	// JSON shape. Empty slice when nothing cascaded; clients can branch
+	// on `touched_ids.length > 0` to decide whether to fire a by-ids
+	// refetch (Slice 4.5 column-picker hook does this).
+	buf, mErr := json.Marshal(wi)
+	if mErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+	var m map[string]any
+	if uErr := json.Unmarshal(buf, &m); uErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+	touchedStrs := make([]string, len(touchedIDs))
+	for i, tid := range touchedIDs {
+		touchedStrs[i] = tid.String()
+	}
+	m["touched_ids"] = touchedStrs
+	_ = json.NewEncoder(w).Encode(m)
 }
 
 // Archive handles DELETE /api/v2/work-items/{id}.

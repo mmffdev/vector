@@ -1,13 +1,18 @@
 "use client";
 
+// Releases page.
+//
+// Slice 6.4 of the ObjectTree refactor (2026-05-21) — swapped from the
+// legacy <TimeboxManager> to <TimeboxObjectTree>. See the sprints page
+// comment header for the design rationale.
+
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
-import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
-import TimeboxManager from "@/app/components/TimeboxManager";
+import TimeboxObjectTree from "@/app/components/TimeboxObjectTree";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function ReleasesPage() {
@@ -22,22 +27,16 @@ export default function ReleasesPage() {
       <PageDescription>
         Plan and manage workspace releases, track progress, and coordinate delivery timelines.
       </PageDescription>
-      <Panel
-        name="panel_releases_header"
-        className="page-panel-heading"
-        title="Releases"
-        description="Plan and manage workspace releases, track progress, and coordinate delivery timelines."
-      />
-    <StrictRoute>
-      {workspaceId && (
-        <TimeboxManager
-          key={activeNodeId ?? "root"}
-          kind="release"
-          workspaceId={workspaceId}
-          orgNodeId={activeNodeId ?? undefined}
-        />
-      )}
-    </StrictRoute>
+      <StrictRoute>
+        {workspaceId && (
+          <TimeboxObjectTree
+            key={activeNodeId ?? "root"}
+            kind="release"
+            workspaceId={workspaceId}
+            orgNodeId={activeNodeId ?? undefined}
+          />
+        )}
+      </StrictRoute>
     </PageContent>
   );
 }
