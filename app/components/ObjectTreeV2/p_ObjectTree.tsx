@@ -33,6 +33,7 @@ import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
 import type { ColumnDef } from "@/app/components/ResourceTree";
 import { MdAdd, MdOutlineCategory, MdSearch } from "react-icons/md";
 import { useObjectTreeWindow, ApiError as ObjectTreeApiError } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeWindow";
+import { ObjectTreeDetailFlyout, type DetailFlyoutBodyProps } from "@/app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout";
 import { notify } from "@/app/lib/toast";
 
 // Slice 1 of the ObjectTree refactor — work-items-specific cascade triggers.
@@ -991,25 +992,59 @@ export default function ObjectTree({
     </section>
   );
 
+  // Slice 2 — adapter that maps the shell's DetailFlyoutBodyProps (rowId,
+  // onClose, onSaved) onto ArtefactInlineForm's existing prop surface
+  // (artefactId, onClose, onSaved, plus domain extras). The adapter is
+  // defined inline so it closes over the local handlers without lifting
+  // them to refs. ArtefactInlineForm's lifecycle is preserved — it
+  // accepts artefactId: string | null and renders nothing when null,
+  // matching the shell's contract.
+  const ArtefactBody = useCallback(
+    (props: DetailFlyoutBodyProps & {
+      resourceUrl: string;
+      scope: "work" | "strategy";
+      onNavigate: (id: string) => void;
+      onDuplicate: (artefact: ArtefactDetail) => void;
+      onDelete: (artefact: ArtefactDetail) => void;
+      isDuplicate: boolean;
+    }) => (
+      <ArtefactInlineForm
+        artefactId={props.rowId}
+        resourceUrl={props.resourceUrl}
+        scope={props.scope}
+        onClose={props.onClose}
+        onSaved={props.onSaved}
+        onNavigate={props.onNavigate}
+        onDuplicate={props.onDuplicate}
+        onDelete={props.onDelete}
+        isDuplicate={props.isDuplicate}
+      />
+    ),
+    [],
+  );
+
   const inlineFormNode = (
-    <ArtefactInlineForm
-      artefactId={openInlineFormId}
-      resourceUrl={resourceUrl}
-      scope={config.scope ?? "work"}
+    <ObjectTreeDetailFlyout
+      openId={openInlineFormId}
+      Body={ArtefactBody}
       onClose={closeInlineForm}
       onSaved={(body) => {
         if (openInlineFormId) patchAndApply(openInlineFormId, body);
       }}
-      onNavigate={(id) => {
-        setOpenInlineFormId(id);
-        // Manually navigating away from the just-duplicated row clears
-        // the amber state — only the row that came back from Duplicate
-        // this session keeps the marker.
-        if (id !== duplicateOfId) setDuplicateOfId(null);
+      bodyProps={{
+        resourceUrl,
+        scope: config.scope ?? "work",
+        onNavigate: (id: string) => {
+          setOpenInlineFormId(id);
+          // Manually navigating away from the just-duplicated row clears
+          // the amber state — only the row that came back from Duplicate
+          // this session keeps the marker.
+          if (id !== duplicateOfId) setDuplicateOfId(null);
+        },
+        onDuplicate: duplicateArtefact,
+        onDelete: deleteArtefact,
+        isDuplicate: openInlineFormId != null && openInlineFormId === duplicateOfId,
       }}
-      onDuplicate={duplicateArtefact}
-      onDelete={deleteArtefact}
-      isDuplicate={openInlineFormId != null && openInlineFormId === duplicateOfId}
     />
   );
 
