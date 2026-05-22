@@ -43,6 +43,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 **Third-party SDK source:** when integrating an external SDK/package and docs are thin or stale, vendor the source into `reference/repos/<host>/<org>/<repo>/` and grep there before trusting docs or guessing API names — see [`<source-code-context>`](skills/source-code-context/SKILL.md).
 
+- **Design ethos (award-winning bar)** → [`docs/c_design_ethos.md`](../docs/c_design_ethos.md) — ultra-modern, experimental UI/UX; wow with colour + craft; Awwwards SOTD is the target, not "clean SaaS"; visual quality is part of DoD, never a follow-up polish step.
 - **Styling / CSS** → [`docs/css-guide.md`](../docs/css-guide.md) — catalog class first; no inline `style={{}}`.
 - **CSS/HTML naming** → [`.claude/memory/css_naming_convention.md`](memory/css_naming_convention.md) — pattern `root-block__Container_Child_leaf` (`__` once at root, `_` for deeper, `-` for modifiers only; no BEM `--`, no generic names like `wrapper`/`container`/`box`). When introducing a NEW root-block, propose the full TSX+CSS chain and ask before applying. For edits to existing chains, apply directly.
 - **Dev-UI primitives (`/dev` pages)** → [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md) — `.dui-*` catalog only on `/dev` pages and panels rendered by `dev/pages/DevPage.tsx`; no inline `style={{}}`; no `dev-*` selector in `app/globals.css`.
@@ -109,6 +110,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<makeskill>` skill** → [`.claude/skills/makeskill/SKILL.md`](skills/makeskill/SKILL.md) — meta-skill: turns a chat-statement brief + `-<name>[-<scope>]` flags into a new audit/report skill wired to the canonical R### → `dev/research/` pipeline.
 - **`<report>` skill** → [`.claude/skills/report/SKILL.md`](skills/report/SKILL.md) — umbrella for narrative reports. Flags: `-r <url> "<topic>"` research, `-b` codebase audit, `-s` security, `-c [<file>]` dependency trace, `-retro [--auto-loop]` retro. All write to `mmff_dev.dev_reports`; Dev → Reporting shows them. Replaces the retired research/codebase/sec/code/retro skills (2026-05-21).
 - **`<update>` skill** → [`.claude/skills/update/SKILL.md`](skills/update/SKILL.md) — umbrella in-place doc updates; `-c <name>` inserts/refreshes a Dev → Components entry (TOC + body article) with Synopsis · Architecture · Wire contract · Backlog; more flags planned.
+- **Handover continuity (`<read>` + `<write>`)** → [`.claude/skills/read/SKILL.md`](skills/read/SKILL.md) + [`.claude/skills/write/SKILL.md`](skills/write/SKILL.md) — paired skills for cross-session continuity over `handovers/`. `<read>` picks + loads + pins to `.claude/active_handover.txt`; `<write>` surgically updates the pinned file with this session's work. File edit only, no commits.
 - **Codebase file index** → [`.claude/c_file_index.md`](c_file_index.md) — auto-generated map of curated source dirs; consult before `<search>`.
 - **Commands & skills index** → [`.claude/
 c_tools_index.md`](c_tools_index.md) — load for shortcuts not listed above.
