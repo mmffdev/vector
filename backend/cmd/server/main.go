@@ -1320,6 +1320,7 @@ func main() {
 				r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
 				r.Get("/dev/api-audit", devResetH.ApiAudit)
 				r.Get("/dev/codegraph", devResetH.Codegraph)
+				r.Get("/dev/source", devResetH.Source)
 				r.Route("/dev/reporting", devReportsH.Mount)
 			})
 		})

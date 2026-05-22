@@ -315,6 +315,130 @@ func (h *DevResetHandler) Codegraph(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
+// Source — GET /_site/admin/dev/source?path=<rel>
+//
+// Streams the source content of a single repo-relative path for the
+// /dev/visualiser File Explorer + source preview panel.
+//
+// Trust-No-One guards:
+//   - Path-traversal: we Clean the input, reject any path that climbs above
+//     the repo root after Join, and reject absolute paths.
+//   - Extension allowlist: only well-known source/text formats. Stops a
+//     curious caller from reading .env, credentials, or DB dumps even if
+//     they smuggled a clean relative path.
+//   - Size cap: 2 MiB. Anything bigger is almost certainly a generated
+//     bundle / lock file and won't render usefully anyway.
+//   - File-only: rejects directories.
+func (h *DevResetHandler) Source(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	rel := r.URL.Query().Get("path")
+	if rel == "" {
+		http.Error(w, "missing path", http.StatusBadRequest)
+		return
+	}
+	if filepath.IsAbs(rel) {
+		http.Error(w, "absolute paths not allowed", http.StatusBadRequest)
+		return
+	}
+
+	// Extension allowlist — keeps this endpoint a source viewer, not a
+	// general file-read primitive.
+	allowed := map[string]bool{
+		".ts": true, ".tsx": true, ".js": true, ".jsx": true, ".mjs": true, ".cjs": true,
+		".go":   true,
+		".json": true,
+		".md":   true,
+		".sql":  true,
+		".sh":   true,
+		".css":  true, ".html": true,
+		".yaml": true, ".yml": true,
+		".py": true,
+	}
+	if !allowed[filepath.Ext(rel)] {
+		http.Error(w, "file extension not allowed", http.StatusForbidden)
+		return
+	}
+
+	// Resolve repo root the same way the Codegraph handler does: walk
+	// upward from cwd until we find one of the audit-snapshot candidates.
+	rootCandidates := []string{".", "..", "../.."}
+	var repoRoot string
+	for _, c := range rootCandidates {
+		abs, _ := filepath.Abs(c)
+		if _, statErr := os.Stat(filepath.Join(abs, "dev", "audits", "codegraph.json")); statErr == nil {
+			repoRoot = abs
+			break
+		}
+	}
+	if repoRoot == "" {
+		http.Error(w, "repo root not found", http.StatusInternalServerError)
+		return
+	}
+
+	// Clean + Join + verify the resolved path is still inside repoRoot.
+	cleanRel := filepath.Clean(rel)
+	abs := filepath.Join(repoRoot, cleanRel)
+	// EvalSymlinks defends against symlinked paths that escape the root.
+	absResolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		// File doesn't exist — distinguish from traversal for clearer 404 vs 400.
+		if os.IsNotExist(err) {
+			http.Error(w, "file not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "resolve failed", http.StatusBadRequest)
+		return
+	}
+	rootResolved, _ := filepath.EvalSymlinks(repoRoot)
+	if !filepathHasPrefix(absResolved, rootResolved) {
+		http.Error(w, "path escapes repo root", http.StatusForbidden)
+		return
+	}
+
+	info, err := os.Stat(absResolved)
+	if err != nil {
+		http.Error(w, "stat failed", http.StatusInternalServerError)
+		return
+	}
+	if info.IsDir() {
+		http.Error(w, "path is a directory", http.StatusBadRequest)
+		return
+	}
+	const maxBytes = 2 * 1024 * 1024
+	if info.Size() > maxBytes {
+		http.Error(w, "file too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	data, err := os.ReadFile(absResolved)
+	if err != nil {
+		http.Error(w, "read failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(data)
+}
+
+// filepathHasPrefix — string-level prefix check on cleaned paths. We add a
+// trailing separator on the prefix so /repo/root doesn't match /repo/rootless.
+func filepathHasPrefix(p, prefix string) bool {
+	prefix = filepath.Clean(prefix)
+	p = filepath.Clean(p)
+	if p == prefix {
+		return true
+	}
+	sep := string(filepath.Separator)
+	return len(p) > len(prefix) && p[:len(prefix)] == prefix && p[len(prefix):len(prefix)+1] == sep
+}
+
 // SeedRisks — POST /_site/admin/dev/seed-risks
 //
 // Inserts N Risk artefacts assigned to the chosen user (default: the caller).
