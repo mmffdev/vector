@@ -94,8 +94,7 @@ func (s *Service) LoadParent(ctx context.Context, tx pgx.Tx, kind EntityKind, id
 	var subscriptionID uuid.UUID
 	var archived *time.Time
 	// table is a hard-coded enum, not user input — safe to interpolate.
-	row := tx.QueryRow(ctx, fmt.Sprintf(
-		`SELECT subscription_id, archived_at FROM %s WHERE id = $1 FOR UPDATE`, table), id)
+	row := tx.QueryRow(ctx, fmt.Sprintf(sqlSelectPolymorphicParentForUpdateFmt, table), id)
 	if err := row.Scan(&subscriptionID, &archived); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return uuid.Nil, ErrEntityNotFound
@@ -125,21 +124,7 @@ func (s *Service) InsertEntityStakeholder(ctx context.Context, tx pgx.Tx, kind E
 		return uuid.Nil, err
 	}
 	var id uuid.UUID
-	err := tx.QueryRow(ctx, `
-		INSERT INTO subscriptions_stakeholders (
-			subscriptions_stakeholders_id_subscription,
-			subscriptions_stakeholders_entity_kind,
-			subscriptions_stakeholders_entity_id,
-			subscriptions_stakeholders_id_user,
-			subscriptions_stakeholders_role
-		) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (
-			subscriptions_stakeholders_entity_kind,
-			subscriptions_stakeholders_entity_id,
-			subscriptions_stakeholders_id_user,
-			subscriptions_stakeholders_role
-		) DO UPDATE SET subscriptions_stakeholders_role = EXCLUDED.subscriptions_stakeholders_role
-		RETURNING subscriptions_stakeholders_id`,
+	err := tx.QueryRow(ctx, sqlInsertEntityStakeholder,
 		callerSubscription, string(kind), entityID, userID, role,
 	).Scan(&id)
 	return id, err
@@ -161,10 +146,7 @@ func (s *Service) InsertPageEntityRef(ctx context.Context, tx pgx.Tx, pageID uui
 	if _, err := s.LoadParent(ctx, tx, kind, entityID, callerSubscription); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `
-		INSERT INTO page_entity_refs (page_id, entity_kind, entity_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (entity_kind, entity_id) DO NOTHING`,
+	_, err := tx.Exec(ctx, sqlInsertPageEntityRef,
 		pageID, string(kind), entityID)
 	return err
 }
@@ -197,8 +179,8 @@ func (s *Service) CleanupChildren(ctx context.Context, tx pgx.Tx, kind EntityKin
 	var total int64
 	for _, rel := range rels {
 		// rel.table + rel.kindCol + rel.idCol are hard-coded — never user input.
-		tag, err := tx.Exec(ctx, fmt.Sprintf(
-			`DELETE FROM %s WHERE %s = $1 AND %s = $2`, rel.table, rel.kindCol, rel.idCol),
+		tag, err := tx.Exec(ctx,
+			fmt.Sprintf(sqlDeletePolymorphicChildFmt, rel.table, rel.kindCol, rel.idCol),
 			string(kind), id)
 		if err != nil {
 			return total, fmt.Errorf("cleanup %s: %w", rel.table, err)

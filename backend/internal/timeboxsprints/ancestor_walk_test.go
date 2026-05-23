@@ -18,44 +18,33 @@ import (
 
 // seedTopologyChain inserts (parent → child) into topology_nodes for
 // the given subscription + workspace. Returns (parentID, childID).
-// Cleanup is registered via t.Cleanup. The tests use raw SQL because
-// topology.Service.CreateNode requires a much wider set of context
-// (auth user, validation, audit log) than we want to set up here.
+// Cleanup is registered via t.Cleanup.
+//
+// Uses topology.SeedNodeForTest (PLA060 follow-up) rather than raw
+// INSERTs so the topology write-boundary stays intact — the boundary
+// test (backend/internal/topology/boundary_test.go) enforces that
+// topology is the sole writer for topology_nodes. The cleanup DELETE
+// is allowed inside the topology package via the same helper API;
+// here it stays inline because deleting a test-seeded row is a one-
+// line operation and the cleanup-only-table-write convention in the
+// boundary regex catches it via the same DELETE FROM check.
+// To keep the boundary green we route the DELETE through topology too
+// (see DeleteNodesForTest below — added alongside SeedNodeForTest).
 func seedTopologyChain(t *testing.T, pool *pgxpool.Pool, subID, wsID string) (parentID, childID string) {
 	t.Helper()
 	parentID = uuid.NewString()
 	childID = uuid.NewString()
 	ctx := context.Background()
 
-	_, err := pool.Exec(ctx, `
-		INSERT INTO topology_nodes (
-			id, workspace_id, subscription_id, parent_id, name, description,
-			layout_mode, collapsed_default, sort_order
-		) VALUES (
-			$1, $2, $3, NULL, 'slice5b-parent', '',
-			'auto-horizontal', false, 0
-		)
-	`, parentID, wsID, subID)
-	if err != nil {
+	if err := topology.SeedNodeForTest(ctx, pool, parentID, wsID, subID, nil, "slice5b-parent"); err != nil {
 		t.Fatalf("seed parent node: %v", err)
 	}
-
-	_, err = pool.Exec(ctx, `
-		INSERT INTO topology_nodes (
-			id, workspace_id, subscription_id, parent_id, name, description,
-			layout_mode, collapsed_default, sort_order
-		) VALUES (
-			$1, $2, $3, $4, 'slice5b-child', '',
-			'auto-horizontal', false, 0
-		)
-	`, childID, wsID, subID, parentID)
-	if err != nil {
+	if err := topology.SeedNodeForTest(ctx, pool, childID, wsID, subID, &parentID, "slice5b-child"); err != nil {
 		t.Fatalf("seed child node: %v", err)
 	}
 
 	t.Cleanup(func() {
-		_, _ = pool.Exec(ctx,
-			`DELETE FROM topology_nodes WHERE subscription_id = $1`, subID)
+		_ = topology.DeleteNodesForTestBySubscription(ctx, pool, subID)
 	})
 	return parentID, childID
 }

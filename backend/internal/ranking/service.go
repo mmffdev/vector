@@ -100,10 +100,9 @@ func (s *Service) Move(ctx context.Context, req MoveRequest) (MoveResult, error)
 			return err
 		}
 
-		_, err = tx.Exec(ctx, fmt.Sprintf(
-			`UPDATE %s SET position = $1, updated_at = now() WHERE id = $2`,
-			cfg.Table,
-		), newPos, row.id)
+		_, err = tx.Exec(ctx,
+			fmt.Sprintf(sqlUpdateRankPositionFmt, cfg.Table),
+			newPos, row.id)
 		if err != nil {
 			return fmt.Errorf("write new position: %w", err)
 		}
@@ -146,11 +145,7 @@ func (r rankRow) scope() (Scope, *uuid.UUID) {
 func (r rankRow) currentPosition() int { return r.position }
 
 func loadRowForUpdate(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID, rowID uuid.UUID) (rankRow, error) {
-	q := fmt.Sprintf(`
-		SELECT id, subscription_id, %s, position
-		FROM %s
-		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
-		FOR UPDATE`, cfg.ScopeColumn, cfg.Table)
+	q := fmt.Sprintf(sqlSelectRankRowForUpdateFmt, cfg.ScopeColumn, cfg.Table)
 	var r rankRow
 	err := tx.QueryRow(ctx, q, rowID, subID).
 		Scan(&r.id, &r.subscriptionID, &r.scopeID, &r.position)
@@ -169,20 +164,10 @@ func lockCohort(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.U
 		args []any
 	)
 	if scope == ScopeBacklog {
-		q = fmt.Sprintf(`
-			SELECT id, subscription_id, %s, position
-			FROM %s
-			WHERE subscription_id = $1 AND %s IS NULL AND archived_at IS NULL
-			ORDER BY position, id
-			FOR UPDATE`, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
+		q = fmt.Sprintf(sqlSelectRankCohortBacklogFmt, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
 		args = []any{subID}
 	} else {
-		q = fmt.Sprintf(`
-			SELECT id, subscription_id, %s, position
-			FROM %s
-			WHERE subscription_id = $1 AND %s = $2 AND archived_at IS NULL
-			ORDER BY position, id
-			FOR UPDATE`, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
+		q = fmt.Sprintf(sqlSelectRankCohortScopedFmt, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
 		args = []any{subID, *scopeID}
 	}
 
@@ -206,7 +191,7 @@ func lockCohort(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.U
 func readPosition(ctx context.Context, tx pgx.Tx, table string, rowID uuid.UUID) (int, error) {
 	var pos int
 	err := tx.QueryRow(ctx,
-		fmt.Sprintf(`SELECT position FROM %s WHERE id = $1`, table),
+		fmt.Sprintf(sqlSelectRankPositionFmt, table),
 		rowID,
 	).Scan(&pos)
 	if err != nil {

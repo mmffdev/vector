@@ -200,6 +200,25 @@ Notes:
 - **List skips step-up by design.** `KeyInfo` carries no `raw_key`; listing keys does not exfiltrate the secret. Issue and Revoke both change credentials state and warrant step-up.
 - The `action_key` registry lives in [`backend/internal/auth/sql.go`](../backend/internal/auth/sql.go) as a comment above `sqlInsertReauthNonce` — keep new entries there so future readers see the full set without grepping.
 
+## API key scopes — data-plane authorization (PLA060 B16.11)
+
+API keys carry an `admin_api_keys_scopes text[]` column (migration [120](../db/mmff_vector/schema/120_api_keys.sql), renamed in 181). Scopes are loaded by `Service.ValidateKey`, stashed on the request context by `apikeys.Middleware` via `WithScopes`, and enforced on the data-plane via the `apikeys.RequireScope(<code>)` middleware wrap. JWT-authenticated users bypass the scope gate — scopes are an API-key-only construct; humans authenticate via JWT + RBAC permissions (the existing `auth.RequirePermission` stack).
+
+Named scopes currently wired:
+
+| Scope | Routes gated on it |
+|---|---|
+| `work_items:read` | `GET /samantha/v2/work-items[/*]` (List, Summary, Facets, FlowStates, Columns, ByIDs, Get, ListChildren, ListFieldValues) |
+| `work_items:write` | `POST/PATCH/DELETE /samantha/v2/work-items[/*]` (Create, Bulk, Patch, Archive, UpsertFieldValues, DeleteFieldValue) |
+| `portfolio_items:read` | `GET /samantha/v2/portfolio-items[/*]` (same surface as work-items) |
+| `portfolio_items:write` | `POST/PATCH/DELETE /samantha/v2/portfolio-items[/*]` (same surface as work-items) |
+
+Denials emit RFC 9457 `application/problem+json` with `code: "scope_denied"` and a warn-level audit log line carrying `key_subscription` + `required_scope` + `granted_scopes`.
+
+**Back-compat: empty scopes allow all.** Keys seeded before PLA060 (the dev key + any pre-existing live keys) carry `'{}'` and would otherwise lose access overnight. `HasScope` returns true on `len(scopes) == 0` to preserve their behaviour. Tracked as [`TD-SCOPES-DEFAULT`](c_tech_debt.md#td-scopes-default) — flip to "deny" once the issuance UI ships and empty-scopes means "user clicked through without selecting any" rather than "legacy key."
+
+**Coverage gap.** Only `/samantha/v2/work-items*` and `/samantha/v2/portfolio-items*` are scope-gated today. The wider /samantha/v2 surface (flows, types, fields, timeboxes, etc.) is NOT scope-gated — see [`TD-SCOPES-COVERAGE`](c_tech_debt.md#td-scopes-coverage). The cross-tenant filter (PLA060 B16.10) still applies, so the failure mode is intra-tenant over-privilege, not cross-tenant leakage.
+
 ## Related
 
 - [c_c_schema_auth.md](c_c_schema_auth.md) — `users`, `sessions`, `password_resets`, `user_workspace_permissions`.

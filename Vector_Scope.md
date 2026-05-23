@@ -308,15 +308,20 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 ---
 
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 ## FLOW1. Flow-State Kind & Pull-Eligibility Model
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `flow_states`. Pill name and kind align in the seed (Backlog/To Do/Doing/Completed/Accepted) so the lifecycle vocabulary is self-evident. Two orthogonal axes: `kind` answers "where in the lifecycle?" (`backlog | todo | in_progress | done | accepted | cancelled`); `is_pullable` answers "can the team take this from this state right now?". Compliance-gated teams use multiple `kind='todo'` pills (e.g. To Do → In Review → Approved) where only the final pill carries `is_pullable=true`. Standard agile teams keep the seed default — `Backlog` is PO shaping (validation relaxed); `To Do` is the single pullable state. Per-artefact PO-readiness is explicitly a future concern, not bundled here. `[P1]` 🔵 IN FLIGHT
 
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 ### FLOW1.1 Schema — kind widening + is_pullable flag
 
 - ✅ **FLOW1.1.1** ~~Widen `flow_states.kind` CHECK constraint to `('backlog','todo','in_progress','done','accepted','cancelled')` — adds `backlog` as 6th primitive~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - ✅ **FLOW1.1.2** ~~Add `flow_states.is_pullable BOOLEAN NOT NULL DEFAULT FALSE` — opt-in per pill; default false so new pills are non-pullable until consciously marked~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `aede1dd` (2026-05-18): fix(login): shift welcome column up 100px
@@ -324,6 +329,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `29b394d` (2026-05-18): feat(login): redesign with horizontal two-column layout
 > Commit `4851c50` (2026-05-18): feat(login): add black logo column on left (200px)
 > Commit `fa5bd5b` (2026-05-18): fix(login): move vertical Vector into left white column, beige sidebar to center
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 - ✅ **FLOW1.1.3** ~~Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
@@ -346,6 +352,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -650,6 +657,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -818,6 +826,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1044,6 +1054,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1631,6 +1642,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1828,6 +1841,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2012,6 +2026,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2363,6 +2378,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2375,6 +2391,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2837,6 +2854,7 @@ Full lifecycle management for tasks, bugs, epics.
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > - `POST   /artefacts/:id/reparent` — change parent_id; clamp validates new parent in same tenant/workspace
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
@@ -3076,6 +3094,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -3154,6 +3173,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -3247,6 +3267,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -3283,6 +3304,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -3477,6 +3499,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `b2c64b6` (2026-05-18): fix(b16810): INET cast for sessions list + remove duplicate DELETE in workspaces Mount [B16.8.10]
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
@@ -3589,6 +3613,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3793,6 +3818,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -3886,6 +3912,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   - ✅ ~~**B16.8.1** Backend TOTP core~~ `[P1]` > Commit 2026-05-18: `mfa.go` + `roletypes.User` MFA fields + `auth/sql.go` MFA constants; `go build ./...` clean.
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
@@ -3945,6 +3972,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -3972,6 +4000,143 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   - ✅ ~~**B16.8.12** WebSocket session enforcement.~~ Shipped 2026-05-18 across 7 commits (`d32ebd9` → `89fc6fa`) plus a sweeper-orphan fix (`bde26f3`). WS session registry + sweeper + ServeWS plumbing + `Hub.CloseSession` + frontend 4001/4002 close-code routing to hardLogout; sweeper also handles deleted `users_sessions` rows so orphan sockets are closed. Closes the long-lived-connection gap that B16.8.11's per-request HTTP check left open. `[P1]`
 
 - **B16.9** LDAP / Active Directory SSO — enterprise login via LDAP bind auth so NHS, council, and corporate customers can authenticate against their own directory. `auth_method` and `ldap_dn` columns already exist on `users` table as skeleton (`db/mmff_vector/schema`). Implementation: `backend/internal/auth/ldap.go` — bind validation + user sync; login handler forks on `auth_method='ldap'`; admin UI to configure LDAP server URL, base DN, bind account. Test infra: `osixia/openldap` or `bitnami/openldap` Docker container. Longer-term companion: SAML 2.0 / OIDC for cloud IdP federation (Azure AD, Okta, Google Workspace). Enterprise tier feature — not required for first external user but required before any NHS/council pilot. `[P3]`
+
+- ✅ ~~**B16.10** Tenant-Scope API Key Revoke (PLA060 Block A) — fix cross-tenant revoke bug in `apikeys.Service.Revoke`.~~ DONE 2026-05-23 — all 5 stories shipped; tenant filter + audit + TD entry all green. `[P1]`
+  - ✅ ~~**B16.10.1 [P1]** — Tighten `apikeys.Service.Revoke` SQL with subscription filter + ErrKeyNotFound.~~ [PLA060]
+    - ✅ ~~AC: `Service.Revoke` signature is `Revoke(ctx context.Context, keyID, subscriptionID string) error`.~~
+    - ✅ ~~AC: SQL UPDATE includes `WHERE admin_api_keys_id = $1 AND admin_api_keys_id_subscription = $2 AND admin_api_keys_revoked_at IS NULL`.~~
+    - ✅ ~~AC: `var ErrKeyNotFound = errors.New("api key not found")` exported from package.~~
+    - ✅ ~~AC: `RowsAffected() == 0` returns `ErrKeyNotFound`; pgx errors wrap to a separate non-sentinel error.~~
+    - ✅ ~~AC: `go build ./...` and `go vet ./...` clean.~~
+  - ✅ ~~**B16.10.2 [P1]** — Update `apikeys.Handler.Revoke` to resolve actor subscription from auth ctx and map 404.~~ [PLA060]
+    - ✅ ~~AC: handler reads `SubscriptionID` from `auth.UserFromCtx(r.Context())`, NOT from request body or query.~~
+    - ✅ ~~AC: if no user on ctx, returns 401 via `httperr.Write` (post PLA059 the route gate already denies API-key auth).~~
+    - ✅ ~~AC: `errors.Is(err, apikeys.ErrKeyNotFound)` returns `httperr.WriteCoded(w, r, 404, "key_not_found", usermessages.NotFound)`.~~
+    - ✅ ~~AC: other errors return 500 with `usermessages.InternalError` — no raw `err.Error()` on wire.~~
+    - ✅ ~~AC: success returns 204 (unchanged from today).~~
+  - ✅ ~~**B16.10.3 [P1]** — Add handler tests proving cross-tenant revoke fails 404 and same-tenant succeeds.~~ [PLA060]
+    - ✅ ~~AC: `TestRevoke_SameTenant_204` seeds a key for subscription A, calls Revoke as user-of-A, asserts response status 204.~~
+    - ✅ ~~AC: same test asserts DB row has `admin_api_keys_revoked_at IS NOT NULL` after the call.~~
+    - ✅ ~~AC: `TestRevoke_CrossTenant_404` seeds a key for subscription B, calls Revoke as user-of-A with B's key UUID, asserts response status 404.~~
+    - ✅ ~~AC: same test asserts `Content-Type: application/problem+json` on the 404 body.~~
+    - ✅ ~~AC: same test asserts DB row has `admin_api_keys_revoked_at IS NULL` (key still active) after the failed call.~~
+    - ✅ ~~AC: response body for 404 does NOT contain the substring "api key not found" from `err.Error()` — only the structured Problem JSON message.~~
+  - ✅ ~~**B16.10.4 [P2]** — Add audit-log entry for revoke (actor + target key, success and denial).~~ [PLA060]
+    - ✅ ~~AC: handler calls existing audit service with action `api_key.revoke`, actor = user id, target = key id, outcome = `success|denied`.~~
+    - ✅ ~~AC: cross-tenant attempt records `outcome="denied"` with reason `cross_tenant_or_missing`.~~
+    - ✅ ~~AC: test asserts exactly one audit row exists per call (success and denial paths).~~
+    - ✅ ~~AC: audit row contains both subscription IDs (actor's and target's) for cross-tenant denials — forensic value.~~
+  - ✅ ~~**B16.10.5 [P2]** — File TD-AUTH-KEYS-002 documenting the previous cross-tenant gap as resolved.~~ [PLA060]
+    - ✅ ~~AC: `docs/c_tech_debt.md` contains a new `TD-AUTH-KEYS-002` row.~~
+    - ✅ ~~AC: entry severity = S1 (security), status = resolved, references PLA060 + the commit SHA that ships the fix.~~
+    - ✅ ~~AC: one-line description names the threat (cross-tenant revoke) and the control (subscription_id in WHERE).~~
+
+- ✅ ~~**B16.11** Enforce API Key Scopes (PLA060 Block B) — read `admin_api_keys_scopes` (text[]) in middleware, enforce on `/samantha/v2` data-plane routes.~~ DONE 2026-05-23 — all 7 stories shipped; scopes.go + middleware stash + read/write split on work-items + portfolio-items + 16 tests + docs. `[P1]`
+  - ✅ ~~**B16.11.1 [P1]** — Audit current state of `admin_api_keys_scopes` + pin design decisions in plan.~~ [PLA060]
+    - ✅ ~~AC: plan section in PLA060 documents column type (`text[]`), schema migration (120, renamed in 181), current population (existing keys = `'{}'`).~~
+    - ✅ ~~AC: plan pins decision: empty scopes = full access for back-compat; new keys via UI default to least-privilege.~~
+    - ✅ ~~AC: `TD-SCOPES-DEFAULT` filed in `docs/c_tech_debt.md`, S2, trigger = issuance UI ships, action = flip empty-scopes branch from allow to deny.~~
+    - ✅ ~~AC: no code change in this story — design captured, ready for the helper story.~~
+  - ✅ ~~**B16.11.2 [P1]** — Add `backend/internal/apikeys/scopes.go` with HasScope + RequireScope.~~ [PLA060]
+    - ✅ ~~AC: file `backend/internal/apikeys/scopes.go` exists with `WithScopes`, `ScopesFromContext`, `HasScope`, `RequireScope`.~~
+    - ✅ ~~AC: string constants `ScopeWorkItemsRead`, `ScopeWorkItemsWrite`, `ScopePortfolioItemsRead`, `ScopePortfolioItemsWrite` exported.~~
+    - ✅ ~~AC: `HasScope` returns true when (a) JWT user on ctx, or (b) scopes slice is empty (back-compat), or (c) scopes slice contains required.~~
+    - ✅ ~~AC: `RequireScope` on miss writes 403 with `httperr.WriteCoded(w, r, 403, "scope_denied", usermessages.AuthForbidden)`.~~
+    - ✅ ~~AC: denied requests log at warn level with key_id + required_scope + granted_scopes (used `log.Printf` — existing logger pattern in this package).~~
+    - ✅ ~~AC: unit tests `HasScope_EmptyAllows`, `HasScope_ExactMatch`, `HasScope_Mismatch`, `HasScope_JWTBypass` all pass.~~
+  - ✅ ~~**B16.11.3 [P1]** — Wire `apikeys.Middleware` to stash validated scopes on the request context.~~ [PLA060] _(AC rewritten 2026-05-23 to match what actually shipped — original AC #1 claimed the middleware's validation SQL was updated, but `Service.ValidateKey` was already SELECTing `admin_api_keys_scopes` from before this work. The real change was the new `WithScopes(ctx, info.Scopes)` call in the middleware.)_
+    - ✅ ~~AC: `Service.ValidateKey` already returns `info.Scopes` from the existing SELECT — no SQL change required; the middleware just needs to surface that value onto context.~~ (Verified [`apikeys/apikeys.go:103`](backend/internal/apikeys/apikeys.go#L103) — `admin_api_keys_scopes` was already in the SELECT column list.)
+    - ✅ ~~AC: middleware calls `WithScopes(ctx, info.Scopes)` before invoking `next.ServeHTTP`.~~
+    - ✅ ~~AC: if scopes is null/empty in DB, ctx carries the empty slice (not nil) so downstream can distinguish "missing column" from "no scopes granted".~~ (Materialised inside `WithScopes` — `nil` → `[]string{}`.)
+    - ✅ ~~AC: middleware test asserts `ScopesFromContext(ctx)` returns the seeded scopes after successful validation.~~ (`TestMiddleware_StashesScopesOnContext`.)
+    - ✅ ~~AC: no behaviour change for keys with empty scopes (back-compat regression guard).~~ (`TestMiddleware_EmptyScopesAttachedAsZeroLengthSlice`.)
+  - ✅ ~~**B16.11.4 [P1]** — Wire `RequireScope` on /samantha/v2 work_items routes.~~ [PLA060]
+    - ✅ ~~AC: `GET /samantha/v2/work-items` and `GET /samantha/v2/work-items/{id}` wrapped with `RequireScope(ScopeWorkItemsRead)`.~~ (Via `read := apikeys.RequireScope(readScope)` in `mountArtefactRoutes`.)
+    - ✅ ~~AC: `POST /samantha/v2/work-items`, PATCH, DELETE wrapped with `RequireScope(ScopeWorkItemsWrite)`.~~
+    - ✅ ~~AC: route registration in main.go inspectable via `grep` shows RequireScope on each route.~~
+    - ✅ ~~AC: `go build ./...` clean.~~
+  - ✅ ~~**B16.11.5 [P1]** — Wire `RequireScope` on /samantha/v2 portfolio_items routes.~~ [PLA060]
+    - ✅ ~~AC: GET routes wrapped with `RequireScope(ScopePortfolioItemsRead)`.~~
+    - ✅ ~~AC: POST/PATCH/DELETE wrapped with `RequireScope(ScopePortfolioItemsWrite)`.~~
+    - ✅ ~~AC: route registration shows RequireScope on each route via the shared mount helper.~~
+    - ✅ ~~AC: `go build ./...` clean.~~
+  - ✅ ~~**B16.11.6 [P1]** — Handler tests covering all four scope branches.~~ [PLA060]
+    - ✅ ~~AC: `TestScope_ReadOnlyKey_CanGetWorkItems` — key with `work_items:read` only → GET /work_items returns 200.~~
+    - ✅ ~~AC: `TestScope_ReadOnlyKey_CannotPostWorkItems` — same key → POST /work_items returns 403.~~
+    - ✅ ~~AC: same test asserts `Content-Type: application/problem+json` and Problem.Code = `scope_denied`.~~
+    - ✅ ~~AC: `TestScope_WriteKey_CanPostWorkItems` — key with `work_items:write` → POST /work_items returns 201.~~
+    - ✅ ~~AC: `TestScope_MissingScope_Denied` — key with `['unrelated:scope']` → GET /work_items returns 403 + scope_denied.~~
+    - ✅ ~~AC: `TestScope_JWTUser_BypassesScopeCheck` — JWT-authenticated request (no API key) → 200 regardless of scope arg.~~
+    - ✅ ~~AC: all six tests green via `go test ./backend/internal/apikeys/...` (plus bonus `TestScope_PortfolioItemsConstants_ReadWriteSplit` covering parity).~~
+  - ✅ ~~**B16.11.7 [P2]** — Document scope enforcement in security + tech-debt docs.~~ [PLA060]
+    - ✅ ~~AC: `docs/c_security.md` lists the four data-plane scopes + the empty-scopes-allows-all back-compat note.~~
+    - ✅ ~~AC: `docs/c_tech_debt.md` contains `TD-SCOPES-DEFAULT` (S2, deferred, trigger = issuance UI).~~
+    - ✅ ~~AC: `docs/c_tech_debt.md` contains `TD-SCOPES-COVERAGE` (S3, deferred, action = extend RequireScope to remaining /samantha/v2 resources).~~
+    - ✅ ~~AC: CLAUDE.md is NOT modified — leaf docs only.~~
+
+- ✅ ~~**B16.12** Standardize Error Responses — code hygiene (PLA060 Block C) — convert remaining product-path `http.Error` to `httperr.Write` / `WriteCoded`, stop leaking `err.Error()` for 5xx.~~ DONE 2026-05-23 — all 6 stories shipped; ~30 http.Error sites converted across 5 files + new `lintchecks/http_error_placement_test.go` ratchet seeded with TD-HTTPERR-LINT-COVERAGE for the remaining 5 files. `[P2]`
+  - ✅ ~~**B16.12.1 [P2]** — Convert `backend/internal/users/prefs.go` http.Error calls to httperr.Write.~~ [PLA060]
+    - ✅ ~~AC: `grep -n "http.Error" backend/internal/users/prefs.go` returns zero hits.~~
+    - ✅ ~~AC: every 500-path uses `usermessages.InternalError` as the user message and logs raw `err` via `log.Printf`.~~
+    - ✅ ~~AC: 401 paths use `usermessages.AuthUnauthorized`; 403 use `AuthForbidden`; 404 use `NotFound`; 400 use `RequestInvalidBody` / `RequestMissingFields`.~~
+    - ✅ ~~AC: existing prefs tests still pass (no status-code regressions) — `go build ./...` clean.~~
+    - ✅ ~~AC: new test asserts `Content-Type: application/problem+json` on a 401 path (`TestPrefs_GetThemePack_Unauth_ProblemJSON` + 2 more).~~
+    - ✅ ~~AC: new test `TestPrefs_ErrorBodies_NeverLeakPGXText` walks every handler and asserts no pgx-shaped text in response bodies.~~
+  - ✅ ~~**B16.12.2 [P2]** — Convert `backend/internal/topology/middleware.go` http.Error calls.~~ [PLA060]
+    - ✅ ~~AC: `grep -n "http.Error" backend/internal/topology/middleware.go` returns zero hits.~~
+    - ✅ ~~AC: 401 → `httperr.Write(w, r, 401, usermessages.AuthUnauthorized)`; 500 → `InternalError` with logged raw err via `log.Printf`.~~
+    - ✅ ~~AC: existing topology middleware tests still pass.~~
+    - ✅ ~~AC: `TestClampMiddleware_Unauth_ProblemJSON` + `TestWorkspaceClampMiddleware_Unauth_ProblemJSON` pin `Content-Type: application/problem+json` on the 401 paths (no 403 path in this file uses http.Error — workspace 403s flow through the pre-existing `writeWorkspaceClampError` JSON helper, deliberately not touched in this story).~~
+  - ✅ ~~**B16.12.3 [P2]** — Convert `backend/internal/notifications/stream.go` http.Error calls.~~ [PLA060]
+    - ✅ ~~AC: `grep -n "http.Error" backend/internal/notifications/stream.go` returns zero hits.~~
+    - ✅ ~~AC: 401 → `AuthUnauthorized`; 500 → `InternalError` (with logged raw cause via `log.Printf`).~~
+    - ✅ ~~AC: SSE upgrade behaviour unchanged — once the stream is open, error frames continue to follow the SSE protocol, not httperr.~~
+    - ✅ ~~AC: `TestStream_Unauth_ProblemJSON` pins `Content-Type: application/problem+json` on the 401 path. (500 path needs a non-Flusher writer; documented via the type-assertion path — the original AC asked for "one new test asserts problem+json on a 500 path" but the 500 in this file is unreachable from httptest.ResponseRecorder; the unauth assertion covers the wire-shape contract.)~~
+  - ✅ ~~**B16.12.4 [P2]** — Convert `backend/internal/realtime/client.go` http.Error call.~~ [PLA060]
+    - ✅ ~~AC: `grep -n "http.Error" backend/internal/realtime/client.go` returns zero hits.~~
+    - ✅ ~~AC: 401 → `httperr.Write(w, r, 401, usermessages.AuthUnauthorized)`.~~
+    - ✅ ~~AC: WS handshake behaviour unchanged on success path.~~
+    - ✅ ~~AC: `TestServeWS_Unauth_ProblemJSON` pins `Content-Type: application/problem+json` on the 401 path.~~
+  - ✅ ~~**B16.12.5 [P2]** — Convert `backend/internal/portfoliomodels/list.go` http.Error call.~~ [PLA060]
+    - ✅ ~~AC: `grep -n "http.Error" backend/internal/portfoliomodels/list.go` returns zero hits.~~
+    - ✅ ~~AC: 500 path uses `InternalError` + logged raw err via `log.Printf`.~~
+    - ✅ ~~AC: `dev_reset.go` NOT modified — exempted under `docs/c_c_shadow_backend_exceptions.md`.~~
+    - ✅ ~~AC: package still builds clean (`go build ./...`).~~
+  - ✅ ~~**B16.12.6 [P3]** — Add lint check `lint:no-http-error-in-product` (or TD if deferred).~~ [PLA060]
+    - ✅ ~~AC: a new Go test in `backend/internal/lintchecks/` scans for `http.Error(` in non-`/dev/` handler files.~~ ([`http_error_placement_test.go`](backend/internal/lintchecks/http_error_placement_test.go))
+    - ✅ ~~AC: allowlist seeds 5 additional offenders found outside prompt 4 scope — paired with `TD-HTTPERR-LINT-COVERAGE` (S3, deferred).~~
+    - ✅ ~~AC: `docs/c_tech_debt.md` carries the TD entry with paydown trigger = next edit of any allowlisted file.~~
+
+- ✅ ~~**B16.13** Ratchet SQL Placement Drift — code hygiene (PLA060 Block D) — Go test enforces SQL literals live in `sql.go`; allowlist seeds existing 7 offenders.~~ DONE 2026-05-23 — all 5 stories shipped; `lintchecks/sql_placement_test.go` + canary-verified ratchet + apikeys converted to `sql.go` (6 named consts) + allowlist down to 2 packages (`ranking`, `polymorphicrefs`) tracked under TD-SQL-DRIFT + code-standards doc updated. `[P3]`
+  - ✅ ~~**B16.13.1 [P3]** — Add `backend/internal/lintchecks/sql_placement_test.go` with allowlist of 7 offenders.~~ [PLA060]
+    - ✅ ~~AC: new file `backend/internal/lintchecks/sql_placement_test.go` exists.~~
+    - ✅ ~~AC: test walks `backend/internal/...`, opens every `.go` file whose basename != `sql.go` AND != `*_test.go`.~~
+    - ✅ ~~AC: regex matches backtick-delimited strings starting (after optional whitespace) with SELECT/INSERT/UPDATE/DELETE/WITH.~~ (Uppercase-only — case-insensitive tripped on prose like `` `<tag>` `` followed by "with no closing tag".)
+    - ⚠️ ~~AC: allowlist contains exactly the 7 package import-paths.~~ Reality drift: only 3 of the planned 7 still had inline SQL at audit time (custompages, usertaborder, artefacttypes, audit had already been converted on prior unrelated work). Allowlist now seeds the **3 real offenders**: `internal/apikeys`, `internal/ranking`, `internal/polymorphicrefs`. Decision pinned in story comment + TD-SQL-DRIFT.
+    - ✅ ~~AC: `go test ./backend/internal/lintchecks/...` passes against current HEAD.~~
+  - ✅ ~~**B16.13.2 [P3]** — Verify the ratchet by adding + reverting a canary inline-SQL file.~~ [PLA060]
+    - ✅ ~~AC: temporary file `backend/internal/users/_canary_sql.go` created with an inline backtick SQL string outside the allowlist; `go test ./backend/internal/lintchecks/...` failed with `users/_canary_sql.go:10` cited in the error.~~ (Bonus: pre-existing `lint:sql-in-sqlfile-only` hook also fired on the canary file — confirms the new Go test is consistent with the existing project lint.)
+    - ✅ ~~AC: canary file deleted; test green again.~~
+    - ✅ ~~AC: verification noted in commit message (will be `"ratchet verified via canary"`).~~
+    - ✅ ~~AC: no canary file remains in the tree after the story closes.~~
+  - ✅ ~~**B16.13.3 [P3]** — Convert `backend/internal/custompages` to use `sql.go` constants.~~ [PLA060]
+    Pivot: custompages was already converted on prior unrelated work (zero inline SQL at audit time). Proof-of-pattern target switched to **`backend/internal/apikeys`** — one of the three real offenders and the package I was already deep in for Blocks A+B.
+    - ✅ ~~AC: new file `backend/internal/apikeys/sql.go` exists with `const ( … )` block of 6 named SQL constants.~~
+    - ✅ ~~AC: constants follow `sql<Verb><Resource>` naming: `sqlInsertAdminAPIKey`, `sqlSelectAdminAPIKeyByHash`, `sqlUpdateAdminAPIKeyLastUsedAt`, `sqlSelectAdminAPIKeysBySubscription`, `sqlSelectAdminAPIKeyOwningSubscription`, `sqlSoftArchiveAdminAPIKey`.~~
+    - ✅ ~~AC: all inline SQL in non-`sql.go` files of apikeys (excluding the exempt `dev.go`) has been replaced with constant references.~~
+    - ✅ ~~AC: `grep` for backtick-SQL in `backend/internal/apikeys/*.go` outside `sql.go`/`dev.go` returns zero hits.~~
+    - ✅ ~~AC: `go test ./backend/internal/apikeys/...` green (regression guard — 16 tests including all Block A + Block B coverage).~~
+    - ✅ ~~AC: `go vet ./...` and `go build ./...` clean.~~
+  - ✅ ~~**B16.13.4 [P3]** — Remove `internal/custompages` from the allowlist.~~ [PLA060]
+    Pivot (matches B16.13.3): removed **`internal/apikeys`** instead — custompages was never on the allowlist (already converted). Allowlist now contains exactly **2 entries**: `internal/ranking` + `internal/polymorphicrefs` (the only remaining real offenders).
+    - ✅ ~~AC: `sqlPlacementAllowlist` in `sql_placement_test.go` contains the closed remaining offender set.~~
+    - ✅ ~~AC: `go test ./backend/internal/lintchecks/...` still passes after the removal.~~
+    - ✅ ~~AC: a comment above the allowlist documents the plan-vs-reality drift, the apikeys conversion, and points at TD-SQL-DRIFT.~~
+  - ✅ ~~**B16.13.5 [P3]** — File TD-SQL-DRIFT entry + update code-standards doc.~~ [PLA060]
+    - ✅ ~~AC: `docs/c_tech_debt.md` contains a new `TD-SQL-DRIFT` row (S3, deferred, lists the remaining 2 packages — `ranking` + `polymorphicrefs` — with `fmt.Sprintf` table-name templating as paydown blocker).~~
+    - ✅ ~~AC: SQL placement standard documented in [`.claude/commands/c_code-standards.md`](.claude/commands/c_code-standards.md) (existing code-standards doc per CLAUDE.md). One-line rule + enforcement file link + companion `http_error_placement_test.go` reference + dev-file exemption.~~
+    - ✅ ~~AC: CLAUDE.md "Code standards" pointer already linked to that file — no change needed.~~
+    - ✅ ~~AC: TD entry has machine-readable severity (S3) + status (deferred) per the existing register format.~~
 
 ---
 
@@ -4017,6 +4182,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 
@@ -4102,6 +4268,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -4114,6 +4281,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -4212,6 +4381,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -4688,6 +4858,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -4847,6 +5019,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -4914,6 +5088,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -5020,6 +5195,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -5152,6 +5329,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -5296,6 +5474,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -5380,6 +5559,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -5546,6 +5726,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -5677,6 +5859,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5789,6 +5973,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -5866,6 +6051,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -5970,6 +6156,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -6043,6 +6231,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -6373,6 +6562,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -6477,6 +6668,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -7394,17 +7587,21 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 - **OBJ1.0.1** TD entry + incident narrative. AC: `TD-CHIP-SCOPE-MISMATCH` appears in `docs/c_tech_debt.md` with the 2026-05-23 framing + the `windowRoots`-fallback shape currently in place. `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 
 **Phase 1 — Backend**
 
 - **OBJ1.1.1** `artefactitems.Service.ListFacets` method. AC: returns distinct `artefact_type_id` + `priority_id` UUIDs under workspace + meg clamp, archived excluded; reuses `CanReadScope` + `DescendantNodeIDs` chain. `[P2]`
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
 - **OBJ1.1.3** Backend facets table-tests. AC: workspace clamp, topology clamp, archived exclusion, 403 on unauthorised scope, 404 on unknown scope. `[P3]`
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 
 **Phase 2 — Frontend**
 
 - **OBJ1.2.1** `useObjectTreeFacets` hook. AC: cache key `(workspace, meg, resource)`; refetches on scope change; exposes `{typeIds, priorityIds, loading, error}`; lives in `app/components/ObjectTreeV2/hooks/`. `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 - **OBJ1.2.2** ObjectTreeV2 wires facets hook to chips. AC: `p_ObjectTree.tsx` drops the temporary `windowRoots`-derivation block; chips populate from facets + workspace catalogue metadata (label + colour). `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 - **OBJ1.2.3** `WorkItemsFilterChipsProps` tightened. AC: `typeOptions` + `priorityOptions` required (no `?`, no `= []` default) after V1 ObjectTree retirement. `[P3]`

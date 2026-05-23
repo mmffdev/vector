@@ -100,18 +100,7 @@ func rebalance(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.UU
 		args = append(args, *scopeID)
 	}
 
-	q := fmt.Sprintf(`
-		WITH ordered AS (
-			SELECT id, row_number() OVER (ORDER BY position, id) * %d AS pos
-			FROM %s
-			WHERE subscription_id = $1 AND %s AND archived_at IS NULL
-		)
-		UPDATE %s t
-		SET position = ordered.pos
-		FROM ordered
-		WHERE t.id = ordered.id`,
-		defaultGap, cfg.Table, scopeCond, cfg.Table,
-	)
+	q := fmt.Sprintf(sqlRebalanceRanksFmt, defaultGap, cfg.Table, scopeCond, cfg.Table)
 
 	_, err := tx.Exec(ctx, q, args...)
 	return err

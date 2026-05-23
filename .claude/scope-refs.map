@@ -261,3 +261,26 @@ RF2.3.3	cutover BULK FIELDS SUMMARY handlers bulkOps field-values rule-hook summ
 RF2.4.1	mark deprecated public Service methods lint backend ratchet exemption registry CI
 RF2.5.1	delete deprecated public Service methods cross-package featuretests featuretests cutover guard
 RF2.6.1	metrics before after pattern doc Results TD-SVC-DEPTH-PATTERN ranked candidate workspaces users
+B16.10.1	apikeys Service Revoke SQL subscription filter ErrKeyNotFound tenant
+B16.10.2	apikeys Handler Revoke auth UserFromCtx subscription 404 key_not_found
+B16.10.3	apikeys handler revoke cross-tenant 404 same-tenant 204 problem json test
+B16.10.4	apikeys audit log revoke action outcome denied cross_tenant subscription
+B16.10.5	TD-AUTH-KEYS-002 cross-tenant revoke resolved tech debt register
+B16.11.1	admin_api_keys_scopes audit design TD-SCOPES-DEFAULT empty back-compat
+B16.11.2	apikeys scopes.go HasScope RequireScope WithScopes ScopesFromContext constants
+B16.11.3	apikeys Middleware scopes context ScopesFromContext WithScopes empty slice
+B16.11.4	RequireScope samantha v2 work-items read write split routes main.go
+B16.11.5	RequireScope samantha v2 portfolio-items read write split routes
+B16.11.6	scope handler tests four branches scope_denied JWT bypass problem json
+B16.11.7	docs c_security scope enforcement TD-SCOPES-DEFAULT TD-SCOPES-COVERAGE
+B16.12.1	users prefs http.Error httperr.Write usermessages InternalError problem json leak
+B16.12.2	topology middleware http.Error httperr.Write ClampMiddleware WorkspaceClamp problem json
+B16.12.3	notifications stream http.Error httperr.Write SSE Flusher AuthUnauthorized InternalError
+B16.12.4	realtime client http.Error httperr.Write WebSocket upgrade 401 problem json
+B16.12.5	portfoliomodels list http.Error httperr.Write InternalError published models
+B16.12.6	lintchecks http_error_placement_test allowlist TD-HTTPERR-LINT-COVERAGE ratchet
+B16.13.1	lintchecks sql_placement_test allowlist apikeys ranking polymorphicrefs ratchet
+B16.13.2	canary inline SQL ratchet verification users _canary_sql ratchet fires
+B16.13.3	apikeys sql.go constants proof pattern sqlSelectAdminAPIKeyByHash sqlSoftArchive
+B16.13.4	allowlist apikeys removed ranking polymorphicrefs remaining offenders closed
+B16.13.5	TD-SQL-DRIFT docs code-standards sql.go enforcement ranking polymorphicrefs

@@ -193,3 +193,13 @@ When the user writes **debugtable off**, remove all lines containing `/* DEBUG *
 
 - Never commit debug borders — always strip before any commit.
 - If the target grid/table is ambiguous, ask which one.
+
+## Backend SQL placement (PLA060 B16.13)
+
+**Rule:** SQL literals live in `sql.go` as named constants of the form `sql<Verb><Resource>` (e.g. `sqlSelectAdminAPIKeyByHash`, `sqlSoftArchiveAdminAPIKey`). Service / handler code references the constants only — no inline backtick-SQL outside `sql.go`.
+
+**Enforced by:** [`backend/internal/lintchecks/sql_placement_test.go`](../../backend/internal/lintchecks/sql_placement_test.go) (Go test that runs in CI alongside `go test ./...`). The allowlist is **closed** — adding a new entry is a lint failure; do the conversion instead. Current allowlist tracks pre-existing offenders under [`TD-SQL-DRIFT`](../../docs/c_tech_debt.md).
+
+**Exemptions:** `dev.go` and `dev_reset.go` (shadow-backend dev-path files — same exemption as the [`http_error_placement_test.go`](../../backend/internal/lintchecks/http_error_placement_test.go) check).
+
+**Companion rule (PLA060 B16.12):** Product-path handlers MUST emit RFC 9457 problem+json errors via the `httperr` package — no `http.Error`. Same enforcement file, same allowlist convention ([`TD-HTTPERR-LINT-COVERAGE`](../../docs/c_tech_debt.md) for paydown).

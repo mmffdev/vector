@@ -1345,6 +1345,33 @@ func (s *Service) RestoreWorkspaceTopology(ctx context.Context, workspaceID uuid
 	return err
 }
 
+// SeedNodeForTest is a test-only writer that inserts one topology_nodes
+// row directly via the package's sql.go constants — keeping all writes
+// inside the topology package boundary (boundary_test.go enforces this).
+// Sibling packages' integration tests can call this instead of issuing
+// raw INSERT INTO topology_nodes statements.
+//
+// Production code paths MUST use Service.CreateNode (which carries the
+// validation, parent-walk, workspace inheritance, and tx semantics).
+// SeedNodeForTest deliberately skips all of that: it accepts a
+// caller-supplied id so deterministic test fixtures can return the
+// values up front, and defaults the optional columns. PLA060 follow-up
+// (B16.10 sibling — fixes TestPackageBoundary regression caused by
+// timeboxsprints/ancestor_walk_test.go's raw fixture writes).
+func SeedNodeForTest(ctx context.Context, pool *pgxpool.Pool, id, workspaceID, subscriptionID string, parentID *string, name string) error {
+	_, err := pool.Exec(ctx, sqlInsertNodeForTest, id, workspaceID, subscriptionID, parentID, name)
+	return err
+}
+
+// DeleteNodesForTestBySubscription is the cleanup counterpart to
+// SeedNodeForTest — wipes every topology_nodes row for one subscription.
+// Test-only. Production code never bulk-deletes; it archives via
+// Service.ArchiveNode (soft delete, audit-trailed).
+func DeleteNodesForTestBySubscription(ctx context.Context, pool *pgxpool.Pool, subscriptionID string) error {
+	_, err := pool.Exec(ctx, sqlDeleteNodesForTestBySubscription, subscriptionID)
+	return err
+}
+
 // validateManualXY enforces the same pair-or-null rule the artefacts
 // migration 031 CHECK enforces, in Go, so we return a typed error
 // instead of a raw constraint violation.

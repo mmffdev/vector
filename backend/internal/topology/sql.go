@@ -241,6 +241,32 @@ const sqlCycleCheckAncestor = `
 
 // ── service.go ──────────────────────────────────────────────────────────────
 
+// sqlDeleteNodesForTestBySubscription is the cleanup counterpart to
+// sqlInsertNodeForTest — deletes every topology_nodes row for one
+// subscription. Used only by integration test cleanup hooks; production
+// code archives via Service.ArchiveNode (soft delete, audit-trailed).
+const sqlDeleteNodesForTestBySubscription = `DELETE FROM topology_nodes WHERE subscription_id = $1`
+
+// sqlInsertNodeForTest is the test-fixture writer used by SeedNodeForTest.
+// Unlike sqlInsertNode it accepts a caller-supplied id so test code can
+// generate deterministic UUIDs up front. Production code path (CreateNode)
+// uses sqlInsertNode which DEFAULTs the id via gen_random_uuid().
+//
+// Kept inside the topology package to honour the write-boundary
+// (boundary_test.go ratchets that topology is the sole writer of
+// topology_nodes). PLA060 follow-up — fixes TestPackageBoundary fail
+// surfaced by timeboxsprints/ancestor_walk_test.go's raw INSERT.
+const sqlInsertNodeForTest = `
+		INSERT INTO topology_nodes (
+		    id,
+		    workspace_id, subscription_id, parent_id, name, description,
+		    layout_mode, collapsed_default, sort_order
+		) VALUES (
+		    $1, $2, $3, $4, $5, '',
+		    'auto-horizontal', false, 0
+		)
+	`
+
 // sqlInsertNode inserts a new topology_nodes row and returns the full
 // row for hydrating a Node. Used by CreateNode.
 const sqlInsertNode = `
