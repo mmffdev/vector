@@ -1,0 +1,58 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "app/**/page.tsx",
+    "app/**/layout.tsx",
+    "app/**/route.ts",
+    "app/**/loading.tsx",
+    "app/**/error.tsx",
+    "app/**/not-found.tsx",
+    "app/**/template.tsx",
+    "app/**/default.tsx",
+    "next.config.{js,ts,mjs}",
+    "middleware.{ts,tsx}",
+    "instrumentation.{ts,tsx}",
+    "dev/scripts/**/*.{ts,mts,js,mjs,cjs}",
+    "infra/scripts/**/*.{ts,mts,js,mjs,cjs}",
+    "e2e/**/*.spec.{mjs,ts,js}",
+    "**/*.test.{ts,tsx}",
+    "**/*.spec.{ts,tsx,mjs}"
+  ],
+  "project": [
+    "app/**/*.{ts,tsx}",
+    "dev/**/*.{ts,tsx,js,mjs,cjs}",
+    "infra/scripts/**/*.{ts,js,mjs,cjs}",
+    "e2e/**/*.{mjs,ts,js}"
+  ],
+  "ignore": [
+    "backend/**",
+    "reference/**",
+    "context/**",
+    "handovers/**",
+    "docs/**",
+    ".claude/**",
+    "api-snapshots/**",
+    "**/*.d.ts",
+    "node_modules/**",
+    ".next/**",
+    "out/**",
+    "dist/**",
+    "build/**"
+  ],
+  "ignoreDependencies": [
+    "@types/.*"
+  ],
+  "ignoreBinaries": [
+    "psql",
+    "PGPASSWORD"
+  ],
+  "next": {
+    "entry": [
+      "app/**/page.tsx",
+      "app/**/layout.tsx",
+      "app/**/route.ts",
+      "next.config.{js,ts,mjs}",
+      "middleware.{ts,tsx}"
+    ]
+  }
+}
