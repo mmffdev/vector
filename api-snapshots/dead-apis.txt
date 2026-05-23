@@ -2,8 +2,10 @@
 /admin/dev/api-audit
 /admin/dev/artefacts-count
 /admin/dev/artefacts-wipe
+/admin/dev/codegraph
 /admin/dev/seed-risks
 /admin/dev/seed-workspace
+/admin/dev/source
 /admin/page-grants/bucket/{tag_enum}/{role_id}
 /admin/page-grants/{page_id}/{role_id}
 /admin/users/{id}
@@ -40,6 +42,7 @@
 /page-help/{addressable_id}
 /portfolio-items/by-ids
 /portfolio-items/columns
+/portfolio-items/facets
 /portfolio-items/flow-states
 /portfolio-items/summary
 /portfolio-items/{id}
@@ -76,6 +79,7 @@
 /user/tab-order/{pageId}
 /work-items/by-ids
 /work-items/columns
+/work-items/facets
 /work-items/summary
 /work-items/{id}
 /work-items/{id}/children
