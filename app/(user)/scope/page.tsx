@@ -143,7 +143,12 @@ export default function ScopePage() {
         </div>
       </Panel>
 
-      {wizardConfig && types.length > 0 && (
+      {/* Only the risks sidecar depends on the artefact-type catalogue
+         (its resourceUrl rewrites `item_type=wrk_risk` → `…_id=<uuid>`
+         via resolveSlotRefs). work-items / portfolio mount immediately
+         and let the catalogue land in the background — saves one RTT
+         off cold load. */}
+      {wizardConfig && (mode !== "risks" || types.length > 0) && (
         <ObjectTreeV2
           key={mode}
           title={currentMode?.label ?? "Grid"}

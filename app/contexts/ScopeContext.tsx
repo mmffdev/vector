@@ -118,6 +118,11 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   const [direction, setDirectionState] = useState<ScopeDirection>("descend");
   // Track whether we've done the initial server-profile seed for this session.
   const profileSeededRef = useRef(false);
+  // Prefetched `GET /me/active-scope` promise. Fired in parallel with
+  // reload()'s grants request so the seed effect can await its result
+  // instead of issuing the call sequentially after grants land. Saves
+  // one RTT off cold load. Reset on user-change alongside profileSeededRef.
+  const profileSeedPromiseRef = useRef<Promise<{ node_id: string | null } | null> | null>(null);
   // 2026-05-21 — see ScopeValue.scopeReady. Flips true exactly once per
   // user-session: after the first `seed()` async resolves OR after we
   // determine there are no grants to seed. Consumers gate their initial
@@ -159,6 +164,11 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     // Reset the ready flag on user change too: a new user means a new
     // bootstrap, and consumers need to re-gate their initial fetches.
     setScopeReady(false);
+    // Fire the profile prefetch in parallel with grants. The seed effect
+    // (keyed on grants landing) will await this promise rather than
+    // issuing a fresh GET — collapsing two sequential RTTs into one.
+    profileSeedPromiseRef.current = apiSite<{ node_id: string | null }>("/me/active-scope")
+      .catch(() => null);
     void reload();
   }, [authLoading, reload]);
 
@@ -203,9 +213,15 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
       const seed = async () => {
         let candidate: string | null = readUrlMeg();
         if (!candidate) {
+          // Use the prefetched profile request fired alongside reload().
+          // Fallback to a fresh call only if the prefetch wasn't set up
+          // (e.g. consumer mounted this provider mid-session). On any
+          // failure, fall back to localStorage.
           try {
-            const resp = await apiSite<{ node_id: string | null }>("/me/active-scope");
-            candidate = resp.node_id ?? readStoredId();
+            const resp =
+              (await profileSeedPromiseRef.current) ??
+              (await apiSite<{ node_id: string | null }>("/me/active-scope"));
+            candidate = resp?.node_id ?? readStoredId();
           } catch {
             candidate = readStoredId();
           }

@@ -38,6 +38,7 @@ import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
 import { useKeyboardGrid } from "@/app/hooks/useKeyboardGrid";
 import DragHandleColumn from "@/app/components/DragHandleColumn";
+import { Loader } from "@/app/components/Loader";
 
 // PLA-0021 / 00446 — closed vocabulary of prop-set sub-addresses registered
 // inside every ResourceTree's address scope. Samantha resolves each one to
@@ -1795,7 +1796,7 @@ function ResourceTreeImpl<T>({
 
       {loading && visibleRoots.length === 0 && (
         <div className="placeholder">
-          <p className="placeholder__body">Loading…</p>
+          <Loader type="threedotsradial" label="Loading…" />
         </div>
       )}
       {!loading && visibleRoots.length === 0 && (

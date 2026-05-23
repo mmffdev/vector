@@ -209,6 +209,13 @@ export function useObjectTreeWindow<T>(
   // filter — the old sort's response might land second otherwise).
   const reqGenRef = useRef(0);
 
+  // First-fire bypass — the debounce exists to coalesce rapid dep changes
+  // AFTER mount (sort flip + filter chip + scope flip in quick succession).
+  // On the very first fire there is nothing to coalesce, so paying 150ms is
+  // pure latency on cold load. Flip true after the first scheduled fetch
+  // runs; subsequent fires go through the debounce as before.
+  const hasFiredOnceRef = useRef(false);
+
   // windowRoots is the rendered output — kept as a memoised projection
   // so child re-renders don't churn when an unrelated patch touches a
   // different row.
@@ -330,6 +337,11 @@ export function useObjectTreeWindow<T>(
   // scope has settled — eliminating the race entirely.
   useEffect(() => {
     if (!scopeReady) return;
+    if (!hasFiredOnceRef.current) {
+      hasFiredOnceRef.current = true;
+      void refetchWindow();
+      return;
+    }
     const t = setTimeout(() => {
       void refetchWindow();
     }, REFETCH_DEBOUNCE_MS);
