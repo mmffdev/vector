@@ -197,9 +197,11 @@ export function formatDueDate(due_date: string | null | undefined): string {
 
 // ─── Sort comparator ──────────────────────────────────────────────────────────
 
-export type SortKey =
-  | "id" | "title" | "status" | "priority" | "points" | "sprint" | "due";
-export type SortDir = "asc" | "desc";
+// SortKey / SortDir / WorkItemsFilters live in work-items-tree-config.types.ts
+// so app/lib/shareableParams.ts can type-import them without forming a cycle
+// with this module's runtime imports.
+export type { SortKey, SortDir, WorkItemsFilters } from "./work-items-tree-config.types";
+import type { SortKey, SortDir, WorkItemsFilters } from "./work-items-tree-config.types";
 
 const CANONICAL_ORDER: Record<string, number> = {
   backlog: 0, ready: 1, doing: 2, completed: 3, accepted: 4,
@@ -632,13 +634,6 @@ export function buildWorkItemsColumns(
 // first value (see TD-FILTER-MULTI) — see filterQuery() in
 // useArtefactItemsWindow for the single-value cap until the artefactitems
 // handler learns `?item_type=a,b`.
-export interface WorkItemsFilters {
-  type: string[];
-  status: string[];
-  priority: string[];
-  owner_id: string[];
-}
-
 export const EMPTY_FILTERS: WorkItemsFilters = {
   type: [],
   status: [],

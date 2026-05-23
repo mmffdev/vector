@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
-import { triggerScopeReload } from "@/app/contexts/Sentinel";
+import { triggerScopeReload } from "@/app/contexts/scopeReloadRegistry";
 // DPoP (RFC 9449) keypair lifecycle. Generated before the initial
 // /auth/login POST so the proof on that request carries the public
 // JWK the backend stamps onto the session row; reparented under the

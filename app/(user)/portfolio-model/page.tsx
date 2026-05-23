@@ -49,14 +49,10 @@ import AdoptionOverlay, {
 } from "./AdoptionOverlay";
 import LayersPreviewTable from "./LayersPreviewTable";
 
-export interface LayerDTO {
-  id: string;
-  name: string;
-  tag: string;
-  sort_order: number;
-  description_md: string | null;
-  is_placeholder?: boolean;
-}
+// LayerDTO lives in ./types so LayersPreviewTable can import it without
+// pulling page.tsx (which imports the table).
+export type { LayerDTO } from "./types";
+import type { LayerDTO } from "./types";
 
 // Post-R010: portfolio_templates are flat — no family, no version. The
 // preview fetches the adopted template by its UUID (from

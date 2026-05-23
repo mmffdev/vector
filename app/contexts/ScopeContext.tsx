@@ -29,7 +29,7 @@ import { topologyApi, type MyGrant } from "@/app/lib/topologyApi";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { apiSite, ApiError, setScopeDirection as apiSetScopeDirection } from "@/app/lib/api";
 import { WORKSPACES_CHANGED_EVENT } from "@/app/lib/workspacesApi";
-import { registerScopeReload, unregisterScopeReload } from "@/app/contexts/Sentinel";
+import { registerScopeReload, unregisterScopeReload } from "@/app/contexts/scopeReloadRegistry";
 
 const STORAGE_KEY = "vector.scope.activeNodeId";
 

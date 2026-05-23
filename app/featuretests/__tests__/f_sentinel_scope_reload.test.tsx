@@ -23,7 +23,7 @@ import {
   registerScopeReload,
   unregisterScopeReload,
   triggerScopeReload,
-} from "@/app/contexts/Sentinel";
+} from "@/app/contexts/scopeReloadRegistry";
 
 describe("F-SENTINEL — scope reload coordination", () => {
   beforeEach(() => {

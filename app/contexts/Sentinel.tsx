@@ -32,27 +32,15 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
 
-// Module-level ref shared between ScopeContext (writer) and
-// AuthContext.switchWorkspace (reader). A function (not a setter) so
-// the registration site can register the freshest reload reference on
-// every render — the reader always sees the latest closure.
-//
-// Defaults to a no-op so AuthContext.switchWorkspace works even when
-// ScopeProvider is not mounted (e.g. /(overlay)/topology route, login
-// pages, server-rendered shells before the user layout boots).
-let _scopeReload: () => Promise<void> = async () => {};
-
-export function registerScopeReload(fn: () => Promise<void>): void {
-  _scopeReload = fn;
-}
-
-export function unregisterScopeReload(): void {
-  _scopeReload = async () => {};
-}
-
-export async function triggerScopeReload(): Promise<void> {
-  await _scopeReload();
-}
+// The scope-reload registry moved to ./scopeReloadRegistry to break the
+// runtime cycle AuthContext → Sentinel → ScopeContext → Sentinel.
+// Re-exported here for back-compat with any caller still importing from
+// Sentinel; new code should import from scopeReloadRegistry directly.
+export {
+  registerScopeReload,
+  unregisterScopeReload,
+  triggerScopeReload,
+} from "@/app/contexts/scopeReloadRegistry";
 
 // SentinelState is the union of auth + scope state plus the derived
 // `workspaceInSync` predicate. Consumers wanting the full picture (the

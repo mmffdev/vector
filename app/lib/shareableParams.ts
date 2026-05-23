@@ -22,8 +22,7 @@
 //   3. On every filter/sort change, write both to preferences AND to the URL so
 //      the address bar stays copy-paste-shareable.
 
-import type { WorkItemsFilters } from "@/app/components/work-items-tree-config";
-import type { SortKey, SortDir } from "@/app/components/work-items-tree-config";
+import type { WorkItemsFilters, SortKey, SortDir } from "@/app/components/work-items-tree-config.types";
 
 // ─── Allowed params per route ────────────────────────────────────────────────
 
