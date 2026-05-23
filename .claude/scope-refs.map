@@ -248,3 +248,16 @@ OBJ1.2.2	ObjectTreeV2 wires facets chips windowRoots derivation workspace catalo
 OBJ1.2.3	WorkItemsFilterChipsProps tightened typeOptions priorityOptions required default V1 retirement
 OBJ1.3.1	component doc objecttreev2 facets CLAUDE TD-CHIP-SCOPE-MISMATCH resolved
 VIZ1.3.4a	decide add view-relationships permission rbac catalogue useHasPermission pla-0007
+RF2.0.1	service depth pattern doc leaf c_c_service_depth_pattern stop gate operation family ousterhout
+RF2.1.1	operations.go ReadQuery Mutation SummariseQuery LookupQuery FieldOp input structs typed godoc
+RF2.2.1	Service.Read ReadResult wrapper GetWorkItem GetWorkItemInWorkspace ListWorkItems ListFlowStates dispatch
+RF2.2.2	Service.Lookup LookupResult ListChildren ListAncestors tree navigation Children Ancestors
+RF2.2.3	Service.Summarise SummariseResult SummariseWorkItems ListFacets clamp boilerplate scope
+RF2.2.4	Service.Fields FieldsResult field-value CRUD list upsert delete batch rule-hook
+RF2.2.5	Service.Mutate Mutation CreateWorkItem PatchWorkItem dispatcher cascade depth recalc
+RF2.3.1	cutover read-family handlers Get ByIDs List Facets ListChildren ListAncestors ListFlowStates hasWorkspace
+RF2.3.2	cutover MUTATE handlers Create Patch Archive Service.Mutate Service.Archive recalc cascade touched_ids
+RF2.3.3	cutover BULK FIELDS SUMMARY handlers bulkOps field-values rule-hook summary error envelopes
+RF2.4.1	mark deprecated public Service methods lint backend ratchet exemption registry CI
+RF2.5.1	delete deprecated public Service methods cross-package featuretests featuretests cutover guard
+RF2.6.1	metrics before after pattern doc Results TD-SVC-DEPTH-PATTERN ranked candidate workspaces users
