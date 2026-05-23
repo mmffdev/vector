@@ -332,6 +332,118 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	return items, total, nil
 }
 
+// FacetSet is the result of ListFacets — distinct UUIDs of artefact types
+// and priorities reachable in the caller's current scope. Used by filter-chip
+// UIs that need to enumerate "what's actually in this scope" rather than
+// "what's defined in the workspace catalogue" — see PLA057 / TD-CHIP-SCOPE-MISMATCH.
+type FacetSet struct {
+	ArtefactTypeIDs []uuid.UUID `json:"artefact_type_ids"`
+	PriorityIDs     []uuid.UUID `json:"priority_ids"`
+}
+
+// ListFacets returns the distinct artefact_type_id and priority_id values
+// of live (non-archived) artefacts in the caller's scope. Mirrors the
+// ListWorkItems scope-clamp pipeline so the chip surface always agrees
+// with the grid surface — same workspace clamp, same topology clamp,
+// same archived exclusion.
+//
+// When workspaceID is uuid.Nil, the workspace clamp is omitted (legacy /
+// admin-tool callers without WorkspaceClampMiddleware). When scopeNodeID
+// is uuid.Nil, the topology clamp is omitted (unscoped view returns
+// workspace-wide facets). actorUserID + actorRoleID are required only
+// when scopeNodeID is non-nil — they feed the CanReadScope check.
+//
+// Two small DISTINCT queries — kept separate to avoid a CROSS JOIN's
+// row blow-up and to let the caller's TypeID + PriorityID lookups
+// remain independently fast. If the perf shape ever wants one
+// round-trip, a single CTE with two SELECTs UNION ALL'd is the
+// obvious next step.
+func (s *Service) ListFacets(
+	ctx context.Context,
+	subscriptionID, workspaceID, scopeNodeID, actorUserID, actorRoleID uuid.UUID,
+) (FacetSet, error) {
+	if s.vectorArtefactsPool == nil {
+		return FacetSet{}, nil
+	}
+
+	// $1 = subscriptionID (always). $2 = scope (always). Extras start at $3.
+	args := []any{subscriptionID, s.scope}
+	n := 3
+	var extra []string
+
+	// Workspace clamp — defence-in-depth, matches ListWorkItems.
+	if workspaceID != uuid.Nil {
+		extra = append(extra, fmt.Sprintf("at.artefacts_types_id_workspace = $%d::uuid", n))
+		args = append(args, workspaceID)
+		n++
+	}
+
+	// Topology scope clamp — same shape as ListWorkItems (PLA-0043).
+	if scopeNodeID != uuid.Nil {
+		if s.topology == nil {
+			return FacetSet{}, ErrInvalidInput
+		}
+		if actorUserID == uuid.Nil || actorRoleID == uuid.Nil {
+			return FacetSet{}, ErrInvalidInput
+		}
+		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, actorRoleID)
+		if permErr != nil {
+			if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
+				return FacetSet{}, ErrScopeNodeNotFound
+			}
+			return FacetSet{}, permErr
+		}
+		if !ok {
+			return FacetSet{}, ErrScopeForbidden
+		}
+		ids, resolveErr := s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
+		if resolveErr != nil {
+			return FacetSet{}, resolveErr
+		}
+		extra = append(extra, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
+		args = append(args, ids)
+		n++
+	}
+
+	extraWhere := ""
+	if len(extra) > 0 {
+		extraWhere = "\n  AND " + strings.Join(extra, "\n  AND ")
+	}
+
+	typeQ := fmt.Sprintf(sqlListFacetTypesTemplate, extraWhere)
+	priQ := fmt.Sprintf(sqlListFacetPrioritiesTemplate, extraWhere)
+
+	out := FacetSet{ArtefactTypeIDs: []uuid.UUID{}, PriorityIDs: []uuid.UUID{}}
+	rows, err := s.vectorArtefactsPool.Query(ctx, typeQ, args...)
+	if err != nil {
+		return FacetSet{}, fmt.Errorf("artefactitems.ListFacets types: %w", err)
+	}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return FacetSet{}, fmt.Errorf("artefactitems.ListFacets types scan: %w", err)
+		}
+		out.ArtefactTypeIDs = append(out.ArtefactTypeIDs, id)
+	}
+	rows.Close()
+
+	rows2, err := s.vectorArtefactsPool.Query(ctx, priQ, args...)
+	if err != nil {
+		return FacetSet{}, fmt.Errorf("artefactitems.ListFacets priorities: %w", err)
+	}
+	defer rows2.Close()
+	for rows2.Next() {
+		var id uuid.UUID
+		if err := rows2.Scan(&id); err != nil {
+			return FacetSet{}, fmt.Errorf("artefactitems.ListFacets priorities scan: %w", err)
+		}
+		out.PriorityIDs = append(out.PriorityIDs, id)
+	}
+
+	return out, nil
+}
+
 // GetWorkItem returns a single work item by ID enforcing subscription isolation.
 // Returns ErrNotFound when the row does not exist or belongs to another tenant.
 func (s *Service) GetWorkItem(ctx context.Context, subscriptionID uuid.UUID, id uuid.UUID) (*WorkItem, error) {

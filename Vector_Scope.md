@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-19 (Late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
-**Doc version:** 2.49
+**Last updated:** 2026-05-23 (PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
+**Doc version:** 2.52
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -63,6 +63,14 @@
 - [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
 - [B21. Artefact-Items Substrate (PLA-0037)](#b21-artefact-items-substrate-pla-0037)
 - [B22. Transport Segregation via Shared Service Core (PLA-0039)](#b22-transport-segregation-via-shared-service-core-pla-0039)
+
+**VIZ — Visualiser / Relationship Explorer** *(deep-data-mining surface — codegraph today, artefact relationships tomorrow)*
+
+- [VIZ1. Vector Relationship Explorer (PLA056)](#viz1-vector-relationship-explorer-pla056)
+
+**OBJ — ObjectTreeV2 / Filter Chips** *(grid scope-clamp parity for the chip surface)*
+
+- [OBJ1. ObjectTreeV2 Filter-Chip Scope Facets (PLA057)](#obj1-objecttreev2-filter-chip-scope-facets-pla057)
 
 **Parked — solo-dev mode** *(WIP-cap overflow; verbatim, awaiting unpark)*
 
@@ -335,6 +343,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -589,6 +598,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -754,6 +766,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -975,6 +988,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1077,6 +1092,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -1091,6 +1110,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `817922b` (2026-05-16): docs: file TD-FILTER-MULTI + URL-state purge backlog item
 > Commit `6bbaa70` (2026-05-16): chore(plans): stamp dates + flip backlog/AC status for PLA-0053/0054/0055
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 ### FLOW1.5 Reset to factory-default per artefact type
@@ -1148,6 +1171,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `8dc9bb6` (2026-05-18): fix(login): scale sidebar wordmark to fill vertical space — hero element
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
@@ -1185,6 +1209,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1739,6 +1767,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1922,6 +1953,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2099,6 +2131,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2223,6 +2257,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2267,6 +2302,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2731,8 +2767,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
   > - `POST   /artefacts/:id/reparent` — change parent_id; clamp validates new parent in same tenant/workspace
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
@@ -2955,14 +2993,20 @@ Full lifecycle management for tasks, bugs, epics.
 - **B5.12** Backend: remove `authLevelFor` / `TagsFor` tier filter / `CatalogFor` tier filter from `backend/internal/nav/registry.go`; `users_roles_pages` becomes the sole catalogue gate (PLA-0053) `[P2]`
 - **B5.13** Frontend: remove `deriveAuthLevel` + `userAuthLevel` filter from `app/redesign/ShellContext.tsx`; tag bucket appears iff it contains ≥1 page in `pages` array (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
 - **B5.14** Permissions page UX: confirm `/user-management/permissions` matrix is the sole authoring surface for `users_roles_pages` — banner copy + remove tier-tier UI hints from related screens (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
 > Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -3036,6 +3080,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -3128,6 +3174,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -3467,6 +3514,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3755,6 +3803,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 - **B16.7** Backend security audit — systematic pass of all ~1300 routes against the backend validation checklist (`docs/c_c_backend_validation.md`): tenant_id from session only, user_id/role from session only, every payload resource ID re-verified against DB before write, permission check before every data-modifying operation, cross-tenant lookups return 404 not 403, errors flow through `errors_codes`. Required for SOC 2 / FedRAMP / PCI-DSS procurement audit readiness. Triggered by discovery that `SetActiveScope` was writing an arbitrary node_id without confirming the caller held a grant on that node. `[P1]`
 
 - ✅ ~~**B16.8** Security hardening~~ — DONE 2026-05-18. All five phases shipped today. — full-stack codebase-grounded remediation before first external user. Five phases. ✅ **P1 done 2026-05-18** — MFA/TOTP shipped (B16.8.1–.5), session idle timeout via per-request `users_sessions` JOIN (B16.8.6 + B16.8.11), cookie flags hardened (B16.8.7), JWT `iss`/`aud` claims (B16.8.8), access-token TTL doc'd as defense-in-depth (B16.8.9), active sessions UI + step-up reauth (B16.8.10), WebSocket session enforcement (B16.8.12). ✅ **P2 done 2026-05-18** — CSP nonces enforced (TD-SEC-CSP-NONCES-SRI + TD-SEC-CSP-STYLE-INLINE both closed), DOMPurify wraps on `Header.tsx` + `HelpDocRenderer.tsx` (defense-in-depth over backend `SanitiseHelpBodyHTML` allowlist). ✅ **P3 done 2026-05-18** — Sentinel coordination layer (`app/contexts/Sentinel.tsx`): module-level `scopeReloadRef` registered by `ScopeContext` on every render, awaited by `AuthContext.switchWorkspace` after `applyLogin`; closes the JWT/scope desync window observed in DebugPanel; 6 f-sentinel tests green; tighter than the written plan (catalogues + `useActiveWorkspace` already coordinated correctly via existing `useActiveWorkspace`, no shims needed). ✅ **P4 done 2026-05-18** — HIBP k-anonymity breach-password check shipped (`backend/internal/auth/hibp.go`) gated by `HIBP_CHECK_MODE={disabled|telemetry|enforce}` (default disabled, fail-open on network errors, 3s timeout, `Add-Padding: true` for traffic-analysis resistance); wired into `ChangePassword` + both `ConfirmPasswordReset*` paths via `s.CheckPasswordNotBreached(ctx, newPwd, userID)`; new `Problem.Code=breached_password` + `AuthBreachedPassword` user message for enforce mode; 7 unit tests pinning prefix/suffix wire format, padded-row safety, non-200 / network / malformed-count error paths. Account lockout was already implemented (`failed_login_count`/`locked_until` on `users` + `LOCKOUT_THRESHOLD=5` + `LOCKOUT_DURATION=15min`) since the early auth phase. Redis-backed rate limiter deferred — current single-process `httprate.LimitByIP` is correct for the dev tier; trigger filed as TD-SEC-REDIS-DEPENDENCY (multi-replica deployment). Rollout to enforce filed as TD-SEC-HIBP-PROMOTE-TO-ENFORCE. ✅ **P5 done 2026-05-18** — Console-log audit: dropped 3 noisy debug calls in `app/contexts/ScopeContext.tsx`; 6 placeholder `console.log` handlers (CustomFieldsTree + p_ObjectTree) filed as TD-UI-PLACEHOLDER-HANDLERS (S4 — UX issue, not security). Audit-event alerting: new `backend/internal/alerting/` package with `Webhook` implementing `audit.Alerter`; `audit.Logger.Log` fans selected action codes (configured via `AUDIT_ALERT_ACTIONS` allowlist) to `AUDIT_ALERT_WEBHOOK_URL` via async POST with `X-Vector-Signature` HMAC-SHA256 (when `AUDIT_ALERT_SECRET` set); fail-open semantics (never blocks audit row INSERT, never propagates errors, never re-enters audit/alerting); 13 tests pass under `-race`. Default config in all envs: disabled (no URL = no-op). Wired in main.go after `audit.New(pool)`; startup logs the config via `Webhook.String()` (secret redacted). Standards basis: NIST SP 800-63B-4, OWASP ASVS 4.0, NCSC Cyber Security Design Principles (28 sub-principles), FCA PS21/3, UK GDPR Article 32. Implementation plan: `/Users/rick/.claude/plans/velvet-dreaming-hamming.md`. `[P1]`
+> Commit `17d39a5` (2026-05-22): feat(skills): <read> + <write> — handover continuity pair over handovers/
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -3763,6 +3812,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   - ✅ ~~**B16.8.1** Backend TOTP core~~ `[P1]` > Commit 2026-05-18: `mfa.go` + `roletypes.User` MFA fields + `auth/sql.go` MFA constants; `go build ./...` clean.
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   - ✅ ~~**B16.8.2** Login partial-auth gate~~ `[P1]` > Commit 2026-05-18: `SignChallengeToken`/`ParseChallengeToken` in `tokens.go`; `LoginResult.MFARequired`+`MFAChallengeToken`; `Login()` forks to challenge on `mfa_enrolled=true`; handler returns `mfa_challenge_resp`.
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -3887,6 +3937,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 
@@ -3966,6 +4017,9 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -3973,6 +4027,10 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `17d39a5` (2026-05-22): feat(skills): <read> + <write> — handover continuity pair over handovers/
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -3983,6 +4041,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -4537,6 +4596,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -4694,6 +4755,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -4759,6 +4821,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -4864,6 +4928,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -4993,6 +5058,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -5134,6 +5200,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -5217,6 +5284,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -5381,6 +5449,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -5508,6 +5577,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5617,6 +5687,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -5691,6 +5762,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -5791,6 +5863,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -5861,6 +5934,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -6012,6 +6086,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -6186,6 +6262,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -6384,6 +6461,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -6487,6 +6566,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -6523,6 +6603,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -6565,6 +6646,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `17d39a5` (2026-05-22): feat(skills): <read> + <write> — handover continuity pair over handovers/
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -6820,6 +6903,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -7154,6 +7239,63 @@ Chrome-level scope picker mounted before the breadcrumbs in `RedesignTopBar` (Ra
 - ✅ ~~**FE-POR-0002.4.1** Read-path wiring — `?scope=<id>` becomes a server filter on `/work-items`, `/portfolio-items`, `/sprints`, `/releases`, dashboard endpoints. Each handler decides whether scope-clamp stacks with workspace-clamp or replaces it. Cards filed under a new plan when this lands.~~ `[P2]` — superseded by FE-POR-0003 (PLA-0043).
 - **FE-POR-0002.4.2** "Recent scopes" / "Pinned scopes" submenus (R051 nice-to-have; Linear / Jira pattern). `[P4]`
 - **FE-POR-0002.4.3** Cross-subscription scope picker (only if multi-sub support ships). Currently out of scope — grants are subscription-scoped by design. `[P5]`
+
+---
+
+## VIZ1. Vector Relationship Explorer (PLA056)
+
+Move `/dev/visualiser` V2 from prototype to product-grade, then swap the data feed from codegraph to artefact relationships. Three phases: stabilise (verify click + strip traces), deepen (Search · syntax highlight · lasso · auto-cluster), then data-feed swap (`/relationships` route under `app/(user)/`, RBAC-scoped artefact-graph endpoint). Plan body in [PLA056 on /dev/reporting](http://localhost:5101/dev/reporting). `[P2]`
+
+**Phase 1 — Stabilise**
+
+- 🔵 IN FLIGHT **VIZ1.1.1** Verify V2 click reliability via 20-card click test. AC: open /dev/visualiser, switch to V2, click 10 cards in Folders + 10 in Files with intervening toggles; every click frames the cube with zero second-tries needed. `[P2]`
+- 🔵 IN FLIGHT **VIZ1.1.2** Strip diagnostic console traces from V2 click + frame handlers. AC: `grep "[viz-v2]" dev/pages/DevVisualiserPanelV2.tsx` returns zero matches in handleClick and frameNode happy paths (warnings on aborts may remain). `[P2]`
+
+**Phase 2 — Deepen**
+
+- 🔵 IN FLIGHT **VIZ1.2.1** Build V2 Search panel with substring match. AC: typing in the Search rail panel filters a list of node.id matches; clicking a result frames the cube and opens the Selected panel. `[P2]`
+- 🔵 IN FLIGHT **VIZ1.2.2** Add Search dim-non-matches mode. AC: with a search query active and a toggle on, nodes outside the result set render at low opacity, same dim treatment as K-hops isolate. `[P3]`
+- 🔵 IN FLIGHT **VIZ1.2.3** Add highlight.js to V2 Source preview. AC: opening a .ts file shows syntax-highlighted TypeScript; .go file shows Go highlighting; theme is GitHub Dark; no FOUC on load. `[P2]`
+- 🔵 IN FLIGHT **VIZ1.2.4** Lasso multi-select with shift+drag. AC: holding shift and dragging a rectangle over the canvas adds every enclosed cube to the working selection set; OrbitControls rotation still works without shift. `[P2]`
+- 🔵 IN FLIGHT **VIZ1.2.5** Auto-cluster-by-layer toggle in V2 topbar. AC: toggle on → same-layer nodes physically clump together via force-cluster centres; toggle off → returns to connectivity-driven layout. `[P3]`
+
+**Phase 3 — Data-feed swap (the product ship)**
+
+- 🔵 IN FLIGHT **VIZ1.3.1** Extract V2 DataSource interface. AC: the V2 component takes a DataSource prop that supplies `{ nodes, edges, fetchSource }`; codegraph becomes one implementation; no behavioural change for existing /dev/visualiser users. `[P2]`
+- 🔵 IN FLIGHT **VIZ1.3.2** Backend artefact-graph endpoint. AC: `GET /samantha/v2/artefact-graph?scope=<uuid>` returns `{ nodes: Artefact[], edges: Relationship[] }` filtered by the topology scope clamp; RBAC-checked server-side per PLA-0043. `[P1]`
+- 🔵 IN FLIGHT **VIZ1.3.3** Tenanted artefact-attachment preview endpoint. AC: `GET /samantha/v2/artefact-attachment/<id>/preview` streams the attachment with same path-traversal + extension allowlist guards as `/_site/admin/dev/source`; tenant-scoped. `[P2]`
+- 🔵 IN FLIGHT **VIZ1.3.4a** Decide and add view-relationships permission. AC: decision (new permission vs reuse view-artefacts) documented in the handover under "Resolved design questions"; if new, permission added to the RBAC catalogue per PLA-0007 patterns, seed migration scaffolded, `useHasPermission("view-relationships")` usable from React. Blocks VIZ1.3.4. `[P1]`
+- 🔵 IN FLIGHT **VIZ1.3.4** User-facing /relationships route. AC: `app/(user)/relationships/page.tsx` wraps the V2 component in PageShell with standard nav + breadcrumb; gated by the permission decided in VIZ1.3.4a. `[P1]`
+- 🔵 IN FLIGHT **VIZ1.3.5** Rename Files panel → Artefacts panel for artefact mode. AC: when the V2 component is mounted in artefact mode, the rail label reads "Artefacts", folder grouping becomes workspace grouping, layer swatch becomes artefact-type colour. `[P2]`
+- 🔵 IN FLIGHT **VIZ1.3.6** Design users_visualiser_groups table + migration. AC: migration scaffolded for users_visualiser_groups (id, user_id, name, colour, node_ids JSONB, scope_workspace_id NULL); first DB-mode load lifts existing localStorage groups into the table and drops the localStorage key. Decision is DB-backed cross-device per the handover's lean. `[P3]`
+- 🔵 IN FLIGHT **VIZ1.3.7** Diff panel snapshot picker. AC: in artefact mode, Diff panel offers a dropdown of stored snapshots ("last sprint", "last release") instead of file upload; selecting one runs the same diff machinery. `[P3]`
+
+---
+
+## OBJ1. ObjectTreeV2 Filter-Chip Scope Facets (PLA057)
+
+ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its current scope. A new `GET /work-items/facets?meg=<id>` endpoint (+ twin for portfolio-items) returns the distinct `artefact_type_id` and `priority_id` values under the same workspace + topology clamps the list endpoint uses. ObjectTreeV2 calls it on scope change, maps UUIDs through the workspace catalogues for label + colour, and passes derived option arrays to `WorkItemsFilterChips` as props. `NavigationPie` stays a pure presentation primitive. Closes the UUID mismatch where chips offered workspace-level Task UUIDs while the grid showed rows tagged with another workspace's Task UUID under the active topology scope (2026-05-23 incident: 27 Tasks visible, Task chip returned empty). Plan body in [PLA057 on /dev/reporting](http://localhost:5101/dev/reporting). `[P2]`
+
+**Phase 0 — Tech debt**
+
+- **OBJ1.0.1** TD entry + incident narrative. AC: `TD-CHIP-SCOPE-MISMATCH` appears in `docs/c_tech_debt.md` with the 2026-05-23 framing + the `windowRoots`-fallback shape currently in place. `[P2]`
+
+**Phase 1 — Backend**
+
+- **OBJ1.1.1** `artefactitems.Service.ListFacets` method. AC: returns distinct `artefact_type_id` + `priority_id` UUIDs under workspace + meg clamp, archived excluded; reuses `CanReadScope` + `DescendantNodeIDs` chain. `[P2]`
+- **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
+- **OBJ1.1.3** Backend facets table-tests. AC: workspace clamp, topology clamp, archived exclusion, 403 on unauthorised scope, 404 on unknown scope. `[P3]`
+
+**Phase 2 — Frontend**
+
+- **OBJ1.2.1** `useObjectTreeFacets` hook. AC: cache key `(workspace, meg, resource)`; refetches on scope change; exposes `{typeIds, priorityIds, loading, error}`; lives in `app/components/ObjectTreeV2/hooks/`. `[P2]`
+- **OBJ1.2.2** ObjectTreeV2 wires facets hook to chips. AC: `p_ObjectTree.tsx` drops the temporary `windowRoots`-derivation block; chips populate from facets + workspace catalogue metadata (label + colour). `[P2]`
+- **OBJ1.2.3** `WorkItemsFilterChipsProps` tightened. AC: `typeOptions` + `priorityOptions` required (no `?`, no `= []` default) after V1 ObjectTree retirement. `[P3]`
+
+**Phase 3 — Doc**
+
+- **OBJ1.3.1** Component doc. AC: `docs/c_c_objecttreev2_facets.md` written; CLAUDE.md links it; `TD-CHIP-SCOPE-MISMATCH` marked resolved. `[P3]`
+> Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 
 ---
 

@@ -16,12 +16,22 @@ export interface PriorityChipOption {
   value: string; // UUID
   label: string;
   slot: string | null;
+  /** Priority brand colour (UK column `colour` on artefact_priorities).
+   *  Field name matches NavigationPieOption.color so the option can be
+   *  fed straight into <NavigationPie>. */
+  color?: string;
 }
 
 export function usePriorityChipOptions(): PriorityChipOption[] {
   const priorities = usePriorityList();
   return useMemo(
-    () => priorities.map((p) => ({ value: p.id, label: p.name, slot: p.slot })),
+    () =>
+      priorities.map((p) => ({
+        value: p.id,
+        label: p.name,
+        slot: p.slot,
+        color: p.colour ?? undefined,
+      })),
     [priorities],
   );
 }

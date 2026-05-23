@@ -11,7 +11,7 @@
 // WorkItemsTree.tsx wires these into ResourceTree props.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/md";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -25,8 +25,6 @@ import { InlineSelect } from "@/app/components/InlineSelect";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
 import OwnerChip from "@/app/components/OwnerChip";
 import NavigationPie from "@/app/components/NavigationPie";
-import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
-import { usePriorityChipOptions } from "@/app/hooks/usePriorityChipOptions";
 import { usePriorityList } from "@/app/hooks/usePriorityList";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import {
@@ -675,32 +673,66 @@ export function useWorkItemsFilters(
 } {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { value: prefFilters, setValue, seeded } = useUserPreference<WorkItemsFilters>(
     prefKey,
     EMPTY_FILTERS,
   );
 
-  // On first seed, check whether the URL carries shareable filter params.
-  // If so, override the preference value so the shared link wins, then
-  // write back to preferences so it persists from this point.
+  // On first seed: reconcile URL ↔ prefs so the URL becomes the live source
+  // of truth from this point onward.
+  //   - URL has filter params → URL wins, write back to prefs (shareable link).
+  //   - URL is bare → prefs win, write them into the URL so sibling chip /
+  //     grid instances reading useSearchParams converge on the same state.
   const urlSeededRef = useRef(false);
   useEffect(() => {
     if (!seeded || urlSeededRef.current) return;
     urlSeededRef.current = true;
     const { filters: urlFilters } = parseShareableParams(window.location.search);
-    if (!urlFilters) return;
-    const merged: WorkItemsFilters = {
-      type:     urlFilters.type     ?? prefFilters.type,
-      status:   urlFilters.status   ?? prefFilters.status,
-      priority: urlFilters.priority ?? prefFilters.priority,
-      owner_id: urlFilters.owner_id ?? prefFilters.owner_id,
-    };
-    setValue(merged);
+    if (urlFilters) {
+      const merged: WorkItemsFilters = {
+        type:     urlFilters.type     ?? prefFilters.type,
+        status:   urlFilters.status   ?? prefFilters.status,
+        priority: urlFilters.priority ?? prefFilters.priority,
+        owner_id: urlFilters.owner_id ?? prefFilters.owner_id,
+      };
+      setValue(merged);
+      return;
+    }
+    // URL is bare and prefs have content — promote prefs into the URL so
+    // chip + grid instances on the same page converge via useSearchParams.
+    const prefsHaveContent =
+      prefFilters.type.length > 0 ||
+      prefFilters.status.length > 0 ||
+      prefFilters.priority.length > 0 ||
+      prefFilters.owner_id.length > 0;
+    if (prefsHaveContent) {
+      const sort = sortRef?.current ?? { key: null, dir: "asc" as SortDir };
+      const href = buildShareableHref(pathname, window.location.search, prefFilters, sort);
+      router.replace(href, { scroll: false });
+    }
   }, [seeded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Resolve effective filters: after seed, prefer preference value
-  // (which may have been overridden by URL seed above).
-  const filters = prefFilters;
+  // Resolve effective filters every render — URL is the LIVE source of truth
+  // after first-mount seed. A sibling chip instance writes via router.replace,
+  // searchParams re-renders every consumer, the grid instance picks up the
+  // new value here without needing its own setValue to fire. Prefs only
+  // matter for the initial-mount seed (handled by the urlSeededRef effect
+  // above) — after that, the URL drives everything, including "all unchecked"
+  // (no ?type= param → filters.type === []).
+  // PLA057 follow-on: was previously `filters = prefFilters` which left the
+  // grid hook instance stale whenever the chip hook wrote.
+  const filters = useMemo<WorkItemsFilters>(() => {
+    if (!seeded) return prefFilters;
+    const search = searchParams?.toString() ?? "";
+    const { filters: urlFilters } = parseShareableParams(search ? `?${search}` : "");
+    return {
+      type:     urlFilters?.type     ?? [],
+      status:   urlFilters?.status   ?? [],
+      priority: urlFilters?.priority ?? [],
+      owner_id: urlFilters?.owner_id ?? [],
+    };
+  }, [searchParams, seeded, prefFilters]);
 
   const hasAny =
     filters.type.length > 0 ||
@@ -823,18 +855,32 @@ const STATUS_CHIP_OPTIONS_TRANSITIONAL: { value: string; label: string }[] = [];
 // keyed by `prefKey` — see useWorkItemsFilters / TD-URL-FILTER-CHIPS.
 // Type / Status / Priority are multi-select NavigationPie chips; Owner
 // remains a single-toggle "Mine" chip until the user-picker story lands.
-export function WorkItemsFilterChips({ prefKey }: { prefKey: string }) {
+//
+// Option sets are PASSED IN from the parent (ObjectTreeV2). The parent
+// derives them from its loaded rows + workspace catalogue metadata, so
+// the chip surface always matches the data the grid actually has —
+// no separate workspace-clamped catalogue fetch here. Lets the same
+// component serve /work-items and /portfolio-items without either
+// knowing the other's catalogue.
+export interface WorkItemsFilterChipsProps {
+  prefKey: string;
+  /** Filter-chip option sets. Optional ONLY for the soon-to-be-retired
+   *  ObjectTree V1 caller, which doesn't supply them; ObjectTreeV2 always
+   *  passes them. Default = empty arrays = chip renders no wedges, which
+   *  is a harmless degraded state on V1. Delete the `?` once V1 is gone. */
+  typeOptions?: { value: string; label: string; color?: string }[];
+  priorityOptions?: { value: string; label: string; color?: string }[];
+}
+
+export function WorkItemsFilterChips({
+  prefKey,
+  typeOptions = [],
+  priorityOptions = [],
+}: WorkItemsFilterChipsProps) {
   const { user } = useAuth();
   const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters(prefKey);
   const meId = user?.id ?? null;
   const ownerIsMe = filters.owner_id.length > 0 && filters.owner_id[0] === meId;
-
-  // PLA-0054 / story 00590 — Type options sourced from the workspace
-  // catalogue. Values are artefact_type UUIDs.
-  const typeOptions = useChipTypeOptions("work");
-  // PLA-0055 / story 00599 — Priority options sourced from the
-  // workspace artefact_priorities catalogue. Values are UUIDs.
-  const priorityOptions = usePriorityChipOptions();
 
   return (
     <>

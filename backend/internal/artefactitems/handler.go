@@ -430,6 +430,80 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Facets handles GET /work-items/facets (and /portfolio-items/facets via the
+// portfolio-bound Service). Returns the distinct artefact_type_id and
+// priority_id values reachable in the caller's current scope — same
+// workspace + topology clamps the list endpoint uses (PLA057 / OBJ1).
+// Chip UIs call this to enumerate "what types/priorities are actually in
+// this scope" rather than "what's defined in the workspace catalogue".
+func (h *Handler) Facets(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	actor := auth.UserFromCtx(r.Context())
+	subID := actor.SubscriptionID
+
+	var workspaceID uuid.UUID
+	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+		workspaceID = wsID
+	}
+
+	var scopeNodeID, actorUserID, actorRoleID uuid.UUID
+	q := r.URL.Query()
+	megVal := q.Get("meg")
+	if megVal == "" {
+		megVal = q.Get("scope")
+	}
+	if megVal != "" {
+		parsed, perr := uuid.Parse(megVal)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid scope"}`))
+			return
+		}
+		scopeNodeID = parsed
+		actorUserID = actor.ID
+		actorRoleID = actor.RoleID
+	}
+
+	facets, err := h.svc.ListFacets(r.Context(), subID, workspaceID, scopeNodeID, actorUserID, actorRoleID)
+	if err != nil {
+		if errors.Is(err, ErrScopeForbidden) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"scope_read_denied"}`))
+			return
+		}
+		if errors.Is(err, ErrScopeNodeNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"scope node not found"}`))
+			return
+		}
+		if errors.Is(err, ErrInvalidInput) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(jsonErrBody(err))
+			return
+		}
+		log.Printf("artefactitems.Facets: subID=%s err=%v", subID, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+
+	// Marshal with string-form UUIDs to match the rest of the wire surface.
+	out := struct {
+		ArtefactTypeIDs []string `json:"artefact_type_ids"`
+		PriorityIDs     []string `json:"priority_ids"`
+	}{
+		ArtefactTypeIDs: make([]string, 0, len(facets.ArtefactTypeIDs)),
+		PriorityIDs:     make([]string, 0, len(facets.PriorityIDs)),
+	}
+	for _, id := range facets.ArtefactTypeIDs {
+		out.ArtefactTypeIDs = append(out.ArtefactTypeIDs, id.String())
+	}
+	for _, id := range facets.PriorityIDs {
+		out.PriorityIDs = append(out.PriorityIDs, id.String())
+	}
+	_ = json.NewEncoder(w).Encode(out)
+}
+
 // Get handles GET /api/v2/work-items/{id}.
 //
 // PLA-0053 / story 00579: when a workspace clamp is on context (set by

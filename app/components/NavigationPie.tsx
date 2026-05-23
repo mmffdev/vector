@@ -21,10 +21,28 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
 export interface NavigationPieOption {
   value: string;
   label: string;
+  /**
+   * Optional URL. When present, clicking the wedge navigates to `url`
+   * (via `next/navigation` router.push) instead of toggling the value in
+   * `selected`. Lets the same pie serve as a filter chip (no url) OR a
+   * radial nav menu (url per wedge). Absolute paths or full URLs both OK;
+   * full URLs fall through to `window.location.assign`.
+   */
+  url?: string;
+  /**
+   * Optional wedge colour (any CSS colour string — hex, var(), oklch…).
+   * Rendered as a 10px coloured band hugging the inner edge of the
+   * wedge (Arma-radial style legend ring around the hub). The wedge body
+   * stays black so on/off contrast is driven by opacity, not hue. Used
+   * by the artefact-type picker where each type carries its own brand
+   * colour. Omit to render no band.
+   */
+  color?: string;
 }
 
 interface NavigationPieProps {
@@ -33,9 +51,10 @@ interface NavigationPieProps {
   options: NavigationPieOption[];
   selected: string[];
   onChange: (next: string[]) => void;
-  /** Outer radius in px. Default 200. */
+  /** Outer radius in px. Default 90. */
   radius?: number;
-  /** Inner hub radius in px. Default 56 — wide enough to host the chip. */
+  /** Inner hub radius in px. Default 26 — kept proportional to the
+   *  outer radius (was 56 when outer was 200). */
   innerRadius?: number;
 }
 
@@ -54,30 +73,69 @@ function unregisterActive(close: (commit: boolean) => void) {
   if (activeClose === close) activeClose = null;
 }
 
-// SVG path for an annular wedge from `startAngle` to `endAngle` around
-// `(cx, cy)`, between innerRadius and outerRadius. Angles are radians.
+// SVG path for a wedge whose two side edges are STRAIGHT CHORDS
+// perpendicular to the gap lines between this wedge and its neighbours.
+// Result: the empty space between adjacent wedges is a constant-width
+// rectangular slot (Arma-radial style); each wedge's side edges run
+// PARALLEL to its neighbours' facing edges across the gap.
+//
+// `bisector` is the wedge's centre angle (radians). `step` is the full
+// angular span the wedge would occupy if there were no gap (2π / N).
+// `gapPx` is the perpendicular pixel distance separating adjacent
+// wedges. The two gap lines are at angles bisector ± step/2.
 function wedgePath(
   cx: number,
   cy: number,
   rInner: number,
   rOuter: number,
-  startAngle: number,
-  endAngle: number,
+  bisector: number,
+  step: number,
+  gapPx: number,
 ): string {
-  const x0 = cx + rOuter * Math.cos(startAngle);
-  const y0 = cy + rOuter * Math.sin(startAngle);
-  const x1 = cx + rOuter * Math.cos(endAngle);
-  const y1 = cy + rOuter * Math.sin(endAngle);
-  const x2 = cx + rInner * Math.cos(endAngle);
-  const y2 = cy + rInner * Math.sin(endAngle);
-  const x3 = cx + rInner * Math.cos(startAngle);
-  const y3 = cy + rInner * Math.sin(startAngle);
-  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  const halfGap = gapPx / 2;
+  const gapAngleCCW = bisector - step / 2;
+  const gapAngleCW = bisector + step / 2;
+
+  // For each gap line at angle θ, the line direction is (cos θ, sin θ).
+  // We need the wedge edge OFFSET perpendicular to this line by halfGap,
+  // on the side of the wedge bisector. The perpendicular component
+  // pointing toward the bisector = sign(cross(gapDir, bisectorDir)) * 90°
+  // rotation of gapDir. For the CCW gap (angle < bisector), the wedge
+  // is at MORE positive angle → 90° CCW rotation of gapDir.
+  // For the CW gap (angle > bisector), the wedge is at LESS positive
+  // angle → 90° CW rotation. 90° CCW rotation of (x,y) = (-y, x).
+  function edgePoint(gapAngle: number, rotateCCW: boolean, r: number) {
+    const dx = Math.cos(gapAngle);
+    const dy = Math.sin(gapAngle);
+    // Perpendicular toward the bisector.
+    const px = rotateCCW ? -dy : dy;
+    const py = rotateCCW ? dx : -dx;
+    // Edge line passes through (cx + halfGap*px, cy + halfGap*py) in
+    // direction (dx, dy). Intersection with circle radius r is at
+    // signed parameter t where (halfGap*px + t*dx)² + (halfGap*py + t*dy)² = r².
+    // Since (px,py)⊥(dx,dy) and both are unit vectors, this simplifies to
+    //   halfGap² + t² = r²  →  t = ±sqrt(r² - halfGap²)
+    // We take the outward (+) root.
+    const t = Math.sqrt(Math.max(0, r * r - halfGap * halfGap));
+    return {
+      x: cx + halfGap * px + t * dx,
+      y: cy + halfGap * py + t * dy,
+    };
+  }
+
+  const innerCCW = edgePoint(gapAngleCCW, true, rInner);
+  const outerCCW = edgePoint(gapAngleCCW, true, rOuter);
+  const innerCW = edgePoint(gapAngleCW, false, rInner);
+  const outerCW = edgePoint(gapAngleCW, false, rOuter);
+
+  const largeArc = step > Math.PI ? 1 : 0;
+
   return [
-    `M ${x0} ${y0}`,
-    `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x1} ${y1}`,
-    `L ${x2} ${y2}`,
-    `A ${rInner} ${rInner} 0 ${largeArc} 0 ${x3} ${y3}`,
+    `M ${innerCCW.x} ${innerCCW.y}`,
+    `L ${outerCCW.x} ${outerCCW.y}`,
+    `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${outerCW.x} ${outerCW.y}`,
+    `L ${innerCW.x} ${innerCW.y}`,
+    `A ${rInner} ${rInner} 0 ${largeArc} 0 ${innerCCW.x} ${innerCCW.y}`,
     "Z",
   ].join(" ");
 }
@@ -88,8 +146,8 @@ export default function NavigationPie({
   options,
   selected,
   onChange,
-  radius = 200,
-  innerRadius = 56,
+  radius = 90,
+  innerRadius = 26,
 }: NavigationPieProps) {
   const chipRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -151,36 +209,81 @@ export default function NavigationPie({
     [selected, onChange],
   );
 
+  // Lazy router. Only acquired when the user clicks a wedge that carries
+  // a `url` — keeps the pie renderable outside an App Router boundary
+  // (e.g. unit tests, static-storybook contexts) when no caller uses urls.
+  const routerRef = useRef<ReturnType<typeof useRouter> | null>(null);
+  const hasUrl = useMemo(() => options.some((o) => !!o.url), [options]);
+
+  const pickWedge = useCallback(
+    (opt: NavigationPieOption) => {
+      if (opt.url) {
+        close();
+        if (/^https?:\/\//i.test(opt.url)) {
+          window.location.assign(opt.url);
+        } else if (routerRef.current) {
+          routerRef.current.push(opt.url);
+        } else {
+          window.location.assign(opt.url);
+        }
+        return;
+      }
+      toggle(opt.value);
+    },
+    [toggle, close],
+  );
+
   const handleChipClick = useCallback(() => {
     if (open) close();
-    else {
+    // Don't open with an empty options list — the chip would hide itself
+    // (via .navigation-pie__Chip-open visibility:hidden) and the pie would
+    // render zero wedges, leaving an invisible no-op trigger. Stay closed
+    // so the user sees the chip and can tell nothing's available yet.
+    else if (options.length > 0) {
       registerActive(closeRef.current);
       setOpen(true);
     }
-  }, [open, close]);
+  }, [open, close, options.length]);
 
   const active = selected.length > 0;
   const count = selected.length;
 
   // Slice geometry. Start at -π/2 (12 o'clock) and rotate clockwise so the
-  // first option occupies the top wedge. Label position = midpoint of
-  // (rInner + rOuter)/2 along the wedge bisector.
+  // first option occupies the top wedge. Wedges are bounded by GAP LINES
+  // — straight strips of fixed pixel width sitting between adjacent
+  // wedges. Each wedge's two side edges are perpendicular to its two
+  // bounding gaps, so adjacent wedges' facing edges are PARALLEL across
+  // the gap (matches the Arma-radial reference where gaps look like
+  // ruler-cut slots rather than radial slivers).
+  //
+  // A second path (BAND_PX wide on the inner edge) carries the option's
+  // custom colour, acting as a legend ring around the hub.
   const slices = useMemo(() => {
     if (!chip) return [];
     const N = options.length;
     if (N === 0) return [];
+    const GAP_PX = 4;                  // perpendicular pixel gap between wedges
+    const BAND_PX = 10;                // thickness of the inner colour band
     const step = (Math.PI * 2) / N;
-    const start = -Math.PI / 2 - step / 2;
     const rMid = (innerRadius + radius) / 2;
+    const rBandOuter = innerRadius + BAND_PX;
+    // For N wedges starting at top, wedge i has bisector at
+    //   bisector_i = -π/2 + i*step
+    // The gap BETWEEN wedge i-1 and i sits at the midpoint:
+    //   gap_i = bisector_i - step/2 = -π/2 + (i - 0.5)*step
+    // So wedge i is bounded by gap_i (CCW side) and gap_{i+1} (CW side).
     return options.map((opt, i) => {
-      const a0 = start + i * step;
-      const a1 = a0 + step;
-      const bisector = a0 + step / 2;
+      const bisector = -Math.PI / 2 + i * step;
       const labelX = chip.cx + rMid * Math.cos(bisector);
       const labelY = chip.cy + rMid * Math.sin(bisector);
       return {
         opt,
-        path: wedgePath(chip.cx, chip.cy, innerRadius, radius, a0, a1),
+        path: wedgePath(
+          chip.cx, chip.cy, innerRadius, radius, bisector, step, GAP_PX,
+        ),
+        bandPath: wedgePath(
+          chip.cx, chip.cy, innerRadius, rBandOuter, bisector, step, GAP_PX,
+        ),
         labelX,
         labelY,
         isSelected: selected.includes(opt.value),
@@ -190,6 +293,7 @@ export default function NavigationPie({
 
   return (
     <>
+      {hasUrl ? <RouterCapture targetRef={routerRef} /> : null}
       <button
         ref={chipRef}
         type="button"
@@ -228,23 +332,31 @@ export default function NavigationPie({
               overflow: "visible",
             }}
           >
-            {slices.map(({ opt, path, isSelected }) => (
-              <path
-                key={`seg-${opt.value}`}
-                role="option"
-                aria-label={opt.label}
-                aria-selected={isSelected}
-                className={
-                  "navigation-pie__Pop_segment" +
-                  (isSelected ? " navigation-pie__Pop_segment-selected" : "")
-                }
-                d={path}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggle(opt.value);
-                }}
-                style={{ pointerEvents: "auto", cursor: "pointer" }}
-              />
+            {slices.map(({ opt, path, bandPath, isSelected }) => (
+              <React.Fragment key={`seg-${opt.value}`}>
+                <path
+                  role="option"
+                  aria-label={opt.label}
+                  aria-selected={isSelected}
+                  className={
+                    "navigation-pie__Pop_segment" +
+                    (isSelected ? " navigation-pie__Pop_segment-selected" : "")
+                  }
+                  d={path}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    pickWedge(opt);
+                  }}
+                  style={{ pointerEvents: "auto", cursor: "pointer" }}
+                />
+                {opt.color ? (
+                  <path
+                    className="navigation-pie__Pop_band"
+                    d={bandPath}
+                    style={{ fill: opt.color, pointerEvents: "none" }}
+                  />
+                ) : null}
+              </React.Fragment>
             ))}
           </svg>
           {slices.map(({ opt, labelX, labelY, isSelected }) => (
@@ -270,4 +382,18 @@ export default function NavigationPie({
       ) : null}
     </>
   );
+}
+
+// Mounted only when at least one option carries a `url`. Grabs the App
+// Router and parks it on the parent's ref. Keeps `useRouter` out of the
+// pie's main render path, so url-free callers don't need a router
+// context (matters for tests + isolated previews).
+function RouterCapture({
+  targetRef,
+}: {
+  targetRef: React.MutableRefObject<ReturnType<typeof useRouter> | null>;
+}) {
+  const router = useRouter();
+  targetRef.current = router;
+  return null;
 }

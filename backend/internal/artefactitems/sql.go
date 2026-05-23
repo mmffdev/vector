@@ -232,6 +232,34 @@ const sqlSummariseTotalTemplate = `
 		WHERE %s
 	`
 
+// sqlListFacetTypesTemplate returns the distinct artefact_type_id values
+// for live artefacts under the caller's clamp. %s holds the optional
+// extra-clause string (workspace + topology scope) — see Service.ListFacets.
+// Same JOIN shape as the summarise queries so the clamp logic is shared.
+const sqlListFacetTypesTemplate = `
+		SELECT DISTINCT a.artefact_type_id
+		FROM artefacts a
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		WHERE at.artefacts_types_id_subscription = $1
+		  AND at.artefacts_types_scope = $2
+		  AND a.archived_at IS NULL
+		  AND at.artefacts_types_archived_at IS NULL%s
+	`
+
+// sqlListFacetPrioritiesTemplate is the priority twin of the facet types
+// query. priority_id is NOT NULL post-PLA-0055 but the IS NOT NULL guard
+// keeps the query safe against legacy fixtures.
+const sqlListFacetPrioritiesTemplate = `
+		SELECT DISTINCT a.priority_id
+		FROM artefacts a
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		WHERE at.artefacts_types_id_subscription = $1
+		  AND at.artefacts_types_scope = $2
+		  AND a.archived_at IS NULL
+		  AND at.artefacts_types_archived_at IS NULL
+		  AND a.priority_id IS NOT NULL%s
+	`
+
 // sqlSummariseByTypeTemplate buckets counts by artefact_type.name. %s
 // holds the composed WHERE clause shared with the total query.
 const sqlSummariseByTypeTemplate = `

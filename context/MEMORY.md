@@ -32,6 +32,7 @@
 ## Test surface
 
 **Claude-owned accounts** → [c_claude_test_accounts.md](memory/c_claude_test_accounts.md) — three test roles; default padmin; never touch Rick's accounts.
+**`claude_2_test@mmffdev.com` password** → `mmff` (reset 2026-05-23) — stable easy-to-remember override of the default `password123!`.
 
 ## Active Threads
 
@@ -43,8 +44,13 @@
 **Why:** 2026-05-21 overnight session — I ran `git branch -D refactor/objecttree-s5b-readside-ancestor-walk` on a zero-unique-commit branch without confirmation. No work was lost (branch was pointing at slice 6.5 tip with nothing new on it) so the slip was harmless, but rationalising destructive-git slips by "it was empty" is exactly the wrong lesson. The HARD RULE is unconditional precisely because "I checked, it was safe" is unreliable judgement under autonomy pressure. Slowing down to ASK is cheap; learning the discipline by accident is expensive.
 **How to apply:** if there's any urge to run a destructive-git command without explicit prior authorisation, stop. Send Rick a message via SendMessage or wait. Use `git branch <name>` (no `-D`) to leave the branch tip in place — orphaned branches are nearly free and easy to inspect/delete with the user's consent later.
 
+**Work-items filter chips clamp by WORKSPACE, list endpoint also clamps by TOPOLOGY NODE.** When a Type/Status/Priority chip "does nothing", first suspect is a UUID mismatch via the topology clamp: the chip is loaded via `useArtefactTypeCatalogue` → `ListByWorkspace` (workspace-clamped, NOT topology-clamped), so the chip's "Task" option carries the workspace's Task UUID; the visible rows may be tagged with a different Task UUID from another workspace whose nodes are mounted under the active topology scope. The list endpoint then applies `at.artefacts_types_id = ANY($N)` AND `a.topology_node_id = ANY(<descendants>)` — both must hit. Diagnostic: open the detail flyout for a visible row and read its TOPOLOGY NODE field; if the scope is from a different workspace's subtree, that's the mismatch.
+**Why:** 2026-05-23 — Insurance scope showed 27 Tasks in the grid; clicking Task in the new NavigationPie filter returned zero. Detail flyout showed `Insurance (current scope)` as the topology node, confirming the workspace-vs-scope split.
+**How to apply:** before assuming a filter bug, inspect the row's topology node. Reference: `backend/internal/artefactitems/service.go:200-243` (scope clamp) + `:259-263` (type clamp), `app/hooks/useChipTypeOptions.ts` (chip side).
+
 ## Environment Notes
 
+- **Docker does NOT run on Rick's Mac.** Dev Postgres tier lives on remote host `vector-dev-pg` (77.68.33.216) as a Docker Swarm stack (source of truth: `infra/swarm/vector-dev-stack.yml`). Local backend reaches it via SSH tunnel on `localhost:5435`. Never suggest local Docker, `docker ps` / daemon checks on the Mac, or installing Docker Desktop. For DB introspection: (a) Adminer in browser on the remote swarm, (b) `psql -h localhost -p 5435` via the tunnel (psql NOT pre-installed — needs `brew install libpq` first), or (c) ask Rick to run the query.
 - Backend pinned dev. Env file `backend/.env.dev`. DB tunnel `localhost:5435`. Dev VPS 77.68.33.216.
 - Frontend `http://localhost:5101`. Backend `http://localhost:5100`.
 - `<server>` skill handles env switching but is locked off staging/prod.

@@ -40,10 +40,13 @@ import {
   type WorkItem,
 } from "@/app/components/work-items-tree-config";
 import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
+import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 import type { ColumnDef } from "@/app/components/ResourceTree";
 // Slice 3 — icons moved into the kind components (DenseGridHeader doesn't
 // need any; ActionBar imports MdAdd / MdOutlineCategory / MdSearch itself).
 import { useObjectTreeWindow, ApiError as ObjectTreeApiError } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeWindow";
+import { useObjectTreeFacets } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeFacets";
 import { ObjectTreeDetailFlyout, type DetailFlyoutBodyProps } from "@/app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout";
 import { DenseGridHeader } from "@/app/components/ObjectTreeV2/kinds/DenseGridHeader";
 import { ActionBar } from "@/app/components/ObjectTreeV2/kinds/ActionBar";
@@ -355,6 +358,72 @@ export default function ObjectTree({
   }, [windowRoots]);
   const flowStatesByType = useFlowStatesByType(visibleTypeIds);
 
+  // Filter-chip option sets — derived from the LOADED ROWS, not from a
+  // separate workspace-clamped catalogue fetch. The grid is the source
+  // of truth for "what's reachable in the current scope"; chips just
+  // surface those choices. This is what makes the same chip layout work
+  // for /work-items and /portfolio-items without either knowing about
+  // the other's catalogue, and it sidesteps the workspace-vs-topology
+  // UUID mismatch (TD-CHIP-SCOPE-MISMATCH).
+  //
+  // Workspace catalogues are still consulted — but only for display
+  // metadata (label + colour) keyed by UUIDs we already know are present.
+  const { types: workspaceTypes } = useArtefactTypeCatalogue();
+  const { priorities: workspacePriorities } = useArtefactPriorityCatalogue();
+
+  // PLA057 / OBJ1 — chip options come from the backend facets endpoint,
+  // which applies the SAME workspace + topology clamp the list endpoint
+  // uses. Guarantees the chip surface agrees with the grid surface across
+  // pagination, expansion, and federated scopes.
+  //
+  // Workspace catalogues are still consulted — but only for display
+  // metadata (label + colour) keyed by UUIDs we already know are present.
+  // If a facet UUID is missing from the workspace catalogue (federation),
+  // we synthesise a label from the truncated UUID so the wedge still
+  // appears and remains clickable.
+  const { typeIds: facetTypeIds, priorityIds: facetPriorityIds } =
+    useObjectTreeFacets(resourceUrl, activeScopeNodeId ?? null);
+
+  const typeOptions = useMemo(() => {
+    const byId = new Map(workspaceTypes.map((t) => [t.id, t]));
+    const out: { value: string; label: string; color?: string }[] = [];
+    for (const id of facetTypeIds) {
+      const t = byId.get(id);
+      out.push({
+        value: id,
+        label: t?.name ?? id.slice(0, 8),
+        color: t?.colour ?? undefined,
+      });
+    }
+    out.sort((a, b) => {
+      const ta = byId.get(a.value);
+      const tb = byId.get(b.value);
+      if (!ta || !tb) return a.label.localeCompare(b.label);
+      return ta.sort_order - tb.sort_order || ta.name.localeCompare(tb.name);
+    });
+    return out;
+  }, [facetTypeIds, workspaceTypes]);
+
+  const priorityOptions = useMemo(() => {
+    const byId = new Map(workspacePriorities.map((p) => [p.id, p]));
+    const out: { value: string; label: string; color?: string }[] = [];
+    for (const id of facetPriorityIds) {
+      const p = byId.get(id);
+      out.push({
+        value: id,
+        label: p?.name ?? id.slice(0, 8),
+        color: p?.colour ?? undefined,
+      });
+    }
+    out.sort((a, b) => {
+      const pa = byId.get(a.value);
+      const pb = byId.get(b.value);
+      if (!pa || !pb) return a.label.localeCompare(b.label);
+      return pa.sort_order - pb.sort_order || pa.name.localeCompare(pb.name);
+    });
+    return out;
+  }, [facetPriorityIds, workspacePriorities]);
+
   // Duplicate — clone the loaded artefact into a fresh row.
   //
   // Wire flow:
@@ -635,7 +704,7 @@ export default function ObjectTree({
       return {
         ...wizardConfig,
         columns,
-        filterChips: wizardConfig.filterChips ?? <WorkItemsFilterChips prefKey={filtersPrefKey} />,
+        filterChips: wizardConfig.filterChips ?? <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} />,
       };
     }
     const isPortfolio = mode === "portfolio_items";
@@ -652,7 +721,7 @@ export default function ObjectTree({
       getParentId: (r) => r.parent_id,
       getChildrenCount: (r) => r.children_count,
       searchAccessor: (r) => `${r.title} vec-${r.key_num}`,
-      filterChips: <WorkItemsFilterChips prefKey={filtersPrefKey} />,
+      filterChips: <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} />,
       paginationOptions: [25, 50, 100],
       defaultPageSize: 25,
       resourceUrl: isPortfolio ? "/portfolio-items" : "/work-items",

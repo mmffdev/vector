@@ -17,6 +17,10 @@ export interface ChipOption {
   value: string; // UUID
   label: string;
   slot: string | null;
+  /** Artefact-type brand colour (UK column `colour` on artefact_types).
+   *  Field name matches NavigationPieOption.color so the option can be
+   *  fed straight into <NavigationPie>. */
+  color?: string;
 }
 
 export function useChipTypeOptions(scope: "work" | "strategy" = "work"): ChipOption[] {
@@ -25,6 +29,11 @@ export function useChipTypeOptions(scope: "work" | "strategy" = "work"): ChipOpt
     return types
       .filter((t) => t.scope === scope && t.archived_at == null)
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
-      .map((t) => ({ value: t.id, label: t.name, slot: t.slot }));
+      .map((t) => ({
+        value: t.id,
+        label: t.name,
+        slot: t.slot,
+        color: t.colour ?? undefined,
+      }));
   }, [types, scope]);
 }

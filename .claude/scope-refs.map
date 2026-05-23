@@ -225,3 +225,26 @@ B5.13	frontend shellcontext deriveauthlevel userauthlevel tag bucket pages array
 B5.14	permissions page user-management matrix banner copy tier hints surface pla-0053
 B5.15	seed audit role page grants users_roles_pages team member personal planning strategy bookmarks pla-0053
 B5.16	retire td-nav-auth-tier adr roles_permissions single gate soc2 audit narrative pla-0053
+VIZ1.1.1	verify visualiser click reliability twenty card test folders files toggle
+VIZ1.1.2	strip diagnostic console traces visualiser handleclick framenode
+VIZ1.2.1	build visualiser search panel substring match node filter
+VIZ1.2.2	search dim non-matches mode visualiser fade opacity
+VIZ1.2.3	highlight syntax source preview visualiser typescript github dark
+VIZ1.2.4	lasso multi-select shift drag rectangle cubes selection
+VIZ1.2.5	auto-cluster layer toggle visualiser force-cluster centres
+VIZ1.3.1	extract datasource interface visualiser codegraph implementation
+VIZ1.3.2	artefact-graph backend endpoint samantha topology scope clamp rbac
+VIZ1.3.3	artefact attachment preview tenanted path-traversal allowlist
+VIZ1.3.4	relationships route pageshell standard nav breadcrumb permission
+VIZ1.3.5	rename files artefacts panel workspace grouping type colour
+VIZ1.3.6	decide group-sharing localStorage database visualiser table migration
+VIZ1.3.7	diff panel snapshot picker dropdown sprint release
+OBJ1.0.1	TD-CHIP-SCOPE-MISMATCH chip scope mismatch tech debt incident narrative
+OBJ1.1.1	ListFacets service method distinct artefact_type_id priority_id workspace meg clamp
+OBJ1.1.2	work-items facets portfolio-items handlers WorkspaceClampMiddleware meg endpoint
+OBJ1.1.3	facets table-tests workspace clamp topology archived 403 404 sentinel
+OBJ1.2.1	useObjectTreeFacets hook cache key workspace meg resource refetch loading error
+OBJ1.2.2	ObjectTreeV2 wires facets chips windowRoots derivation workspace catalogue metadata
+OBJ1.2.3	WorkItemsFilterChipsProps tightened typeOptions priorityOptions required default V1 retirement
+OBJ1.3.1	component doc objecttreev2 facets CLAUDE TD-CHIP-SCOPE-MISMATCH resolved
+VIZ1.3.4a	decide add view-relationships permission rbac catalogue useHasPermission pla-0007

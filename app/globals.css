@@ -7720,6 +7720,219 @@ input[type="reset"] {
 }
 
 /* ============================================================
+   Loader component
+   Pseudo-3D animated loaders for data-fetch states.
+   Type registry — extend by adding a new .loader__<type> block.
+     - helix : rotating DNA double helix, edge-on view
+   Reduced-motion: covered by the global @media rule.
+   ============================================================ */
+
+.loader {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── helix ───────────────────────────────────────────────────── */
+.loader__helix {
+  --loader__helix-size: 96px;
+  --loader__helix-rungs: 12;
+  --loader__helix-period: 2.4s;
+  --loader__helix-node: 10px;
+  --loader__helix-line: var(--ink-muted, rgba(255,255,255,0.45));
+
+  position: relative;
+  width: var(--loader__helix-size);
+  height: calc(var(--loader__helix-size) * 1.4);
+}
+.loader__helix_Stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--loader__helix-node) / 2) 0;
+}
+.loader__helix_Rung {
+  --loader__helix-delay: calc(
+    (var(--loader__helix-i) / var(--loader__helix-rungs)) *
+    var(--loader__helix-period) * -1
+  );
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--loader__helix-node);
+
+  animation: loader__helix-rung var(--loader__helix-period) linear infinite;
+  animation-delay: var(--loader__helix-delay);
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+/* Two halves of the rung — one solid, one dashed — sit on either
+   side of the rotational axis. As the rung's scaleX flips sign
+   they visually trade sides, marking front-vs-back strand. */
+.loader__helix_Rung_BarL,
+.loader__helix_Rung_BarR {
+  flex: 1 1 auto;
+  height: 0;
+  border-top: 1px solid var(--loader__helix-line);
+}
+.loader__helix_Rung_BarR {
+  border-top-style: dashed;
+}
+.loader__helix_Rung_NodeL,
+.loader__helix_Rung_NodeR {
+  flex: 0 0 auto;
+  width: var(--loader__helix-node);
+  height: var(--loader__helix-node);
+  border-radius: var(--radius-full, 999px);
+  background: var(--loader__helix-line);
+}
+.loader__helix_SrLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Rung horizontal compression — simulates rotation around the
+   vertical axis. scaleX = cos(θ); opacity dips as it edges away. */
+@keyframes loader__helix-rung {
+  0%   { transform: scaleX( 1.00); opacity: 0.95; }
+  25%  { transform: scaleX( 0.05); opacity: 0.40; }
+  50%  { transform: scaleX(-1.00); opacity: 0.95; }
+  75%  { transform: scaleX(-0.05); opacity: 0.40; }
+  100% { transform: scaleX( 1.00); opacity: 0.95; }
+}
+
+/* ── threedotsradial ─────────────────────────────────────────── */
+.loader__threedotsradial {
+  --loader__threedotsradial-size: 96px;
+  --loader__threedotsradial-radius: 60px;
+  --loader__threedotsradial-dots: 3;
+  --loader__threedotsradial-dot: 10px;
+  --loader__threedotsradial-orbit-period: 2.8s;
+  --loader__threedotsradial-pulse-period: 1.4s;
+  --loader__threedotsradial-ink: var(--ink, rgba(255,255,255,0.92));
+  --loader__threedotsradial-muted: var(--ink-muted, rgba(255,255,255,0.45));
+
+  position: relative;
+  width: calc(var(--loader__threedotsradial-radius) * 2 + var(--loader__threedotsradial-dot) * 3);
+  height: calc(var(--loader__threedotsradial-radius) * 2 + var(--loader__threedotsradial-dot) * 3);
+}
+.loader__threedotsradial_Orbit {
+  position: absolute;
+  inset: 0;
+  animation: loader__threedotsradial-orbit
+    var(--loader__threedotsradial-orbit-period) linear infinite;
+  will-change: transform;
+}
+/* Each slot is rotated to its base angle (i × 120°). Its inner
+   dot is then translated outward along the slot's local Y so
+   the dot's pulse-scale stays radial. */
+.loader__threedotsradial_Slot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(calc(var(--loader__threedotsradial-i) * 120deg));
+}
+.loader__threedotsradial_Slot_Dot,
+.loader__threedotsradial_Slot_Ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--loader__threedotsradial-dot);
+  height: var(--loader__threedotsradial-dot);
+  border-radius: var(--radius-full, 999px);
+  background: var(--loader__threedotsradial-ink);
+  transform: translate(-50%, -50%)
+             translateY(calc(var(--loader__threedotsradial-radius) * -1));
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+/* Pulse staggered by -i/3 of the pulse period — the focus wave
+   chases the dots around the ring, slightly out of sync with
+   the orbit so the rhythm never resolves. */
+.loader__threedotsradial_Slot_Dot {
+  animation: loader__threedotsradial-pulse
+    var(--loader__threedotsradial-pulse-period) ease-in-out infinite;
+  animation-delay: calc(
+    (var(--loader__threedotsradial-i) / var(--loader__threedotsradial-dots)) *
+    var(--loader__threedotsradial-pulse-period) * -1
+  );
+}
+.loader__threedotsradial_Slot_Ghost {
+  background: var(--loader__threedotsradial-muted);
+  filter: blur(3px);
+  animation: loader__threedotsradial-ghost
+    var(--loader__threedotsradial-pulse-period) ease-in-out infinite;
+  animation-delay: calc(
+    (var(--loader__threedotsradial-i) / var(--loader__threedotsradial-dots)) *
+    var(--loader__threedotsradial-pulse-period) * -1
+    - 80ms
+  );
+}
+.loader__threedotsradial_SrLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Orbit — full revolution per period. */
+@keyframes loader__threedotsradial-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* Dot pulse — grows + brightens at the focus peak, shrinks +
+   dims as the focus moves on. The translateY stays pinned so
+   scaling happens in place at the orbit radius. */
+@keyframes loader__threedotsradial-pulse {
+  0%   { transform: translate(-50%, -50%)
+                    translateY(calc(var(--loader__threedotsradial-radius) * -1))
+                    scale(0.55);
+         opacity: 0.35; }
+  50%  { transform: translate(-50%, -50%)
+                    translateY(calc(var(--loader__threedotsradial-radius) * -1))
+                    scale(1.25);
+         opacity: 1; }
+  100% { transform: translate(-50%, -50%)
+                    translateY(calc(var(--loader__threedotsradial-radius) * -1))
+                    scale(0.55);
+         opacity: 0.35; }
+}
+/* Ghost trails just behind the pulse — bigger, blurred, fainter. */
+@keyframes loader__threedotsradial-ghost {
+  0%   { transform: translate(-50%, -50%)
+                    translateY(calc(var(--loader__threedotsradial-radius) * -1))
+                    scale(0.8);
+         opacity: 0; }
+  50%  { transform: translate(-50%, -50%)
+                    translateY(calc(var(--loader__threedotsradial-radius) * -1))
+                    scale(1.9);
+         opacity: 0.35; }
+  100% { transform: translate(-50%, -50%)
+                    translateY(calc(var(--loader__threedotsradial-radius) * -1))
+                    scale(0.8);
+         opacity: 0; }
+}
+
+/* ============================================================
    Skeleton compositions (story 00112)
    Layout containers for CardSkeleton, ListRowSkeleton,
    TableRowSkeleton, and NavItemSkeleton. Dimensions and spacing
@@ -15793,13 +16006,10 @@ input[type="reset"] {
   color: var(--accent-ink, var(--ink));
 }
 .navigation-pie__Chip-open {
-  border-color: var(--ink);
-  /* When the pie is open, the chip needs to sit on top of the pie's hub
-     so it visually occupies the empty middle. Slightly bumped z keeps the
-     chip clickable even when an SVG segment is layered nearby. */
-  position: relative;
-  z-index: 2147483003;
-  box-shadow: 0 0 0 3px var(--surface, #fff);
+  /* Arma-radial: when the pie opens, the trigger chip disappears so the
+     gaps + hub read as transparent. Layout is preserved (visibility,
+     not display) so the pie's anchor position doesn't shift on open. */
+  visibility: hidden;
 }
 .navigation-pie__Chip_icon {
   color: var(--ink-subtle);
@@ -15839,31 +16049,37 @@ input[type="reset"] {
   to   { opacity: 1; }
 }
 
+/* Arma-radial styling — wedges are translucent black at rest, solid
+   black on hover / selected. Gaps between wedges come from angular
+   inset in the geometry (see NavigationPie.tsx slices memo), so no
+   stroke is needed to fake separators. */
 .navigation-pie__Pop_segment {
-  fill: var(--surface, #fff);
-  stroke: color-mix(in srgb, var(--ink) 18%, transparent);
-  stroke-width: 1.5;
-  transition: fill 120ms ease;
+  fill: #000;
+  fill-opacity: 0.7;
+  stroke: none;
+  transition: fill-opacity 120ms ease;
 }
 .navigation-pie__Pop_segment:hover {
-  fill: color-mix(in srgb, var(--ink) 6%, var(--surface, #fff));
+  fill-opacity: 1;
 }
 .navigation-pie__Pop_segment-selected {
-  fill: var(--ink, #111);
-  stroke: var(--ink, #111);
+  fill-opacity: 1;
 }
-.navigation-pie__Pop_segment-selected:hover {
-  fill: color-mix(in srgb, var(--ink) 90%, white);
+
+/* Inner colour band — painted via inline `fill: opt.color`; this rule
+   keeps it crisp and non-interactive (clicks pass through to the wedge). */
+.navigation-pie__Pop_band {
+  stroke: none;
 }
 
 .navigation-pie__Pop_label {
   font: inherit;
   font-size: 14px;
   font-weight: 500;
-  color: var(--ink, #111);
+  color: var(--surface, #fff);
   white-space: nowrap;
   user-select: none;
-  text-shadow: 0 1px 2px color-mix(in srgb, var(--surface, #fff) 90%, transparent);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 /* ── Custom fields tree ─────────────────────────────────────────────────────── */
 .cf-type-heading__prefix {

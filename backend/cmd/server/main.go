@@ -1535,6 +1535,11 @@ func main() {
 			r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
 			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
 			r.With(readLimit17).Get("/summary", h.Summary)
+			// PLA057 / OBJ1 — scope-clamped facet enumeration. Chip UIs
+			// call this to learn "what types/priorities are reachable
+			// in the current scope" without hitting the workspace catalogue
+			// (which can disagree with the grid's topology clamp).
+			r.With(readLimit17).Get("/facets", h.Facets)
 			r.With(readLimit17).Get("/flow-states", h.ListFlowStates)
 			// Slice 2.5 (ObjectTree refactor) — exposes the ?fields=
 			// allow-list catalogue. Frontend column picker / agent
@@ -1831,6 +1836,7 @@ func main() {
 				r.With(writeLimit, userWriteLimiter).Post("/", h.Create)
 				r.With(writeLimit, userWriteLimiter).Post("/bulk", h.Bulk)
 				r.With(readLimit).Get("/summary", h.Summary)
+				r.With(readLimit).Get("/facets", h.Facets)
 				r.With(readLimit).Get("/flow-states", h.ListFlowStates)
 				// Slice 2.5 (ObjectTree refactor) — agent-introspectable
 				// column catalogue. Same handler as the /_site mount.
