@@ -339,6 +339,43 @@ func (s *Service) RequireStepUpReauth(actionKey string) func(http.Handler) http.
 	}
 }
 
+// RequireUserAuth rejects requests that authenticated via API key only
+// — i.e. the request carries an "api_key_subscription_id" context value
+// but no UserFromCtx(). PLA059.
+//
+// Why this exists: RequirePermission has a deliberate pass-through for
+// API-key auth so read-only routes scoped on subscription_id (the bulk
+// of the 268-endpoint Scalar surface) work without a User context. That
+// pass-through is the wrong default for credential-issuance surfaces —
+// an API key bound to a subscription could otherwise POST /admin/api-keys/
+// issue and mint a second key on that same subscription, which is
+// accidental key-chaining. RequireUserAuth sits ahead of the permission
+// check on those routes and denies API-key-only callers explicitly.
+//
+// Response shape: 403 + Problem.Code "user_auth_required". Distinct
+// from the generic AuthForbidden code so a frontend or SDK that
+// authenticated via API key can surface a specific message rather than
+// a confusing "you don't have permission" when the failure mode is
+// really "this surface requires a human session."
+//
+// JWT-authenticated callers (UserFromCtx != nil) pass through unchanged.
+// Other routes are unaffected — apply RequireUserAuth only where the
+// API-key pass-through should not apply.
+func RequireUserAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if UserFromCtx(r.Context()) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// No user context. If api-key auth seeded a subscription_id this
+		// is the case we explicitly reject; if neither is present it's a
+		// plain unauthenticated request, also rejected (with the same
+		// code, since the caller is asking for a credential-issuance
+		// surface either way).
+		httperr.WriteCoded(w, r, http.StatusForbidden, CodeUserAuthRequired, usermessages.AuthUserAuthRequired)
+	})
+}
+
 // RequirePermission gates a route on the actor having ALL of the given
 // permission codes (logical AND). Resolves the actor's effective code
 // set via the resolver's process-local cache. Codes are defined in

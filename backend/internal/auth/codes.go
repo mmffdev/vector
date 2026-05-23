@@ -45,4 +45,15 @@ const (
 	// is irrecoverable. Audit row carries both fingerprints for
 	// forensics.
 	CodeSessionAnomaly = "session_anomaly"
+	// PLA059 — credential-issuance surfaces (/admin/api-keys/*)
+	// reject API-key-authenticated callers explicitly. The
+	// RequirePermission pass-through (api-key with no User context
+	// → next) is correct for read-only routes scoped on
+	// subscription_id but is wrong for routes that mint or revoke
+	// other credentials on the same subscription. Gated routes use
+	// RequireUserAuth ahead of the permission check; on a deny the
+	// response carries this Problem.Code so a frontend or SDK can
+	// distinguish "this surface requires a human-authenticated
+	// session" from a generic 401/403.
+	CodeUserAuthRequired = "user_auth_required"
 )

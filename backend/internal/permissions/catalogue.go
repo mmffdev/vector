@@ -96,6 +96,14 @@ const (
 
 	// B20.4.3 — cost centres entity (migration 224)
 	CostCentresManage Code = "cost_centres.manage"
+
+	// PLA059 — API key admin surface (migration 242).
+	// Gates /admin/api-keys/{issue,list,revoke}. Layered with
+	// RequireFreshPassword + RequireStepUpReauth("manage-api-keys")
+	// on issue + revoke. Distinct from users.list (the prior, wrong
+	// gate) — credential issuance is a separate threat class from
+	// reading the user directory.
+	ApiKeysManage Code = "api_keys.manage"
 )
 
 // All is the canonical set of permission codes the Go side knows about.
@@ -148,6 +156,8 @@ var All = []Code{
 	TopologyGrantsManageOthers,
 
 	CostCentresManage,
+
+	ApiKeysManage,
 }
 
 // VerifyParity compares the DB permissions table against the Go All set.

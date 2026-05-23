@@ -102,6 +102,7 @@ Test code references these UUIDs as constants (see [`backend/internal/users/prot
 | workspace | `workspace.archive` | Archive a workspace — soft-delete; preserves grants and tree (PLA-0006 / 00375). |
 | workspace | `workspace.restore` | Restore an archived workspace (PLA-0006 / 00375). |
 | workspace | `workspace.view_archived` | View the archived workspaces section (PLA-0006 / 00375). |
+| api_keys | `api_keys.manage` | Issue, list, revoke programmatic API keys on the actor's subscription (PLA059 / migration 242). Gated route stack: `RequireFreshPassword` → `RequireUserAuth` → `RequirePermission(api_keys.manage)` → `RequireStepUpReauth("manage-api-keys")` on Issue + Revoke. Distinct from `users.list` — credential issuance is a separate threat class. |
 
 ## Grant matrix (seeded)
 
@@ -133,6 +134,7 @@ Test code references these UUIDs as constants (see [`backend/internal/users/prot
 | `workspace.archive` | ✓ | | | | |
 | `workspace.restore` | ✓ | | | | |
 | `workspace.view_archived` | ✓ | | | | |
+| `api_keys.manage` | ✓ | ✓ | | | |
 
 team_lead carries identical grants to padmin in v0 per user direction. Ranks differ (20 vs 25) so role-ceiling preserves the ordering for promote/demote checks.
 

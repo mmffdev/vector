@@ -459,6 +459,12 @@ const sqlRevokeOtherSessionsForUser = `
 // route-bound identifier the matching RequireStepUpReauth(actionKey)
 // middleware compares against — proof minted for "delete-workspace"
 // cannot be replayed against "disable-mfa".
+//
+// Registry of known action_key values (keep this list complete — every
+// route wired to RequireStepUpReauth should appear here so future readers
+// see the full set without grepping):
+//   - "delete-workspace"  — DELETE /workspaces/{id}      (B16.8.10)
+//   - "manage-api-keys"   — POST /admin/api-keys/{issue,revoke} (PLA059)
 const sqlInsertReauthNonce = `
 		INSERT INTO users_reauth_nonces (
 			users_reauth_nonces_id_user,

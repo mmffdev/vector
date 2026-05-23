@@ -1325,11 +1325,27 @@ func main() {
 			})
 		})
 
+		// PLA059 — /admin/api-keys/{issue,list,revoke}.
+		// Gate order matters and is pinned by handler tests:
+		//   1. RequireFreshPassword — a user with ForcePasswordChange
+		//      must rotate before touching credentials.
+		//   2. RequireUserAuth — deny API-key-only callers explicitly
+		//      (closes the accidental key-chaining path through the
+		//      RequirePermission api-key pass-through).
+		//   3. RequirePermission(ApiKeysManage) — dedicated permission,
+		//      no longer coupled to users.list.
+		//   4. RequireStepUpReauth("manage-api-keys") — Issue and
+		//      Revoke change credentials state; require a fresh
+		//      X-Action-Proof. List is read-only audit data (KeyInfo
+		//      carries no raw_key) and is intentionally NOT step-up
+		//      gated.
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequirePermission(permResolver, permissions.UsersList))
-			r.Post("/api-keys/issue", apiKeysH.Issue)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(auth.RequireUserAuth)
+			r.Use(auth.RequirePermission(permResolver, permissions.ApiKeysManage))
+			r.With(authSvc.RequireStepUpReauth("manage-api-keys")).Post("/api-keys/issue", apiKeysH.Issue)
 			r.Get("/api-keys", apiKeysH.List)
-			r.Post("/api-keys/revoke", apiKeysH.Revoke)
+			r.With(authSvc.RequireStepUpReauth("manage-api-keys")).Post("/api-keys/revoke", apiKeysH.Revoke)
 		})
 	})
 

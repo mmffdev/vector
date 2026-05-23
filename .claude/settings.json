@@ -133,7 +133,8 @@
       "mcp__plugin_context7_context7__query-docs",
       "Skill(report)",
       "Skill(report:*)",
-      "Bash(echo \"handovers/objecttreev2_filterchips.md\" > \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/active_handover.txt\")"
+      "Bash(echo \"handovers/objecttreev2_filterchips.md\" > \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/active_handover.txt\")",
+      "Edit(/.claude/skills/report/**)"
     ],
     "additionalDirectories": [
       "/Users/rick/.claude",

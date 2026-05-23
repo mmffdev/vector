@@ -21,12 +21,22 @@ Manages `Vector_Scope.md` as the single source of truth for all product scope, p
 
 1. Read `Vector_Scope.md`.
 2. If `[message]` is provided: parse it for new scope items. If not: synthesise from the current session discussion — identify what was discussed that isn't yet in the doc.
+   - **Multi-AC parse rule.** When `[message]` is a numbered list whose items have **indented sub-bullets** (markdown convention: `   - AC: …` under a `1. **Title.**` parent), treat the parent line as the **story title + intent** and the nested bullets as **acceptance criteria**. AC bullets are not chrome — they are the verifiable contract for the story and MUST survive the write in step 6 below. Typically arrives via `<report> -p` hand-off (see [`.claude/skills/report/SKILL.md`](../report/SKILL.md) § Proposed Stories), but the same shape is honoured from any caller.
 3. Determine the correct section for each new item. If it belongs under an existing item as a sub-item, use the next available sub-number (e.g. if 1.9 exists, new item is 1.10). If it's a new top-level area, add a new section header and extend the Table of Contents.
 4. Check for duplicates — if the item already exists (exact or near-match), flag it rather than adding.
 5. Set priority (P1–P5) on the new item. If unsure, ask.
 6. Present the proposed insertions as a numbered list before writing — "I'm going to add: (1) ... (2) ..." — then write after confirmation OR if in auto mode, write immediately and report what was added.
+   - **AC-preservation rule.** When a story arrived with nested AC bullets, the written entry in `Vector_Scope.md` keeps that nesting. Shape (markdown, indented under the ref line):
+     ```
+     - **B19.1.5 [P2] 🔵 IN FLIGHT** — Story title in imperative mood. One-line intent.
+       - AC: observable assertion #1 (verbatim from the hand-off).
+       - AC: observable assertion #2.
+       - AC: observable assertion #3.
+       - …
+     ```
+     Each AC bullet is preserved **verbatim** — don't paraphrase, don't merge, don't drop. AC count is whatever the caller passed (typically 3–6). If the caller passed zero AC bullets (legacy one-liner), write the entry without a sub-list — but do not synthesise AC from thin air.
 7. Bump `Doc version` minor (0.1 → 0.2) and update `Last updated` date.
-8. **After writing each new item**, register it in `.claude/scope-refs.map` — one line per item, tab-separated: `REF<tab>keyword1 keyword2 ...`. Use the actual ref as it appears in `Vector_Scope.md` (letter-prefixed: `B19.1.4`, `M3.1.1`, etc. — NOT bare numeric `1.4`, those don't exist in this scope file). Extract keywords from the item text (strip markdown, split on spaces, drop words shorter than 4 chars). This enables the commit hook to match future commits to this item by keyword before falling back to Unmatched.
+8. **After writing each new item**, register it in `.claude/scope-refs.map` — one line per item, tab-separated: `REF<tab>keyword1 keyword2 ...`. Use the actual ref as it appears in `Vector_Scope.md` (letter-prefixed: `B19.1.4`, `M3.1.1`, etc. — NOT bare numeric `1.4`, those don't exist in this scope file). Extract keywords from **the title line PLUS every AC bullet** (strip markdown, split on spaces, drop words shorter than 4 chars, dedup). Pulling keywords from AC widens the commit-match surface — a commit that names a column from AC #3 should still resolve to the right ref. Cap at ~20 keywords per ref to keep the map readable.
 
 **Map file format** (`.claude/scope-refs.map`):
 ```

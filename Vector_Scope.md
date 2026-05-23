@@ -296,6 +296,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 - **RF2.4.1** Mark **14 legacy public Service methods** `// Deprecated: use Service.X instead.` (ListWorkItems, GetWorkItem, GetWorkItemInWorkspace, ListChildren, ListAncestors, ListFlowStates, SummariseWorkItems, SummariseRisks, CreateWorkItem, PatchWorkItem, ListFieldValues, UpsertFieldValue, UpsertFieldValues, DeleteFieldValue, ListFacets — depending on which survive Phases 2-3). **Note:** SummariseRisks survives the cull and is NOT deprecated per blocker 2 resolution; ArchiveWorkItem and BulkOps keep their names. Install `dev/scripts/lint_deprecated_artefactitems.py` that scans **ALL of `backend/`** (not just artefactitems package per blocker 3 — cross-package callers exist in `featuretests/f1_workspace_clamp_test.go` L400 + L448). Registry `dev/registries/deprecated_artefactitems_exempt.json` starts empty (zero violations). CI `tests.yml` workflow + pre-push hook wired. Mirrors RF1 `lint:exemption-ratchet` precedent. `[P2]` 🔵 IN FLIGHT
 
 ### RF2.5 Phase 5 — Delete deprecated methods
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 
 - **RF2.5.1** Delete **14 deprecated public Service methods**. **Cross-package cutover FIRST**: `backend/internal/featuretests/f1_workspace_clamp_test.go` L400 (`ListWorkItems`) and L448 (`GetWorkItemInWorkspace`) routed through `Service.Read` before any delete. Verify: `grep '^func (s \*Service) [A-Z]' service.go | wc -l == 12` (4 setters + 8 ops). Private impls (`getWorkItemImpl`, etc.) remain. `rules/evaluator.go` comment-only refs to `artefactitems.Service.Update` refreshed to `Service.Mutate`. **Repurpose Story 11 lint as a guard** — forbids any caller anywhere, not just deprecated. `go build ./...` green; full test suite green. `[P2]` 🔵 IN FLIGHT
 
@@ -2361,6 +2362,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2779,6 +2781,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `a695e5b` (2026-05-21): fix(notifications): rules fire on blocked changes + skip self-notify
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -2828,6 +2831,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
@@ -3881,6 +3885,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   - ✅ ~~**B16.8.1** Backend TOTP core~~ `[P1]` > Commit 2026-05-18: `mfa.go` + `roletypes.User` MFA fields + `auth/sql.go` MFA constants; `go build ./...` clean.
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
@@ -4216,6 +4221,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 ---
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
@@ -4681,6 +4687,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -5144,6 +5151,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -5287,6 +5295,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -5667,6 +5676,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5778,6 +5788,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -5854,6 +5865,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -5957,6 +5969,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -6029,6 +6042,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -7379,6 +7393,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 
 - **OBJ1.0.1** TD entry + incident narrative. AC: `TD-CHIP-SCOPE-MISMATCH` appears in `docs/c_tech_debt.md` with the 2026-05-23 framing + the `windowRoots`-fallback shape currently in place. `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 
 **Phase 1 — Backend**
 

@@ -27,6 +27,9 @@ const (
 	// B16.8 P4 — HIBP breach-password check (enforce mode only). Telemetry
 	// mode never surfaces this string because the user is never blocked.
 	AuthBreachedPassword = "This password has appeared in a known data breach. Please choose a different one."
+	// PLA059 — surfaces that mint or revoke credentials require a
+	// human-authenticated session. API-key auth is rejected here.
+	AuthUserAuthRequired = "This action requires a signed-in user session — API key authentication is not accepted on this surface."
 )
 
 // Request

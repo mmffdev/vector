@@ -182,6 +182,24 @@ Tuning guidance:
 
 Audit answer for "why 15 minutes": industry-standard short-lived access token; pairs with a refresh token whose revocation is checked on every protected request; total session idle capped server-side at 30 min independent of TTL choice.
 
+## Privileged-action gates
+
+Surfaces that mint, revoke, or destroy credentials sit behind a layered gate stack, not a single permission check. The defence/finance buyer bar requires *who*, *how recently re-verified*, and *what channel of authentication* all answered explicitly — one permission alone doesn't carry that story to procurement.
+
+| Surface | Permission | Fresh-password | Step-up (`action_key`) | User-auth required (no api-key) |
+|---|---|---|---|---|
+| `DELETE /workspaces/{id}` (B16.8.10) | `workspace.archive` | yes | `delete-workspace` | yes |
+| `POST /admin/api-keys/issue` (PLA059) | `api_keys.manage` | yes | `manage-api-keys` | yes |
+| `GET /admin/api-keys` (PLA059) | `api_keys.manage` | yes | — (read-only) | yes |
+| `POST /admin/api-keys/revoke` (PLA059) | `api_keys.manage` | yes | `manage-api-keys` | yes |
+
+Notes:
+
+- **`api_keys.manage` is distinct from `users.list`.** Prior to PLA059 the api-keys group was gated on `users.list` — the wrong threat boundary (credential issuance is a separate threat class from reading the user directory). The new permission ships with the same default role grants (`grp_global`, `grp_portfolio`) so existing operators keep capability on day one; role-engineering can split it off later.
+- **`auth.RequireUserAuth` denies API-key-only callers explicitly** on these routes. `auth.RequirePermission` has a deliberate pass-through for api-key auth (correct for read-only routes scoped on `subscription_id`); credential-issuance surfaces opt out of that pass-through so an API key cannot mint or revoke another API key on its own subscription (no key-chaining). Response shape: `403` + `Problem.Code: "user_auth_required"`.
+- **List skips step-up by design.** `KeyInfo` carries no `raw_key`; listing keys does not exfiltrate the secret. Issue and Revoke both change credentials state and warrant step-up.
+- The `action_key` registry lives in [`backend/internal/auth/sql.go`](../backend/internal/auth/sql.go) as a comment above `sqlInsertReauthNonce` — keep new entries there so future readers see the full set without grepping.
+
 ## Related
 
 - [c_c_schema_auth.md](c_c_schema_auth.md) — `users`, `sessions`, `password_resets`, `user_workspace_permissions`.

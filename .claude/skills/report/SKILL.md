@@ -581,11 +581,28 @@ The `-p` flag is the only `<report>` flag that does NOT use the internet. It dra
    - **Approach** — the chosen approach in 1–2 paragraphs. Trade-offs considered. Why this approach, not the obvious alternatives.
    - **Areas Impacted** — `<ul>` of "DB:", "Backend:", "Frontend:", "Docs:", etc. — one bullet per surface that needs change. Same shape as the existing plans (see PLA-0055).
    - **Implementation Steps** — `<ol>` ordered list, each step a discrete unit of work. Phase headers ("Phase 0 — Schema", "Phase 1 — Backend", etc.) where the work splits naturally. Each step should be small enough to become one story.
-   - **Proposed Stories** — `<ol>` of one-line story drafts derived from the implementation steps. Each story:
-     - Title (imperative, specific noun + verb).
-     - AC (observable assertion, 1 line).
-     - Suggested theme ref in `Vector_Scope.md` if obvious (e.g. `RF1.4.6`); leave blank if not.
-     - Format the list so it can be cleanly handed to `<scope> -a` after user confirmation.
+   - **Proposed Stories** — `<ol>` of story drafts derived from the implementation steps. Each story has a title PLUS a multi-bullet acceptance-criteria list — not a single AC line. Structure each `<li>`:
+     - **Title** in `<strong>` — imperative, specific noun + verb.
+     - One short sentence of intent (the "what" — one line max).
+     - **AC** as a nested `<ul>` of **3–6 observable assertions**. Each AC bullet is one independently verifiable claim — a thing a reviewer or test can mark green or red on its own. Cover the axes that apply to that story: schema/migration outcome, route/handler contract, wire payload shape, frontend state change, test name added, doc updated, lint/build status. AC is observable, not aspirational ("returns 403", "row exists", "grep finds 0 occurrences", "test `TestX_Foo` passes") — never "works correctly" or "is secure".
+     - **Theme** — suggested theme ref in `Vector_Scope.md` if obvious (e.g. `B16.9`); leave blank if not.
+
+     HTML shape (one story):
+     ```html
+     <li>
+       <strong>Add <code>api_keys.manage</code> permission to DB catalogue.</strong>
+       One short sentence of intent.
+       <ul>
+         <li><strong>AC:</strong> migration <code>NNN_*.sql</code> applies clean against <code>mmff_vector</code>.</li>
+         <li><strong>AC:</strong> row exists in <code>permissions</code> with the new code.</li>
+         <li><strong>AC:</strong> <code>roles_permissions</code> rows grant the code to <code>grp_global</code> + <code>grp_portfolio</code>.</li>
+         <li><strong>AC:</strong> <code>VerifyParity</code> returns nil at server boot.</li>
+         <li><strong>Theme:</strong> B16 Security &amp; Auth</li>
+       </ul>
+     </li>
+     ```
+
+     The list must remain parseable for the `<scope> -a` hand-off: the title is the story line, the nested AC bullets are preserved verbatim and passed through (see step 7 below).
    - **Risks** — known risks, dependencies, and "things we're choosing to not fix in this plan" — explicit out-of-scope statements. Defence/finance buyer narrative: name the compensating control where a risk exists.
    - **Verification** — how to know this plan's work is done. Test surface to run, manual click-paths, what `/dev/*` page changes, what migrations apply.
    - **Change Log** — standard pattern: first write = "Initial plan." On regeneration, prepend new entry.
@@ -620,12 +637,12 @@ The `-p` flag is the only `<report>` flag that does NOT use the internet. It dra
 
 6. **Tell the user**:
    - "Plan filed as PLA###. View on /dev/reporting → Plan tab."
-   - Show the Proposed Stories list inline in chat (extracted from the report body), each numbered.
-   - **Ask: "OK to add these N stories to `Vector_Scope.md`?"** Wait for explicit yes / no / edit instruction.
+   - Show the Proposed Stories list inline in chat (extracted from the report body), each numbered, with **every AC bullet rendered as a nested list under the story title** — do not collapse them to a single line. The user is approving the AC set, not just the titles.
+   - **Ask: "OK to add these N stories (with their AC) to `Vector_Scope.md`?"** Wait for explicit yes / no / edit instruction.
 
 7. **On `yes` → hand off to `<scope> -a`**:
-   - Pass the proposed stories as the `[message]` argument to `<scope> -a`, formatted as a numbered list.
-   - `<scope> -a` will then run its own protocol (find theme, check duplicates, set priority, write, update `.claude/scope-refs.map`).
+   - Pass the proposed stories as the `[message]` argument to `<scope> -a`, formatted as a numbered list where **each story is followed by its AC bullets indented underneath** (markdown convention: `   - AC: …` under a `1. **Title.**` parent). The AC bullets MUST survive the hand-off — they are what makes the scope entry verifiable, not decorative chrome.
+   - `<scope> -a` will then run its own protocol (find theme, check duplicates, set priority, write, update `.claude/scope-refs.map`). When the scope skill writes the entry into `Vector_Scope.md`, the AC bullets nest under the story line as a sub-list so each AC is independently checkable.
    - Report which refs were created and which were flagged as duplicates.
 
 8. **On `no` or edits requested**:
@@ -652,23 +669,41 @@ User: <report> -p priority customisation chip refactor
 Agent: [drafts plan, computes next id = PLA056, POSTs]
        Plan filed as PLA056. View on /dev/reporting → Plan tab (47 → 48 rows).
 
-       Proposed stories (8):
-       1. Add artefact_priorities table per workspace. AC: migration applies clean, table exists with 4 seed rows per workspace.
-       2. Migrate artefacts.priority text → priority_id UUID FK. AC: existing rows backfilled by name match, no orphans.
-       3. Priorities CRUD endpoints GET/POST/PATCH/DELETE. AC: padmin can list/create/update/archive.
-       4. Handler accepts ?priority_id=<uuid>[,uuid...] multi-value. AC: filter returns rows for any listed uuid.
-       5. ArtefactPriorityCatalogueProvider context + hooks. AC: useDefaultPriority() returns the workspace's pri_medium.
-       6. NavigationPie Priority chip catalogue-driven. AC: chip enumerates per-workspace priorities, no hardcoded list.
-       7. Test: tenant adds Showstopper priority + chip surfaces it. AC: chip option count grows by 1 without code change.
-       8. Delete PRIORITY_CHIP_OPTIONS literal. AC: grep finds no occurrences.
+       Proposed stories (3 shown for brevity — full list has 8):
 
-       OK to add these 8 stories to Vector_Scope.md?
+       1. **Add artefact_priorities table per workspace.** New per-workspace catalogue
+          replaces the hardcoded PRIORITY_CHIP_OPTIONS literal.
+          - AC: migration NNN_artefact_priorities.sql applies clean against vector_artefacts.
+          - AC: table exists with columns (id uuid PK, workspace_id uuid FK, code text, label text, sort int).
+          - AC: seed inserts 4 rows per existing workspace (low/medium/high/critical).
+          - AC: unique constraint on (workspace_id, code).
+          - AC: schema_migrations row exists for NNN after apply.
+          - Theme: F1 Artefact Type Customisation
+
+       2. **Migrate artefacts.priority text → priority_id UUID FK.**
+          - AC: migration adds priority_id column with FK to artefact_priorities(id).
+          - AC: backfill maps existing text values by name match per workspace.
+          - AC: post-backfill check returns 0 rows where priority IS NOT NULL AND priority_id IS NULL.
+          - AC: old priority text column dropped in same migration.
+          - AC: artefactitems service compiles against new column.
+          - Theme: F1 Artefact Type Customisation
+
+       3. **Priorities CRUD endpoints GET/POST/PATCH/DELETE.**
+          - AC: routes mounted under /_site/workspaces/{wsId}/priorities.
+          - AC: padmin can list (200 + array), create (201 + row), update (200), archive (204).
+          - AC: non-padmin role returns 403 on POST/PATCH/DELETE.
+          - AC: handler_test.go covers allow + deny matrix.
+          - AC: openapi siteAPI.yaml entry exists for each verb.
+          - Theme: F1 Artefact Type Customisation
+
+       OK to add these 8 stories (with their AC) to Vector_Scope.md?
 
 User: yes
 
-Agent: [calls <scope> -a with the formatted list]
-       Added 8 stories under theme RF1.5 (custom-enum chip refactor pattern):
-       - RF1.5.1 through RF1.5.8 created, all P2, all 🔵 IN FLIGHT.
+Agent: [calls <scope> -a with the formatted multi-AC list]
+       Added 8 stories under theme F1 Artefact Type Customisation:
+       - F1.X.1 through F1.X.8 created, all P2, all 🔵 IN FLIGHT.
+       - Each entry has its full AC sub-list intact in Vector_Scope.md.
        - 0 duplicates found.
        - scope-refs.map updated.
 ```
