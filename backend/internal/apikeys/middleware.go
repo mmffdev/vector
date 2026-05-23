@@ -66,6 +66,13 @@ func Middleware(svc *Service, userSynth UserSynth) func(http.Handler) http.Handl
 			// Set subscription_id in context for downstream handlers
 			ctx := context.WithValue(r.Context(), CtxKeySubscriptionID, info.SubscriptionID)
 
+			// PLA060 B16.11.3 — stash validated scopes on ctx so /samantha/v2
+			// data-plane routes can enforce read/write split via RequireScope.
+			// info.Scopes from ValidateKey may be nil for legacy seed rows;
+			// WithScopes materialises to [] so downstream can distinguish
+			// "key auth ran, no scopes granted" from "key auth didn't run."
+			ctx = WithScopes(ctx, info.Scopes)
+
 			// If the caller provided a UserSynth, resolve a synthetic
 			// User and stash it on the context. /_site handlers read
 			// auth.UserFromCtx() to drive permission gating + audit

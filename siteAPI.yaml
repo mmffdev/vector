@@ -797,14 +797,14 @@ paths:
           description: 204 — no content
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
           description: '500 — error codes observed: usermessages.InternalError'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
     put:
       tags:
       - admin
@@ -3614,6 +3614,12 @@ paths:
                     type: string
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     put:
       tags:
       - me
@@ -3649,8 +3655,20 @@ paths:
             application/json:
               schema:
                 type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /me/page-access:
     get:
       tags:
@@ -3715,8 +3733,18 @@ paths:
       responses:
         '204':
           description: 204 — no content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     get:
       tags:
       - me
@@ -3754,8 +3782,16 @@ paths:
                     type: object
                 required:
                 - value
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     put:
       tags:
       - me
@@ -3799,8 +3835,18 @@ paths:
             application/json:
               schema:
                 type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /me/theme-pack:
     get:
       tags:
@@ -5951,6 +5997,12 @@ paths:
                       type: object
                 required:
                 - models
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /portfolio-models/adoption-state:

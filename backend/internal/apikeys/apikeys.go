@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,6 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/zeebo/blake3"
 )
+
+// ErrKeyNotFound is returned by Service.Revoke when the (key, subscription)
+// pair matches no active row. Handler maps this to RFC 9457 404.
+var ErrKeyNotFound = errors.New("api key not found")
 
 // Service manages API key operations.
 type Service struct {
@@ -60,15 +65,7 @@ func (s *Service) Issue(ctx context.Context, subscriptionID string, expiresAt *t
 	}
 
 	var id string
-	err := s.db.QueryRow(ctx,
-		`INSERT INTO admin_api_keys (
-			admin_api_keys_id_subscription,
-			admin_api_keys_prefix,
-			admin_api_keys_hash,
-			admin_api_keys_scopes,
-			admin_api_keys_expires_at
-		) VALUES ($1, $2, $3, $4, $5)
-		 RETURNING admin_api_keys_id`,
+	err := s.db.QueryRow(ctx, sqlInsertAdminAPIKey,
 		subscriptionID, prefix, hash, scopes, expiresAt,
 	).Scan(&id)
 	if err != nil {
@@ -91,19 +88,7 @@ func (s *Service) ValidateKey(ctx context.Context, rawKey string) (*KeyInfo, err
 	prefix := rawKey[:16]
 
 	var info KeyInfo
-	err := s.db.QueryRow(ctx,
-		`SELECT admin_api_keys_id,
-		        admin_api_keys_id_subscription,
-		        admin_api_keys_prefix,
-		        admin_api_keys_scopes,
-		        admin_api_keys_created_at,
-		        admin_api_keys_expires_at,
-		        admin_api_keys_revoked_at,
-		        admin_api_keys_last_used_at
-		 FROM admin_api_keys
-		 WHERE admin_api_keys_hash = $1 AND admin_api_keys_prefix = $2`,
-		hash, prefix,
-	).Scan(
+	err := s.db.QueryRow(ctx, sqlSelectAdminAPIKeyByHash, hash, prefix).Scan(
 		&info.ID, &info.SubscriptionID, &info.Prefix, &info.Scopes,
 		&info.CreatedAt, &info.ExpiresAt, &info.RevokedAt, &info.LastUsedAt,
 	)
@@ -123,10 +108,7 @@ func (s *Service) ValidateKey(ctx context.Context, rawKey string) (*KeyInfo, err
 	}
 
 	// Update last_used_at
-	_, err = s.db.Exec(ctx,
-		`UPDATE admin_api_keys SET admin_api_keys_last_used_at = now() WHERE admin_api_keys_id = $1`,
-		info.ID,
-	)
+	_, err = s.db.Exec(ctx, sqlUpdateAdminAPIKeyLastUsedAt, info.ID)
 	if err != nil {
 		// Log but don't fail the validation
 		fmt.Printf("warn: could not update last_used_at for key %s: %v\n", info.ID, err)
@@ -137,20 +119,7 @@ func (s *Service) ValidateKey(ctx context.Context, rawKey string) (*KeyInfo, err
 
 // ListKeys returns all non-revoked keys for a subscription.
 func (s *Service) ListKeys(ctx context.Context, subscriptionID string) ([]KeyInfo, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT admin_api_keys_id,
-		        admin_api_keys_id_subscription,
-		        admin_api_keys_prefix,
-		        admin_api_keys_scopes,
-		        admin_api_keys_created_at,
-		        admin_api_keys_expires_at,
-		        admin_api_keys_revoked_at,
-		        admin_api_keys_last_used_at
-		 FROM admin_api_keys
-		 WHERE admin_api_keys_id_subscription = $1 AND admin_api_keys_revoked_at IS NULL
-		 ORDER BY admin_api_keys_created_at DESC`,
-		subscriptionID,
-	)
+	rows, err := s.db.Query(ctx, sqlSelectAdminAPIKeysBySubscription, subscriptionID)
 	if err != nil {
 		return nil, fmt.Errorf("query api_keys: %w", err)
 	}
@@ -174,16 +143,27 @@ func (s *Service) ListKeys(ctx context.Context, subscriptionID string) ([]KeyInf
 }
 
 // Revoke marks a key as revoked (soft-delete).
-func (s *Service) Revoke(ctx context.Context, keyID string) error {
-	result, err := s.db.Exec(ctx,
-		`UPDATE admin_api_keys SET admin_api_keys_revoked_at = now() WHERE admin_api_keys_id = $1`,
-		keyID,
-	)
+// LookupOwningSubscription returns the subscription id that owns the given
+// key, regardless of whether the key is revoked. Empty string when the row
+// does not exist. Used only by the audit-log path on cross-tenant denials —
+// callers MUST already have decided the request is being denied; this is
+// not an authorization helper. PLA060 B16.10.4.
+func (s *Service) LookupOwningSubscription(ctx context.Context, keyID string) string {
+	var sub string
+	_ = s.db.QueryRow(ctx, sqlSelectAdminAPIKeyOwningSubscription, keyID).Scan(&sub)
+	return sub
+}
+
+// Revoke soft-deletes an API key by ID, scoped to the actor's subscription.
+// Returns ErrKeyNotFound when no active row matches (caller-tenant + key UUID).
+// This is the gate that prevents cross-tenant revoke (PLA060 B16.10).
+func (s *Service) Revoke(ctx context.Context, keyID, subscriptionID string) error {
+	result, err := s.db.Exec(ctx, sqlSoftArchiveAdminAPIKey, keyID, subscriptionID)
 	if err != nil {
 		return fmt.Errorf("revoke key: %w", err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("key not found")
+		return ErrKeyNotFound
 	}
 	return nil
 }

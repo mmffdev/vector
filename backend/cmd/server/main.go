@@ -212,7 +212,7 @@ func main() {
 	}()
 
 	apiKeysSvc := apikeys.New(pool)
-	apiKeysH := apikeys.NewHandler(apiKeysSvc)
+	apiKeysH := apikeys.NewHandler(apiKeysSvc, auditLog)
 
 	// Seed dev API key for local testing (story 00443).
 	// Only in development; logs the key once for curl testing.
@@ -1842,33 +1842,43 @@ func main() {
 			// exhaust the limit; writes keep the conservative 120/min + per-user gate.
 			readLimit := httprate.LimitByIP(600, time.Minute)
 			writeLimit := httprate.LimitByIP(120, time.Minute)
-			mountArtefactRoutes := func(r chi.Router, h *artefactitems.Handler) {
+			// PLA060 B16.11.4 + .5 — API-key scope enforcement on /samantha/v2
+			// data-plane. JWT-authenticated users bypass scope checks
+			// (handled by apikeys.HasScope itself); API-key callers
+			// must carry the right read/write scope for the resource.
+			mountArtefactRoutes := func(r chi.Router, h *artefactitems.Handler, readScope, writeScope string) {
 				r.Use(authSvc.RequireAuth)
 				r.Use(authSvc.RequireFreshPassword)
 				// PLA-0053 / story 00578: workspace clamp via JWT claim
 				// on the /samantha/v2 surface too (parity with /_site).
 				r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
-				r.With(readLimit).Get("/", h.List)
-				r.With(writeLimit, userWriteLimiter).Post("/", h.Create)
-				r.With(writeLimit, userWriteLimiter).Post("/bulk", h.Bulk)
-				r.With(readLimit).Get("/summary", h.Summary)
-				r.With(readLimit).Get("/facets", h.Facets)
-				r.With(readLimit).Get("/flow-states", h.ListFlowStates)
+				read := apikeys.RequireScope(readScope)
+				write := apikeys.RequireScope(writeScope)
+				r.With(readLimit, read).Get("/", h.List)
+				r.With(writeLimit, userWriteLimiter, write).Post("/", h.Create)
+				r.With(writeLimit, userWriteLimiter, write).Post("/bulk", h.Bulk)
+				r.With(readLimit, read).Get("/summary", h.Summary)
+				r.With(readLimit, read).Get("/facets", h.Facets)
+				r.With(readLimit, read).Get("/flow-states", h.ListFlowStates)
 				// Slice 2.5 (ObjectTree refactor) — agent-introspectable
 				// column catalogue. Same handler as the /_site mount.
-				r.With(readLimit).Get("/columns", h.Columns)
+				r.With(readLimit, read).Get("/columns", h.Columns)
 				// Slice 4.6c — narrow refetch for cascade-touched rows.
-				r.With(readLimit).Get("/by-ids", h.ByIDs)
-				r.With(readLimit).Get("/{id}", h.Get)
-				r.With(writeLimit, userWriteLimiter).Patch("/{id}", h.Patch)
-				r.With(writeLimit, userWriteLimiter).Delete("/{id}", h.Archive)
-				r.With(readLimit).Get("/{id}/children", h.ListChildren)
-				r.With(readLimit).Get("/{id}/field-values", h.ListFieldValues)
-				r.With(writeLimit, userWriteLimiter).Put("/{id}/field-values", h.UpsertFieldValues)
-				r.With(writeLimit, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
+				r.With(readLimit, read).Get("/by-ids", h.ByIDs)
+				r.With(readLimit, read).Get("/{id}", h.Get)
+				r.With(writeLimit, userWriteLimiter, write).Patch("/{id}", h.Patch)
+				r.With(writeLimit, userWriteLimiter, write).Delete("/{id}", h.Archive)
+				r.With(readLimit, read).Get("/{id}/children", h.ListChildren)
+				r.With(readLimit, read).Get("/{id}/field-values", h.ListFieldValues)
+				r.With(writeLimit, userWriteLimiter, write).Put("/{id}/field-values", h.UpsertFieldValues)
+				r.With(writeLimit, userWriteLimiter, write).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
 			}
-			r.Route("/work-items", func(r chi.Router) { mountArtefactRoutes(r, workItemsV2H) })
-			r.Route("/portfolio-items", func(r chi.Router) { mountArtefactRoutes(r, portfolioItemsV2H) })
+			r.Route("/work-items", func(r chi.Router) {
+				mountArtefactRoutes(r, workItemsV2H, apikeys.ScopeWorkItemsRead, apikeys.ScopeWorkItemsWrite)
+			})
+			r.Route("/portfolio-items", func(r chi.Router) {
+				mountArtefactRoutes(r, portfolioItemsV2H, apikeys.ScopePortfolioItemsRead, apikeys.ScopePortfolioItemsWrite)
+			})
 		} else {
 			r.Get("/work-items", func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "v2 work-items not enabled", http.StatusServiceUnavailable)
