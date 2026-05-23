@@ -187,10 +187,10 @@ const sqlSelectWorkItemByID = `
 	`
 
 // sqlSelectWorkItemByIDInWorkspace is the workspace-clamped sibling of
-// sqlSelectWorkItemByID. PLA-0053 / story 00579 — handler picks this
-// when topology.WorkspaceIDFromCtx returns a clamp; cross-workspace
-// IDs return pgx.ErrNoRows (translated to 404 by the handler), so no
-// existence leak between workspaces.
+// sqlSelectWorkItemByID. PLA-0053 / story 00579, updated PLA062 S05.5
+// — handler picks this when sentinel.WorkspaceIDFromCtx returns a
+// clamp; cross-workspace IDs return pgx.ErrNoRows (translated to 404
+// by the handler), so no existence leak between workspaces.
 const sqlSelectWorkItemByIDInWorkspace = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `

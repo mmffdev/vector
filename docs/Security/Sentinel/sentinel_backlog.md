@@ -102,7 +102,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Grep `cmd/server/main.go` for `topology.ClampMiddleware` + `topology.WorkspaceClampMiddleware` returns zero mounts.
 - All existing integration tests that previously passed under the old clamp still pass under Sentinel (substrate parity).
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. Substrate ownership shipped end-to-end: `sentinel.PoolResolver` (resolver.go + sql.go) replaces topology's substrate; 10 mount sites in main.go migrated; 6 handler files migrated to `sentinel.WorkspaceIDFromCtx` (artefactitems, artefactpriorities, artefacttypes, portfoliomodels adopt + adoption_state, flows). Workspace clamp absorbed (new cases 7/8/9). TD-SEN-01 closed. Full backend test suite: 29/32 packages PASS; 3 pre-existing unrelated failures (fields/lintchecks/workspaces — DB-state and lint issues untouched by S05).
 
 ---
 
@@ -427,3 +427,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S02 | 2026-05-24 | 332bc138 | stub `sentinel.page.work-items` runs under `test:sentinel:page` |
 | S03 | 2026-05-24 | a4577e41 | 6 RED cases captured verbatim |
 | S04 | 2026-05-24 | 2d2cd68b | 6 GREEN cases first try; substrate interface in place |
+| S05 | 2026-05-24 | (this commit) | 9 GREEN cases (cases 7/8/9 added for workspace absorption); production Resolver + 10 mount migrations + 6 handler migrations + TD-SEN-01 closed |

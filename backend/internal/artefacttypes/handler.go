@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/topology"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
@@ -41,7 +41,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		types []ArtefactType
 		err   error
 	)
-	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+	if wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context()); ok {
 		types, err = h.Svc.ListByWorkspace(r.Context(), u.SubscriptionID, wsID)
 	} else {
 		types, err = h.Svc.List(r.Context(), u.SubscriptionID)

@@ -2,6 +2,8 @@ package sentinel
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 // ctxKey is a private type so external packages cannot collide on the
@@ -29,4 +31,23 @@ func withClamp(ctx context.Context, c Clamp) context.Context {
 func FromCtx(ctx context.Context) Clamp {
 	c, _ := ctx.Value(clampCtxKey).(Clamp)
 	return c
+}
+
+// WorkspaceIDFromCtx is a convenience facade that mirrors the prior
+// topology.WorkspaceIDFromCtx(ctx) two-value return — UUID + bool
+// "is clamp attached". Handlers migrated by S05.5 use this signature
+// drop-in, then we can simplify call sites incrementally to read
+// FromCtx(ctx).WorkspaceID directly when more fields are needed.
+//
+// Returns (workspaceID, true) when the Sentinel middleware mounted
+// upstream attached a Clamp. Returns (uuid.Nil, false) when the route
+// is not behind Middleware — handlers MUST treat false as "no
+// workspace clamp" and either 403 or skip the workspace narrowing,
+// per the existing pre-Sentinel contract.
+func WorkspaceIDFromCtx(ctx context.Context) (uuid.UUID, bool) {
+	c, ok := ctx.Value(clampCtxKey).(Clamp)
+	if !ok {
+		return uuid.Nil, false
+	}
+	return c.WorkspaceID, true
 }

@@ -49,11 +49,11 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 // ListByWorkspace returns all live artefact types in a single workspace,
 // ordered by (scope, sort_order, name). PLA-0053 / story 00579 — the
 // workspace clamp comes from the JWT-anchored claim seeded by
-// WorkspaceClampMiddleware. Handler resolves workspace via
-// topology.WorkspaceIDFromCtx and passes it here; subscription_id is
-// still passed for defence-in-depth (an artefact_type with a stale
-// or forged workspace_id from a different subscription is still
-// excluded by the AND clause).
+// sentinel.Middleware (PLA062 S05.4, replaced WorkspaceClampMiddleware).
+// Handler resolves workspace via sentinel.WorkspaceIDFromCtx and
+// passes it here; subscription_id is still passed for defence-in-depth
+// (an artefact_type with a stale or forged workspace_id from a
+// different subscription is still excluded by the AND clause).
 func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspaceID uuid.UUID) ([]ArtefactType, error) {
 	if s.pool == nil {
 		return nil, errors.New("vector_artefacts pool not available")

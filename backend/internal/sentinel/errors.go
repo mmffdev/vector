@@ -22,6 +22,19 @@ var (
 	// but the user holds no grant covering it (or any ancestor that
 	// would cover it via descend-inheritance). 403.
 	ErrFocusNoAccess = errors.New("sentinel: user has no grant on focus node")
+
+	// ErrNoWorkspace — the subscription has zero live workspaces. The
+	// JWT carried no workspace_id claim, the FirstLiveWorkspace
+	// fallback hit an empty set, and the request cannot be served.
+	// 403 /errors/sentinel/no-workspace.
+	ErrNoWorkspace = errors.New("sentinel: tenant has no live workspaces")
+
+	// ErrNoWorkspaceRole — workspace was resolved successfully (either
+	// from the JWT claim or the first-live fallback) but the actor
+	// holds no active role on it. 403 /errors/sentinel/no-workspace-role.
+	// Explicitly NOT an empty list — see AC#3 of story 00378 in the
+	// original PLA-0053 work, preserved here under Sentinel ownership.
+	ErrNoWorkspaceRole = errors.New("sentinel: user has no active role on workspace")
 )
 
 // problemBody is the RFC 9457 wire shape the middleware emits. Sentinel

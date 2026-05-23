@@ -49,6 +49,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roles"
@@ -808,16 +809,22 @@ func main() {
 	// SubscriptionID clamp ensures no cross-tenant leak).
 	costCentresH := costcentres.NewHandler(costcentres.NewService(pool), permResolver)
 
-	// PLA-0053 / story 00578: hoist the workspace-clamp lookup once so
-	// every route group that needs the JWT-anchored workspace clamp
-	// reuses the same adapter (topology, artefact-types, work-items,
-	// portfolio-items). Backed by the mmff_vector pool because the
-	// `master_record_workspaces` + `users_roles_workspaces` tables live
-	// there (per docs/c_c_db_routing.md). The middleware itself reads
-	// auth.User.WorkspaceID (the JWT claim) for the workspace; the
-	// lookup runs the HasActiveRole check and the legacy-token
-	// FirstLiveWorkspace fallback.
-	workspaceLookup := topology.PoolWorkspaceLookup{Pool: pool}
+	// PLA062 S05.4: Sentinel is the sole request-level clamp surface.
+	// Replaces the prior topology.PoolWorkspaceLookup + per-route
+	// WorkspaceClampMiddleware mounts that were hoisted in PLA-0053 /
+	// story 00578. PoolResolver carries vaPool (topology_nodes) + pool
+	// (workspaces / roles_workspaces / users) and satisfies
+	// sentinel.Resolver. sentinelMW is the one middleware mounted in
+	// front of every route group that needs the JWT-anchored workspace
+	// clamp; handlers read sentinel.FromCtx(ctx) for workspace_id,
+	// tenant_id, focus_node_id, and the resolved allowed-subtree set.
+	//
+	// The legacy-token fallback (FirstLiveWorkspace), the forgery /
+	// role-revocation guard (HasActiveRole), and the per-grant subtree
+	// clamp all live inside sentinel.Middleware now — no caller need
+	// know about workspaces vs topology_nodes vs roles_workspaces.
+	sentinelResolver := sentinel.NewPoolResolver(vaPool, pool)
+	sentinelMW := sentinel.Middleware(sentinelResolver)
 
 	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
 	// Only available when vaPool is up (vector_artefacts has the search columns).
@@ -1491,7 +1498,7 @@ func main() {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
-			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+			r.Use(sentinelMW)
 			r.Use(httprate.LimitByIP(60, time.Minute))
 			r.Get("/", flowsH.List)
 			// Per-flow state + transition management.
@@ -1553,7 +1560,7 @@ func main() {
 			r.Use(authSvc.RequireFreshPassword)
 			// PLA-0053 / story 00578: workspace clamp via JWT claim.
 			// Runs after auth so middleware has u.WorkspaceID populated.
-			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+			r.Use(sentinelMW)
 			r.With(readLimit17).Get("/", h.List)
 			r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
 			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
@@ -1619,9 +1626,11 @@ func main() {
 		r.Use(userWriteLimiter)
 
 		r.Group(func(r chi.Router) {
-			// PLA-0053 / story 00578: reuses the hoisted workspaceLookup
-			// (was inline PoolWorkspaceLookup pre-00578).
-			r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+			// PLA062 S05.4: Sentinel is the sole request-level clamp.
+			// Replaces the inline PoolWorkspaceLookup wiring this group
+			// carried pre-PLA-0053 / story 00578 and the hoisted
+			// workspaceLookup that followed it.
+			r.Use(sentinelMW)
 
 			r.Get("/tree", orgDesignH.Tree)
 			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
@@ -1710,7 +1719,7 @@ func main() {
 	r.Route("/artefact-types", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+		r.Use(sentinelMW)
 		artefactTypesH.Mount(r)
 		// Re-sync — re-runs strategy + work-type writers against the
 		// already-adopted bundle so schema changes to the writers (new
@@ -1725,7 +1734,7 @@ func main() {
 	r.Route("/artefact-priorities", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
-		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+		r.Use(sentinelMW)
 		artefactPrioritiesH.Mount(r)
 	})
 
@@ -1739,17 +1748,17 @@ func main() {
 			Get("/", portfolioModelsH.List)
 		r.With(
 			auth.RequirePermission(permResolver, permissions.PortfolioList),
-			topology.WorkspaceClampMiddleware(workspaceLookup),
+			sentinelMW,
 		).Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
 		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
 		r.Get("/{id}", portfolioModelsH.GetByModelID)
 		r.With(
 			auth.RequirePermission(permResolver, permissions.PortfolioList),
-			topology.WorkspaceClampMiddleware(workspaceLookup),
+			sentinelMW,
 		).Post("/{id}/adopt", portfolioAdoptH.Adopt)
 		r.With(
 			auth.RequirePermission(permResolver, permissions.PortfolioList),
-			topology.WorkspaceClampMiddleware(workspaceLookup),
+			sentinelMW,
 		).Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
 	})
 
@@ -1869,7 +1878,7 @@ func main() {
 				r.Use(authSvc.RequireFreshPassword)
 				// PLA-0053 / story 00578: workspace clamp via JWT claim
 				// on the /samantha/v2 surface too (parity with /_site).
-				r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+				r.Use(sentinelMW)
 				read := apikeys.RequireScope(readScope)
 				write := apikeys.RequireScope(writeScope)
 				r.With(readLimit, read).Get("/", h.List)
@@ -2100,14 +2109,14 @@ func main() {
 			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Use(userWriteLimiter)
 
-			// Workspace clamp: every list-style read narrows to one
-			// workspace resolved from the JWT workspace_id claim
-			// (PLA-0053 / story 00576 dropped the ?ws= URL surface;
-			// story 00578 hoisted workspaceLookup to top-level).
-			// Middleware stashes workspace_id on context; service reads
+			// Sentinel clamp (PLA062 S05.4): every list-style read
+			// narrows to one workspace resolved from the JWT
+			// workspace_id claim (PLA-0053 / story 00576 dropped the
+			// ?ws= URL surface). Handlers read
+			// sentinel.FromCtx(ctx).WorkspaceID; service queries
 			// splice it into WHERE.
 			r.Group(func(r chi.Router) {
-				r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
+				r.Use(sentinelMW)
 
 				r.Get("/tree", orgDesignH.Tree)
 				r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)

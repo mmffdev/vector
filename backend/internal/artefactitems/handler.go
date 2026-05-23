@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/apikeys"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/topology"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 )
 
 // jsonErrBody safely marshals an error message into a {"error":"..."} JSON body.
@@ -201,7 +201,7 @@ func (h *Handler) ByIDs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wsID, hasWorkspace := topology.WorkspaceIDFromCtx(r.Context())
+	wsID, hasWorkspace := sentinel.WorkspaceIDFromCtx(r.Context())
 
 	items := make([]WorkItem, 0, len(ids))
 	for _, id := range ids {
@@ -373,7 +373,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	// context (seeded by WorkspaceClampMiddleware per story 00578).
 	// When absent, service falls back to subscription-only — admin
 	// tools / migrations that bypass the middleware keep working.
-	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+	if wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context()); ok {
 		wsStr := wsID.String()
 		f.WorkspaceID = &wsStr
 	}
@@ -442,7 +442,7 @@ func (h *Handler) Facets(w http.ResponseWriter, r *http.Request) {
 	subID := actor.SubscriptionID
 
 	var workspaceID uuid.UUID
-	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+	if wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context()); ok {
 		workspaceID = wsID
 	}
 
@@ -521,7 +521,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var wi *WorkItem
-	if wsID, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+	if wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context()); ok {
 		wi, err = h.svc.GetWorkItemInWorkspace(r.Context(), subID, wsID, id)
 	} else {
 		wi, err = h.svc.GetWorkItem(r.Context(), subID, id)

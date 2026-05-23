@@ -223,9 +223,10 @@ type Filters struct {
 	// preference (key "scope.direction"); forwarded via ?dir= query param.
 	ScopeDirection string // "descend" | "ascend"; empty == "descend"
 	// WorkspaceID, when set, clamps reads to artefacts whose
-	// artefact_type belongs to this workspace. PLA-0053 / story 00579.
-	// Populated by the handler from topology.WorkspaceIDFromCtx (seeded
-	// by WorkspaceClampMiddleware per story 00578). When nil (admin
+	// artefact_type belongs to this workspace. PLA-0053 / story 00579,
+	// updated PLA062 S05.5. Populated by the handler from
+	// sentinel.WorkspaceIDFromCtx (seeded by sentinel.Middleware which
+	// replaced topology.WorkspaceClampMiddleware). When nil (admin
 	// tools / migrations bypassing the middleware), reads fall back to
 	// subscription-only — same shape as artefacttypes.Service.List.
 	WorkspaceID *string

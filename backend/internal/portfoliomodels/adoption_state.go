@@ -52,7 +52,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/topology"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 )
 
 // AdoptionStateHandler reads adoption status from the new substrate.
@@ -108,7 +108,7 @@ func (h *AdoptionStateHandler) GetAdoptionState(w http.ResponseWriter, r *http.R
 	// Resolve workspace_id: JWT-anchored claim wins (WorkspaceClampMiddleware);
 	// fall back to first-live-workspace for legacy callers without the clamp.
 	var workspaceID uuid.UUID
-	if id, ok := topology.WorkspaceIDFromCtx(r.Context()); ok {
+	if id, ok := sentinel.WorkspaceIDFromCtx(r.Context()); ok {
 		workspaceID = id
 	} else {
 		err := h.VectorPool.QueryRow(r.Context(), sqlSelectFirstLiveWorkspaceForSubscription,

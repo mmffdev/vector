@@ -21,9 +21,9 @@ import (
 
 // Clamp is the per-request, immutable scope bag attached by Middleware
 // to every request context. Handlers MUST read it via FromCtx — never
-// reach around it to topology.* or auth.UserFromCtx for tenant/focus
-// resolution. The lint:sentinel-clamp-required ratchet (S20) enforces
-// this on every artefact-touching handler.
+// reach around it to topology.* or auth.UserFromCtx for tenant/focus/
+// workspace resolution. The lint:sentinel-clamp-required ratchet (S20)
+// enforces this on every artefact-touching handler.
 //
 // All fields are populated by Middleware before the inner handler runs:
 //
@@ -31,15 +31,21 @@ import (
 //   - UserID           — user.id from the JWT
 //   - Role             — legacy role enum (display only, do not authorise)
 //   - RoleID           — UUID role id (authoritative)
+//   - WorkspaceID      — JWT workspace_id claim > FirstLiveWorkspace fallback (PLA-0053)
 //   - FocusNodeID      — the resolved focus node (URL > user default > tenant root)
 //   - ScopeUp          — include ancestors of FocusNodeID
 //   - ScopeDown        — include descendants of FocusNodeID
 //   - AllowedSubtreeIDs — the resolved subtree the request may see
+//
+// WorkspaceID was added by S05 (PLA062) absorbing the workspace clamp
+// from topology.WorkspaceClampMiddleware. Handlers that previously
+// read topology.WorkspaceIDFromCtx now read FromCtx(ctx).WorkspaceID.
 type Clamp struct {
 	TenantID          uuid.UUID
 	UserID            uuid.UUID
 	Role              string
 	RoleID            uuid.UUID
+	WorkspaceID       uuid.UUID
 	FocusNodeID       uuid.UUID
 	ScopeUp           bool
 	ScopeDown         bool
@@ -79,4 +85,18 @@ type Resolver interface {
 	// TenantRoot returns the subscription's root topology node — the
 	// final fallback when neither ?focus nor user default is set.
 	TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+
+	// FirstLiveWorkspace returns the actor's first live workspace in
+	// their tenant ordered by created_at ASC. Used as fallback when the
+	// JWT carries no workspace_id claim (legacy-token rollout window
+	// per PLA-0053 / story 00576). Returns ErrNoWorkspace when the
+	// tenant has zero live workspaces.
+	FirstLiveWorkspace(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+
+	// HasActiveRole returns true if the actor holds an active role on
+	// the resolved workspace. Called after workspace resolution to
+	// prevent a forged JWT claim (or a token issued before role
+	// revocation) from reaching a workspace the actor has no grant on.
+	// Returns 403 /errors/sentinel/no-workspace-role when false.
+	HasActiveRole(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
 }

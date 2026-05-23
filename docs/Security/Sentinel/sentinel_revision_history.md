@@ -22,6 +22,29 @@
 
 ## History (newest first)
 
+### 2026-05-24 — Workspace clamp absorbed into Sentinel (S05 substrate unification)
+
+**PLA / story.** PLA062 / S05.
+**Decision.** During S05 investigation we confirmed that `topology.ClampMiddleware` (per-grant clamp from PLA-0006) has zero mounts in `cmd/server/main.go` — it's dead code already. The active middleware is `topology.WorkspaceClampMiddleware` (10 mounts) which does workspace narrowing from JWT claim per PLA-0053. Per user direction (2026-05-24), Sentinel absorbed this second axis: workspace_id is now a `Clamp` field, resolved by `sentinel.Middleware` (JWT claim > `FirstLiveWorkspace` fallback), gated by a `HasActiveRole` forgery check, and exposed via `sentinel.WorkspaceIDFromCtx(ctx)` — a drop-in facade matching the prior topology two-value return.
+**Alternatives considered.**
+- Mount sentinel.Middleware **alongside** topology.WorkspaceClampMiddleware (no absorption) — rejected: leaves the procurement-narrative gap ("two ctx entities own scope") that the original brief explicitly forbids.
+- Split workspace absorption into a separate S05b story — rejected: increases the number of broken-intermediate-state moments where some handlers read topology ctx and others read sentinel ctx. Bundling keeps `main` consistent.
+**Standard-ref.** Same as PLA062 baseline — NIST 800-53 AC-3/AC-4, SOC 2 CC6.1/CC6.6, CMMC L2 AC.L2-3.1.1.
+**Cost.** S05 grew from "mount + production resolver" to "mount + production resolver + 3 new test cases (7/8/9) + Clamp.WorkspaceID + Resolver interface extension + 10 mount-site migrations + 6 handler-file migrations + handler ctx-accessor facade". All 9 sentinel tests GREEN attempt 1.
+**Commit(s).** (this commit, S05 close-out)
+**Touched files / surfaces.**
+- `backend/internal/sentinel/types.go` — `Clamp` gains `WorkspaceID`; `Resolver` gains `FirstLiveWorkspace` + `HasActiveRole`
+- `backend/internal/sentinel/errors.go` — `ErrNoWorkspace` + `ErrNoWorkspaceRole` sentinels
+- `backend/internal/sentinel/ctx.go` — `WorkspaceIDFromCtx` facade
+- `backend/internal/sentinel/middleware.go` — workspace resolution + role guard inserted between auth and focus resolution
+- `backend/internal/sentinel/middleware_test.go` — cases 7/8/9 + stub method receivers
+- `backend/internal/sentinel/resolver.go` — `PoolResolver` (full implementation closing TD-SEN-01)
+- `backend/internal/sentinel/sql.go` — recursive-CTE SQL constants
+- `backend/cmd/server/main.go` — `sentinelResolver` + `sentinelMW` wiring; 10 mount-site replacements
+- `backend/internal/{artefactitems,artefactpriorities,artefacttypes,portfoliomodels,flows}/*.go` — handler ctx-accessor migrations + doc-comment refreshes
+
+---
+
 ### 2026-05-24 — Mid-build pivot: backend approach changes from "facade" to "Replace" (own substrate)
 
 **PLA / story.** PLA062 / pre-S03 (between S02 commit `332bc138` and S03 start).

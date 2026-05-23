@@ -63,7 +63,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/portfolio"
-	"github.com/mmffdev/vector-backend/internal/topology"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 )
 
 // Adoption error codes — must match the seed in
@@ -448,7 +448,7 @@ func (o *Orchestrator) Adopt(
 // directly. The DB fallback (first-live-workspace) exists for orphan-sub
 // fixtures and pre-clamp callers only.
 func (o *Orchestrator) resolveWorkspaceID(ctx context.Context, subscriptionID uuid.UUID) (uuid.UUID, error) {
-	if id, ok := topology.WorkspaceIDFromCtx(ctx); ok {
+	if id, ok := sentinel.WorkspaceIDFromCtx(ctx); ok {
 		return id, nil
 	}
 	var ws uuid.UUID

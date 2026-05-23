@@ -10,7 +10,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/topology"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
@@ -37,7 +37,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
-	wsID, ok := topology.WorkspaceIDFromCtx(r.Context())
+	wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
 	if !ok {
 		httperr.Write(w, r, http.StatusInternalServerError, "workspace clamp missing")
 		return
@@ -62,7 +62,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
-	wsID, ok := topology.WorkspaceIDFromCtx(r.Context())
+	wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
 	if !ok {
 		httperr.Write(w, r, http.StatusInternalServerError, "workspace clamp missing")
 		return
@@ -94,7 +94,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
-	wsID, ok := topology.WorkspaceIDFromCtx(r.Context())
+	wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
 	if !ok {
 		httperr.Write(w, r, http.StatusInternalServerError, "workspace clamp missing")
 		return
@@ -138,7 +138,7 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
-	wsID, ok := topology.WorkspaceIDFromCtx(r.Context())
+	wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
 	if !ok {
 		httperr.Write(w, r, http.StatusInternalServerError, "workspace clamp missing")
 		return

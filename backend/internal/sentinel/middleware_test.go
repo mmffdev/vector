@@ -50,6 +50,8 @@ var (
 	fixtureFocusInB     = uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 	fixtureUserDefault  = uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
 	fixtureTenantARootA = uuid.MustParse("dddddddd-dddd-dddd-dddd-dddddddddddd")
+	fixtureWorkspaceInA = uuid.MustParse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+	fixtureWorkspaceInB = uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
 )
 
 // fixtureUserA returns a roletypes.User scoped to tenant A. The
@@ -59,11 +61,20 @@ func fixtureUserA() *roletypes.User {
 	return &roletypes.User{
 		ID:             uuid.MustParse("99999999-aaaa-aaaa-aaaa-999999999999"),
 		SubscriptionID: fixtureTenantA,
-		WorkspaceID:    fixtureTenantARootA, // placeholder; sentinel uses topology, not workspace_id
+		WorkspaceID:    fixtureWorkspaceInA, // JWT carries a workspace claim (PLA-0053 era)
 		Email:          "alice@tenant-a.test",
 		Role:           roletypes.RoleUser,
 		IsActive:       true,
 	}
+}
+
+// fixtureLegacyUserA returns a user whose JWT predates PLA-0053 — no
+// workspace_id claim. Used by case 8 to assert the FirstLiveWorkspace
+// fallback path.
+func fixtureLegacyUserA() *roletypes.User {
+	u := fixtureUserA()
+	u.WorkspaceID = uuid.Nil
+	return u
 }
 
 // withFixtureUser shoves a *roletypes.User onto ctx the way auth.RequireAuth
@@ -92,6 +103,14 @@ type stubResolver struct {
 
 	// tenantRootFn returns the tenant-root node for fallback case (3).
 	tenantRootFn func(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+
+	// firstLiveWorkspaceFn returns the legacy-JWT-fallback workspace.
+	// Configured in S05.1 workspace-resolution tests (cases 7/8).
+	firstLiveWorkspaceFn func(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+
+	// hasActiveRoleFn returns whether the actor has an active role on
+	// the resolved workspace. Configured per case.
+	hasActiveRoleFn func(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
 }
 
 // ResolveSubtree satisfies sentinel.Resolver. Delegates to resolveFn;
@@ -123,6 +142,27 @@ func (s *stubResolver) TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.U
 		return fixtureTenantARootA, nil
 	}
 	return s.tenantRootFn(ctx, tenant)
+}
+
+// FirstLiveWorkspace satisfies sentinel.Resolver. Returns a default
+// fixture workspace when firstLiveWorkspaceFn is unset — cases (1)-(6)
+// inject a workspace_id via the fixture user JWT so they never hit
+// this fallback.
+func (s *stubResolver) FirstLiveWorkspace(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error) {
+	if s.firstLiveWorkspaceFn == nil {
+		return fixtureWorkspaceInA, nil
+	}
+	return s.firstLiveWorkspaceFn(ctx, tenant)
+}
+
+// HasActiveRole satisfies sentinel.Resolver. Default: true (most
+// cases). Cases that want to assert the 403 /no-workspace-role path
+// override this with a stub returning false.
+func (s *stubResolver) HasActiveRole(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error) {
+	if s.hasActiveRoleFn == nil {
+		return true, nil
+	}
+	return s.hasActiveRoleFn(ctx, workspaceID, userID)
 }
 
 // inspectorHandler is the inner handler the middleware wraps. Each test
@@ -371,5 +411,146 @@ func TestMiddleware_Case6_NoJWT_401ProblemJSON(t *testing.T) {
 	}
 	if body["type"] != "/errors/sentinel/unauthorized" {
 		t.Errorf("body.type = %v, want /errors/sentinel/unauthorized", body["type"])
+	}
+}
+
+// ---------------------------------------------------------------------
+// Case 7 — JWT carries workspace_id claim → clamp.WorkspaceID set to it
+// ---------------------------------------------------------------------
+// Added by S05.1 (PLA062) absorbing the workspace clamp from
+// topology.WorkspaceClampMiddleware into Sentinel. The contract: when
+// the JWT carries workspace_id (PLA-0053 era — every token from
+// 2026-05-16 onward), Middleware uses it directly without hitting
+// FirstLiveWorkspace, but STILL checks HasActiveRole so a forged claim
+// cannot reach a workspace the actor has no grant on.
+
+func TestMiddleware_Case7_JWTWorkspaceClaim_SetsWorkspaceID(t *testing.T) {
+	firstLiveCalled := false
+	hasRoleCalled := false
+	resolver := &stubResolver{
+		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {
+			return []uuid.UUID{focus}, nil
+		},
+		firstLiveWorkspaceFn: func(_ context.Context, _ uuid.UUID) (uuid.UUID, error) {
+			firstLiveCalled = true
+			t.Fatal("FirstLiveWorkspace must NOT be called when JWT carries workspace_id")
+			return uuid.Nil, nil
+		},
+		hasActiveRoleFn: func(_ context.Context, ws, _ uuid.UUID) (bool, error) {
+			hasRoleCalled = true
+			if ws != fixtureWorkspaceInA {
+				t.Errorf("HasActiveRole called with ws=%s, want %s (from JWT claim)", ws, fixtureWorkspaceInA)
+			}
+			return true, nil
+		},
+	}
+
+	mw := Middleware(resolver)
+	insp := &inspectorHandler{}
+	h := mw(insp)
+
+	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA())) // JWT has WorkspaceID = fixtureWorkspaceInA
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if firstLiveCalled {
+		t.Error("FirstLiveWorkspace was called despite JWT carrying workspace_id")
+	}
+	if !hasRoleCalled {
+		t.Error("HasActiveRole was NOT called — forgery guard skipped")
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+	if insp.clamp == nil {
+		t.Fatal("clamp not attached")
+	}
+	if insp.clamp.WorkspaceID != fixtureWorkspaceInA {
+		t.Errorf("clamp.WorkspaceID = %s, want %s", insp.clamp.WorkspaceID, fixtureWorkspaceInA)
+	}
+}
+
+// ---------------------------------------------------------------------
+// Case 8 — Legacy JWT (no workspace_id) → falls back to FirstLiveWorkspace
+// ---------------------------------------------------------------------
+// PLA-0053 / story 00576 backwards-compatibility window: tokens
+// minted before 2026-05-16 carry no workspace_id claim. The
+// middleware must fall back to FirstLiveWorkspace for these.
+
+func TestMiddleware_Case8_LegacyJWT_FallsBackToFirstLive(t *testing.T) {
+	firstLiveCalled := false
+	resolver := &stubResolver{
+		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {
+			return []uuid.UUID{focus}, nil
+		},
+		firstLiveWorkspaceFn: func(_ context.Context, tenant uuid.UUID) (uuid.UUID, error) {
+			firstLiveCalled = true
+			if tenant != fixtureTenantA {
+				t.Errorf("FirstLiveWorkspace called with tenant=%s, want %s", tenant, fixtureTenantA)
+			}
+			return fixtureWorkspaceInA, nil
+		},
+	}
+
+	mw := Middleware(resolver)
+	insp := &inspectorHandler{}
+	h := mw(insp)
+
+	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req = req.WithContext(withFixtureUser(req.Context(), fixtureLegacyUserA())) // no workspace_id
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if !firstLiveCalled {
+		t.Fatal("FirstLiveWorkspace was NOT called despite legacy JWT")
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if insp.clamp.WorkspaceID != fixtureWorkspaceInA {
+		t.Errorf("clamp.WorkspaceID = %s, want %s (first-live)", insp.clamp.WorkspaceID, fixtureWorkspaceInA)
+	}
+}
+
+// ---------------------------------------------------------------------
+// Case 9 — User has no active role on resolved workspace → 403 problem+json
+// ---------------------------------------------------------------------
+// Even when workspace resolution succeeds (JWT or fallback), the actor
+// must hold an active role on the resolved workspace. This guards
+// against forged JWT claims and against tokens issued before role
+// revocation. Preserves AC#3 from the original PLA-0053 story 00378.
+
+func TestMiddleware_Case9_NoActiveRoleOnWorkspace_403ProblemJSON(t *testing.T) {
+	resolver := &stubResolver{
+		hasActiveRoleFn: func(_ context.Context, _, _ uuid.UUID) (bool, error) {
+			return false, nil
+		},
+	}
+
+	mw := Middleware(resolver)
+	insp := &inspectorHandler{}
+	h := mw(insp)
+
+	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA()))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if insp.called {
+		t.Fatal("inner handler ran when user has no role on workspace — must not")
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/problem+json") {
+		t.Fatalf("expected application/problem+json, got %q", ct)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("body not JSON: %v", err)
+	}
+	if body["type"] != "/errors/sentinel/no-workspace-role" {
+		t.Errorf("body.type = %v, want /errors/sentinel/no-workspace-role", body["type"])
 	}
 }
