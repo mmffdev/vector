@@ -45,6 +45,10 @@
     "e2e": "node --test --test-reporter=spec 'e2e/**/*.spec.mjs'",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:sentinel": "npm run test:sentinel:unit && npm run test:sentinel:page && npm run test:sentinel:e2e",
+    "test:sentinel:unit": "vitest run --testNamePattern \"^sentinel\\.unit\"",
+    "test:sentinel:page": "vitest run --testNamePattern \"^sentinel\\.page\"",
+    "test:sentinel:e2e": "playwright test --config dev/tests/playwright/playwright.sentinel.config.ts",
     "knip": "knip",
     "knip:fix": "knip --fix --allow-remove-files"
   },

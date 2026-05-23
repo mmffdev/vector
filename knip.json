@@ -16,7 +16,9 @@
     "infra/scripts/**/*.{ts,mts,js,mjs,cjs}",
     "e2e/**/*.spec.{mjs,ts,js}",
     "**/*.test.{ts,tsx}",
-    "**/*.spec.{ts,tsx,mjs}"
+    "**/*.spec.{ts,tsx,mjs}",
+    "app/**/__tests__/**/*.{ts,tsx}",
+    "app/sentinel/**"
   ],
   "project": [
     "app/**/*.{ts,tsx}",
@@ -37,14 +39,18 @@
     ".next/**",
     "out/**",
     "dist/**",
-    "build/**"
+    "build/**",
+    "dev/tests/playwright/playwright*.config.ts"
   ],
   "ignoreDependencies": [
     "@types/.*"
   ],
   "ignoreBinaries": [
     "psql",
-    "PGPASSWORD"
+    "PGPASSWORD",
+    "python3",
+    "knip",
+    "playwright"
   ],
   "next": {
     "entry": [

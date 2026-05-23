@@ -51,7 +51,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Page-tag pattern `sentinel.page.work-items` runs only that page's tests — verified by adding a stub test and selecting it via CLI.
 - Playwright config recognises `--grep "@sentinel"`.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD; tier discriminator is `describe()` name prefix (`sentinel.unit.*` / `sentinel.page.*`), selected via `--testNamePattern`. Stub test at `app/(user)/work-items/__tests__/sentinel.page.work-items.test.tsx` proves the slice works; S10 replaces it with the real page-integration assertions.
 
 ---
 
@@ -397,4 +397,5 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 
 | Story | Done date | Commit SHA | Tests |
 |---|---|---|---|
-| (none yet) | | | |
+| S01 | 2026-05-24 | 6fe3b94e | (docs-only — no test) |
+| S02 | 2026-05-24 | (this commit) | stub `sentinel.page.work-items` runs under `test:sentinel:page` |
