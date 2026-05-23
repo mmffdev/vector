@@ -23,10 +23,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // ClampMiddleware wraps a handler chain so that every request lands
@@ -51,13 +54,14 @@ func (s *Service) ClampMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := auth.UserFromCtx(r.Context())
 		if u == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 			return
 		}
 
 		ids, err := s.ClampPredicate(r.Context(), u.SubscriptionID, u.ID)
 		if err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("topology.ClampMiddleware ClampPredicate: %v", err)
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 			return
 		}
 
@@ -110,7 +114,7 @@ func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Ha
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			u := auth.UserFromCtx(r.Context())
 			if u == nil {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 				return
 			}
 
@@ -132,7 +136,8 @@ func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Ha
 					return
 				}
 				if err != nil {
-					http.Error(w, "internal error", http.StatusInternalServerError)
+					log.Printf("topology.WorkspaceClampMiddleware FirstLiveWorkspace: %v", err)
+					httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 					return
 				}
 				workspaceID = id
@@ -145,7 +150,8 @@ func WorkspaceClampMiddleware(lookup WorkspaceLookup) func(http.Handler) http.Ha
 			// a forged JWT claim can't bypass authorization.
 			has, err := lookup.HasActiveRole(r.Context(), workspaceID, u.ID)
 			if err != nil {
-				http.Error(w, "internal error", http.StatusInternalServerError)
+				log.Printf("topology.WorkspaceClampMiddleware HasActiveRole: %v", err)
+				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 				return
 			}
 			if !has {

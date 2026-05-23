@@ -2,11 +2,14 @@ package notifications
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/realtime"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // StreamHandler exposes GET /notifications/stream as a Server-Sent
@@ -32,7 +35,7 @@ func NewStreamHandler(hub *realtime.Hub) *StreamHandler {
 func (h *StreamHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromCtx(r.Context())
 	if user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 
@@ -40,7 +43,8 @@ func (h *StreamHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	// support it (shouldn't happen behind chi but worth the guard).
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		log.Printf("notifications.Stream: response writer not http.Flusher (cannot stream SSE)")
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 

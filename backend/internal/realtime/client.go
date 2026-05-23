@@ -13,6 +13,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // Client is one open WebSocket connection. The send channel is the
@@ -75,7 +77,7 @@ func ServeWS(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := auth.UserFromCtx(r.Context())
 		if u == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 			return
 		}
 

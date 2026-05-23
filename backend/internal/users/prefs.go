@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"regexp"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
+	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // ── Active scope ─────────────────────────────────────────────────────────────
@@ -62,12 +65,13 @@ type themePackReq struct {
 func (h *Handler) GetThemePack(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	if actor == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	pack, err := h.Svc.GetThemePack(r.Context(), actor.ID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	writeJSON(w, http.StatusOK, themePackResp{Pack: pack})
@@ -122,12 +126,13 @@ type activeScopeReq struct {
 func (h *Handler) GetActiveScope(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	if actor == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	nodeID, err := h.Svc.GetActiveScope(r.Context(), actor.ID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	var s *string
@@ -142,33 +147,34 @@ func (h *Handler) GetActiveScope(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SetActiveScope(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	if actor == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	var req activeScopeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	var nodeID *uuid.UUID
 	if req.NodeID != nil {
 		parsed, err := uuid.Parse(*req.NodeID)
 		if err != nil {
-			http.Error(w, "invalid node_id", http.StatusBadRequest)
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 			return
 		}
 		nodeID = &parsed
 	}
 	if err := h.Svc.SetActiveScope(r.Context(), actor.ID, nodeID); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
 		if errors.Is(err, ErrScopeNotGranted) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -255,17 +261,18 @@ type preferenceReq struct {
 func (h *Handler) GetPreference(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	if actor == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	key := chi.URLParam(r, "key")
 	if !prefKeyPattern.MatchString(key) {
-		http.Error(w, "invalid key", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	raw, err := h.Svc.GetPreference(r.Context(), actor.ID, key)
 	if err != nil && !errors.Is(err, ErrNotFound) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	// Missing key → value: null (rather than 404) — callers always seed.
@@ -280,21 +287,21 @@ func (h *Handler) GetPreference(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SetPreference(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	if actor == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	key := chi.URLParam(r, "key")
 	if !prefKeyPattern.MatchString(key) {
-		http.Error(w, "invalid key", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	var req preferenceReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if len(req.Value) == 0 {
-		http.Error(w, "missing value", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
 		return
 	}
 	// json.RawMessage is bytes — confirm they parse as JSON before
@@ -302,15 +309,16 @@ func (h *Handler) SetPreference(w http.ResponseWriter, r *http.Request) {
 	// rather than at the DB driver.
 	var probe any
 	if err := json.Unmarshal(req.Value, &probe); err != nil {
-		http.Error(w, "value is not valid JSON", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.SetPreference(r.Context(), actor.ID, key, req.Value); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -320,20 +328,21 @@ func (h *Handler) SetPreference(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeletePreference(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	if actor == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	key := chi.URLParam(r, "key")
 	if !prefKeyPattern.MatchString(key) {
-		http.Error(w, "invalid key", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.DeletePreference(r.Context(), actor.ID, key); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -344,20 +353,21 @@ func (h *Handler) DeletePreference(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SetThemePack(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())
 	if actor == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
 		return
 	}
 	var req themePackReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
 		return
 	}
 	if err := h.Svc.SetThemePack(r.Context(), actor.ID, req.Pack); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

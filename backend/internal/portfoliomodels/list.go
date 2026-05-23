@@ -1,9 +1,13 @@
 package portfoliomodels
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
+
+	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 // templateLayerDTO is the wire shape for a single layer in the response.
@@ -31,7 +35,8 @@ type modelListResponseDTO struct {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	models, err := h.Svc.ListPublishedModels(r.Context())
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		log.Printf("portfoliomodels.List ListPublishedModels: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 		return
 	}
 	out := modelListResponseDTO{Models: make([]modelListItemDTO, 0, len(models))}
