@@ -427,4 +427,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S02 | 2026-05-24 | 332bc138 | stub `sentinel.page.work-items` runs under `test:sentinel:page` |
 | S03 | 2026-05-24 | a4577e41 | 6 RED cases captured verbatim |
 | S04 | 2026-05-24 | 2d2cd68b | 6 GREEN cases first try; substrate interface in place |
-| S05 | 2026-05-24 | (this commit) | 9 GREEN cases (cases 7/8/9 added for workspace absorption); production Resolver + 10 mount migrations + 6 handler migrations + TD-SEN-01 closed |
+| S05 | 2026-05-24 | 26fee3a6 | 9 GREEN cases (cases 7/8/9 added for workspace absorption); production Resolver + 10 mount migrations + 6 handler migrations + TD-SEN-01 closed |
