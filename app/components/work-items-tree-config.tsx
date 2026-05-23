@@ -100,6 +100,11 @@ export interface WorkItem {
   // for writers (PATCH still posts sprint_id).
   sprint: { id: string; alias: string } | null;
   parent_id: string | null;
+  // Joined parent ref — backend LEFT JOINs onto self in
+  // sqlWorkItemColumns. Null for unparented roots and for rows whose
+  // parent has been archived since. TypePrefix+KeyNum reconstruct the
+  // human id ("ST-12"); title is the parent's display label.
+  parent: { id: string; type_prefix: string; key_num: number; title: string } | null;
   owner_id: string;
   // PLA-0021 / 00459 — backend now joins the users row and emits
   // `owner: {id, display_name, avatar_url}` derived from first/last name
@@ -601,6 +606,28 @@ export function buildWorkItemsColumns(
       minWidth: 100,
       cellModifier: "owner",
       render: (row) => <OwnerChip user={row.owner ?? null} />,
+    },
+    {
+      key: "parent",
+      label: "Parent",
+      width: 200,
+      minWidth: 120,
+      cellModifier: "parent",
+      render: (row) => {
+        if (!row.parent) return <>—</>;
+        const idText = `${row.parent.type_prefix}-${row.parent.key_num}`;
+        return (
+          <span title={`${idText} — ${row.parent.title}`}>
+            <span className="tree_accordion-dense__parent-id">{idText}</span>
+            {row.parent.title ? (
+              <>
+                <span className="tree_accordion-dense__parent-sep"> — </span>
+                <span className="tree_accordion-dense__parent-title">{row.parent.title}</span>
+              </>
+            ) : null}
+          </span>
+        );
+      },
     },
     {
       key: "sprint",

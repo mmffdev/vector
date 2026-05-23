@@ -6,6 +6,7 @@
   "treeName": "workitems",
   "resourceUrl": "/work-items",
   "scope": "work",
+  "createableTypeSlots": ["wrk_story", "wrk_defect", "wrk_task", "wrk_epic"],
   "dndResourceType": "work_item",
   "dndEnabled": true,
   "defaultSortKey": "key_num",

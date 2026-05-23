@@ -74,6 +74,7 @@ const FIXTURE: WorkItem[] = Array.from({ length: 5 }, (_, i) => ({
   sprint_id: i === 0 ? "sprint-1" : null,
   sprint: i === 0 ? { id: "sprint-1", alias: "S-1" } : null,
   parent_id: null,
+  parent: null,
   owner_id: `user-0000${i}`,
   // PLA-0021 / 00459 (WS4-B) — first fixture row carries a real owner ref
   // so the Owner-cell renderer test below can find an `[data-testid=

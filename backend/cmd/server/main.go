@@ -309,6 +309,7 @@ func main() {
 	var portfolioAdoptionStateH *portfoliomodels.AdoptionStateHandler
 	var portfolioAdoptH *portfoliomodels.AdoptHandler
 	var portfolioAdoptStreamH *portfoliomodels.AdoptStreamHandler
+	var portfolioResyncH *portfoliomodels.ResyncHandler
 	// devResetH is constructed after the vaPool block so MasterReset can
 	// target vector_artefacts. See below.
 	var devResetH *portfoliomodels.DevResetHandler
@@ -553,6 +554,7 @@ func main() {
 	}
 	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, pool, vaPool, masterRecordSvc)
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
+	portfolioResyncH = portfoliomodels.NewResyncHandler(libPools.RO, pool, vaPool)
 
 	// PLA-0026 / Story 00501 (B12): adoption-state reads from the new
 	// substrate (master_record_portfolios + artefacts_types) via vaPool.
@@ -1562,6 +1564,12 @@ func main() {
 			// introspection consume this; no subscription clamp on the
 			// catalogue itself, the surface is global to the resource.
 			r.With(readLimit17).Get("/columns", h.Columns)
+			// Per-type custom-field schema. Consumed by the V2 create
+			// flyout + inline edit form to render the right inputs for
+			// each artefact type (Risk → risk_score, risk_impact, …;
+			// Defect → severity, …). Mounted before /{id} so the
+			// literal "types" segment wins over the {id} param.
+			r.With(readLimit17).Get("/types/{typeId}/fields", h.ListFieldsForType)
 			// Slice 4.6c — narrow refetch for cascade-touched rows.
 			// Mounted before /{id} so the literal segment wins over
 			// the param.
@@ -1699,6 +1707,11 @@ func main() {
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(topology.WorkspaceClampMiddleware(workspaceLookup))
 		artefactTypesH.Mount(r)
+		// Re-sync — re-runs strategy + work-type writers against the
+		// already-adopted bundle so schema changes to the writers (new
+		// columns, depth recomputation, etc.) reach existing rows
+		// without a destructive re-adoption.
+		r.Post("/resync", portfolioResyncH.Resync)
 	})
 
 	// PLA-0055 / story 00596 — per-workspace priorities CRUD. Same

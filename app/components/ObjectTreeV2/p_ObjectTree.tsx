@@ -6,8 +6,51 @@
 // lives in <ResourceTree>; every data-type concern lives in the config.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { workItems as workItemsApi, portfolioItems as portfolioItemsApi } from "@/app/lib/apiSite";
+import {
+  workItems as workItemsApi,
+  portfolioItems as portfolioItemsApi,
+  topology,
+  sprints,
+  releases,
+  milestones,
+  lookups,
+  workItems as workItemsLookup,
+  type OrgNode,
+  type Timebox,
+  type Milestone,
+  type UserInScope,
+} from "@/app/lib/apiSite";
+import { apiSite } from "@/app/lib/api";
+import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { useScope } from "@/app/contexts/ScopeContext";
+import { useParentCandidates } from "@/app/components/ArtefactInlineForm/useParentCandidates";
+import { ColourPicker } from "@/app/components/ColourPicker";
+import { RichTextField } from "@/app/components/RichTextField";
+import type { JSONContent } from "@tiptap/react";
+import { useFieldsForType } from "@/app/components/ObjectTreeV2/hooks/useFieldsForType";
+import {
+  CreateCustomFields,
+  customFieldsToWire,
+  type CustomFieldValues,
+} from "@/app/components/ObjectTreeV2/sheets/CreateCustomFields";
+
+// Walks a TipTap JSON doc and concatenates every text node into a single
+// plain string. Used to extract a description plaintext from the create
+// flyout's RichTextField output so the legacy `description` TEXT column
+// (which the create POST handler reads) carries the user's words even
+// though the rich JSON ships separately via a follow-up PATCH into the
+// `description_doc` JSONB column.
+function docToPlainText(node: JSONContent | null | undefined): string {
+  if (!node) return "";
+  if (typeof node.text === "string") return node.text;
+  const parts: string[] = [];
+  for (const child of node.content ?? []) {
+    parts.push(docToPlainText(child));
+  }
+  // Insert newlines between top-level block children so paragraphs survive
+  // the round-trip when the user views the plaintext fallback.
+  return parts.join(node.type === "doc" ? "\n" : "");
+}
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
 // Slice 4 — PARENT_PREFIX_MAP no longer imported here. The reparent
 // legality rule moves into a per-domain rules module so V2's shell
@@ -106,9 +149,17 @@ export interface ObjectTreeDataConfig<T = any> {
   // resource ("/work-items" or "/portfolio-items"). When omitted, derived
   // from `mode` for back-compat. Supplied by p_wizard_*.json sidecars.
   resourceUrl?: string;
-  // Optional scope hint for diagnostics / addressing — does NOT influence
-  // routing (the backend route already encodes the scope).
+  // Scope hint sourced from p_wizard_*.json. Drives the artefact-type
+  // catalogue lookup for the create-action picker (work vs strategy).
+  // When omitted, V2 falls back to "work".
   scope?: "work" | "strategy";
+  // Per-grid create-action allow-list (post slot→UUID resolution by
+  // resolveSlotRefs from `createableTypeSlots`). When set, narrows the
+  // create-action picker to just these types; one entry collapses the
+  // picker to a single labelled button (e.g. /risk renders "Risk").
+  // Omit to keep the legacy "show all scoped types" behaviour (used by
+  // the /scope harness, which intentionally exposes the full catalogue).
+  createableTypeIds?: string[];
 }
 
 export default function ObjectTree({
@@ -195,13 +246,244 @@ export default function ObjectTree({
 
   // Action bar — artefact type picker that focuses the "Add new" CTA.
   // Design-only for now (no create wiring); options come from the workspace
-  // artefact-type catalogue, same source as the filter chips.
-  const actionTypeOptions = useChipTypeOptions("work");
+  // artefact-type catalogue. Scope is sourced from the sidecar so
+  // /portfolio-items pulls strategy types instead of work types;
+  // createableTypeIds (if present) further narrows the list to the
+  // grid's allow-list (e.g. /risk = just Risk).
+  const scopedTypeOptions = useChipTypeOptions(wizardConfig?.scope ?? "work");
+  const actionTypeOptions = useMemo(() => {
+    const ids = wizardConfig?.createableTypeIds;
+    if (!ids?.length) return scopedTypeOptions;
+    const allow = new Set(ids);
+    return scopedTypeOptions.filter((o) => allow.has(o.value));
+  }, [scopedTypeOptions, wizardConfig?.createableTypeIds]);
   const [actionTypeId, setActionTypeId] = useState<string>("");
   const actionTypeLabel = useMemo(() => {
     const found = actionTypeOptions.find((o) => o.value === actionTypeId);
     return found?.label ?? null;
   }, [actionTypeOptions, actionTypeId]);
+
+  // Create flyout — live data sources for the dropdowns. Mirrors the
+  // pattern in ArtefactInlineForm (the existing edit form): topology
+  // tree, per-type flow states, users-in-scope, sprints/releases/milestones
+  // for the active workspace, and parent candidates for the chosen type's
+  // prefix. All fetches are tolerant — one failing source doesn't poison
+  // the others; the dropdown falls back to "— None —" only.
+  const workspaceId = useActiveWorkspace();
+  const { types: typeCatalogue } = useArtefactTypeCatalogue();
+  const selectedType = useMemo(
+    () => typeCatalogue.find((x) => x.id === actionTypeId) ?? null,
+    [typeCatalogue, actionTypeId],
+  );
+  const actionTypePrefix = selectedType?.prefix ?? null;
+  // Rule inputs sourced from the type catalogue + the sidecar's scope.
+  // - isStrategic: strategic-scope grids (portfolio) skip Sprint / Release /
+  //   Plan estimate; those concepts only apply on the execution side.
+  // - isTopLevel: top-of-ladder strategic types (Theme, layer_depth=0) have
+  //   no allowed parent — hide the Parent field entirely.
+  // - isRisk: Risk type doesn't carry sprint or release allocation today.
+  const isStrategic = (wizardConfig?.scope ?? "work") === "strategy";
+  const isTopLevel = selectedType?.layer_depth === 0;
+  const isRisk = selectedType?.slot === "wrk_risk";
+  // Field visibility flags derived from the above.
+  const showSprint = !isStrategic && !isRisk;
+  const showRelease = !isStrategic && !isRisk;
+  const showPlanEstimate = !isStrategic;
+
+  const [createTopologyNodes, setCreateTopologyNodes] = useState<OrgNode[]>([]);
+  const [createFlowStates, setCreateFlowStates] = useState<
+    Array<{ id: string; name: string; flow_position?: number }>
+  >([]);
+  const [createUsers, setCreateUsers] = useState<UserInScope[]>([]);
+  const [createSprints, setCreateSprints] = useState<Timebox[]>([]);
+  const [createReleases, setCreateReleases] = useState<Timebox[]>([]);
+  const [createMilestones, setCreateMilestones] = useState<Milestone[]>([]);
+
+  const {
+    strategic: createParentStrategic,
+    execution: createParentExecution,
+  } = useParentCandidates({
+    typePrefix: actionTypePrefix,
+    scope: wizardConfig?.scope ?? "work",
+    workspaceId,
+  });
+
+  // Per-type custom-field schema. The hook fetches whenever actionTypeId
+  // flips to a non-empty UUID; bindings come back ordered by display
+  // position. Hosts a parallel `customFieldValues` map keyed by
+  // field_library_id so the user's entries survive switching focus
+  // between native + custom inputs.
+  //
+  // We compute the route base inline (rather than reuse the in-scope
+  // `resourceUrl` const) because that const is declared further down in
+  // this component — using it here would be a TDZ reference. Same mode-
+  // based fallback as the resourceUrl block below.
+  const customFieldsRoute =
+    wizardConfig?.resourceUrl ?? (mode === "portfolio_items" ? "/portfolio-items" : "/work-items");
+  const { bindings: customFieldBindings } = useFieldsForType(customFieldsRoute, actionTypeId || null);
+  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValues>({});
+  useEffect(() => {
+    // Reset on type change so values from a prior type don't bleed into
+    // the next attempt (different bindings, different storage routing).
+    setCustomFieldValues({});
+  }, [actionTypeId]);
+
+  // Risk-only cross-scope parent candidates. Risk lives in the work scope
+  // but its risk-register UX wants a parent picker that spans BOTH
+  // execution work items AND strategic portfolio items within the active
+  // topology clamp — so a risk can hang off a Theme / BO / Feature OR a
+  // Story / Epic / Defect / Task. The two list endpoints both honour
+  // ?meg= (forwarded by apiSite on GETs), so the clamp comes for free;
+  // we just merge the two responses and group them under headings. Other
+  // types use the prefix-restricted useParentCandidates above.
+  const [riskParentExec, setRiskParentExec] = useState<
+    Array<{ id: string; type_prefix: string; key_num: number; title: string }>
+  >([]);
+  const [riskParentStrat, setRiskParentStrat] = useState<
+    Array<{ id: string; type_prefix: string; key_num: number; title: string }>
+  >([]);
+  useEffect(() => {
+    if (!isRisk || !actionTypeId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        // page_size large enough to cover any realistic workspace clamp;
+        // the clamp is what keeps the result set small. apiSite forwards
+        // ?meg= from the URL on GETs.
+        const qs = "page_size=500";
+        const [exec, strat] = await Promise.all([
+          apiSite<{ items: unknown[] }>(`/work-items?${qs}`).catch(() => ({ items: [] })),
+          apiSite<{ items: unknown[] }>(`/portfolio-items?${qs}`).catch(() => ({ items: [] })),
+        ]);
+        if (cancelled) return;
+        const shape = (rows: unknown[]) =>
+          (rows as Array<{ id?: string; type_prefix?: string; key_num?: number; title?: string }>)
+            .filter((r) => r && r.id && r.type_prefix && typeof r.key_num === "number")
+            .map((r) => ({
+              id: r.id!,
+              type_prefix: r.type_prefix!,
+              key_num: r.key_num!,
+              title: r.title ?? "",
+            }));
+        setRiskParentExec(shape(exec.items ?? []));
+        setRiskParentStrat(shape(strat.items ?? []));
+      } catch {
+        // Falls through to empty — dropdown shows "— None (root) —" only.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isRisk, actionTypeId]);
+
+  // Fetch the per-type catalogues whenever the user arms a new type.
+  // Topology / users / sprints / releases / milestones are workspace-wide
+  // so they don't strictly need to refetch on actionTypeId change, but
+  // doing so on the first open keeps the data fresh without burning a
+  // call on closed state. Flow states ARE per-type so they must refetch.
+  useEffect(() => {
+    if (!actionTypeId || !workspaceId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [topo, fs, us, sp, rel, ms] = await Promise.all([
+          topology.tree().catch(() => [] as OrgNode[]),
+          workItemsLookup
+            .listFlowStates(`artefact_type_id=${encodeURIComponent(actionTypeId)}`)
+            .catch(() => ({ flow_states: [] as unknown[] })),
+          lookups.usersInScope().catch(() => ({ users: [] as UserInScope[], count: 0 })),
+          sprints.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
+          releases.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
+          milestones
+            .list(`workspace_id=${workspaceId}`)
+            .catch(() => ({ milestones: [] as Milestone[], count: 0 })),
+        ]);
+        if (cancelled) return;
+        setCreateTopologyNodes(Array.isArray(topo) ? topo : []);
+        setCreateFlowStates(
+          ((fs as { flow_states: unknown[] }).flow_states ?? []) as Array<{
+            id: string;
+            name: string;
+            flow_position?: number;
+          }>,
+        );
+        setCreateUsers((us as { users: UserInScope[] }).users ?? []);
+        setCreateSprints((sp as { items?: Timebox[] }).items ?? []);
+        setCreateReleases((rel as { items?: Timebox[] }).items ?? []);
+        setCreateMilestones((ms as { milestones: Milestone[] }).milestones ?? []);
+      } catch {
+        // Falls through — individual catches above mean any one source
+        // failing doesn't poison the others.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [actionTypeId, workspaceId]);
+
+  // Controlled state for the create form. Reset whenever the user arms
+  // a different type (or cancels), so a half-filled form doesn't bleed
+  // into the next attempt.
+  const [createDraft, setCreateDraft] = useState<{
+    title: string;
+    description_doc: JSONContent | null;
+    parent_id: string;
+    topology_node_id: string;
+    flow_state_id: string;
+    owner_id: string;
+    sprint_id: string;
+    release_id: string;
+    milestone_id: string;
+    story_points: string;
+    colour: string;
+  }>({
+    title: "",
+    description_doc: null,
+    parent_id: "",
+    topology_node_id: "",
+    flow_state_id: "",
+    owner_id: "",
+    sprint_id: "",
+    release_id: "",
+    milestone_id: "",
+    story_points: "",
+    colour: "",
+  });
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  // Reset draft when the user closes the flyout or switches type.
+  // Topology defaults to the active scope node so the new artefact lands
+  // on the user's current clamp by default — they can change it before
+  // submit. Applies to every type (execution, strategic, risk).
+  useEffect(() => {
+    setCreateDraft({
+      title: "",
+      description_doc: null,
+      parent_id: "",
+      topology_node_id: activeScopeNodeId ?? "",
+      flow_state_id: "",
+      owner_id: "",
+      sprint_id: "",
+      release_id: "",
+      milestone_id: "",
+      story_points: "",
+      colour: "",
+    });
+    setCreateError(null);
+  }, [actionTypeId, activeScopeNodeId]);
+
+  // Default flow state to the type's lowest-position state once the
+  // per-type catalogue lands. Skipped if the user has already picked one.
+  useEffect(() => {
+    if (!actionTypeId) return;
+    if (createDraft.flow_state_id) return;
+    if (createFlowStates.length === 0) return;
+    const sorted = [...createFlowStates].sort(
+      (a, b) => (a.flow_position ?? 0) - (b.flow_position ?? 0),
+    );
+    setCreateDraft((d) => ({ ...d, flow_state_id: sorted[0]?.id ?? "" }));
+  }, [actionTypeId, createFlowStates, createDraft.flow_state_id]);
 
   // ArtefactInlineForm — single-open state for the inline edit panel
   // that expands beneath the action bar when the user clicks a row's
@@ -368,7 +650,9 @@ export default function ObjectTree({
   //
   // Workspace catalogues are still consulted — but only for display
   // metadata (label + colour) keyed by UUIDs we already know are present.
-  const { types: workspaceTypes } = useArtefactTypeCatalogue();
+  // typeCatalogue (above) is the SAME context — aliased as workspaceTypes
+  // here for the rest of this file's existing call sites.
+  const workspaceTypes = typeCatalogue;
   const { priorities: workspacePriorities } = useArtefactPriorityCatalogue();
 
   // PLA057 / OBJ1 — chip options come from the backend facets endpoint,
@@ -743,17 +1027,29 @@ export default function ObjectTree({
     />
   );
 
+  // Collapse the create-action to a single labelled button when the
+  // grid's allow-list is exactly one type (e.g. /risk → "Risk"). Two
+  // or more options render the type-picker dropdown as before.
+  const createAction =
+    actionTypeOptions.length === 1
+      ? ({
+          mode: "single" as const,
+          label: actionTypeOptions[0].label,
+          onCreate: () => setActionTypeId(actionTypeOptions[0].value),
+        })
+      : ({
+          mode: "type-picker" as const,
+          label: "Create New",
+          options: actionTypeOptions,
+          selectedTypeId: actionTypeId,
+          onSelectType: setActionTypeId,
+          onCancel: () => setActionTypeId(""),
+        });
+
   const actionBarNode = (
     <ActionBar
       ariaLabel="Work item actions"
-      createAction={{
-        mode: "type-picker",
-        label: "Create New",
-        options: actionTypeOptions,
-        selectedTypeId: actionTypeId,
-        onSelectType: setActionTypeId,
-        onCancel: () => setActionTypeId(""),
-      }}
+      createAction={createAction}
       search={{
         placeholder: config.searchPlaceholder ?? "Search…",
         value: searchQuery,
@@ -781,11 +1077,122 @@ export default function ObjectTree({
   // transition between. Visibility is gated by data-open on the wrapper,
   // which drives grid-template-rows + opacity + translateY in CSS.
   //
-  // Field inventory below is design-only (PLA-0052 Path A): every column
-  // on `artefacts` (vector_artefacts) plus a custom-fields section that
-  // shows one stub input per `field_library.field_type` so the visual
-  // contract is reviewable. No live data, no submit wiring.
+  // Fields below are wired to live data: topology / flow states / users /
+  // sprints / releases / milestones come from the same API surface
+  // ArtefactInlineForm consumes; parent candidates run through
+  // useParentCandidates with the selected type's prefix. Submit POSTs
+  // to ${resourceUrl}?meg=<activeScopeNodeId> so the new row is pinned
+  // to the active topology scope (apiSite only auto-forwards ?meg= on
+  // GETs — POSTs must pass it explicitly).
   const tab = (open: boolean) => (open ? 0 : -1);
+
+  const submitCreate = async () => {
+    if (!actionTypeId || !selectedType) return;
+    const title = createDraft.title.trim();
+    if (!title) {
+      setCreateError("Title is required.");
+      return;
+    }
+    setCreateSubmitting(true);
+    setCreateError(null);
+    try {
+      // Backend POST contract today: { item_type: <lowercase name>, title,
+      // description?, status?, priority_id?, story_points?, sprint_id?,
+      // parent_id? }. Topology node comes from ?meg= URL param. Other
+      // fields (release_id, milestone_id, flow_state_id, owned_by_user_id,
+      // colour, description_doc) are NOT yet accepted at create — they're
+      // applied via a follow-up PATCH on the new id, keeping the artefact
+      // atomic from the user's perspective even though the wire shape is
+      // two round-trips. Extension of the create handler to accept these
+      // natively is tracked as TD-CREATE-ATOMIC-NATIVE-FIELDS.
+      const body: Record<string, unknown> = {
+        item_type: selectedType.name.toLowerCase(),
+        title,
+      };
+      const descriptionPlaintext = docToPlainText(createDraft.description_doc).trim();
+      if (descriptionPlaintext) body.description = descriptionPlaintext;
+      if (createDraft.parent_id) body.parent_id = createDraft.parent_id;
+      if (showSprint && createDraft.sprint_id) body.sprint_id = createDraft.sprint_id;
+      // Custom-field values land atomically with the artefact insert
+      // (backend wraps both writes in one transaction). customFieldsToWire
+      // drops empty values and routes each populated entry to the right
+      // *_value column by field_type.
+      const customWire = customFieldsToWire(customFieldValues, customFieldBindings);
+      if (customWire.length > 0) body.custom_fields = customWire;
+      if (showPlanEstimate) {
+        const sp = createDraft.story_points.trim();
+        if (sp !== "") {
+          const n = parseInt(sp, 10);
+          if (Number.isFinite(n)) body.story_points = n;
+        }
+      }
+
+      // ?meg= pins the new row to the active topology scope. apiSite's
+      // withForwardedMeg only fires on GETs, so we add it explicitly on
+      // POST. The user may have changed the dropdown away from the active
+      // scope node — prefer the form's value when present.
+      //
+      // resourceUrl can already carry GET-only filters (e.g. /risk's
+      // sidecar is "/work-items?item_type_id=<uuid>" for the LIST
+      // surface). The POST handler ignores query params other than ?meg=,
+      // but a bare `${resourceUrl}?meg=...` concat would produce a
+      // double-`?` malformed URL. Strip any existing query string and
+      // rebuild cleanly from the path + meg.
+      const meg = createDraft.topology_node_id || activeScopeNodeId || "";
+      const postPath = resourceUrl.split("?")[0];
+      const url = meg
+        ? `${postPath}?meg=${encodeURIComponent(meg)}`
+        : postPath;
+      const created = (await apiSite<{ id: string }>(url, {
+        method: "POST",
+        body: JSON.stringify(body),
+      })) as { id?: string } | null;
+
+      // Follow-up PATCH for fields the create handler doesn't accept yet.
+      // Each field is "absent ⇒ no change" so we only send what the user
+      // actually set. Failures here don't roll back the artefact — we
+      // surface them as a non-fatal toast and let the user fix via the
+      // inline edit form.
+      const newId = created?.id;
+      if (newId) {
+        const patch: Record<string, unknown> = {};
+        if (showRelease && createDraft.release_id) patch.release_id = createDraft.release_id;
+        if (createDraft.milestone_id) patch.milestone_id = createDraft.milestone_id;
+        if (createDraft.flow_state_id) patch.flow_state_id = createDraft.flow_state_id;
+        if (createDraft.owner_id) patch.owned_by_user_id = createDraft.owner_id;
+        if (createDraft.colour) patch.colour = createDraft.colour;
+        // Rich-text JSON doc lands via PATCH into the JSONB
+        // `description_doc` column. The plaintext fallback in `description`
+        // was set on the create POST so list-view summaries still render
+        // even before the doc patch lands.
+        if (createDraft.description_doc) patch.description_doc = createDraft.description_doc;
+        if (Object.keys(patch).length > 0) {
+          try {
+            // Same path-strip as the POST: resourceUrl can carry GET-only
+            // query params (e.g. `?item_type_id=<uuid>` on /risk) which
+            // become illegal segments when concatenated with `/${newId}`.
+            await apiSite(`${postPath}/${newId}`, {
+              method: "PATCH",
+              body: JSON.stringify(patch),
+            });
+          } catch {
+            notify.info("Artefact created — some fields couldn't be applied. Open it to fix.");
+          }
+        }
+      }
+
+      await refetchWindow();
+      setActionTypeId("");
+      notify.success(`${actionTypeLabel ?? "Artefact"} created.`);
+    } catch (e) {
+      setCreateError(
+        e instanceof Error ? e.message : "Create failed. Please try again.",
+      );
+    } finally {
+      setCreateSubmitting(false);
+    }
+  };
+
   const createFlyoutNode = (
     <section
       className="tree_accordion-dense__createflyout"
@@ -813,10 +1220,7 @@ export default function ObjectTree({
           className="tree_accordion-dense__createflyout-form"
           onSubmit={(e) => {
             e.preventDefault();
-            // Design-only — surface intent in console until wired.
-            // eslint-disable-next-line no-console
-            console.log("Create artefact", { artefact_type_id: actionTypeId, label: actionTypeLabel });
-            setActionTypeId("");
+            void submitCreate();
           }}
         >
           {/* ─── Core (artefacts columns) ──────────────────────────── */}
@@ -830,34 +1234,105 @@ export default function ObjectTree({
                 className="tree_accordion-dense__createflyout-input"
                 placeholder={actionTypeLabel ? `${actionTypeLabel} title…` : "Title…"}
                 tabIndex={tab(!!actionTypeId)}
+                value={createDraft.title}
+                onChange={(e) =>
+                  setCreateDraft((d) => ({ ...d, title: e.target.value }))
+                }
+                autoFocus={!!actionTypeId}
+                required
               />
             </label>
 
-            <label className="tree_accordion-dense__createflyout-field">
+            <div className="tree_accordion-dense__createflyout-field">
               <span className="tree_accordion-dense__createflyout-field-label">Description</span>
-              <textarea
-                className="tree_accordion-dense__createflyout-input"
-                rows={3}
-                placeholder="Optional rich text"
-                tabIndex={tab(!!actionTypeId)}
+              {/* RichTextField — TipTap-backed JSON doc, same primitive
+                  the inline edit form uses. We keep a controlled-doc
+                  pattern via onChange so the draft is up-to-date on
+                  submit. Plaintext is extracted from this doc on submit
+                  and POSTed as `description`; the full JSON ships via
+                  the follow-up PATCH into `description_doc`. */}
+              <RichTextField
+                key={actionTypeId || "empty"}
+                value={createDraft.description_doc}
+                onChange={(doc) =>
+                  setCreateDraft((d) => ({ ...d, description_doc: doc }))
+                }
+                placeholder="Add a description…"
               />
-            </label>
+            </div>
 
             <div className="tree_accordion-dense__createflyout-row">
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">
-                  Parent artefact
-                </span>
-                <select
-                  className="tree_accordion-dense__createflyout-input"
-                  tabIndex={tab(!!actionTypeId)}
-                  defaultValue=""
-                >
-                  <option value="">— None (root) —</option>
-                  <option value="stub-1">Epic: Onboarding revamp</option>
-                  <option value="stub-2">Feature: Risk register</option>
-                </select>
-              </label>
+              {/* Parent is hidden for top-of-ladder strategic types
+                  (layer_depth=0, e.g. Theme) — there's nothing they can
+                  parent under. Every other type renders the picker; if
+                  the prefix has no allowed parents the candidate list
+                  is empty and the user sees "— None (root) —" only. */}
+              {!isTopLevel && (
+                <label className="tree_accordion-dense__createflyout-field">
+                  <span className="tree_accordion-dense__createflyout-field-label">
+                    Parent artefact
+                  </span>
+                  <select
+                    className="tree_accordion-dense__createflyout-input"
+                    tabIndex={tab(!!actionTypeId)}
+                    value={createDraft.parent_id}
+                    onChange={(e) =>
+                      setCreateDraft((d) => ({ ...d, parent_id: e.target.value }))
+                    }
+                  >
+                    <option value="">— None (root) —</option>
+                    {isRisk ? (
+                      <>
+                        {/* Risk's parent picker spans both scopes within
+                            the active topology clamp. Grouped under
+                            Strategic / Execution headings so the user
+                            sees the hierarchy at a glance. Each option
+                            shows prefix-num + title. */}
+                        {riskParentStrat.length > 0 && (
+                          <optgroup label="Strategic Items">
+                            {riskParentStrat.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.type_prefix}-{r.key_num} — {r.title}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {riskParentExec.length > 0 && (
+                          <optgroup label="Execution Items">
+                            {riskParentExec.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.type_prefix}-{r.key_num} — {r.title}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {/* Non-Risk parent picker now also spans both
+                            scopes (Story / Epic / Defect can parent
+                            under Feature). Same Strategic / Execution
+                            optgroup shape as the Risk branch above so
+                            the user sees the hierarchy at a glance. */}
+                        {createParentStrategic.length > 0 && (
+                          <optgroup label="Strategic Items">
+                            {createParentStrategic.map((c) => (
+                              <option key={c.id} value={c.id}>{c.label}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {createParentExecution.length > 0 && (
+                          <optgroup label="Execution Items">
+                            {createParentExecution.map((c) => (
+                              <option key={c.id} value={c.id}>{c.label}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    )}
+                  </select>
+                </label>
+              )}
 
               <label className="tree_accordion-dense__createflyout-field">
                 <span className="tree_accordion-dense__createflyout-field-label">
@@ -866,12 +1341,21 @@ export default function ObjectTree({
                 <select
                   className="tree_accordion-dense__createflyout-input"
                   tabIndex={tab(!!actionTypeId)}
-                  defaultValue=""
+                  value={createDraft.topology_node_id}
+                  onChange={(e) =>
+                    setCreateDraft((d) => ({ ...d, topology_node_id: e.target.value }))
+                  }
                 >
                   <option value="">— Unassigned —</option>
-                  <option value="stub-a">Platform / Identity</option>
-                  <option value="stub-b">Platform / Billing</option>
-                  <option value="stub-c">Revenue / Acquisition</option>
+                  {createTopologyNodes.map((n) => {
+                    const labelText = n.label_override ?? n.name;
+                    const isActive = activeScopeNodeId && n.id === activeScopeNodeId;
+                    return (
+                      <option key={n.id} value={n.id}>
+                        {isActive ? `★ ${labelText} (current scope)` : labelText}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
             </div>
@@ -884,29 +1368,18 @@ export default function ObjectTree({
                 <select
                   className="tree_accordion-dense__createflyout-input"
                   tabIndex={tab(!!actionTypeId)}
-                  defaultValue=""
+                  value={createDraft.flow_state_id}
+                  onChange={(e) =>
+                    setCreateDraft((d) => ({ ...d, flow_state_id: e.target.value }))
+                  }
                 >
                   <option value="">— Initial —</option>
-                  <option value="backlog">Backlog</option>
-                  <option value="ready">Ready</option>
-                  <option value="doing">Doing</option>
+                  {createFlowStates.map((fs) => (
+                    <option key={fs.id} value={fs.id}>{fs.name}</option>
+                  ))}
                 </select>
               </label>
 
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">
-                  Position
-                </span>
-                <input
-                  type="number"
-                  className="tree_accordion-dense__createflyout-input"
-                  defaultValue={0}
-                  tabIndex={tab(!!actionTypeId)}
-                />
-              </label>
-            </div>
-
-            <div className="tree_accordion-dense__createflyout-row">
               <label className="tree_accordion-dense__createflyout-field">
                 <span className="tree_accordion-dense__createflyout-field-label">
                   Owner
@@ -914,124 +1387,166 @@ export default function ObjectTree({
                 <select
                   className="tree_accordion-dense__createflyout-input"
                   tabIndex={tab(!!actionTypeId)}
-                  defaultValue=""
+                  value={createDraft.owner_id}
+                  onChange={(e) =>
+                    setCreateDraft((d) => ({ ...d, owner_id: e.target.value }))
+                  }
                 >
                   <option value="">— Me —</option>
-                  <option value="stub-u1">Alex Chen</option>
-                  <option value="stub-u2">Priya Shah</option>
+                  {createUsers.map((u) => (
+                    <option key={u.id} value={u.id}>{u.display_name}</option>
+                  ))}
                 </select>
               </label>
+            </div>
 
+            {/* Sprint / Release — execution timeboxes. Hidden for
+                strategic-scope grids (portfolio) and for Risk. Strategic
+                items don't sprint-plan; risks don't ship in a release. */}
+            {(showSprint || showRelease) && (
+              <div className="tree_accordion-dense__createflyout-row">
+                {showSprint && (
+                  <label className="tree_accordion-dense__createflyout-field">
+                    <span className="tree_accordion-dense__createflyout-field-label">
+                      Sprint
+                    </span>
+                    <select
+                      className="tree_accordion-dense__createflyout-input"
+                      tabIndex={tab(!!actionTypeId)}
+                      value={createDraft.sprint_id}
+                      onChange={(e) =>
+                        setCreateDraft((d) => ({ ...d, sprint_id: e.target.value }))
+                      }
+                    >
+                      <option value="">— Unscheduled —</option>
+                      {createSprints.map((s) => (
+                        <option key={s.id} value={s.id}>{s.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {showRelease && (
+                  <label className="tree_accordion-dense__createflyout-field">
+                    <span className="tree_accordion-dense__createflyout-field-label">
+                      Release
+                    </span>
+                    <select
+                      className="tree_accordion-dense__createflyout-input"
+                      tabIndex={tab(!!actionTypeId)}
+                      value={createDraft.release_id}
+                      onChange={(e) =>
+                        setCreateDraft((d) => ({ ...d, release_id: e.target.value }))
+                      }
+                    >
+                      <option value="">— Unscheduled —</option>
+                      {createReleases.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
+
+            <div className="tree_accordion-dense__createflyout-row">
               <label className="tree_accordion-dense__createflyout-field">
                 <span className="tree_accordion-dense__createflyout-field-label">
-                  Assigned to
+                  Milestone
                 </span>
                 <select
                   className="tree_accordion-dense__createflyout-input"
                   tabIndex={tab(!!actionTypeId)}
-                  defaultValue=""
+                  value={createDraft.milestone_id}
+                  onChange={(e) =>
+                    setCreateDraft((d) => ({ ...d, milestone_id: e.target.value }))
+                  }
                 >
-                  <option value="">— Unassigned —</option>
-                  <option value="stub-u1">Alex Chen</option>
-                  <option value="stub-u2">Priya Shah</option>
+                  <option value="">— None —</option>
+                  {createMilestones.map((m) => (
+                    <option
+                      key={m.timeboxes_milestones_id}
+                      value={m.timeboxes_milestones_id}
+                    >
+                      {m.timeboxes_milestones_name} ({m.timeboxes_milestones_date_target})
+                    </option>
+                  ))}
                 </select>
               </label>
+
+              {/* Plan estimate is execution-only. Strategic artefacts
+                  don't carry story points. */}
+              {showPlanEstimate && (
+                <label className="tree_accordion-dense__createflyout-field">
+                  <span className="tree_accordion-dense__createflyout-field-label">
+                    Plan estimate (points)
+                  </span>
+                  <input
+                    type="number"
+                    step={1}
+                    min={0}
+                    className="tree_accordion-dense__createflyout-input"
+                    tabIndex={tab(!!actionTypeId)}
+                    value={createDraft.story_points}
+                    onChange={(e) =>
+                      setCreateDraft((d) => ({ ...d, story_points: e.target.value }))
+                    }
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Colour — mirrors the inline edit form. ColourPicker is the
+                shared swatch + popover primitive; on-create the user
+                can colour-code the row before it lands. Available on
+                every type since `artefacts.colour` is a base column. */}
+            <div className="tree_accordion-dense__createflyout-field">
+              <span className="tree_accordion-dense__createflyout-field-label">
+                Colour
+              </span>
+              <ColourPicker
+                value={createDraft.colour || null}
+                onChange={(hex) =>
+                  setCreateDraft((d) => ({ ...d, colour: hex ?? "" }))
+                }
+              />
             </div>
 
             <p className="tree_accordion-dense__createflyout-meta">
               <span>Type: <strong>{actionTypeLabel ?? "—"}</strong></span>
               <span>Number: <strong>auto</strong></span>
               <span>Created by: <strong>me</strong></span>
-              <span>Workspace + Subscription: <strong>session-scoped</strong></span>
+              <span>
+                Scope:{" "}
+                <strong>
+                  {activeScopeNodeId
+                    ? createTopologyNodes.find((n) => n.id === activeScopeNodeId)
+                        ?.label_override ??
+                      createTopologyNodes.find((n) => n.id === activeScopeNodeId)?.name ??
+                      "active node"
+                    : "workspace-wide"}
+                </strong>
+              </span>
             </p>
+            {createError && (
+              <p className="tree_accordion-dense__createflyout-meta" role="alert" style={{ color: "var(--danger, #c00)" }}>
+                {createError}
+              </p>
+            )}
           </div>
 
-          {/* ─── Custom fields (per-type field_library bindings) ───── */}
-          <div className="tree_accordion-dense__createflyout-section">
-            <div className="tree_accordion-dense__createflyout-section-head">
-              <span className="cf-tree__section-label">Custom Fields</span>
-              <span className="tree_accordion-dense__createflyout-stub-tag">stub</span>
-            </div>
-
-            <label className="tree_accordion-dense__createflyout-field">
-              <span className="tree_accordion-dense__createflyout-field-label">Short text (textbox)</span>
-              <input type="text" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
-            </label>
-
-            <label className="tree_accordion-dense__createflyout-field">
-              <span className="tree_accordion-dense__createflyout-field-label">Long text (richtext)</span>
-              <textarea rows={2} className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
-            </label>
-
-            <div className="tree_accordion-dense__createflyout-row">
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">Integer</span>
-                <input type="number" step={1} className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
-              </label>
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">Decimal</span>
-                <input type="number" step="0.01" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
-              </label>
-            </div>
-
-            <div className="tree_accordion-dense__createflyout-row">
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">Date</span>
-                <input type="date" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
-              </label>
-              <label className="tree_accordion-dense__createflyout-field tree_accordion-dense__createflyout-field--inline">
-                <input type="checkbox" tabIndex={tab(!!actionTypeId)} />
-                <span className="tree_accordion-dense__createflyout-field-label">Boolean</span>
-              </label>
-            </div>
-
-            <div className="tree_accordion-dense__createflyout-row">
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">Select (one)</span>
-                <select className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} defaultValue="">
-                  <option value="">— Choose —</option>
-                  <option value="a">Option A</option>
-                  <option value="b">Option B</option>
-                </select>
-              </label>
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">Multiselect</span>
-                <select multiple size={3} className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)}>
-                  <option value="a">Option A</option>
-                  <option value="b">Option B</option>
-                  <option value="c">Option C</option>
-                </select>
-              </label>
-            </div>
-
-            <fieldset className="tree_accordion-dense__createflyout-radiogroup">
-              <legend className="tree_accordion-dense__createflyout-field-label">Radio</legend>
-              <label className="tree_accordion-dense__createflyout-radio">
-                <input type="radio" name="stub-radio" tabIndex={tab(!!actionTypeId)} /> One
-              </label>
-              <label className="tree_accordion-dense__createflyout-radio">
-                <input type="radio" name="stub-radio" tabIndex={tab(!!actionTypeId)} /> Two
-              </label>
-              <label className="tree_accordion-dense__createflyout-radio">
-                <input type="radio" name="stub-radio" tabIndex={tab(!!actionTypeId)} /> Three
-              </label>
-            </fieldset>
-
-            <div className="tree_accordion-dense__createflyout-row">
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">User picker</span>
-                <select className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} defaultValue="">
-                  <option value="">— Choose user —</option>
-                  <option value="stub-u1">Alex Chen</option>
-                  <option value="stub-u2">Priya Shah</option>
-                </select>
-              </label>
-              <label className="tree_accordion-dense__createflyout-field">
-                <span className="tree_accordion-dense__createflyout-field-label">URL</span>
-                <input type="url" placeholder="https://…" className="tree_accordion-dense__createflyout-input" tabIndex={tab(!!actionTypeId)} />
-              </label>
-            </div>
-          </div>
+          {/* Custom-field section — live bindings from the backend
+              schema endpoint (GET /work-items/types/{id}/fields). Empty
+              for types with no bindings; otherwise renders one input per
+              binding (ordered by position). Values land in the same POST
+              body as `custom_fields: [...]` and are committed inside the
+              backend's create transaction (atomic with the artefact). */}
+          <CreateCustomFields
+            bindings={customFieldBindings}
+            values={customFieldValues}
+            onChange={setCustomFieldValues}
+            tabIndex={tab(!!actionTypeId)}
+          />
 
           <div className="tree_accordion-dense__createflyout-actions">
             <button
@@ -1039,6 +1554,7 @@ export default function ObjectTree({
               className="btn btn--sm btn--secondary"
               tabIndex={tab(!!actionTypeId)}
               onClick={() => setActionTypeId("")}
+              disabled={createSubmitting}
             >
               Cancel
             </button>
@@ -1046,8 +1562,11 @@ export default function ObjectTree({
               type="submit"
               className="btn btn--sm btn--primary"
               tabIndex={tab(!!actionTypeId)}
+              disabled={createSubmitting || !createDraft.title.trim()}
             >
-              + Create {actionTypeLabel ?? "artefact"}
+              {createSubmitting
+                ? "Creating…"
+                : `+ Create ${actionTypeLabel ?? "artefact"}`}
             </button>
           </div>
         </form>

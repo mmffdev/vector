@@ -131,6 +131,32 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 			violations = append(violations, Violation{"colour", "Colour must be a 6-digit hex value (e.g. #3B82F6)."})
 		}
 	}
+	// ParentTypeID: empty string = clear to NULL, UUID string = set.
+	// Self-reference check happens below once we know the target id; we
+	// can't validate cross-tenant or cross-scope without a lookup, so
+	// the FK + the application-layer guard in the SET branch handle that.
+	var parentTypeUUID *uuid.UUID
+	if in.ParentTypeID != nil && *in.ParentTypeID != "" {
+		pid, perr := uuid.Parse(*in.ParentTypeID)
+		if perr != nil {
+			violations = append(violations, Violation{"parent_type_id", "parent_type_id must be a valid UUID."})
+		} else if pid == id {
+			violations = append(violations, Violation{"parent_type_id", "An artefact type cannot be its own parent."})
+		} else {
+			parentTypeUUID = &pid
+		}
+	}
+	// LayerDepth: empty string = clear to NULL, otherwise must parse as
+	// a non-negative integer.
+	var layerDepthInt *int
+	if in.LayerDepth != nil && *in.LayerDepth != "" {
+		var n int
+		if _, perr := fmt.Sscanf(*in.LayerDepth, "%d", &n); perr != nil || n < 0 {
+			violations = append(violations, Violation{"layer_depth", "Layer depth must be a non-negative integer."})
+		} else {
+			layerDepthInt = &n
+		}
+	}
 
 	if len(violations) > 0 {
 		msgs := make([]string, len(violations))
@@ -170,6 +196,24 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 		} else {
 			setClauses = append(setClauses, fmt.Sprintf("artefacts_types_colour = $%d", argN))
 			args = append(args, c)
+		}
+		argN++
+	}
+	if in.ParentTypeID != nil {
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_id_parent_type = $%d", argN))
+		if parentTypeUUID == nil {
+			args = append(args, nil) // explicit clear to NULL
+		} else {
+			args = append(args, *parentTypeUUID)
+		}
+		argN++
+	}
+	if in.LayerDepth != nil {
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_layer_depth = $%d", argN))
+		if layerDepthInt == nil {
+			args = append(args, nil)
+		} else {
+			args = append(args, *layerDepthInt)
 		}
 		argN++
 	}

@@ -6,15 +6,18 @@ import Panel from "@/app/components/Panel";
 import PageHeading from "@/app/components/PageHeading";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
+import VisualisationPanel from "@/app/components/VisualisationPanel";
 import { apiSite } from "@/app/lib/api";
-import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
+import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import workItemsWizardJson from "@/app/components/ObjectTree/configs/p_wizard_workitems.json";
+import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
+import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
 
 export default function WorkItemsPage() {
   const { full } = usePageTitle();
@@ -32,8 +35,17 @@ export default function WorkItemsPage() {
     by_type: Record<string, number>;
   } | null>(null);
 
+  // ObjectTreeV2 sidecars carry createableTypeSlots (e.g. ["wrk_story",
+  // "wrk_defect", "wrk_task", "wrk_epic"]) which resolveSlotRefs rewrites
+  // to createableTypeIds at mount. On first render before the catalogue
+  // resolves, the slot list stays unresolved and the grid waits.
+  const { types } = useArtefactTypeCatalogue();
   const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
-    const resolved = resolveWizardConfig(workItemsWizardJson as any);
+    const resolvedSlots = resolveSlotRefs(
+      workItemsWizardJson as unknown as Record<string, unknown>,
+      types,
+    );
+    const resolved = resolveWizardConfig(resolvedSlots as any);
     const funcs = buildWorkItemsFunctions();
     return {
       ...resolved,
@@ -43,7 +55,7 @@ export default function WorkItemsPage() {
       // filterChips is provided by ObjectTree itself based on
       // filterChipsComponent — page no longer wires the React element.
     } as ObjectTreeDataConfig;
-  }, []);
+  }, [types]);
 
   const refetchSummary = useCallback(() => {
     const params = new URLSearchParams();
@@ -78,18 +90,40 @@ export default function WorkItemsPage() {
     : null;
   useRefetchOnPush({ topic, refetch });
 
+  // Single source of truth for "which artefact types this page surfaces"
+  // — the wizard's createableTypeSlots resolved through the catalogue.
+  // Drives both the summary cells AND the visualisation petals, so a
+  // sidecar edit (add Story, drop Defect, etc.) ripples through both
+  // and they can't drift. Order follows catalogue sort_order, matching
+  // the create-new dropdown and the filter chips.
+  const surfacedTypes = useMemo(() => {
+    const slots = (workItemsWizardJson as { createableTypeSlots?: string[] })
+      .createableTypeSlots ?? [];
+    const bySlot = new Map(types.map((t) => [t.slot, t]));
+    return slots
+      .map((slot) => bySlot.get(slot))
+      .filter((t): t is NonNullable<typeof t> => !!t)
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  }, [types]);
+
   const summaryCells = useMemo(() => {
     const s = summary ?? { total: 0, blocked: 0, by_type: {} };
     const byType = s.by_type ?? {};
+    const typeCells = surfacedTypes.map((t) => ({
+      label: t.name.toUpperCase(),
+      value: byType[t.name.toLowerCase()] ?? 0,
+    }));
     return [
       { label: "TOTAL ITEMS", value: s.total },
-      { label: "EPICS", value: byType.epic ?? 0 },
-      { label: "TASKS", value: byType.task ?? 0 },
-      { label: "DEFECTS", value: byType.defect ?? 0, tone: "warning" as const },
-      { label: "RISKS", value: byType.risk ?? 0, tone: "warning" as const, glyph: "issue" as const }, // PLA-0052
+      ...typeCells,
       { label: "BLOCKED", value: s.blocked, tone: "warning" as const, glyph: "issue" as const },
     ];
-  }, [summary]);
+  }, [summary, surfacedTypes]);
+
+  const petalKeys = useMemo(
+    () => surfacedTypes.map((t) => ({ key: t.name.toLowerCase(), label: t.name })),
+    [surfacedTypes],
+  );
 
   return (
     <PageContent>
@@ -102,21 +136,30 @@ export default function WorkItemsPage() {
         description="View, filter, sort, and manage all work items tracked in this workspace."
       />
       <PageSummaryHeader cells={summaryCells} />
-
-      <ObjectTree
-        title="Work items"
-        addressableName="work_items_grid_tree_ll"
-        subtitleBadge="05"
-        subtitle="Dense grid"
-        description="Spreadsheet-fast. 28px rows, single-character status, mono ID column."
-        selectedId={selectedItem?.id ?? null}
-        onSelect={setSelectedItem}
-        onPatched={(body) => {
-          const needsRefetch = "story_points" in body || "title" in body;
-          if (needsRefetch) void refetch();
-        }}
-        wizardConfig={wizardConfig}
+      <VisualisationPanel
+        pageKey="work_items"
+        petalKeys={petalKeys}
+        total={summary?.total ?? 0}
+        byType={summary?.by_type ?? {}}
+        treeResourceUrl="/work-items"
       />
+
+      {types.length > 0 && (
+        <ObjectTree
+          title="Work items"
+          addressableName="work_items_grid_tree_ll"
+          subtitleBadge="05"
+          subtitle="Dense grid"
+          description="Spreadsheet-fast. 28px rows, single-character status, mono ID column."
+          selectedId={selectedItem?.id ?? null}
+          onSelect={setSelectedItem}
+          onPatched={(body) => {
+            const needsRefetch = "story_points" in body || "title" in body;
+            if (needsRefetch) void refetch();
+          }}
+          wizardConfig={wizardConfig}
+        />
+      )}
     </>
     </PageContent>
   );

@@ -21,6 +21,7 @@ import { RichTextField } from "@/app/components/RichTextField";
 import { BlockedToggle } from "./BlockedToggle";
 import { useArtefactInline } from "./useArtefactInline";
 import { useParentCandidates } from "./useParentCandidates";
+import { EditCustomFields } from "./EditCustomFields";
 import type { ArtefactInlineFormProps } from "./types";
 
 interface FlowStateLite {
@@ -99,7 +100,7 @@ export function ArtefactInlineForm({
   const [releaseList, setReleaseList] = useState<Timebox[]>([]);
   const [milestoneList, setMilestoneList] = useState<Milestone[]>([]);
 
-  const { candidates: parentCandidates } = useParentCandidates({
+  const { strategic: parentStrategic, execution: parentExecution } = useParentCandidates({
     typePrefix: artefact?.type_prefix ?? null,
     scope,
     workspaceId,
@@ -471,9 +472,20 @@ export function ArtefactInlineForm({
               onChange={(e) => patch({ parent_artefact_id: e.target.value })}
             >
               <option value="">— No parent —</option>
-              {parentCandidates.map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
+              {parentStrategic.length > 0 && (
+                <optgroup label="Strategic Items">
+                  {parentStrategic.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </optgroup>
+              )}
+              {parentExecution.length > 0 && (
+                <optgroup label="Execution Items">
+                  {parentExecution.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </label>
 
@@ -520,6 +532,18 @@ export function ArtefactInlineForm({
               ))}
             </select>
           </label>
+
+          {/* Custom-field section — per-type bindings from
+              GET /{resource}/types/{typeId}/fields, values loaded from
+              GET /{resource}/{id}/field-values, committed on blur via
+              PUT to the same field-values endpoint. Empty for types
+              with no bindings (no DOM rendered). Same field-type
+              vocabulary the V2 create flyout uses. */}
+          <EditCustomFields
+            artefactId={artefact.id}
+            artefactTypeId={artefact.artefact_type_id}
+            resourceUrl={resourceUrl}
+          />
         </div>
       </div>
 

@@ -1414,6 +1414,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /artefact-types/resync:
+    post:
+      tags:
+      - artefact-types
+      summary: POST /artefact-types/resync
+      operationId: postArtefactTypesResync
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: portfolioResyncH.Resync
+        file: backend/internal/portfoliomodels/resync.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  model_id:
+                    type: string
+                    format: uuid
+                required:
+                - workspace_id
+                - model_id
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /artefact-types/{id}:
     patch:
       tags:
@@ -1448,6 +1487,10 @@ paths:
                 description:
                   type: string
                 colour:
+                  type: string
+                parent_type_id:
+                  type: string
+                layer_depth:
                   type: string
       parameters:
       - name: id
@@ -5688,6 +5731,41 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /portfolio-items/types/{typeId}/fields:
+    get:
+      tags:
+      - portfolio-items
+      summary: GET /portfolio-items/types/{typeId}/fields
+      operationId: getPortfolioItemsTypesTypeidFields
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListFieldsForType
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: typeId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /portfolio-items/{id}:
     delete:
       tags:
@@ -9003,6 +9081,41 @@ paths:
       x-handler:
         symbol: h.Summary
         file: backend/internal/artefactitems/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /work-items/types/{typeId}/fields:
+    get:
+      tags:
+      - work-items
+      summary: GET /work-items/types/{typeId}/fields
+      operationId: getWorkItemsTypesTypeidFields
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: h.ListFieldsForType
+        file: backend/internal/artefactitems/handler.go
+      parameters:
+      - name: typeId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: 200 — success response

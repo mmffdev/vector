@@ -96,6 +96,58 @@ func writeWorkArtefactTypes(
 		systemIDToPrefix[s.id] = s.prefix
 	}
 
+	// Compute the layer_depth offset for work types — they stack BELOW
+	// every strategy type in the unified ladder so the frontend's
+	// "allowed parents = every type with smaller depth" rule correctly
+	// surfaces strategic candidates for execution rows.
+	//
+	// Offset = max(strategy.layer_depth, capped at 8) + 1. The cap keeps
+	// us under the 0..9 CHECK constraint when adding the work types on
+	// top (range allows 0..9 + the work scope adds up to a few more
+	// levels). If the strategy ladder is already at or above 9, work
+	// types pile up at 9 — useParentCandidates' rule still works (every
+	// strategy type has smaller depth).
+	stratMax, err := loadMaxStrategyLayerDepth(ctx, vaTx, workspaceID)
+	if err != nil {
+		return err
+	}
+	workOffset := 0
+	if stratMax != nil {
+		workOffset = *stratMax + 1
+		if workOffset > 9 {
+			workOffset = 9
+		}
+	}
+
+	// Compute layer_depth by RANK position (not raw sortOrder) so seed
+	// rows that use wide gaps (10/20/30/…) don't blow the 0..9 CHECK.
+	// systemRows is already sorted by sort_order in the SELECT
+	// (sqlSelectSystemWorkTypes: ORDER BY artefacts_types_sort_order, name).
+	// loadSystemWorkTypes can return duplicate prefixes when multiple
+	// workspaces in the same subscription have direct-INSERTed
+	// system rows (e.g. mig 071 Risk per workspace). Dedup by prefix
+	// — preserve the FIRST occurrence so the systemRows ORDER BY
+	// sort_order ASC, name ASC still drives a deterministic rank.
+	seenPrefix := make(map[string]bool, len(systemRows))
+	uniqRows := systemRows[:0]
+	for _, s := range systemRows {
+		if seenPrefix[s.prefix] {
+			continue
+		}
+		seenPrefix[s.prefix] = true
+		uniqRows = append(uniqRows, s)
+	}
+	systemRows = uniqRows
+
+	depthByPrefix := make(map[string]int, len(systemRows))
+	for i, s := range systemRows {
+		d := workOffset + i
+		if d > 9 {
+			d = 9
+		}
+		depthByPrefix[s.prefix] = d
+	}
+
 	// Phase 1: insert every system row as a tenant copy with
 	// parent_type_id=NULL. ON CONFLICT DO NOTHING preserves any prior
 	// tenant edits on re-run.
@@ -104,6 +156,7 @@ func writeWorkArtefactTypes(
 			subscriptionID, workspaceID,
 			s.name, s.prefix, s.description,
 			s.allowsChildren, s.sortOrder,
+			depthByPrefix[s.prefix],
 		); err != nil {
 			return fmt.Errorf("insert work artefact_type %q: %w", s.name, err)
 		}
@@ -150,7 +203,55 @@ func writeWorkArtefactTypes(
 			return fmt.Errorf("set parent for work artefact_type %q: %w", s.name, err)
 		}
 	}
+
+	// Phase 3: re-sync convergence for layer_depth. Rows skipped by
+	// Phase 1's ON CONFLICT DO NOTHING never received the new depth — so
+	// UPDATE every row in the workspace whose prefix matches a system
+	// row, regardless of source. Legacy tenants whose work rows are
+	// still source='system' (adopted before this tenant-copy writer
+	// existed) also receive the depth update.
+	anySourceMap, err := loadWorkPrefixMapAnySource(ctx, vaTx, workspaceID)
+	if err != nil {
+		return err
+	}
+	for _, s := range systemRows {
+		selfID, ok := anySourceMap[s.prefix]
+		if !ok {
+			continue
+		}
+		if _, err := vaTx.Exec(ctx, sqlUpdateWorkArtefactTypeLayerDepth,
+			depthByPrefix[s.prefix], selfID, workspaceID,
+		); err != nil {
+			return fmt.Errorf("set layer_depth for work artefact_type %q: %w", s.name, err)
+		}
+	}
 	return nil
+}
+
+// loadWorkPrefixMapAnySource returns prefix → artefact_type_id for
+// every live work-scope row in this workspace REGARDLESS of source.
+// Used by the re-sync layer_depth pass so legacy system rows
+// (workspace-bound system seeds) get updated too.
+func loadWorkPrefixMapAnySource(
+	ctx context.Context,
+	vaTx pgx.Tx,
+	workspaceID uuid.UUID,
+) (map[string]uuid.UUID, error) {
+	rows, err := vaTx.Query(ctx, sqlSelectWorkPrefixMapAnySource, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("load work prefix map any-source: %w", err)
+	}
+	defer rows.Close()
+	m := make(map[string]uuid.UUID)
+	for rows.Next() {
+		var prefix string
+		var id uuid.UUID
+		if err := rows.Scan(&prefix, &id); err != nil {
+			return nil, fmt.Errorf("scan work prefix map any-source: %w", err)
+		}
+		m[prefix] = id
+	}
+	return m, rows.Err()
 }
 
 // loadSystemWorkTypes returns every live system-seeded work-type row
@@ -177,6 +278,22 @@ func loadSystemWorkTypes(
 		out = append(out, s)
 	}
 	return out, rows.Err()
+}
+
+// loadMaxStrategyLayerDepth returns the highest layer_depth among live
+// strategy-scope rows in this workspace, or nil if no strategy rows
+// have a depth set. Read in-tx so it sees Phase 1 of B3 (strategy)
+// which committed earlier in the same vaTx.
+func loadMaxStrategyLayerDepth(
+	ctx context.Context,
+	vaTx pgx.Tx,
+	workspaceID uuid.UUID,
+) (*int, error) {
+	var max *int
+	if err := vaTx.QueryRow(ctx, sqlSelectMaxStrategyLayerDepth, workspaceID).Scan(&max); err != nil {
+		return nil, fmt.Errorf("load max strategy layer_depth: %w", err)
+	}
+	return max, nil
 }
 
 // loadWorkTenantPrefixMap returns prefix → artefact_type_id for every

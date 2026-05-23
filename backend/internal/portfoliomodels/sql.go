@@ -102,6 +102,21 @@ const sqlSelectAdoptionStateForWorkspace = `
 
 // ── adopt.go (orchestrator state + errors) ─────────────────────────────────
 
+// sqlSelectAdoptedModelForWorkspace returns the model_id from
+// master_record_portfolios for an adopted workspace. master_record is
+// the canonical "adoption truth" table — artefacts_adoption_states
+// rows can be archived or absent on legacy tenants that adopted
+// before the state table existed, but master_record persists for
+// every adopted workspace. Used by Resync to discover which bundle
+// to re-run the type writers against.
+const sqlSelectAdoptedModelForWorkspace = `
+		SELECT master_record_portfolios_id_library_portfolio_model
+		  FROM master_record_portfolios
+		 WHERE master_record_portfolios_id_workspace = $1
+		   AND master_record_portfolios_archived_at IS NULL
+		 LIMIT 1
+	`
+
 // sqlSelectActiveAdoptionState returns the live (non-archived)
 // artefacts_adoption_states row for a workspace.
 const sqlSelectActiveAdoptionState = `
@@ -189,23 +204,41 @@ const sqlInsertErrorEvent = `
 // ── adopt_strategy_types.go (B3) ───────────────────────────────────────────
 
 // sqlInsertStrategyArtefactType — Phase 1 of B3 (parent_type_id=NULL).
+// layer_depth ($8) is the SortOrder from the library Layer — drives
+// useParentCandidates' cross-scope parent resolution on the frontend
+// (allowed parents = every type with smaller layer_depth).
 const sqlInsertStrategyArtefactType = `
 		INSERT INTO artefacts_types (
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
 			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
 			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_layer_depth,
 			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,
 			'strategy', 'tenant',
 			$3, $4, $5,
 			NULL, $6, $7,
-			$8, $9
+			$8,
+			$9, $10
 		)
 		ON CONFLICT (artefacts_types_id_workspace, artefacts_types_scope, artefacts_types_prefix)
 			WHERE artefacts_types_archived_at IS NULL
 			DO NOTHING
+	`
+
+// sqlUpdateStrategyArtefactTypeLayerDepth — re-adoption path: an existing
+// row hit ON CONFLICT DO NOTHING and the INSERT was skipped, so the
+// layer_depth value from the new bundle never landed. UPDATE separately
+// so re-running adoption converges existing rows onto the latest depths.
+const sqlUpdateStrategyArtefactTypeLayerDepth = `
+		UPDATE artefacts_types
+		   SET artefacts_types_layer_depth = $1
+		 WHERE artefacts_types_id = $2
+		   AND artefacts_types_id_workspace = $3
+		   AND artefacts_types_scope = 'strategy'
+		   AND artefacts_types_archived_at IS NULL
 	`
 
 // sqlUpdateStrategyArtefactTypeParent — Phase 2 of B3 (set parent_type_id).
@@ -227,6 +260,20 @@ const sqlSelectStrategyArtefactTypeMap = `
 		   AND artefacts_types_scope = 'strategy'
 		   AND artefacts_types_archived_at IS NULL
 		   AND artefacts_types_id_library_layer IS NOT NULL
+	`
+
+// sqlSelectStrategyArtefactTypeTagMap returns library_layer_tag → id
+// for every live strategy artefact_type in this workspace. Re-sync
+// fallback: when the current bundle's Layer.ID no longer matches the
+// id stored at first-adoption time (library rebuilt), we can still
+// match a layer to its mirror via the stable tag string.
+const sqlSelectStrategyArtefactTypeTagMap = `
+		SELECT artefacts_types_library_layer_tag, artefacts_types_id
+		  FROM artefacts_types
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_scope = 'strategy'
+		   AND artefacts_types_archived_at IS NULL
+		   AND artefacts_types_library_layer_tag IS NOT NULL
 	`
 
 // ── adopt_flows.go (B4) ────────────────────────────────────────────────────
@@ -388,23 +435,56 @@ const sqlArchiveOldStrategyArtefactTypes = `
 
 // ── adopt_work_types.go (B5) ───────────────────────────────────────────────
 
+// sqlInsertWorkArtefactTypeFromSystem — Phase 1 of B5. layer_depth ($8)
+// is the work-type's vertical position in the unified ladder: deeper
+// than every strategy type (work sits BELOW strategy in the parenting
+// model). The caller computes it as strategy_max_depth + 1 + work.sort_order
+// so depth values remain strictly increasing across both scopes.
 const sqlInsertWorkArtefactTypeFromSystem = `
 		INSERT INTO artefacts_types (
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
 			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
 			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_layer_depth,
 			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,
 			'work', 'tenant',
 			$3, $4, $5,
 			NULL, $6, $7,
+			$8,
 			NULL, NULL
 		)
 		ON CONFLICT (artefacts_types_id_workspace, artefacts_types_scope, artefacts_types_prefix)
 			WHERE artefacts_types_archived_at IS NULL
 			DO NOTHING
+	`
+
+// sqlUpdateWorkArtefactTypeLayerDepth — re-adoption path twin of the
+// strategy variant. Brings existing rows up to the new depth value.
+// Does NOT filter by source so legacy tenants whose rows are still
+// source='system' (adopted before the tenant-copy writer existed)
+// also receive the depth update.
+const sqlUpdateWorkArtefactTypeLayerDepth = `
+		UPDATE artefacts_types
+		   SET artefacts_types_layer_depth = $1
+		 WHERE artefacts_types_id = $2
+		   AND artefacts_types_id_workspace = $3
+		   AND artefacts_types_scope = 'work'
+		   AND artefacts_types_archived_at IS NULL
+	`
+
+// sqlSelectMaxStrategyLayerDepth — reads the largest live strategy
+// layer_depth in this workspace. Used by writeWorkArtefactTypes to
+// stack work types BELOW the strategic ladder.
+const sqlSelectMaxStrategyLayerDepth = `
+		SELECT MAX(artefacts_types_layer_depth)
+		  FROM artefacts_types
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_scope = 'strategy'
+		   AND artefacts_types_archived_at IS NULL
+		   AND artefacts_types_layer_depth IS NOT NULL
 	`
 
 const sqlUpdateWorkArtefactTypeParent = `
@@ -433,6 +513,19 @@ const sqlSelectWorkTenantPrefixMap = `
 		 WHERE artefacts_types_id_workspace = $1
 		   AND artefacts_types_scope  = 'work'
 		   AND artefacts_types_source = 'tenant'
+		   AND artefacts_types_archived_at IS NULL
+	`
+
+// sqlSelectWorkPrefixMapAnySource returns prefix → id for every live
+// work-scope row in this workspace regardless of source. Used by the
+// re-sync layer_depth UPDATE pass so legacy tenants whose work rows
+// are still source='system' (adopted before the writer existed) also
+// receive the depth value.
+const sqlSelectWorkPrefixMapAnySource = `
+		SELECT artefacts_types_prefix, artefacts_types_id
+		  FROM artefacts_types
+		 WHERE artefacts_types_id_workspace = $1
+		   AND artefacts_types_scope  = 'work'
 		   AND artefacts_types_archived_at IS NULL
 	`
 

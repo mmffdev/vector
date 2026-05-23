@@ -12858,6 +12858,389 @@ input[type="reset"] {
   }
 }
 
+/* ─── Visualisation panel composite (work-items / portfolio-items / risk) ───
+ * Action panel sits flush against .page-summary-panel above it (no gap,
+ * no top border). Visualisation flyout slides 0 → 250px when the Charts
+ * button is armed, pushing the ObjectTree below it in normal block flow.
+ * Class chain follows the project's __ / _ / - convention (root-block:
+ * `viz`).
+ * ─────────────────────────────────────────────────────────────────── */
+
+.viz-actions-panel {
+  /* Flush against the sticky .page-summary-panel above — drop top
+     border so the two panels read as one continuous surface, and
+     zero the body padding's vertical axis so the buttons sit tight
+     against the summary strip. */
+  border-top: 0;
+  margin-top: 0;
+}
+
+.viz-actions-panel .panel__body {
+  padding: var(--space-2) var(--space-3);
+}
+
+.viz-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.viz-flyout {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 240ms ease;
+  overflow: hidden;
+}
+
+.viz-flyout[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+.viz-flyout > .panel {
+  min-height: 0;
+  overflow: hidden;
+  border-top: 0;
+}
+
+.viz-flyout[data-open="true"] > .panel {
+  min-height: 250px;
+}
+
+.viz-flyout__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The chart's outer SVG is square; cap its rendered height so the
+     250px flyout doesn't stretch when the chart sizes itself by the
+     viewport-derived width. */
+  max-height: 250px;
+}
+
+.viz-flyout__body .fill-petal-equal-chart {
+  max-height: 250px;
+  width: auto;
+}
+
+/* Chart's own font-sizes (18px value / 11px label) are sized against
+   its native 480px viewBox; inside the 250px flyout they render ~52% of
+   intended. Scale them up here so they read at the smaller render size
+   without touching the catalogue page (which renders the chart full-
+   bleed and doesn't need the bump). */
+.viz-flyout__body .fill-petal-equal-chart__value {
+  /* viewBox units, not screen px. Chart renders 480-unit viewBox into a
+     ~250px container (~52% scale), so a 56-unit value font renders ~29px
+     on screen. */
+  font-size: 56px;
+}
+
+.viz-flyout__body .fill-petal-equal-chart__label {
+  font-size: 32px;
+  /* Chart hardcodes label y="16" against its native 18px value font;
+     with our 56-unit value the label overlaps. Push it clear. */
+  transform: translateY(36px);
+}
+
+.viz-flyout__empty {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Tree variant — left-aligned, horizontally scrollable. The default
+   viz-flyout__body centres its child (right for the square chart, wrong
+   for a 250px-tall tree that may overflow horizontally). */
+.viz-flyout__body--tree {
+  align-items: stretch;
+  justify-content: flex-start;
+  max-height: 250px;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* ─── <ArtefactTree> ─── L→R portfolio walk inside the viz flyout.
+ * Root-block `artefact-tree`. Inline mode = 250px in the flyout;
+ * expanded mode = fixed overlay covering the page-shell main-body
+ * (header + nav rail stay visible). Wheel zooms, drag pans.
+ * ─────────────────────────────────────────────────────────────────── */
+
+.artefact-tree {
+  position: relative;
+  width: 100%;
+  height: 250px;
+  /* Dotted backdrop hints at the canvas-grid future (matches
+     <DiagramCanvas> plan) without committing to grid snap today.
+     Stays put when expanded too — same surface, more of it. */
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.artefact-tree--expanded {
+  height: 100%;
+}
+
+/* Fixed overlay anchored at runtime to .rd-shell__main-body's rect.
+   Inline `top/left/width/height` come from JS measurements; this rule
+   owns the layering + chrome. */
+.artefact-tree__Overlay {
+  position: fixed;
+  z-index: 80;
+  background: var(--surface-sunken, #0e1116);
+  /* A faint inner shadow + border so the overlay clearly demarcates
+     itself from the underlying page without a heavy modal frame. */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.artefact-tree__Toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+.artefact-tree__Toolbar_Btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 24, 32, 0.6);
+  color: var(--ink, #e6e6e6);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.artefact-tree__Toolbar_Btn:hover {
+  background: rgba(40, 46, 58, 0.85);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.artefact-tree__Body {
+  position: absolute;
+  inset: 0;
+  /* No scrollbars — pan handles overflow inside the SVG. */
+  overflow: hidden;
+}
+
+.artefact-tree__Canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Grab cursor signals the canvas is drag-pannable. Switches to
+     grabbing while a pointer drag is active via :active. */
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.artefact-tree__Canvas:active {
+  cursor: grabbing;
+}
+
+/* Connectors — uniform orange so the flow direction reads
+   immediately. The right-rule on each node already encodes type
+   identity; lighting up the curves with per-type colour was visual
+   noise, but a single accent across all curves works. */
+/* stroke-width is set per-edge by the renderer (scales with the child
+   subtree weight — busy nodes show as thick trunks). Stays out of CSS
+   so the JSX strokeWidth attribute is authoritative. */
+.artefact-tree__Edge {
+  stroke: #ff6600;
+  opacity: 0.7;
+}
+
+/* Arrow head — solid #ff6600, no opacity, so the tip reads sharply
+   against whatever it lands on. */
+.artefact-tree__Arrow {
+  fill: #ff6600;
+}
+
+/* Transparent body — hit target only. Framing comes from the three
+   .artefact-tree__Node_Edge lines + the coloured right rule. */
+.artefact-tree__Node_Body {
+  fill: transparent;
+}
+
+/* Top / bottom / left node frame — 1px black. */
+.artefact-tree__Node_Edge {
+  stroke: #000;
+  stroke-width: 1;
+  /* shape-rendering crispEdges keeps the 1px lines from being
+     antialiased to grey at integer coordinates. */
+  shape-rendering: crispEdges;
+}
+
+/* Sentinel barber-pole + white text plate. The pole rect carries the
+   <pattern> fill defined in the SVG; CSS just owns the outer 1px frame
+   so the sentinel has a clean edge against the canvas. */
+.artefact-tree__Node_Pole {
+  stroke: #000;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+/* Plate background matches the canvas backdrop (shell sunken surface)
+   so the label reads as if it's punched out of the barber-pole stripes
+   rather than sitting on a white card. */
+.artefact-tree__Node_Plate {
+  fill: var(--surface-sunken, #f4f1ec);
+  stroke: none;
+}
+
+/* Off-node placeholder — dashed grey rect, transparent body. Reads as
+   "this artefact exists on a different scope node; we know its code
+   but didn't load its full data". Neither hazard (orphan = red barber
+   pole) nor terminal (no children = same pole). */
+.artefact-tree__Node_OffNode {
+  fill: transparent;
+  stroke: var(--ink-muted, #6b7280);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.artefact-tree__Node_Label--offnode {
+  fill: var(--ink-muted, #6b7280);
+  font-size: 11px;
+}
+
+.artefact-tree__Node_Label--plate {
+  fill: var(--ink, #1a1e26);
+  /* The plate is small (110×22) — drop a touch in size so the text
+     doesn't crowd the pill edges. */
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.artefact-tree__Node_Label {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  fill: var(--ink, #1a1e26);
+  pointer-events: none;
+}
+
+.artefact-tree__Node--sentinel .artefact-tree__Node_Label {
+  fill: var(--ink-muted, #6b7280);
+}
+
+.artefact-tree__empty {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin: 0;
+  padding: var(--space-3);
+}
+
+/* ─── Tree view controls (bottom-left toolbar) ───
+ * Three control blocks (vertical gap, horizontal gap, zoom) each with
+ * an icon + value + ± steppers, plus a reset on the right. Floats over
+ * the canvas; sits above pan/drag interactions via z-index. */
+
+.artefact-tree__Controls {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  z-index: 2;
+  /* Same translucent backdrop language as the expand/close toolbar so
+     the two read as siblings. */
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.artefact-tree__Controls_Block {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 86px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.artefact-tree__Controls_Block_Head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--ink-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.artefact-tree__Controls_Block_Icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.artefact-tree__Controls_Block_Label {
+  flex: 1;
+}
+
+.artefact-tree__Controls_Block_Value {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink, #1a1e26);
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.artefact-tree__Controls_Block_Steppers {
+  display: flex;
+  gap: 2px;
+}
+
+.artefact-tree__Controls_Block_Step {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: var(--ink, #1a1e26);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.artefact-tree__Controls_Block_Step:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.artefact-tree__Controls_Reset {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: var(--ink, #1a1e26);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.artefact-tree__Controls_Reset:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.artefact-tree__Controls_Reset:active {
+  transform: rotate(-30deg);
+}
+
 /* ============================================================================
    Grid-Tree — generic dense-spreadsheet tree catalog
    Class-based, reusable; mirrors the dense screenshot reference. Used by the
@@ -13924,6 +14307,28 @@ input[type="reset"] {
   text-decoration-color: var(--ink);
 }
 
+/* Parent column — joined parent ref. Mono id matches the leading ID
+   column; title sits next to it muted and truncates when the column
+   narrows. Whole span tooltips via `title=` so a clipped row still
+   gives the user the full string on hover. */
+.tree_accordion-dense__cell--parent {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree_accordion-dense__parent-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+}
+.tree_accordion-dense__parent-sep {
+  color: var(--ink-subtle);
+}
+.tree_accordion-dense__parent-title {
+  color: var(--ink);
+}
+
 /* Grid-Tree title/points cells use the shared .inline-edit-trigger
    primitive defined earlier. The block-namespaced selectors are kept
    only as row-class hooks (e.g. .tree_accordion-dense__row--epic …)
@@ -14737,6 +15142,14 @@ input[type="reset"] {
 .at-tree__flat-wrap .tree_accordion-dense__th-toggle,
 .at-tree__flat-wrap .tree_accordion-dense__filterbar-count {
   display: none;
+}
+
+/* Toolbar row above the tree — currently hosts the Resync button. */
+.at-tree__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 0;
+  gap: 8px;
 }
 
 .at-colour-picker {

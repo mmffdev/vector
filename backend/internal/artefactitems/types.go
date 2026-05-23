@@ -84,6 +84,7 @@ type WorkItem struct {
 	SprintID       *string    `json:"sprint_id"`
 	Sprint         *SprintRef `json:"sprint"`
 	ParentID       *string    `json:"parent_id"`
+	Parent         *ParentRef `json:"parent"`
 	RootFeatureID  *string    `json:"root_feature_id"`
 	OwnerID        string     `json:"owner_id"`
 	Owner          *OwnerRef  `json:"owner"`
@@ -147,6 +148,23 @@ type PriorityRef struct {
 	Name  string  `json:"name"`
 	Slot  *string `json:"slot"`
 	Order int     `json:"sort_order"`
+}
+
+// ParentRef is the slim parent projection embedded on each WorkItem when
+// the row has a non-null parent_artefact_id that resolves to a live (non-
+// archived) artefacts row. Sourced via a LEFT JOIN onto self in
+// sqlWorkItemColumns. Stays nil for unparented roots and for orphans whose
+// parent has been archived since — the frontend renders an em-dash in
+// either case.
+//
+// TypePrefix + KeyNum reconstruct the human-readable parent id (e.g.
+// "ST-12") without a second round-trip; Title gives the parent's display
+// label so the dense grid can render "ST-12 — Login refactor" inline.
+type ParentRef struct {
+	ID         string `json:"id"`
+	TypePrefix string `json:"type_prefix"`
+	KeyNum     int64  `json:"key_num"`
+	Title      string `json:"title"`
 }
 
 // SprintRef is the slim sprint projection embedded on each WorkItem when
@@ -246,6 +264,12 @@ type CreateWorkItemInput struct {
 	// TopologyNodeID is set so the per-node CanReadScope grant check
 	// can run. Mirrors Filters.ActorRoleID on the read path.
 	ActorRoleID uuid.UUID
+	// CustomFields carries values for any field_library entries bound
+	// to the artefact type via artefacts_types_fields. Written inside
+	// the same transaction as the artefact insert so the row + its
+	// custom values are committed atomically. Empty / nil → no custom
+	// fields written, behaviour matches the legacy create.
+	CustomFields []UpsertFieldValueInput
 }
 
 // PatchWorkItemInput holds optional fields for partial update.
@@ -399,6 +423,28 @@ type AddTemplateFieldInput struct {
 	Position       int
 	Required       bool
 	DefaultValue   *string
+}
+
+// FieldBinding is the wire representation of one row in the
+// artefacts_types_fields binding table joined with its
+// artefacts_fields_library row. Returned by
+// GET /work-items/types/{typeId}/fields (and the portfolio-items
+// sibling) so the frontend create/edit forms can render per-type
+// custom-field inputs in the right order, with the right input
+// primitive, with options for select/radio/multiselect, and with
+// required flags.
+//
+// Ordered by `position` ASC ON the wire so consumers can render
+// without re-sorting.
+type FieldBinding struct {
+	FieldLibraryID string  `json:"field_library_id"`
+	FieldName      string  `json:"field_name"`
+	Label          string  `json:"label"`
+	FieldType      string  `json:"field_type"`
+	OptionsJSON    *string `json:"options_json,omitempty"`
+	Position       int     `json:"position"`
+	Required       bool    `json:"required"`
+	DefaultValue   *string `json:"default_value,omitempty"`
 }
 
 // FieldValue is the wire representation of a field_values row joined with library metadata.

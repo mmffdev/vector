@@ -7,6 +7,7 @@
   "treeName": "risks",
   "resourceUrl": "/work-items?item_type=wrk_risk",
   "scope": "work",
+  "createableTypeSlots": ["wrk_risk"],
   "dndResourceType": "risk",
   "dndEnabled": false,
   "defaultSortKey": "key_num",

@@ -742,6 +742,11 @@ type createWorkItemReq struct {
 	StoryPoints *int    `json:"story_points,omitempty"`
 	SprintID    *string `json:"sprint_id,omitempty"`
 	ParentID    *string `json:"parent_id,omitempty"`
+	// CustomFields carries per-binding values for the artefact's type
+	// (e.g. Risk gets risk_score / risk_impact / risk_probability).
+	// Same shape as the PUT /field-values body so consumers reuse types.
+	// Written inside the create transaction — full atomicity.
+	CustomFields []upsertFieldValueReq `json:"custom_fields,omitempty"`
 }
 
 // Create handles POST /api/v2/work-items.
@@ -801,6 +806,20 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Translate wire-shape custom field values into the service-input
+	// shape. Same routing as UpsertFieldValues — keep the two paths
+	// reading the same struct so the transport boundary stays narrow.
+	var customs []UpsertFieldValueInput
+	for _, cf := range req.CustomFields {
+		customs = append(customs, UpsertFieldValueInput{
+			FieldLibraryID: cf.FieldLibraryID,
+			StringValue:    cf.StringValue,
+			NumberValue:    cf.NumberValue,
+			TextValue:      cf.TextValue,
+			DateValue:      cf.DateValue,
+		})
+	}
+
 	wi, err := h.svc.CreateWorkItem(r.Context(), u.SubscriptionID, CreateWorkItemInput{
 		ItemType:       req.ItemType,
 		Title:          req.Title,
@@ -814,6 +833,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		CreatedBy:      createdBy,
 		TopologyNodeID: topologyNodeID,
 		ActorRoleID:    u.RoleID,
+		CustomFields:   customs,
 	})
 	if err != nil {
 		if errors.Is(err, ErrScopeForbidden) {
@@ -1038,6 +1058,30 @@ func (h *Handler) Bulk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(out)
+}
+
+// ListFieldsForType handles GET /_site/work-items/types/{typeId}/fields
+// (and the portfolio-items sibling). Returns the per-type form schema:
+// every field bound to the artefact type, ordered by position, with
+// required flags + options. Consumers: V2 create flyout, inline edit
+// form, and duplicate flow — all need to render the same set of
+// inputs per type.
+func (h *Handler) ListFieldsForType(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	u := auth.UserFromCtx(r.Context())
+	typeID, err := uuid.Parse(chi.URLParam(r, "typeId"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid type id"}`))
+		return
+	}
+	fields, err := h.svc.ListFieldsForType(r.Context(), u.SubscriptionID, typeID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"fields": fields})
 }
 
 // ListFieldValues handles GET /api/v2/work-items/{id}/field-values.

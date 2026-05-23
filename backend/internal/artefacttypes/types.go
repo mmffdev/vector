@@ -33,9 +33,25 @@ type ArtefactType struct {
 
 // PatchInput is the body accepted by PATCH /_site/artefact-types/{id}.
 // All fields are optional pointers; only non-nil fields are applied.
+//
+// ParentTypeID + LayerDepth use a double-pointer pattern so the wire
+// can distinguish three states: absent (leave alone), explicit null
+// (clear to NULL), or a value (set). Without this, JSON null is
+// indistinguishable from absence at the *string level.
 type PatchInput struct {
 	Name        *string `json:"name"`
 	Prefix      *string `json:"prefix"`
 	Description *string `json:"description"`
 	Colour      *string `json:"colour"`
+	// ParentTypeID — UUID of the type this one nests under in the
+	// portfolio/execution ladder. Drives useParentCandidates on the
+	// frontend (walks the chain to compute allowed parents for any
+	// given type). Tenant-editable since prefix map can't keep up with
+	// renames like "Feature" → "Capability". Empty string clears to
+	// NULL (top of ladder); a UUID string sets.
+	ParentTypeID *string `json:"parent_type_id"`
+	// LayerDepth — 0-based depth in the ladder. 0 = top (no parent
+	// allowed in the UI). Same three-state convention via *string:
+	// empty string clears to NULL, integer-as-string sets.
+	LayerDepth *string `json:"layer_depth"`
 }

@@ -26,13 +26,14 @@ import Panel from "@/app/components/Panel";
 import PageHeading from "@/app/components/PageHeading";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
+import VisualisationPanel from "@/app/components/VisualisationPanel";
 import { apiSite } from "@/app/lib/api";
-import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
+import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { RisksFilterChips } from "@/app/components/risk-tree-config";
-import risksWizardJson from "@/app/components/ObjectTree/configs/p_wizard_risks.json";
+import risksWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_risks.json";
 
 interface RisksSummary {
   total: number;
@@ -127,6 +128,17 @@ export default function RiskPage() {
           description="Identify, score, and track mitigation actions for risks across the workspace."
         />
         <PageSummaryHeader cells={summaryCells} />
+        <VisualisationPanel
+          pageKey="risk"
+          petalKeys={[
+            { key: "critical", label: "Critical" },
+            { key: "high", label: "High" },
+            { key: "medium", label: "Medium" },
+            { key: "low", label: "Low" },
+          ]}
+          total={summary?.total ?? 0}
+          byType={(summary?.by_severity ?? {}) as Record<string, number>}
+        />
 
         {types.length > 0 && (
           <ObjectTree

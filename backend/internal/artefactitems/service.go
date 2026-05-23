@@ -885,6 +885,42 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		return nil, err
 	}
 
+	// Custom-field values land inside the same transaction so the artefact
+	// row + its values are committed atomically. Each value is routed to
+	// the right *_value column by looking up field_type from the library;
+	// mismatched value/type combos return ErrInvalidInput and roll the
+	// whole create back. We do NOT re-fetch the library row in a loop —
+	// each upsert is one round-trip into the txn pool, which is the
+	// minimum the existing UpsertFieldValues path also does.
+	for _, cf := range in.CustomFields {
+		fieldUUID, ferr := uuid.Parse(cf.FieldLibraryID)
+		if ferr != nil {
+			return nil, fmt.Errorf("%w: invalid field_library_id %q", ErrInvalidInput, cf.FieldLibraryID)
+		}
+		var fieldType string
+		if ferr := tx.QueryRow(ctx, sqlSelectFieldLibraryType, fieldUUID, subscriptionID).Scan(&fieldType); ferr != nil {
+			return nil, fmt.Errorf("%w: field %s not in tenant catalogue", ErrInvalidInput, fieldUUID)
+		}
+		// Route the value to the typed column. typeValueColumn (types.go)
+		// returns the full *_value column suffix used by both the
+		// per-artefact UpsertFieldValues path and this create-time path;
+		// keep them in lockstep on any change.
+		var s, n, t, d *string
+		switch typeValueColumn(fieldType) {
+		case "string_value":
+			s = cf.StringValue
+		case "number_value":
+			n = cf.NumberValue
+		case "text_value":
+			t = cf.TextValue
+		case "date_value":
+			d = cf.DateValue
+		}
+		if _, werr := tx.Exec(ctx, sqlUpsertFieldValue, newID, fieldUUID, s, n, t, d); werr != nil {
+			return nil, fmt.Errorf("write custom field %s: %w", fieldUUID, werr)
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
@@ -1382,6 +1418,41 @@ func (s *Service) BulkOps(ctx context.Context, subscriptionID uuid.UUID, ids []s
 	return result, nil
 }
 
+// ListFieldsForType returns the per-type form schema: every field
+// bound to the artefact type via artefacts_types_fields, joined with
+// the field_library row, ordered by display position. Used by the
+// create + edit + duplicate forms to know which inputs to render per
+// type (e.g. Risk → risk_score / risk_impact / risk_probability + 9
+// optional). Subscription isolation is enforced through the
+// artefact_types.subscription_id JOIN — an enumerating UUID from
+// another tenant returns an empty list, not a leak.
+func (s *Service) ListFieldsForType(ctx context.Context, subscriptionID uuid.UUID, typeID uuid.UUID) ([]FieldBinding, error) {
+	if s.vectorArtefactsPool == nil {
+		return []FieldBinding{}, nil
+	}
+	rows, err := s.vectorArtefactsPool.Query(ctx, sqlListFieldsForType,
+		typeID, subscriptionID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []FieldBinding
+	for rows.Next() {
+		var fb FieldBinding
+		if err := rows.Scan(&fb.FieldLibraryID, &fb.FieldName, &fb.Label,
+			&fb.FieldType, &fb.OptionsJSON, &fb.Position, &fb.Required,
+			&fb.DefaultValue); err != nil {
+			return nil, err
+		}
+		out = append(out, fb)
+	}
+	if out == nil {
+		out = []FieldBinding{}
+	}
+	return out, rows.Err()
+}
+
 // ListFieldValues returns all artefacts_fields_values for an artefact,
 // enforcing subscription isolation by first verifying the artefact exists.
 func (s *Service) ListFieldValues(ctx context.Context, subscriptionID uuid.UUID, artefactID uuid.UUID) ([]FieldValue, error) {
@@ -1830,6 +1901,10 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 
 	// Sprint ref columns — NULL when no sprint assigned.
 	var sprintRefID, sprintRefAlias *string
+	// Parent ref columns — NULL for unparented roots and for rows whose
+	// parent has been archived (LEFT JOIN ap drops on ap.archived_at IS NULL).
+	var parentRefID, parentRefTypePrefix, parentRefTitle *string
+	var parentRefKeyNum *int64
 	// Owner ref columns — NULL in this story (decorated in 00468).
 	var ownerRefID, ownerDisplayName, ownerAvatarURL *string
 	// Priority ref columns — PLA-0055 / story 00595+00597. priority_id
@@ -1862,6 +1937,10 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&sprintRefID,
 		&sprintRefAlias,
 		&wi.ParentID,
+		&parentRefID,
+		&parentRefTypePrefix,
+		&parentRefKeyNum,
+		&parentRefTitle,
 		&wi.RootFeatureID,
 		&wi.OwnerID,
 		&ownerRefID,
@@ -1888,6 +1967,19 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 
 	if sprintRefID != nil && sprintRefAlias != nil {
 		wi.Sprint = &SprintRef{ID: *sprintRefID, Alias: *sprintRefAlias}
+	}
+	if parentRefID != nil {
+		ref := ParentRef{ID: *parentRefID}
+		if parentRefTypePrefix != nil {
+			ref.TypePrefix = *parentRefTypePrefix
+		}
+		if parentRefKeyNum != nil {
+			ref.KeyNum = *parentRefKeyNum
+		}
+		if parentRefTitle != nil {
+			ref.Title = *parentRefTitle
+		}
+		wi.Parent = &ref
 	}
 	if ownerRefID != nil {
 		dn := ""

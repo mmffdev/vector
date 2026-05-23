@@ -27,6 +27,14 @@ export interface ArtefactTypePatch {
   prefix?: string;
   description?: string | null;
   colour?: string | null;
+  // Empty string clears to NULL on the wire; a UUID string sets.
+  // Drives useParentCandidates' dynamic parent-prefix resolution so
+  // tenant-renamed types (e.g. "Feature" → "Capability") flow through
+  // without code change.
+  parent_type_id?: string | null;
+  // Empty string clears to NULL; integer-as-string sets. 0 means
+  // top-of-ladder (no parent allowed by the UI).
+  layer_depth?: string | null;
 }
 
 export interface Violation {
@@ -47,4 +55,15 @@ async function patch(id: string, body: ArtefactTypePatch): Promise<ArtefactType>
   });
 }
 
-export const artefactTypesApi = { list, patch };
+// Re-runs the strategy + work-type adoption writers against the
+// already-adopted bundle so schema changes (layer_depth recompute,
+// parent_type_id chain) reach existing rows without a destructive
+// re-adoption. Returns the workspace + model the resync targeted.
+async function resync(): Promise<{ workspace_id: string; model_id: string }> {
+  return apiSite("/artefact-types/resync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export const artefactTypesApi = { list, patch, resync };

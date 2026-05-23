@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import InlineEditField from "@/app/components/InlineEditField";
+import { InlineSelect } from "@/app/components/InlineSelect";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
@@ -33,6 +34,11 @@ function buildColumns(
   onPatch: PatchFn,
   openPickerIdRef: React.RefObject<string | null>,
   setOpenPickerId: (id: string | null) => void,
+  // Full type list used to build the Parent dropdown options. Each
+  // row's parent picker filters this down to types in the SAME scope
+  // (work types parent under work types; strategy under strategy)
+  // minus the row itself, so the dropdown never offers an illegal pick.
+  allTypes: ArtefactType[],
 ): ColumnDef<ATRow>[] {
   return [
     {
@@ -103,6 +109,77 @@ function buildColumns(
       },
     },
     {
+      // Parent type — drives useParentCandidates' dynamic resolution.
+      // Dropdown lists every other type in the SAME scope (work types
+      // can only nest under work types; strategy under strategy). Empty
+      // option clears to NULL (top-of-ladder).
+      key: "parent",
+      label: "Parent type",
+      width: 180,
+      stopClick: true,
+      render: (row) => {
+        if (row.kind === "scope") return null;
+        const { type } = row;
+        const opts = allTypes
+          .filter((t) => t.scope === type.scope && t.id !== type.id)
+          .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+          .map((t) => ({ value: t.id, label: `${t.prefix} — ${t.name}` }));
+        const current = type.parent_type_id
+          ? allTypes.find((t) => t.id === type.parent_type_id) ?? null
+          : null;
+        const triggerLabel = current
+          ? `${current.prefix} — ${current.name}`
+          : "—";
+        return (
+          <InlineSelect
+            value={type.parent_type_id ?? ""}
+            options={opts}
+            ariaLabel={`Parent type for ${type.prefix}`}
+            placeholder="— None (top) —"
+            onCommit={(next) => onPatch(type.id, type, { parent_type_id: next === "" ? "" : next })}
+            trigger={<span className="inline-edit-trigger">{triggerLabel}</span>}
+          />
+        );
+      },
+    },
+    {
+      // Layer depth — 0-based. 0 means top-of-ladder; useParentCandidates
+      // treats parent_type_id=null as "no allowed parent" so a depth=0
+      // type cannot be a child. Padmin maintains this manually.
+      key: "layer",
+      label: "Layer",
+      width: 80,
+      align: "mono",
+      render: (row) => {
+        if (row.kind === "scope") return null;
+        const { type } = row;
+        const v = type.layer_depth == null ? "" : String(type.layer_depth);
+        return (
+          <InlineEditField
+            value={v}
+            onCommit={(next) => {
+              const trimmed = next.trim();
+              if (trimmed === v) return;
+              if (trimmed === "") {
+                onPatch(type.id, type, { layer_depth: "" });
+                return;
+              }
+              const n = parseInt(trimmed, 10);
+              if (Number.isNaN(n) || n < 0) return false;
+              onPatch(type.id, type, { layer_depth: String(n) });
+            }}
+            ariaLabel={`Layer depth for ${type.prefix}`}
+            inputClassName="form__input form__input--sm form__input--numeric"
+            displayClassName="inline-edit-trigger"
+            clickToEdit
+            allowEmpty
+            emptyDisplay="—"
+            maxLength={3}
+          />
+        );
+      },
+    },
+    {
       key: "colour",
       label: "Colour",
       width: 140,
@@ -160,6 +237,7 @@ export default function ArtefactTypesPage() {
   const [openPickerId, setOpenPickerId] = useState<string | null>(null);
   const openPickerIdRef = useRef<string | null>(null);
   openPickerIdRef.current = openPickerId;
+  const [resyncing, setResyncing] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -192,10 +270,11 @@ export default function ArtefactTypesPage() {
   }, []);
 
   const columns = useMemo(
-    () => buildColumns(onPatch, openPickerIdRef, setOpenPickerId),
+    () => buildColumns(onPatch, openPickerIdRef, setOpenPickerId, types ?? []),
     // openPickerIdRef is a stable ref — reading .current inside render is fine.
-    // setOpenPickerId is stable (from useState). Only rebuild when onPatch changes.
-    [onPatch],
+    // setOpenPickerId is stable (from useState). Rebuild on `types` change so the
+    // Parent dropdown options stay in sync after a rename / new-type insert.
+    [onPatch, types],
   );
 
   // All rows are flat roots — section dividers + type rows, no expand/collapse.
@@ -216,6 +295,28 @@ export default function ArtefactTypesPage() {
   }, [types]);
 
   const fetchChildren = useCallback(async (): Promise<ATRow[]> => [], []);
+
+  // Re-sync — re-runs the strategy + work-type adoption writers against
+  // the already-adopted bundle so schema changes (layer_depth recompute,
+  // parent_type_id chain) reach existing rows without a destructive
+  // re-adoption. Refreshes the visible list on success so depth + parent
+  // updates land in the UI immediately.
+  const onResync = useCallback(async () => {
+    setResyncing(true);
+    try {
+      await artefactTypesApi.resync();
+      await load();
+      notify.success("Artefact types resynced from the adopted portfolio model.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        notify.error("No active portfolio model to resync. Adopt one first.");
+      } else {
+        notify.apiError(err, "Resync failed.");
+      }
+    } finally {
+      setResyncing(false);
+    }
+  }, [load]);
 
   // patch shim — ResourceTree calls patch(id, body) but our IDs are prefixed "type-<uuid>"
   const patchRow = useCallback(async (rowId: string, body: Record<string, unknown>): Promise<ATRow> => {
@@ -244,6 +345,17 @@ export default function ArtefactTypesPage() {
         description="Create and manage the artefact type definitions used to categorise items across the workspace."
       />
       <Panel name="panel_artefact_types_tree" title="Types" description="Click any cell to edit inline. Colour changes apply immediately. Prefix must be 1–4 uppercase characters, unique within scope.">
+        <div className="at-tree__toolbar">
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={onResync}
+            disabled={resyncing}
+            title="Re-run portfolio-model adoption against the current bundle. Brings layer_depth and parent_type_id up to date on existing rows without a destructive re-adoption."
+          >
+            {resyncing ? "Resyncing…" : "Resync from portfolio model"}
+          </button>
+        </div>
         <div className="at-tree__flat-wrap">
         <ResourceTree<ATRow>
           roots={roots}

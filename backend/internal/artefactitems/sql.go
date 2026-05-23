@@ -69,6 +69,10 @@ const sqlWorkItemColumns = `
 	NULL::text                      AS sprint_ref_id,
 	NULL::text                      AS sprint_ref_alias,
 	a.parent_artefact_id::text      AS parent_id,
+	ap.id::text                     AS parent_ref_id,
+	apt.artefacts_types_prefix      AS parent_ref_type_prefix,
+	ap.number                       AS parent_ref_key_num,
+	ap.title                        AS parent_ref_title,
 	NULL::text                      AS root_feature_id,
 	COALESCE(a.owned_by_user_id::text, '') AS owner_id,
 	NULL::text                      AS owner_ref_id,
@@ -113,6 +117,8 @@ const sqlListWorkItemsTemplate = `
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
+		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
 		  AND at.artefacts_types_scope = $2%s
@@ -172,6 +178,8 @@ const sqlSelectWorkItemByID = `
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
+		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
 		WHERE a.id = $2
 		  AND a.subscription_id = $1
 		  AND a.archived_at IS NULL
@@ -191,6 +199,8 @@ const sqlSelectWorkItemByIDInWorkspace = `
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
+		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
 		WHERE a.id = $2
 		  AND a.subscription_id = $1
 		  AND a.archived_at IS NULL
@@ -207,6 +217,8 @@ const sqlListChildWorkItems = `
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
 		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
+		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
 		WHERE a.subscription_id = $1
 		  AND a.parent_artefact_id = $2
 		  AND a.archived_at IS NULL
@@ -641,6 +653,37 @@ const sqlBulkSetOwner = `UPDATE artefacts SET owned_by_user_id=$1::uuid, updated
 const sqlBulkArchive = `UPDATE artefacts SET archived_at=now(), updated_at=now() WHERE id=$1::uuid AND subscription_id=$2`
 
 const sqlBulkSetFlowState = `UPDATE artefacts SET flow_state_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`
+
+// ── ListFieldsForType ──────────────────────────────────────────────────────
+
+// sqlListFieldsForType returns the schema for the per-type form: every
+// field bound to the artefact type, joined with its field_library
+// definition, ordered by display position. Filters out archived library
+// rows (binding rows have no archive flag of their own; the library's
+// archived_at is the soft-delete authority).
+//
+// $1 = artefact_type_id (uuid)
+// $2 = subscription_id (uuid) — defence-in-depth: the type id is already
+//      tenant-private (gen_random_uuid), but cross-tenant scans should
+//      never come back even on an enumerating UUID.
+const sqlListFieldsForType = `
+		SELECT fl.id::text,
+		       fl.field_name,
+		       fl.label,
+		       fl.field_type,
+		       fl.options_json::text,
+		       tf.position,
+		       tf.required,
+		       tf.default_value
+		  FROM artefacts_types_fields tf
+		  JOIN artefacts_fields_library fl ON fl.id = tf.field_library_id
+		  JOIN artefacts_types at ON at.artefacts_types_id = tf.artefact_type_id
+		 WHERE tf.artefact_type_id = $1
+		   AND at.artefacts_types_id_subscription = $2
+		   AND fl.archived_at IS NULL
+		   AND at.artefacts_types_archived_at IS NULL
+		 ORDER BY tf.position ASC, fl.field_name ASC
+	`
 
 // ── ListFieldValues + UpsertFieldValue + DeleteFieldValue ──────────────────
 

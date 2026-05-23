@@ -6,15 +6,17 @@ import Panel from "@/app/components/Panel";
 import PageHeading from "@/app/components/PageHeading";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
+import VisualisationPanel from "@/app/components/VisualisationPanel";
 import { apiSite } from "@/app/lib/api";
-import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTree/p_ObjectTree";
+import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useScope } from "@/app/contexts/ScopeContext";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import portfolioWizardJson from "@/app/components/ObjectTree/configs/p_wizard_portfolio.json";
+import portfolioWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_portfolio.json";
 
 export default function PortfolioItemsPage() {
   const { full } = usePageTitle();
@@ -27,6 +29,10 @@ export default function PortfolioItemsPage() {
     by_type: Record<string, number>;
   } | null>(null);
 
+  // Catalogue gates the V2 render so the create-action picker (which
+  // reads scope=strategy from the sidecar) has Theme/BO/Feature in
+  // hand before the action bar mounts.
+  const { types } = useArtefactTypeCatalogue();
   const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
     const resolved = resolveWizardConfig(portfolioWizardJson as any);
     const funcs = buildWorkItemsFunctions();
@@ -67,15 +73,30 @@ export default function PortfolioItemsPage() {
     : null;
   useRefetchOnPush({ topic, refetch });
 
+  // Surfaced types = full scope=strategy catalogue, since this sidecar
+  // has no createableTypeSlots allow-list. Drives both the summary
+  // cells and the visualisation petals so empty buckets still render
+  // a cell (value 0) instead of vanishing.
+  const surfacedTypes = useMemo(() => {
+    return types
+      .filter((t) => t.scope === "strategy" && t.archived_at == null)
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  }, [types]);
+
   const summaryCells = useMemo(() => {
     const total = summary?.total ?? 0;
     const byType = summary?.by_type ?? {};
-    const cells = [{ label: "TOTAL ITEMS", value: total }];
-    Object.entries(byType).forEach(([key, count]) => {
-      cells.push({ label: key.toUpperCase(), value: count });
-    });
-    return cells;
-  }, [summary]);
+    const typeCells = surfacedTypes.map((t) => ({
+      label: t.name.toUpperCase(),
+      value: byType[t.name.toLowerCase()] ?? 0,
+    }));
+    return [{ label: "TOTAL ITEMS", value: total }, ...typeCells];
+  }, [summary, surfacedTypes]);
+
+  const petalKeys = useMemo(
+    () => surfacedTypes.map((t) => ({ key: t.name.toLowerCase(), label: t.name })),
+    [surfacedTypes],
+  );
 
   return (
     <PageContent>
@@ -88,21 +109,29 @@ export default function PortfolioItemsPage() {
         description="View, filter, and manage portfolio items organised by the workspace portfolio model."
       />
       <PageSummaryHeader cells={summaryCells} />
-
-      <ObjectTree
-        title="Portfolio items"
-        addressableName="portfolio_items_grid_tree"
-        subtitleBadge="05"
-        subtitle="Dense grid"
-        description="Spreadsheet-fast. 28px rows, single-character status, mono ID column."
-        selectedId={selectedItem?.id ?? null}
-        onSelect={setSelectedItem}
-        onPatched={(body) => {
-          const needsRefetch = "title" in body;
-          if (needsRefetch) void refetch();
-        }}
-        wizardConfig={wizardConfig}
+      <VisualisationPanel
+        pageKey="portfolio_items"
+        petalKeys={petalKeys}
+        total={summary?.total ?? 0}
+        byType={summary?.by_type ?? {}}
       />
+
+      {types.length > 0 && (
+        <ObjectTree
+          title="Portfolio items"
+          addressableName="portfolio_items_grid_tree"
+          subtitleBadge="05"
+          subtitle="Dense grid"
+          description="Spreadsheet-fast. 28px rows, single-character status, mono ID column."
+          selectedId={selectedItem?.id ?? null}
+          onSelect={setSelectedItem}
+          onPatched={(body) => {
+            const needsRefetch = "title" in body;
+            if (needsRefetch) void refetch();
+          }}
+          wizardConfig={wizardConfig}
+        />
+      )}
     </>
     </PageContent>
   );

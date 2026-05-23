@@ -9,13 +9,18 @@
 // React code (catalogue from useArtefactTypeCatalogue) and pre-React
 // callers (tests, server-side wizard preprocessing).
 //
-// Currently handles two cases:
+// Currently handles three cases:
 //   1. Sidecar field `artefact_type_slot: "wrk_X"` → drop the field
 //      and add `artefact_type_id: "<uuid>"` to the same parent object.
 //   2. Sidecar field `resourceUrl: "/work-items?item_type=wrk_X"` →
 //      rewrite the param to `?item_type_id=<uuid>`. This bridges the
 //      existing wizard JSONs that hardcoded the slug; new sidecars
 //      should prefer the dedicated `artefact_type_slot` field.
+//   3. Sidecar field `createableTypeSlots: ["wrk_X", "wrk_Y"]` →
+//      drop the field and add `createableTypeIds: ["<uuid>", "<uuid>"]`
+//      to the same parent object. Unresolvable slots are skipped
+//      silently (catalogue may not carry every canonical slot in
+//      every tenant); empty result yields an empty array.
 
 import type { ArtefactType } from "@/app/lib/artefactTypesApi";
 
@@ -79,6 +84,17 @@ export function resolveSlotRefs<T extends Record<string, unknown>>(
     // (2) resourceUrl param rewrite.
     if (typeof obj.resourceUrl === "string") {
       obj.resourceUrl = rewriteResourceUrl(obj.resourceUrl, catalogue);
+    }
+    // (3) createableTypeSlots → createableTypeIds rewrite.
+    if (Array.isArray(obj.createableTypeSlots)) {
+      const ids: string[] = [];
+      for (const raw of obj.createableTypeSlots) {
+        if (typeof raw !== "string") continue;
+        const id = idForSlot(raw, catalogue);
+        if (id != null) ids.push(id);
+      }
+      obj.createableTypeIds = ids;
+      delete obj.createableTypeSlots;
     }
     for (const k of Object.keys(obj)) {
       obj[k] = walk(obj[k]);
