@@ -68,7 +68,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Coverage parity with existing `topology.middleware_problemjson_test.go` + `topology.middleware_workspace_test.go` ProblemJSON shape assertions.
 - `sentinel_tests_log.md` records RED output verbatim (go build error showing missing package).
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit a4577e41; RED verified `FAIL ... [build failed]` with 10 undefined symbols captured verbatim in `sentinel_tests_log.md`.
 
 ---
 
@@ -86,7 +86,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - All six cases in `middleware_test.go` GREEN.
 - Attempts-to-green logged in `sentinel_tests_log.md` (target ≤ 3 attempts per case).
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD; all 6 cases PASS on attempt 1. Substrate resolver SQL (`sentinel/sql.go` + `sentinel/resolver.go` reading `artefacts_topology` directly) deferred from this story — the Resolver INTERFACE is in place + a test stub satisfies it; the production implementation backed by vaPool will land alongside S05/S21 when handlers actually need to clamp against real DB rows.
 
 ---
 
@@ -425,3 +425,5 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 |---|---|---|---|
 | S01 | 2026-05-24 | 6fe3b94e | (docs-only — no test) |
 | S02 | 2026-05-24 | 332bc138 | stub `sentinel.page.work-items` runs under `test:sentinel:page` |
+| S03 | 2026-05-24 | a4577e41 | 6 RED cases captured verbatim |
+| S04 | 2026-05-24 | (this commit) | 6 GREEN cases first try; substrate interface in place |

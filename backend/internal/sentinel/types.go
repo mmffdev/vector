@@ -1,0 +1,82 @@
+// Package sentinel — single-source-of-truth identity + tenant + scope clamp.
+//
+// See docs/Security/Sentinel/sentinel_docs.md for the full design.
+// Per PLA062 (Replace decision, 2026-05-24), sentinel OWNS the clamp
+// substrate end-to-end. The earlier topology.ClampMiddleware /
+// WorkspaceClampMiddleware are deprecated and deleted at S25.
+//
+// Public surface:
+//   - sentinel.Clamp       — the per-request immutable scope bag
+//   - sentinel.Resolver    — what middleware needs from topology / users
+//   - sentinel.Middleware  — the HTTP middleware (mounted in main.go)
+//   - sentinel.FromCtx     — handler-side accessor (lint-ratchet enforced)
+//   - sentinel.Err*        — typed sentinel-error sentinels (RFC 9457)
+package sentinel
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
+
+// Clamp is the per-request, immutable scope bag attached by Middleware
+// to every request context. Handlers MUST read it via FromCtx — never
+// reach around it to topology.* or auth.UserFromCtx for tenant/focus
+// resolution. The lint:sentinel-clamp-required ratchet (S20) enforces
+// this on every artefact-touching handler.
+//
+// All fields are populated by Middleware before the inner handler runs:
+//
+//   - TenantID         — subscription_id from the JWT
+//   - UserID           — user.id from the JWT
+//   - Role             — legacy role enum (display only, do not authorise)
+//   - RoleID           — UUID role id (authoritative)
+//   - FocusNodeID      — the resolved focus node (URL > user default > tenant root)
+//   - ScopeUp          — include ancestors of FocusNodeID
+//   - ScopeDown        — include descendants of FocusNodeID
+//   - AllowedSubtreeIDs — the resolved subtree the request may see
+type Clamp struct {
+	TenantID          uuid.UUID
+	UserID            uuid.UUID
+	Role              string
+	RoleID            uuid.UUID
+	FocusNodeID       uuid.UUID
+	ScopeUp           bool
+	ScopeDown         bool
+	AllowedSubtreeIDs []uuid.UUID
+}
+
+// Resolver is the dependency Middleware needs to compute a Clamp.
+//
+// Concrete implementations:
+//   - In production: a struct wrapping the vector-artefacts pool +
+//     topology SQL helpers (lives in backend/internal/sentinel/resolver.go
+//     after PLA062 finishes; S04 ships an in-memory test stub only).
+//   - In tests: any struct satisfying this interface — see stubResolver
+//     in middleware_test.go.
+//
+// Each method takes ctx.Context first per Go convention, then the
+// inputs needed. Errors returned MUST be one of the sentinel errors
+// (ErrFocusNotInTenant, ErrFocusNoAccess) for predictable middleware
+// behaviour; any other error becomes a 500.
+type Resolver interface {
+	// ResolveSubtree returns the union of {focus} + ancestors (if up)
+	// + descendants (if down), filtered by user grants. Errors:
+	//   - ErrFocusNotInTenant if focus belongs to another tenant
+	//   - ErrFocusNoAccess if user has no grant covering focus
+	//   - any other error → 500
+	ResolveSubtree(
+		ctx context.Context,
+		tenant, focus uuid.UUID,
+		scopeUp, scopeDown bool,
+	) ([]uuid.UUID, error)
+
+	// DefaultFocus returns the user's persisted default focus node, or
+	// nil if none set. Reads users.default_focus_node_id (added by S06).
+	// A nil-without-error result triggers the tenant-root fallback.
+	DefaultFocus(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
+
+	// TenantRoot returns the subscription's root topology node — the
+	// final fallback when neither ?focus nor user default is set.
+	TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+}

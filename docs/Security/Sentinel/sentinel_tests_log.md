@@ -107,9 +107,32 @@ FAIL
 
 | Attempt | Date | What changed | Output / verdict |
 |---|---|---|---|
-| (pending S04) | | | |
+| 1 | 2026-05-24 | Implemented `sentinel/types.go` (Clamp + Resolver interface), `sentinel/errors.go` (sentinels + writeProblem), `sentinel/ctx.go` (withClamp + FromCtx), `sentinel/middleware.go` (full middleware: auth check → focus resolution URL>default>tenant-root → ResolveSubtree → clamp attach), and added `stubResolver.ResolveSubtree/DefaultFocus/TenantRoot` methods on the test stub so it satisfies the new Resolver interface. | **PASS all 6 cases first try** — see GREEN below. |
 
 #### GREEN
 
-(pending S04)
+**Date.** 2026-05-24
+**Run command.** `cd backend && go test -v ./internal/sentinel/...`
+**Output (verbatim).**
+
+```
+=== RUN   TestMiddleware_Case1_ValidJWTWithFocus_AttachesFullClamp
+--- PASS: TestMiddleware_Case1_ValidJWTWithFocus_AttachesFullClamp (0.00s)
+=== RUN   TestMiddleware_Case2_NoFocusFallsBackToUserDefault
+--- PASS: TestMiddleware_Case2_NoFocusFallsBackToUserDefault (0.00s)
+=== RUN   TestMiddleware_Case3_NoFocusNoDefaultFallsBackToTenantRoot
+--- PASS: TestMiddleware_Case3_NoFocusNoDefaultFallsBackToTenantRoot (0.00s)
+=== RUN   TestMiddleware_Case4_FocusOutsideTenant_403ProblemJSON
+--- PASS: TestMiddleware_Case4_FocusOutsideTenant_403ProblemJSON (0.00s)
+=== RUN   TestMiddleware_Case5_FocusNoAccess_403ProblemJSON
+--- PASS: TestMiddleware_Case5_FocusNoAccess_403ProblemJSON (0.00s)
+=== RUN   TestMiddleware_Case6_NoJWT_401ProblemJSON
+--- PASS: TestMiddleware_Case6_NoJWT_401ProblemJSON (0.00s)
+PASS
+ok  	github.com/mmffdev/vector-backend/internal/sentinel	0.336s
+```
+
+**Attempts to green.** **1** (target was ≤ 3; the test was specified precisely enough that the implementation went green on first compile).
+**Neighbour regression check.** `go test ./internal/auth/... ./internal/topology/...` both PASS — no regressions in the substrate Sentinel duplicates.
+**Commit.** (added in S04 commit)
 

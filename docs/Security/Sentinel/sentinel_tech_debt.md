@@ -24,7 +24,15 @@
 
 ## Active entries
 
-(none — target state)
+### TD-SEN-01 — Production Resolver implementation deferred from S04 to S05
+
+**Severity.** S3 (planned deferral, not surprise debt — close before S05 ships).
+**Trigger.** S05 (mount middleware + tear out topology.Clamp) — at that point the middleware needs a real DB-backed Resolver, not just an interface.
+**Discovered by.** S04 GREEN attempt.
+**Standard-ref.** NIST 800-53 AC-3 — same control set; this is an implementation deferral, not a control gap (no production traffic touches the middleware yet).
+**Description.** S04 originally specified `sentinel/sql.go` + `sentinel/resolver.go` carrying the recursive-CTE SQL for descendants + ancestors. The test surface was satisfied by the Resolver INTERFACE plus a test stub. To keep S04 sized as "GREEN the RED test", the production resolver (vaPool-backed, reading `artefacts_topology`) is pushed into S05 where it will be wired up at the same time the middleware mounts on real routes. The interface + middleware code + error handling are all final-form already; only the SQL-backed resolver implementation is the gap.
+**Compensating control.** Middleware will not be mounted in `cmd/server/main.go` until S05, so no production request hits the unimplemented resolver. Test coverage is unchanged: tests use the in-test stub; the production code path is unreachable.
+**Pay-down plan.** S05 ships `sentinel/resolver.go` (Resolver impl wrapping `vaPool`) + `sentinel/sql.go` (recursive-CTE SQL mirroring topology's `sqlDescendantNodeIDsTemplate` + `sqlAncestorNodeIDsTemplate` patterns). S05's AC will be expanded to cover this. When S05 lands, this TD-SEN-01 entry moves to "Resolved entries" below.
 
 ---
 

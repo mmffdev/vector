@@ -94,6 +94,37 @@ type stubResolver struct {
 	tenantRootFn func(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
 }
 
+// ResolveSubtree satisfies sentinel.Resolver. Delegates to resolveFn;
+// returns ErrFocusNotInTenant if not configured (signals "test forgot
+// to set this up" rather than panicking silently).
+func (s *stubResolver) ResolveSubtree(ctx context.Context, tenant, focus uuid.UUID, scopeUp, scopeDown bool) ([]uuid.UUID, error) {
+	if s.resolveFn == nil {
+		return nil, ErrFocusNotInTenant
+	}
+	return s.resolveFn(ctx, tenant, focus, scopeUp, scopeDown)
+}
+
+// DefaultFocus satisfies sentinel.Resolver. Returns (nil, nil) when
+// defaultFocusFn is unset — meaning "user has no default", which the
+// middleware treats as fall-through to tenant root.
+func (s *stubResolver) DefaultFocus(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
+	if s.defaultFocusFn == nil {
+		return nil, nil
+	}
+	return s.defaultFocusFn(ctx, userID)
+}
+
+// TenantRoot satisfies sentinel.Resolver. Returns a default fixture
+// when tenantRootFn is unset so test cases (1), (2), (4), (5), (6) —
+// which don't exercise the tenant-root fallback — don't have to
+// configure it.
+func (s *stubResolver) TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error) {
+	if s.tenantRootFn == nil {
+		return fixtureTenantARootA, nil
+	}
+	return s.tenantRootFn(ctx, tenant)
+}
+
 // inspectorHandler is the inner handler the middleware wraps. Each test
 // reads .clamp afterwards to assert the middleware attached the right
 // values. .called pins the "inner must not run when auth/clamp fails"
