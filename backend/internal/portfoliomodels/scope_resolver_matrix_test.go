@@ -132,7 +132,7 @@ var matrixCells = []scopeMatrixCell{
 // missing feature. The final report calls these out for follow-up.
 func TestScopeResolver_AdmitDenyMatrix(t *testing.T) {
 	pool := scopeMatrixPool(t)
-	defer pool.Close()
+	t.Cleanup(func() { pool.Close() })
 
 	// Surface-shape findings — logged once so a `-v` run shows the
 	// resolver gap without polluting CI red.
@@ -151,13 +151,13 @@ func TestScopeResolver_AdmitDenyMatrix(t *testing.T) {
 	workspaceID := uuid.New()
 	subscriptionID := uuid.New()
 
-	// Cleanup: drop everything we seeded by workspace_id. Idempotent —
-	// running the test twice on the same DB leaves no residue.
-	defer func() {
-		_, _ = pool.Exec(ctx,
+	// Registered BEFORE any seeding so a panic during probes still tidies
+	// up. Idempotent — re-runs leave no residue.
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(),
 			`DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1`,
 			workspaceID)
-	}()
+	})
 
 	// We use a per-cell suffix on (name, prefix) to avoid colliding with
 	// the uq_artefact_types_ws_scope_prefix unique within (workspace,

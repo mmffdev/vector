@@ -284,3 +284,17 @@ B16.13.2	canary inline SQL ratchet verification users _canary_sql ratchet fires
 B16.13.3	apikeys sql.go constants proof pattern sqlSelectAdminAPIKeyByHash sqlSoftArchive
 B16.13.4	allowlist apikeys removed ranking polymorphicrefs remaining offenders closed
 B16.13.5	TD-SQL-DRIFT docs code-standards sql.go enforcement ranking polymorphicrefs
+F2.1	react-scan dev render profiler devDependencies bundle analyzer overlay work-items NODE_ENV development
+F2.2	million next.config plugin rsc auto profile baseline measure-then-keep work-items perf-baselines rollback regression
+F2.3	culori SAPC-APCA theme OKLCH WCAG contrast accessibility material-color-utilities HCT TD-THEME-EXTRACTION
+F2.4	frontend_stack_picks docs CLAUDE.md tech_debt deferred candidates adopted ratelimit AI SDK helmet osv-scanner DOMPurify
+B16.14	upstash ratelimit arcjet perimeter decision vendor-lock audit-log defence finance threshold per-IP per-tenant CLAUDE security
+B16.15	middleware perimeter rate-limit /_site /samantha/v2 429 Retry-After problem+json audit perimeter.ratelimit.deny env var docs security
+F2.5	charts visx echarts deck nivo recharts evilcharts observable plot tremor victory deferred trigger
+F2.6	animation motion auto-animate gsap react-three-fiber lottie theatre baseline page-transition scroll deferred trigger
+F2.7	vercel ai sdk useChat DefaultChatTransport generateObject zod anthropic agent rsc deprecated tool-injection deferred trigger
+F2.8	undici Agent pool keep-alive concurrency p99 socket exhaustion fetch deferred trigger
+F2.9	material-color-utilities theme image extraction HCT tonal ramps TD-THEME-EXTRACTION-HCT deferred trigger
+F2.10	osv-scanner supply-chain CVE CI npm allowlist false-positive supply-chain evidence trail deferred trigger
+B16.16	helmet next-safe middleware CSP strict-dynamic nonce trusted types HSTS COOP COEP referrer X-Frame SRI procurement
+B16.17	isomorphic-dompurify sanitiseHtml sanitiser script iframe javascript handler markdown user-html SSR-safe procurement-narrative

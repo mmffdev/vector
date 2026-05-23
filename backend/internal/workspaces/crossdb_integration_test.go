@@ -81,11 +81,14 @@ func TestCheckCrossDBOrphans_DetectsInsertedRow(t *testing.T) {
 	ctx := context.Background()
 
 	wsID := uuid.New()
-	defer func() {
-		if _, err := va.Exec(ctx, `DELETE FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`, wsID); err != nil {
+	// Registered BEFORE the INSERT so a panic mid-test still tidies up.
+	// Use a fresh context so cleanup runs even if the test ctx is done.
+	t.Cleanup(func() {
+		if _, err := va.Exec(context.Background(),
+			`DELETE FROM master_record_portfolios WHERE master_record_portfolios_id_workspace = $1`, wsID); err != nil {
 			t.Errorf("cleanup synthetic row: %v", err)
 		}
-	}()
+	})
 
 	if _, err := va.Exec(ctx, `
 		INSERT INTO master_record_portfolios (master_record_portfolios_id_workspace, master_record_portfolios_model_name)

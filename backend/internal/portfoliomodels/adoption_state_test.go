@@ -173,7 +173,9 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 	// Hard-delete any master_record_portfolios row for this workspace —
 	// soft-archive would still be filtered out by the handler, but the
 	// test guarantees a clean slate. The table is by-design rebuildable
-	// from the saga, so a delete here is safe in the dev tunnel.
+	// from the saga, so a delete here is safe in the dev tunnel. No
+	// restore — the saga can re-insert when next exercised.
+
 	if _, err := va.Exec(ctx,
 		`DELETE FROM master_record_portfolios WHERE workspace_id = $1`,
 		ws,
@@ -183,17 +185,37 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 
 	// Soft-archive any live scope='strategy' artefacts_types rows for
 	// this workspace so we hit the notStarted branch deterministically.
-	// We never hard-delete (other rows may FK at it).
-	if _, err := va.Exec(ctx,
+	// We never hard-delete (other rows may FK at it). Capture the ids
+	// we touched so cleanup can restore archived_at = NULL — otherwise
+	// the next adoption smoke run sees an empty strategy substrate.
+	var touchedTypeIDs []uuid.UUID
+	rows, err := va.Query(ctx,
 		`UPDATE artefacts_types
-		    SET archived_at = COALESCE(archived_at, now())
+		    SET archived_at = now()
 		  WHERE workspace_id = $1
 		    AND scope = 'strategy'
-		    AND archived_at IS NULL`,
+		    AND archived_at IS NULL
+		  RETURNING id`,
 		ws,
-	); err != nil {
+	)
+	if err != nil {
 		t.Skipf("cannot archive strategy artefacts_types: %v", err)
 	}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err == nil {
+			touchedTypeIDs = append(touchedTypeIDs, id)
+		}
+	}
+	rows.Close()
+	t.Cleanup(func() {
+		if len(touchedTypeIDs) == 0 {
+			return
+		}
+		_, _ = va.Exec(context.Background(),
+			`UPDATE artefacts_types SET archived_at = NULL WHERE id = ANY($1)`,
+			touchedTypeIDs)
+	})
 
 	h := NewAdoptionStateHandler(vec, va)
 	srv := httptest.NewServer(newAdoptionStateRouter(h, user))
@@ -258,6 +280,12 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 	suffix := uuid.NewString()[:6]
 	prefix := "TI" + suffix[:3]
 	typeID := uuid.New()
+	// Registered BEFORE the INSERT so a panic still tidies up.
+	t.Cleanup(func() {
+		_, _ = va.Exec(context.Background(),
+			`UPDATE artefacts_types SET archived_at = now() WHERE id = $1`,
+			typeID)
+	})
 	if _, err := va.Exec(ctx, `
 		INSERT INTO artefacts_types
 		    (id, subscription_id, workspace_id,
@@ -269,11 +297,6 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 	); err != nil {
 		t.Skipf("cannot insert strategy artefact_type: %v", err)
 	}
-	defer func() {
-		_, _ = va.Exec(ctx,
-			`UPDATE artefacts_types SET archived_at = now() WHERE id = $1`,
-			typeID)
-	}()
 
 	h := NewAdoptionStateHandler(vec, va)
 	srv := httptest.NewServer(newAdoptionStateRouter(h, user))
@@ -323,13 +346,14 @@ func TestGetAdoptionState_Adopted(t *testing.T) {
 
 	// Capture/restore: don't trample a real adoption row. We DELETE
 	// here, run the test against an inserted row, then DELETE again
-	// in defer. The saga can re-insert if needed.
+	// in cleanup. The saga can re-insert if needed. Registered BEFORE
+	// the pre-delete so a panic mid-test still tidies up.
+	t.Cleanup(func() {
+		_, _ = va.Exec(context.Background(),
+			`DELETE FROM master_record_portfolios WHERE workspace_id = $1`, ws)
+	})
 	_, _ = va.Exec(ctx,
 		`DELETE FROM master_record_portfolios WHERE workspace_id = $1`, ws)
-	defer func() {
-		_, _ = va.Exec(ctx,
-			`DELETE FROM master_record_portfolios WHERE workspace_id = $1`, ws)
-	}()
 
 	modelID := uuid.New()
 	if _, err := va.Exec(ctx, `

@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-05-22 19:44:41
+**Generated:** 2026-05-23 19:48:06
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -51,11 +51,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components
-86 file(s) · key: NotificationToastHost.tsx, TabBar.tsx, UserAvatarMenu.tsx
+89 file(s) · key: work-items-tree-config.tsx, ArtefactTree.tsx, VisualisationPanel.tsx
 Purpose: _(unset)_
 
 ### app/components/ArtefactInlineForm
-6 file(s) · key: ArtefactInlineForm.tsx, types.ts, useArtefactInline.ts
+7 file(s) · key: ArtefactInlineForm.tsx, EditCustomFields.tsx, types.ts
 Purpose: _(unset)_
 
 ### app/components/MapRelationship3D
@@ -67,11 +67,19 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/ObjectTreeV2
-6 file(s) · key: registry.ts, p_ObjectTreeRegistry.tsx, p_ObjectTree.tsx
+6 file(s) · key: p_ObjectTree.tsx, registry.ts, p_ObjectTreeRegistry.tsx
+Purpose: _(unset)_
+
+### app/components/ObjectTreeV2/hooks
+3 file(s) · key: useFieldsForType.ts, useObjectTreeFacets.ts, useObjectTreeWindow.ts
 Purpose: _(unset)_
 
 ### app/components/ObjectTreeV2/kinds
 2 file(s) · key: DenseGridHeader.tsx, ActionBar.tsx
+Purpose: _(unset)_
+
+### app/components/ObjectTreeV2/sheets
+2 file(s) · key: CreateCustomFields.tsx, ObjectTreeBulkCreateSheet.tsx
 Purpose: _(unset)_
 
 ### app/components/RichTextField
@@ -103,7 +111,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/hooks
-24 file(s) · key: useRealtimeSubscription.ts, useNotificationsStream.ts, useResourceRank.ts
+24 file(s) · key: useNotificationsStream.ts, usePriorityChipOptions.ts, useChipTypeOptions.ts
 Purpose: _(unset)_
 
 ### app/hooks/__tests__
@@ -111,7 +119,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/lib
-26 file(s) · key: fieldsApi.ts, api.ts, wizardLoader.ts
+26 file(s) · key: sidecarSlotResolver.ts, fieldsApi.ts, api.ts
 Purpose: _(unset)_
 
 ### app/lib/__tests__
@@ -220,9 +228,7 @@ Purpose: _(unset)_
 - app/components/ObjectTreeV2/__tests__
 - app/components/ObjectTreeV2/configs
 - app/components/ObjectTreeV2/flyouts
-- app/components/ObjectTreeV2/hooks
 - app/components/ObjectTreeV2/plugins
-- app/components/ObjectTreeV2/sheets
 - app/components/TimeboxInlineForm
 - app/components/TimeboxObjectTree
 - app/components/catalogue/c_circular_additor
@@ -318,11 +324,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/apikeys
-5 file(s) · key: middleware.go, handler.go, dev.go
+11 file(s) · key: middleware.go, handler.go, apikeys.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-17 file(s) · key: types.go, sql.go, service_test.go
+17 file(s) · key: service.go, types.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
@@ -330,7 +336,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefacttypes
-6 file(s) · key: sql.go, seed_test.go, seed.go
+6 file(s) · key: service.go, sql.go, seed_test.go
 Purpose: _(unset)_
 
 ### backend/internal/audit
@@ -338,7 +344,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/auth
-18 file(s) · key: middleware.go, service.go, sql.go
+18 file(s) · key: sql.go, middleware_test.go, middleware.go
 Purpose: _(unset)_
 
 ### backend/internal/bootstatus
@@ -401,8 +407,12 @@ Purpose: _(unset)_
 6 file(s) · key: handler_test.go, sql.go, service.go
 Purpose: _(unset)_
 
+### backend/internal/lintchecks
+3 file(s) · key: sql_placement_test.go, http_error_placement_test.go, doc.go
+Purpose: _(unset)_
+
 ### backend/internal/logger
-2 file(s) · key: middleware.go, logger.go
+3 file(s) · key: middleware.go, authfailure.go, logger.go
 Purpose: _(unset)_
 
 ### backend/internal/lookups
@@ -422,7 +432,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/notifications
-11 file(s) · key: templates.go, sql.go, stream.go
+12 file(s) · key: stream.go, stream_problemjson_test.go, templates.go
 Purpose: _(unset)_
 
 ### backend/internal/notifications/broker
@@ -450,7 +460,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/polymorphicrefs
-3 file(s) · key: service_test.go, service.go, lifecycle_test.go
+4 file(s) · key: service.go, sql.go, service_test.go
 Purpose: _(unset)_
 
 ### backend/internal/portfolio
@@ -458,15 +468,15 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/portfoliomodels
-34 file(s) · key: dev_reset.go, sql.go, cross_db_canary_test.go
+34 file(s) · key: adoption_state_test.go, handler_workspace_layers_test.go, scope_resolver_matrix_test.go
 Purpose: _(unset)_
 
 ### backend/internal/ranking
-6 file(s) · key: service_integration_test.go, registry.go, handler.go
+7 file(s) · key: position.go, service.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/realtime
-13 file(s) · key: hub.go, session_sweeper_test.go, ws_origin_test.go
+14 file(s) · key: client.go, client_problemjson_test.go, hub.go
 Purpose: _(unset)_
 
 ### backend/internal/roles
@@ -510,11 +520,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/timeboxsprints
-8 file(s) · key: types.go, sql.go, service.go
+8 file(s) · key: ancestor_walk_test.go, types.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/topology
-14 file(s) · key: workspace_lookup.go, service.go, middleware.go
+15 file(s) · key: service.go, sql.go, middleware.go
 Purpose: _(unset)_
 
 ### backend/internal/transport
@@ -526,7 +536,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/users
-7 file(s) · key: service.go, sql.go, handler.go
+8 file(s) · key: prefs.go, prefs_problemjson_test.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/usertaborder
@@ -542,7 +552,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/workspaces
-10 file(s) · key: handler_test.go, crossdb_integration_test.go, sql.go
+10 file(s) · key: crossdb_integration_test.go, handler_test.go, sql.go
 Purpose: _(unset)_
 
 ## Dev tooling
@@ -552,7 +562,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/pages
-21 file(s) · key: DevVisualiserPanel.tsx, DevVisualiserCubesPanel.tsx, DevReportingPanel.tsx
+22 file(s) · key: DevVisualiserPanelV2.tsx, DevVisualiserPanelV1.tsx, DevVisualiserPanel.tsx
 Purpose: _(unset)_
 
 ### dev/scripts
@@ -598,7 +608,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/reports
-662 file(s) · key: 20260521-230758-addressables.json, 20260521-230456-addressables.json, 20260521-230347-addr
+677 file(s) · key: 20260523-050000-addressables.json, 20260523-045927-addressables.json, 20260523-045845-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -635,11 +645,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/mmff_vector/schema
-240 file(s) · key: 241_dev_visualiser_page_role_grants.sql, 240_dev_visualiser_page.sql, 239_dev_reporting_pa
+241 file(s) · key: 242_api_keys_manage_permission.sql, 241_dev_visualiser_page_role_grants.sql, 240_dev_visua
 Purpose: _(unset)_
 
 ### db/mmff_vector/schema/down
-50 file(s) · key: 241_dev_visualiser_page_role_grants_DOWN.sql, 240_dev_visualiser_page_DOWN.sql, 239_dev_re
+51 file(s) · key: 242_api_keys_manage_permission_DOWN.sql, 241_dev_visualiser_page_role_grants_DOWN.sql, 240
 Purpose: _(unset)_
 
 ### db/ops
@@ -669,11 +679,11 @@ Purpose: _(unset)_
 ## Documentation indexes
 
 ### .
-10 file(s) · key: Vector_Scope.md, one.md, objectTreeRefactor.md
+11 file(s) · key: Vector_Scope.md, css-redundancy-audit.md, one.md
 Purpose: _(unset)_
 
 ### docs
-74 file(s) · key: c_tech_debt.md, c_c_objecttree_refactor_plan.md, c_c_roles_permissions.md
+75 file(s) · key: c_tech_debt.md, c_security.md, c_c_roles_permissions.md
 Purpose: _(unset)_
 
 ### docs/notes

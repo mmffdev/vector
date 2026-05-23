@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-23 (New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
-**Doc version:** 2.53
+**Last updated:** 2026-05-23 (PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
+**Doc version:** 2.55
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -24,6 +24,7 @@
 **F — Product Functionality** *(user-visible features currently being built)*
 
 - [F1. Artefact Type and Flow State Customisation](#f1-artefact-type-and-flow-state-customisation)
+- [F2. Frontend Stack (PLA061)](#f2-frontend-stack-pla061) 🔵 IN FLIGHT
 
 **FE — Feature Areas** *(governance, UX, and other domain-tagged features)*
 
@@ -320,9 +321,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 ### FLOW1.1 Schema — kind widening + is_pullable flag
 
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 - ✅ **FLOW1.1.1** ~~Widen `flow_states.kind` CHECK constraint to `('backlog','todo','in_progress','done','accepted','cancelled')` — adds `backlog` as 6th primitive~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 - ✅ **FLOW1.1.2** ~~Add `flow_states.is_pullable BOOLEAN NOT NULL DEFAULT FALSE` — opt-in per pill; default false so new pills are non-pullable until consciously marked~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `aede1dd` (2026-05-18): fix(login): shift welcome column up 100px
@@ -333,6 +336,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 - ✅ **FLOW1.1.3** ~~Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
@@ -358,6 +362,20 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -403,6 +421,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -664,6 +683,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -835,6 +857,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1063,6 +1086,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1100,6 +1127,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b60012c` (2026-05-18): fix(tests): unblock 4 cached test failures — DPoP signature drift + 1 assertion [TD-RF1-TEST-COLUMN-RENAME-DRIFT]
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1116,6 +1144,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -1170,6 +1199,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -1198,6 +1229,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 - **FLOW1.5.1** Snapshot tables in `vector_artefacts` (`flow_defaults`, `flow_state_defaults`, `flow_transition_defaults`) baked at seed time; idempotent rebuild from current live default flows `[P1]` ✅
 > Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1207,6 +1239,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `860ccf4` (2026-05-14): refactor(PLA-0048 / RF1.3): per-DB migration directories [RF1.3]
 > Commit `ea52620` (2026-05-14): refactor(PLA-0048 / RF1.4.2.pages): rename page_* → pages_* + column-prefix [RF1.4.2.pages]
 > Commit `c6d3b19` (2026-05-14): refactor(PLA-0048 / RF1.4.4): column-prefix master_record_tenants (§2.3) [RF1.4.4.master_record_tenants]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
@@ -1247,6 +1280,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
@@ -1299,6 +1334,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ccbd882` (2026-05-17): feat(tree): ObjectTree owns chrome — Panel + badge/title/subtitle/description, bottom-only pagination, corner-notch fix [B21]
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
@@ -1487,6 +1524,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1653,6 +1691,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1852,6 +1892,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2038,6 +2081,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2218,6 +2262,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2343,6 +2390,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2390,6 +2440,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2455,6 +2507,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2478,6 +2533,84 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
 > Commit `221ccff` (2026-05-12): feat(css): introduce <PageContent> wrapper to anchor sticky-nav top gap
+
+## F2. Frontend Stack (PLA061)
+
+> Origin: PLA061 (Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab). Four perf/theme/docs stories from Phase 1; the two perimeter-security stories live under B16.14/B16.15.
+
+- **F2.1 [P3] 🔵 IN FLIGHT** — [Benefit 3/5] Wire react-scan into dev-mode render profiler. Dev-only drop-in to highlight wasteful re-renders on hot pages.
+  - AC: `react-scan` appears in `package.json` under `devDependencies`.
+  - AC: root layout (or equivalent) loads the scan script only when `process.env.NODE_ENV === 'development'`.
+  - AC: production build (`next build`) bundle does NOT include the scan script (verified via bundle analyzer or string-grep on the build output).
+  - AC: visiting `/work-items` in dev shows the render-highlight overlay.
+  - AC: no console errors on initial load.
+
+- **F2.2 [P3] 🔵 IN FLIGHT** — [Benefit 4/5] Adopt Million on hot list/table surfaces with measure-then-keep gate. Baseline a render profile, enable Million via Next plugin, re-measure, keep only if > 20% measured improvement on the chosen baseline page.
+  - AC: baseline CPU profile of `/work-items` with ~100 items recorded and stored at `dev/perf-baselines/work-items-pre-million.json` (or similar).
+  - AC: `million` appears in `package.json`.
+  - AC: `next.config.js` wraps config with the Million plugin with `auto: { rsc: true }`.
+  - AC: post-adoption CPU profile recorded; measured improvement on baseline page documented in commit message AND in a TD entry.
+  - AC: if < 20% win measured, story closes with rollback commit + TD-entry noting "Million evaluated, no measurable win on Vector's render shape, deferred".
+  - AC: if adopted, no visual regression on `/work-items`, `/portfolio-items`, `/risk` (manual click-path verification).
+
+- **F2.3 [P3] 🔵 IN FLIGHT** — [Benefit 4/5] Migrate `<theme>` skill colour math to culori + SAPC-APCA. Drop-in upgrade to spec-correct colour science.
+  - AC: `culori` appears in `package.json`.
+  - AC: existing OKLCH conversion call sites in the `<theme>` skill replaced with `culori` equivalents; bespoke math deleted.
+  - AC: contrast assertion in theme generation replaced from WCAG-2 ratio to SAPC-APCA.
+  - AC: three existing theme packs regenerated and visually compared (old vs new) — no perceptible regression on the role-token output.
+  - AC: `docs/c_accessibility.md` updated to cite APCA as the contrast standard.
+  - AC: TD entry `TD-THEME-EXTRACTION-HCT` filed: severity S3, trigger = first bad image-extraction report, action = migrate image-extraction path to `material-color-utilities` HCT engine.
+
+- **F2.4 [P3] 🔵 IN FLIGHT** — [Benefit 3/5] Author `docs/c_c_frontend_stack_picks.md` + file TD entries for deferred candidates. Single canonical reference for what's adopted + what's deferred + why.
+  - AC: new file `docs/c_c_frontend_stack_picks.md` exists.
+  - AC: file has two sections: "Adopted" (Million, react-scan, ratelimit pick, culori, APCA) with one-line rationale each, and "Evaluated & Deferred" (charts, animation, AI SDK, undici pool, helmet+CSP, osv-scanner, DOMPurify, material-color-utilities) with one-line rationale + trigger each.
+  - AC: `CLAUDE.md` gains one pointer line linking to the new doc under the design / styling pointer block.
+  - AC: `docs/c_tech_debt.md` gains one TD row per deferred candidate (8 rows), severity per candidate (mostly S3; helmet+CSP and osv-scanner = S2).
+  - AC: every TD row references PLA061 in its origin column.
+
+### F2.5–F2.10 — Deferred candidates (no marker; awaiting trigger)
+
+> Scoped per PLA061 Phase 2. Listed here for visibility on the scope board; **not active work**. Each has a TD row in `docs/c_tech_debt.md` (filed by F2.4) with severity + trigger. Promote to 🔵 IN FLIGHT when its trigger fires.
+
+- **F2.5 [P3]** — [Benefit 3/5 when triggered] Charts library pick. Choose from visx (highest design ceiling, NYT-tier), ECharts (heavy stat charts with custom theme), deck.gl (network/flow/geo at scale). Honourable mentions: Nivo, Recharts + evilcharts skin, Observable Plot. Skip Tremor + Victory (corporate-bland).
+  - **Trigger:** first reporting requirement that names a specific chart type.
+  - AC (when triggered): pick recorded in `docs/c_c_frontend_stack_picks.md` with rationale.
+  - AC: first chart component lands on the page that triggered the pick.
+  - AC: no Tremor/Victory adopted by stealth elsewhere.
+
+- **F2.6 [P3]** — [Benefit 4/5 when triggered] Animation baseline. Adopt Motion as the baseline + auto-animate for list polish. Reserve GSAP for the specific page that needs orchestrated scroll choreography. Future picks: react-three-fiber (3D), Lottie (designer JSON), theatre.js (authoring).
+  - **Trigger:** first design that calls for layout-morph, page-transition, or scroll-driven animation.
+  - AC (when triggered): Motion + auto-animate appear in `package.json`.
+  - AC: at least one page uses the baseline; bundle-size delta documented.
+  - AC: GSAP / r3f / Lottie remain unused unless their specific surface lands.
+
+- **F2.7 [P3]** — [Benefit 4/5 when triggered] Vercel AI SDK transport only. Adopt `useChat` + `DefaultChatTransport` + `generateObject` with Zod. Keep agent loop authority + tool dispatch in Go; expose each TS tool as an authenticated fetch to `/_site/...` or `/samantha/v2/...`. Skip `@ai-sdk/rsc` (deprecated). File prompt-injection / tool-output sanitisation gap as a blocker before any tenant exposure.
+  - **Trigger:** first agent feature enters scope.
+  - AC (when triggered): `ai` + `@ai-sdk/anthropic` + `zod` in `package.json`.
+  - AC: agent loop + tool dispatch remain in Go (no `tool({ execute })` does business logic in Node).
+  - AC: `@ai-sdk/rsc` NOT in tree (lint or grep proves it).
+  - AC: prompt-injection defence story filed and blocking before tenant exposure.
+
+- **F2.8 [P3]** — [Benefit 2/5 when triggered] Node→Go undici pool tuning. Replace default global fetch with a pinned `undici.Agent` per upstream.
+  - **Trigger:** p99 latency regression OR first incident of socket exhaustion under load.
+  - AC (when triggered): `undici.Agent` configured per upstream with documented keep-alive + per-host concurrency.
+  - AC: before/after p99 captured for the affected endpoint.
+  - AC: TD entry closed with measured win.
+
+- **F2.9 [P3]** — [Benefit 3/5 when triggered] material-color-utilities for theme image extraction. Drop-in alt extraction path for the `<theme>` skill image input — Google's HCT engine, tonal ramps map cleanly to Vector's role tokens.
+  - **Trigger:** first user-reported bad palette extraction from an image, OR first theme-pack request where HCT ramps would help.
+  - AC (when triggered): `@material/material-color-utilities` in `package.json`.
+  - AC: `<theme>` skill image-extraction path replaced; bespoke extraction deleted.
+  - AC: regenerated packs from the trigger image visually compared old vs new; documented in commit.
+  - AC: closes TD-THEME-EXTRACTION-HCT filed by F2.3.
+
+- **F2.10 [P3]** — [Benefit 4/5 when triggered] Supply-chain scanning in CI via osv-scanner. Google-maintained, covers npm + Go.
+  - **Trigger:** when CI exists / matures enough to gate on it.
+  - AC (when triggered): `osv-scanner` runs on every PR.
+  - AC: PR fails on any CVE rated ≥ medium in the dependency tree.
+  - AC: allowlist mechanism exists for known-false-positives with expiry dates.
+  - AC: `docs/c_security.md` gains a row for supply-chain evidence trail.
+
 ## M1. Flows
 > Commit `e4adcc6` (2026-05-12): feat(FE-GOV-0003): flow-state descriptions + per-state exit rules
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
@@ -2866,14 +2999,17 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
   > - `POST   /artefacts/:id/reparent` — change parent_id; clamp validates new parent in same tenant/workspace
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
   > - `POST   /artefacts/:id/restore` — unarchive
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
   > - `POST   /artefacts/:id/move` — change workspace_id (padmin-gated, rare)
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   >
   > **The clamp (server-side, every route):**
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
@@ -3028,6 +3164,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -3107,6 +3245,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -3186,6 +3325,16 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -3280,6 +3429,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -3318,6 +3469,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -3353,6 +3505,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -3451,6 +3604,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -3514,6 +3668,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
@@ -3627,6 +3782,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3832,6 +3989,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -3987,6 +4146,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   - ✅ ~~**B16.8.3** MFA verify endpoint~~ `[P1]` > Commit 2026-05-18: `MFAVerifyLogin` service method + `MFAVerify` handler; `POST /auth/mfa/verify` registered with 10/min rate limit.
   - ✅ ~~**B16.8.4** MFA management endpoints~~ `[P1]` > Commit 2026-05-18: `POST /auth/mfa/enroll`, `POST /auth/mfa/confirm`, `DELETE /auth/mfa` registered in `main.go` under `RequireAuth`.
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
@@ -4152,6 +4312,46 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
     - ✅ ~~AC: CLAUDE.md "Code standards" pointer already linked to that file — no change needed.~~
     - ✅ ~~AC: TD entry has machine-readable severity (S3) + status (deferred) per the existing register format.~~
 
+### B16.14 Perimeter rate-limit decision (PLA061)
+
+- **B16.14 [P2] 🔵 IN FLIGHT** — [Benefit 5/5] Pick Upstash ratelimit OR arcjet — decision story. Two-page evaluation note + recommendation; no code change in this story.
+  - AC: short markdown note exists at `docs/c_c_perimeter_ratelimit_pick.md` comparing the two options on: vendor-lock, audit-log integration, defence/finance narrative, total cost of ownership.
+  - AC: note names a single recommendation with one-paragraph rationale.
+  - AC: note explicitly states the threshold defaults to use for first roll-out (per-IP req/min, per-tenant req/min).
+  - AC: note linked from `CLAUDE.md` under the security pointer.
+
+### B16.15 Perimeter rate-limit middleware (PLA061)
+
+- **B16.15 [P2] 🔵 IN FLIGHT** — [Benefit 5/5] Wire perimeter rate-limit middleware on /_site + /samantha/v2. Implements the pick from B16.14. Per-IP gating first, audit-log every denial.
+  - AC: `middleware.ts` at repo root matches paths under /_site and /samantha/v2.
+  - AC: exceeded-threshold returns HTTP 429 with `Retry-After` header AND `Content-Type: application/problem+json` body matching PLA060 standard.
+  - AC: denial writes one audit row via the existing audit service with action `perimeter.ratelimit.deny` + actor IP + matched path.
+  - AC: integration test exercises the threshold (e.g. 101 hits in < 60s, asserts 101st is 429).
+  - AC: threshold values configurable via env var (not hardcoded).
+  - AC: `docs/c_security.md` gains a row describing the new perimeter control + audit evidence trail.
+
+### B16.16 Security headers + CSP middleware (PLA061 — promoted from deferred)
+
+- **B16.16 [P2] 🔵 IN FLIGHT** — [Benefit 5/5] Adopt helmet (response headers — HSTS, X-Content-Type-Options, COOP/COEP, Referrer-Policy, X-Frame-Options) + @next-safe/middleware (per-route strict-dynamic CSP with nonce, Trusted Types, SRI). Promoted from Phase 2 deferred candidates — procurement-bar item; defence/finance buyers will ask before trigger fires.
+  - AC: `helmet` and `@next-safe/middleware` appear in `package.json`.
+  - AC: `middleware.ts` at repo root applies the header set on every response.
+  - AC: CSP uses strict-dynamic + per-request nonce; no `unsafe-inline` or `unsafe-eval` in production.
+  - AC: HSTS `max-age` ≥ 6 months with `includeSubDomains` + `preload`.
+  - AC: Trusted Types policy declared; report-only mode for first roll-out before enforce.
+  - AC: smoke test asserts response headers present on at least one /_site, /samantha/v2, and / route.
+  - AC: `docs/c_security.md` gains a row mapping each header to NIST SC-8 / SC-23 / SI-10 + the defence-finance buyer narrative.
+  - AC: TD entry filed for SRI on third-party scripts if any exist; otherwise marked N/A in the same row.
+
+### B16.17 DOMPurify isomorphic sanitiser (PLA061 — promoted from deferred)
+
+- **B16.17 [P2] 🔵 IN FLIGHT** — [Benefit 2/5 today, 5/5 when first user-HTML surface lands] Adopt `isomorphic-dompurify` as the canonical sanitiser for any future user-supplied HTML / Markdown rendering. Promoted from Phase 2 to install + wire the helper proactively — procurement narrative is "we have a sanitiser ready" rather than "we'll add one when needed". Caveat: until a user-HTML surface lands, this is scaffolding with no caller (bundle cost only; no behaviour change).
+  - AC: `isomorphic-dompurify` appears in `package.json`.
+  - AC: new `app/lib/sanitiseHtml.ts` (or similar) wraps DOMPurify with project-default config: strip `<script>`, `<iframe>`, `on*` handlers, `javascript:` URLs; allow safe inline formatting (b/i/em/strong/code/pre/p/a/ul/ol/li/h1-h6).
+  - AC: helper has SSR-safe entry path (works in both server and client environments).
+  - AC: helper has at least 4 unit tests covering: script tag stripped, on-handler stripped, javascript-URL stripped, safe markdown-rendered HTML passes through unchanged.
+  - AC: `docs/c_c_frontend_stack_picks.md` (from F2.4) documents the helper as the sole sanitiser entry point — `app/**` lint rule (or doc convention) forbids calling DOMPurify directly outside the helper.
+  - AC: `docs/c_security.md` gains a row mapping the helper to OWASP ASVS V5 / NIST SI-10 + the "ready before needed" procurement narrative.
+
 ---
 
 ## B17. Infrastructure & DevOps
@@ -4223,6 +4423,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 ---
 > Commit `53e018b` (2026-05-12): feat(PLA-0044): walkTopology TS engine + 6 golden fixtures [FE-POR-API-0006]
 > Commit `f3bfd9b` (2026-05-13): feat(PLA-0044): roll canonical page template across all (user) pages — PageHeading + Panel header [FE-UI-0001]
@@ -4299,6 +4500,10 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -4310,6 +4515,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -4399,6 +4605,10 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -4434,6 +4644,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b95cc8c` (2026-05-21): chore: bundle in-flight work from other agent — mentions, notifications, custom-fields writes, rich-text editor
 > Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
@@ -4631,9 +4842,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > **Open intent question** — "onboarding topology": does this mean topology grants pre-assigned during the invite/create flow? If yes, a new story wires the CreateUser modal to accept an initial topology-grant payload (server-side: invite carries the grant payload; account creation transaction inserts user row + grant rows atomically).
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 ### B20.5 Transport hygiene — retire legacy api()/samantha/v1, refresh contract gate
 
 > The frontend `api()` helper from `app/lib/api.ts` targeted `${API_BASE}/samantha/v1/...` but the Go backend never had a `/samantha/v1` mount. PLA-0039 moved BFF routes to `/_site` and PLA-0023 split the public data plane to `/samantha/v2`; the v1 helper was orphaned. Every existing `api()` callsite was silently 404'ing (try/catch swallowed; page-help, library-releases, admin/roles, password change, workspace settings, etc. degraded). Plus the pre-push API-contract gate was reading from a stale top-level snapshot layout that snap_api.sh no longer wrote to, and oasdiff crashed on a duplicate `/topology/levels` mapping key in openapi.yaml itself.
@@ -4878,6 +5091,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -5040,6 +5256,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -5108,6 +5326,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -5217,6 +5436,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -5351,6 +5573,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -5496,6 +5721,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -5581,6 +5809,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -5750,6 +5979,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -5883,6 +6114,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5996,6 +6230,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -6074,6 +6311,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -6180,6 +6420,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -6254,6 +6497,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -6409,6 +6655,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -6588,6 +6836,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -6695,6 +6945,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -6793,6 +7046,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -6898,6 +7153,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -6935,6 +7193,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `de29f46` (2026-05-18): fix(scope): URL-as-state for scope clamp via ?meg= [TD-URL-SCOPE-PARAM-CUTOVER]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -6980,6 +7239,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `17d39a5` (2026-05-22): feat(skills): <read> + <write> — handover continuity pair over handovers/
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -7057,6 +7318,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -7090,6 +7353,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
 > Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -7182,6 +7447,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -7238,6 +7506,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -7617,15 +7886,25 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 
 **Phase 1 — Backend**
 
 - **OBJ1.1.1** `artefactitems.Service.ListFacets` method. AC: returns distinct `artefact_type_id` + `priority_id` UUIDs under workspace + meg clamp, archived excluded; reuses `CanReadScope` + `DescendantNodeIDs` chain. `[P2]`
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **OBJ1.1.3** Backend facets table-tests. AC: workspace clamp, topology clamp, archived exclusion, 403 on unauthorised scope, 404 on unknown scope. `[P3]`
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 
 **Phase 2 — Frontend**
 
@@ -7634,9 +7913,14 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **OBJ1.2.2** ObjectTreeV2 wires facets hook to chips. AC: `p_ObjectTree.tsx` drops the temporary `windowRoots`-derivation block; chips populate from facets + workspace catalogue metadata (label + colour). `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 - **OBJ1.2.3** `WorkItemsFilterChipsProps` tightened. AC: `typeOptions` + `priorityOptions` required (no `?`, no `= []` default) after V1 ObjectTree retirement. `[P3]`
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 
 **Phase 3 — Doc**
 
@@ -7645,6 +7929,9 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 
 ---
 

@@ -157,11 +157,12 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 	name := "WSLayer_" + suffix
 	libLayerID := uuid.New()
 
-	defer func() {
-		_, _ = va.Exec(ctx,
+	// Registered BEFORE the INSERT so a panic mid-test still tidies up.
+	t.Cleanup(func() {
+		_, _ = va.Exec(context.Background(),
 			`DELETE FROM artefacts_types WHERE workspace_id = $1 AND prefix = $2`,
 			wsID, prefix)
-	}()
+	})
 
 	if _, err := va.Exec(ctx, `
 		INSERT INTO artefacts_types (
