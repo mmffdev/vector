@@ -344,6 +344,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -647,6 +648,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -814,6 +816,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1039,6 +1042,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1091,6 +1095,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bf9222c` (2026-05-18): feat(account-settings): active sessions UI + step-up reauth hook [B16.8.10]
 > Commit `93a63e1` (2026-05-21): feat(notifications): settings UI — rules table + schema-driven editor
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -1191,6 +1196,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5bab6ec` (2026-05-15): feat(pageaccess): PLA-0049 Phase 1.5 + Phase 2 — toast + seed capture [PLA-0049]
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
@@ -1820,6 +1826,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2822,6 +2829,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
   > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
@@ -3042,6 +3050,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - **B5.11** Migration: drop `pages_tags.pages_tags_min_auth_level` from the catalogue gate path (PLA-0053; column kept nullable for rollback). `pages_tags_is_admin_menu` is **kept** — still used by `UserAvatarMenu` to route avatar/notification buckets (separate concern from page-access gating). `[P2]`
 - **B5.12** Backend: remove `authLevelFor` / `TagsFor` tier filter / `CatalogFor` tier filter from `backend/internal/nav/registry.go`; `users_roles_pages` becomes the sole catalogue gate (PLA-0053) `[P2]`
 - **B5.13** Frontend: remove `deriveAuthLevel` + `userAuthLevel` filter from `app/redesign/ShellContext.tsx`; tag bucket appears iff it contains ≥1 page in `pages` array (PLA-0053) `[P2]`
@@ -3139,6 +3148,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -3400,6 +3411,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -3572,6 +3584,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3775,6 +3788,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `7506e9c` (2026-05-21): chore(scripts): importer for legacy dev/**/*.json → dev_reports
 > Commit `867aad0` (2026-05-21): fix(build): install TipTap v3 packages + migrate v2 imports
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -3871,6 +3885,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   - ✅ ~~**B16.8.2** Login partial-auth gate~~ `[P1]` > Commit 2026-05-18: `SignChallengeToken`/`ParseChallengeToken` in `tokens.go`; `LoginResult.MFARequired`+`MFAChallengeToken`; `Login()` forks to challenge on `mfa_enrolled=true`; handler returns `mfa_challenge_resp`.
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -3996,6 +4011,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 
@@ -4080,6 +4096,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -4091,6 +4108,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `17d39a5` (2026-05-22): feat(skills): <read> + <write> — handover continuity pair over handovers/
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -4197,6 +4215,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 ---
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
@@ -4410,6 +4429,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
   > Shipped 2026-05-19 in commit 6530c13. Status pill replaced with read-only checkbox; toggle action stays in the inline edit-row panel staged behind "Confirm changes". Also added `<PageDescription>` since the file moved out of legacy `/user-management/page.tsx`.
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Last checked: 2026-05-19
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 
@@ -5646,6 +5666,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -5935,6 +5956,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -6160,6 +6182,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -6536,6 +6559,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -6721,6 +6745,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `17d39a5` (2026-05-22): feat(skills): <read> + <write> — handover continuity pair over handovers/
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -7005,6 +7030,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
@@ -7373,6 +7399,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 - **OBJ1.3.1** Component doc. AC: `docs/c_c_objecttreev2_facets.md` written; CLAUDE.md links it; `TD-CHIP-SCOPE-MISMATCH` marked resolved. `[P3]`
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 
 ---
 

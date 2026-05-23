@@ -48,3 +48,7 @@ backend/server
 !.vscode/settings.json
 !.vscode/extensions.json
 
+# Per-session agent state — not portable across machines / sessions
+.claude/active_handover.txt
+.claude/projects/
+
