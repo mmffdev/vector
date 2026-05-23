@@ -9,11 +9,27 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/logger"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
 	"github.com/mmffdev/vector-backend/internal/permissions"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
+
+// writeAuthFailure records the failure kind + reason into the carrier
+// HTTPLogger seeded on the request context, then writes the 401
+// response. All 401 sites in RequireAuth route through this so the
+// log-level downgrade (no-credential → info; invalid-credential stays
+// warn) stays in lock-step with the response.
+func writeAuthFailure(w http.ResponseWriter, r *http.Request, kind logger.AuthFailureKind, reason string) {
+	logger.RecordAuthFailure(r, kind, reason)
+	httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+}
+
+func writeAuthFailureCoded(w http.ResponseWriter, r *http.Request, code, msg string, reason string) {
+	logger.RecordAuthFailure(r, logger.AuthFailureInvalidCredential, reason)
+	httperr.WriteCoded(w, r, http.StatusUnauthorized, code, msg)
+}
 
 type ctxKey string
 
@@ -106,12 +122,12 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		} else if q := r.URL.Query().Get("access_token"); q != "" {
 			raw = q
 		} else {
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			writeAuthFailure(w, r, logger.AuthFailureNoCredential, "")
 			return
 		}
 		claims, err := ParseAccessToken(raw)
 		if err != nil {
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "bad_token")
 			return
 		}
 		// TD-SEC-DPOP-BINDING — DPoP proof validation (RFC 9449).
@@ -127,7 +143,7 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		// ?access_token=: browsers can't set headers on WS handshakes.
 		if claims.Confirmation == nil || claims.Confirmation.JKT == "" {
 			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "missing_dpop_confirmation")
 			return
 		}
 		dpopRaw := r.Header.Get("DPoP")
@@ -136,13 +152,13 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		}
 		if dpopRaw == "" {
 			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "missing_dpop_proof")
 			return
 		}
 		proof, perr := ParseDPoPProof(dpopRaw)
 		if perr != nil {
 			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "bad_dpop_proof")
 			return
 		}
 		scheme := "http"
@@ -152,7 +168,7 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		htu := scheme + "://" + r.Host + r.URL.Path
 		if verr := ValidateDPoPProof(proof, raw, r.Method, htu, claims.Confirmation.JKT); verr != nil {
 			w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "invalid_dpop_proof")
 			return
 		}
 		// Reserve the jti in the replay cache. A duplicate within
@@ -161,14 +177,14 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 		if s.JTICache != nil {
 			if jerr := s.JTICache.MarkAndCheck(r.Context(), proof.Claims.JTI, proof.JTIExpiry()); jerr != nil {
 				w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "dpop_replay")
 				return
 			}
 		}
 		validatedJKT := proof.JKT
 		uid, err := uuid.Parse(claims.Subject)
 		if err != nil {
-			httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+			writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "bad_subject")
 			return
 		}
 
@@ -186,22 +202,22 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			var perr error
 			sid, perr = uuid.Parse(claims.SessionID)
 			if perr != nil {
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "bad_sid")
 				return
 			}
 			var st SessionState
 			u, st, err = s.FindUserBySessionID(r.Context(), uid, sid)
 			if err != nil || !u.IsActive {
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "user_not_found")
 				return
 			}
 			if st.Revoked {
-				httperr.WriteCoded(w, r, http.StatusUnauthorized, CodeSessionRevoked, usermessages.AuthSessionRevoked)
+				writeAuthFailureCoded(w, r, CodeSessionRevoked, usermessages.AuthSessionRevoked, "session_revoked")
 				return
 			}
 			idleTTL := parseDurationEnv("SESSION_IDLE_TTL", 30*time.Minute)
 			if time.Since(st.LastActivityAt) > idleTTL {
-				httperr.WriteCoded(w, r, http.StatusUnauthorized, CodeSessionIdleExpired, usermessages.AuthSessionIdleExpired)
+				writeAuthFailureCoded(w, r, CodeSessionIdleExpired, usermessages.AuthSessionIdleExpired, "session_idle_expired")
 				return
 			}
 		} else {
@@ -218,12 +234,12 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			// changes. The flag accepts "true", "1", "yes" to match
 			// the rest of the codebase's env-toggle conventions.
 			if v := strings.ToLower(os.Getenv("REQUIRE_SID_CLAIM")); v == "true" || v == "1" || v == "yes" {
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "legacy_token_blocked")
 				return
 			}
 			u, err = s.FindUserByID(r.Context(), uid)
 			if err != nil || !u.IsActive {
-				httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+				writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "user_not_found")
 				return
 			}
 		}
