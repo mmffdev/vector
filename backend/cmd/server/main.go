@@ -1323,7 +1323,12 @@ func main() {
 				r.Get("/dev/api-audit", devResetH.ApiAudit)
 				r.Get("/dev/codegraph", devResetH.Codegraph)
 				r.Get("/dev/source", devResetH.Source)
-				r.Route("/dev/reporting", devReportsH.Mount)
+				// Inline closure (not `devReportsH.Mount` as the second arg)
+				// so dev/scripts/extract_routes.py picks up the nested
+				// routes — its ROUTE_RE only matches the closure form.
+				r.Route("/dev/reporting", func(r chi.Router) {
+					devReportsH.Mount(r)
+				})
 			})
 		})
 
