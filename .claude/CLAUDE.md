@@ -73,6 +73,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Technical-debt register (standing rule)** → [`docs/c_tech_debt.md`](../docs/c_tech_debt.md) — identify/measure/recommend on every task.
 - **App Router layout** → [`docs/c_page-structure.md`](../docs/c_page-structure.md) — route groups, role gating, PageShell.
 - **Security posture** → [`docs/c_security.md`](../docs/c_security.md) — Trust-No-One checklist.
+- **Sentinel — single source of truth for identity/tenant/scope (PLA062)** → [`docs/Security/Sentinel/sentinel_docs.md`](../docs/Security/Sentinel/sentinel_docs.md) — system synopsis + RED-GREEN protocol; backlog + tests-log + tech-debt + revision-history in sibling files. While PLA062 is in flight, `app/contexts/Auth*`/`Scope*`/`Tenant*` are being collapsed into `app/sentinel/`; new code must use `useSentinel()` and `sentinel_*` fields (see § What replaces what).
 - **Backend-driven validation** → [`docs/c_c_backend_validation.md`](../docs/c_c_backend_validation.md) — payload is untrusted; tenant/user/scope re-verified server-side. (Same content as the "Backend validation (GOLDEN RULE)" pointer above.)
 - **Risk artefact type design (PLA-0052)** → [`docs/c_c_risk_artefact_type.md`](../docs/c_c_risk_artefact_type.md) — mirror-Defect playbook + coupling inventory + per-subscription seed gotcha.
 - **Scope — features underway** → [`docs/c_scope.md`](../docs/c_scope.md) — live in-flight table.
