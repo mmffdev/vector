@@ -1,7 +1,7 @@
 ---
 name: report
-description: Umbrella skill for every audit / analysis that produces a narrative report on the Dev → Reporting page. Flags pick the report type; each one runs its own protocol, builds the HTML body, and POSTs to /_site/admin/dev/reporting so the report lands in mmff_dev.dev_reports and is viewable immediately. Replaces the retired /research, /codebase, /sec, /code, /retro skills.
-argument-hint: -r <url> "<topic>" | -b | -s | -c [<file>] | -retro [--auto-loop]
+description: Umbrella skill for every audit / analysis that produces a narrative report on the Dev → Reporting page. Flags pick the report type; each one runs its own protocol, builds the HTML body, and POSTs to /_site/admin/dev/reporting so the report lands in mmff_dev.dev_reports and is viewable immediately. Replaces the retired /research, /codebase, /sec, /code, /retro, /plan skills.
+argument-hint: -r <url> "<topic>" | -b | -s | -c [<file>] | -retro [--auto-loop] | -p
 allowed-tools: Read Grep Glob WebFetch WebSearch Write Edit Bash Agent
 ---
 
@@ -20,6 +20,7 @@ allowed-tools: Read Grep Glob WebFetch WebSearch Write Edit Bash Agent
 | `-s` | security | Full codebase security audit (OWASP + Trust-No-One bar) | `SEC###` |
 | `-c [<file>]` | code | Single-file import/dependency trace + boundary-violation check | `COD###` |
 | `-retro [--auto-loop]` | retro | Honest retrospective: 5 Whys + reversal + ledger sync | `RET###` |
+| `-p` | plan | Offline implementation plan from chat + repo context; proposes stories; on confirm, hands off to `<scope> -a` | `PLA###` |
 
 No flag → list available flags and stop. Unknown flag → list available flags and stop. **Never** pick a default.
 
@@ -82,6 +83,7 @@ The Dev → Reporting panel rebuilds the TOC from the actual headings in the sto
 | `-s` security | Synopsis, Executive Summary, Findings Table, Remediation Priorities, Passed Checks, Change Log | `synopsis`, `executive-summary`, `findings-table`, `remediation-priorities`, `passed-checks`, `change-log` |
 | `-c` code | Synopsis, Entry File Layer, Direct Imports, First-Order Neighbours, Violations, Warnings, Conclusion, Change Log | `synopsis`, `entry-file-layer`, `direct-imports`, `first-order-neighbours`, `violations`, `warnings`, `conclusion`, `change-log` |
 | `-retro` retro | Synopsis, Signals, Root Cause Table, What Went Well, Ledger Update, Tech-Debt Promotions, CLAUDE.md Proposals, Change Log | `synopsis`, `signals`, `root-cause-table`, `what-went-well`, `ledger-update`, `tech-debt-promotions`, `claudemd-proposals`, `change-log` |
+| `-p` plan | Synopsis, Problem, Approach, Areas Impacted, Implementation Steps, Proposed Stories, Risks, Verification, Change Log | `synopsis`, `problem`, `approach`, `areas-impacted`, `implementation-steps`, `proposed-stories`, `risks`, `verification`, `change-log` |
 
 ### Synopsis section (every type)
 
@@ -542,9 +544,140 @@ See [`.claude/hooks/loop-detector.sh`](../../hooks/loop-detector.sh) for signal 
 
 ---
 
+## `-p` — Plan (offline implementation plan)
+
+### Arguments
+
+```
+<report> -p [<focus phrase>]
+```
+
+- `<focus phrase>` — optional free-text framing ("priority customisation chip refactor", "visualiser V3 lasso", etc.). If omitted, the plan synthesises from the current conversation. Used as the report title seed.
+
+### Behaviour — **offline only, no web access**
+
+The `-p` flag is the only `<report>` flag that does NOT use the internet. It draws exclusively from:
+
+- The current conversation (decisions, files touched, problem statement).
+- The local repository (`Read`, `Grep`, `Glob` over the working tree).
+- `Vector_Scope.md`, `docs/c_*.md`, and other on-disk context.
+
+**Do not call `WebFetch` or `WebSearch` from this flag.** If the user wants external research folded into a plan, route them to `<report> -r` first, then `<report> -p` with the research RES### in mind.
+
+### Pipeline
+
+1. **Parse focus.** Pull the focus phrase (or, if omitted, ask one clarifying question to confirm the planning target — never guess from a long conversation that touched many topics).
+
+2. **Gather context.**
+   - `git status` + `git log -10 --oneline` for recent activity.
+   - `Read` the files that have been touched / referenced this session.
+   - `Grep` for related concepts in `Vector_Scope.md`, `docs/`, and the relevant `app/` or `backend/` area.
+   - `Read` related existing plans on the Plan tab (GET `/_site/admin/dev/reporting/?type=plan`) to avoid duplication and inherit terminology.
+
+3. **Draft the plan** to match the **plan template** (Synopsis · Problem · Approach · Areas Impacted · Implementation Steps · Proposed Stories · Risks · Verification · Change Log). Each section:
+
+   - **Synopsis** — 2–4 sentences. What this plan ships, the headline approach, the one most important thing to know.
+   - **Problem** — the user-facing or technical problem this exists to solve. Cite the conversation framing if it came from chat ("Per the 2026-05-DD framing: *'<quote>'*"). Cite the prior plan or scope entry if it came from there.
+   - **Approach** — the chosen approach in 1–2 paragraphs. Trade-offs considered. Why this approach, not the obvious alternatives.
+   - **Areas Impacted** — `<ul>` of "DB:", "Backend:", "Frontend:", "Docs:", etc. — one bullet per surface that needs change. Same shape as the existing plans (see PLA-0055).
+   - **Implementation Steps** — `<ol>` ordered list, each step a discrete unit of work. Phase headers ("Phase 0 — Schema", "Phase 1 — Backend", etc.) where the work splits naturally. Each step should be small enough to become one story.
+   - **Proposed Stories** — `<ol>` of one-line story drafts derived from the implementation steps. Each story:
+     - Title (imperative, specific noun + verb).
+     - AC (observable assertion, 1 line).
+     - Suggested theme ref in `Vector_Scope.md` if obvious (e.g. `RF1.4.6`); leave blank if not.
+     - Format the list so it can be cleanly handed to `<scope> -a` after user confirmation.
+   - **Risks** — known risks, dependencies, and "things we're choosing to not fix in this plan" — explicit out-of-scope statements. Defence/finance buyer narrative: name the compensating control where a risk exists.
+   - **Verification** — how to know this plan's work is done. Test surface to run, manual click-paths, what `/dev/*` page changes, what migrations apply.
+   - **Change Log** — standard pattern: first write = "Initial plan." On regeneration, prepend new entry.
+
+4. **Compute the next PLA ID** by querying `dev_reports` directly (not the file series — Plan tab reads from DB):
+
+   ```bash
+   KEY=$(grep '^DEV_API_KEY=' backend/.env.dev | cut -d= -f2)
+   curl -s -H "Authorization: Bearer $KEY" \
+     "http://localhost:5100/_site/admin/dev/reporting/?type=plan" \
+     | python3 -c 'import sys,json
+   rs=json.load(sys.stdin)["reports"]
+   nums=[int(r["id"][3:]) for r in rs if r["id"].startswith("PLA") and r["id"][3:].isdigit()]
+   print(f"PLA{max(nums+[0])+1:03d}")'
+   ```
+
+   Note the prefix is `PLA###` (3-digit, no hyphen) in `dev_reports` — matches the schema comment's `PLA###` convention and the existing 47 rows (top is `PLA055`). This is **different** from the legacy `dev/plans/PLA-NNNN.json` archaeology (4-digit hyphenated), which is frozen and not extended.
+
+5. **POST the plan** to `/_site/admin/dev/reporting/` with:
+   ```json
+   {
+     "id": "PLA###",
+     "type": "plan",
+     "title": "<focus phrase, sentence-cased>",
+     "category": "<area, e.g. 'Frontend · Visualiser', 'Backend · Auth'>",
+     "topic": "<one-line framing>",
+     "summary": "<Synopsis text>",
+     "content": "<HTML body matching the section template>",
+     "report_date": "YYYY-MM-DD"
+   }
+   ```
+
+6. **Tell the user**:
+   - "Plan filed as PLA###. View on /dev/reporting → Plan tab."
+   - Show the Proposed Stories list inline in chat (extracted from the report body), each numbered.
+   - **Ask: "OK to add these N stories to `Vector_Scope.md`?"** Wait for explicit yes / no / edit instruction.
+
+7. **On `yes` → hand off to `<scope> -a`**:
+   - Pass the proposed stories as the `[message]` argument to `<scope> -a`, formatted as a numbered list.
+   - `<scope> -a` will then run its own protocol (find theme, check duplicates, set priority, write, update `.claude/scope-refs.map`).
+   - Report which refs were created and which were flagged as duplicates.
+
+8. **On `no` or edits requested**:
+   - Don't touch `Vector_Scope.md`.
+   - The plan still exists on /dev/reporting (it's already POSTed by step 5) — user can revisit it or edit it later.
+   - If user edits the stories list, do NOT re-POST the plan; the plan is the planning artefact, the stories are the next step. Just call `<scope> -a` with the edited list.
+
+### Hard rules
+
+- **Never auto-call `<stories>`** — that skill writes to `Vector_Scope.md` directly without confirmation in solo-dev mode. `<report> -p` always routes through `<scope> -a` for the explicit confirmation gate.
+- **Never call `<scope> -a` without explicit user OK** — the confirmation step (7) is the gate. Auto mode does NOT bypass it; user must say yes.
+- **No new `dev/plans/PLA-NNNN.json` files.** That series is frozen at `PLA-0055` per `docs/c_plan_index.md`. All new plans land in `dev_reports` with `type='plan'` and the `PLA###` (3-digit) prefix.
+- **Offline only.** No `WebFetch`, no `WebSearch` inside this flag. If the plan needs external context, ask the user to feed it in or run `<report> -r` first.
+
+### Idempotency
+
+Re-running `<report> -p` on the same focus phrase **creates a new PLA###** — plans are point-in-time artefacts. To revise an existing plan, the user GETs the existing PLA### from /dev/reporting, hands the ID to the agent ("update PLA047 with X"), and the agent POSTs the same ID with prepended Change Log entry.
+
+### Example exchange
+
+```
+User: <report> -p priority customisation chip refactor
+
+Agent: [drafts plan, computes next id = PLA056, POSTs]
+       Plan filed as PLA056. View on /dev/reporting → Plan tab (47 → 48 rows).
+
+       Proposed stories (8):
+       1. Add artefact_priorities table per workspace. AC: migration applies clean, table exists with 4 seed rows per workspace.
+       2. Migrate artefacts.priority text → priority_id UUID FK. AC: existing rows backfilled by name match, no orphans.
+       3. Priorities CRUD endpoints GET/POST/PATCH/DELETE. AC: padmin can list/create/update/archive.
+       4. Handler accepts ?priority_id=<uuid>[,uuid...] multi-value. AC: filter returns rows for any listed uuid.
+       5. ArtefactPriorityCatalogueProvider context + hooks. AC: useDefaultPriority() returns the workspace's pri_medium.
+       6. NavigationPie Priority chip catalogue-driven. AC: chip enumerates per-workspace priorities, no hardcoded list.
+       7. Test: tenant adds Showstopper priority + chip surfaces it. AC: chip option count grows by 1 without code change.
+       8. Delete PRIORITY_CHIP_OPTIONS literal. AC: grep finds no occurrences.
+
+       OK to add these 8 stories to Vector_Scope.md?
+
+User: yes
+
+Agent: [calls <scope> -a with the formatted list]
+       Added 8 stories under theme RF1.5 (custom-enum chip refactor pattern):
+       - RF1.5.1 through RF1.5.8 created, all P2, all 🔵 IN FLIGHT.
+       - 0 duplicates found.
+       - scope-refs.map updated.
+```
+
+---
+
 ## Notes
 
-- **Old skill dirs are retired** — `<research>`, `<codebase>`, `<sec>`, `<code>`, `<retro>` are gone. Any chat that types those will get "skill not found"; users should use `<report> -r/-b/-s/-c/-retro` instead.
+- **Old skill dirs are retired** — `<research>`, `<codebase>`, `<sec>`, `<code>`, `<retro>`, `<plan>` are gone. Any chat that types those will get "skill not found"; users should use `<report> -r/-b/-s/-c/-retro/-p` instead.
 - **Dev → Reporting is the only viewer.** `dev/research/`, `dev/security-audits/`, `dev/code/`, `dev/retros/` on disk are historical — already imported into `dev_reports` and no longer read by any panel. Leave them alone (don't delete; they're the historical source).
 - **Heading discipline.** The Dev → Reporting panel rebuilds the TOC from the `<h1>` / `<h2>` / `<h3>` elements in the stored content. Emit them with sensible `id` attributes (lowercase-hyphenated heading text). The panel auto-injects ids when missing, but explicit ids survive copy-paste better.
 - **No file writes to `dev/<type>/` directories.** That filesystem path is decommissioned. All five flags POST to the backend.

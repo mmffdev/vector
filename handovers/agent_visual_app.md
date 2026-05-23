@@ -122,6 +122,24 @@ Reference inspiration: DevLens (open source, AGPL — read but don't import) for
 
 ---
 
+## Plan reference
+
+The durable, formal plan for this surface is **PLA056** on [/dev/reporting → Plan tab](http://localhost:5101/dev/reporting). Posted 2026-05-23 via `<report> -p`; revised once the same day with three corrections logged in its Change Log.
+
+The plan body holds the canonical 3-phase structure (Synopsis · Problem · Approach · Areas Impacted · Implementation Steps · Proposed Stories · Risks · Verification · Change Log). 15 stories landed in `Vector_Scope.md` under the new top-level theme **VIZ1** (added 2026-05-23, Doc version 2.52, sits between B22 and the Parked section).
+
+| Phase | Story refs | Maps to "Pick up next" priority below |
+|---|---|---|
+| 1 — Stabilise | VIZ1.1.1, VIZ1.1.2 | P1 |
+| 2 — Deepen | VIZ1.2.1, VIZ1.2.2, VIZ1.2.3, VIZ1.2.4, VIZ1.2.5 | P2, P3, P4, P5 (one per pick-up-next item) |
+| 3 — Data-feed swap | VIZ1.3.1, VIZ1.3.2, VIZ1.3.3, VIZ1.3.4a, VIZ1.3.4, VIZ1.3.5, VIZ1.3.6, VIZ1.3.7 | P6 (the actual product ship) |
+
+**Workflow for the next agent:** commits closing a VIZ1.x story should reference the ref in the commit message (e.g. `feat(viz): verify v2 click reliability [VIZ1.1.1]`); the scope-refs.map matcher will attribute the commit to the right scope line. When a story is closed, run `<scope> -u` to flip it from `🔵 IN FLIGHT` to `✅ DONE`.
+
+**If direction changes**, the plan must change with it — re-POST PLA056 with the same id and a prepended Change Log entry. Don't create a new PLA### for tweaks; new PLAs are for genuinely new decisions.
+
+---
+
 ## Why the click bug existed (and how V2 fixed it)
 
 **Symptom in V1:** clicks needed a second try after a toggle.
@@ -145,27 +163,31 @@ If clicks misbehave in your environment, look at the console traces in this orde
 
 ## Where to pick up next (priority order)
 
-### P1 — Strip console traces
+### P1 — Strip console traces [VIZ1.1.2; gated by VIZ1.1.1 click verification]
 Once V2 click is confirmed reliable, remove the `console.log("[viz-v2]…")` calls in:
 - `frameNode` (5 trace points)
 - `handleClick` (2 trace points)
 
 These were intentional diagnostics. Not for production.
 
-### P2 — Search panel
+VIZ1.1.1 is the gate — 20-card click test (10 Folders + 10 Files with intervening toggles, zero second-tries needed). Can be human-in-loop OR Playwright MCP scripted; either is acceptable for the AC.
+
+### P2 — Search panel [VIZ1.2.1 + VIZ1.2.2]
 Currently a placeholder. Build:
-- Text input → matches against `node.id` substring (case-insensitive).
+- Text input → matches against `node.id` substring (case-insensitive). **(VIZ1.2.1)**
 - Result list with same styling as Files panel.
 - Click → frame + open Selected.
-- Optional: dim non-matching nodes on canvas while a search is active.
+- Optional: dim non-matching nodes on canvas while a search is active. **(VIZ1.2.2 — separate story so the core search ships without it if dim has issues)**
 
-### P3 — Syntax highlighting in source preview
+### P3 — Syntax highlighting in source preview [VIZ1.2.3]
 Plain `<pre>` today. Add `highlight.js` (already in DevLens; ~10 lines to wire):
 - Register `typescript`, `javascript`, `go`, `sql` languages.
 - Wrap source content in `hljs.highlight(...)` based on file extension.
 - Import GitHub Dark theme CSS once.
 
-### P4 — Lasso multi-select
+Bundle budget: ~30 KB gzipped for these languages. Acceptable for /dev/visualiser; lazy-load when the route goes user-facing in Phase 3.
+
+### P4 — Lasso multi-select [VIZ1.2.4]
 Currently `shift-click` builds the working selection — works but tedious for large groups. Lasso wants:
 - `shift+mouse-drag` over the canvas → screen-space rectangle.
 - Project each cube centre to screen coords via `THREE.Vector3.project(camera)`.
@@ -173,20 +195,24 @@ Currently `shift-click` builds the working selection — works but tedious for l
 - OrbitControls already ignores `shift+drag` so no key conflict.
 - ~80 lines, but worth holding off until shift-click usage tells you it's needed.
 
-### P5 — Auto-cluster by layer
+Risk noted in PLA056: ship behind a `?lasso=1` feature flag initially; promote after a week of dev use without OrbitControls conflict complaints.
+
+### P5 — Auto-cluster by layer [VIZ1.2.5]
 Currently force-directed clusters by connectivity. Add a "cluster by layer" mode:
 - d3-force's `forceCluster` or hand-rolled per-layer centre points.
 - Toggle in topbar — pulls nodes of the same layer kind together.
 - Strong visual story for "show me the shape of this codebase by tier".
 
-### P6 — Data feed swap (the real product)
+### P6 — Data feed swap (the real product) [VIZ1.3.1 through VIZ1.3.7, with VIZ1.3.4a as the RBAC gate]
 The whole point of V2 is to host **artefact relationships** later. The architecture is ready:
-- All UI keyed on `node.id`, `node.layer`, `node.folder`, `node.side`. Nothing assumes file system semantics.
-- New endpoint serves a similar `{ nodes[], edges[] }` shape from artefact/topology/RBAC data.
-- Files panel → "Artefacts" panel; folder grouping → workspace grouping; layer colour → artefact-type colour.
-- Source preview → artefact detail view.
-- Groups → user-defined artefact collections.
-- Diff → "what changed between sprint N and N+1".
+- All UI keyed on `node.id`, `node.layer`, `node.folder`, `node.side`. Nothing assumes file system semantics. **(VIZ1.3.1 — extract DataSource interface)**
+- New endpoint serves a similar `{ nodes[], edges[] }` shape from artefact/topology/RBAC data. **(VIZ1.3.2 — backend artefact-graph endpoint, RBAC-scoped per PLA-0043)**
+- Source preview → artefact detail view. **(VIZ1.3.3 — tenanted artefact-attachment preview endpoint)**
+- **VIZ1.3.4a — Decide and add `view-relationships` permission BEFORE the route lands.** Either new permission or explicit reuse of `view-artefacts`. Decision Owner: User. Agent drafts recommendation with reasoning; user confirms before any RBAC catalogue write. Blocks VIZ1.3.4.
+- User-facing `/relationships` route under `app/(user)/`. **(VIZ1.3.4 — wraps V2 in PageShell, gated by the permission from VIZ1.3.4a)**
+- Files panel → "Artefacts" panel; folder grouping → workspace grouping; layer colour → artefact-type colour. **(VIZ1.3.5)**
+- Groups → user-defined artefact collections, table-backed for cross-device. **(VIZ1.3.6 — design `users_visualiser_groups` table + migration; localStorage migration path on first DB-mode load)**
+- Diff → "what changed between sprint N and N+1". **(VIZ1.3.7 — snapshot picker replaces local file upload)**
 
 This is the actual feature ship. V2 today is the prototype that proves the surface works.
 
@@ -238,9 +264,19 @@ eaaf21b feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups 
 bb4c3e0 docs: scope-tracker breadcrumbs + PLA-0043 handover update                      ← unrelated
 026c8f6 feat(dev): Visualiser — unified TS+Go code graph + cubes renderer              ← V1 era origin
 867aad0 fix(build): install TipTap v3 packages + migrate v2 imports                    ← unrelated
+17d39a5 feat(skills): <read> + <write> — handover continuity pair over handovers/      ← session infra
+e5c0b69 docs(handover): agent_visual_app — Visualiser V1/V2 handover doc               ← this file's initial write
 ```
 
 `eaaf21b` is the V2 landing commit (9 files, +3597/-1059). All earlier visualiser commits are V1-era and serve as historical reference.
+
+**Dirty in working tree as of 2026-05-23 (not yet pushed):**
+- `.claude/skills/report/SKILL.md` + `.claude/CLAUDE.md` — `<report> -p` flag added (the skill used to publish PLA056).
+- `Vector_Scope.md` + `.claude/scope-refs.map` — VIZ1 top-level theme + 15 story refs.
+- `handovers/agent_visual_app.md` — this file's update (Plan reference section + VIZ1.x annotations on P1–P6).
+
+**On the wire at `/dev/reporting → Plan tab`:**
+- **PLA056** — Vector Relationship Explorer plan, posted 2026-05-23, revised once same day. Change Log shows two entries; bottom one is the initial post.
 
 ---
 
@@ -286,5 +322,7 @@ These are deliberately unanswered — pick them up when you're closer to the art
 5. **Right-click context menu?** Long-term, right-click a node should give "open in", "add to group", "show neighbours", "hide", etc. Not yet built.
 
 ---
+
+**Last updated:** 2026-05-23 by Claude — added Plan reference section pointing to PLA056 + cross-referenced VIZ1.x story refs against the existing P1–P6 pick-up-next list; appended session commits (`17d39a5`, `e5c0b69`) and the current dirty-in-tree state.
 
 **Authored:** 2026-05-22 by Claude. If anything in this doc contradicts the code, trust the code and patch this file.
