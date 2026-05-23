@@ -59,43 +59,48 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 
 ### S03 — RED: `backend/internal/sentinel/middleware_test.go` before the package exists
 
-**Intent.** Establishes the backend Sentinel contract through tests-first.
+**Intent.** Establishes the backend Sentinel contract through tests-first. Scope expanded by 2026-05-24 Replace decision (see `sentinel_revision_history.md`): test surface mirrors the existing `topology.ClampMiddleware` + `topology.WorkspaceClampMiddleware` coverage so Sentinel can stand alone after S25.
 
 **Acceptance Criteria.**
 - Test compiles and runs but RED-fails because `sentinel` package does not exist (go build error captured verbatim in `sentinel_tests_log.md`).
 - Asserts the ctx carries `{tenant_id, user_id, role, focus_node_id, scope_up, scope_down, allowed_subtree_ids[]}`.
-- Exercises four cases — valid JWT with `?focus=`, missing focus (falls back to user default), focus outside tenant (returns 403 + ProblemJSON), no JWT (returns 401 + ProblemJSON).
-- `sentinel_tests_log.md` records RED output verbatim.
+- Exercises six cases — valid JWT with `?focus=`, missing focus (falls back to user default), missing focus AND user has no default (falls back to tenant root), focus outside tenant (returns 403 + ProblemJSON), focus the user has no grant on (returns 403 + ProblemJSON), no JWT (returns 401 + ProblemJSON).
+- Coverage parity with existing `topology.middleware_problemjson_test.go` + `topology.middleware_workspace_test.go` ProblemJSON shape assertions.
+- `sentinel_tests_log.md` records RED output verbatim (go build error showing missing package).
 
 **Status.** pending.
 
 ---
 
-### S04 — GREEN: implement `backend/internal/sentinel/` package
+### S04 — GREEN: implement `backend/internal/sentinel/` package (full substrate)
 
-**Intent.** Closes the RED test from S03.
+**Intent.** Closes the RED test from S03. **Scope expanded by Replace decision (2026-05-24)**: Sentinel owns the substrate end-to-end — `topology.Clamp*Middleware` is duplicated INTO `sentinel/`, NOT delegated to. Resolver helpers (`DescendantNodeIDs` / `AncestorNodeIDs` equivalents) live in `sentinel/resolver.go` with their own SQL (`sentinel/sql.go`). Original substrate stays in `topology/` until S25 deletes it.
 
 **Acceptance Criteria.**
-- `sentinel.Clamp` struct exists with the 7 fields from the test.
-- `sentinel.Middleware(topologyService)` returns a `func(http.Handler) http.Handler`.
-- `sentinel.FromCtx(ctx)` returns the clamp or panics if missing (handlers must mount middleware).
-- Errors emit RFC 9457 ProblemJSON with `type: "/errors/sentinel/..."` codes (no-focus, focus-not-in-tenant, focus-no-access).
-- `middleware_test.go` all four cases GREEN.
-- Attempts-to-green logged in `sentinel_tests_log.md` (target ≤ 3 attempts).
+- `sentinel.Clamp` struct exists with all 7 fields from the test.
+- `sentinel.Middleware(...)` returns `func(http.Handler) http.Handler` and reads JWT, `?focus`, `?scope_up`, `?scope_down`.
+- `sentinel.FromCtx(ctx)` returns the clamp or panics (no silent zero-value).
+- `sentinel/resolver.go` implements own `resolveSubtree(focus, up, down)` reading from `artefacts_topology` — does NOT call `topology.Service.DescendantNodeIDs` / `AncestorNodeIDs`. Substrate ownership is the point.
+- `sentinel/sql.go` carries the recursive-CTE SQL for descendants + ancestors (mirrors `topology/sql.go` patterns).
+- Errors emit RFC 9457 ProblemJSON with `type: "/errors/sentinel/..."` codes (no-focus, focus-not-in-tenant, focus-no-access, cross-tenant).
+- All six cases in `middleware_test.go` GREEN.
+- Attempts-to-green logged in `sentinel_tests_log.md` (target ≤ 3 attempts per case).
 
 **Status.** pending.
 
 ---
 
-### S05 — Mount `sentinel.Middleware` in `cmd/server/main.go`
+### S05 — Mount `sentinel.Middleware` in `cmd/server/main.go` + tear out `topology.ClampMiddleware` mounts
 
-**Intent.** Activate the clamp on every protected route. Additive — doesn't yet require handlers to read it.
+**Intent.** Activate the clamp on every protected route. **Scope expanded by Replace decision (2026-05-24)**: this story also tears out every existing mount of `topology.ClampMiddleware` and `topology.WorkspaceClampMiddleware` in `cmd/server/main.go` — Sentinel is the sole request-level clamp from this point forward. The topology *substrate functions* still exist (resolvers, SQL) but no middleware from `topology` is mounted on the router any more. Final deletion of those middlewares = S25, after S21 proves no handler depends on them.
 
 **Acceptance Criteria.**
-- Integration test on `/_site/admin/artefacts` with a valid JWT returns 200 and the response is unchanged from pre-mount baseline (additive, non-breaking).
-- Integration test with a JWT for tenant A but `?focus=<tenant-B-node>` returns 403 ProblemJSON.
-- Public routes (login, health) are NOT behind the middleware — verified by hitting them without a JWT and getting their normal responses.
-- Server boots clean (no nil pointers, no missing deps).
+- Integration test on `/_site/admin/artefacts` with valid JWT returns 200; response unchanged from pre-mount baseline (additive, non-breaking).
+- Integration test with JWT for tenant A but `?focus=<tenant-B-node>` returns 403 ProblemJSON.
+- Public routes (login, health) NOT behind the middleware — verified by hitting them without a JWT.
+- Server boots clean (no nil pointers).
+- Grep `cmd/server/main.go` for `topology.ClampMiddleware` + `topology.WorkspaceClampMiddleware` returns zero mounts.
+- All existing integration tests that previously passed under the old clamp still pass under Sentinel (substrate parity).
 
 **Status.** pending.
 
@@ -393,9 +398,30 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 
 ---
 
+## Phase 7 — Deprecation close-out (added 2026-05-24 by Replace decision)
+
+### S25 — Delete `topology.ClampMiddleware` + `topology.WorkspaceClampMiddleware`
+
+**Intent.** Close the book on the duplicated substrate. Once S21 has proven every artefact-touching handler reads `sentinel.FromCtx` and the cross-tenant e2e (S23) is green, the old `topology.ClampMiddleware` + `WorkspaceClampMiddleware` are unreachable code. Delete them; the topology package keeps its substrate-resolver helpers + SQL only.
+
+**Acceptance Criteria.**
+- Files removed: `backend/internal/topology/middleware.go` (the middleware part — substrate-resolver functions and `context.go` helpers stay if still used by `sentinel/resolver.go`; otherwise also removed).
+- Removed in same commit: any test files exclusively covering the deleted middleware (`middleware_problemjson_test.go`, `middleware_workspace_test.go`, `boundary_test.go` if scoped to clamp middleware).
+- Grep `backend/internal/` for `topology.ClampMiddleware|topology.WorkspaceClampMiddleware|topology.ClampFromCtx|topology.WorkspaceIDFromCtx` returns zero (Sentinel is the sole clamp surface).
+- `go build ./...` passes.
+- `go test ./...` passes — no orphan test failures from removed middleware.
+- `lint:sentinel-clamp-required` still passes (Sentinel is doing the job).
+- `sentinel_revision_history.md` gets a close-out entry: which files removed, which substrate-resolver helpers retained in topology vs migrated to sentinel.
+
+**Status.** pending.
+
+**Theme.** B16 Security & Auth.
+
+---
+
 ## Completion ledger
 
 | Story | Done date | Commit SHA | Tests |
 |---|---|---|---|
 | S01 | 2026-05-24 | 6fe3b94e | (docs-only — no test) |
-| S02 | 2026-05-24 | (this commit) | stub `sentinel.page.work-items` runs under `test:sentinel:page` |
+| S02 | 2026-05-24 | 332bc138 | stub `sentinel.page.work-items` runs under `test:sentinel:page` |
