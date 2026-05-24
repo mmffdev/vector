@@ -434,4 +434,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S09 | 2026-05-24 | d149a2cf | SentinelProvider mounted in (user) + (overlay) layouts; tsc silent; `Compiled successfully in 18.1s` — **GATE CLOSED** |
 | S10 | 2026-05-24 | 24a75a67 | First Lane A page; 3/3 GREEN; static-grep + mount + apiSite-fired ACs; reference for S11–S16 |
 | S11 | 2026-05-24 | b612df57 | /portfolio-items; 3/3 GREEN attempt 1; pattern lifted from S10 |
-| S12 | 2026-05-24 | (this commit) | /risk; 2/2 GREEN — special case: page already had no old-hook imports |
+| S12 | 2026-05-24 | 2bf27308 | /risk; 2/2 GREEN — special case: page already had no old-hook imports |
