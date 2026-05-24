@@ -436,3 +436,43 @@ OK    285 file(s) checked, 9 exempt
 
 **Commit.** `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23].
 
+
+
+---
+
+## S25 — topology.ClampMiddleware deletion GREEN (2026-05-24)
+
+```
+$ cd backend && go build ./...
+(silent)
+
+$ go test ./internal/topology/... ./internal/sentinel/... ./internal/lintchecks/...
+ok  	github.com/mmffdev/vector-backend/internal/topology	0.334s
+ok  	github.com/mmffdev/vector-backend/internal/sentinel	(cached)
+--- FAIL: TestHTTPErrorPlacement (0.03s)
+    [pre-existing portfoliomodels/resync.go http.Error placement fail from PLA060 — unrelated to S25, verified RED before this work]
+ok  (sentinel-clamp-required) — empty allowlist passes
+```
+
+**Scope.** 6 + 2 file deletions (~1,200 LOC removed) + 1 helper file restored (~80 LOC).
+
+**Deleted:**
+- `backend/internal/topology/middleware.go` (ClampMiddleware + WorkspaceClampMiddleware)
+- `backend/internal/topology/middleware_problemjson_test.go`
+- `backend/internal/topology/middleware_workspace_test.go`
+- `backend/internal/topology/boundary_test.go`
+- `backend/internal/topology/workspace_lookup.go` (PoolWorkspaceLookup — no external consumers after S05 absorption)
+- `backend/internal/topology/context.go` (Clamp + ClampMode + ClampFromCtx — dead code, no external readers)
+- `backend/internal/topology/sql_helpers.go` (ApplyClamp + ClampMode-aware SQL splicer — dead code)
+- `backend/internal/featuretests/f1_workspace_clamp_test.go` (substrate gone; coverage subsumed by sentinel.middleware_test.go Cases 7/8/9 + S23 cross-tenant Playwright)
+
+**Restored / rewritten:**
+- `backend/internal/topology/sql_helpers.go` — `workspaceClause`, `workspaceClauseAt`, `itoa` (kept; reads workspace-id from sentinel.WorkspaceIDFromCtx instead of the deleted topology-internal helper).
+
+**Migrated:**
+- `backend/internal/topology/handler.go` — CreateNode + ViewState now read `sentinel.WorkspaceIDFromCtx`.
+
+**Final grep result.** Zero CODE matches for the deleted symbols across backend/. Comments (sentinel migration narrative + one artefactitems doc-comment) preserved as audit-trail.
+
+**Commit.** _(to be backfilled after commit lands)_
+

@@ -11,6 +11,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 	"github.com/mmffdev/vector-backend/internal/security"
 	sharedtopology "github.com/mmffdev/vector-backend/internal/shared/topology"
@@ -131,7 +132,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var workspaceID uuid.UUID
 	if req.WorkspaceID != nil {
 		workspaceID = *req.WorkspaceID
-	} else if id, ok := WorkspaceIDFromCtx(r.Context()); ok {
+	} else if id, ok := sentinel.WorkspaceIDFromCtx(r.Context()); ok {
 		workspaceID = id
 	}
 	n, err := h.Svc.CreateNode(r.Context(), CreateNodeInput{
@@ -707,7 +708,7 @@ func (h *Handler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 // now hit /view-state with a viewport_x/y/zoom body.
 func (h *Handler) ViewState(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
-	workspaceID, ok := WorkspaceIDFromCtx(r.Context())
+	workspaceID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
 	if !ok {
 		httperr.Write(w, r, http.StatusBadRequest, "view-state requires a workspace clamp on the request")
 		return

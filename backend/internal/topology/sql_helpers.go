@@ -1,53 +1,62 @@
 package topology
 
-import "github.com/google/uuid"
+import (
+	"context"
+	"fmt"
 
-// ApplyClamp helps a consuming list query honour the clamp predicate.
-// Returns:
+	"github.com/mmffdev/vector-backend/internal/sentinel"
+)
+
+// workspaceClause + workspaceClauseAt are the SQL-splicing helpers that
+// service.go and commands.go use to apply the workspace clamp inside
+// list queries. They were lifted out of the deleted middleware.go on
+// 2026-05-24 (PLA062 S25); the only behavioural change is the
+// workspace-id source — it now reads from `sentinel.WorkspaceIDFromCtx`
+// instead of the topology-package-internal `WorkspaceIDFromCtx`.
 //
-//   - extraSQL: a string to splice into a query's WHERE clause (already
-//     starts with " AND " when non-empty, or "" when no extra SQL is
-//     needed). For ClampEmpty it returns " AND FALSE" so the caller's
-//     existing WHERE-and-LIMIT structure stays intact.
-//   - args: the extra arguments to pass to pgx, in the order they appear
-//     in extraSQL. Non-nil for ClampSubset; nil otherwise.
-//   - usable: false when the middleware did not run for this request.
-//     Callers should treat false as "refuse to serve a clamped query"
-//     unless they know they are running outside the clamp boundary
-//     (admin tools).
+// Both helpers return ("", args, 0) when no clamp is set on the
+// request context — callers treat that as "no clamp" and fall back to
+// subscription-only scoping.
+
+// workspaceClause returns the SQL fragment that filters by the active
+// workspace_id, plus the appended args slice and the parameter slot.
 //
-// The caller passes startIndex = the placeholder number to use for the
-// first new arg (e.g. if the existing query already uses $1 and $2,
-// pass 3). When extraSQL refers to a single array placeholder it uses
-// `= ANY($N)` so pgx can pass the slice directly.
-func ApplyClamp(c Clamp, startIndex int) (extraSQL string, args []any, usable bool) {
-	switch c.Mode {
-	case ClampUnscoped:
-		return "", nil, false
-	case ClampAll:
-		return "", nil, true
-	case ClampEmpty:
-		return " AND FALSE", nil, true
-	case ClampSubset:
-		// pgx requires a typed slice for ANY — cast to []uuid.UUID,
-		// not []any, so the driver picks uuid[] over text[].
-		ids := make([]uuid.UUID, len(c.NodeIDs))
-		copy(ids, c.NodeIDs)
-		return " AND org_node_id = ANY($" + itoa(startIndex) + ")", []any{ids}, true
+// Usage: extend the existing args list with `args` and splice `clause`
+// into the WHERE list; subsequent multi-alias references should call
+// workspaceClauseAt(alias, slot) so the same parameter is reused.
+func workspaceClause(ctx context.Context, alias string, args []any) (clause string, out []any, slot int) {
+	wsID, ok := sentinel.WorkspaceIDFromCtx(ctx)
+	if !ok {
+		return "", args, 0
 	}
-	return "", nil, false
+	args = append(args, wsID)
+	slot = len(args)
+	return fmt.Sprintf(" AND %s.workspace_id = $%d", alias, slot), args, slot
 }
 
-// itoa is a stack-allocated alternative to strconv.Itoa for the small
-// positive integers we splice into SQL. Avoids the strconv import in a
-// file otherwise free of stdlib deps.
+// workspaceClauseAt returns the same fragment workspaceClause produces
+// but reuses an already-bound parameter slot — used by multi-alias
+// queries (e.g. the Subtree recursive CTE) where every alias points
+// at the same workspace_id and adding the param multiple times would
+// be wasteful.
+//
+// When slot == 0 the clamp is disabled (workspaceClause returned a
+// zero slot), so the fragment is empty.
+func workspaceClauseAt(alias string, slot int) string {
+	if slot == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" AND %s.workspace_id = $%d", alias, slot)
+}
+
+// itoa avoids importing strconv just for line-number formatting in
+// debug log messages. Lifted from the deleted sql_helpers.go.
 func itoa(n int) string {
 	if n == 0 {
 		return "0"
 	}
-	neg := false
-	if n < 0 {
-		neg = true
+	neg := n < 0
+	if neg {
 		n = -n
 	}
 	var buf [20]byte

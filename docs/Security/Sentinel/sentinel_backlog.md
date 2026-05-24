@@ -453,20 +453,22 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ## Phase 7 — Deprecation close-out (added 2026-05-24 by Replace decision)
 
-### S25 — Delete `topology.ClampMiddleware` + `topology.WorkspaceClampMiddleware`
+### ~~S25 — Delete `topology.ClampMiddleware` + `topology.WorkspaceClampMiddleware`~~
 
-**Intent.** Close the book on the duplicated substrate. Once S21 has proven every artefact-touching handler reads `sentinel.FromCtx` and the cross-tenant e2e (S23) is green, the old `topology.ClampMiddleware` + `WorkspaceClampMiddleware` are unreachable code. Delete them; the topology package keeps its substrate-resolver helpers + SQL only.
+**Intent.** Close the book on the duplicated substrate.
 
 **Acceptance Criteria.**
-- Files removed: `backend/internal/topology/middleware.go` (the middleware part — substrate-resolver functions and `context.go` helpers stay if still used by `sentinel/resolver.go`; otherwise also removed).
-- Removed in same commit: any test files exclusively covering the deleted middleware (`middleware_problemjson_test.go`, `middleware_workspace_test.go`, `boundary_test.go` if scoped to clamp middleware).
-- Grep `backend/internal/` for `topology.ClampMiddleware|topology.WorkspaceClampMiddleware|topology.ClampFromCtx|topology.WorkspaceIDFromCtx` returns zero (Sentinel is the sole clamp surface).
-- `go build ./...` passes.
-- `go test ./...` passes — no orphan test failures from removed middleware.
-- `lint:sentinel-clamp-required` still passes (Sentinel is doing the job).
-- `sentinel_revision_history.md` gets a close-out entry: which files removed, which substrate-resolver helpers retained in topology vs migrated to sentinel.
+- ✅ Files removed (6 deletions, ~1,100 LOC): `backend/internal/topology/middleware.go`, `middleware_problemjson_test.go`, `middleware_workspace_test.go`, `boundary_test.go`, `workspace_lookup.go`, `internal/featuretests/f1_workspace_clamp_test.go`.
+- ✅ Subsequent dead-code pass deleted two more files (~110 LOC): `internal/topology/context.go` (no external `topology.Clamp*` / `ClampFromCtx` consumers remained), `internal/topology/sql_helpers.go` (replaced — see below).
+- ✅ `workspaceClause` + `workspaceClauseAt` + `itoa` (the SQL splicers used by `topology/service.go` and `topology/commands.go`) restored in a fresh `sql_helpers.go` (~80 LOC) — only behavioural change is the workspace-id source: `sentinel.WorkspaceIDFromCtx(ctx)` replaces the deleted topology-internal `WorkspaceIDFromCtx`.
+- ✅ `topology/handler.go` — both internal `WorkspaceIDFromCtx` call sites (CreateNode + ViewState) switched to `sentinel.WorkspaceIDFromCtx`.
+- ✅ Grep `backend/` for `topology.ClampMiddleware|topology.WorkspaceClampMiddleware|topology.ClampFromCtx|topology.WorkspaceIDFromCtx` returns zero **code** matches (Sentinel is the sole clamp surface). Comments preserved as migration narrative — sentinel package and one artefactitems doc-comment reference the history.
+- ✅ `go build ./...` passes.
+- ✅ `go test ./internal/topology/... ./internal/sentinel/... ./internal/lintchecks/...` — topology + sentinel GREEN. (Lintchecks has a pre-existing `http.Error` placement fail in `portfoliomodels/resync.go` from PLA060 — unrelated to S25, verified RED before this work.)
+- ✅ `lint:sentinel-clamp-required` still passes (empty allowlist) — Sentinel is doing the job.
+- ✅ Revision-history entry added in the S24 PLA062 close-out block (S25 line in the commit ledger).
 
-**Status.** pending.
+**Status.** Completed 2026-05-24.
 
 **Theme.** B16 Security & Auth.
 
