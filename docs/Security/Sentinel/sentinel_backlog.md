@@ -64,7 +64,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 **Acceptance Criteria.**
 - Test compiles and runs but RED-fails because `sentinel` package does not exist (go build error captured verbatim in `sentinel_tests_log.md`).
 - Asserts the ctx carries `{tenant_id, user_id, role, focus_node_id, scope_up, scope_down, allowed_subtree_ids[]}`.
-- Exercises six cases — valid JWT with `?focus=`, missing focus (falls back to user default), missing focus AND user has no default (falls back to tenant root), focus outside tenant (returns 403 + ProblemJSON), focus the user has no grant on (returns 403 + ProblemJSON), no JWT (returns 401 + ProblemJSON).
+- Exercises six cases — valid JWT with `?meg=`, missing focus (falls back to user default), missing focus AND user has no default (falls back to tenant root), focus outside tenant (returns 403 + ProblemJSON), focus the user has no grant on (returns 403 + ProblemJSON), no JWT (returns 401 + ProblemJSON).
 - Coverage parity with existing `topology.middleware_problemjson_test.go` + `topology.middleware_workspace_test.go` ProblemJSON shape assertions.
 - `sentinel_tests_log.md` records RED output verbatim (go build error showing missing package).
 
@@ -78,11 +78,11 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 
 **Acceptance Criteria.**
 - `sentinel.Clamp` struct exists with all 7 fields from the test.
-- `sentinel.Middleware(...)` returns `func(http.Handler) http.Handler` and reads JWT, `?focus`, `?scope_up`, `?scope_down`.
+- `sentinel.Middleware(...)` returns `func(http.Handler) http.Handler` and reads JWT, `?meg`, `?scope_up`, `?scope_down`.
 - `sentinel.FromCtx(ctx)` returns the clamp or panics (no silent zero-value).
 - `sentinel/resolver.go` implements own `resolveSubtree(focus, up, down)` reading from `artefacts_topology` — does NOT call `topology.Service.DescendantNodeIDs` / `AncestorNodeIDs`. Substrate ownership is the point.
 - `sentinel/sql.go` carries the recursive-CTE SQL for descendants + ancestors (mirrors `topology/sql.go` patterns).
-- Errors emit RFC 9457 ProblemJSON with `type: "/errors/sentinel/..."` codes (no-focus, focus-not-in-tenant, focus-no-access, cross-tenant).
+- Errors emit RFC 9457 ProblemJSON with `type: "/errors/sentinel/..."` codes (no-meg, focus-not-in-tenant, focus-no-access, cross-tenant). The URL param itself is `?meg=` (PLA-0053, named after Rick's daughter Megan).
 - All six cases in `middleware_test.go` GREEN.
 - Attempts-to-green logged in `sentinel_tests_log.md` (target ≤ 3 attempts per case).
 
@@ -96,7 +96,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 
 **Acceptance Criteria.**
 - Integration test on `/_site/admin/artefacts` with valid JWT returns 200; response unchanged from pre-mount baseline (additive, non-breaking).
-- Integration test with JWT for tenant A but `?focus=<tenant-B-node>` returns 403 ProblemJSON.
+- Integration test with JWT for tenant A but `?meg=<tenant-B-node>` returns 403 ProblemJSON.
 - Public routes (login, health) NOT behind the middleware — verified by hitting them without a JWT.
 - Server boots clean (no nil pointers).
 - Grep `cmd/server/main.go` for `topology.ClampMiddleware` + `topology.WorkspaceClampMiddleware` returns zero mounts.
@@ -132,7 +132,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Asserts state shape — every `sentinel_*` field present after a successful login.
 - Asserts workspace-switch atomicity — `await sentinel_switch_tenant(t2)` resolves with `sentinel_tenant.id === t2` AND `sentinel_workspace_in_sync === true` in the same render cycle.
 - Asserts `sentinel_can("perm.code")` returns true for granted, false for not-granted.
-- Asserts focus precedence — URL `?focus=` > `default_focus_node_id` > tenant root.
+- Asserts focus precedence — URL `?meg=` > `default_focus_node_id` > tenant root.
 - Asserts reload-on-401 — a 401 response on any sentinel-mediated call triggers `sentinel_reload`.
 
 **Status.** done — 2026-05-24, commit TBD; RED captured `Failed to resolve import "@/app/sentinel"` verbatim in `sentinel_tests_log.md`. 8 assertions across 6 cases (4a/4b/4c counted as one story-AC bullet for focus precedence).
@@ -150,7 +150,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - `sentinel_api.ts` wraps fetch with auto-401 → reload behaviour.
 - Attempts-to-green logged in `sentinel_tests_log.md`.
 
-**Status.** done — 2026-05-24, commit TBD. All 6 cases (8 assertions) GREEN attempt 1. Provider uses `parseFocusFromURL` from `app/lib/shareableParams.ts` (allowlisted via SHAREABLE_PARAMS for the URL `?focus=` precedence; block-url-query-state hook compliant). 5 files shipped: types.ts, sentinel_api.ts, SentinelProvider.tsx, useSentinel.ts, index.ts (barrel). Zero module-level state in the package; the 401-handler indirection in sentinel_api.ts uses a single dedup flag scoped to the provider's lifetime.
+**Status.** done — 2026-05-24, commit TBD. All 6 cases (8 assertions) GREEN attempt 1. Provider uses `parseMegFromURL` from `app/lib/shareableParams.ts` (allowlisted via SHAREABLE_PARAMS for the URL `?meg=` precedence; block-url-query-state hook compliant). 5 files shipped: types.ts, sentinel_api.ts, SentinelProvider.tsx, useSentinel.ts, index.ts (barrel). Zero module-level state in the package; the 401-handler indirection in sentinel_api.ts uses a single dedup flag scoped to the provider's lifetime. (Originally written with helper name `parseFocusFromURL` + URL param `?focus=`; renamed to `parseMegFromURL` + `?meg=` post-S24 in commit `dca96bac` to align with PLA-0053's canonical scope-identity URL param.)
 
 ---
 
@@ -178,7 +178,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Page-integration test `sentinel.page.work-items` exists; RED before migration (page still imports old hooks).
 - Page test mounts the page with two fixture tenants; asserts only active-tenant artefacts render.
 - Page test switches tenant; asserts atomic re-render against new payload (no stale-data flash).
-- Page test passes a `?focus=<node>` URL; asserts payload narrows to subtree.
+- Page test passes a `?meg=<node>` URL; asserts payload narrows to subtree.
 - Page migration removes every `useAuth/useScope/useTenant` import from the page; only `useSentinel` remains. Verified by grep returning zero old-hook imports.
 - Page-test GREEN; attempts-to-green logged.
 
@@ -418,7 +418,7 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 - ✅ Spec at `e2e/sentinel_cross_tenant_isolation.spec.mjs` (the Sentinel Playwright config's `testMatch`) — three test cases:
   1. Two-tenant `/work-items` list payloads have zero overlap of artefact IDs.
   2. Alice's session GET on Bob's artefact → 403 `application/problem+json` with `type` matching `/errors/sentinel/(focus-not-in-tenant|cross-tenant)`.
-  3. Alice's JWT + forged `?focus=<bob_node_id>` → 403 `application/problem+json` with `type: "/errors/sentinel/focus-not-in-tenant"`.
+  3. Alice's JWT + forged `?meg=<bob_node_id>` → 403 `application/problem+json` with `type: "/errors/sentinel/focus-not-in-tenant"`.
 - ✅ Spec runs under `npm run test:sentinel:e2e` (config: `dev/tests/playwright/playwright.sentinel.config.ts`).
 - ⏸ RED until two-tenant fixtures are seeded (`claude-sentinel-a@mmffdev.com` in tenant A, `claude-sentinel-b@mmffdev.com` in tenant B, both with `password` per the project's Playwright fixture convention; never reuse the human gadmin/padmin/user accounts per the CLAUDE.md HARD RULE). Each tenant needs ≥1 work-item to make the list-overlap assertion meaningful.
 - ⏸ GREEN expected when fixtures land + the deeper subtree-aware SQL clamp (S26) is in place. Until then the spec failure IS the procurement signal: "two-tenant isolation cannot be proven yet."

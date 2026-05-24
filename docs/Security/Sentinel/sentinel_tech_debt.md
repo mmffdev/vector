@@ -32,7 +32,7 @@
 **Standard-ref.** NIST 800-53 AC-4 (information flow enforcement) — handler-level workspace gate (`sentinel.WorkspaceIDFromCtx`) satisfies AC-3, but AC-4's data-flow control is layer 2.
 **Description.** Today's `lint:sentinel-clamp-required` (S20) ratchets the **structural** contract — no artefact-table read happens in a package that hasn't consulted Sentinel. But the `Clamp.AllowedSubtreeIDs` field computed by the middleware is not yet wired into SQL `WHERE` clauses. Concretely: handler calls `sentinel.WorkspaceIDFromCtx(ctx)` and applies workspace-level filtering, but a future workspace-internal compartmentation requirement (CMMC L3 / JSP 440) would not be served by this. The full procurement contract requires both layers.
 **Compensating control.**
-1. `sentinel.Middleware` rejects forged `?focus=<other-tenant-node>` with 403 BEFORE the handler runs (Cases 4 + 9 in `middleware_test.go`) — so the procurement isolation property "Alice cannot read Bob's data via a forged focus param" holds today even without SQL-level clamping.
+1. `sentinel.Middleware` rejects a forged `?meg=<other-tenant-node>` URL with 403 BEFORE the handler runs (Cases 4 + 9 in `middleware_test.go`) — so the procurement isolation property "Alice cannot read Bob's data via a forged scope param" holds today even without SQL-level clamping.
 2. `WorkspaceID` IS in every handler's SQL via the S05 absorption.
 3. The Playwright cross-tenant spec (S23) will catch any regression once the two-tenant fixture is seeded.
 **Pay-down plan.** S26 (carved from S21).

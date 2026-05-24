@@ -75,7 +75,7 @@ Procurement / SOC2 audit narrative depends on this file being **not** a paraphra
 - Case 1: Boot populates every `sentinel_*` field on the state bag (user, tenant, role, focus, scope-up/down, in-sync, can).
 - Case 2: `sentinel_switch_tenant(t2)` resolves atomically — tenant id AND `sentinel_workspace_in_sync === true` in the same render cycle (closes the race the original Sentinel patched module-level).
 - Case 3: `sentinel_can(code)` returns true for granted, false for absent perms.
-- Case 4a/b/c: Focus precedence — URL `?focus=` > `users.default_focus_node_id` > tenant root.
+- Case 4a/b/c: Focus precedence — URL `?meg=` > `users.default_focus_node_id` > tenant root. (Originally written against `?focus=`; URL param renamed to `?meg=` post-S24 in commit `dca96bac`; fixture URLs in the spec updated in the same commit.)
 - Case 5: 401 on a sentinel-mediated call auto-triggers `sentinel_reload()` (re-boots, refreshes state).
 - Case 6: `useSentinel()` outside `<SentinelProvider>` throws (negative test; no silent zero-value).
 
@@ -105,7 +105,7 @@ Error: Failed to resolve import "@/app/sentinel" from "app/sentinel/__tests__/se
 
 | Attempt | Date | What changed | Output / verdict |
 |---|---|---|---|
-| 1 | 2026-05-24 | Implemented `app/sentinel/types.ts` (state shape + Resolver-ish wire types), `app/sentinel/sentinel_api.ts` (apiSite-backed HTTP wrapper + 401 hook), `app/sentinel/SentinelProvider.tsx` (reducer + atomic switch + URL/default/root focus precedence via `parseFocusFromURL` from shareableParams), `app/sentinel/useSentinel.ts` (throws outside provider), `app/sentinel/index.ts` (barrel). Added `focus` to `SHAREABLE_PARAMS` in `app/lib/shareableParams.ts` per the documented allowlist path (block-url-query-state hook compliant). | **PASS all 8 assertions attempt 1.** |
+| 1 | 2026-05-24 | Implemented `app/sentinel/types.ts` (state shape + Resolver-ish wire types), `app/sentinel/sentinel_api.ts` (apiSite-backed HTTP wrapper + 401 hook), `app/sentinel/SentinelProvider.tsx` (reducer + atomic switch + URL/default/root focus precedence via `parseFocusFromURL` from shareableParams — later renamed to `parseMegFromURL` in commit `dca96bac`), `app/sentinel/useSentinel.ts` (throws outside provider), `app/sentinel/index.ts` (barrel). Added `focus` to `SHAREABLE_PARAMS` in `app/lib/shareableParams.ts` per the documented allowlist path (block-url-query-state hook compliant; later renamed to `meg` in commit `dca96bac` to align with PLA-0053). | **PASS all 8 assertions attempt 1.** |
 
 #### GREEN
 
@@ -121,7 +121,7 @@ Error: Failed to resolve import "@/app/sentinel" from "app/sentinel/__tests__/se
 
 **Attempts to green.** **1** (target ≤ 3).
 **TSC check.** `npx tsc --noEmit` — silent, zero errors.
-**Block-url-query-state hook.** Cleared by allowlisting `focus` in `app/lib/shareableParams.ts` (documented exception path). Provider reads via `parseFocusFromURL(window.location.search)` not raw URLSearchParams.
+**Block-url-query-state hook.** Cleared by allowlisting `meg` in `app/lib/shareableParams.ts` (documented exception path; allowlist entry was `focus` at S08 and renamed to `meg` in commit `dca96bac`). Provider reads via `parseMegFromURL(window.location.search)` not raw URLSearchParams.
 **Commit.** (added in S08 commit)
 
 ---
@@ -206,7 +206,7 @@ ok  	github.com/mmffdev/vector-backend/internal/sentinel	0.319s
 **Story.** [S03 in sentinel_backlog.md](sentinel_backlog.md#s03--red-backendinternalsentinelmiddleware_testgo-before-the-package-exists)
 **Tier.** Go unit test (parallel to `sentinel.unit` tier, but Go-side).
 **Assertions.** Six cases pinning the backend Sentinel contract:
-1. Valid JWT + `?focus=<uuid>` → 200, ctx carries full `Clamp{TenantID, FocusNodeID, ScopeUp, ScopeDown, AllowedSubtreeIDs[]}`.
+1. Valid JWT + `?meg=<uuid>` → 200, ctx carries full `Clamp{TenantID, FocusNodeID, ScopeUp, ScopeDown, AllowedSubtreeIDs[]}`.
 2. Valid JWT, no `?focus`, user has default → 200, focus = user's persisted default.
 3. Valid JWT, no `?focus`, no user default → 200, focus = tenant root.
 4. Focus belongs to another tenant → 403 `application/problem+json`, `type: "/errors/sentinel/focus-not-in-tenant"`.
@@ -424,7 +424,7 @@ OK    285 file(s) checked, 9 exempt
 **Three test cases.**
 1. Two-tenant /work-items lists have zero overlap of artefact IDs.
 2. Alice GETs Bob's artefact → 403 problem+json type matching `/errors/sentinel/(focus-not-in-tenant|cross-tenant)`.
-3. Alice's JWT + forged ?focus=<bob_node_id> → 403 problem+json type `/errors/sentinel/focus-not-in-tenant`.
+3. Alice's JWT + forged ?meg=<bob_node_id> → 403 problem+json type `/errors/sentinel/focus-not-in-tenant`.
 
 **RED state.** Spec intentionally references two fixture accounts that don't exist yet (`claude-sentinel-a@mmffdev.com`, `claude-sentinel-b@mmffdev.com`). Running the spec today fails on the login step — that's the documented signal that two-tenant fixtures must be seeded before the procurement isolation claim can be proven.
 

@@ -22,6 +22,21 @@
 
 ## History (newest first)
 
+### 2026-05-24 — Post-close runtime fixes (PLA062 follow-up — landed same day)
+
+**PLA / story.** PLA062 / post-S25 (no story; bug-fix landings on `main`).
+**Decision.** Three runtime issues surfaced in dev within an hour of S25 closing; rather than re-open a story we landed targeted fixes on `main` with full doc trail.
+**What landed.**
+1. **`b640094f` fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints.** `ArtefactTypeCatalogueProvider` mounts in the root `app/layout.tsx` and (post-S17) reads `useSentinel()`. SentinelProvider was only mounted inside `(user)/layout.tsx` + `(overlay)/layout.tsx`, so every request went HTTP 500. Fix: moved `<SentinelProvider>` up to root, removed redundant inner mounts. Also: `fetchBoot()` was calling `/sentinel/boot` (route not yet implemented), so the provider never populated; added a `/auth/me` + `/topology/grants/me` fallback bridge.
+2. **`65fbab08` fix(sentinel): align sql.go to current table names + wire focus→meg URL bridge.** Dev Debug panel pinned `HasActiveRole` returning "role check failed" — the S04 substrate copy-paste used pre-rename table/column names (`roles_workspaces`, `workspaces`) that no longer exist. Renamed to `users_roles_workspaces` (with the canonical `users_roles_workspaces_id_workspace` / `_id_user` / `_revoked_at` columns) and `workspace` (singular). Also patched `withForwardedMeg` in `app/lib/api.ts` to read from `?focus=` AND legacy `?meg=` (precursor to fix #3 below).
+3. **`dca96bac` fix(sentinel): rename URL param focus → meg.** Sentinel introduced a parallel `focus` URL name during S08; collapsed to `meg` (PLA-0053 canonical, named after Rick's daughter Megan) so the project has one canonical scope-identity URL param. Frontend (`SHAREABLE_PARAMS`, `parseMegFromURL`, `SentinelProvider.setFocus` URL write, test fixtures) + backend (`middleware.go resolveFocus` reads `?meg=`, `middleware_test.go` fixture URLs). Internal state-bag field name `sentinel_focus_node` and action `sentinel_set_focus` are **unchanged** — those describe the concept, not the URL.
+
+**Tests.** 10/10 sentinel.unit GREEN. Backend `go test ./internal/sentinel/...` GREEN. tsc + `go build ./...` both silent. Live dev verified HTTP 200 on `/`, `/login`, `/work-items`, `/topology` after each fix.
+**Standard-ref.** Same baseline. The procurement narrative is unchanged: Sentinel is the sole identity/tenant/scope owner; the URL param it writes is `meg`.
+**Carved-out follow-ups (still open).** S26 (subtree SQL clamp) and TD-SENT-AUTH-EXTRACT (credential-flow lift) unchanged.
+
+---
+
 ### 2026-05-24 — PLA062 close-out (S17–S24)
 
 **PLA / story.** PLA062 / S17 through S24.

@@ -53,9 +53,7 @@ No story is "done" until: test GREEN + commit landed + PLA062 strikethrough appl
 - `backend/internal/sentinel/` — backend middleware + ctx accessor + ProblemJSON error catalogue.
 - `dev/scripts/lint_no_direct_workspace_id.py`, `lint_no_old_context_imports.py` — frontend ratchets.
 - `backend/internal/lintchecks/sentinel_clamp_test.go` — backend ratchet.
-- `e2e/sentinel_cross_tenant_isolation.spec.mjs` — cross-tenant proof.
-- `e2e/sentinel_workspace_switch_atomicity.spec.mjs` — race-window proof.
-- `e2e/sentinel_focus_clamp.spec.mjs` — focus-precedence proof.
+- `e2e/sentinel_cross_tenant_isolation.spec.mjs` — cross-tenant proof (RED at S23 close; GREEN gated on two-tenant fixture seed + S26 SQL clamp). The original brief mentioned two sibling specs (`sentinel_workspace_switch_atomicity.spec.mjs`, `sentinel_focus_clamp.spec.mjs`); both their behavioural contracts are covered by the `sentinel.unit` Cases 2 + 4a/b/c + 10 in `app/sentinel/__tests__/sentinel_provider.test.tsx` (which exercise the same atomicity + precedence properties without needing a browser session), so neither e2e spec was added separately.
 - This documentation tree: `sentinel_docs.md` (this file), [`sentinel_backlog.md`](sentinel_backlog.md), [`sentinel_tests_log.md`](sentinel_tests_log.md), [`sentinel_tech_debt.md`](sentinel_tech_debt.md), [`sentinel_revision_history.md`](sentinel_revision_history.md).
 
 ## What replaces what
@@ -71,9 +69,10 @@ No story is "done" until: test GREEN + commit landed + PLA062 strikethrough appl
 | `useScope()` | `useSentinel()` (destructure `sentinel_focus_node`, `sentinel_grants`) |
 | `useTenant()` | `useSentinel()` (destructure `sentinel_tenant`) |
 | `useHasPermission(code)` | `useSentinel().sentinel_can(code)` |
-| `useActiveWorkspace()` | `useSentinel().sentinel_tenant` + `.sentinel_focus_node` |
-| direct `user.workspace_id` read | `sentinel_tenant.id` |
-| backend `auth.UserFromCtx(ctx)` in artefact-touching handlers | `sentinel.FromCtx(ctx)` |
+| `useActiveWorkspace()` | `useSentinel().sentinel_user?.workspace_id` (hook deleted at S18) |
+| direct `user.workspace_id` read | `sentinel_user.workspace_id` |
+| `?focus=` URL param (Sentinel S08 era) | `?meg=` URL param (PLA-0053 canonical; renamed in `dca96bac`) |
+| backend `auth.UserFromCtx(ctx)` in artefact-touching handlers | `sentinel.FromCtx(ctx)` / `sentinel.WorkspaceIDFromCtx(ctx)` |
 
 ## How to extend Sentinel
 
