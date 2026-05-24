@@ -369,3 +369,20 @@ ok  	github.com/mmffdev/vector-backend/internal/lintchecks	0.456s
 
 **Commit.** `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20].
 
+
+
+---
+
+## S21 — backend clamp ratchet allowlist emptied GREEN (2026-05-24)
+
+```
+$ cd backend && go test ./internal/lintchecks/ -run TestSentinelClampRequired
+ok  	github.com/mmffdev/vector-backend/internal/lintchecks	0.381s
+```
+
+**Scope.** Emptied `sentinelClampAllowlist` in `backend/internal/lintchecks/sentinel_clamp_test.go`. All 6 previously-allowlisted packages (artefactitems, artefactitemsv2, artefacttypes, artefactpriorities, portfoliomodels, flows) already read `sentinel.WorkspaceIDFromCtx` via the S05 absorption commit — the lint now passes without any package exemption.
+
+**Layer 2 carved out to S26.** The deeper SQL-clamp work (apply `AllowedSubtreeIDs` to WHERE clauses + per-package integration tests) is a multi-session refactor and is its own story.
+
+**Commit.** _(to be backfilled after commit lands)_
+

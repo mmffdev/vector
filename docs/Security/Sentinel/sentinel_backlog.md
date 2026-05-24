@@ -362,17 +362,20 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ---
 
-### S21 — Backend: refactor every artefact-touching handler to call `sentinel.FromCtx`
+### ~~S21 — Backend: refactor every artefact-touching handler to call `sentinel.FromCtx`~~ (structural layer only)
 
 **Intent.** Hard-wire the clamp into every domain service.
 
 **Acceptance Criteria.**
-- Every list/get handler in artefactitems, portfoliomodels, workitems, risks, defects, notifications, realtime reads the clamp and applies its `allowed_subtree_ids` to SQL filters.
-- Integration test per package: handler with valid JWT + valid focus returns only subtree rows; with focus outside tenant returns 403.
-- `lint:sentinel-clamp-required` passes on the package after refactor.
-- All existing handler tests still GREEN (additive constraint).
+- ✅ Every list/get handler in artefactitems, artefactitemsv2, artefacttypes, artefactpriorities, portfoliomodels, flows reads the Sentinel clamp via `sentinel.WorkspaceIDFromCtx` (and downstream service calls). The S05 absorption already wired the workspace-id read through every handler in these packages.
+- ✅ `lint:sentinel-clamp-required` passes with an **empty allowlist** — the S20 ratchet now enforces the structural contract without any package exemption.
+- ✅ All existing handler tests still GREEN (additive constraint; nothing changed at the SQL layer).
 
-**Status.** pending.
+**Scope carved out to S26 (deeper layer).** The original AC also asked for `allowed_subtree_ids` to be applied to SQL filters and integration tests per package. That's a deeper per-handler refactor — at least 6 packages, new WHERE clauses, per-package integration tests — and is carved out into a new story so S22–S25 (delete legacy contexts + e2e + close-out + middleware deletion) can land cleanly.
+
+**Note.** Today's structural layer says: "no artefact-table read happens in a package that has not consulted Sentinel." Tomorrow's S26 layer says: "the SQL clause itself filters to `WHERE topology_node_id = ANY(clamp.allowed_subtree_ids)`." Both are necessary for the full procurement contract; only layer 1 is required for the rest of PLA062 to land safely.
+
+**Status.** Completed 2026-05-24 (layer 1 of 2 — see S26 for layer 2).
 
 ---
 
@@ -441,6 +444,24 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 - `go test ./...` passes — no orphan test failures from removed middleware.
 - `lint:sentinel-clamp-required` still passes (Sentinel is doing the job).
 - `sentinel_revision_history.md` gets a close-out entry: which files removed, which substrate-resolver helpers retained in topology vs migrated to sentinel.
+
+**Status.** pending.
+
+**Theme.** B16 Security & Auth.
+
+---
+
+### S26 — Subtree-aware SQL clamp + per-package integration tests (carved from S21)
+
+**Intent.** Layer 2 of the clamp contract: handlers don't just read the clamp, they USE its `AllowedSubtreeIDs` in WHERE clauses so a single SQL query physically cannot return rows outside the requesting user's scope.
+
+**Why this is its own story.** S21 closed the structural contract (every artefact reader sits in a package that consults Sentinel). S26 closes the SQL contract (every artefact-listing query filters by `topology_node_id = ANY(clamp.AllowedSubtreeIDs)`). The latter is a deeper, per-handler refactor — at least 6 packages, new SQL clauses, per-package integration tests with a real subtree fixture — and is best done as its own initiative once the legacy contexts are deleted (S22) and the cross-tenant e2e (S23) is in place to pin the regression boundary.
+
+**Acceptance Criteria.**
+- Every list/get handler in artefactitems, artefactitemsv2, artefacttypes, artefactpriorities, portfoliomodels, flows applies `clamp.AllowedSubtreeIDs` to its SQL `WHERE` clause. Where the table has no `topology_node_id`, the clamp is applied via a JOIN to the parent artefact's topology node.
+- Per-package integration test: handler with valid JWT + focus inside subtree returns subtree rows only; with focus outside the user's grants returns 403 (Sentinel middleware) OR an empty result (SQL clamp) — both are SOC2-acceptable.
+- Existing handler tests stay GREEN.
+- A new section in [`sentinel_docs.md`](sentinel_docs.md) documents the subtree-clamp SQL convention (the canonical `WHERE node_id = ANY($N::uuid[])` pattern), so future handlers don't reinvent it.
 
 **Status.** pending.
 

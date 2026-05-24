@@ -47,14 +47,7 @@ const (
 // reader is the S21 deliverable. Until that lands, the readers are
 // allowlisted here so the lint can be wired into go test ./... now
 // (S20 AC).
-var sentinelClampAllowlist = map[string]string{
-	"internal/artefactitems":      "TD-SENT-CLAMP-ARTEFACTITEMS — S21 closes",
-	"internal/artefactitemsv2":    "TD-SENT-CLAMP-ARTEFACTITEMSV2 — S21 closes",
-	"internal/artefacttypes":      "TD-SENT-CLAMP-ARTEFACTTYPES — S21 closes",
-	"internal/artefactpriorities": "TD-SENT-CLAMP-ARTEFACTPRIORITIES — S21 closes",
-	"internal/portfoliomodels":    "TD-SENT-CLAMP-PORTFOLIOMODELS — S21 closes",
-	"internal/flows":              "TD-SENT-CLAMP-FLOWS — S21 closes",
-}
+var sentinelClampAllowlist = map[string]string{}
 
 // artefactTableReference matches `artefact_items`, `artefact_types`,
 // `artefact_priorities`, `artefact_field_values`, `artefact_links`
