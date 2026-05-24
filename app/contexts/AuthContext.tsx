@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
-import { triggerScopeReload } from "@/app/contexts/scopeReloadRegistry";
 // DPoP (RFC 9449) keypair lifecycle. Generated before the initial
 // /auth/login POST so the proof on that request carries the public
 // JWK the backend stamps onto the session row; reparented under the
@@ -269,13 +268,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // PLA-0053 / story 00576.5 — switch active workspace.
   //
-  // B16.8 P3: after applyLogin re-mints the JWT with the new workspace,
-  // await triggerScopeReload() so ScopeContext refreshes its grants
-  // against the new workspace BEFORE this promise resolves. Closes the
-  // desync window where activeGrant.workspace_id still pointed at the
-  // OLD workspace (manifested as portfolio-model "no bundle" 404s).
-  // When ScopeProvider isn't mounted (login pages, overlay routes) the
-  // module-level ref is the default no-op, so this is safe everywhere.
+  // PLA062 S22: triggerScopeReload() removed alongside ScopeContext.
+  // Sentinel owns the workspace switch via sentinel_switch_workspace,
+  // which already re-mints the JWT + re-dispatches boot atomically.
+  // This legacy AuthContext.switchWorkspace stays as a thin wrapper for
+  // callers that haven't migrated yet; it MUST be deleted when the auth
+  // flow itself is extracted to app/lib/auth.ts (deferred from S22).
   const switchWorkspace = useCallback(
     async (workspaceID: string) => {
       const res = await apiSite<LoginResp>("/auth/switch-workspace", {
@@ -283,7 +281,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ workspace_id: workspaceID }),
       });
       applyLogin(res);
-      await triggerScopeReload();
       return res.user;
     },
     [applyLogin]

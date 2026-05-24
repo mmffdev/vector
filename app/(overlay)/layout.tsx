@@ -38,9 +38,10 @@ export default function OverlayLayout({ children }: { children: React.ReactNode 
 
   if (loading || !user || user.force_password_change) return null;
 
-  // PLA062 S09: SentinelProvider above the legacy stack so overlay
-  // pages can call useSentinel(). Same coexistence rationale as
-  // app/(user)/layout.tsx — legacy contexts retired at S22.
+  // PLA062 S22: SentinelProvider is the sole identity/tenant/scope
+  // owner for overlay routes. AuthContext stays for the credential
+  // flow only — its deletion is gated on extracting login/logout to
+  // app/lib/auth.ts (deferred, see S22 closure note).
   return (
     <SentinelProvider>
       <MasterDebugProvider>

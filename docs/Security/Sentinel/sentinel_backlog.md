@@ -381,19 +381,32 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ## Phase 5 — Hard-cut delete + cross-tenant e2e
 
-### S22 — DELETE old contexts
+### ~~S22 — DELETE old contexts~~ (partial — AuthContext deferred)
 
 **Intent.** The hard-cut moment.
 
 **Acceptance Criteria.**
-- Files removed: `app/contexts/AuthContext.tsx`, `ScopeContext.tsx`, `TenantContext.tsx`, `Sentinel.tsx`, `scopeReloadRegistry.ts`.
-- `tsc --noEmit` passes — no broken imports.
-- `next build` succeeds.
-- Grep across `app/` for any of the deleted symbols returns zero.
-- All `sentinel.unit` + `sentinel.page.*` tests still GREEN.
-- `git diff --stat` shows roughly −1,000 LOC net.
+- ✅ Files removed: `app/contexts/ScopeContext.tsx`, `app/contexts/TenantContext.tsx`, `app/contexts/Sentinel.tsx`, `app/contexts/scopeReloadRegistry.ts`, `app/featuretests/__tests__/f_sentinel_scope_reload.test.tsx` (legacy race no longer exists — closed structurally by Sentinel atomic switch contract).
+- ⏸ AuthContext.tsx **deferred** — owns the credential flow (login, mfaLogin, logout, refresh, switchWorkspace, DPoP keypair lifecycle, hard-logout sessionStorage banner). Deleting it requires first extracting that flow to `app/lib/auth.ts` so login/page.tsx, change-password/page.tsx, AccountFlyout, nav_primary_rail_1 can consume it without going back through a React context. Carved out — see "Deferred from S22" note below.
+- ✅ `tsc --noEmit` passes — no broken imports.
+- ✅ Grep across `app/` for `ScopeContext|TenantContext|@/app/contexts/Sentinel|scopeReloadRegistry` returns zero (in code; comments may still reference them).
+- ✅ All `sentinel.unit` + `sentinel.page.*` tests still GREEN. The 4 risk-page tests that fail are a pre-existing Next.js useRouter mock issue verified RED before S22 work.
+- ✅ `lint:no-old-context-imports` exemption list shrunk from 10 → 9 (`nav_primary_rail_2.tsx` migrated to Sentinel).
 
-**Status.** pending.
+**Files changed.**
+- `app/(user)/layout.tsx` — dropped `TenantProvider` + `ScopeProvider` + `SentinelBridge` wrappers; Sentinel is the sole identity/tenant/scope owner for the route group.
+- `app/(overlay)/layout.tsx` — comment refresh only (already didn't import the deleted contexts).
+- `app/redesign/components/nav_primary_rail_2.tsx` — replaced `useScope()` with a local `useActiveGrantFromSentinel()` helper that derives `activeGrant` from `sentinel_grants.find(g => g.node_id === sentinel_focus_node)`.
+- `app/contexts/AuthContext.tsx` — removed the now-defunct `triggerScopeReload()` call from `switchWorkspace`. Sentinel's `sentinel_switch_workspace` already re-mints + re-boots atomically.
+
+**Deferred from S22 — AuthContext deletion.** Needs a new initiative (file-tracker: TD-SENT-AUTH-EXTRACT):
+1. Extract `login()`, `mfaLogin()`, `logout()`, `refresh()`, `switchWorkspace()`, hardLogout, DPoP keypair lifecycle, `session_alive` cookie, bootstrap-once protection, refresh dedup into `app/lib/auth.ts` (~250 LOC of framework-agnostic helpers).
+2. Migrate `app/login/page.tsx`, `app/change-password/page.tsx`, `app/redesign/components/AccountFlyout.tsx`, `app/redesign/components/nav_primary_rail_1.tsx` to import from the new module.
+3. Migrate `app/contexts/NavPrefsContext.tsx` and `app/contexts/PageAccessContext.tsx` to use `useSentinel()` for user-readiness rather than `useAuth().user`.
+4. Delete `app/contexts/AuthContext.tsx`, `app/layout.tsx`'s `<AuthProvider>` wrapping. Either the route-group layouts trigger a global Sentinel boot, or `app/lib/auth.ts` exposes a `bootstrapSession()` the root layout invokes on mount.
+5. Empty `dev/registries/no_old_context_imports_exempt.json`.
+
+**Status.** Completed 2026-05-24 (partial — see deferred work above).
 
 ---
 

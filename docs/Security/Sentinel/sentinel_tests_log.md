@@ -386,3 +386,28 @@ ok  	github.com/mmffdev/vector-backend/internal/lintchecks	0.381s
 
 **Commit.** `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21].
 
+
+
+---
+
+## S22 — legacy context deletion (partial) GREEN (2026-05-24)
+
+```
+$ npx tsc --noEmit
+(silent)
+
+$ npx vitest run app/sentinel "app/(user)"
+ Test Files  9 passed | 1 failed (10)
+      Tests  45 passed | 4 failed (49)
+ [4 fails are the pre-existing risk page useRouter mock issue — verified RED on `git stash` before S22 work]
+
+$ npm run lint:no-old-context-imports
+OK    285 file(s) checked, 9 exempt
+```
+
+**Scope.** Deleted: `app/contexts/ScopeContext.tsx`, `app/contexts/TenantContext.tsx`, `app/contexts/Sentinel.tsx` (legacy SentinelBridge), `app/contexts/scopeReloadRegistry.ts`, `app/featuretests/__tests__/f_sentinel_scope_reload.test.tsx`. Migrated: `nav_primary_rail_2.tsx` to a local `useActiveGrantFromSentinel()` helper.
+
+**AuthContext.tsx deferred.** Carved out as new follow-up — needs a credential-flow extraction to `app/lib/auth.ts` first. 9 of the original 10 `no_old_context_imports_exempt.json` entries remain (all AuthContext-related); `nav_primary_rail_2.tsx` removed from exemption.
+
+**Commit.** _(to be backfilled after commit lands)_
+

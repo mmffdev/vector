@@ -2,14 +2,13 @@
   "_note": "lint:no-old-context-imports exemptions — files that still import from legacy AuthContext/ScopeContext/TenantContext during the PLA062 S22 cleanup window. Every entry here MUST be deleted (or migrated) before S22 closes (legacy contexts removal). Procurement note: this exemption list is the audit trail for the authentication-boundary surface that is the LAST migration target.",
   "exemptions": [
     { "path": "app/layout.tsx",                                "reason": "root layout still mounts <AuthProvider> for the boot path — replaced by SentinelProvider at root in S22" },
-    { "path": "app/(user)/layout.tsx",                         "reason": "route-group layout reads useAuth().user for force_password_change gate + mounts legacy Tenant/Scope providers as transitional fallbacks — replaced in S22" },
-    { "path": "app/(overlay)/layout.tsx",                      "reason": "overlay layout mirror of (user) — same auth/redirect gate, same S22 replacement" },
+    { "path": "app/(user)/layout.tsx",                         "reason": "route-group layout reads useAuth().user for the force_password_change gate. S22 deleted ScopeProvider/TenantProvider/SentinelBridge wrapping; the remaining useAuth import survives until the credential flow is extracted to app/lib/auth.ts (deferred from S22)" },
+    { "path": "app/(overlay)/layout.tsx",                      "reason": "overlay layout mirror of (user) — same auth/redirect gate, same deferred replacement" },
     { "path": "app/login/page.tsx",                            "reason": "uses useAuth().login + mfaLogin — these are the credential flow itself, not a profile read; migrates to Sentinel auth methods in S22" },
     { "path": "app/change-password/page.tsx",                  "reason": "uses useAuth().refresh after a successful password change — migrates with login/page.tsx in S22" },
     { "path": "app/contexts/NavPrefsContext.tsx",              "reason": "NavPrefs gates fetch on useAuth().user readiness — switch to useSentinel().sentinel_user in S22" },
     { "path": "app/contexts/PageAccessContext.tsx",            "reason": "PageAccess reads useAuth().user for the role gate — switch to useSentinel().sentinel_role in S22" },
     { "path": "app/redesign/components/AccountFlyout.tsx",     "reason": "reads useAuth().user.email + .logout — migrates in S22 once Sentinel exposes a logout action" },
-    { "path": "app/redesign/components/nav_primary_rail_1.tsx", "reason": "rail 1 reads useAuth().user.logout for the logout button — migrates in S22" },
-    { "path": "app/redesign/components/nav_primary_rail_2.tsx", "reason": "rail 2 reads useScope().activeGrant + .reload for the scope chip — migrates to useSentinel() in S22" }
+    { "path": "app/redesign/components/nav_primary_rail_1.tsx", "reason": "rail 1 reads useAuth().user.logout for the logout button — migrates when the credential flow is extracted to app/lib/auth.ts (deferred from S22)" }
   ]
 }

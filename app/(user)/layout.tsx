@@ -8,10 +8,7 @@ import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
 import { MasterDebugProvider } from "@/app/contexts/MasterDebugContext";
 import { DomRegistryProvider } from "@/app/contexts/DomRegistryContext";
-import { TenantProvider } from "@/app/contexts/TenantContext";
 import { ActiveNavProvider } from "@/app/contexts/ActiveNavContext";
-import { ScopeProvider } from "@/app/contexts/ScopeContext";
-import { SentinelBridge } from "@/app/contexts/Sentinel";
 import { SentinelProvider } from "@/app/sentinel";
 import { useAuth } from "@/app/contexts/AuthContext";
 
@@ -32,33 +29,24 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   if (loading || !user || user.force_password_change) return null;
 
-  // PLA062 S09: SentinelProvider mounts ABOVE the legacy stack so any
-  // consumer in this subtree can call useSentinel(). The old contexts
-  // (Tenant / Scope / SentinelBridge) coexist during the migration
-  // window (S10–S21 migrate consumers); S22 deletes them and this
-  // wrapping collapses to just SentinelProvider + the non-identity
-  // providers (PageHeader, NavPrefs, ...).
+  // PLA062 S22: legacy contexts (TenantContext, ScopeContext,
+  // SentinelBridge) deleted. SentinelProvider is now the sole owner
+  // of identity / tenant / scope state for this route group.
   return (
     <SentinelProvider>
-    <TenantProvider>
     <MasterDebugProvider>
     <LibraryReleasesProvider>
     <NavPrefsProvider>
       <PageHeaderProvider>
         <ActiveNavProvider>
-        <ScopeProvider>
-        <SentinelBridge>
         <DomRegistryProvider>
           <RedesignShell>{children}</RedesignShell>
         </DomRegistryProvider>
-        </SentinelBridge>
-        </ScopeProvider>
         </ActiveNavProvider>
       </PageHeaderProvider>
     </NavPrefsProvider>
     </LibraryReleasesProvider>
     </MasterDebugProvider>
-    </TenantProvider>
     </SentinelProvider>
   );
 }

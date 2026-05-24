@@ -5,11 +5,20 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useShell, type ShellPage } from "../ShellContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
+import type { SentinelGrant } from "@/app/sentinel/types";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 import ScopeTreePanel from "@/app/components/ScopeTreePanel";
 import ScopeGroupPanel from "@/app/components/ScopeGroupPanel";
+
+// Derive the active grant from Sentinel's grants array + focus node.
+// Mirrors what ScopeContext.activeGrant exposed pre-PLA062.
+function useActiveGrantFromSentinel(): { activeGrant: SentinelGrant | null; reload: () => Promise<void> } {
+  const { sentinel_grants, sentinel_focus_node, sentinel_reload } = useSentinel();
+  const activeGrant = sentinel_grants.find((g) => g.node_id === sentinel_focus_node) ?? null;
+  return { activeGrant, reload: sentinel_reload };
+}
 
 function formatNow(d: Date): string {
   const date = d.toLocaleDateString(undefined, {
@@ -113,7 +122,7 @@ function SectionFlyoutBody({
 }) {
   const { indicator, phase, setTarget } = useTravelIndicator(groupRef, activeKey, { inset: 4 });
   const { indicator: bmIndicator, phase: bmPhase, setTarget: bmSetTarget } = useTravelIndicator(bookmarkGroupRef, activeKey, { inset: 4 });
-  const { activeGrant } = useScope();
+  const { activeGrant } = useActiveGrantFromSentinel();
   const scopeLabel = activeGrant
     ? (activeGrant.label_override?.trim() || activeGrant.name)
     : null;
@@ -170,7 +179,7 @@ function SectionFlyoutBody({
 /** Grouped scope panel — replaces the normal SectionFlyout when isScopeOpen=true. */
 export function ScopeFlyout2() {
   const { activeSection } = useShell();
-  const { activeGrant, reload } = useScope();
+  const { activeGrant, reload } = useActiveGrantFromSentinel();
   const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
@@ -198,7 +207,7 @@ export function ScopeFlyout2() {
 /** @deprecated use ScopeFlyout2 */
 export function ScopeFlyout() {
   const { activeSection } = useShell();
-  const { activeGrant } = useScope();
+  const { activeGrant } = useActiveGrantFromSentinel();
   const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
