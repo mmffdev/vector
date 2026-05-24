@@ -312,6 +312,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
 ---
 
@@ -334,6 +335,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `flow_states`. Pill name and kind align in the seed (Backlog/To Do/Doing/Completed/Accepted) so the lifecycle vocabulary is self-evident. Two orthogonal axes: `kind` answers "where in the lifecycle?" (`backlog | todo | in_progress | done | accepted | cancelled`); `is_pullable` answers "can the team take this from this state right now?". Compliance-gated teams use multiple `kind='todo'` pills (e.g. To Do → In Review → Approved) where only the final pill carries `is_pullable=true`. Standard agile teams keep the seed default — `Backlog` is PO shaping (validation relaxed); `To Do` is the single pullable state. Per-artefact PO-readiness is explicitly a future concern, not bundled here. `[P1]` 🔵 IN FLIGHT
 > Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
 > Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
@@ -858,6 +860,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1345,6 +1348,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -2170,6 +2174,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2417,6 +2422,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3577,6 +3583,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
@@ -4785,6 +4792,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -5296,6 +5304,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -5927,6 +5936,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -6444,6 +6454,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -6610,6 +6621,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -7035,6 +7047,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -7163,6 +7176,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -7257,6 +7271,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -7380,6 +7395,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -7469,6 +7485,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -7672,6 +7689,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -7882,6 +7900,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -8019,6 +8038,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -8162,6 +8182,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -9060,6 +9081,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
 **Phase 1 — Backend**
 
@@ -9134,6 +9156,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
 **Phase 2 — Frontend**
 
@@ -9222,6 +9245,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
 ---
 
