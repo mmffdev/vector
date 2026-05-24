@@ -81,6 +81,12 @@ type User struct {
 	// value live; written by PUT /_site/sentinel/focus (commit 19df4e33).
 	// Resolution order at request time: ?meg= URL > this > tenant root.
 	DefaultFocusNodeID  *uuid.UUID `json:"default_focus_node_id,omitempty"`
+	// HomeLocationFollowMode (migration 244) controls whether scope-rail
+	// clicks update the home location. FALSE = Pinned (rail clicks are
+	// session-only); TRUE = Follow (rail clicks PUT to /sentinel/focus
+	// and mirror into DefaultFocusNodeID). Default FALSE per the safer
+	// "your home stays where you put it" intuition.
+	HomeLocationFollowMode bool    `json:"home_location_follow_mode"`
 	AuthMethod          string     `json:"auth_method"`
 	// B20.4.8 — surfaced as "Network ID" in the admin user edit panel.
 	// Auth-managed (set during SSO bind, not editable from the panel).

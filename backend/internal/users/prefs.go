@@ -143,6 +143,52 @@ func (h *Handler) GetActiveScope(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, activeScopeResp{NodeID: s})
 }
 
+// ── Home-location follow mode (mig 244) ──────────────────────────────────────
+
+// SetHomeLocationFollowMode persists the Pinned/Follow toggle from the
+// Home Location section of /user/account-settings. No validation
+// beyond "user exists and is the actor" — the column is a single
+// boolean preference.
+func (s *Service) SetHomeLocationFollowMode(ctx context.Context, userID uuid.UUID, follow bool) error {
+	tag, err := s.Pool.Exec(ctx, sqlUpdateUserHomeLocationFollowMode, follow, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+type homeLocationFollowModeReq struct {
+	Follow bool `json:"follow"`
+}
+
+// SetHomeLocationFollowMode accepts { "follow": <bool> } and writes
+// users.home_location_follow_mode for the authenticated user.
+func (h *Handler) SetHomeLocationFollowMode(w http.ResponseWriter, r *http.Request) {
+	actor := auth.UserFromCtx(r.Context())
+	if actor == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	var req homeLocationFollowModeReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	if err := h.Svc.SetHomeLocationFollowMode(r.Context(), actor.ID, req.Follow); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
+			return
+		}
+		log.Printf("users/prefs handler error: %v", err)
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // SetActiveScope accepts { "node_id": "<uuid>" | null } and writes it to the user row.
 func (h *Handler) SetActiveScope(w http.ResponseWriter, r *http.Request) {
 	actor := auth.UserFromCtx(r.Context())

@@ -1126,6 +1126,12 @@ func main() {
 		r.Get("/active-scope", usersH.GetActiveScope)
 		r.Put("/active-scope", usersH.SetActiveScope)
 
+		// Migration 244 — Pinned (FALSE, default) vs Follow (TRUE) mode
+		// for the Home Location dropdown on /user/account-settings.
+		// Write-only here; read side flows through /auth/me as
+		// userPayload.HomeLocationFollowMode.
+		r.Put("/home-location-follow-mode", usersH.SetHomeLocationFollowMode)
+
 		// Per-user namespaced preferences (mig 208).
 		// Replaces URL-bar query state for filter chips, sort, tab —
 		// see TD-URL-FILTER-CHIPS / TD-URL-TAB-STATE in c_tech_debt.md.

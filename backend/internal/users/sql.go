@@ -130,6 +130,14 @@ const sqlSelectUserActiveScope = `SELECT active_scope_node_id FROM users WHERE i
 // sqlUpdateUserActiveScope persists the active scope node ID. NULL clears it.
 const sqlUpdateUserActiveScope = `UPDATE users SET active_scope_node_id = $1, updated_at = NOW() WHERE id = $2`
 
+// sqlUpdateUserHomeLocationFollowMode persists the Pinned/Follow toggle
+// from the Home Location section of /user/account-settings (migration
+// 244). When TRUE, the frontend setFocus action also PUTs to
+// /_site/sentinel/focus so scope-rail clicks mirror into the home
+// location column; when FALSE (default), scope-rail clicks stay
+// session-only. $1 = bool, $2 = userID.
+const sqlUpdateUserHomeLocationFollowMode = `UPDATE users SET home_location_follow_mode = $1, updated_at = NOW() WHERE id = $2`
+
 // sqlUserHasGrantOnNode confirms the caller holds at least one active grant on
 // the target topology node. Used to gate SetActiveScope — a user must not be
 // able to store an arbitrary node ID they have no access to.

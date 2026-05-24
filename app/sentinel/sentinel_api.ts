@@ -86,6 +86,10 @@ export async function fetchBoot(): Promise<SentinelBootPayload> {
     // user hasn't picked one yet (resolveFocusNode falls through to
     // tenant root).
     default_focus_node_id?: string | null;
+    // Mirrors users.home_location_follow_mode (migration 244). FALSE
+    // (Pinned, default) means scope-rail clicks are session-only;
+    // TRUE (Follow) means they also persist into default_focus_node_id.
+    home_location_follow_mode?: boolean;
   }
   interface GrantRow {
     grant_id?: string;
@@ -119,6 +123,7 @@ export async function fetchBoot(): Promise<SentinelBootPayload> {
       role_id: me.role?.id ?? "",
       permissions: me.permissions ?? [],
       default_focus_node_id: me.default_focus_node_id ?? null,
+      home_location_follow_mode: me.home_location_follow_mode ?? false,
       workspace_id: me.workspace_id ?? "",
       mfa_enrolled: me.mfa_enrolled,
       force_password_change: me.force_password_change,
@@ -172,6 +177,19 @@ export async function putFocus(nodeId: string | null): Promise<void> {
   await sentinelCall<void>("/sentinel/focus", {
     method: "PUT",
     body: JSON.stringify({ focus_node_id: nodeId }),
+  });
+}
+
+/**
+ * PUT /me/home-location-follow-mode — persists the Pinned/Follow toggle
+ * (users.home_location_follow_mode, migration 244). Lives on /me/ (not
+ * /sentinel/) because the column is a simple per-user preference rather
+ * than part of the request-time clamp substrate.
+ */
+export async function putHomeFollowMode(follow: boolean): Promise<void> {
+  await sentinelCall<void>("/me/home-location-follow-mode", {
+    method: "PUT",
+    body: JSON.stringify({ follow }),
   });
 }
 

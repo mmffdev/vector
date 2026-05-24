@@ -41,6 +41,7 @@ import {
   postSwitchTenant,
   postSwitchWorkspace,
   putFocus,
+  putHomeFollowMode,
   putSettings,
   sentinel_api_call as apiCall,
   setUnauthorizedHandler,
@@ -98,6 +99,7 @@ type Action =
   | { type: "set_settings"; settings: SentinelWorkspaceSettings }
   | { type: "set_scope_direction"; direction: "ascend" | "descend" }
   | { type: "set_user_default_focus"; nodeId: string | null }
+  | { type: "set_user_follow_mode"; follow: boolean }
   | { type: "loading_start" }
   | { type: "loading_done" };
 
@@ -127,12 +129,22 @@ function reducer(state: InternalState, action: Action): InternalState {
     case "set_user_default_focus":
       // Mirrors the server-side users.default_focus_node_id write so
       // the dropdown on /user/account-settings reflects the new value
-      // immediately. Used optimistically by setFocus(); reverted on
-      // server failure. No-op when state.user is null (boot in flight).
+      // immediately. Used optimistically by setFocus() when follow mode
+      // is ON; reverted on server failure. No-op when state.user is
+      // null (boot in flight).
       if (!state.user) return state;
       return {
         ...state,
         user: { ...state.user, default_focus_node_id: action.nodeId },
+      };
+    case "set_user_follow_mode":
+      // Mirrors users.home_location_follow_mode. Used optimistically
+      // by the Pinned/Follow toggle on /user/account-settings; reverted
+      // on server failure.
+      if (!state.user) return state;
+      return {
+        ...state,
+        user: { ...state.user, home_location_follow_mode: action.follow },
       };
     case "loading_start":
       return { ...state, loading: true };
@@ -183,22 +195,35 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Boot on mount.
+  // hasBootedRef gates the 401 reload hook. The hook is a "session
+  // went stale mid-life, re-boot to pick up the new state" mechanism;
+  // firing it BEFORE boot has ever succeeded just chains fetchBoot →
+  // 401 → reload → fetchBoot forever on a logged-out tab. The
+  // (user)/layout.tsx redirect to /login is the correct response to
+  // a never-had-a-session state, not another fetchBoot attempt.
+  const hasBootedRef = useRef(false);
+
   const reload = useCallback(async () => {
     dispatch({ type: "loading_start" });
     try {
       const payload = await fetchBoot();
       dispatch({ type: "boot_loaded", payload });
+      hasBootedRef.current = true;
     } catch {
       dispatch({ type: "loading_done" });
     }
   }, []);
 
   // Register the 401 hook so any sentinel-mediated call that surfaces
-  // a terminal 401 automatically re-boots us. The flag dedupes — we
-  // don't want a 401 storm to fire N concurrent reloads.
+  // a terminal 401 automatically re-boots us. Two guards:
+  //   - hasBootedRef: don't fire on a tab that never had a session
+  //     (turns the boot-401 → reload → boot-401 loop into a single
+  //     401 + a route-group redirect to /login).
+  //   - inFlight: dedup a 401 storm onto one reload flight.
   useEffect(() => {
     let inFlight = false;
     setUnauthorizedHandler(() => {
+      if (!hasBootedRef.current) return;
       if (inFlight) return;
       inFlight = true;
       void reload().finally(() => {
@@ -271,13 +296,21 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     // function on every render, which would invalidate every consumer
     // that reads sentinel_set_focus off the value object).
     const prevDefault = stateRef.current.user?.default_focus_node_id ?? null;
+    // Migration-244 gate: only persist into users.default_focus_node_id
+    // when the user has explicitly opted into Follow mode. Default is
+    // Pinned (false) — scope-rail clicks should NOT silently overwrite
+    // the user's chosen home. This restores the source-of-truth
+    // separation the original Sentinel design intended.
+    const followMode = stateRef.current.user?.home_location_follow_mode ?? false;
 
     dispatch({ type: "set_focus", nodeId });
-    // Optimistic mirror — the HomeLocationSection dropdown reads
-    // user.default_focus_node_id for its <select value=…>; without
-    // this the control would appear unchanged until the next /auth/me
-    // boot. Reverted in catch{} below on server failure.
-    dispatch({ type: "set_user_default_focus", nodeId });
+    if (followMode) {
+      // Optimistic mirror — the HomeLocationSection dropdown reads
+      // user.default_focus_node_id for its <select value=…>; without
+      // this the control would appear unchanged until the next /auth/me
+      // boot. Reverted in catch{} below on server failure.
+      dispatch({ type: "set_user_default_focus", nodeId });
+    }
 
     // Write the focus to the URL so it survives a refresh and so the
     // `?meg=` forwarder in app/lib/api.ts can read the active scope.
@@ -296,6 +329,14 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Pinned mode (default): NO server PUT. Scope-rail clicks update
+    // only the session focus + URL ?meg=; the user's saved home stays
+    // put. The Home Location dropdown uses a separate code path to
+    // persist — it always passes through setFocus too, but does so
+    // only after the user has flipped Follow mode ON or directly via
+    // the dropdown's onChange (which calls setFocus with follow set).
+    if (!followMode) return;
+
     try {
       await putFocus(nodeId);
     } catch (err) {
@@ -305,6 +346,33 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       // refreshed (the URL already carries the attempted value). The
       // caller (component) is expected to surface the error to the user.
       dispatch({ type: "set_user_default_focus", nodeId: prevDefault });
+      throw err;
+    }
+  }, []);
+
+  // Direct persistent write of the home location — used by the dropdown
+  // on /user/account-settings. Bypasses the follow-mode gate because
+  // picking from the dropdown is an EXPLICIT "I want to save this as my
+  // home" act, regardless of toggle state. Same optimistic + revert
+  // shape as the follow-mode path in setFocus().
+  const setDefaultFocus = useCallback(async (nodeId: string | null) => {
+    const prevDefault = stateRef.current.user?.default_focus_node_id ?? null;
+    dispatch({ type: "set_user_default_focus", nodeId });
+    try {
+      await putFocus(nodeId);
+    } catch (err) {
+      dispatch({ type: "set_user_default_focus", nodeId: prevDefault });
+      throw err;
+    }
+  }, []);
+
+  const setHomeFollowMode = useCallback(async (follow: boolean) => {
+    const prev = stateRef.current.user?.home_location_follow_mode ?? false;
+    dispatch({ type: "set_user_follow_mode", follow });
+    try {
+      await putHomeFollowMode(follow);
+    } catch (err) {
+      dispatch({ type: "set_user_follow_mode", follow: prev });
       throw err;
     }
   }, []);
@@ -350,6 +418,8 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       sentinel_switch_tenant: switchTenant,
       sentinel_switch_workspace: switchWorkspace,
       sentinel_set_focus: setFocus,
+      sentinel_set_default_focus: setDefaultFocus,
+      sentinel_set_home_follow_mode: setHomeFollowMode,
       sentinel_set_scope_direction: setScopeDirection,
       sentinel_set_settings: setSettings,
       sentinel_can: (code: SentinelPermission) => state.permissions.has(code),
@@ -363,7 +433,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         });
       },
     };
-  }, [state, switchTenant, switchWorkspace, setFocus, setScopeDirection, setSettings, reload]);
+  }, [state, switchTenant, switchWorkspace, setFocus, setDefaultFocus, setHomeFollowMode, setScopeDirection, setSettings, reload]);
 
   return <SentinelCtx.Provider value={value}>{children}</SentinelCtx.Provider>;
 }

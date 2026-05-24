@@ -42,7 +42,7 @@ const sqlSelectRoleByID = `
 // 003_mfa_scaffold.sql.
 const sqlSelectUserByEmail = `
 		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
-		       default_focus_node_id,
+		       default_focus_node_id, home_location_follow_mode,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
 		       failed_login_count, locked_until,
 		       mfa_enrolled, mfa_secret, mfa_recovery_codes,
@@ -55,7 +55,7 @@ const sqlSelectUserByEmail = `
 // Includes MFA columns added in 003_mfa_scaffold.sql.
 const sqlSelectUserByID = `
 		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
-		       default_focus_node_id,
+		       default_focus_node_id, home_location_follow_mode,
 		       auth_method, ldap_dn, force_password_change, password_changed_at,
 		       failed_login_count, locked_until,
 		       mfa_enrolled, mfa_secret, mfa_recovery_codes,
@@ -75,7 +75,7 @@ const sqlSelectUserByID = `
 // shape an expired access token already produces).
 const sqlSelectUserBySessionID = `
 		SELECT u.id, u.subscription_id, u.email, u.password_hash, u.role, u.role_id, u.is_active, u.last_login,
-		       u.default_focus_node_id,
+		       u.default_focus_node_id, u.home_location_follow_mode,
 		       u.auth_method, u.ldap_dn, u.force_password_change, u.password_changed_at,
 		       u.failed_login_count, u.locked_until,
 		       u.mfa_enrolled, u.mfa_secret, u.mfa_recovery_codes,
@@ -103,7 +103,7 @@ const sqlSelectUserBySessionID = `
 // caller (apikeys.Middleware) maps that to 401 with a clear message.
 const sqlSelectServiceUserForSubscription = `
 		SELECT u.id, u.subscription_id, u.email, u.password_hash, u.role, u.role_id, u.is_active, u.last_login,
-		       u.default_focus_node_id,
+		       u.default_focus_node_id, u.home_location_follow_mode,
 		       u.auth_method, u.ldap_dn, u.force_password_change, u.password_changed_at,
 		       u.failed_login_count, u.locked_until,
 		       u.mfa_enrolled, u.mfa_secret, u.mfa_recovery_codes,

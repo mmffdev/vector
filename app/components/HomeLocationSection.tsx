@@ -20,6 +20,7 @@ import { useSentinel } from "@/app/sentinel";
 import { byPosition, walkTopology } from "@/app/lib/shared/topology/walker";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
+import ToggleBtn from "@/app/components/ToggleBtn";
 import type { SentinelGrant } from "@/app/sentinel/types";
 
 interface FlatRow {
@@ -77,29 +78,47 @@ function groupByWorkspace(flat: FlatRow[]): GroupedRows[] {
 }
 
 export default function HomeLocationSection() {
-  const { sentinel_user: user, sentinel_grants: grants, sentinel_set_focus } = useSentinel();
-  const [busy, setBusy] = useState(false);
+  const {
+    sentinel_user: user,
+    sentinel_grants: grants,
+    sentinel_set_default_focus,
+    sentinel_set_home_follow_mode,
+  } = useSentinel();
+  const [busyDropdown, setBusyDropdown] = useState(false);
+  const [busyToggle, setBusyToggle] = useState(false);
 
   const groups = useMemo(() => groupByWorkspace(flatten(grants)), [grants]);
   const currentValue = user?.default_focus_node_id ?? "";
+  const followMode = user?.home_location_follow_mode ?? false;
 
-  async function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  async function onDropdownChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value || null;
-    setBusy(true);
+    setBusyDropdown(true);
     try {
-      await sentinel_set_focus(next);
+      await sentinel_set_default_focus(next);
       notify.success("Home location saved");
     } catch (err) {
-      // sentinel_set_focus already reverted user.default_focus_node_id
-      // back to its previous value on failure (Case 12b in
-      // sentinel_provider.test.tsx). We just surface the error.
+      // sentinel_set_default_focus already reverted
+      // user.default_focus_node_id on failure. We just surface the error.
       if (err instanceof ApiError && err.status === 403) {
         notify.error("You no longer have access to that node.");
       } else {
         notify.error("Could not save home location. Please try again.");
       }
     } finally {
-      setBusy(false);
+      setBusyDropdown(false);
+    }
+  }
+
+  async function onToggleChange(next: boolean) {
+    setBusyToggle(true);
+    try {
+      await sentinel_set_home_follow_mode(next);
+      notify.success(next ? "Home location will follow your scope" : "Home location pinned");
+    } catch {
+      notify.error("Could not save home location mode. Please try again.");
+    } finally {
+      setBusyToggle(false);
     }
   }
 
@@ -118,12 +137,26 @@ export default function HomeLocationSection() {
       <form className="form u-mb-8" onSubmit={(e) => e.preventDefault()}>
         <div className="form__row">
           <label className="form__label">
+            Mode
+            <span className="form__hint">
+              Pinned — your home stays where you set it. Follow — your
+              home updates as you move around the scope rail.
+            </span>
+          </label>
+          <ToggleBtn
+            value={followMode}
+            onChange={onToggleChange}
+            labels={["Pinned", "Follow"]}
+          />
+        </div>
+        <div className="form__row">
+          <label className="form__label">
             Where do you want Vector to land you when you sign in?
             <select
               className="form__input"
               value={currentValue}
-              onChange={onChange}
-              disabled={busy}
+              onChange={onDropdownChange}
+              disabled={busyDropdown || busyToggle}
             >
               <option value="">— (none — use workspace root) —</option>
               {groups.map(({ workspaceId, workspaceName, rows }) => (

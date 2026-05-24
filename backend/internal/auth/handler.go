@@ -121,6 +121,11 @@ type userPayload struct {
 	// second rung of focus precedence (?meg= URL > this > tenant root).
 	// Written via PUT /_site/sentinel/focus (commit 19df4e33).
 	DefaultFocusNodeID  *uuid.UUID  `json:"default_focus_node_id"`
+	// HomeLocationFollowMode (migration 244) gates whether scope-rail
+	// clicks persist into DefaultFocusNodeID. FALSE = Pinned (rail clicks
+	// are session-only); TRUE = Follow (rail clicks PUT to /sentinel/focus
+	// and mirror into the home column). Default FALSE.
+	HomeLocationFollowMode bool     `json:"home_location_follow_mode"`
 	Permissions         []string    `json:"permissions"`
 }
 
@@ -138,6 +143,7 @@ func (h *Handler) buildUserPayload(ctx context.Context, u *roletypes.User) userP
 		LastLogin:           u.LastLogin,
 		MFAEnrolled:         u.MFAEnrolled,
 		DefaultFocusNodeID:  u.DefaultFocusNodeID,
+		HomeLocationFollowMode: u.HomeLocationFollowMode,
 		Permissions:         perms,
 	}
 }

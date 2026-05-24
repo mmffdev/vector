@@ -53,6 +53,9 @@ const FIXTURE_USER_A = {
   role_id: "role-uuid-a",
   permissions: ["work_items.list", "portfolio.list"],
   default_focus_node_id: FIXTURE_USER_DEFAULT_FOCUS,
+  // Pinned by default — migration 244. Tests that exercise the Follow
+  // path override this via stubBoot({ home_location_follow_mode: true }).
+  home_location_follow_mode: false,
   workspace_id: "ws-a-uuid",
 };
 
@@ -469,15 +472,22 @@ describe("sentinel.unit.SentinelProvider", () => {
   });
 
   // -------------------------------------------------------------------
-  // Case 12 — sentinel_set_focus optimistically mirrors into
-  //           sentinel_user.default_focus_node_id; reverts on failure
+  // Case 12 — Follow mode ON: sentinel_set_focus mirrors into
+  //           sentinel_user.default_focus_node_id and PUTs to server;
+  //           reverts on failure
   // -------------------------------------------------------------------
-  // Pins the contract the HomeLocationSection dropdown depends on:
-  // the <select value=…> binds to sentinel_user.default_focus_node_id,
-  // so without the optimistic mirror the picked option wouldn't show as
-  // selected until the next /auth/me boot.
+  // Mig 244 split: when home_location_follow_mode === true, scope-rail
+  // clicks (which go through sentinel_set_focus) persist into the home
+  // column. When false (default), they're session-only — covered in
+  // Case 13 below.
 
   const FIXTURE_NEW_FOCUS = "abababab-abab-abab-abab-abababababab";
+
+  // Boot helper that flips the user into Follow mode for the Case 12
+  // tests below. Pinned-mode behaviour is covered separately in Case 13.
+  function followingStubBoot() {
+    return stubBoot({ home_location_follow_mode: true });
+  }
 
   function DefaultFocusProbe() {
     const s = useSentinel();
@@ -517,7 +527,7 @@ describe("sentinel.unit.SentinelProvider", () => {
         return new Response(null, { status: 204 });
       }
       if (u.includes("/sentinel/boot")) {
-        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+        return new Response(JSON.stringify(followingStubBoot()), { status: 200 });
       }
       return new Response("{}", { status: 200 });
     }) as any;
@@ -552,7 +562,7 @@ describe("sentinel.unit.SentinelProvider", () => {
         );
       }
       if (u.includes("/sentinel/boot")) {
-        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+        return new Response(JSON.stringify(followingStubBoot()), { status: 200 });
       }
       return new Response("{}", { status: 200 });
     }) as any;
@@ -587,7 +597,7 @@ describe("sentinel.unit.SentinelProvider", () => {
         return new Response(null, { status: 204 });
       }
       if (u.includes("/sentinel/boot")) {
-        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+        return new Response(JSON.stringify(followingStubBoot()), { status: 200 });
       }
       return new Response("{}", { status: 200 });
     }) as any;
@@ -608,5 +618,217 @@ describe("sentinel.unit.SentinelProvider", () => {
     });
 
     expect(screen.getByTestId("user-default-focus").textContent).toBe("null");
+  });
+
+  // -------------------------------------------------------------------
+  // Case 13 — Pinned mode (default): sentinel_set_focus is session-only
+  // -------------------------------------------------------------------
+  // The bug fix from migration 244 / commit splitting setFocus: when
+  // home_location_follow_mode is FALSE (the default), clicking through
+  // the scope rail must NOT silently overwrite the user's saved home.
+  // sentinel_focus_node (session) still updates; user.default_focus_node_id
+  // (persistent) does NOT, and no PUT goes to /sentinel/focus.
+
+  function FocusNodeProbe() {
+    const s = useSentinel();
+    return <span data-testid="session-focus-node">{s.sentinel_focus_node ?? "null"}</span>;
+  }
+
+  it("Case 13a — Pinned mode: sentinel_set_focus changes session focus only; no PUT, no persistent-column write", async () => {
+    let putCalls = 0;
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/focus") && init?.method === "PUT") {
+        putCalls++;
+        return new Response(null, { status: 204 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        // Default FIXTURE_USER_A has home_location_follow_mode: false.
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <DefaultFocusProbe />
+          <FocusNodeProbe />
+          <SetFocusTrigger nodeId={FIXTURE_NEW_FOCUS} />
+        </SentinelProvider>,
+      );
+    });
+
+    // Boot state: focus resolves to the user default.
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+    expect(screen.getByTestId("session-focus-node").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+
+    await act(async () => {
+      screen.getByTestId("set-focus-btn").click();
+    });
+
+    // Session focus moved to the new node.
+    expect(screen.getByTestId("session-focus-node").textContent).toBe(FIXTURE_NEW_FOCUS);
+    // Persistent home column UNCHANGED.
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+    // No server PUT — Pinned mode is session-only.
+    expect(putCalls).toBe(0);
+  });
+
+  // -------------------------------------------------------------------
+  // Case 14 — sentinel_set_default_focus always persists (dropdown path)
+  // -------------------------------------------------------------------
+  // The Home Location dropdown is an EXPLICIT "save this as my home"
+  // action regardless of toggle state. Bypasses the follow_mode gate.
+
+  function FollowProbe() {
+    const s = useSentinel();
+    return (
+      <span data-testid="follow-mode">
+        {String(s.sentinel_user?.home_location_follow_mode ?? false)}
+      </span>
+    );
+  }
+
+  function SetDefaultFocusTrigger({ nodeId }: { nodeId: string | null }) {
+    const s = useSentinel();
+    return (
+      <button
+        data-testid="set-default-focus-btn"
+        onClick={() => void s.sentinel_set_default_focus(nodeId)}
+      >
+        save default
+      </button>
+    );
+  }
+
+  it("Case 14 — sentinel_set_default_focus persists into the home column even when Pinned", async () => {
+    let putBody: any = null;
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/focus") && init?.method === "PUT") {
+        putBody = init.body ? JSON.parse(init.body as string) : null;
+        return new Response(null, { status: 204 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        // Pinned (the default)
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <DefaultFocusProbe />
+          <FollowProbe />
+          <SetDefaultFocusTrigger nodeId={FIXTURE_NEW_FOCUS} />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("follow-mode").textContent).toBe("false");
+
+    await act(async () => {
+      screen.getByTestId("set-default-focus-btn").click();
+    });
+
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_NEW_FOCUS);
+    expect(putBody).toEqual({ focus_node_id: FIXTURE_NEW_FOCUS });
+  });
+
+  // -------------------------------------------------------------------
+  // Case 15 — sentinel_set_home_follow_mode persists + reverts
+  // -------------------------------------------------------------------
+
+  function SetFollowTrigger({
+    follow,
+    onError,
+  }: {
+    follow: boolean;
+    onError?: (e: unknown) => void;
+  }) {
+    const s = useSentinel();
+    return (
+      <button
+        data-testid="set-follow-btn"
+        onClick={async () => {
+          try {
+            await s.sentinel_set_home_follow_mode(follow);
+          } catch (e) {
+            onError?.(e);
+          }
+        }}
+      >
+        flip
+      </button>
+    );
+  }
+
+  it("Case 15a — sentinel_set_home_follow_mode optimistically updates user.home_location_follow_mode + PUTs /me/home-location-follow-mode", async () => {
+    let putBody: any = null;
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/me/home-location-follow-mode") && init?.method === "PUT") {
+        putBody = init.body ? JSON.parse(init.body as string) : null;
+        return new Response(null, { status: 204 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <FollowProbe />
+          <SetFollowTrigger follow={true} />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("follow-mode").textContent).toBe("false");
+
+    await act(async () => {
+      screen.getByTestId("set-follow-btn").click();
+    });
+
+    expect(screen.getByTestId("follow-mode").textContent).toBe("true");
+    expect(putBody).toEqual({ follow: true });
+  });
+
+  it("Case 15b — sentinel_set_home_follow_mode reverts on PUT failure", async () => {
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/me/home-location-follow-mode") && init?.method === "PUT") {
+        return new Response("server fell over", { status: 500 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    const errors: unknown[] = [];
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <FollowProbe />
+          <SetFollowTrigger follow={true} onError={(e) => errors.push(e)} />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("follow-mode").textContent).toBe("false");
+
+    await act(async () => {
+      screen.getByTestId("set-follow-btn").click();
+    });
+
+    // Reverted back to the boot-time value.
+    expect(screen.getByTestId("follow-mode").textContent).toBe("false");
+    expect(errors).toHaveLength(1);
   });
 });

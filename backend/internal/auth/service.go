@@ -187,7 +187,7 @@ func (s *Service) FindUserByEmail(ctx context.Context, email string) (*roletypes
 	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByEmail, email).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
-		&u.DefaultFocusNodeID,
+		&u.DefaultFocusNodeID, &u.HomeLocationFollowMode,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil,
 		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,
@@ -206,7 +206,7 @@ func (s *Service) FindUserByID(ctx context.Context, id uuid.UUID) (*roletypes.Us
 	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectUserByID, id).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
-		&u.DefaultFocusNodeID,
+		&u.DefaultFocusNodeID, &u.HomeLocationFollowMode,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil,
 		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,
@@ -231,7 +231,7 @@ func (s *Service) FindServiceUserForSubscription(ctx context.Context, subscripti
 	u := &roletypes.User{}
 	err := s.Pool.QueryRow(ctx, sqlSelectServiceUserForSubscription, subscriptionID).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
-		&u.DefaultFocusNodeID,
+		&u.DefaultFocusNodeID, &u.HomeLocationFollowMode,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil,
 		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,
@@ -266,7 +266,7 @@ func (s *Service) FindUserBySessionID(ctx context.Context, userID, sessionID uui
 	var st SessionState
 	err := s.Pool.QueryRow(ctx, sqlSelectUserBySessionID, userID, sessionID).Scan(
 		&u.ID, &u.SubscriptionID, &u.Email, &u.PasswordHash, &u.Role, &u.RoleID, &u.IsActive, &u.LastLogin,
-		&u.DefaultFocusNodeID,
+		&u.DefaultFocusNodeID, &u.HomeLocationFollowMode,
 		&u.AuthMethod, &u.LdapDN, &u.ForcePasswordChange, &u.PasswordChangedAt,
 		&u.FailedLoginCount, &u.LockedUntil,
 		&u.MFAEnrolled, &u.MFASecret, &u.MFARecoveryCodes,

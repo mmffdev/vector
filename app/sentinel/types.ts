@@ -48,6 +48,13 @@ export interface SentinelUser {
   permissions: SentinelPermission[];
   /** Per-user persisted focus node (S06). null = no preference. */
   default_focus_node_id: string | null;
+  /**
+   * Pinned (false, default) vs Follow (true) mode for the Home Location
+   * dropdown on /user/account-settings (migration 244). When true,
+   * sentinel_set_focus also persists into default_focus_node_id; when
+   * false, scope-rail clicks stay session-only.
+   */
+  home_location_follow_mode: boolean;
   /** The user's current workspace (from JWT claim, S05 absorption). */
   workspace_id: string;
   /** Whether the user has enrolled in TOTP MFA — drives step-up TOTP prompt. */
@@ -120,8 +127,27 @@ export interface SentinelState {
   sentinel_switch_tenant: (tenantId: string) => Promise<void>;
   /** Switch to a different workspace within the current tenant — re-mints JWT with new workspace_id claim. */
   sentinel_switch_workspace: (workspaceId: string) => Promise<void>;
-  /** Set focus node — persists to users.default_focus_node_id on the server. */
+  /**
+   * Set focus node. Always pins the session focus (focus_override) and
+   * writes ?meg=. ONLY persists to users.default_focus_node_id when
+   * sentinel_user.home_location_follow_mode is true; otherwise the
+   * persistent home column is left alone.
+   */
   sentinel_set_focus: (nodeId: string | null) => Promise<void>;
+  /**
+   * Persist a new home topology node — direct write to
+   * users.default_focus_node_id via PUT /sentinel/focus. Does NOT
+   * change the session focus_override or the URL. Used by the
+   * Home Location dropdown on /user/account-settings (which is an
+   * explicit "save this as my home" action regardless of follow mode).
+   */
+  sentinel_set_default_focus: (nodeId: string | null) => Promise<void>;
+  /**
+   * Persist the Pinned (false) vs Follow (true) home-location toggle.
+   * Optimistic local update + PUT /me/home-location-follow-mode; reverts
+   * on server failure.
+   */
+  sentinel_set_home_follow_mode: (follow: boolean) => Promise<void>;
   /** Toggle scope direction — local-only state for now (no server persistence). */
   sentinel_set_scope_direction: (dir: "ascend" | "descend") => void;
   /** Persist workspace settings (theme, tenant_name, prefs) to server + refresh local cache. */
