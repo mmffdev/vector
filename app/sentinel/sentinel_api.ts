@@ -63,6 +63,12 @@ export async function fetchBoot(): Promise<SentinelBootPayload> {
   // is the only round-trip; when it 404s we fall through. Other status
   // codes (401, 500) bubble up unchanged so the provider's error
   // handling (and the 401 reload hook) keeps working.
+  //
+  // The backend /sentinel route group registers an explicit NotFound
+  // BEFORE its middleware chain so unknown sub-routes (like /boot)
+  // return 404 cleanly without firing RequireAuth — otherwise the
+  // 401 hook on the SentinelProvider would re-enter reload() and
+  // loop into a hard logout.
   try {
     return await sentinelCall<SentinelBootPayload>("/sentinel/boot");
   } catch (err) {

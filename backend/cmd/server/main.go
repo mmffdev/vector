@@ -1155,12 +1155,25 @@ func main() {
 	// inherit the same gate.
 	sentinelH := sentinel.NewHandler(sentinelResolver)
 	r.Route("/sentinel", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(60, time.Minute))
-		r.Use(userWriteLimiter)
-		r.Use(sentinelMW)
-		r.Put("/focus", sentinelH.PutFocus)
+		// NB: NotFound MUST be registered BEFORE the .With(...) chain
+		// because chi runs the group's middleware stack on prefix-match
+		// alone — so an unknown sub-route like /sentinel/boot would
+		// otherwise hit RequireAuth and 401 instead of 404. The
+		// frontend's fetchBoot() probes /sentinel/boot first and falls
+		// back to a /auth/me + /topology/grants/me bridge on 404; a
+		// 401 here was triggering the SentinelProvider 401 hook and
+		// looping into a hard logout. The explicit NotFound short-
+		// circuits chi's middleware chain for unmatched sub-routes.
+		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "not found", http.StatusNotFound)
+		})
+		r.With(
+			authSvc.RequireAuth,
+			authSvc.RequireFreshPassword,
+			httprate.LimitByIP(60, time.Minute),
+			userWriteLimiter,
+			sentinelMW,
+		).Put("/focus", sentinelH.PutFocus)
 	})
 
 	// /nav
