@@ -316,6 +316,9 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 ## FLOW1. Flow-State Kind & Pull-Eligibility Model
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
@@ -323,6 +326,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `flow_states`. Pill name and kind align in the seed (Backlog/To Do/Doing/Completed/Accepted) so the lifecycle vocabulary is self-evident. Two orthogonal axes: `kind` answers "where in the lifecycle?" (`backlog | todo | in_progress | done | accepted | cancelled`); `is_pullable` answers "can the team take this from this state right now?". Compliance-gated teams use multiple `kind='todo'` pills (e.g. To Do → In Review → Approved) where only the final pill carries `is_pullable=true`. Standard agile teams keep the seed default — `Backlog` is PO shaping (validation relaxed); `To Do` is the single pullable state. Per-artefact PO-readiness is explicitly a future concern, not bundled here. `[P1]` 🔵 IN FLIGHT
 > Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
 > Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
@@ -357,6 +361,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 ### FLOW1.1 Schema — kind widening + is_pullable flag
@@ -405,6 +411,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **FLOW1.1.2** ~~Add `flow_states.is_pullable BOOLEAN NOT NULL DEFAULT FALSE` — opt-in per pill; default false so new pills are non-pullable until consciously marked~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `aede1dd` (2026-05-18): fix(login): shift welcome column up 100px
@@ -1042,6 +1049,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1313,6 +1321,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1384,6 +1393,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1512,6 +1522,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 ### FLOW1.5 Reset to factory-default per artefact type
@@ -1812,6 +1823,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -1895,6 +1907,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1985,6 +1998,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2118,6 +2132,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2360,6 +2375,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2409,6 +2425,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
 > Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -2955,6 +2972,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3014,6 +3032,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3510,6 +3529,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
@@ -3807,6 +3827,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -4254,6 +4275,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
@@ -4704,6 +4726,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -5150,6 +5173,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -5208,6 +5232,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -5223,6 +5248,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -5833,6 +5859,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -6007,6 +6034,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -6780,6 +6808,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -7549,6 +7578,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -7754,6 +7784,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -7886,6 +7917,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -8024,6 +8056,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -8142,6 +8175,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -8930,6 +8964,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
@@ -8983,6 +9018,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 **Phase 2 — Frontend**
 
@@ -9066,6 +9102,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 
 ---
 

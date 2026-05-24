@@ -384,5 +384,5 @@ ok  	github.com/mmffdev/vector-backend/internal/lintchecks	0.381s
 
 **Layer 2 carved out to S26.** The deeper SQL-clamp work (apply `AllowedSubtreeIDs` to WHERE clauses + per-package integration tests) is a multi-session refactor and is its own story.
 
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21].
 
