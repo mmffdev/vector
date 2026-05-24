@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/notifications/rules"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
@@ -197,11 +198,26 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	n := 3
 	var extra []string
 
-	// PLA-0043 — Topology scope clamp on artefact reads. When the caller
+	// PLA062 S26 — Sentinel mandatory subtree clamp. Every artefact read
+	// is bounded to the user's reachable subtree (computed by
+	// sentinel.Middleware from JWT + topology). PLA-0043's ?scope=
+	// further-narrowing path (below) intersects with this clamp so a
+	// hostile caller can't widen scope by passing an ancestor node.
+	// When the clamp is absent (admin / dev paths with no middleware),
+	// SubtreeClause returns "" and the read falls back to
+	// subscription-only narrowing — same pre-Sentinel behaviour.
+	if mandatory, mArgs, mNext := sentinel.SubtreeClause(ctx, "a", args, n); mandatory != "" {
+		extra = append(extra, mandatory[len(" AND "):]) // strip leading " AND "; the joiner adds it back
+		args = mArgs
+		n = mNext
+	}
+
+	// PLA-0043 — Topology scope further-narrowing. When the caller
 	// passed ?scope=<id> we resolve the user's reachable subtree and
-	// limit artefacts to that set. NULL topology_node_id rows are
-	// excluded when scope is active (un-assigned items are visible only
-	// in unscoped reads).
+	// limit artefacts to that set. Intersects with the Sentinel clamp
+	// above so the URL param can only narrow further, never widen.
+	// NULL topology_node_id rows are excluded when scope is active
+	// (un-assigned items are visible only in unscoped reads).
 	if filters.ScopeNodeID != nil {
 		if s.topology == nil {
 			return nil, 0, ErrInvalidInput
@@ -237,6 +253,8 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		if resolveErr != nil {
 			return nil, 0, resolveErr
 		}
+		// Intersect with the Sentinel clamp (no-op when clamp absent).
+		ids = sentinel.ApplyClampToIDs(ctx, ids)
 		extra = append(extra, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
 		args = append(args, ids)
 		n++
@@ -378,7 +396,15 @@ func (s *Service) ListFacets(
 		n++
 	}
 
-	// Topology scope clamp — same shape as ListWorkItems (PLA-0043).
+	// PLA062 S26 — Sentinel mandatory subtree clamp (matches ListWorkItems).
+	if mandatory, mArgs, mNext := sentinel.SubtreeClause(ctx, "a", args, n); mandatory != "" {
+		extra = append(extra, mandatory[len(" AND "):])
+		args = mArgs
+		n = mNext
+	}
+
+	// PLA-0043 — Topology scope further-narrowing. Intersects with the
+	// Sentinel clamp above so the URL param can only narrow further.
 	if scopeNodeID != uuid.Nil {
 		if s.topology == nil {
 			return FacetSet{}, ErrInvalidInput
@@ -400,6 +426,7 @@ func (s *Service) ListFacets(
 		if resolveErr != nil {
 			return FacetSet{}, resolveErr
 		}
+		ids = sentinel.ApplyClampToIDs(ctx, ids)
 		extra = append(extra, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
 		args = append(args, ids)
 		n++
@@ -479,6 +506,34 @@ func (s *Service) getWorkItemImpl(ctx context.Context, subscriptionID, id uuid.U
 	if err != nil {
 		return nil, err
 	}
+	// PLA062 S26 — Sentinel mandatory subtree clamp. The list paths
+	// splice the clamp into SQL; single-row reads use a static SELECT
+	// for the existing-id 404 contract, so we post-filter here. When
+	// the clamp is absent (admin / dev), allow the read. When the
+	// clamp is present and the artefact's topology_node_id falls
+	// outside it (or is NULL — un-pinned, treated as out-of-scope per
+	// the project convention), surface ErrNotFound to preserve the
+	// no-existence-leak property. A 404 here is procurement-equivalent
+	// to a 403 for the data exposure question.
+	if c := sentinel.FromCtx(ctx); len(c.AllowedSubtreeIDs) > 0 {
+		if wi.TopologyNodeID == nil {
+			return nil, ErrNotFound
+		}
+		nodeID, parseErr := uuid.Parse(*wi.TopologyNodeID)
+		if parseErr != nil {
+			return nil, ErrNotFound
+		}
+		allowed := false
+		for _, id := range c.AllowedSubtreeIDs {
+			if id == nodeID {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return nil, ErrNotFound
+		}
+	}
 	items := []WorkItem{*wi}
 	if err := s.decorateOwners(ctx, items); err != nil {
 		return nil, err
@@ -549,7 +604,14 @@ func (s *Service) SummariseWorkItems(
 		args = append(args, *sprintID)
 		n++
 	}
-	// Topology scope clamp — same shape as ListWorkItems above. NULL
+	// PLA062 S26 — Sentinel mandatory subtree clamp.
+	if mandatory, mArgs, mNext := sentinel.SubtreeClause(ctx, "a", args, n); mandatory != "" {
+		conds = append(conds, mandatory[len(" AND "):])
+		args = mArgs
+		n = mNext
+	}
+	// Topology scope further-narrowing. Intersects with the Sentinel
+	// clamp above so the URL param can only narrow further. NULL
 	// topology_node_id rows are excluded when scope is active (matches
 	// the List behaviour: unscoped reads only see un-assigned items).
 	if scopeNodeID != nil && *scopeNodeID != "" {
@@ -587,6 +649,7 @@ func (s *Service) SummariseWorkItems(
 		if resolveErr != nil {
 			return out, resolveErr
 		}
+		ids = sentinel.ApplyClampToIDs(ctx, ids)
 		conds = append(conds, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
 		args = append(args, ids)
 		n++
