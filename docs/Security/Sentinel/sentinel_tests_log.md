@@ -315,5 +315,5 @@ $ npx vitest run app/sentinel "app/(user)" app/components/__tests__ app/contexts
 **tsc.** `npx tsc --noEmit` silent.
 **Scope.** 10 active call sites migrated; `app/hooks/useActiveWorkspace.ts` DELETED. `f2_active_workspace.test.tsx` repurposed onto `useSentinel().sentinel_user?.workspace_id` so the Tracker library retains the F2 entry.
 **Atomic-switch coherence (no-stale-reads guarantee).** Pinned by Sentinel provider Case 10 (`sentinel_switch_workspace re-mints JWT for new workspace (tenant unchanged)`).
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18].
 
