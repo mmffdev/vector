@@ -833,6 +833,111 @@ describe("sentinel.unit.SentinelProvider", () => {
   });
 
   // -------------------------------------------------------------------
+  // Case 17 — Sentinel re-boots when AuthContext user transitions
+  //           from null → present (post-login)
+  // -------------------------------------------------------------------
+  // Pins the bug observed in dev 2026-05-24: SentinelProvider mounts
+  // before login, /sentinel/boot 404s, bridge /auth/me 401s (no JWT),
+  // sentinel_grants stays []. User logs in → AuthContext.user populates,
+  // but Sentinel didn't notice → home location dropdown shows "you don't
+  // have access to any topology nodes yet" forever.
+  //
+  // Fix: SentinelProvider subscribes to AuthContext via useContext
+  // (non-throwing) and triggers reload() on every null → user-id transition.
+
+  it("Case 17 — SentinelProvider re-boots when AuthContext.user transitions from null to present", async () => {
+    let bootCallCount = 0;
+    let nextBootShouldSucceed = false;
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        bootCallCount++;
+        return new Response("not found", { status: 404 });
+      }
+      if (u.includes("/auth/me")) {
+        if (!nextBootShouldSucceed) {
+          return new Response(
+            JSON.stringify({ type: "about:blank", title: "Unauthorized", status: 401 }),
+            { status: 401, headers: { "Content-Type": "application/problem+json" } },
+          );
+        }
+        return new Response(JSON.stringify({
+          id: FIXTURE_USER_A.id,
+          email: FIXTURE_USER_A.email,
+          subscription_id: FIXTURE_TENANT_A.id,
+          workspace_id: FIXTURE_USER_A.workspace_id,
+          role: { id: FIXTURE_USER_A.role_id, code: FIXTURE_USER_A.role },
+          permissions: FIXTURE_USER_A.permissions,
+          default_focus_node_id: null,
+          home_location_follow_mode: false,
+        }), { status: 200 });
+      }
+      if (u.includes("/topology/grants/me")) {
+        if (!nextBootShouldSucceed) return new Response("denied", { status: 401 });
+        return new Response(JSON.stringify([
+          { node_id: FIXTURE_TENANT_ROOT, role: "admin", parent_id: null, name: "Workspace Root" },
+        ]), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    // Minimal AuthContext stub — just provide the user field that the
+    // re-boot effect subscribes to. Production uses the real AuthProvider.
+    const { AuthContext: RealAuthContext } = await import("@/app/contexts/AuthContext");
+
+    function FakeAuthProvider({ children, userId }: { children: React.ReactNode; userId: string | null }) {
+      const value = userId
+        ? {
+            user: { id: userId, email: "test", subscription_id: "", workspace_id: "", role: { id: "", code: "user", label: "", rank: 99, is_system: false, is_external: false }, is_active: true, force_password_change: false, auth_method: "local" as const, permissions: [] },
+            role: null,
+            loading: false,
+            permissions: new Set<string>(),
+            hasPermission: () => false,
+            login: async () => {},
+            mfaLogin: async () => {},
+            logout: async () => {},
+            refresh: async () => {},
+            switchWorkspace: async () => {},
+            setUser: () => {},
+          }
+        : null;
+      return <RealAuthContext.Provider value={value as any}>{children}</RealAuthContext.Provider>;
+    }
+
+    function App({ userId }: { userId: string | null }) {
+      return (
+        <FakeAuthProvider userId={userId}>
+          <SentinelProvider>
+            <BootStateProbe />
+          </SentinelProvider>
+        </FakeAuthProvider>
+      );
+    }
+
+    const { rerender } = await act(async () => {
+      return render(<App userId={null} />);
+    }) as any;
+
+    // First render: no auth user → Sentinel boots once and fails (401 path).
+    expect(screen.getByTestId("boot-loading").textContent).toBe("false");
+    expect(screen.getByTestId("boot-user-id").textContent).toBe("null");
+    expect(screen.getByTestId("boot-grants-length").textContent).toBe("0");
+    const initialBootCalls = bootCallCount;
+
+    // Simulate login: AuthContext.user transitions to populated; the
+    // bridge mock now returns success.
+    nextBootShouldSucceed = true;
+    await act(async () => {
+      rerender(<App userId={FIXTURE_USER_A.id} />);
+    });
+
+    // Sentinel must have re-booted: user populates, grants array has 1 row.
+    expect(bootCallCount).toBeGreaterThan(initialBootCalls);
+    expect(screen.getByTestId("boot-user-id").textContent).toBe(FIXTURE_USER_A.id);
+    expect(screen.getByTestId("boot-grants-length").textContent).toBe("1");
+  });
+
+  // -------------------------------------------------------------------
   // Case 16 — Boot-time bridge failure: pin the silent-empty bug
   // -------------------------------------------------------------------
   // Symptom reproduced in dev 2026-05-24: signed-in user (AuthContext

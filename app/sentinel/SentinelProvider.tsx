@@ -29,12 +29,14 @@
 import {
   createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useReducer,
   useRef,
   type ReactNode,
 } from "react";
+import { AuthContext } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
 import { parseMegFromURL } from "@/app/lib/shareableParams";
 import {
@@ -258,6 +260,32 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // Re-boot Sentinel when AuthContext's user transitions from absent →
+  // present (i.e. the user just logged in or refreshed into a new session).
+  // Without this, the initial boot fires BEFORE login (when no JWT exists),
+  // 401s, leaves sentinel_grants = [], and the post-login UI sees empty
+  // grants forever — the dropdown on /user/account-settings reads
+  // "You don't have access to any topology nodes yet" even though the
+  // grants are in the DB. previousAuthUserIdRef tracks the transition so
+  // we don't re-boot on every render or on logout.
+  //
+  // useContext(AuthContext) instead of useAuth() so test harnesses (which
+  // historically mount SentinelProvider WITHOUT AuthProvider) don't throw —
+  // the production tree always wraps Sentinel inside AuthProvider, so the
+  // ctx is populated there. When ctx is null the re-boot effect is a no-op.
+  const authCtx = useContext(AuthContext);
+  const authUserId = authCtx?.user?.id ?? null;
+  const previousAuthUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = previousAuthUserIdRef.current;
+    previousAuthUserIdRef.current = authUserId;
+    // Only fire when transitioning to a NEW authenticated user. Skip on
+    // logout (next is null) and on re-renders with the same user.
+    if (authUserId && authUserId !== prev) {
+      void reload();
+    }
+  }, [authUserId, reload]);
 
   // Mirror the resolved focus into the URL so a fresh tab / post-login
   // load shows ?meg=<uuid> immediately — not blind. Without this the
