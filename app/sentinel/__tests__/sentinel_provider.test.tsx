@@ -467,4 +467,146 @@ describe("sentinel.unit.SentinelProvider", () => {
     expect(screen.getByTestId("settings-name").textContent).toBe("Renamed Tenant");
     expect(screen.getByTestId("settings-theme").textContent).toBe("atlas");
   });
+
+  // -------------------------------------------------------------------
+  // Case 12 — sentinel_set_focus optimistically mirrors into
+  //           sentinel_user.default_focus_node_id; reverts on failure
+  // -------------------------------------------------------------------
+  // Pins the contract the HomeLocationSection dropdown depends on:
+  // the <select value=…> binds to sentinel_user.default_focus_node_id,
+  // so without the optimistic mirror the picked option wouldn't show as
+  // selected until the next /auth/me boot.
+
+  const FIXTURE_NEW_FOCUS = "abababab-abab-abab-abab-abababababab";
+
+  function DefaultFocusProbe() {
+    const s = useSentinel();
+    return <span data-testid="user-default-focus">{s.sentinel_user?.default_focus_node_id ?? "null"}</span>;
+  }
+
+  function SetFocusTrigger({
+    nodeId,
+    onError,
+  }: {
+    nodeId: string | null;
+    onError?: (e: unknown) => void;
+  }) {
+    const s = useSentinel();
+    return (
+      <button
+        data-testid="set-focus-btn"
+        onClick={async () => {
+          try {
+            await s.sentinel_set_focus(nodeId);
+          } catch (e) {
+            onError?.(e);
+          }
+        }}
+      >
+        set
+      </button>
+    );
+  }
+
+  it("Case 12a — sentinel_set_focus mirrors the new id into sentinel_user.default_focus_node_id on success", async () => {
+    let putBody: any = null;
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/focus") && init?.method === "PUT") {
+        putBody = init.body ? JSON.parse(init.body as string) : null;
+        return new Response(null, { status: 204 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <DefaultFocusProbe />
+          <SetFocusTrigger nodeId={FIXTURE_NEW_FOCUS} />
+        </SentinelProvider>,
+      );
+    });
+
+    // Starts on the user default from the boot payload.
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+
+    await act(async () => {
+      screen.getByTestId("set-focus-btn").click();
+    });
+
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_NEW_FOCUS);
+    expect(putBody).toEqual({ focus_node_id: FIXTURE_NEW_FOCUS });
+  });
+
+  it("Case 12b — sentinel_set_focus reverts user.default_focus_node_id when PUT /sentinel/focus fails", async () => {
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/focus") && init?.method === "PUT") {
+        return new Response(
+          JSON.stringify({ type: "/errors/sentinel/focus-no-access", title: "Forbidden", status: 403 }),
+          { status: 403, headers: { "Content-Type": "application/problem+json" } },
+        );
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    const errors: unknown[] = [];
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <DefaultFocusProbe />
+          <SetFocusTrigger nodeId={FIXTURE_NEW_FOCUS} onError={(e) => errors.push(e)} />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+
+    await act(async () => {
+      screen.getByTestId("set-focus-btn").click();
+    });
+
+    // Optimistic write was reverted to the boot-time default.
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+    // The error propagates so the calling component can toast.
+    expect(errors).toHaveLength(1);
+  });
+
+  it("Case 12c — sentinel_set_focus(null) clears user.default_focus_node_id on success", async () => {
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/focus") && init?.method === "PUT") {
+        return new Response(null, { status: 204 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <DefaultFocusProbe />
+          <SetFocusTrigger nodeId={null} />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+
+    await act(async () => {
+      screen.getByTestId("set-focus-btn").click();
+    });
+
+    expect(screen.getByTestId("user-default-focus").textContent).toBe("null");
+  });
 });

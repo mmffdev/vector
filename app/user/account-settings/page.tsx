@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
+import HomeLocationSection from "@/app/components/HomeLocationSection";
 import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite, ApiError } from "@/app/lib/api";
@@ -217,6 +218,8 @@ export default function AccountSettingsPage() {
           </button>
         </div>
       </form>
+
+      <HomeLocationSection />
 
       <h3 className="eyebrow">Password</h3>
       <form

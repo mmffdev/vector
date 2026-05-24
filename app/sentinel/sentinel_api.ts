@@ -81,6 +81,11 @@ export async function fetchBoot(): Promise<SentinelBootPayload> {
     permissions: string[];
     mfa_enrolled?: boolean;
     force_password_change?: boolean;
+    // Mirrors users.default_focus_node_id (migration 243). Drives the
+    // home-topology-node preference in account-settings; null when the
+    // user hasn't picked one yet (resolveFocusNode falls through to
+    // tenant root).
+    default_focus_node_id?: string | null;
   }
   interface GrantRow {
     grant_id?: string;
@@ -113,7 +118,7 @@ export async function fetchBoot(): Promise<SentinelBootPayload> {
       role: me.role?.code ?? "user",
       role_id: me.role?.id ?? "",
       permissions: me.permissions ?? [],
-      default_focus_node_id: null,
+      default_focus_node_id: me.default_focus_node_id ?? null,
       workspace_id: me.workspace_id ?? "",
       mfa_enrolled: me.mfa_enrolled,
       force_password_change: me.force_password_change,

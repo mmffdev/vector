@@ -75,6 +75,12 @@ type User struct {
 	ProfileImageURL  *string    `json:"profile_image_url,omitempty"`
 
 	LastLogin           *time.Time `json:"last_login,omitempty"`
+	// DefaultFocusNodeID is the user's persistent "home topology node"
+	// preference (migration 243, S06). Read on every /auth/me so the
+	// frontend SentinelUser.default_focus_node_id reflects the column
+	// value live; written by PUT /_site/sentinel/focus (commit 19df4e33).
+	// Resolution order at request time: ?meg= URL > this > tenant root.
+	DefaultFocusNodeID  *uuid.UUID `json:"default_focus_node_id,omitempty"`
 	AuthMethod          string     `json:"auth_method"`
 	// B20.4.8 — surfaced as "Network ID" in the admin user edit panel.
 	// Auth-managed (set during SSO bind, not editable from the panel).

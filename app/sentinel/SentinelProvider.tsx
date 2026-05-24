@@ -32,6 +32,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   type ReactNode,
 } from "react";
 import { parseMegFromURL } from "@/app/lib/shareableParams";
@@ -96,6 +97,7 @@ type Action =
   | { type: "set_url_focus"; nodeId: string | null }
   | { type: "set_settings"; settings: SentinelWorkspaceSettings }
   | { type: "set_scope_direction"; direction: "ascend" | "descend" }
+  | { type: "set_user_default_focus"; nodeId: string | null }
   | { type: "loading_start" }
   | { type: "loading_done" };
 
@@ -122,6 +124,16 @@ function reducer(state: InternalState, action: Action): InternalState {
       return { ...state, settings: action.settings };
     case "set_scope_direction":
       return { ...state, scope_direction: action.direction };
+    case "set_user_default_focus":
+      // Mirrors the server-side users.default_focus_node_id write so
+      // the dropdown on /user/account-settings reflects the new value
+      // immediately. Used optimistically by setFocus(); reverted on
+      // server failure. No-op when state.user is null (boot in flight).
+      if (!state.user) return state;
+      return {
+        ...state,
+        user: { ...state.user, default_focus_node_id: action.nodeId },
+      };
     case "loading_start":
       return { ...state, loading: true };
     case "loading_done":
@@ -152,6 +164,16 @@ export { SentinelCtx };
 
 export function SentinelProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // stateRef tracks the latest reducer state so the action callbacks
+  // (setFocus etc.) can read fresh values inside their try/catch revert
+  // paths WITHOUT having `state` in their useCallback deps — keeping
+  // those deps empty preserves stable function identity across renders
+  // (consumers using sentinel_set_focus in effect deps would re-fire
+  // otherwise). The single React-y rule: read via stateRef.current only
+  // inside async callbacks, never during the render pass.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Sniff the URL ?meg= once on mount via the allowlisted helper.
   useEffect(() => {
@@ -241,7 +263,22 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setFocus = useCallback(async (nodeId: string | null) => {
+    // Capture the previous user-row default so a server-side failure
+    // (403 no-grant, 500, network) can revert. Read off the latest
+    // state via the reducer ref pattern: we close over `state` here,
+    // but the captured value is only used on the failure path so the
+    // useCallback dep array can stay empty (avoids re-creating the
+    // function on every render, which would invalidate every consumer
+    // that reads sentinel_set_focus off the value object).
+    const prevDefault = stateRef.current.user?.default_focus_node_id ?? null;
+
     dispatch({ type: "set_focus", nodeId });
+    // Optimistic mirror — the HomeLocationSection dropdown reads
+    // user.default_focus_node_id for its <select value=…>; without
+    // this the control would appear unchanged until the next /auth/me
+    // boot. Reverted in catch{} below on server failure.
+    dispatch({ type: "set_user_default_focus", nodeId });
+
     // Write the focus to the URL so it survives a refresh and so the
     // `?meg=` forwarder in app/lib/api.ts can read the active scope.
     // `meg` is the canonical scope-identity URL param across the
@@ -258,7 +295,18 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         // edge environments may not expose URL; non-fatal
       }
     }
-    await putFocus(nodeId);
+
+    try {
+      await putFocus(nodeId);
+    } catch (err) {
+      // Revert the optimistic user-row mirror so the dropdown snaps
+      // back to the prior selection. Leave focus_override alone — it
+      // matches what the server would have resolved if the user
+      // refreshed (the URL already carries the attempted value). The
+      // caller (component) is expected to surface the error to the user.
+      dispatch({ type: "set_user_default_focus", nodeId: prevDefault });
+      throw err;
+    }
   }, []);
 
   const setScopeDirection = useCallback((direction: "ascend" | "descend") => {

@@ -115,6 +115,12 @@ type userPayload struct {
 	// round-trip) means useStepUpAction can decide the form shape
 	// without an extra fetch.
 	MFAEnrolled         bool        `json:"mfa_enrolled"`
+	// DefaultFocusNodeID is the user's "home topology node" preference
+	// (migration 243). Frontend SentinelUser.default_focus_node_id
+	// mirrors this; SentinelProvider.resolveFocusNode() uses it as the
+	// second rung of focus precedence (?meg= URL > this > tenant root).
+	// Written via PUT /_site/sentinel/focus (commit 19df4e33).
+	DefaultFocusNodeID  *uuid.UUID  `json:"default_focus_node_id"`
 	Permissions         []string    `json:"permissions"`
 }
 
@@ -131,6 +137,7 @@ func (h *Handler) buildUserPayload(ctx context.Context, u *roletypes.User) userP
 		AuthMethod:          u.AuthMethod,
 		LastLogin:           u.LastLogin,
 		MFAEnrolled:         u.MFAEnrolled,
+		DefaultFocusNodeID:  u.DefaultFocusNodeID,
 		Permissions:         perms,
 	}
 }
