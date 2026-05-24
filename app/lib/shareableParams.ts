@@ -31,9 +31,36 @@ import type { WorkItemsFilters, SortKey, SortDir } from "@/app/components/work-i
 // Adding a new shareable param: add it here AND handle it in the
 // parse/build functions below.
 export const SHAREABLE_PARAMS: Record<string, ReadonlySet<string>> = {
-  "/work-items":       new Set(["type", "status", "priority", "owner", "sort"]),
-  "/portfolio-items":  new Set(["type", "status", "priority", "owner", "sort"]),
+  "/work-items":       new Set(["type", "status", "priority", "owner", "sort", "focus"]),
+  "/portfolio-items":  new Set(["type", "status", "priority", "owner", "sort", "focus"]),
 };
+
+/**
+ * `focus` is a cross-route shareable param (PLA062 Sentinel). It
+ * encodes the topology node the user is currently focused on, so a
+ * bookmarked URL lands the recipient on the same scope clamp the
+ * sender was viewing. Listed in the per-route SHAREABLE_PARAMS sets
+ * above (route-specific filter+sort still bound to that route), and
+ * also recognised globally by `parseFocusFromURL` below so the
+ * Sentinel provider can read it at boot regardless of route.
+ *
+ * Procurement narrative: defence/finance buyers ask for
+ * "show-me-Alice's-view" links — `focus` is the answer. It only
+ * narrows visibility; it never elevates access. The backend Sentinel
+ * middleware re-validates the focus against the tenant + grant set on
+ * every request, so a forged URL focus surfaces as 403, not a leak.
+ */
+const FOCUS_PARAM = "focus";
+
+/** Read the `?focus=<uuid>` param if present and valid; null otherwise. */
+export function parseFocusFromURL(search: string): string | null {
+  const p = new URLSearchParams(search);
+  const raw = p.get(FOCUS_PARAM);
+  if (!raw) return null;
+  // Loose UUID shape check — backend re-validates against the tenant.
+  const isUuid = /^[0-9a-f-]{36}$/i.test(raw);
+  return isUuid ? raw : null;
+}
 
 // ─── Serialisation ───────────────────────────────────────────────────────────
 

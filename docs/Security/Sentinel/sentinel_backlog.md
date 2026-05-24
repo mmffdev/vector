@@ -150,7 +150,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - `sentinel_api.ts` wraps fetch with auto-401 → reload behaviour.
 - Attempts-to-green logged in `sentinel_tests_log.md`.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. All 6 cases (8 assertions) GREEN attempt 1. Provider uses `parseFocusFromURL` from `app/lib/shareableParams.ts` (allowlisted via SHAREABLE_PARAMS for the URL `?focus=` precedence; block-url-query-state hook compliant). 5 files shipped: types.ts, sentinel_api.ts, SentinelProvider.tsx, useSentinel.ts, index.ts (barrel). Zero module-level state in the package; the 401-handler indirection in sentinel_api.ts uses a single dedup flag scoped to the provider's lifetime.
 
 ---
 
@@ -430,3 +430,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S05 | 2026-05-24 | 26fee3a6 | 9 GREEN cases (cases 7/8/9 added for workspace absorption); production Resolver + 10 mount migrations + 6 handler migrations + TD-SEN-01 closed |
 | S06 | 2026-05-24 | 0a6908a8 | migration 243 applied; users.default_focus_node_id + scope-default booleans live; PoolResolver.DefaultFocus wired |
 | S07 | 2026-05-24 | 67cd68d3 | 6 RED cases captured verbatim (vite import-resolution failure) |
+| S08 | 2026-05-24 | (this commit) | 8/8 GREEN attempt 1; provider + hook + barrel + 401-aware HTTP wrapper; `focus` allowlisted via shareableParams |

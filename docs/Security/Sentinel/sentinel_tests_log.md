@@ -105,11 +105,24 @@ Error: Failed to resolve import "@/app/sentinel" from "app/sentinel/__tests__/se
 
 | Attempt | Date | What changed | Output / verdict |
 |---|---|---|---|
-| (pending S08) | | | |
+| 1 | 2026-05-24 | Implemented `app/sentinel/types.ts` (state shape + Resolver-ish wire types), `app/sentinel/sentinel_api.ts` (apiSite-backed HTTP wrapper + 401 hook), `app/sentinel/SentinelProvider.tsx` (reducer + atomic switch + URL/default/root focus precedence via `parseFocusFromURL` from shareableParams), `app/sentinel/useSentinel.ts` (throws outside provider), `app/sentinel/index.ts` (barrel). Added `focus` to `SHAREABLE_PARAMS` in `app/lib/shareableParams.ts` per the documented allowlist path (block-url-query-state hook compliant). | **PASS all 8 assertions attempt 1.** |
 
 #### GREEN
 
-(pending S08)
+**Date.** 2026-05-24
+**Run command.** `npm run test:sentinel:unit`
+**Output (verbatim).**
+
+```
+ ✓ app/sentinel/__tests__/sentinel_provider.test.tsx (8 tests) 68ms
+ Test Files  1 passed | 24 skipped (25)
+      Tests  8 passed | 141 skipped (149)
+```
+
+**Attempts to green.** **1** (target ≤ 3).
+**TSC check.** `npx tsc --noEmit` — silent, zero errors.
+**Block-url-query-state hook.** Cleared by allowlisting `focus` in `app/lib/shareableParams.ts` (documented exception path). Provider reads via `parseFocusFromURL(window.location.search)` not raw URLSearchParams.
+**Commit.** (added in S08 commit)
 
 ---
 

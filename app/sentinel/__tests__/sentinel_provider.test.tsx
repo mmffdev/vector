@@ -130,7 +130,7 @@ describe("sentinel.unit.SentinelProvider", () => {
 
   it("Case 2 — sentinel_switch_tenant resolves with tenant + workspace_in_sync in same render cycle", async () => {
     // After boot, switch to tenant B; mock returns the new boot payload.
-    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+    globalThis.fetch = vi.fn(async (url: any) => {
       if (String(url).includes("/sentinel/switch-tenant")) {
         return new Response(
           JSON.stringify({
