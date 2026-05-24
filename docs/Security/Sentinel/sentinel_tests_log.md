@@ -409,5 +409,5 @@ OK    285 file(s) checked, 9 exempt
 
 **AuthContext.tsx deferred.** Carved out as new follow-up — needs a credential-flow extraction to `app/lib/auth.ts` first. 9 of the original 10 `no_old_context_imports_exempt.json` entries remain (all AuthContext-related); `nav_primary_rail_2.tsx` removed from exemption.
 
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22].
 

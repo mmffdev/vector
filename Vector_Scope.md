@@ -310,6 +310,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `e6ba3af3` (2026-05-24): docs(sentinel): backfill S18 commit SHA + post-commit scope breadcrumbs
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
 
 ---
 
@@ -327,6 +328,9 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `flow_states`. Pill name and kind align in the seed (Backlog/To Do/Doing/Completed/Accepted) so the lifecycle vocabulary is self-evident. Two orthogonal axes: `kind` answers "where in the lifecycle?" (`backlog | todo | in_progress | done | accepted | cancelled`); `is_pullable` answers "can the team take this from this state right now?". Compliance-gated teams use multiple `kind='todo'` pills (e.g. To Do → In Review → Approved) where only the final pill carries `is_pullable=true`. Standard agile teams keep the seed default — `Backlog` is PO shaping (validation relaxed); `To Do` is the single pullable state. Per-artefact PO-readiness is explicitly a future concern, not bundled here. `[P1]` 🔵 IN FLIGHT
 > Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
 > Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
@@ -363,6 +367,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 ### FLOW1.1 Schema — kind widening + is_pullable flag
@@ -412,6 +419,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **FLOW1.1.2** ~~Add `flow_states.is_pullable BOOLEAN NOT NULL DEFAULT FALSE` — opt-in per pill; default false so new pills are non-pullable until consciously marked~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `aede1dd` (2026-05-18): fix(login): shift welcome column up 100px
@@ -545,6 +553,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
 > Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -841,6 +850,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1050,6 +1061,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1322,6 +1334,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1394,6 +1408,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1523,6 +1538,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 ### FLOW1.5 Reset to factory-default per artefact type
@@ -1824,6 +1840,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -1908,6 +1925,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1999,6 +2017,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2133,6 +2152,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2376,6 +2397,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2767,6 +2790,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2904,6 +2928,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3530,6 +3555,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
@@ -3828,6 +3855,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -3920,6 +3948,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -4108,6 +4137,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -4210,6 +4240,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
 > Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -4400,6 +4431,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -4611,6 +4643,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
 > Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -4727,6 +4760,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -5174,6 +5209,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -5233,6 +5269,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -5349,6 +5387,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -5860,6 +5899,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -6107,6 +6148,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
 > Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -6373,6 +6415,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e6ba3af3` (2026-05-24): docs(sentinel): backfill S18 commit SHA + post-commit scope breadcrumbs
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -6536,6 +6580,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -6958,6 +7004,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -7083,6 +7131,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e6ba3af3` (2026-05-24): docs(sentinel): backfill S18 commit SHA + post-commit scope breadcrumbs
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -7174,6 +7224,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e6ba3af3` (2026-05-24): docs(sentinel): backfill S18 commit SHA + post-commit scope breadcrumbs
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -7294,6 +7346,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -7380,6 +7434,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `e6ba3af3` (2026-05-24): docs(sentinel): backfill S18 commit SHA + post-commit scope breadcrumbs
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -7579,6 +7635,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -7785,6 +7843,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -7918,6 +7978,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -8057,6 +8119,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -8176,6 +8240,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -8494,6 +8559,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -8554,6 +8620,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
 > Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
 > Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -8949,6 +9016,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `e6ba3af3` (2026-05-24): docs(sentinel): backfill S18 commit SHA + post-commit scope breadcrumbs
 > Commit `5d7eaeb0` (2026-05-24): docs(sentinel): backfill S19 commit SHA + post-commit scope breadcrumbs
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 **Phase 1 — Backend**
 
@@ -9019,6 +9088,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 **Phase 2 — Frontend**
 
@@ -9103,6 +9174,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20]
 > Commit `ebcc3ce1` (2026-05-24): docs(sentinel): backfill S20 commit SHA + post-commit scope breadcrumbs
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `c12ac53a` (2026-05-24): docs(sentinel): backfill S21 commit SHA + post-commit scope breadcrumbs
+> Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 
 ---
 
