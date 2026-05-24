@@ -93,6 +93,19 @@ function StateProbe() {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  // jsdom's window.location survives between tests in the same file,
+  // and SentinelProvider's URL-mirror effect writes ?meg=<focus> on
+  // every boot. Without an explicit reset, Case 1's mirror write
+  // ?meg=cccccccc... bleeds into Case 4c's URL sniff and breaks the
+  // "no URL ?meg=" precondition. Reset the search string here.
+  try {
+    if (typeof window !== "undefined" && window.history?.replaceState) {
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
+  } catch {
+    // edge environments may not support replaceState; tests that
+    // mutate window.location directly will restore their own state.
+  }
   // Default global fetch mock — tests override per-case as needed.
   globalThis.fetch = vi.fn(async (url: any) => {
     if (String(url).includes("/sentinel/boot")) {
