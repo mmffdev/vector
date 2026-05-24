@@ -314,6 +314,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `fe5660fd` (2026-05-24): docs(sentinel): backfill S22 commit SHA + post-commit scope breadcrumbs
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 ---
 
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
@@ -872,6 +873,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1365,6 +1368,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -2202,6 +2206,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2452,6 +2457,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3589,6 +3595,7 @@ Full lifecycle management for tasks, bugs, epics.
   > **What:** one resource `/artefacts` with full CRUD + intent verbs. The payload carries `artefact_type_id` (UUID); the server reads `scope` off the type record and gates accordingly. Tenant/workspace/permission clamp runs as middleware on every route — structurally impossible to bypass.
   >
   > **Routes:**
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
   > - `POST   /artefacts` — create (was `POST /work-items`, `POST /portfolio-items`)
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
@@ -4349,6 +4356,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `8264471` (2026-05-13): refactor(PLA-0044): delete legacy PageHeaderBar + dead page-header CSS [FE-UI-0001]
 > Commit `90a1c04` (2026-05-16): fix(PageSummaryHeader): suppress help icon on the inner Panel
 > Commit `36a15a6` (2026-05-17): feat(page-summary): add danger tone to SummaryCellTone (TD-SUMMARY-TONE)
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 - **B8.8** Cursor-based pagination on list endpoints `[P2]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `9e4422d` (2026-05-17): feat(tree): paginationPosition prop on ResourceTree (both|bottom) [B21]
@@ -4356,6 +4364,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
 > Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
@@ -4495,6 +4504,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -4831,6 +4841,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -5166,6 +5177,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
 > Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -5280,6 +5292,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 > Commit `d14bcc70` (2026-05-24): feat(sentinel): S22 — DELETE legacy ScopeContext / TenantContext / SentinelBridge / scopeReloadRegistry [PLA062 S22]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -5346,6 +5359,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -7741,6 +7755,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -7953,6 +7968,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -8092,6 +8108,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -8238,6 +8256,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -9167,6 +9186,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 - **OBJ1.1.3** Backend facets table-tests. AC: workspace clamp, topology clamp, archived exclusion, 403 on unauthorised scope, 404 on unknown scope. `[P3]`
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
@@ -9220,6 +9240,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
+> Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 
 **Phase 2 — Frontend**
 
@@ -9313,6 +9335,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `287e6a20` (2026-05-24): docs(sentinel): backfill S23 commit SHA + post-commit scope breadcrumbs
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
+> Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 
 ---
 
