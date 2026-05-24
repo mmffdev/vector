@@ -31,7 +31,7 @@ import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageAccess } from "@/app/contexts/PageAccessContext";
 import PageAccessDenied from "@/app/components/PageAccessDenied";
 import { ApiError } from "@/app/lib/api";
@@ -308,7 +308,8 @@ function FeatureToggle({
 }
 
 export default function TenantSettingsPage() {
-  const { user } = useAuth();
+  // PLA062 S15: identity via Sentinel.
+  const { sentinel_user: user } = useSentinel();
   // PLA-0050 AC11: gate via the page-access substrate (PLA-0049) so the
   // user sees the canonical denial component (URL preserved) rather than
   // a redirect to a removed path. Backend already enforces via
@@ -434,7 +435,7 @@ export default function TenantSettingsPage() {
     );
   }
 
-  const subId = subscriptionId.current ?? user?.subscription_id ?? "";
+  const subId = subscriptionId.current ?? user?.tenant_id ?? "";
 
   return (
     <PageContent>

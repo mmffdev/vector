@@ -254,7 +254,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Zero old-hook imports.
 - All tests GREEN; attempts logged.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. Only `tenant-settings/page.tsx` had old-hook imports (the 3 api-manager pages were already clean). Migration: `useAuth().user` → `useSentinel().sentinel_user` (via destructure rename to preserve in-file `user` references) + `user?.subscription_id` → `user?.tenant_id`. Cluster-guard test covers all 4 vector-admin routes (4 × 9 negative assertions); 28/28 sentinel.page tests GREEN.
 
 ---
 
@@ -437,3 +437,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S12 | 2026-05-24 | 2bf27308 | /risk; 2/2 GREEN — special case: page already had no old-hook imports |
 | S13 | 2026-05-24 | 9fd3de55 | 2 workspace-admin/topology pages; 4/4 GREEN; overlay/topology deferred to S16 via TD-SEN-02 |
 | S14 | 2026-05-24 | ed5f34be | 6 workspace-admin pages migrated; cluster-guard test added; Sentinel scope expanded (cases 10 + 11) closing TD-SEN-02 + TD-SEN-03 |
+| S15 | 2026-05-24 | (this commit) | vector-admin tenant-settings migrated; 4-route cluster-guard added; 28/28 GREEN |
