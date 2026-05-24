@@ -430,4 +430,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S05 | 2026-05-24 | 26fee3a6 | 9 GREEN cases (cases 7/8/9 added for workspace absorption); production Resolver + 10 mount migrations + 6 handler migrations + TD-SEN-01 closed |
 | S06 | 2026-05-24 | 0a6908a8 | migration 243 applied; users.default_focus_node_id + scope-default booleans live; PoolResolver.DefaultFocus wired |
 | S07 | 2026-05-24 | 67cd68d3 | 6 RED cases captured verbatim (vite import-resolution failure) |
-| S08 | 2026-05-24 | (this commit) | 8/8 GREEN attempt 1; provider + hook + barrel + 401-aware HTTP wrapper; `focus` allowlisted via shareableParams |
+| S08 | 2026-05-24 | d20a1a5e | 8/8 GREEN attempt 1; provider + hook + barrel + 401-aware HTTP wrapper; `focus` allowlisted via shareableParams |
