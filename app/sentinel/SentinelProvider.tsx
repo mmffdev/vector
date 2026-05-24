@@ -36,6 +36,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { AuthContext } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
 import { parseMegFromURL } from "@/app/lib/shareableParams";
@@ -180,6 +181,15 @@ export { SentinelCtx };
 export function SentinelProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // pathname is in the dep array of the URL-mirror effect below so it
+  // re-fires after every client-side navigation. Without this, Next.js
+  // router.push() to a fresh route lands with a meg-less URL and the
+  // wire layer (api.ts withForwardedMeg) sends scope-less requests
+  // (bug 2026-05-24: /value-sprint ObjectTreeV2 403s because the page
+  // mounted before the URL got re-stamped). usePathname is the
+  // canonical client-router subscription for this signal.
+  const pathname = usePathname();
+
   // stateRef tracks the latest reducer state so the action callbacks
   // (setFocus etc.) can read fresh values inside their try/catch revert
   // paths WITHOUT having `state` in their useCallback deps — keeping
@@ -256,10 +266,51 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [reload]);
 
-  // Fire the initial boot.
+  // useContext(AuthContext) instead of useAuth() so test harnesses (which
+  // historically mount SentinelProvider WITHOUT AuthProvider) don't throw —
+  // the production tree always wraps Sentinel inside AuthProvider, so the
+  // ctx is populated there. When ctx is null the boot-gate effect treats
+  // the situation as "no AuthProvider in play" and fires immediately
+  // (matches the pre-fix behaviour the test harnesses rely on).
+  const authCtx = useContext(AuthContext);
+  const authUserId = authCtx?.user?.id ?? null;
+  const authLoading = authCtx?.loading ?? false;
+
+  // Fire the initial boot — but only AFTER AuthContext has finished its
+  // own bootstrap. On browser refresh / tab duplicate, AuthProvider does
+  // an async two-step (load DPoP keypair from IDB → POST /auth/refresh →
+  // setApiToken + setUser); firing /sentinel/boot before that completes
+  // races with no Bearer + no DPoP proof, which 401s into the backend's
+  // refresh path WITHOUT a proof and causes Refresh() to clearRefreshCookie
+  // — wiping the rt cookie and logging the user out on every reload.
+  //
+  // Two skip conditions while authCtx is present (production):
+  //   - authLoading === true: AuthContext still hydrating — wait.
+  //   - authUserId truthy: the transition effect below will handle the
+  //     boot once it observes the null→present edge. Firing here too
+  //     would double-boot.
+  // The only path that fires here in production is "AuthContext settled
+  // with NO user" — which itself is fine because (user)/layout.tsx will
+  // redirect to /login before boot returns, but a no-op reload() at that
+  // point is harmless (the 401 catch is now properly authenticated).
+  //
+  // When authCtx is null (test harness without AuthProvider) we fall back
+  // to the pre-fix immediate-fire behaviour so existing tests keep working.
+  const hasFiredInitialBootRef = useRef(false);
   useEffect(() => {
+    if (hasFiredInitialBootRef.current) return;
+    if (authCtx) {
+      if (authLoading) return;
+      // If a user is present, the transition effect below owns the boot.
+      // Mark fired so we don't race it on subsequent renders.
+      if (authUserId) {
+        hasFiredInitialBootRef.current = true;
+        return;
+      }
+    }
+    hasFiredInitialBootRef.current = true;
     void reload();
-  }, [reload]);
+  }, [authCtx, authLoading, authUserId, reload]);
 
   // Re-boot Sentinel when AuthContext's user transitions from absent →
   // present (i.e. the user just logged in or refreshed into a new session).
@@ -269,13 +320,6 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   // "You don't have access to any topology nodes yet" even though the
   // grants are in the DB. previousAuthUserIdRef tracks the transition so
   // we don't re-boot on every render or on logout.
-  //
-  // useContext(AuthContext) instead of useAuth() so test harnesses (which
-  // historically mount SentinelProvider WITHOUT AuthProvider) don't throw —
-  // the production tree always wraps Sentinel inside AuthProvider, so the
-  // ctx is populated there. When ctx is null the re-boot effect is a no-op.
-  const authCtx = useContext(AuthContext);
-  const authUserId = authCtx?.user?.id ?? null;
   const previousAuthUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     const prev = previousAuthUserIdRef.current;
@@ -320,6 +364,13 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   // honours the user's intent if they manually wipe ?meg= from the
   // URL bar (we'd repopulate it on the next render, which is the right
   // behaviour for the "always-mirrored" property).
+  //
+  // pathname dep (2026-05-24): Next.js client-side router.push() to a
+  // new route drops query params unless callers explicitly carry them.
+  // Without re-firing on pathname change, the URL would stay meg-less
+  // after every link click — and ObjectTreeV2 (which fires
+  // /work-items/* GETs through api.ts withForwardedMeg) would send
+  // scope-less wire requests until the user clicked the scope picker.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (state.loading) return;
@@ -340,7 +391,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     } catch {
       // edge environments without window.URL — non-fatal
     }
-  }, [state.loading, state.focus_override, state.url_focus, state.user, state.tenant_root]);
+  }, [pathname, state.loading, state.focus_override, state.url_focus, state.user, state.tenant_root]);
 
   const switchTenant = useCallback(async (tenantId: string) => {
     dispatch({ type: "loading_start" });

@@ -158,13 +158,26 @@ function withForwardedMeg(path: string, method: string): string {
   try {
     // `meg` (named after Rick's daughter Megan, PLA-0053) is the
     // canonical scope-identity URL param across the project.
-    // SentinelProvider.setFocus() writes it on every scope change;
-    // here we read it back so the wire request carries the matching
-    // clamp. localStorage is the cold-boot fallback (used in the brief
-    // window between first paint and Sentinel's URL write).
+    // SentinelProvider.setFocus() writes it on every scope change.
+    //
+    // 2026-05-24 — REMOVED the localStorage cold-boot fallback. It was
+    // the source of a "ObjectTreeV2 returns 403 scope_read_denied" bug
+    // on every page that mounted ObjectTreeV2 without first writing
+    // ?meg= into the URL (e.g. /value-sprint). The stale UUID in
+    // `vector.scope.activeNodeId` pointed at a topology node the
+    // current user no longer had a grant on, so the backend's
+    // CanReadScope (via /work-items/facets handler reading ?meg=)
+    // returned ErrScopeForbidden → 403, killing facets+flow-states
+    // and leaving the grid empty.
+    //
+    // Without the fallback: when the URL is meg-less, the wire
+    // request goes out without ?meg=, so the backend handler doesn't
+    // trigger the topology.CanReadScope check (handler only fires
+    // CanReadScope when ?meg= is present on the request URL).
+    // Sentinel middleware still applies the workspace+default-focus
+    // clamp at the wire level — the safe path.
     const params = new URLSearchParams(window.location.search);
-    let meg = params.get("meg");
-    if (!meg) meg = window.localStorage.getItem("vector.scope.activeNodeId");
+    const meg = params.get("meg");
     if (!meg) return path;
     let out = path + (path.includes("?") ? "&" : "?") + "meg=" + encodeURIComponent(meg);
     if (_scopeDirection === "ascend") out += "&scope_dir=ascend";

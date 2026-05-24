@@ -1263,4 +1263,388 @@ describe("sentinel.unit.SentinelProvider", () => {
     expect(screen.getByTestId("boot-user-email").textContent).toBe(FIXTURE_USER_A.email);
     expect(screen.getByTestId("boot-grants-length").textContent).toBe("1");
   });
+
+  // -------------------------------------------------------------------
+  // Case 19 — Initial boot is gated on AuthContext.loading === false
+  // -------------------------------------------------------------------
+  // Symptom reproduced in dev 2026-05-24: browser refresh or tab
+  // duplicate logs the user out. Trace: SentinelProvider's mount
+  // effect fires fetchBoot() in parallel with AuthProvider's async
+  // bootstrap (ensureAnyActiveKeypair → /auth/refresh). Sentinel's
+  // boot request goes out without a Bearer AND without a DPoP proof
+  // (IDB load not yet resolved); api.ts's 401-retry path triggers a
+  // refresh that ALSO has no DPoP proof; the backend's Refresh
+  // handler rejects with clearRefreshCookie, wiping the rt cookie
+  // and logging the user out.
+  //
+  // Fix: SentinelProvider must wait until AuthContext.loading flips
+  // to false before firing its initial boot. The transition effect
+  // (Case 17) then handles the boot once user is populated.
+
+  it("Case 19a — initial /sentinel/boot does NOT fire while AuthContext.loading === true", async () => {
+    let bootCallCount = 0;
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        bootCallCount++;
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      if (u.includes("/auth/me")) {
+        bootCallCount++; // bridge path counts too
+        return new Response(
+          JSON.stringify({
+            id: FIXTURE_USER_A.id,
+            email: FIXTURE_USER_A.email,
+            subscription_id: FIXTURE_TENANT_A.id,
+            workspace_id: FIXTURE_USER_A.workspace_id,
+            role: { id: FIXTURE_USER_A.role_id, code: FIXTURE_USER_A.role },
+            permissions: FIXTURE_USER_A.permissions,
+            default_focus_node_id: null,
+            home_location_follow_mode: false,
+          }),
+          { status: 200 },
+        );
+      }
+      if (u.includes("/topology/grants/me")) {
+        return new Response(JSON.stringify([
+          { node_id: FIXTURE_TENANT_ROOT, role: "admin", parent_id: null },
+        ]), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    const { AuthContext: RealAuthContext } = await import("@/app/contexts/AuthContext");
+
+    // FakeAuthProvider that exposes a loading flag — mirrors the
+    // production AuthProvider's async bootstrap window.
+    function FakeAuthProvider({
+      children,
+      loading,
+      userId,
+    }: { children: React.ReactNode; loading: boolean; userId: string | null }) {
+      const value = {
+        user: userId
+          ? { id: userId, email: "x", subscription_id: "", workspace_id: "", role: { id: "", code: "u", label: "", rank: 99, is_system: false, is_external: false }, is_active: true, force_password_change: false, auth_method: "local" as const, permissions: [] }
+          : null,
+        role: null,
+        loading,
+        permissions: new Set<string>(),
+        hasPermission: () => false,
+        login: async () => {},
+        mfaLogin: async () => {},
+        logout: async () => {},
+        refresh: async () => {},
+        switchWorkspace: async () => {},
+        setUser: () => {},
+      };
+      return <RealAuthContext.Provider value={value as any}>{children}</RealAuthContext.Provider>;
+    }
+
+    function App({ loading, userId }: { loading: boolean; userId: string | null }) {
+      return (
+        <FakeAuthProvider loading={loading} userId={userId}>
+          <SentinelProvider>
+            <BootStateProbe />
+          </SentinelProvider>
+        </FakeAuthProvider>
+      );
+    }
+
+    // Mount while AuthContext is still loading. Sentinel must NOT
+    // have fired a boot yet — that's the regression Case 19 pins.
+    await act(async () => {
+      render(<App loading={true} userId={null} />);
+    });
+    expect(bootCallCount).toBe(0);
+    expect(screen.getByTestId("boot-loading").textContent).toBe("true");
+  });
+
+  it("Case 19b — once AuthContext settles with a user, the transition effect boots once (no double-fire)", async () => {
+    let bootCallCount = 0;
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        bootCallCount++;
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    const { AuthContext: RealAuthContext } = await import("@/app/contexts/AuthContext");
+    function FakeAuthProvider({
+      children,
+      loading,
+      userId,
+    }: { children: React.ReactNode; loading: boolean; userId: string | null }) {
+      const value = {
+        user: userId
+          ? { id: userId, email: "x", subscription_id: "", workspace_id: "", role: { id: "", code: "u", label: "", rank: 99, is_system: false, is_external: false }, is_active: true, force_password_change: false, auth_method: "local" as const, permissions: [] }
+          : null,
+        role: null,
+        loading,
+        permissions: new Set<string>(),
+        hasPermission: () => false,
+        login: async () => {},
+        mfaLogin: async () => {},
+        logout: async () => {},
+        refresh: async () => {},
+        switchWorkspace: async () => {},
+        setUser: () => {},
+      };
+      return <RealAuthContext.Provider value={value as any}>{children}</RealAuthContext.Provider>;
+    }
+    function App({ loading, userId }: { loading: boolean; userId: string | null }) {
+      return (
+        <FakeAuthProvider loading={loading} userId={userId}>
+          <SentinelProvider>
+            <BootStateProbe />
+          </SentinelProvider>
+        </FakeAuthProvider>
+      );
+    }
+
+    // Mount loading=true / no user → no boot.
+    const { rerender } = await act(async () => {
+      return render(<App loading={true} userId={null} />);
+    }) as any;
+    expect(bootCallCount).toBe(0);
+
+    // AuthContext finishes with a populated user (the refresh succeeded).
+    // The transition effect should fire EXACTLY ONE boot — not two
+    // (one from initial-boot-effect unblocking, one from the
+    // null→present transition).
+    await act(async () => {
+      rerender(<App loading={false} userId={FIXTURE_USER_A.id} />);
+    });
+    expect(bootCallCount).toBe(1);
+    expect(screen.getByTestId("boot-user-id").textContent).toBe(FIXTURE_USER_A.id);
+  });
+
+  it("Case 19c — when AuthContext settles with NO user, initial boot fires once (so /login renders cleanly)", async () => {
+    let bootCallCount = 0;
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        bootCallCount++;
+        // Simulate the "no session" path — /sentinel/boot 404 then
+        // bridge /auth/me 401. Layout will redirect to /login.
+        return new Response("not found", { status: 404 });
+      }
+      if (u.includes("/auth/me")) {
+        return new Response(
+          JSON.stringify({ type: "about:blank", title: "Unauthorized", status: 401 }),
+          { status: 401, headers: { "Content-Type": "application/problem+json" } },
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    const { AuthContext: RealAuthContext } = await import("@/app/contexts/AuthContext");
+    function FakeAuthProvider({
+      children,
+      loading,
+      userId,
+    }: { children: React.ReactNode; loading: boolean; userId: string | null }) {
+      const value = {
+        user: userId
+          ? { id: userId, email: "x", subscription_id: "", workspace_id: "", role: { id: "", code: "u", label: "", rank: 99, is_system: false, is_external: false }, is_active: true, force_password_change: false, auth_method: "local" as const, permissions: [] }
+          : null,
+        role: null,
+        loading,
+        permissions: new Set<string>(),
+        hasPermission: () => false,
+        login: async () => {},
+        mfaLogin: async () => {},
+        logout: async () => {},
+        refresh: async () => {},
+        switchWorkspace: async () => {},
+        setUser: () => {},
+      };
+      return <RealAuthContext.Provider value={value as any}>{children}</RealAuthContext.Provider>;
+    }
+    function App({ loading, userId }: { loading: boolean; userId: string | null }) {
+      return (
+        <FakeAuthProvider loading={loading} userId={userId}>
+          <SentinelProvider>
+            <BootStateProbe />
+          </SentinelProvider>
+        </FakeAuthProvider>
+      );
+    }
+
+    // Mount loading=true → no boot.
+    const { rerender } = await act(async () => {
+      return render(<App loading={true} userId={null} />);
+    }) as any;
+    expect(bootCallCount).toBe(0);
+
+    // AuthContext finishes with NO user. Initial boot still fires
+    // (layout will redirect to /login, but the boot itself is harmless
+    // and ends in the soft-empty state — Case 16a behaviour).
+    await act(async () => {
+      rerender(<App loading={false} userId={null} />);
+    });
+    expect(bootCallCount).toBe(1);
+    expect(screen.getByTestId("boot-user-id").textContent).toBe("null");
+  });
+
+  // -----------------------------------------------------------------
+  // Case 20 — URL-mirror effect re-fires on client-side navigation
+  //
+  // Bug 2026-05-24: SentinelProvider's URL-mirror effect (the one that
+  // writes ?meg=<focus> to the address bar so refresh + share-URL
+  // survive) was missing `pathname` from its dep array. Result: Next.js
+  // client-side router.push("/dashboard") after login dropped query
+  // params, the effect didn't re-run on the new route, and ?meg=
+  // stayed bare. Every page that mounted ObjectTreeV2 then sent
+  // scope-less wire requests (because api.ts withForwardedMeg reads
+  // ?meg= from window.location.search).
+  //
+  // Fix: added usePathname() to SentinelProvider; pathname included
+  // in the URL-mirror effect dep array. This test pins the contract:
+  // pathname-change → URL is re-stamped with ?meg=<focus>.
+  //
+  // We mock next/navigation::usePathname so the test can drive
+  // pathname transitions deterministically. The other Next.js
+  // navigation surface (router.push) is irrelevant here — we only
+  // care that the effect observes pathname changes.
+  // -----------------------------------------------------------------
+  it("Case 20 — URL-mirror effect re-fires when pathname changes (TD-SENT-URL-MIRROR-PATHNAME)", async () => {
+    // Hard reset between-test state: vi.resetAllMocks in beforeEach
+    // doesn't undo a vi.doMock from a sibling test that forgot to
+    // unmock. Force-reset here so this test is deterministic regardless
+    // of run order.
+    vi.resetModules();
+    vi.doUnmock("next/navigation");
+
+    // Case 4a redefines window.location as a plain object earlier in
+    // this file (URL ?meg= precedence test), which breaks
+    // window.history.replaceState's normal propagation into
+    // location.href. Rather than fight that bleed, this test asserts
+    // directly on window.history.replaceState — what the URL-mirror
+    // effect actually CALLS — via a spy. That's the canonical signal:
+    // pathname change → replaceState gets called with the new URL.
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+    // Mock usePathname to return a controllable value. The mock lives
+    // in a closure so the test can flip the returned pathname between
+    // renders and observe the effect re-firing.
+    let currentPathname = "/dashboard";
+    vi.doMock("next/navigation", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("next/navigation")>();
+      return {
+        ...actual,
+        usePathname: () => currentPathname,
+      };
+    });
+
+    // Re-import the whole sentinel surface AFTER the mock so the fresh
+    // module uses the new usePathname AND its context is the one our
+    // probe also picks up.
+    vi.resetModules();
+    const sentinelMod = await import("@/app/sentinel");
+    const FreshSentinelProvider = sentinelMod.SentinelProvider;
+    const useFreshSentinel = sentinelMod.useSentinel;
+    // Boot gate (Case 19) — SentinelProvider only boots once AuthContext
+    // has settled with a user.
+    const { AuthContext: RealAuthContext } = await import("@/app/contexts/AuthContext");
+
+    function FreshStateProbe() {
+      const s = useFreshSentinel();
+      return <span data-testid="case20-focus">{s.sentinel_focus_node ?? ""}</span>;
+    }
+
+    function FakeAuthProviderC20({ children }: { children: React.ReactNode }) {
+      const value = {
+        user: {
+          id: FIXTURE_USER_A.id,
+          email: FIXTURE_USER_A.email,
+          subscription_id: FIXTURE_TENANT_A.id,
+          workspace_id: FIXTURE_USER_A.workspace_id,
+          role: { id: FIXTURE_USER_A.role_id, code: "user", label: "", rank: 99, is_system: false, is_external: false },
+          is_active: true,
+          force_password_change: false,
+          auth_method: "local" as const,
+          permissions: [],
+        },
+        role: null,
+        loading: false,
+        permissions: new Set<string>(),
+        hasPermission: () => false,
+        login: async () => {},
+        mfaLogin: async () => {},
+        logout: async () => {},
+        refresh: async () => {},
+        switchWorkspace: async () => {},
+        setUser: () => {},
+      };
+      return <RealAuthContext.Provider value={value as any}>{children}</RealAuthContext.Provider>;
+    }
+
+    globalThis.fetch = vi.fn(async (url: any) => {
+      if (String(url).includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    // Clear any prior replaceState calls accumulated during setup.
+    replaceStateSpy.mockClear();
+
+    const result = await act(async () => {
+      return render(
+        <FakeAuthProviderC20>
+          <FreshSentinelProvider>
+            <FreshStateProbe />
+          </FreshSentinelProvider>
+        </FakeAuthProviderC20>
+      );
+    }) as any;
+    const { rerender } = result;
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    // After boot the focus resolves to user.default_focus_node_id.
+    expect(result.getByTestId("case20-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+
+    // The URL-mirror effect calls replaceState with a URL containing
+    // ?meg=<focus>. Count the post-boot stamping calls.
+    const stampingCalls = () =>
+      replaceStateSpy.mock.calls.filter((c) => {
+        const url = String(c[2] ?? "");
+        return url.includes(`meg=${FIXTURE_USER_DEFAULT_FOCUS}`);
+      }).length;
+    const callsAfterBoot = stampingCalls();
+    expect(callsAfterBoot).toBeGreaterThan(0);
+
+    // Simulate Next.js client-side navigation by flipping pathname.
+    // (We don't touch window.location.href here because Case 4a may
+    // have replaced it with a plain object earlier in this run.)
+    currentPathname = "/value-sprint";
+    await act(async () => {
+      rerender(
+        <FakeAuthProviderC20>
+          <FreshSentinelProvider>
+            <FreshStateProbe />
+          </FreshSentinelProvider>
+        </FakeAuthProviderC20>
+      );
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    // The effect MUST re-fire on pathname change and call replaceState
+    // again with the meg URL. Without the pathname dep this would NOT
+    // increment because none of the other deps (loading/focus/user/
+    // tenant_root) changed between the two renders.
+    expect(stampingCalls()).toBeGreaterThan(callsAfterBoot);
+
+    // Clean up.
+    replaceStateSpy.mockRestore();
+    vi.doUnmock("next/navigation");
+    vi.resetModules();
+  });
 });
