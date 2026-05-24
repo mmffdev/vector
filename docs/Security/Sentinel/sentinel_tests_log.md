@@ -341,5 +341,5 @@ OK    self-test passed — fixture violation was caught
 
 **Documentation.** [`docs/c_c_lint_rules.md`](../../c_c_lint_rules.md) — table row added for each lint + dedicated detail section explaining rule, why, permitted patterns, exemption registry, and self-test command.
 
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19].
 
