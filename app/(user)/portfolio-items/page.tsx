@@ -11,8 +11,7 @@ import { apiSite } from "@/app/lib/api";
 import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
-import { useAuth } from "@/app/contexts/AuthContext";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
@@ -20,8 +19,15 @@ import portfolioWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_
 
 export default function PortfolioItemsPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const { activeNodeId, direction } = useScope();
+  // PLA062 S11: identity + tenant + scope via Sentinel.
+  const {
+    sentinel_tenant,
+    sentinel_focus_node,
+    sentinel_scope_up,
+    sentinel_scope_down,
+  } = useSentinel();
+  const activeNodeId = sentinel_focus_node;
+  const direction = sentinel_scope_down ? "descend" : sentinel_scope_up ? "ascend" : "none";
   useHintOnce("PORTFOLIO_MODEL_FIRST_VISIT");
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [summary, setSummary] = useState<{
@@ -67,7 +73,7 @@ export default function PortfolioItemsPage() {
     void refetchSummary();
   }, [refetchSummary, activeNodeId, direction]);
 
-  const subscriptionID = user?.subscription_id ?? null;
+  const subscriptionID = sentinel_tenant?.id ?? null;
   const topic = subscriptionID
     ? rankTopic("portfolio_item", subscriptionID, "backlog", subscriptionID)
     : null;

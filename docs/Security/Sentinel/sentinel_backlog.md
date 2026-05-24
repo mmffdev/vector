@@ -196,7 +196,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Zero old-hook imports remain (grep).
 - GREEN; attempts logged.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. 3/3 ACs GREEN attempt 1 (test pattern lifted wholesale from S10; only page-specific mocks added: `VisualisationPanel`, `useRefetchOnPush`, `useRealtimeSubscription.rankTopic`, `@/app/lib/hints`). Page migration: 2 imports + 3 hook lines (identical to S10). Zero old-hook imports remain across the page (grep returns 0).
 
 ---
 
@@ -433,3 +433,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S08 | 2026-05-24 | d20a1a5e | 8/8 GREEN attempt 1; provider + hook + barrel + 401-aware HTTP wrapper; `focus` allowlisted via shareableParams |
 | S09 | 2026-05-24 | d149a2cf | SentinelProvider mounted in (user) + (overlay) layouts; tsc silent; `Compiled successfully in 18.1s` — **GATE CLOSED** |
 | S10 | 2026-05-24 | 24a75a67 | First Lane A page; 3/3 GREEN; static-grep + mount + apiSite-fired ACs; reference for S11–S16 |
+| S11 | 2026-05-24 | (this commit) | /portfolio-items; 3/3 GREEN attempt 1; pattern lifted from S10 |
