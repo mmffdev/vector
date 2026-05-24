@@ -431,4 +431,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S06 | 2026-05-24 | 0a6908a8 | migration 243 applied; users.default_focus_node_id + scope-default booleans live; PoolResolver.DefaultFocus wired |
 | S07 | 2026-05-24 | 67cd68d3 | 6 RED cases captured verbatim (vite import-resolution failure) |
 | S08 | 2026-05-24 | d20a1a5e | 8/8 GREEN attempt 1; provider + hook + barrel + 401-aware HTTP wrapper; `focus` allowlisted via shareableParams |
-| S09 | 2026-05-24 | (this commit) | SentinelProvider mounted in (user) + (overlay) layouts; tsc silent; `Compiled successfully in 18.1s` — **GATE CLOSED** |
+| S09 | 2026-05-24 | d149a2cf | SentinelProvider mounted in (user) + (overlay) layouts; tsc silent; `Compiled successfully in 18.1s` — **GATE CLOSED** |
