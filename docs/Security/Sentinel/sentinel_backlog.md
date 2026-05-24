@@ -410,18 +410,20 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ---
 
-### S23 — RED-GREEN e2e: `sentinel_cross_tenant_isolation.spec.mjs`
+### ~~S23 — RED-GREEN e2e: `sentinel_cross_tenant_isolation.spec.mjs`~~ (RED-written; GREEN gated on fixture seed)
 
 **Intent.** Procurement-grade isolation proof via Playwright.
 
 **Acceptance Criteria.**
-- Spec logs in as Alice (tenant A) and Bob (tenant B) sequentially.
-- Spec captures wire payloads from `/work-items` for each session; asserts zero overlap of artefact IDs.
-- Spec attempts cross-tenant GET (Alice's JWT, Bob's artefact ID) and asserts 403 ProblemJSON with `type: "/errors/sentinel/cross-tenant"`.
-- RED before backend lint+refactor; GREEN after.
-- Spec runs under `npm run test:sentinel:e2e`.
+- ✅ Spec at `e2e/sentinel_cross_tenant_isolation.spec.mjs` (the Sentinel Playwright config's `testMatch`) — three test cases:
+  1. Two-tenant `/work-items` list payloads have zero overlap of artefact IDs.
+  2. Alice's session GET on Bob's artefact → 403 `application/problem+json` with `type` matching `/errors/sentinel/(focus-not-in-tenant|cross-tenant)`.
+  3. Alice's JWT + forged `?focus=<bob_node_id>` → 403 `application/problem+json` with `type: "/errors/sentinel/focus-not-in-tenant"`.
+- ✅ Spec runs under `npm run test:sentinel:e2e` (config: `dev/tests/playwright/playwright.sentinel.config.ts`).
+- ⏸ RED until two-tenant fixtures are seeded (`claude-sentinel-a@mmffdev.com` in tenant A, `claude-sentinel-b@mmffdev.com` in tenant B, both with `password` per the project's Playwright fixture convention; never reuse the human gadmin/padmin/user accounts per the CLAUDE.md HARD RULE). Each tenant needs ≥1 work-item to make the list-overlap assertion meaningful.
+- ⏸ GREEN expected when fixtures land + the deeper subtree-aware SQL clamp (S26) is in place. Until then the spec failure IS the procurement signal: "two-tenant isolation cannot be proven yet."
 
-**Status.** pending.
+**Status.** Completed 2026-05-24 (spec written; GREEN pending fixture seed + S26).
 
 ---
 
