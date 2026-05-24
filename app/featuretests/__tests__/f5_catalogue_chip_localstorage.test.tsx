@@ -27,8 +27,10 @@ const mockAuthState: {
   user: { id: string; subscription_id: string; workspace_id: string; email: string; is_active: boolean } | null;
 } = { user: null };
 
-vi.mock("@/app/contexts/AuthContext", () => ({
-  useAuth: () => mockAuthState,
+// PLA062 S17 — feature surface reads Sentinel; mock useSentinel so the
+// hook ladder (useActiveWorkspace → useSentinel) sees a fixed user.
+vi.mock("@/app/sentinel", () => ({
+  useSentinel: () => ({ sentinel_user: mockAuthState.user }),
 }));
 
 beforeEach(() => {

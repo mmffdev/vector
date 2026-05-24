@@ -273,17 +273,38 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 
 ---
 
-### S17 — Migrate shared components (60+ `useHasPermission` sites)
+### ~~S17 — Migrate shared components (60+ `useHasPermission` sites)~~
 
 **Intent.** Component-level migration. Each component gets a `sentinel.unit` test for its permission gating.
 
 **Acceptance Criteria.**
-- Every `useHasPermission(code)` replaced with `useSentinel().sentinel_can(code)`.
-- ≥1 component unit test per gated component asserting `sentinel_can` matches expected for a fixture permission set.
-- Grep `useHasPermission` across `app/` returns zero.
-- All component tests GREEN.
+- ✅ Every `useHasPermission(code)` replaced with `useSentinel().sentinel_can(code)`.
+- ✅ ≥1 component unit test per gated component asserting `sentinel_can` matches expected for a fixture permission set.
+- ✅ Grep `useHasPermission` across `app/` returns zero.
+- ✅ All component tests GREEN.
 
-**Status.** pending.
+**Scope expansion (mid-S17).** While migrating `useHasPermission`,
+swept the remaining `useAuth` / `useScope` consumers in `app/components/`,
+`app/user/`, `app/hooks/`, and `app/contexts/LibraryReleasesContext.tsx`
+(23 files, 59 call sites total) — every shared component now reads
+from Sentinel. Two Sentinel surface extensions were absorbed:
+- `SentinelGrant.position` (mirrors `MyGrant.position` so tree panels
+  can use the canonical `byPosition` walker without re-fetching).
+- `sentinel_scope_direction` + `sentinel_set_scope_direction` — local
+  ascend/descend toggle for the scope-rail tree panels (replaces the
+  legacy `ScopeContext.direction`). Default `descend`; not persisted
+  server-side (TD candidate for follow-up).
+- `SentinelUser.mfa_enrolled` + `SentinelUser.force_password_change`
+  — required by `useStepUpAction` and the route-group layout. Optional
+  in the wire shape during the transition window (S18+).
+
+**Tests added.**
+- `app/components/__tests__/AddressDevtool.sentinel.test.tsx` (1 case).
+- `app/contexts/__tests__/LibraryReleasesContext.sentinel.test.tsx` (1 case).
+- `app/components/__tests__/BulkActionBar.test.tsx` — rewritten to mock
+  `useSentinel` rather than `useHasPermission`.
+
+**Status.** Completed 2026-05-24.
 
 ---
 

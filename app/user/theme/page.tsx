@@ -5,7 +5,7 @@ import { useTabState } from "@/app/hooks/useTabState";
 import PageContent from "@/app/components/PageContent";
 import SecondaryNavigation from "@/app/components/SecondaryNavigation";
 import Table from "@/app/components/Table";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { useThemePack, type ThemePack } from "@/app/hooks/useThemePack";
 import { useTheme } from "@/app/hooks/useTheme";
 import PageHeading from "@/app/components/PageHeading";
@@ -1295,7 +1295,7 @@ function ThemesTab() {
 }
 
 export default function ThemePage() {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");
   const [topTab, setTopTab] = useTabState(["themes", "maker"] as const, "themes", "tab.theme");

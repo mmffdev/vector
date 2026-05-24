@@ -29,7 +29,7 @@ import Table, { Column, PillVariant } from "@/app/components/Table";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useRegisterAddressable } from "@/app/contexts/DomRegistryContext";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import { DenseGridHeader } from "@/app/components/ObjectTreeV2/kinds/DenseGridHeader";
 import { ActionBar } from "@/app/components/ObjectTreeV2/kinds/ActionBar";
 import ObjectTreeBulkCreateSheet, {
@@ -166,7 +166,8 @@ function TimeboxObjectTreeInner({
   const headingTitle = title ?? `${cfg.namePrefix}s`;
   // 2026-05-21 — gate the initial fetch on scope-bootstrap completion.
   // See useObjectTreeWindow's matching guard for the rationale.
-  const { scopeReady } = useScope();
+  const { sentinel_loading } = useSentinel();
+  const scopeReady = !sentinel_loading;
 
   // Data state — flat list (sprints are small; no windowing yet)
   const [rows, setRows] = useState<TimeboxRow[] | null>(null);

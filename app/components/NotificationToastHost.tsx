@@ -21,7 +21,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { notifications, type UserNotification } from "@/app/lib/apiSite";
 
 import { useNotificationsStream } from "../hooks/useNotificationsStream";
@@ -38,7 +38,7 @@ interface Toast {
 }
 
 export default function NotificationToastHost() {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const [stack, setStack] = useState<Toast[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 

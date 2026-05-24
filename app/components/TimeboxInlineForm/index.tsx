@@ -18,7 +18,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 
 // ── Kind config ────────────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ export default function TimeboxInlineForm({
 }: TimeboxInlineFormProps) {
   const cfg = KIND_CFG[kind];
   const p = cfg.rowPrefix;
-  const { user: _user } = useAuth();
+  const { sentinel_user: _user } = useSentinel();
 
   const [row, setRow] = useState<TimeboxRow | null>(null);
   const [original, setOriginal] = useState<EditableState | null>(null);

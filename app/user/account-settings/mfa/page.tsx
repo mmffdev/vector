@@ -6,7 +6,7 @@ import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -20,7 +20,7 @@ interface EnrollResp {
 
 export default function MFASettingsPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const [step, setStep] = useState<Step>("idle");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [otpauthUri, setOtpauthUri] = useState("");

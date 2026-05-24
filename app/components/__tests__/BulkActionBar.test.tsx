@@ -4,23 +4,26 @@ import React from "react";
 
 // PLA-0021 / 00456 — BulkActionBar render gating.
 // AC3: bar renders only when at least one id is selected; meta reads "N selected".
-// AC4: when useHasPermission returns false ONLY for `work_items.delete`, the
+// AC4: when sentinel_can returns false ONLY for `work_items.delete`, the
 // Delete button is absent while Status / Priority / Owner remain.
+//
+// PLA062 S17 — useHasPermission migrated to Sentinel's sentinel_can.
+// The mock surface mirrors useSentinel's return shape (only the field
+// the component reads needs to be realistic; the rest stay undefined).
 
-vi.mock("@/app/contexts/AuthContext", () => ({
+const sentinelCan = vi.fn((_code: string) => true);
+
+vi.mock("@/app/sentinel", () => ({
   __esModule: true,
-  useHasPermission: vi.fn(() => true),
+  useSentinel: () => ({ sentinel_can: sentinelCan }),
 }));
 
 import BulkActionBar from "@/app/components/BulkActionBar";
-import { useHasPermission } from "@/app/contexts/AuthContext";
-
-const mockedHasPermission = useHasPermission as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  mockedHasPermission.mockReset();
+  sentinelCan.mockReset();
   // Default: every code grants permission so non-AC4 tests see all buttons.
-  mockedHasPermission.mockImplementation(() => true);
+  sentinelCan.mockImplementation(() => true);
 });
 
 describe("BulkActionBar (PLA-0021 / 00456)", () => {
@@ -47,7 +50,7 @@ describe("BulkActionBar (PLA-0021 / 00456)", () => {
 
   describe("AC4 — Delete button hidden when work_items.delete denied", () => {
     it("omits Delete but keeps Status / Priority / Owner when only delete is denied", () => {
-      mockedHasPermission.mockImplementation((code: string) => {
+      sentinelCan.mockImplementation((code: string) => {
         if (code === "work_items.delete") return false;
         return true;
       });

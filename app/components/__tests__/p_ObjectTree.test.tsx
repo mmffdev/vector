@@ -152,12 +152,17 @@ vi.mock("@/app/lib/api", () => ({
   apiSite: vi.fn(async () => ({ value: null })),
 }));
 
-// PLA-0021 / 00456 — BulkActionBar reads useHasPermission unconditionally
-// (hooks run before its empty-selection early return). The smoke harness
-// doesn't mount AuthProvider, so stub the hook to a permissive default.
-vi.mock("@/app/contexts/AuthContext", () => ({
+// PLA-0021 / 00456 — BulkActionBar reads sentinel_can unconditionally
+// (hooks run before its empty-selection early return). PLA062 S17 —
+// useHasPermission migrated to useSentinel().sentinel_can. The smoke
+// harness doesn't mount <SentinelProvider>, so stub useSentinel to a
+// permissive default. sentinel_focus_node is consumed by ObjectTree.
+vi.mock("@/app/sentinel", () => ({
   __esModule: true,
-  useHasPermission: () => true,
+  useSentinel: () => ({
+    sentinel_can: () => true,
+    sentinel_focus_node: null,
+  }),
 }));
 
 import ObjectTree from "@/app/components/ObjectTree/p_ObjectTree";

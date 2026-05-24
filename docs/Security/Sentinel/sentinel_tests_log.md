@@ -270,3 +270,32 @@ ok  	github.com/mmffdev/vector-backend/internal/sentinel	0.336s
 **Neighbour regression check.** `go test ./internal/auth/... ./internal/topology/...` both PASS — no regressions in the substrate Sentinel duplicates.
 **Commit.** (added in S04 commit)
 
+
+
+---
+
+## S17 — shared component migration GREEN (2026-05-24)
+
+```
+$ npx vitest run app/sentinel "app/(user)" app/components/__tests__/BulkActionBar app/components/__tests__/p_ObjectTree app/components/__tests__/AddressDevtool.sentinel app/contexts/__tests__/LibraryReleasesContext.sentinel app/featuretests/__tests__/f2_active_workspace
+
+ ✓ app/components/__tests__/AddressDevtool.sentinel.test.tsx (1)
+ ✓ app/components/__tests__/BulkActionBar.test.tsx (3)
+ ✓ app/components/__tests__/p_ObjectTree.test.tsx (7)
+ ✓ app/contexts/__tests__/LibraryReleasesContext.sentinel.test.tsx (1)
+ ✓ app/sentinel/__tests__/sentinel_provider.test.tsx (10)
+ ✓ app/featuretests/__tests__/f2_active_workspace.test.tsx (4)
+ ✓ app/(user)/portfolio-items/__tests__/sentinel.page.portfolio-items.test.tsx (3)
+ ✓ app/(user)/risk/__tests__/sentinel.page.risks.test.tsx (2)
+ ✓ app/(user)/vector-admin/__tests__/sentinel.page.vector-admin.test.tsx (4)
+ ✓ app/(user)/work-items/__tests__/sentinel.page.work-items.test.tsx (3)
+ ✓ app/(user)/workspace-admin/__tests__/sentinel.page.workspace-admin.test.tsx (12)
+ ✓ app/(user)/workspace-admin/topology/__tests__/sentinel.page.topology.test.tsx (2)
+ ✓ app/(user)/workspace-admin/topology-map/__tests__/sentinel.page.topology-map.test.tsx (2)
+```
+
+**tsc.** `npx tsc --noEmit` silent.
+**Scope.** 23 files migrated across `app/components/`, `app/user/`, `app/hooks/`, `app/contexts/LibraryReleasesContext.tsx`. Sentinel surface extended with `SentinelGrant.position`, `sentinel_scope_direction` + setter, and `SentinelUser.mfa_enrolled` / `force_password_change`.
+**Pre-existing fail (not S17).** `app/(user)/risk/__tests__/page.test.tsx` — Next `useRouter` invariant from `work-items-tree-config`. Verified red on `git stash` before S17 work.
+**Commit.** _(to be backfilled after commit lands)_
+

@@ -20,7 +20,7 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import {
   notificationRules,
@@ -57,7 +57,7 @@ const EMPTY_EDITOR: EditorState = {
 };
 
 export default function NotificationsSettingsPage() {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const activeWorkspaceId = user?.workspace_id ?? "";
 
   // List state

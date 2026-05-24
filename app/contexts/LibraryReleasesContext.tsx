@@ -10,7 +10,7 @@
  */
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { apiSite, ApiError } from "@/app/lib/api";
 
 interface CountResponse {
@@ -32,7 +32,8 @@ const LibraryReleasesContext = createContext<LibraryReleasesState>({
 const POLL_MS = 5 * 60 * 1000;
 
 export function LibraryReleasesProvider({ children }: { children: React.ReactNode }) {
-  const canViewReleases = useHasPermission("library.releases.view");
+  const { sentinel_can } = useSentinel();
+  const canViewReleases = sentinel_can("library.releases.view");
   const [state, setState] = useState<LibraryReleasesState>({ count: null, hasBlocking: false });
 
   useEffect(() => {

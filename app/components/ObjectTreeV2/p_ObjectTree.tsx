@@ -22,7 +22,7 @@ import {
 } from "@/app/lib/apiSite";
 import { apiSite } from "@/app/lib/api";
 import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import { useParentCandidates } from "@/app/components/ArtefactInlineForm/useParentCandidates";
 import { ColourPicker } from "@/app/components/ColourPicker";
 import { RichTextField } from "@/app/components/RichTextField";
@@ -230,7 +230,7 @@ export default function ObjectTree({
   // Active topology scope. Used by duplicateArtefact to pin the clone
   // when the source artefact had no topology_node_id of its own
   // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
-  const { activeNodeId: activeScopeNodeId } = useScope();
+  const { sentinel_focus_node: activeScopeNodeId } = useSentinel();
 
   // Slice 4.5 — column-picker state. Hook MUST be called every render
   // (rules of hooks); we feed it an empty-catalogue sentinel when the

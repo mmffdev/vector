@@ -36,7 +36,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiSite, ApiError } from "@/app/lib/api";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 
 // Slice 4.6a — request coalescing window. Rapid prop changes (sort
 // flip + filter chip toggle + scope change in close succession) all
@@ -191,7 +191,12 @@ export function useObjectTreeWindow<T>(
   // because localStorage was already populated. The gate makes the
   // ordering deterministic — first fetch only fires once scope has
   // settled.
-  const { activeNodeId, direction, scopeReady } = useScope();
+  const {
+    sentinel_focus_node: activeNodeId,
+    sentinel_scope_direction: direction,
+    sentinel_loading,
+  } = useSentinel();
+  const scopeReady = !sentinel_loading;
 
   // Flat source of truth. Patches mutate one entry. windowRoots is
   // derived from this map preserving the latest fetch order (recorded

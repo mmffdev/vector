@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { workItems as workItemsApi, portfolioItems as portfolioItemsApi } from "@/app/lib/apiSite";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
 import { PARENT_PREFIX_MAP, type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import BulkActionBar from "@/app/components/BulkActionBar";
@@ -136,7 +136,7 @@ export default function ObjectTree({
   // Active topology scope. Used by duplicateArtefact to pin the clone
   // when the source artefact had no topology_node_id of its own
   // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
-  const { activeNodeId: activeScopeNodeId } = useScope();
+  const { sentinel_focus_node: activeScopeNodeId } = useSentinel();
 
   // Action bar — artefact type picker that focuses the "Add new" CTA.
   // Design-only for now (no create wiring); options come from the workspace

@@ -11,7 +11,7 @@
 // never shows a no-op control.
 
 import React from "react";
-import { useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 
 export interface BulkActionBarProps {
   selectedIds: Set<string>;
@@ -39,11 +39,12 @@ export default function BulkActionBar({
   // unknown codes — which means by default no action buttons render.
   // That's the correct safe behaviour: when permissions tighten up
   // the buttons will appear automatically. Test callers stub the hook.
-  const canStatus = useHasPermission("work_items.update");
-  const canPriority = useHasPermission("work_items.update");
-  const canOwner = useHasPermission("work_items.update");
-  const canArchive = useHasPermission("work_items.archive");
-  const canDelete = useHasPermission("work_items.delete");
+  const { sentinel_can } = useSentinel();
+  const canStatus = sentinel_can("work_items.update");
+  const canPriority = sentinel_can("work_items.update");
+  const canOwner = sentinel_can("work_items.update");
+  const canArchive = sentinel_can("work_items.archive");
+  const canDelete = sentinel_can("work_items.delete");
 
   const count = selectedIds.size;
   if (count === 0) return null;

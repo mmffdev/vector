@@ -28,7 +28,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { usePathname } from "next/navigation";
 import { MdOutlineSwapVert } from "react-icons/md";
 import { apiSite } from "@/app/lib/api";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { useActiveNav } from "@/app/contexts/ActiveNavContext";
 
 export interface SecondaryNavigationItem<K extends string = string> {
@@ -218,7 +218,7 @@ export default function SecondaryNavigation<K extends string = string>({
   // Hydrate saved order from server once auth has finished bootstrapping.
   // Without the auth gate, the GET races AuthContext's token restore and
   // hits a 401 before the silent-refresh path is wired up.
-  const { user, loading: authLoading } = useAuth();
+  const { sentinel_user: user, sentinel_loading: authLoading } = useSentinel();
   useEffect(() => {
     if (!reorderable || !pageId) return;
     if (authLoading || !user) return;

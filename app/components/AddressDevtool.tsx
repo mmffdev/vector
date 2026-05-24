@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -11,7 +11,8 @@ interface Target {
 }
 
 export default function AddressDevtool() {
-  const canViewDev = useHasPermission("menu.dev.view");
+  const { sentinel_can } = useSentinel();
+  const canViewDev = sentinel_can("menu.dev.view");
   const enabled = !isProd || canViewDev;
   if (!enabled) return null;
   return <Devtool />;

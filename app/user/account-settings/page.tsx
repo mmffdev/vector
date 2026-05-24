@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -151,7 +151,7 @@ function MFASection() {
 
 export default function AccountSettingsPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const [displayName, setDisplayName] = useState("");
   const [emailNotif, setEmailNotif] = useState(true);
   const [productNotif, setProductNotif] = useState(false);

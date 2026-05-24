@@ -17,7 +17,7 @@ import PageHeading from "@/app/components/PageHeading";
 import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -59,7 +59,7 @@ function shortUA(ua?: string): string {
 
 export default function SessionsPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);

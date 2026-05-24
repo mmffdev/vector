@@ -14,7 +14,7 @@ import {
   type UserInScope,
 } from "@/app/lib/apiSite";
 import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import { ColourPicker } from "@/app/components/ColourPicker";
 import { ArtefactNodeDiagram } from "@/app/components/ArtefactNodeDiagram";
 import { RichTextField } from "@/app/components/RichTextField";
@@ -60,7 +60,7 @@ export function ArtefactInlineForm({
   isDuplicate,
 }: ArtefactInlineFormProps) {
   const workspaceId = useActiveWorkspace();
-  const { activeNodeId: activeScopeNodeId } = useScope();
+  const { sentinel_focus_node: activeScopeNodeId } = useSentinel();
   const { artefact, loading, error, patch } = useArtefactInline({
     artefactId,
     resourceUrl,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import {
   DRAFT_SCHEMA_VERSION,
   deleteDraft,
@@ -42,7 +42,7 @@ export function useDraft<T extends Record<string, unknown>>(
   { formKey, scopeKey = null, initial }: UseDraftArgs<T>,
   onApply: (values: T) => void,
 ): UseDraftResult<T> {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const userId = user?.id ?? null;
 
   const [restored, setRestored] = useState<RestoredDraft<T> | null>(null);

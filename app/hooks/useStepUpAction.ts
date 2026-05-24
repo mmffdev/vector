@@ -33,7 +33,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { apiSite, ApiError } from "@/app/lib/api";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 
 interface ReauthResp {
   action_proof: string;
@@ -73,7 +73,7 @@ export interface UseStepUpActionResult {
 }
 
 export function useStepUpAction({ actionKey, actionLabel }: UseStepUpActionOptions): UseStepUpActionResult {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

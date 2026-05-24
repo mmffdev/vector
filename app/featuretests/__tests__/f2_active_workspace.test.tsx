@@ -30,8 +30,10 @@ const mockAuthState: {
   } | null;
 } = { user: null };
 
-vi.mock("@/app/contexts/AuthContext", () => ({
-  useAuth: () => mockAuthState,
+// PLA062 S17 — useActiveWorkspace migrated from AuthContext to Sentinel.
+// Mock useSentinel so the hook reads sentinel_user instead of AuthContext.user.
+vi.mock("@/app/sentinel", () => ({
+  useSentinel: () => ({ sentinel_user: mockAuthState.user }),
 }));
 
 beforeEach(() => {

@@ -30,7 +30,7 @@ import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { BsPinAngle } from "react-icons/bs";
 import ProfileBar, { MAX_PROFILES } from "@/app/components/ProfileBar";
 import InlineEditField from "@/app/components/InlineEditField";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import {
   useNavPrefs,
   type NavCatalogEntry,
@@ -1035,7 +1035,7 @@ function PoolItem({
 
 export default function NavPreferencesPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const {
     prefs, customGroups, save, catalogue, refetch, patchCatalogueEntry,
     defaultPinned, findEntry, tagByEnum, tags, profileGroups,

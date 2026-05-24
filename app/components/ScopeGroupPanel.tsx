@@ -1,15 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import { useScope } from "@/app/contexts/ScopeContext";
-import { useAuth } from "@/app/contexts/AuthContext";
-import type { MyGrant } from "@/app/lib/topologyApi";
+import { useSentinel } from "@/app/sentinel";
+import type { SentinelGrant } from "@/app/sentinel/types";
 import { byPosition, walkTopology } from "@/app/lib/shared/topology/walker";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Row {
-  grant: MyGrant;
+  grant: SentinelGrant;
   label: string;
   depth: number;
   isLast: boolean;
@@ -17,19 +16,19 @@ interface Row {
   ancestorMoreChildren: boolean[];
 }
 
-type GrantNode = { id: string; parent_id: string | null; position: number; grant: MyGrant };
+type GrantNode = { id: string; parent_id: string | null; position: number; grant: SentinelGrant };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function labelOf(g: MyGrant) {
-  return g.label_override?.trim() || g.name;
+function labelOf(g: SentinelGrant) {
+  return g.label_override?.trim() || g.name || g.node_id;
 }
 
-function flattenGrants(grants: MyGrant[]): Row[] {
+function flattenGrants(grants: readonly SentinelGrant[]): Row[] {
   const wrapped: GrantNode[] = grants.map((g) => ({
     id: g.node_id,
-    parent_id: g.parent_id,
-    position: g.position,
+    parent_id: g.parent_id ?? null,
+    position: g.position ?? 0,
     grant: g,
   }));
   const { rows } = walkTopology(wrapped, { collapsed: new Set(), sort: byPosition });
@@ -100,22 +99,26 @@ function Spine({ depth, isLast, ancestorMoreChildren }: {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ScopeGroupPanel() {
-  const { grants, activeNodeId, setActiveNodeId, loading, error } = useScope();
-  const { user, switchWorkspace } = useAuth();
+  const {
+    sentinel_grants: grants,
+    sentinel_focus_node: activeNodeId,
+    sentinel_set_focus,
+    sentinel_loading: loading,
+    sentinel_user: user,
+    sentinel_switch_workspace: switchWorkspace,
+  } = useSentinel();
+  const setActiveNodeId = (id: string) => { void sentinel_set_focus(id); };
 
   const rows = useMemo(() => flattenGrants(grants), [grants]);
 
   if (loading && grants.length === 0) {
     return <div className="scope-group-panel__status">Loading…</div>;
   }
-  if (error) {
-    return <div className="scope-group-panel__status scope-group-panel__status--error">{error}</div>;
-  }
   if (rows.length === 0) {
     return <div className="scope-group-panel__status">No scope grants.</div>;
   }
 
-  const select = (grant: MyGrant) => {
+  const select = (grant: SentinelGrant) => {
     const run = async () => {
       if (grant.workspace_id && grant.workspace_id !== user?.workspace_id) {
         await switchWorkspace(grant.workspace_id);

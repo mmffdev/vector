@@ -16,8 +16,7 @@ import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useUserPreference } from "@/app/hooks/useUserPreference";
-import { useAuth } from "@/app/contexts/AuthContext";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import { type TypeColourMap } from "@/app/lib/colourUtils";
 import { artefactTypesApi } from "@/app/lib/artefactTypesApi";
 import InlineEditField from "@/app/components/InlineEditField";
@@ -899,7 +898,7 @@ export function WorkItemsFilterChips({
   typeOptions = [],
   priorityOptions = [],
 }: WorkItemsFilterChipsProps) {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters(prefKey);
   const meId = user?.id ?? null;
   const ownerIsMe = filters.owner_id.length > 0 && filters.owner_id[0] === meId;
@@ -1009,7 +1008,7 @@ export function useArtefactItemsWindow(
   // flip re-fires the fetch with the new clamp — without this dep the
   // ObjectTree below the scope picker shows stale rows for the previous
   // scope (TD-URL-SCOPE-PARAM-CUTOVER).
-  const { activeNodeId, direction } = useScope();
+  const { sentinel_focus_node: activeNodeId, sentinel_scope_direction: direction } = useSentinel();
   const [windowRoots, setWindowRoots] = useState<WorkItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loadingWindow, setLoadingWindow] = useState(false);

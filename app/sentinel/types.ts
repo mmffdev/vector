@@ -35,6 +35,8 @@ export interface SentinelGrant {
   /** Role on that node — "admin" | "editor" | "viewer". */
   role: string;
   granted_at?: string;
+  /** Sibling sort order from topology_nodes.sort_order. */
+  position?: number;
 }
 
 export interface SentinelUser {
@@ -48,6 +50,10 @@ export interface SentinelUser {
   default_focus_node_id: string | null;
   /** The user's current workspace (from JWT claim, S05 absorption). */
   workspace_id: string;
+  /** Whether the user has enrolled in TOTP MFA — drives step-up TOTP prompt. */
+  mfa_enrolled?: boolean;
+  /** Whether the user must change their password on next sign-in. */
+  force_password_change?: boolean;
 }
 
 export interface SentinelTenant {
@@ -94,6 +100,13 @@ export interface SentinelState {
   sentinel_focus_node: string | null;
   sentinel_scope_up: boolean;
   sentinel_scope_down: boolean;
+  /**
+   * Active scope direction — "descend" means the focus node + its
+   * descendants are in scope (default); "ascend" means the focus node
+   * + its ancestors. Mirrors the legacy ScopeContext direction prop so
+   * tree panels can drive the toggle through Sentinel.
+   */
+  sentinel_scope_direction: "ascend" | "descend";
 
   // Workspace-settings slice (absorbed mid-S14)
   sentinel_settings: SentinelWorkspaceSettings | null;
@@ -109,6 +122,8 @@ export interface SentinelState {
   sentinel_switch_workspace: (workspaceId: string) => Promise<void>;
   /** Set focus node — persists to users.default_focus_node_id on the server. */
   sentinel_set_focus: (nodeId: string | null) => Promise<void>;
+  /** Toggle scope direction — local-only state for now (no server persistence). */
+  sentinel_set_scope_direction: (dir: "ascend" | "descend") => void;
   /** Persist workspace settings (theme, tenant_name, prefs) to server + refresh local cache. */
   sentinel_set_settings: (settings: SentinelWorkspaceSettings) => Promise<void>;
   /** Returns true if the user holds the named permission. */
