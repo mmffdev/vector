@@ -283,6 +283,12 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     // Only fire when transitioning to a NEW authenticated user. Skip on
     // logout (next is null) and on re-renders with the same user.
     if (authUserId && authUserId !== prev) {
+      // Clear any url_focus inherited from a pre-login URL (e.g. login
+      // redirect preserved ?meg=<old-node> in the address bar). Without
+      // this, the new user's default_focus_node_id is bypassed because
+      // URL beats user-default in resolveFocusNode(). The mirror effect
+      // will re-write ?meg= to the resolved focus on the next render.
+      dispatch({ type: "set_url_focus", nodeId: null });
       void reload();
     }
   }, [authUserId, reload]);

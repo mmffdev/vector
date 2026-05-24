@@ -938,6 +938,100 @@ describe("sentinel.unit.SentinelProvider", () => {
   });
 
   // -------------------------------------------------------------------
+  // Case 18 — Login transition clears stale url_focus
+  // -------------------------------------------------------------------
+  // Symptom from dev 2026-05-24: padmin saves Home Location = Insurance.
+  // Logs out. Logs back in. Pre-login URL still carries
+  // ?meg=<retail-banking> from earlier nav. Sentinel boots, parses
+  // url_focus = retail-banking, and resolveFocusNode() returns retail-
+  // banking because URL beats user default. Insurance is forgotten until
+  // the user manually wipes ?meg=.
+  // Fix: on the auth-user-id transition, dispatch set_url_focus → null
+  // so user.default_focus_node_id wins on first post-login render.
+
+  function FocusProbe() {
+    const s = useSentinel();
+    return <span data-testid="resolved-focus">{s.sentinel_focus_node ?? "null"}</span>;
+  }
+
+  it("Case 18 — login transition clears stale url_focus so user's saved home wins", async () => {
+    // Pre-seed window.location.search with a stale meg.
+    const stale = "11111111-aaaa-bbbb-cccc-111111111111";
+    const orig = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: { ...orig, search: `?meg=${stale}` },
+    });
+
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        return new Response("not found", { status: 404 });
+      }
+      if (u.includes("/auth/me")) {
+        return new Response(JSON.stringify({
+          id: FIXTURE_USER_A.id,
+          email: FIXTURE_USER_A.email,
+          subscription_id: FIXTURE_TENANT_A.id,
+          workspace_id: FIXTURE_USER_A.workspace_id,
+          role: { id: FIXTURE_USER_A.role_id, code: FIXTURE_USER_A.role },
+          permissions: FIXTURE_USER_A.permissions,
+          default_focus_node_id: FIXTURE_USER_DEFAULT_FOCUS,
+          home_location_follow_mode: false,
+        }), { status: 200 });
+      }
+      if (u.includes("/topology/grants/me")) {
+        return new Response(JSON.stringify([
+          { node_id: FIXTURE_TENANT_ROOT, role: "admin", parent_id: null, name: "Root" },
+        ]), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    const { AuthContext: RealAuthContext } = await import("@/app/contexts/AuthContext");
+    function FakeAuthProvider({ children, userId }: { children: React.ReactNode; userId: string | null }) {
+      const value = userId
+        ? {
+            user: { id: userId, email: "x", subscription_id: "", workspace_id: "", role: { id: "", code: "u", label: "", rank: 99, is_system: false, is_external: false }, is_active: true, force_password_change: false, auth_method: "local" as const, permissions: [] },
+            role: null, loading: false, permissions: new Set<string>(), hasPermission: () => false,
+            login: async () => {}, mfaLogin: async () => {}, logout: async () => {}, refresh: async () => {}, switchWorkspace: async () => {}, setUser: () => {},
+          }
+        : null;
+      return <RealAuthContext.Provider value={value as any}>{children}</RealAuthContext.Provider>;
+    }
+
+    function App({ userId }: { userId: string | null }) {
+      return (
+        <FakeAuthProvider userId={userId}>
+          <SentinelProvider>
+            <FocusProbe />
+          </SentinelProvider>
+        </FakeAuthProvider>
+      );
+    }
+
+    const { rerender } = await act(async () => {
+      return render(<App userId={null} />);
+    }) as any;
+
+    // Pre-login: Sentinel sniffed url_focus = stale.
+    // (boot failed because no auth in this state — focus_node may be null
+    // but the url_focus IS set internally.)
+
+    // Now login.
+    await act(async () => {
+      rerender(<App userId={FIXTURE_USER_A.id} />);
+    });
+
+    // After re-boot, the stored user default wins, not the stale URL meg.
+    expect(screen.getByTestId("resolved-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+
+    // Restore window.location for subsequent tests.
+    Object.defineProperty(window, "location", { configurable: true, writable: true, value: orig });
+  });
+
+  // -------------------------------------------------------------------
   // Case 16 — Boot-time bridge failure: pin the silent-empty bug
   // -------------------------------------------------------------------
   // Symptom reproduced in dev 2026-05-24: signed-in user (AuthContext
