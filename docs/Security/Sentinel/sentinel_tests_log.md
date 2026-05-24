@@ -434,5 +434,5 @@ OK    285 file(s) checked, 9 exempt
 1. Two-tenant dev seed fixture (subscription_id A + B, one user per, one work-item per).
 2. S26 subtree-aware SQL clamp (already carved out from S21) so the cross-tenant probe actually returns 403, not an empty result.
 
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23].
 
