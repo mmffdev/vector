@@ -66,6 +66,53 @@ Procurement / SOC2 audit narrative depends on this file being **not** a paraphra
 
 ## Tests
 
+### sentinel_provider.test.tsx — Cases 1..6 (S07 — frontend provider)
+
+**File.** `app/sentinel/__tests__/sentinel_provider.test.tsx`
+**Story.** [S07 in sentinel_backlog.md](sentinel_backlog.md#s07--red-appsentinel__tests__sentinel_providertesttsx-before-the-provider-exists)
+**Tier.** `sentinel.unit` (Vitest, jsdom).
+**Assertions.** Six cases pinning the frontend Sentinel contract:
+- Case 1: Boot populates every `sentinel_*` field on the state bag (user, tenant, role, focus, scope-up/down, in-sync, can).
+- Case 2: `sentinel_switch_tenant(t2)` resolves atomically — tenant id AND `sentinel_workspace_in_sync === true` in the same render cycle (closes the race the original Sentinel patched module-level).
+- Case 3: `sentinel_can(code)` returns true for granted, false for absent perms.
+- Case 4a/b/c: Focus precedence — URL `?focus=` > `users.default_focus_node_id` > tenant root.
+- Case 5: 401 on a sentinel-mediated call auto-triggers `sentinel_reload()` (re-boots, refreshes state).
+- Case 6: `useSentinel()` outside `<SentinelProvider>` throws (negative test; no silent zero-value).
+
+#### RED
+
+**Date.** 2026-05-24
+**Run command.** `npm run test:sentinel:unit`
+**Output (verbatim — first error only; subsequent failures all stem from the same unresolved import).**
+
+```
+ FAIL  app/sentinel/__tests__/sentinel_provider.test.tsx [ app/sentinel/__tests__/sentinel_provider.test.tsx ]
+Error: Failed to resolve import "@/app/sentinel" from "app/sentinel/__tests__/sentinel_provider.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/app/sentinel/__tests__/sentinel_provider.test.tsx:28:46
+  2  |  import { describe, it, expect, vi, beforeEach } from "vitest";
+  3  |  import { render, screen, act } from "@testing-library/react";
+  4  |  import { SentinelProvider, useSentinel } from "@/app/sentinel";
+     |                                                 ^
+
+ Test Files  1 failed | 24 skipped (25)
+      Tests  141 skipped (141)
+```
+
+**Cause.** Package `app/sentinel/` has only the test file — `SentinelProvider` and `useSentinel` are not yet exported. S08 closes by implementing `app/sentinel/index.ts` (re-export) + `app/sentinel/SentinelProvider.tsx` + `app/sentinel/useSentinel.ts` + the `sentinel_api.ts` HTTP wrapper that auto-reloads on 401.
+
+#### GREEN attempts
+
+| Attempt | Date | What changed | Output / verdict |
+|---|---|---|---|
+| (pending S08) | | | |
+
+#### GREEN
+
+(pending S08)
+
+---
+
 ### TestMiddleware_Case7..9_* (S05.1 — workspace absorption)
 
 **File.** `backend/internal/sentinel/middleware_test.go`

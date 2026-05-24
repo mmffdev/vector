@@ -135,7 +135,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Asserts focus precedence — URL `?focus=` > `default_focus_node_id` > tenant root.
 - Asserts reload-on-401 — a 401 response on any sentinel-mediated call triggers `sentinel_reload`.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD; RED captured `Failed to resolve import "@/app/sentinel"` verbatim in `sentinel_tests_log.md`. 8 assertions across 6 cases (4a/4b/4c counted as one story-AC bullet for focus precedence).
 
 ---
 
