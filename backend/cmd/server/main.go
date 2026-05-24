@@ -1139,6 +1139,24 @@ func main() {
 		r.Get("/page-access", pageAccessH.MeAccess)
 	})
 
+	// /sentinel — per-user Sentinel preference writes (mutation surface
+	// for the substrate Middleware reads on every request). PUT /focus
+	// persists users.default_focus_node_id; the read side has shipped
+	// since S06 via Resolver.DefaultFocus and the /auth/me boot payload.
+	// Mounted with sentinelMW so the handler has the clamp on ctx for
+	// future tightening (e.g. scoping writes to the actor's current
+	// workspace) and so any future scope_up/down preference writes
+	// inherit the same gate.
+	sentinelH := sentinel.NewHandler(sentinelResolver)
+	r.Route("/sentinel", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(httprate.LimitByIP(60, time.Minute))
+		r.Use(userWriteLimiter)
+		r.Use(sentinelMW)
+		r.Put("/focus", sentinelH.PutFocus)
+	})
+
 	// /nav
 	r.Route("/nav", func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)

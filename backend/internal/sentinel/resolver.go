@@ -168,3 +168,32 @@ func (r *PoolResolver) HasActiveRole(ctx context.Context, workspaceID, userID uu
 	err := r.MVPool.QueryRow(ctx, sqlExistsActiveWorkspaceRole, workspaceID, userID).Scan(&ok)
 	return ok, err
 }
+
+// GrantOnNode implements Resolver. Recursive-CTE walk: returns TRUE
+// when the user holds an active grant on the node OR any ancestor.
+// Runs against the vector_artefacts pool (topology_nodes +
+// users_roles_topology_nodes both live there).
+func (r *PoolResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error) {
+	var ok bool
+	err := r.VAPool.QueryRow(ctx, sqlUserHasGrantOnNodeOrAncestor, nodeID, tenant, userID).Scan(&ok)
+	return ok, err
+}
+
+// SetUserDefaultFocus implements Resolver. Writes users.default_focus_node_id
+// (or NULL when nodeID is nil) against the mmff_vector pool. Returns
+// pgx.ErrNoRows when no row matched (e.g. the user was deactivated
+// between auth and write); callers map that to 401.
+func (r *PoolResolver) SetUserDefaultFocus(ctx context.Context, userID uuid.UUID, nodeID *uuid.UUID) error {
+	var nodeArg any // pgx encodes nil as SQL NULL
+	if nodeID != nil {
+		nodeArg = *nodeID
+	}
+	tag, err := r.MVPool.Exec(ctx, sqlUpdateUserDefaultFocus, nodeArg, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}

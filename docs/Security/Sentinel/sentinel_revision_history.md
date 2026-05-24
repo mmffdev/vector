@@ -22,6 +22,33 @@
 
 ## History (newest first)
 
+### 2026-05-24 — `PUT /sentinel/focus` handler shipped (PLA062 follow-up)
+
+**PLA / story.** PLA062 / post-S26 follow-up (logged as TD-SEN-04 in `sentinel_tech_debt.md`).
+**Decision.** Closed the write-side counterpart of the `users.default_focus_node_id` substrate that has shipped read-side since S06. The frontend (`app/sentinel/sentinel_api.ts:166` `putFocus()`) has been calling `PUT /_site/sentinel/focus` since S22; the route 404'd silently, so a user's choice of home topology node never survived sign-out. This change makes `sentinel_set_focus(nodeId)` end-to-end durable.
+**What landed.**
+1. Two new SQL constants in `backend/internal/sentinel/sql.go` — `sqlUpdateUserDefaultFocus` (the write) + `sqlUserHasGrantOnNodeOrAncestor` (the gate, recursive-CTE descend-inheritance match against `users_roles_topology_nodes`, identical predicate to `topology.sqlAncestorsHasGrantOnTargetOrAncestor` used by PLA-0043 scope reads).
+2. Two new `Resolver` interface methods in `types.go` — `GrantOnNode` (read) + `SetUserDefaultFocus` (write) — implemented on `PoolResolver` in `resolver.go`. Keeps the dependency-injection shape consistent with the rest of the package so the handler is unit-testable via the existing `stubResolver` pattern from `middleware_test.go`.
+3. New `backend/internal/sentinel/handler.go` with `Handler.PutFocus`. Validation: (a) `auth.UserFromCtx` non-nil → else 401, (b) when `focus_node_id` is non-null, `GrantOnNode` must return true → else 403 `/errors/sentinel/focus-no-access`, (c) when null, column clears unconditionally. RFC 9457 problem+json on every error path via the existing `writeProblem` helper.
+4. New `/sentinel` route group in `backend/cmd/server/main.go` (mounted between `/me` and `/nav`) with the standard auth stack: `RequireAuth + RequireFreshPassword + httprate(60/min) + userWriteLimiter + sentinelMW`. `sentinelMW` is included so the handler has the clamp on ctx for future tightening (e.g. scoping writes to the actor's current workspace) and so any future scope_up/down preference writes inherit the same gate.
+5. New `backend/internal/sentinel/handler_test.go` with 6 test cases (4 contract cases from the brief: happy path → 204 + capture, null-clears → 204 + nil capture, no-grant → 403 + no write, malformed UUID → 400 + no write; plus 2 bonus contract pins: missing-actor → 401, malformed JSON → 400). All 6 GREEN, all 9 existing middleware tests still pass.
+
+**Alternatives considered.** (i) Two-pool handler taking `pgxpool.Pool` directly per the original brief — rejected because it breaks the substrate's testability invariant (every other handler-shaped concern in `sentinel/` is Resolver-driven). (ii) Reuse `/me/active-scope` — rejected because `active_scope_node_id` is a distinct legacy column with a different concept (tab-local active scope, not persistent home preference) per the comment chain in `users/prefs.go:97`. (iii) Embed under `/me/default-focus` rather than `/sentinel/focus` — rejected because the frontend already calls `/sentinel/focus` and changing that is out of scope; the `/sentinel` group is also the right home for future `scope_up_default` / `scope_down_default` writes against the same migration-243 column set.
+**Standard-ref.** NIST 800-53 AC-3 — the handler re-validates the actor's grant on the node before writing, so a user cannot store a default pointing at a node they have no access to. Procurement narrative: "write path enforces the same descend-inheritance read predicate the request-time middleware applies."
+**Touched files / surfaces.**
+- `backend/internal/sentinel/sql.go` (+SQL constants)
+- `backend/internal/sentinel/types.go` (+2 Resolver methods on the interface)
+- `backend/internal/sentinel/resolver.go` (+2 method implementations on `PoolResolver`)
+- `backend/internal/sentinel/middleware_test.go` (extended `stubResolver` to satisfy the widened interface)
+- `backend/internal/sentinel/handler.go` (new)
+- `backend/internal/sentinel/handler_test.go` (new)
+- `backend/cmd/server/main.go` (+ `/sentinel` route group)
+- `docs/Security/Sentinel/sentinel_tech_debt.md` (+TD-SEN-04 resolved entry)
+- `docs/Security/Sentinel/sentinel_docs.md` (synopsis note — `sentinel_set_focus` now end-to-end durable)
+**Commit(s).** (this commit)
+
+---
+
 ### 2026-05-24 — Post-close runtime fixes (PLA062 follow-up — landed same day)
 
 **PLA / story.** PLA062 / post-S25 (no story; bug-fix landings on `main`).

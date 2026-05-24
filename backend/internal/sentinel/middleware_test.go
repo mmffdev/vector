@@ -111,6 +111,16 @@ type stubResolver struct {
 	// hasActiveRoleFn returns whether the actor has an active role on
 	// the resolved workspace. Configured per case.
 	hasActiveRoleFn func(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
+
+	// grantOnNodeFn returns whether the actor holds an active grant on
+	// the node or any ancestor. Used by handler tests (PutFocus); the
+	// middleware itself never calls this — added here so stubResolver
+	// continues to satisfy the Resolver interface after S26-followup.
+	grantOnNodeFn func(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error)
+
+	// setUserDefaultFocusFn captures the write-side of PutFocus.
+	// Tests inspect last-call state via the closure they install.
+	setUserDefaultFocusFn func(ctx context.Context, userID uuid.UUID, nodeID *uuid.UUID) error
 }
 
 // ResolveSubtree satisfies sentinel.Resolver. Delegates to resolveFn;
@@ -163,6 +173,24 @@ func (s *stubResolver) HasActiveRole(ctx context.Context, workspaceID, userID uu
 		return true, nil
 	}
 	return s.hasActiveRoleFn(ctx, workspaceID, userID)
+}
+
+// GrantOnNode satisfies sentinel.Resolver. Defaults to false — handler
+// tests for PutFocus install a closure returning true on the happy path.
+func (s *stubResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error) {
+	if s.grantOnNodeFn == nil {
+		return false, nil
+	}
+	return s.grantOnNodeFn(ctx, tenant, userID, nodeID)
+}
+
+// SetUserDefaultFocus satisfies sentinel.Resolver. Defaults to nil
+// (silently succeeds) so middleware tests don't have to configure it.
+func (s *stubResolver) SetUserDefaultFocus(ctx context.Context, userID uuid.UUID, nodeID *uuid.UUID) error {
+	if s.setUserDefaultFocusFn == nil {
+		return nil
+	}
+	return s.setUserDefaultFocusFn(ctx, userID, nodeID)
 }
 
 // inspectorHandler is the inner handler the middleware wraps. Each test

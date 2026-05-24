@@ -120,3 +120,50 @@ const sqlUserDefaultFocus = `
 	 WHERE id = $1
 	   AND is_active = TRUE
 `
+
+// sqlUpdateUserDefaultFocus persists the user's home/default focus
+// node. Pass NULL ($1) to clear (user falls back to tenant root on
+// next boot). $2 = userID. Closes the write-side counterpart of
+// sqlUserDefaultFocus — the read side has shipped since S06.
+const sqlUpdateUserDefaultFocus = `
+	UPDATE users
+	   SET default_focus_node_id = $1,
+	       updated_at = NOW()
+	 WHERE id = $2
+	   AND is_active = TRUE
+`
+
+// sqlUserHasGrantOnNodeOrAncestor walks UP from $1 (nodeID) through
+// parent_id within $2 (tenant/subscription) and returns TRUE when $3
+// (userID) holds an active grant on the node OR any ancestor —
+// matching the PLA-0043 scope-read gate already used by
+// topology.ClampPredicate (sql.go:23 sqlAncestorsHasGrantOnTargetOrAncestor).
+//
+// Used by PutFocus to gate writes: a user must not be able to store
+// a default focus pointing at a node they have no descend-inheritance
+// access to. The recursive walk matches how the request-time middleware
+// expands the user's access at read time (scope-down by default).
+const sqlUserHasGrantOnNodeOrAncestor = `
+	WITH RECURSIVE ancestors AS (
+	    SELECT id, parent_id
+	      FROM topology_nodes
+	     WHERE id = $1
+	       AND subscription_id = $2
+	       AND archived_at IS NULL
+	    UNION ALL
+	    SELECT p.id, p.parent_id
+	      FROM topology_nodes p
+	      JOIN ancestors a ON a.parent_id = p.id
+	     WHERE p.subscription_id = $2
+	       AND p.archived_at IS NULL
+	)
+	SELECT EXISTS (
+	    SELECT 1
+	      FROM ancestors a
+	      JOIN users_roles_topology_nodes r
+	        ON r.users_roles_topology_nodes_id_topology_node = a.id
+	     WHERE r.users_roles_topology_nodes_id_subscription = $2
+	       AND r.users_roles_topology_nodes_id_user = $3
+	       AND r.users_roles_topology_nodes_revoked_at IS NULL
+	)
+`

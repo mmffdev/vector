@@ -99,4 +99,19 @@ type Resolver interface {
 	// revocation) from reaching a workspace the actor has no grant on.
 	// Returns 403 /errors/sentinel/no-workspace-role when false.
 	HasActiveRole(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
+
+	// GrantOnNode returns true when the user holds an active grant on
+	// the node OR any of its ancestors within the tenant (descend-
+	// inheritance). Used by the PutFocus handler to gate writes to
+	// users.default_focus_node_id so a user cannot store a default
+	// pointing at a node they have no access to. Matches the
+	// PLA-0043 scope-read predicate.
+	GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error)
+
+	// SetUserDefaultFocus persists the user's home/default focus node.
+	// Pass nil to clear (user falls back to tenant root on next boot).
+	// Returns the underlying error verbatim — callers map it to the
+	// right HTTP status (sql.ErrNoRows → 401-user-vanished, anything
+	// else → 500).
+	SetUserDefaultFocus(ctx context.Context, userID uuid.UUID, nodeID *uuid.UUID) error
 }

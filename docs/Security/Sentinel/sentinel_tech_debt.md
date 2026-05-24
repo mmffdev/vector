@@ -105,6 +105,14 @@ Open — separate initiative, not numbered under PLA062.
 **Resolution.** Shipped `backend/internal/sentinel/sql.go` (recursive-CTE SQL templates for descendants + ancestors + tenant root + first-live workspace + has-active-role + user default focus) and `backend/internal/sentinel/resolver.go` (`PoolResolver` struct implementing the full `Resolver` interface against `vaPool` + `mvPool`). The middleware mounted in `cmd/server/main.go` at S05.4 uses `sentinel.NewPoolResolver(vaPool, pool)`. One small implementation detail deferred: `DefaultFocus` returns `(nil, nil)` until S06 ships the `users.default_focus_node_id` column — the SQL is prepared in `sqlUserDefaultFocus` constant but commented out in `PoolResolver.DefaultFocus` body; S06's one-line change is to uncomment.
 **Commit.** (in S05 commit)
 
+### TD-SEN-04 — PUT /sentinel/focus handler (RESOLVED as PLA062 follow-up)
+
+**Severity at log time.** S2 (write-side counterpart to a shipped read-side resolver — `app/sentinel/sentinel_api.ts:166` `putFocus()` was already calling the route; the handler 404'd silently, so a user's choice of home topology node never survived sign-out).
+**Resolution date.** 2026-05-24.
+**Standard-ref.** NIST 800-53 AC-3 — handler re-validates the actor's grant on the node before storing it, so a user cannot persist a default pointing at a node they have no access to.
+**Resolution.** Shipped `backend/internal/sentinel/handler.go` (`Handler.PutFocus`), two new SQL constants in `sql.go` (`sqlUpdateUserDefaultFocus` + `sqlUserHasGrantOnNodeOrAncestor`), and two new `Resolver` interface methods (`GrantOnNode` + `SetUserDefaultFocus`) wired against the existing `PoolResolver`. Mounted at `PUT /_site/sentinel/focus` under a new `/sentinel` route group with `RequireAuth + RequireFreshPassword + httprate + userWriteLimiter + sentinelMW`. Validation rules: (a) authenticated actor required (401 on missing), (b) when `focus_node_id` is non-null, actor must hold an active grant on the node OR any ancestor in their tenant — same descend-inheritance predicate `topology.sqlAncestorsHasGrantOnTargetOrAncestor` already uses for PLA-0043 scope reads — 403 `/errors/sentinel/focus-no-access` otherwise, (c) when `focus_node_id` is null, column clears unconditionally. 6 unit tests GREEN in `handler_test.go` (4 contract cases from the brief + 2 bonus contract pins for unauth + malformed-JSON paths); all 9 existing middleware tests still pass. Closes the persistence gap so `sentinel_set_focus(nodeId)` is now end-to-end durable.
+**Commit.** (this commit)
+
 ---
 
 ## Notes
