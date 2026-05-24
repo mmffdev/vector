@@ -224,7 +224,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Zero old-hook imports across both pages + shared canvas.
 - GREEN; attempts logged.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. 2 pages migrated (workspace-admin/topology + workspace-admin/topology-map); 4/4 ACs GREEN attempt 1; pattern: `useAuth + useHasPermission` → `useSentinel + sentinel_can`. The overlay/topology page (which uses `AuthContext.switchWorkspace`) is **deferred to S16** pending TD-SEN-02 paydown (Sentinel needs a peer `sentinel_switch_workspace` action — workspace-within-tenant switch, finer grain than `sentinel_switch_tenant`).
 
 ---
 
@@ -435,3 +435,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S10 | 2026-05-24 | 24a75a67 | First Lane A page; 3/3 GREEN; static-grep + mount + apiSite-fired ACs; reference for S11–S16 |
 | S11 | 2026-05-24 | b612df57 | /portfolio-items; 3/3 GREEN attempt 1; pattern lifted from S10 |
 | S12 | 2026-05-24 | 2bf27308 | /risk; 2/2 GREEN — special case: page already had no old-hook imports |
+| S13 | 2026-05-24 | (this commit) | 2 workspace-admin/topology pages; 4/4 GREEN; overlay/topology deferred to S16 via TD-SEN-02 |

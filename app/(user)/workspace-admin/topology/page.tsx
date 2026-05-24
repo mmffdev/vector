@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import PageHeading from "@/app/components/PageHeading";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
@@ -16,15 +16,16 @@ const TopologyOverlayPage = dynamic(() => import("@/app/(overlay)/topology/page"
 
 export default function TopologyPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const canAccess = useHasPermission("workspace.archive");
+  // PLA062 S13: identity + permission via Sentinel.
+  const { sentinel_user, sentinel_can } = useSentinel();
+  const canAccess = sentinel_can("workspace.archive");
   const router = useRouter();
 
   useEffect(() => {
-    if (user && !canAccess) router.replace("/workspace-admin");
-  }, [user, canAccess, router]);
+    if (sentinel_user && !canAccess) router.replace("/workspace-admin");
+  }, [sentinel_user, canAccess, router]);
 
-  if (!user || !canAccess) return null;
+  if (!sentinel_user || !canAccess) return null;
 
   return (
     <PageContent>

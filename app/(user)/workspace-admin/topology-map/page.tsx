@@ -6,22 +6,23 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import Panel from "@/app/components/Panel";
 import { MapRelationship3D } from "@/app/components/MapRelationship3D";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { useTopologyRelationsPayload } from "@/app/hooks/useTopologyRelationsPayload";
 import PageHeading from "@/app/components/PageHeading";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function WorkspaceAdminTopologyMapPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const canAccess = useHasPermission("workspace.archive");
+  // PLA062 S13: identity + permission via Sentinel.
+  const { sentinel_user, sentinel_can } = useSentinel();
+  const canAccess = sentinel_can("workspace.archive");
   const router = useRouter();
 
   useEffect(() => {
-    if (user && !canAccess) router.replace("/workspace-admin");
-  }, [user, canAccess, router]);
+    if (sentinel_user && !canAccess) router.replace("/workspace-admin");
+  }, [sentinel_user, canAccess, router]);
 
-  if (!user || !canAccess) return null;
+  if (!sentinel_user || !canAccess) return null;
 
   const { data, loading, error, refetch } = useTopologyRelationsPayload();
 

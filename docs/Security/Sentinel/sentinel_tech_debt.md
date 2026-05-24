@@ -24,7 +24,15 @@
 
 ## Active entries
 
-(none — target state restored at S05 close-out)
+### TD-SEN-02 — `sentinel_switch_workspace` action missing (workspace-within-tenant switch)
+
+**Severity.** S2 (workflow gap — blocks overlay/topology migration).
+**Trigger.** S16 (remaining `(user)/*` pages migration) — at that point the overlay/topology page is the last consumer of the legacy `AuthContext.switchWorkspace`, and Sentinel needs a peer action so S22 can delete AuthContext.
+**Discovered by.** S13 (`/topology` migration spike).
+**Standard-ref.** NIST 800-53 AC-3 — same control axis as `sentinel_switch_tenant`, just at a finer grain.
+**Description.** `sentinel_switch_tenant(tenantId)` swaps the whole identity (subscription_id, role, grants). The overlay/topology page needs the **finer** "switch workspace within current tenant" action — workspace_id changes, subscription_id stays. AuthContext's existing `switchWorkspace(workspaceID)` does this today via POST `/_site/auth/switch-workspace`. Sentinel needs a peer action `sentinel_switch_workspace(workspaceID)` plus backend `/sentinel/switch-workspace` (or reuse `/_site/auth/switch-workspace` through `sentinel_api`).
+**Compensating control.** Until paid down, S13 ships only the two `workspace-admin/topology*` page migrations (which don't need switchWorkspace). The overlay/topology page stays on `useAuth().switchWorkspace` and migrates in S16 once this debt is paid.
+**Pay-down plan.** Before S16: extend `SentinelState` with `sentinel_switch_workspace(workspaceID): Promise<void>`, implement via `sentinel_api.postSwitchWorkspace`, add a unit-test case (10) to `sentinel_provider.test.tsx` covering the atomicity contract (same as tenant switch but workspace-scoped). When S16 lands the overlay page migration, this entry moves to Resolved.
 
 ---
 
