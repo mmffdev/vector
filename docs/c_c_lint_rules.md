@@ -28,6 +28,7 @@ All lints share the same shape:
 | `lint:route-orphans` | `dev/scripts/lint_route_orphans.py` | `route_orphan_exempt.json` | every spec route should either have a frontend caller (`apiSite()` / `apiV2()`) OR be in the exemption registry with a reason (backend-only, dev tool, cron-driven, etc.). Reports unexplained orphans; `--strict` makes it fail on any non-exempt. Drift detector for "dead endpoints" (B20.5.J) |
 | `lint:no-direct-workspace-id` | `dev/scripts/lint_no_direct_workspace_id.py` | `no_direct_workspace_id_exempt.json` | `user.workspace_id` read forbidden in files that don't import from `@/app/sentinel` — workspace-id MUST come from `useSentinel().sentinel_user?.workspace_id` (PLA062 S19) |
 | `lint:no-old-context-imports` | `dev/scripts/lint_no_old_context_imports.py` | `no_old_context_imports_exempt.json` | imports from `@/app/contexts/{Auth,Scope,Tenant}Context` forbidden — the canonical identity/scope source is `@/app/sentinel`. Day-one exemption list carries the 10 authentication-boundary files queued for S22 migration (PLA062 S19) |
+| `TestSentinelClampRequired` (Go) | `backend/internal/lintchecks/sentinel_clamp_test.go` | `sentinelClampAllowlist` in same file | any Go file that reads `artefact_*` tables (items/types/priorities/field_values/links) MUST sit in a package that calls `sentinel.FromCtx` / `sentinel.WorkspaceIDFromCtx` / `sentinel.MustFromCtx`. Day-one allowlist names 6 packages awaiting the S21 handler refactor; each entry carries a TD-* reference. Runs in `go test ./internal/lintchecks/...` (PLA062 S20) |
 
 ---
 
@@ -170,6 +171,23 @@ The exemption registry seeded on 2026-05-12 carries 5 paths: two modal/wizard ov
 **Exemption registry.** `dev/registries/no_direct_workspace_id_exempt.json` — empty on day one. Any path added here MUST carry a one-line rationale + a TD entry.
 
 **Self-test.** `bash dev/scripts/lint_no_direct_workspace_id_self_test.sh` builds a fixture under `app/components/__fixture_workspace_id__/violation.tsx`, runs the lint, asserts the fixture is rejected, then cleans up. Re-run after editing the lint to catch regressions.
+
+---
+
+## `TestSentinelClampRequired` (Go) — detail (PLA062 S20)
+
+**Rule.** Any Go file in `backend/internal/` (excluding `_test.go`, `dev/`, `dev.go`, `dev_reset.go`) that references an `artefact_*` table (`artefact_items`, `artefact_types`, `artefact_priorities`, `artefact_field_values`, `artefact_links`) MUST be in a package where at least one file calls `sentinel.FromCtx(`, `sentinel.WorkspaceIDFromCtx(`, or `sentinel.MustFromCtx(`. The aggregation is per-package — handler.go can read the clamp, sql.go can read the table; that's the conventional split and the lint honours it.
+
+**Why.** Procurement / SOC2 isolation: if a handler queries `artefact_items` without consulting the Sentinel clamp, it may return rows from any workspace the JWT subject can reach. The clamp's `WorkspaceID` (+ `AllowedSubtreeIDs` once S21 lands) must gate every artefact read.
+
+**Comment-only references are ignored.** A `// reads from artefact_items` in godoc or a trailing-comment annotation does NOT trigger the lint — only code-level references count.
+
+**Allowlist.** `sentinelClampAllowlist` in `sentinel_clamp_test.go`. Day-one entries: `artefactitems`, `artefactitemsv2`, `artefacttypes`, `artefactpriorities`, `portfoliomodels`, `flows`. Each carries a TD-SENT-CLAMP-* placeholder; S21 closes them.
+
+**Fixture self-tests.** Three sibling cases in `sentinel_clamp_fixture_test.go`:
+- `TestSentinelClampFixture_Negative_HandlerWithoutClampOffends` — handler reading `artefact_items` without `sentinel.FromCtx` MUST trip the detector.
+- `TestSentinelClampFixture_Positive_HandlerWithClampPasses` — handler that calls `sentinel.FromCtx` MUST NOT trip.
+- `TestSentinelClampFixture_CommentOnly_DoesNotOffend` — pure-comment references to `artefact_*` MUST be ignored.
 
 ---
 

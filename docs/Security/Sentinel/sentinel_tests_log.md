@@ -343,3 +343,29 @@ OK    self-test passed — fixture violation was caught
 
 **Commit.** `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19].
 
+
+
+---
+
+## S20 — Go lintcheck TestSentinelClampRequired GREEN (2026-05-24)
+
+```
+$ cd backend && go test ./internal/lintchecks/... -run TestSentinelClamp -v
+=== RUN   TestSentinelClampFixture_Negative_HandlerWithoutClampOffends
+--- PASS: TestSentinelClampFixture_Negative_HandlerWithoutClampOffends (0.00s)
+=== RUN   TestSentinelClampFixture_Positive_HandlerWithClampPasses
+--- PASS: TestSentinelClampFixture_Positive_HandlerWithClampPasses (0.00s)
+=== RUN   TestSentinelClampFixture_CommentOnly_DoesNotOffend
+--- PASS: TestSentinelClampFixture_CommentOnly_DoesNotOffend (0.00s)
+=== RUN   TestSentinelClampRequired
+--- PASS: TestSentinelClampRequired (0.07s)
+PASS
+ok  	github.com/mmffdev/vector-backend/internal/lintchecks	0.456s
+```
+
+**Scope.** `backend/internal/lintchecks/sentinel_clamp_test.go` (main scanner) + `sentinel_clamp_fixture_test.go` (3 fixture cases). Day-one allowlist names 6 packages awaiting S21 migration (artefactitems, artefactitemsv2, artefacttypes, artefactpriorities, portfoliomodels, flows) — each with a TD-SENT-CLAMP-* placeholder.
+
+**Comment-only skip.** Two false positives in `notifications/rules/` (godoc comments mentioning `artefact_types`) were silenced by stripping pure-comment lines before the regex match — same convention as the project's other Go lintchecks.
+
+**Commit.** _(to be backfilled after commit lands)_
+

@@ -347,18 +347,18 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ---
 
-### S20 — Add Go lint `lint:sentinel-clamp-required`
+### ~~S20 — Add Go lint `lint:sentinel-clamp-required`~~
 
 **Intent.** Backend lint ratchet preventing handlers from bypassing the clamp.
 
 **Acceptance Criteria.**
-- `backend/internal/lintchecks/sentinel_clamp_test.go` exists; fails on fixture handler that touches `artefacts_*` without `sentinel.FromCtx`.
-- Passes on fixture handler that DOES call the clamp.
-- Passes on every real handler in `backend/internal/` after migration.
-- Wired into the existing lintchecks suite (runs in `go test ./...`).
-- Documented on `docs/c_c_lint_rules.md`.
+- ✅ `backend/internal/lintchecks/sentinel_clamp_test.go` exists; fails on fixture handler that touches `artefact_*` without `sentinel.FromCtx`. Fixture-driven self-tests in `sentinel_clamp_fixture_test.go` cover three cases: negative (handler without clamp offends), positive (handler with clamp passes), comment-only (godoc-style references are ignored).
+- ✅ Passes on fixture handler that DOES call the clamp (Positive fixture case GREEN).
+- ✅ Passes on every real handler in `backend/internal/` after **allowlisting the 6 packages awaiting S21 migration**: `artefactitems`, `artefactitemsv2`, `artefacttypes`, `artefactpriorities`, `portfoliomodels`, `flows`. Each allowlist entry carries a `TD-SENT-CLAMP-*` reference so S21 can shrink the list to empty.
+- ✅ Wired into the existing lintchecks suite — runs via `go test ./internal/lintchecks/...` (and by extension `go test ./...`).
+- ✅ Documented on [`docs/c_c_lint_rules.md`](../../c_c_lint_rules.md) — table row + dedicated detail section explaining rule, why, comment-skip nuance, allowlist, fixture self-tests.
 
-**Status.** pending.
+**Status.** Completed 2026-05-24.
 
 ---
 
