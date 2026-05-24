@@ -438,4 +438,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S13 | 2026-05-24 | 9fd3de55 | 2 workspace-admin/topology pages; 4/4 GREEN; overlay/topology deferred to S16 via TD-SEN-02 |
 | S14 | 2026-05-24 | ed5f34be | 6 workspace-admin pages migrated; cluster-guard test added; Sentinel scope expanded (cases 10 + 11) closing TD-SEN-02 + TD-SEN-03 |
 | S15 | 2026-05-24 | f2317262 | vector-admin tenant-settings migrated; 4-route cluster-guard added; 28/28 GREEN |
-| S16 | 2026-05-24 | (this commit) | 14 catch-all pages migrated (incl. overlay/topology with sentinel_switch_workspace); SentinelGrant type expanded; 38 tests GREEN |
+| S16 | 2026-05-24 | a51bb4f3 | 14 catch-all pages migrated (incl. overlay/topology with sentinel_switch_workspace); SentinelGrant type expanded; 38 tests GREEN |
