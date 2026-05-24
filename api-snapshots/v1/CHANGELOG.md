@@ -11,3 +11,7 @@ Snapshot of openapi.yaml at fbe0ea1. Breaking changes: no.
 ## v3 — 2026-05-19
 
 Snapshot of siteAPI.yaml at c32bd04. Breaking changes: no.
+
+## v4 — 2026-05-24
+
+Snapshot of siteAPI.yaml at 82d3aed1. Breaking changes: no.

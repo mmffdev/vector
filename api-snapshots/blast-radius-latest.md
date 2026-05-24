@@ -3,664 +3,1123 @@
 
 ## API Changes
 
+### GET /admin/dev/api-audit
+-  endpoint added
+
+
+### GET /admin/dev/artefacts-count
+-  endpoint added
+
+
+### POST /admin/dev/artefacts-wipe
+-  endpoint added
+
+
+### GET /admin/dev/codegraph
+-  endpoint added
+
+
 ### POST /admin/dev/master-reset
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the optional property `message` to the response with the `200` status
+-  added the optional property `success` to the response with the `200` status
+
+
+### GET /admin/dev/reporting
+-  endpoint added
+
+
+### POST /admin/dev/reporting
+-  endpoint added
+
+
+### DELETE /admin/dev/reporting/{id}
+-  endpoint added
+
+
+### GET /admin/dev/reporting/{id}
 -  endpoint added
 
 
 ### POST /admin/dev/seed-risks
--  endpoint added
+- :warning: added required request body
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the optional property `assignee_id` to the response with the `200` status
+-  added the optional property `inserted` to the response with the `200` status
+-  added the optional property `message` to the response with the `200` status
+-  added the optional property `risk_type_id` to the response with the `200` status
+-  added the optional property `success` to the response with the `200` status
+-  added the optional property `workspace_id` to the response with the `200` status
 
 
 ### POST /admin/dev/seed-workspace
+- :warning: added required request body
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the optional property `name` to the response with the `200` status
+-  added the optional property `success` to the response with the `200` status
+-  added the optional property `workspace_id` to the response with the `200` status
+
+
+### GET /admin/dev/source
 -  endpoint added
 
 
 ### GET /admin/page-grants
--  endpoint added
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+-  added the required property `count` to the response with the `200` status
+-  added the required property `releases` to the response with the `200` status
 
 
 ### PUT /admin/page-grants/bucket/{tag_enum}/{role_id}
--  endpoint added
+- :warning: added the new path request parameter `role_id`
+- :warning: added the new path request parameter `tag_enum`
+- :warning: added required request body
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `409`
+-  added the non-success response with the status `500`
 
 
 ### DELETE /admin/page-grants/{page_id}/{role_id}
--  endpoint added
+- :warning: added the new path request parameter `page_id`
+- :warning: added the new path request parameter `role_id`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### PUT /admin/page-grants/{page_id}/{role_id}
--  endpoint added
-
-
-### GET /admin/permissions
-- :warning: api path removed without deprecation
-
-
-### POST /admin/permissions
-- :warning: api path removed without deprecation
-
-
-### DELETE /admin/permissions/{id}
-- :warning: api path removed without deprecation
+- :warning: added the new path request parameter `page_id`
+- :warning: added the new path request parameter `role_id`
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
 
 
 ### GET /admin/users
-- :warning: api removed without deprecation
+-  endpoint added
 
 
 ### POST /admin/users
-- :warning: removed the request body
-- :warning: removed the success response with the status `201`
--  api operation id `createUser` removed and replaced with `postAdminUsers`
--  api tag `uncategorised` added
--  api tag `admin` removed
--  removed the non-success response with the status `400`
--  removed the non-success response with the status `403`
--  added the success response with the status `200`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `admin` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `403`
+-  added the non-success response with the status `500`
+-  added the success response with the status `201`
 
 
 ### DELETE /admin/users/{id}
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### PATCH /admin/users/{id}
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### POST /admin/users/{id}/password-reset
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
-### POST /artefacts/{type}
-- :warning: api path removed without deprecation
+### GET /artefact-priorities
+-  endpoint added
 
 
-### GET /artefacts/{type}/schema
-- :warning: api path removed without deprecation
+### POST /artefact-priorities
+-  endpoint added
 
 
-### POST /artefacts/{type}/schema
-- :warning: api path removed without deprecation
+### DELETE /artefact-priorities/{id}
+-  endpoint added
 
 
-### DELETE /artefacts/{type}/schema/{schema_id}
-- :warning: api path removed without deprecation
+### PATCH /artefact-priorities/{id}
+-  endpoint added
 
 
-### PATCH /artefacts/{type}/schema/{schema_id}
-- :warning: api path removed without deprecation
+### GET /artefact-types
+-  endpoint added
 
 
-### DELETE /artefacts/{type}/{id}
-- :warning: api path removed without deprecation
+### POST /artefact-types/resync
+-  endpoint added
 
 
-### GET /artefacts/{type}/{id}
-- :warning: api path removed without deprecation
-
-
-### PATCH /artefacts/{type}/{id}
-- :warning: api path removed without deprecation
-
-
-### GET /artefacts/{type}/{id}/fields
-- :warning: api path removed without deprecation
-
-
-### POST /artefacts/{type}/{id}/fields/bulk
-- :warning: api path removed without deprecation
-
-
-### PUT /artefacts/{type}/{id}/fields/{field_name}
-- :warning: api path removed without deprecation
+### PATCH /artefact-types/{id}
+-  endpoint added
 
 
 ### POST /auth/login
-- :warning: removed the request body
-- :warning: removed the optional property `accessToken` from the response with the `200` status
-- :warning: removed the optional property `user` from the response with the `200` status
--  api operation id `login` removed and replaced with `postAuthLogin`
--  the endpoint scheme security `bearerAuth` was added to the API
--  api tag `uncategorised` added
--  api tag `auth` removed
--  added the non-success response with the status `401`
--  removed the non-success response with the status `400`
--  removed the non-success response with the status `403`
+- :warning: added required request body
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `500`
+-  added the required property `access_token` to the response with the `200` status
+-  added the required property `user` to the response with the `200` status
 
 
 ### GET /auth/login-continuation
--  endpoint added
+-  api tag `auth` added
+-  api tag `uncategorised` removed
 
 
 ### GET /auth/login-required
--  endpoint added
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the new optional `query` request parameter `p`
 
 
 ### DELETE /auth/mfa
--  endpoint added
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### POST /auth/mfa/confirm
--  endpoint added
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `500`
+-  added the success response with the status `201`
 
 
 ### POST /auth/mfa/enroll
--  endpoint added
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+-  added the optional property `otpauth_uri` to the response with the `200` status
+-  added the optional property `recovery_codes` to the response with the `200` status
 
 
 ### POST /auth/mfa/verify
--  endpoint added
+- :warning: added required request body
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the required property `access_token` to the response with the `200` status
+-  added the required property `user` to the response with the `200` status
 
 
 ### POST /auth/password-reset
-- :warning: removed the request body
-- :warning: removed the success response with the status `204`
--  api operation id `passwordReset` removed and replaced with `postAuthPasswordReset`
--  the endpoint scheme security `bearerAuth` was added to the API
--  api tag `uncategorised` added
--  api tag `auth` removed
--  added the non-success response with the status `401`
--  removed the non-success response with the status `400`
--  added the success response with the status `200`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the success response with the status `201`
 
 
 ### POST /auth/password-reset/confirm
-- :warning: removed the request body
-- :warning: removed the success response with the status `204`
--  api operation id `passwordResetConfirm` removed and replaced with `postAuthPasswordResetConfirm`
--  the endpoint scheme security `bearerAuth` was added to the API
--  api tag `uncategorised` added
--  api tag `auth` removed
--  added the non-success response with the status `401`
--  removed the non-success response with the status `400`
--  added the success response with the status `200`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the success response with the status `201`
 
 
 ### GET /auth/password-reset/redeem
--  endpoint added
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the new optional `query` request parameter `t`
+-  added the non-success response with the status `500`
 
 
 ### GET /auth/password-reset/state
--  endpoint added
+-  api tag `auth` added
+-  api tag `uncategorised` removed
 
 
 ### POST /auth/reauth
--  endpoint added
+- :warning: added required request body
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `500`
+-  added the required property `action_proof` to the response with the `200` status
+-  added the required property `expires_at` to the response with the `200` status
 
 
 ### GET /auth/sessions
--  endpoint added
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+-  added the optional property `sessions` to the response with the `200` status
 
 
 ### POST /auth/sessions/revoke-others
--  endpoint added
+- :warning: removed the success response with the status `200`
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `403`
+-  added the non-success response with the status `500`
+-  added the success response with the status `201`
 
 
 ### DELETE /auth/sessions/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### POST /auth/switch-workspace
--  endpoint added
+- :warning: added required request body
+-  api tag `auth` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `403`
+-  added the non-success response with the status `500`
+-  added the required property `access_token` to the response with the `200` status
+-  added the required property `user` to the response with the `200` status
 
 
 ### GET /cost-centres
+- :warning: the response's body type/format changed from `object`/`` to `array`/`` for status `200`
+-  api tag `cost-centres` added
+-  api tag `uncategorised` removed
+
+
+### POST /cost-centres
+-  endpoint added
+
+
+### DELETE /cost-centres/{id}
+-  endpoint added
+
+
+### PATCH /cost-centres/{id}
 -  endpoint added
 
 
 ### POST /csp-report
--  endpoint added
-
-
-### GET /custom-field-library
-- :warning: api path removed without deprecation
-
-
-### POST /custom-field-library
-- :warning: api path removed without deprecation
-
-
-### DELETE /custom-field-library/{id}
-- :warning: api path removed without deprecation
-
-
-### GET /custom-field-library/{id}
-- :warning: api path removed without deprecation
-
-
-### PATCH /custom-field-library/{id}
-- :warning: api path removed without deprecation
-
-
-### POST /defects
--  api path removed with deprecation
-
-
-### DELETE /defects/{id}
--  api path removed with deprecation
-
-
-### GET /defects/{id}
--  api path removed with deprecation
-
-
-### PATCH /defects/{id}
--  api path removed with deprecation
+- :warning: removed the success response with the status `200`
+-  api tag `csp-report` added
+-  api tag `uncategorised` removed
+-  added the success response with the status `201`
 
 
 ### DELETE /flow-state-exit-rules/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `flow-state-exit-rules` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### PATCH /flow-state-exit-rules/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: added required request body
+-  api tag `flow-state-exit-rules` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the optional property `colour` to the response with the `200` status
+-  added the required property `id` to the response with the `200` status
+-  added the required property `name` to the response with the `200` status
+-  added the required property `sort_order` to the response with the `200` status
 
 
 ### DELETE /flow-states/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `flow-states` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### PATCH /flow-states/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: added required request body
+-  api tag `flow-states` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the optional property `colour` to the response with the `200` status
+-  added the optional property `description` to the response with the `200` status
+-  added the optional property `exit_rules` to the response with the `200` status
+-  added the required property `exit_rule_count` to the response with the `200` status
+-  added the required property `id` to the response with the `200` status
+-  added the required property `is_initial` to the response with the `200` status
+-  added the required property `is_pullable` to the response with the `200` status
+-  added the required property `kind` to the response with the `200` status
+-  added the required property `name` to the response with the `200` status
+-  added the required property `sort_order` to the response with the `200` status
 
 
 ### GET /flow-states/{id}/exit-rules
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: the response's body type/format changed from `object`/`` to `array`/`` for status `200`
+-  api tag `flow-states` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
 
 
 ### POST /flow-states/{id}/exit-rules
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `flow-states` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the success response with the status `201`
 
 
 ### POST /flows/reset/apply
--  endpoint added
+- :warning: added required request body
+-  api tag `flows` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the required property `artefact_type_id` to the response with the `200` status
+-  added the required property `artefacts_rebound` to the response with the `200` status
+-  added the required property `flow_id` to the response with the `200` status
+-  added the required property `pills_added` to the response with the `200` status
+-  added the required property `pills_removed` to the response with the `200` status
+-  added the required property `pills_updated` to the response with the `200` status
+-  added the required property `transitions_added` to the response with the `200` status
+-  added the required property `transitions_removed` to the response with the `200` status
 
 
 ### POST /flows/reset/preview
--  endpoint added
+- :warning: added required request body
+-  api tag `flows` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the required property `already_at_default` to the response with the `200` status
+-  added the required property `artefact_impacts` to the response with the `200` status
+-  added the required property `artefact_type_id` to the response with the `200` status
+-  added the required property `artefact_type_name` to the response with the `200` status
+-  added the required property `flow_id` to the response with the `200` status
+-  added the required property `flow_name` to the response with the `200` status
+-  added the required property `pills` to the response with the `200` status
+-  added the required property `transitions` to the response with the `200` status
 
 
 ### POST /flows/{flowId}/states
--  endpoint added
+- :warning: added the new path request parameter `flowId`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `flows` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the success response with the status `201`
 
 
 ### DELETE /flows/{flowId}/transitions
--  endpoint added
+- :warning: added the new path request parameter `flowId`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `flows` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### POST /flows/{flowId}/transitions
+- :warning: added the new path request parameter `flowId`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `flows` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the success response with the status `201`
+
+
+### GET /lookups/users-in-scope
 -  endpoint added
 
 
 ### GET /me/active-scope
--  endpoint added
+-  api tag `me` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+-  added the optional property `node_id` to the response with the `200` status
 
 
 ### PUT /me/active-scope
--  endpoint added
+- :warning: added required request body
+-  api tag `me` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `403`
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
 
 
 ### GET /me/page-access
--  endpoint added
+-  api tag `me` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
 
 
 ### DELETE /me/preferences/{key}
--  endpoint added
+- :warning: added the new path request parameter `key`
+- :warning: removed the success response with the status `200`
+-  api tag `me` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### GET /me/preferences/{key}
--  endpoint added
+- :warning: added the new path request parameter `key`
+-  api tag `me` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `500`
+-  added the required property `value` to the response with the `200` status
 
 
 ### PUT /me/preferences/{key}
+- :warning: added the new path request parameter `key`
+- :warning: added required request body
+-  api tag `me` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+
+
+### POST /mentions
+-  endpoint added
+
+
+### GET /mentions/inbox
+-  endpoint added
+
+
+### GET /mentions/search
+-  endpoint added
+
+
+### POST /mentions/{id}/read
 -  endpoint added
 
 
 ### DELETE /nav/page-bookmark
--  endpoint added
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `nav` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `500`
+-  added the success response with the status `204`
 
 
 ### POST /nav/page-bookmark
--  endpoint added
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `nav` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `409`
+-  added the non-success response with the status `500`
+-  added the success response with the status `201`
 
 
 ### POST /nav/reset
+- :warning: removed the success response with the status `200`
+-  api tag `nav` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+-  added the success response with the status `201`
+
+
+### GET /notifications
+-  endpoint added
+
+
+### GET /notifications/prefs
+-  endpoint added
+
+
+### PUT /notifications/prefs
+-  endpoint added
+
+
+### POST /notifications/read-all
+-  endpoint added
+
+
+### GET /notifications/rule-schema
+-  endpoint added
+
+
+### GET /notifications/rules
+-  endpoint added
+
+
+### POST /notifications/rules
+-  endpoint added
+
+
+### DELETE /notifications/rules/{id}
+-  endpoint added
+
+
+### GET /notifications/rules/{id}
+-  endpoint added
+
+
+### PATCH /notifications/rules/{id}
+-  endpoint added
+
+
+### GET /notifications/stream
+-  endpoint added
+
+
+### GET /notifications/unread-count
+-  endpoint added
+
+
+### POST /notifications/{id}/read
 -  endpoint added
 
 
 ### GET /portfolio-items
--  endpoint added
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+-  added the required property `count` to the response with the `200` status
+-  added the required property `releases` to the response with the `200` status
 
 
 ### POST /portfolio-items
-- :warning: removed the request body
-- :warning: removed the success response with the status `201`
--  api operation id `createPortfolioItem` removed and replaced with `postPortfolioItems`
--  api tag `uncategorised` added
--  api tag `work-items` removed
--  endpoint reactivated
--  removed the non-success response with the status `400`
--  added the success response with the status `200`
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the success response with the status `201`
 
 
 ### POST /portfolio-items/bulk
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the success response with the status `201`
+
+
+### GET /portfolio-items/by-ids
+-  endpoint added
+
+
+### GET /portfolio-items/columns
+-  endpoint added
+
+
+### GET /portfolio-items/facets
 -  endpoint added
 
 
 ### GET /portfolio-items/flow-states
--  endpoint added
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the new optional `query` request parameter `artefact_type_id`
 
 
 ### GET /portfolio-items/summary
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+
+
+### GET /portfolio-items/types/{typeId}/fields
 -  endpoint added
 
 
 ### DELETE /portfolio-items/{id}
-- :warning: removed the success response with the status `204`
-- :warning: deleted the `path` request parameter `id`
--  api operation id `archivePortfolioItem` removed and replaced with `deletePortfolioItemsId`
--  api tag `uncategorised` added
--  api tag `work-items` removed
--  endpoint reactivated
--  removed the non-success response with the status `404`
--  added the success response with the status `200`
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the success response with the status `204`
 
 
 ### GET /portfolio-items/{id}
-- :warning: deleted the `path` request parameter `id`
--  api operation id `getPortfolioItem` removed and replaced with `getPortfolioItemsId`
--  api tag `uncategorised` added
--  api tag `work-items` removed
--  endpoint reactivated
--  removed the non-success response with the status `404`
+- :warning: added the new path request parameter `id`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
 
 
 ### PATCH /portfolio-items/{id}
-- :warning: removed the request body
-- :warning: deleted the `path` request parameter `id`
--  api operation id `patchPortfolioItem` removed and replaced with `patchPortfolioItemsId`
--  api tag `uncategorised` added
--  api tag `work-items` removed
--  endpoint reactivated
--  removed the non-success response with the status `404`
+- :warning: added the new path request parameter `id`
+- :warning: added required request body
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
 
 
 ### GET /portfolio-items/{id}/children
--  endpoint added
+- :warning: added the new path request parameter `id`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
 
 
 ### GET /portfolio-items/{id}/field-values
--  endpoint added
+- :warning: added the new path request parameter `id`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
 
 
 ### PUT /portfolio-items/{id}/field-values
--  endpoint added
+- :warning: added the new path request parameter `id`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
 
 
 ### DELETE /portfolio-items/{id}/field-values/{field_library_id}
--  endpoint added
+- :warning: added the new path request parameter `field_library_id`
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `portfolio-items` added
+-  api tag `uncategorised` removed
+-  added the success response with the status `204`
 
 
 ### GET /portfolio-models
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### GET /portfolio-models/adoption-state
--  api operation id `getAdoptionState` removed and replaced with `getPortfolioModelsAdoptionState`
--  api tag `uncategorised` added
--  api tag `portfolio` removed
--  removed the non-success response with the status `403`
+-  api tag `portfolio-models` added
+-  api tag `uncategorised` removed
+-  added the optional property `adopted_at` to the response with the `200` status
+-  added the optional property `adopted_by_user_id` to the response with the `200` status
+-  added the optional property `model_id` to the response with the `200` status
+-  added the required property `adopted` to the response with the `200` status
+-  added the required property `status` to the response with the `200` status
 
 
 ### POST /portfolio-models/{id}/adopt
-- :warning: deleted the `path` request parameter `id`
--  api operation id `adoptPortfolioModel` removed and replaced with `postPortfolioModelsIdAdopt`
--  api tag `uncategorised` added
--  api tag `portfolio` removed
--  removed the non-success response with the status `403`
--  removed the non-success response with the status `404`
+- :warning: added the new path request parameter `id`
+-  api tag `portfolio-models` added
+-  api tag `uncategorised` removed
+-  added the required property `adopted_at` to the response with the `200` status
+-  added the required property `model_id` to the response with the `200` status
+-  added the required property `state_id` to the response with the `200` status
+-  added the required property `status` to the response with the `200` status
 
 
 ### GET /portfolio-models/{id}/adopt/stream
-- :warning: removed the media type `text/event-stream` for the response with the status `200`
-- :warning: deleted the `path` request parameter `id`
--  api operation id `adoptPortfolioModelStream` removed and replaced with `getPortfolioModelsIdAdoptStream`
--  api tag `uncategorised` added
--  api tag `portfolio` removed
--  added the media type `application/json` for the response with the status `200`
--  removed the non-success response with the status `403`
--  removed the non-success response with the status `404`
+- :warning: added the new path request parameter `id`
+-  api tag `portfolio-models` added
+-  api tag `uncategorised` removed
+
+
+### GET /portfolio/master_record
+-  endpoint added
 
 
 ### POST /rank/move
--  endpoint added
+- :warning: added required request body
+-  api tag `rank` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the required property `new_position` to the response with the `200` status
+-  added the required property `row_id` to the response with the `200` status
+-  added the required property `scope` to the response with the `200` status
 
 
 ### GET /risks/summary
--  endpoint added
+-  api tag `risks` added
+-  api tag `uncategorised` removed
 
 
 ### GET /roles
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### POST /roles
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### GET /roles/creatable
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### GET /roles/permissions/catalogue
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### DELETE /roles/{id}
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### GET /roles/{id}
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### PATCH /roles/{id}
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### DELETE /roles/{id}/permissions
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### GET /roles/{id}/permissions
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
 ### POST /roles/{id}/permissions
-- :warning: api path removed without deprecation
+-  endpoint added
 
 
-### GET /sprints
-- :warning: api path removed without deprecation
+### GET /tenant-settings
+-  endpoint added
 
 
-### POST /sprints
-- :warning: api path removed without deprecation
+### PATCH /tenant-settings
+-  endpoint added
 
 
-### DELETE /sprints/{id}
-- :warning: api path removed without deprecation
+### GET /timeboxes/milestones
+-  endpoint added
 
 
-### GET /sprints/{id}
-- :warning: api path removed without deprecation
+### POST /timeboxes/milestones
+-  endpoint added
 
 
-### PATCH /sprints/{id}
-- :warning: api path removed without deprecation
+### DELETE /timeboxes/milestones/{id}
+-  endpoint added
 
 
-### GET /subscription/layers
-- :warning: api path removed without deprecation
+### GET /timeboxes/milestones/{id}
+-  endpoint added
 
 
-### PATCH /subscription/layers/batch
-- :warning: api path removed without deprecation
+### PATCH /timeboxes/milestones/{id}
+-  endpoint added
 
 
 ### GET /timeboxes/releases
+-  api tag `timeboxes` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+
+
+### POST /timeboxes/releases
+-  endpoint added
+
+
+### POST /timeboxes/releases/bulk-create
+-  endpoint added
+
+
+### GET /timeboxes/releases/columns
+-  endpoint added
+
+
+### DELETE /timeboxes/releases/{id}
 -  endpoint added
 
 
 ### GET /timeboxes/releases/{id}
+- :warning: added the new path request parameter `id`
+-  api tag `timeboxes` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+
+
+### PUT /timeboxes/releases/{id}
 -  endpoint added
 
 
 ### GET /timeboxes/sprints
+-  api tag `timeboxes` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+
+
+### POST /timeboxes/sprints
+-  endpoint added
+
+
+### POST /timeboxes/sprints/bulk-create
+-  endpoint added
+
+
+### GET /timeboxes/sprints/columns
+-  endpoint added
+
+
+### DELETE /timeboxes/sprints/{id}
 -  endpoint added
 
 
 ### GET /timeboxes/sprints/{id}
+- :warning: added the new path request parameter `id`
+-  api tag `timeboxes` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+
+
+### PUT /timeboxes/sprints/{id}
+-  endpoint added
+
+
+### POST /timeboxes/sprints/{id}/close
+-  endpoint added
+
+
+### POST /timeboxes/sprints/{id}/start
 -  endpoint added
 
 
 ### GET /topology/grants/me
+- :warning: the response's body type/format changed from `object`/`` to `array`/`` for status `200`
+-  api tag `topology` added
+-  api tag `uncategorised` removed
+
+
+### GET /topology/users/{userId}/grants
 -  endpoint added
-
-
-### GET /topology/levels
-- :warning: api path removed without deprecation
-
-
-### POST /topology/levels
-- :warning: api path removed without deprecation
-
-
-### PATCH /topology/levels/{id}
-- :warning: api path removed without deprecation
-
-
-### PUT /topology/nodes/{id}/view-state
-- :warning: api path removed without deprecation
 
 
 ### PUT /topology/view-state
--  endpoint added
-
-
-### POST /user-stories
--  api path removed with deprecation
-
-
-### DELETE /user-stories/{id}
--  api path removed with deprecation
-
-
-### GET /user-stories/{id}
--  api path removed with deprecation
-
-
-### PATCH /user-stories/{id}
--  api path removed with deprecation
-
-
-### GET /work-item-templates
-- :warning: api path removed without deprecation
-
-
-### POST /work-item-templates
-- :warning: api path removed without deprecation
-
-
-### GET /work-item-templates/{id}
-- :warning: api path removed without deprecation
-
-
-### POST /work-item-templates/{id}/fields
-- :warning: api path removed without deprecation
-
-
-### DELETE /work-item-templates/{id}/fields/{field_library_id}
-- :warning: api path removed without deprecation
+- :warning: added required request body
+-  api tag `topology` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
 
 
 ### GET /work-items
--  endpoint added
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `500`
+-  added the required property `count` to the response with the `200` status
+-  added the required property `releases` to the response with the `200` status
 
 
 ### POST /work-items
--  endpoint added
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the success response with the status `201`
 
 
 ### POST /work-items/bulk
+- :warning: added required request body
+- :warning: removed the success response with the status `200`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the success response with the status `201`
+
+
+### GET /work-items/by-ids
+-  endpoint added
+
+
+### GET /work-items/columns
+-  endpoint added
+
+
+### GET /work-items/facets
 -  endpoint added
 
 
 ### GET /work-items/flow-states
--  endpoint added
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the new optional `query` request parameter `artefact_type_id`
 
 
 ### GET /work-items/summary
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+
+
+### GET /work-items/types/{typeId}/fields
 -  endpoint added
 
 
 ### DELETE /work-items/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the success response with the status `204`
 
 
 ### GET /work-items/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
 
 
 ### PATCH /work-items/{id}
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: added required request body
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
 
 
 ### GET /work-items/{id}/children
--  endpoint added
+- :warning: added the new path request parameter `id`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
 
 
 ### GET /work-items/{id}/field-values
--  endpoint added
+- :warning: added the new path request parameter `id`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
 
 
 ### PUT /work-items/{id}/field-values
--  endpoint added
+- :warning: added the new path request parameter `id`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
 
 
 ### DELETE /work-items/{id}/field-values/{field_library_id}
+- :warning: added the new path request parameter `field_library_id`
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `work-items` added
+-  api tag `uncategorised` removed
+-  added the success response with the status `204`
+
+
+### GET /workspace-settings
 -  endpoint added
 
 
-### GET /workspace/{id}/fields
-- :warning: api path removed without deprecation
-
-
-### GET /workspace/{id}/portfolio/layers
-- :warning: api path removed without deprecation
+### PATCH /workspace-settings
+-  endpoint added
 
 
 ### GET /workspaces
-- :warning: api path removed without deprecation
+-  endpoint added
+
+
+### POST /workspaces
+-  endpoint added
 
 
 ### DELETE /workspaces/{id}
+- :warning: added the new path request parameter `id`
+- :warning: removed the success response with the status `200`
+-  api tag `workspaces` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the success response with the status `204`
+
+
+### PATCH /workspaces/{id}
+-  endpoint added
+
+
+### POST /workspaces/{id}/archive
 -  endpoint added
 
 
 ### GET /workspaces/{id}/fields
+- :warning: added the new path request parameter `id`
+-  api tag `workspaces` added
+-  api tag `uncategorised` removed
+-  added the non-success response with the status `400`
+-  added the non-success response with the status `403`
+-  added the non-success response with the status `404`
+-  added the non-success response with the status `500`
+-  added the required property `fields` to the response with the `200` status
+-  added the required property `workspace_id` to the response with the `200` status
+
+
+### POST /workspaces/{id}/fields
+-  endpoint added
+
+
+### DELETE /workspaces/{id}/fields/{field_id}
+-  endpoint added
+
+
+### PATCH /workspaces/{id}/fields/{field_id}
 -  endpoint added
 
 
 ### GET /workspaces/{id}/portfolio/layers
--  endpoint added
+- :warning: added the new path request parameter `id`
+- :warning: the response's body type/format changed from `object`/`` to `array`/`` for status `200`
+-  api tag `workspaces` added
+-  api tag `uncategorised` removed
 
 
 ### PATCH /workspaces/{id}/portfolio/layers/batch
+- :warning: added the new path request parameter `id`
+- :warning: added required request body
+- :warning: the response's body type/format changed from `object`/`` to `array`/`` for status `200`
+-  api tag `workspaces` added
+-  api tag `uncategorised` removed
+
+
+### POST /workspaces/{id}/restore
 -  endpoint added
 
 
-### GET /ws
-- :warning: api path removed without deprecation
+### GET /workspaces/{workspaceId}/webhooks
+-  endpoint added
+
+
+### POST /workspaces/{workspaceId}/webhooks
+-  endpoint added
+
+
+### DELETE /workspaces/{workspaceId}/webhooks/{webhookId}
+-  endpoint added
+
+
+### GET /workspaces/{workspaceId}/webhooks/{webhookId}
+-  endpoint added
+
+
+### PATCH /workspaces/{workspaceId}/webhooks/{webhookId}
+-  endpoint added
 
 
 

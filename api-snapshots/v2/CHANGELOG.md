@@ -11,3 +11,7 @@ Snapshot of openapi-v2.yaml at fbe0ea1. Breaking changes: no.
 ## v3 — 2026-05-19
 
 Snapshot of samanthaAPI.yaml at c32bd04. Breaking changes: no.
+
+## v4 — 2026-05-24
+
+Snapshot of samanthaAPI.yaml at 82d3aed1. Breaking changes: no.
