@@ -7,7 +7,7 @@ import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Table from "@/app/components/Table";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { ApiError } from "@/app/lib/api";
 import { workspacesApi, emitWorkspacesChanged, type Workspace } from "@/app/lib/workspacesApi";
 import { admin } from "@/app/lib/apiSite";
@@ -319,19 +319,20 @@ function CreateWorkspaceModal({
 
 export default function WorkspacesPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const canAccess = useHasPermission("workspace.archive");
+  // PLA062 S14: identity + permissions via Sentinel.
+  const { sentinel_user, sentinel_can } = useSentinel();
+  const canAccess = sentinel_can("workspace.archive");
   const router = useRouter();
 
   useEffect(() => {
-    if (user && !canAccess) router.replace("/workspace-admin");
-  }, [user, canAccess, router]);
+    if (sentinel_user && !canAccess) router.replace("/workspace-admin");
+  }, [sentinel_user, canAccess, router]);
 
-  if (!user || !canAccess) return null;
+  if (!sentinel_user || !canAccess) return null;
 
-  const canArchive      = useHasPermission("workspace.archive");
-  const canViewArchived = useHasPermission("workspace.view_archived");
-  const canRestore      = useHasPermission("workspace.restore");
+  const canArchive      = sentinel_can("workspace.archive");
+  const canViewArchived = sentinel_can("workspace.view_archived");
+  const canRestore      = sentinel_can("workspace.restore");
 
   const [rows, setRows]               = useState<Workspace[] | null>(null);
   const [archivedRows, setArchivedRows] = useState<Workspace[] | null>(null);

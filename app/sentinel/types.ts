@@ -39,6 +39,20 @@ export interface SentinelTenant {
 }
 
 /**
+ * Workspace-level settings absorbed by Sentinel mid-S14 (PLA062
+ * revision-history 2026-05-24). Carries the writer surface that
+ * `workspace-admin/workspace-details/page.tsx` and the theme bootstrap
+ * use to refresh per-workspace cache after a successful PUT.
+ */
+export interface SentinelWorkspaceSettings {
+  tenant_name?: string;
+  /** Theme pack id (e.g. "vector-mono"). */
+  theme_pack?: string;
+  /** Arbitrary forward-compat slot for additional settings fields. */
+  [key: string]: unknown;
+}
+
+/**
  * The full state bag exposed by useSentinel(). All fields are read-
  * only views; mutate via the action methods.
  *
@@ -64,6 +78,9 @@ export interface SentinelState {
   sentinel_scope_up: boolean;
   sentinel_scope_down: boolean;
 
+  // Workspace-settings slice (absorbed mid-S14)
+  sentinel_settings: SentinelWorkspaceSettings | null;
+
   // Derived
   sentinel_workspace_in_sync: boolean;
   sentinel_loading: boolean;
@@ -71,8 +88,12 @@ export interface SentinelState {
   // Actions
   /** Switch to a different tenant — re-mints JWT + reloads grants atomically. */
   sentinel_switch_tenant: (tenantId: string) => Promise<void>;
+  /** Switch to a different workspace within the current tenant — re-mints JWT with new workspace_id claim. */
+  sentinel_switch_workspace: (workspaceId: string) => Promise<void>;
   /** Set focus node — persists to users.default_focus_node_id on the server. */
   sentinel_set_focus: (nodeId: string | null) => Promise<void>;
+  /** Persist workspace settings (theme, tenant_name, prefs) to server + refresh local cache. */
+  sentinel_set_settings: (settings: SentinelWorkspaceSettings) => Promise<void>;
   /** Returns true if the user holds the named permission. */
   sentinel_can: (code: SentinelPermission) => boolean;
   /** Force a reload of the full Sentinel boot payload. */
@@ -92,4 +113,8 @@ export interface SentinelBootPayload {
   tenant: SentinelTenant;
   grants: SentinelGrant[];
   tenant_root: string;
+  /** Optional in the wire shape so the backend can ship boot without
+   *  settings during the absorption rollout (S14 → S22). When absent,
+   *  the provider leaves sentinel_settings at null. */
+  settings?: SentinelWorkspaceSettings;
 }

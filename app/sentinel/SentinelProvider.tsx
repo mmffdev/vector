@@ -31,7 +31,9 @@ import { parseFocusFromURL } from "@/app/lib/shareableParams";
 import {
   fetchBoot,
   postSwitchTenant,
+  postSwitchWorkspace,
   putFocus,
+  putSettings,
   sentinel_api_call as apiCall,
   setUnauthorizedHandler,
 } from "./sentinel_api";
@@ -42,6 +44,7 @@ import type {
   SentinelState,
   SentinelTenant,
   SentinelUser,
+  SentinelWorkspaceSettings,
 } from "./types";
 
 // ---------------------------------------------------------------------
@@ -60,6 +63,8 @@ interface InternalState {
   focus_override: string | null;
   /** URL ?focus= sniffed once on mount; null if absent or invalid. */
   url_focus: string | null;
+  /** Workspace-level settings (theme, tenant_name, …) — absorbed mid-S14. */
+  settings: SentinelWorkspaceSettings | null;
   loading: boolean;
 }
 
@@ -71,6 +76,7 @@ const initialState: InternalState = {
   tenant_root: null,
   focus_override: null,
   url_focus: null,
+  settings: null,
   loading: true,
 };
 
@@ -78,6 +84,7 @@ type Action =
   | { type: "boot_loaded"; payload: SentinelBootPayload }
   | { type: "set_focus"; nodeId: string | null }
   | { type: "set_url_focus"; nodeId: string | null }
+  | { type: "set_settings"; settings: SentinelWorkspaceSettings }
   | { type: "loading_start" }
   | { type: "loading_done" };
 
@@ -92,6 +99,7 @@ function reducer(state: InternalState, action: Action): InternalState {
         grants: p.grants,
         permissions: new Set(p.user.permissions),
         tenant_root: p.tenant_root,
+        settings: p.settings ?? state.settings,
         loading: false,
       };
     }
@@ -99,6 +107,8 @@ function reducer(state: InternalState, action: Action): InternalState {
       return { ...state, focus_override: action.nodeId };
     case "set_url_focus":
       return { ...state, url_focus: action.nodeId };
+    case "set_settings":
+      return { ...state, settings: action.settings };
     case "loading_start":
       return { ...state, loading: true };
     case "loading_done":
@@ -174,9 +184,24 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "boot_loaded", payload });
   }, []);
 
+  const switchWorkspace = useCallback(async (workspaceId: string) => {
+    dispatch({ type: "loading_start" });
+    const payload = await postSwitchWorkspace(workspaceId);
+    dispatch({ type: "boot_loaded", payload });
+  }, []);
+
   const setFocus = useCallback(async (nodeId: string | null) => {
     dispatch({ type: "set_focus", nodeId });
     await putFocus(nodeId);
+  }, []);
+
+  const setSettings = useCallback(async (settings: SentinelWorkspaceSettings) => {
+    // Optimistic: update local cache immediately; the server PUT
+    // returns the saved record which we then re-dispatch so any
+    // server-side massaging (defaults, normalisation) lands in state.
+    dispatch({ type: "set_settings", settings });
+    const saved = await putSettings(settings);
+    dispatch({ type: "set_settings", settings: saved });
   }, []);
 
   // ---------------------------------------------------------------
@@ -200,10 +225,13 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       sentinel_focus_node: focus_node,
       sentinel_scope_up: true,
       sentinel_scope_down: true,
+      sentinel_settings: state.settings,
       sentinel_workspace_in_sync: workspaceInSync,
       sentinel_loading: state.loading,
       sentinel_switch_tenant: switchTenant,
+      sentinel_switch_workspace: switchWorkspace,
       sentinel_set_focus: setFocus,
+      sentinel_set_settings: setSettings,
       sentinel_can: (code: SentinelPermission) => state.permissions.has(code),
       sentinel_reload: reload,
       sentinel_api_call: async (input, init) => {
@@ -215,7 +243,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         });
       },
     };
-  }, [state, switchTenant, setFocus, reload]);
+  }, [state, switchTenant, switchWorkspace, setFocus, setSettings, reload]);
 
   return <SentinelCtx.Provider value={value}>{children}</SentinelCtx.Provider>;
 }

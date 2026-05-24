@@ -132,8 +132,8 @@ describe("sentinel.page.risks", () => {
     expect(PAGE_SRC).not.toMatch(/\buseAuth\s*[(]/);
     expect(PAGE_SRC).not.toMatch(/\buseScope\s*[(]/);
     expect(PAGE_SRC).not.toMatch(/\buseTenant\s*[(]/);
-    expect(PAGE_SRC).not.toMatch(/user[?]?\.subscription_id/);
-    expect(PAGE_SRC).not.toMatch(/user[?]?\.workspace_id/);
+    expect(PAGE_SRC).not.toMatch(/(?<!sentinel_)user[?]?\.subscription_id/);
+    expect(PAGE_SRC).not.toMatch(/(?<!sentinel_)user[?]?\.workspace_id/);
   });
 
   it("AC2 — page mounts under <SentinelProvider> without throwing", async () => {

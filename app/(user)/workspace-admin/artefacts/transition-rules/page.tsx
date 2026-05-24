@@ -10,9 +10,7 @@ import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import OrbitView from "@/app/components/flow-rules/OrbitView";
 import { flowStatesApi, type FlowGroup, type FlowTransition, type FlowsResponse } from "@/app/lib/flowStatesApi";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
-import { useTenantName } from "@/app/contexts/TenantContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 function groupByType(groups: FlowGroup[]): Map<string, { name: string; flows: FlowGroup[] }> {
@@ -75,16 +73,17 @@ function TypeSection({
 }
 
 export default function TransitionRulesPage() {
-  const { user } = useAuth();
-  const activeWorkspaceId = useActiveWorkspace();
-  const canManageFlows = useHasPermission("flows.manage");
+  // PLA062 S14: identity + tenant + permissions via Sentinel.
+  const { sentinel_user, sentinel_tenant, sentinel_can } = useSentinel();
+  const activeWorkspaceId = sentinel_user?.workspace_id ?? null;
+  const canManageFlows = sentinel_can("flows.manage");
   const router = useRouter();
-  const workspaceName = useTenantName() || "ACME Bank Workspace";
+  const workspaceName = sentinel_tenant?.name || "ACME Bank Workspace";
   const { full } = usePageTitle();
 
   useEffect(() => {
-    if (user && !canManageFlows) router.replace("/workspace-admin");
-  }, [user, canManageFlows, router]);
+    if (sentinel_user && !canManageFlows) router.replace("/workspace-admin");
+  }, [sentinel_user, canManageFlows, router]);
 
   const [data, setData]   = useState<FlowsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +98,7 @@ export default function TransitionRulesPage() {
     }
   }, [activeWorkspaceId]);
 
-  useEffect(() => { if (user && canManageFlows) load(); }, [user, canManageFlows, load, activeWorkspaceId]);
+  useEffect(() => { if (sentinel_user && canManageFlows) load(); }, [sentinel_user, canManageFlows, load, activeWorkspaceId]);
 
   const handleReplaceGroup = useCallback((flowId: string, transitions: FlowTransition[]) => {
     setData((prev) => {
@@ -126,7 +125,7 @@ export default function TransitionRulesPage() {
     return { workByType, strategyByType, tocItems };
   }, [data]);
 
-  if (!user || !canManageFlows) return null;
+  if (!sentinel_user || !canManageFlows) return null;
 
   if (error) {
     return (

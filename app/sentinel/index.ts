@@ -22,4 +22,5 @@ export type {
   SentinelTenant,
   SentinelGrant,
   SentinelPermission,
+  SentinelWorkspaceSettings,
 } from "./types";

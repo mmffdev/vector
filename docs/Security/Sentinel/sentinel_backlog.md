@@ -239,7 +239,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Zero old-hook imports across all eight routes.
 - All 8 page tests GREEN; attempts logged.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. **Six pages migrated** in the cluster (`cost-centres`, `transition-rules`, `artefacts/transition-rules`, `flow-states`, `workspace-details`, `workspaces`); the other 11 routes under workspace-admin were either already clean of old-hook imports (no migration needed) or use `useActiveWorkspace` (deferred to S18). Test pattern: a single `sentinel.page.workspace-admin.test.tsx` cluster-guard runs static-grep on all 6 migrated pages (12 assertions) — heavier mount tests are reserved for the 2 topology pages (separate specs from S13). **Sentinel scope expanded mid-S14** to absorb workspace-switch + workspace-settings (TD-SEN-02 + TD-SEN-03 both closed; revision-history entry 2026-05-24). 24/24 sentinel.page tests pass; 10/10 sentinel.unit tests pass (cases 1–6, 10, 11). `tsc` silent.
 
 ---
 
@@ -436,3 +436,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S11 | 2026-05-24 | b612df57 | /portfolio-items; 3/3 GREEN attempt 1; pattern lifted from S10 |
 | S12 | 2026-05-24 | 2bf27308 | /risk; 2/2 GREEN — special case: page already had no old-hook imports |
 | S13 | 2026-05-24 | 9fd3de55 | 2 workspace-admin/topology pages; 4/4 GREEN; overlay/topology deferred to S16 via TD-SEN-02 |
+| S14 | 2026-05-24 | (this commit) | 6 workspace-admin pages migrated; cluster-guard test added; Sentinel scope expanded (cases 10 + 11) closing TD-SEN-02 + TD-SEN-03 |

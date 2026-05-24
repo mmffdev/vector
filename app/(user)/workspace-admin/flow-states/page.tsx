@@ -27,7 +27,7 @@ import { FaRegTrashCan } from "react-icons/fa6";
 import { notify } from "@/app/lib/toast";
 import { safeInk } from "@/app/lib/colourUtils";
 import { ColourPicker } from "@/app/components/ColourPicker";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import PageAnchorNav, { type AnchorNavItem } from "@/app/components/PageAnchorNav";
 import Panel from "@/app/components/Panel";
 import PageContent from "@/app/components/PageContent";
@@ -49,13 +49,15 @@ interface ExpanderSlot {
 }
 
 // Friendly workspace label — mirrors the derivation used in the sidebar so the
-// help copy matches the chrome the user already sees.
+// help copy matches the chrome the user already sees. PLA062 S14: now derived
+// from sentinel_tenant (the procurement-grade tenant entity), not the raw
+// subscription_id JWT claim.
 function useWorkspaceName(): string {
-  const { user } = useAuth();
-  if (!user) return "this workspace";
-  return user.subscription_id === "00000000-0000-0000-0000-000000000001"
+  const { sentinel_tenant } = useSentinel();
+  if (!sentinel_tenant) return "this workspace";
+  return sentinel_tenant.id === "00000000-0000-0000-0000-000000000001"
     ? "MMFFDev"
-    : user.subscription_id.slice(0, 8).toUpperCase();
+    : sentinel_tenant.id.slice(0, 8).toUpperCase();
 }
 
 const KIND_LABEL: Record<string, string> = {

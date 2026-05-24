@@ -30,8 +30,7 @@ import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UnsavedChangesBar from "@/app/components/UnsavedChangesBar";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
-import { useTenant } from "@/app/contexts/TenantContext";
+import { useSentinel } from "@/app/sentinel";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
@@ -312,17 +311,24 @@ function FeatureToggle({
 }
 
 export default function WorkspaceDetailsPage() {
-  const { user } = useAuth();
-  const canAccess = useHasPermission("workspace.archive");
-  const { setSettings: setTenantCtx } = useTenant();
+  // PLA062 S14: identity + permissions + workspace-settings via Sentinel.
+  const { sentinel_user, sentinel_can, sentinel_set_settings } = useSentinel();
+  const canAccess = sentinel_can("workspace.archive");
+  // Adapter: keep the legacy "setTenantCtx" name in this file so the
+  // page body's existing PUT-then-refresh calls don't all need renaming.
+  // Sentinel's setter persists AND refreshes local cache; the previous
+  // useTenant().setSettings only did local cache. The server PUT used to
+  // happen separately; consolidating it here is the substrate ownership
+  // benefit of TD-SEN-03 paydown.
+  const setTenantCtx = sentinel_set_settings;
   const router = useRouter();
   const { full } = usePageTitle();
 
   useEffect(() => {
-    if (user && !canAccess) router.replace("/workspace-admin");
-  }, [user, canAccess, router]);
+    if (sentinel_user && !canAccess) router.replace("/workspace-admin");
+  }, [sentinel_user, canAccess, router]);
 
-  if (!user || !canAccess) return null;
+  if (!sentinel_user || !canAccess) return null;
 
   const [original, setOriginal] = useState<FormState | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
@@ -375,7 +381,7 @@ export default function WorkspaceDetailsPage() {
     setSaving(true);
     try {
       const fresh = await workspaceSettingsApi.patch({ clear_overrides: [field] });
-      setTenantCtx(fresh);
+      setTenantCtx(fresh as unknown as Parameters<typeof setTenantCtx>[0]);
       const seeded = fromServer(fresh);
       setOriginal(seeded);
       setForm(cloneState(seeded));
@@ -421,7 +427,11 @@ export default function WorkspaceDetailsPage() {
     setSaving(true);
     try {
       const fresh = await workspaceSettingsApi.patch(patch);
-      setTenantCtx(fresh);
+      // Cast through unknown — WorkspaceSettings is a closed-shape
+      // interface, SentinelWorkspaceSettings has an index signature;
+      // the structural mismatch is harmless because Sentinel preserves
+      // every field via its [key: string]: unknown slot.
+      setTenantCtx(fresh as unknown as Parameters<typeof setTenantCtx>[0]);
       const seeded = fromServer(fresh);
       setOriginal(seeded);
       setForm(cloneState(seeded));
@@ -471,7 +481,7 @@ export default function WorkspaceDetailsPage() {
     );
   }
 
-  const subId = subscriptionId.current ?? user?.subscription_id ?? "";
+  const subId = subscriptionId.current ?? sentinel_user?.tenant_id ?? "";
 
   return (
     <PageContent>

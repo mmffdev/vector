@@ -22,6 +22,27 @@
 
 ## History (newest first)
 
+### 2026-05-24 — Sentinel scope expanded mid-S14: switchWorkspace + workspace settings absorbed
+
+**PLA / story.** PLA062 / mid-S14 (between commit `9fd3de55` and S14 resumption).
+**Decision.** Page-migration spike during S14 surfaced two adjacent surfaces that the original Sentinel scope (Identity + Tenant + Scope) didn't model: (1) workspace-within-tenant switch action used by `overlay/topology/page.tsx` (logged as TD-SEN-02 mid-S13); (2) workspace-settings writer used by `workspace-admin/workspace-details/page.tsx` (logged as TD-SEN-03 mid-S14). Per user direction (2026-05-24), Sentinel **absorbs both** rather than letting them spawn peer contexts.
+**Alternatives considered.**
+- **Defer to S16** (the original "log TD, migrate later" path) — rejected as accumulating debt and leaving migration story incomplete.
+- **Extract `WorkspaceSettingsContext` as a peer to Sentinel** — rejected by user direction. Sentinel becomes The Single Context Of Truth, even where the data is genuinely settings-shaped (theme, tenant_name, prefs). Cost: Sentinel grows in surface area; benefit: only one provider for consumers to know about.
+**Standard-ref.** Same control set as the baseline (NIST 800-53 AC-3/AC-4, SOC 2 CC6.1/CC6.6). Workspace settings aren't a security control by themselves but live in the same provider that owns the tenant identity, which simplifies the SOC 2 "single source of truth" narrative.
+**Cost.** New action `sentinel_switch_workspace(workspaceID)`. New state slice `sentinel_settings: WorkspaceSettings`. New action `sentinel_set_settings(s)`. New `/sentinel/switch-workspace` backend endpoint OR reuse `/_site/auth/switch-workspace` via `sentinel_api`. Two new RED test cases (10, 11) in `sentinel_provider.test.tsx`. Estimated 1–2 hours before S14 resumes.
+**Note for future architects.** Settings ≠ identity is a defensible architectural boundary. Sentinel absorbing settings is a **pragmatic** choice biased to single-provider simplicity for consumers, made knowing the cost. If Sentinel grows beyond ~500 LOC of state, revisit splitting `WorkspaceSettingsContext` out as a peer — the lint contract will catch most of the regressions.
+**Commit(s).** (pending — to land with the two paydown commits)
+**Touched files (projected).**
+- `app/sentinel/types.ts` — add `sentinel_switch_workspace`, `sentinel_settings`, `sentinel_set_settings`
+- `app/sentinel/sentinel_api.ts` — add `postSwitchWorkspace`, `fetchSettings`, `putSettings`
+- `app/sentinel/SentinelProvider.tsx` — reducer cases + actions
+- `app/sentinel/__tests__/sentinel_provider.test.tsx` — cases 10 + 11
+- `docs/Security/Sentinel/sentinel_tech_debt.md` — TD-SEN-02 + TD-SEN-03 move to Resolved
+- `docs/Security/Sentinel/sentinel_backlog.md` — annotation in S14 status
+
+---
+
 ### 2026-05-24 — Workspace clamp absorbed into Sentinel (S05 substrate unification)
 
 **PLA / story.** PLA062 / S05.

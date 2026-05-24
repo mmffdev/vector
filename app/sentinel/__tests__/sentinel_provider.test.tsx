@@ -326,4 +326,132 @@ describe("sentinel.unit.SentinelProvider", () => {
     }).toThrow(/SentinelProvider/);
     spy.mockRestore();
   });
+
+  // -------------------------------------------------------------------
+  // Case 10 — sentinel_switch_workspace (workspace-within-tenant)
+  // -------------------------------------------------------------------
+  // Added mid-S14 (PLA062 revision-history 2026-05-24) to close TD-SEN-02.
+  // tenant_id stays the same; workspace_id + grants refresh atomically.
+
+  it("Case 10 — sentinel_switch_workspace re-mints JWT for new workspace (tenant unchanged)", async () => {
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/switch-workspace")) {
+        return new Response(
+          JSON.stringify({
+            ...stubBoot(),
+            user: { ...FIXTURE_USER_A, workspace_id: "ws-new-uuid" },
+          }),
+          { status: 200 },
+        );
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    let p: Promise<void> | null = null;
+    function Trigger() {
+      const s = useSentinel();
+      return (
+        <button
+          data-testid="switch-ws"
+          onClick={() => {
+            p = s.sentinel_switch_workspace("ws-new-uuid");
+          }}
+        >
+          switch
+        </button>
+      );
+    }
+
+    function WorkspaceProbe() {
+      const s = useSentinel();
+      return <span data-testid="workspace-id">{s.sentinel_user?.workspace_id ?? ""}</span>;
+    }
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <StateProbe />
+          <WorkspaceProbe />
+          <Trigger />
+        </SentinelProvider>,
+      );
+    });
+
+    await act(async () => {
+      screen.getByTestId("switch-ws").click();
+      await p;
+    });
+
+    // Tenant unchanged, workspace changed.
+    expect(screen.getByTestId("tenant-id").textContent).toBe(FIXTURE_TENANT_A.id);
+    expect(screen.getByTestId("workspace-id").textContent).toBe("ws-new-uuid");
+  });
+
+  // -------------------------------------------------------------------
+  // Case 11 — sentinel_set_settings (workspace-settings writer)
+  // -------------------------------------------------------------------
+  // Added mid-S14 (PLA062 revision-history 2026-05-24) to close TD-SEN-03.
+  // Optimistic update + server PUT + post-PUT reconciliation in one action.
+
+  it("Case 11 — sentinel_set_settings persists workspace settings and refreshes local state", async () => {
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/settings")) {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        // Echo back the body — server-side normalisation is identity here.
+        return new Response(JSON.stringify(body), { status: 200 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(JSON.stringify(stubBoot()), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    let p: Promise<void> | null = null;
+    function Trigger() {
+      const s = useSentinel();
+      return (
+        <button
+          data-testid="set-settings"
+          onClick={() => {
+            p = s.sentinel_set_settings({ tenant_name: "Renamed Tenant", theme_pack: "atlas" });
+          }}
+        >
+          save
+        </button>
+      );
+    }
+
+    function SettingsProbe() {
+      const s = useSentinel();
+      return (
+        <>
+          <span data-testid="settings-name">{(s.sentinel_settings?.tenant_name as string) ?? ""}</span>
+          <span data-testid="settings-theme">{(s.sentinel_settings?.theme_pack as string) ?? ""}</span>
+        </>
+      );
+    }
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <StateProbe />
+          <SettingsProbe />
+          <Trigger />
+        </SentinelProvider>,
+      );
+    });
+
+    await act(async () => {
+      screen.getByTestId("set-settings").click();
+      await p;
+    });
+
+    expect(screen.getByTestId("settings-name").textContent).toBe("Renamed Tenant");
+    expect(screen.getByTestId("settings-theme").textContent).toBe("atlas");
+  });
 });

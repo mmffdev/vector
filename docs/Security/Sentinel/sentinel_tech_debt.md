@@ -24,19 +24,25 @@
 
 ## Active entries
 
-### TD-SEN-02 — `sentinel_switch_workspace` action missing (workspace-within-tenant switch)
-
-**Severity.** S2 (workflow gap — blocks overlay/topology migration).
-**Trigger.** S16 (remaining `(user)/*` pages migration) — at that point the overlay/topology page is the last consumer of the legacy `AuthContext.switchWorkspace`, and Sentinel needs a peer action so S22 can delete AuthContext.
-**Discovered by.** S13 (`/topology` migration spike).
-**Standard-ref.** NIST 800-53 AC-3 — same control axis as `sentinel_switch_tenant`, just at a finer grain.
-**Description.** `sentinel_switch_tenant(tenantId)` swaps the whole identity (subscription_id, role, grants). The overlay/topology page needs the **finer** "switch workspace within current tenant" action — workspace_id changes, subscription_id stays. AuthContext's existing `switchWorkspace(workspaceID)` does this today via POST `/_site/auth/switch-workspace`. Sentinel needs a peer action `sentinel_switch_workspace(workspaceID)` plus backend `/sentinel/switch-workspace` (or reuse `/_site/auth/switch-workspace` through `sentinel_api`).
-**Compensating control.** Until paid down, S13 ships only the two `workspace-admin/topology*` page migrations (which don't need switchWorkspace). The overlay/topology page stays on `useAuth().switchWorkspace` and migrates in S16 once this debt is paid.
-**Pay-down plan.** Before S16: extend `SentinelState` with `sentinel_switch_workspace(workspaceID): Promise<void>`, implement via `sentinel_api.postSwitchWorkspace`, add a unit-test case (10) to `sentinel_provider.test.tsx` covering the atomicity contract (same as tenant switch but workspace-scoped). When S16 lands the overlay page migration, this entry moves to Resolved.
+(none — target state)
 
 ---
 
 ## Resolved entries
+
+### TD-SEN-03 — Workspace-settings writer surface absorbed by Sentinel (RESOLVED mid-S14)
+
+**Severity at log time.** S2 (workflow gap — blocked workspace-details migration).
+**Resolution date.** 2026-05-24.
+**Resolution.** Per user direction (2026-05-24 scope-expansion), Sentinel absorbed the workspace-settings writer surface: new `sentinel_settings: SentinelWorkspaceSettings | null` state slice + `sentinel_set_settings(s)` action that does optimistic update + server PUT + post-PUT reconciliation in one call. Test case 11 in `sentinel_provider.test.tsx` pins the contract. `workspace-admin/workspace-details/page.tsx` migrated mid-S14 — replaced `useTenant().setSettings` with `useSentinel().sentinel_set_settings`. The remaining concern (Sentinel scope creep beyond identity) is noted in the revision-history entry for future architects: if Sentinel grows beyond ~500 LOC of state, revisit splitting `WorkspaceSettingsContext` out as a peer.
+**Commit.** (mid-S14, lands with the S14 cluster commit)
+
+### TD-SEN-02 — `sentinel_switch_workspace` action shipped (RESOLVED mid-S14)
+
+**Severity at log time.** S2 (workflow gap — blocked overlay/topology migration).
+**Resolution date.** 2026-05-24.
+**Resolution.** Shipped `sentinel_switch_workspace(workspaceId): Promise<void>` action paired with the `postSwitchWorkspace` HTTP wrapper and `/sentinel/switch-workspace` backend endpoint contract. Test case 10 in `sentinel_provider.test.tsx` pins atomicity (tenant_id unchanged, workspace_id + grants refresh in one dispatch). Pay-down happened earlier than planned (mid-S14 rather than pre-S16) because S14 was already paused for the TD-SEN-03 absorption — bundling kept the Sentinel scope-expansion to one revision-history entry.
+**Commit.** (mid-S14, lands with the S14 cluster commit)
 
 ### TD-SEN-01 — Production Resolver implementation (RESOLVED at S05.3)
 

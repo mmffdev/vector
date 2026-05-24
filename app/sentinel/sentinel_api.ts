@@ -22,7 +22,7 @@
  */
 
 import { apiSite, ApiError } from "@/app/lib/api";
-import type { SentinelBootPayload } from "./types";
+import type { SentinelBootPayload, SentinelWorkspaceSettings } from "./types";
 
 export type UnauthorizedHandler = () => void;
 
@@ -60,6 +60,33 @@ export async function postSwitchTenant(tenantId: string): Promise<SentinelBootPa
   return sentinelCall<SentinelBootPayload>("/sentinel/switch-tenant", {
     method: "POST",
     body: JSON.stringify({ tenant_id: tenantId }),
+  });
+}
+
+/**
+ * POST /sentinel/switch-workspace — re-mints JWT for a different
+ * workspace within the current tenant. tenant_id stays; workspace_id
+ * + grants refresh.
+ *
+ * Replaces the prior `AuthContext.switchWorkspace` after S14 (mid-S14
+ * scope expansion, PLA062 revision-history 2026-05-24).
+ */
+export async function postSwitchWorkspace(workspaceId: string): Promise<SentinelBootPayload> {
+  return sentinelCall<SentinelBootPayload>("/sentinel/switch-workspace", {
+    method: "POST",
+    body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+}
+
+/**
+ * PUT /sentinel/settings — persist workspace settings (theme, tenant_name,
+ * arbitrary forward-compat slots). Server returns the saved record so
+ * the provider's reducer can refresh sentinel_settings atomically.
+ */
+export async function putSettings(settings: SentinelWorkspaceSettings): Promise<SentinelWorkspaceSettings> {
+  return sentinelCall<SentinelWorkspaceSettings>("/sentinel/settings", {
+    method: "PUT",
+    body: JSON.stringify(settings),
   });
 }
 

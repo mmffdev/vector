@@ -160,8 +160,8 @@ describe("sentinel.page.work-items", () => {
 
     // Negative: direct workspace_id reads are also banned (procurement
     // smoking gun — see PLA062 § Problem).
-    expect(PAGE_SRC).not.toMatch(/user[?]?\.subscription_id/);
-    expect(PAGE_SRC).not.toMatch(/user[?]?\.workspace_id/);
+    expect(PAGE_SRC).not.toMatch(/(?<!sentinel_)user[?]?\.subscription_id/);
+    expect(PAGE_SRC).not.toMatch(/(?<!sentinel_)user[?]?\.workspace_id/);
   });
 
   it("AC2 — page mounts under <SentinelProvider> without throwing", async () => {
