@@ -1,0 +1,4 @@
+{
+  "_note": "lint:no-ghost-scope-ls-reads exemptions — production code MUST NOT read vector.scope.* localStorage keys (ScopeContext was deleted in PLA062 S22; the keys are stale ghost residue). Start empty. If anything is ever added here, it MUST carry a TD-* paydown entry in docs/c_tech_debt.md and a hard removal date.",
+  "exemptions": []
+}
