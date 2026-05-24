@@ -182,7 +182,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Page migration removes every `useAuth/useScope/useTenant` import from the page; only `useSentinel` remains. Verified by grep returning zero old-hook imports.
 - Page-test GREEN; attempts-to-green logged.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. **First Lane A page migration done; reference for S11–S16.** Three ACs: (1) static-grep source check for `useSentinel` + ban of old hooks + ban of direct `user.subscription_id`/`workspace_id` reads; (2) page mounts under `<SentinelProvider>` without throwing; (3) page calls `apiSite` once provider hydrates. Page migration: `useAuth/useScope` → single `useSentinel()` destructure; `user.subscription_id` → `sentinel_tenant.id`; `activeNodeId/direction` derived from `sentinel_focus_node/sentinel_scope_up/sentinel_scope_down`. Attempts-to-green = 3 (1: dangling jsdom error from `apiSite`-mock missing `getApiToken` + path-routing for `/sentinel/boot`; 2: 3 small tsc errors; 3: all GREEN).
 
 ---
 
@@ -432,3 +432,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S07 | 2026-05-24 | 67cd68d3 | 6 RED cases captured verbatim (vite import-resolution failure) |
 | S08 | 2026-05-24 | d20a1a5e | 8/8 GREEN attempt 1; provider + hook + barrel + 401-aware HTTP wrapper; `focus` allowlisted via shareableParams |
 | S09 | 2026-05-24 | d149a2cf | SentinelProvider mounted in (user) + (overlay) layouts; tsc silent; `Compiled successfully in 18.1s` — **GATE CLOSED** |
+| S10 | 2026-05-24 | (this commit) | First Lane A page; 3/3 GREEN; static-grep + mount + apiSite-fired ACs; reference for S11–S16 |

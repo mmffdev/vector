@@ -11,8 +11,7 @@ import { apiSite } from "@/app/lib/api";
 import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
-import { useAuth } from "@/app/contexts/AuthContext";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
@@ -21,8 +20,17 @@ import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_
 
 export default function WorkItemsPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const { activeNodeId, direction } = useScope();
+  // PLA062 S10: this page reads identity + tenant + scope from Sentinel.
+  // The `direction` field that ScopeContext used to expose is derived
+  // here from sentinel_scope_up / sentinel_scope_down (Rally idiom).
+  const {
+    sentinel_tenant,
+    sentinel_focus_node,
+    sentinel_scope_up,
+    sentinel_scope_down,
+  } = useSentinel();
+  const activeNodeId = sentinel_focus_node;
+  const direction = sentinel_scope_down ? "descend" : sentinel_scope_up ? "ascend" : "none";
   useHintOnce("WORK_ITEMS_FIRST_VISIT");
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
@@ -81,7 +89,7 @@ export default function WorkItemsPage() {
     void refetchSummary();
   }, [refetchSummary, activeNodeId, direction]);
 
-  const subscriptionID = user?.subscription_id ?? null;
+  const subscriptionID = sentinel_tenant?.id ?? null;
   const sprintID = filters.sprint_id || null;
   const topic = subscriptionID
     ? sprintID
