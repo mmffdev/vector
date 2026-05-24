@@ -305,6 +305,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 
 - **RF2.6.1** Record BEFORE/AFTER metrics in pattern doc `## Results` section. **BEFORE** (captured from main): `service.go=1929 LoC`, `handler.go=1167 LoC`, 17 exported ops, 1 pass-through pair, 16 call sites, 2 `hasWorkspace` branches. **AFTER** (populated post-Story-12): target 12 public methods (8 ops + 4 setters), 0 pass-through pairs, 0 branches, `handler.go ≤1050 LoC`. File `TD-SVC-DEPTH-PATTERN` S3 row in `docs/c_tech_debt.md` with cap (pattern doc link) + pay-down trigger (service is next substantially touched OR method count crosses 15) + **ranked candidate next-services list**: `workspaces` (2794 LoC, 14 methods — **adopt**, strongest fit), `users` (2057 LoC, 13 methods — **adopt**, watch auth coupling), `timeboxsprints` (**excluded** per audit — "appropriately shallow"), `portfoliomodels` (9083 LoC, 7 methods — **defer** until method count grows), `polymorphicrefs` (4 methods — **exclude**, too small to benefit). Story 13 closes the loop; converts one-off refactor into a reusable pattern. `[P2]` 🔵 IN FLIGHT
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
 
 ---
 
@@ -312,20 +313,78 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 ## FLOW1. Flow-State Kind & Pull-Eligibility Model
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
 
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
 Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `flow_states`. Pill name and kind align in the seed (Backlog/To Do/Doing/Completed/Accepted) so the lifecycle vocabulary is self-evident. Two orthogonal axes: `kind` answers "where in the lifecycle?" (`backlog | todo | in_progress | done | accepted | cancelled`); `is_pullable` answers "can the team take this from this state right now?". Compliance-gated teams use multiple `kind='todo'` pills (e.g. To Do → In Review → Approved) where only the final pill carries `is_pullable=true`. Standard agile teams keep the seed default — `Backlog` is PO shaping (validation relaxed); `To Do` is the single pullable state. Per-artefact PO-readiness is explicitly a future concern, not bundled here. `[P1]` 🔵 IN FLIGHT
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 ### FLOW1.1 Schema — kind widening + is_pullable flag
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **FLOW1.1.1** ~~Widen `flow_states.kind` CHECK constraint to `('backlog','todo','in_progress','done','accepted','cancelled')` — adds `backlog` as 6th primitive~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **FLOW1.1.2** ~~Add `flow_states.is_pullable BOOLEAN NOT NULL DEFAULT FALSE` — opt-in per pill; default false so new pills are non-pullable until consciously marked~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `aede1dd` (2026-05-18): fix(login): shift welcome column up 100px
@@ -339,6 +398,25 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **FLOW1.1.3** ~~Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
@@ -382,6 +460,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -428,6 +511,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -693,6 +781,31 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -866,6 +979,38 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1099,6 +1244,37 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1137,6 +1313,36 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1154,6 +1360,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -1211,6 +1418,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -1229,6 +1438,36 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 ### FLOW1.5 Reset to factory-default per artefact type
@@ -1240,6 +1479,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c890627` (2026-05-16): feat(flow-states-v2): orbit visualisation across all artefact types
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
 - **FLOW1.5.1** Snapshot tables in `vector_artefacts` (`flow_defaults`, `flow_state_defaults`, `flow_transition_defaults`) baked at seed time; idempotent rebuild from current live default flows `[P1]` ✅
 > Commit `4c21968` (2026-05-10): fix(FLOW1.5): canonical hardcoded snapshot — decouple from polluted live [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1261,6 +1501,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `51a0ae3` (2026-05-15): feat(ui): catalog <Table> header restyle + group rows + permissions tree-lines
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
@@ -1349,6 +1590,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 
 > Commit `442bd6c` (2026-05-10): docs(B22): refresh stale TYPE_PREFIX comment in custom-fields page
 > Commit `14d0c0c` (2026-05-12): feat(FE-GOV-0004): Transition Rules page + relocate flow surfaces to Workspace Settings L3 (PLA-0041)
@@ -1412,6 +1654,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d6f17f6` (2026-05-17): chore: stash working artefacts in repo — scratch correction prompt, flow-state v2 screenshots, risks seed, CircularAdditor props
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1488,6 +1733,37 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -1538,6 +1814,36 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1595,6 +1901,36 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -1707,6 +2043,20 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -1910,6 +2260,38 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -1956,6 +2338,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
 > Commit `dfcaa9e` (2026-05-18): feat(auth): HIBP breach-password check (k-anonymity) [B16.8.P4]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -2098,6 +2482,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -2166,6 +2553,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `89fc6fa` (2026-05-18): feat(frontend): route WS close codes 4001/4002 to hardLogout [B16.8.12]
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -2281,6 +2671,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -2410,6 +2809,12 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -2460,6 +2865,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -2473,6 +2881,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -2529,6 +2938,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2963,6 +3374,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -3006,6 +3419,7 @@ Full lifecycle management for tasks, bugs, epics.
   > - `POST   /artefacts` — create (was `POST /work-items`, `POST /portfolio-items`)
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
   > - `GET    /artefacts/:id` — read one
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
@@ -3013,13 +3427,19 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
   > - `PATCH  /artefacts/:id` — partial update (title, description, priority_id, owner_id, parent_id, field_values)
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > - `DELETE /artefacts/:id` — soft-delete (sets `archived_at`)
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > - `POST   /artefacts/:id/reprioritise` — change priority_id and/or position; fires realtime + audit
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > - `POST   /artefacts/:id/reparent` — change parent_id; clamp validates new parent in same tenant/workspace
 > Commit `f1f0af0` (2026-05-20): chore(hooks): regenerate scope back-refs + file index after session commits
 > Commit `2a8c661` (2026-05-21): feat(notifications): rules CRUD + per-tenant schema endpoint
@@ -3027,6 +3447,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2d4ee5b` (2026-05-20): feat(artefacts): PLA-0043 writer path — ?meg= topology pinning + X-Act-As
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
   > - `POST   /artefacts/:id/move` — change workspace_id (padmin-gated, rare)
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
@@ -3188,6 +3609,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > Today the answer to "what can padmin do?" is spread across `db/schema/088_roles_permissions.sql` + every follow-up migration that touched `roles_permissions` (100, 101, 142, …). Migrations using `WHERE p.code IN (...)` silently no-op when a code isn't in the `permissions` table — exactly why migration 142 reported success but granted nothing for `workspace.archive` / `flows.manage`. Build a read-only SQL view `v_role_capability_matrix` (roles × permissions × roles_permissions join) plus a `/dev/permissions-matrix` page rendering the grid. Highlights ungranted permissions that are referenced by `useHasPermission()` calls but missing from the catalogue.
   >
 - **B5.9** Single source-of-truth seed for role capabilities `[P3]`
@@ -3237,6 +3659,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `511b7cc` (2026-05-18): refactor(topology): route workspace lifecycle writes through topology.Service [RF1.5]
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -3244,6 +3667,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **B5.11** Migration: drop `pages_tags.pages_tags_min_auth_level` from the catalogue gate path (PLA-0053; column kept nullable for rollback). `pages_tags_is_admin_menu` is **kept** — still used by `UserAvatarMenu` to route avatar/notification buckets (separate concern from page-access gating). `[P2]`
 - **B5.12** Backend: remove `authLevelFor` / `TagsFor` tier filter / `CatalogFor` tier filter from `backend/internal/nav/registry.go`; `users_roles_pages` becomes the sole catalogue gate (PLA-0053) `[P2]`
 - **B5.13** Frontend: remove `deriveAuthLevel` + `userAuthLevel` filter from `app/redesign/ShellContext.tsx`; tag bucket appears iff it contains ≥1 page in `pages` array (PLA-0053) `[P2]`
@@ -3253,6 +3677,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -3268,6 +3693,34 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -3359,6 +3812,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -3456,6 +3910,12 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -3496,6 +3956,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -3532,6 +3995,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -3631,6 +4096,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -3683,6 +4150,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `627ddd1` (2026-05-18): feat(security): DOMPurify wraps on help-content render sites [B16.8.P2]
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `e8b9d66` (2026-05-21): feat(tree): cross-parent drops above/below; stripe-confined drag affordance; gray type-badge ramp
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
@@ -3812,6 +4280,12 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -4020,6 +4494,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -4106,6 +4582,28 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 
 - ✅ ~~**B16.8** Security hardening~~ — DONE 2026-05-18. All five phases shipped today. — full-stack codebase-grounded remediation before first external user. Five phases. ✅ **P1 done 2026-05-18** — MFA/TOTP shipped (B16.8.1–.5), session idle timeout via per-request `users_sessions` JOIN (B16.8.6 + B16.8.11), cookie flags hardened (B16.8.7), JWT `iss`/`aud` claims (B16.8.8), access-token TTL doc'd as defense-in-depth (B16.8.9), active sessions UI + step-up reauth (B16.8.10), WebSocket session enforcement (B16.8.12). ✅ **P2 done 2026-05-18** — CSP nonces enforced (TD-SEC-CSP-NONCES-SRI + TD-SEC-CSP-STYLE-INLINE both closed), DOMPurify wraps on `Header.tsx` + `HelpDocRenderer.tsx` (defense-in-depth over backend `SanitiseHelpBodyHTML` allowlist). ✅ **P3 done 2026-05-18** — Sentinel coordination layer (`app/contexts/Sentinel.tsx`): module-level `scopeReloadRef` registered by `ScopeContext` on every render, awaited by `AuthContext.switchWorkspace` after `applyLogin`; closes the JWT/scope desync window observed in DebugPanel; 6 f-sentinel tests green; tighter than the written plan (catalogues + `useActiveWorkspace` already coordinated correctly via existing `useActiveWorkspace`, no shims needed). ✅ **P4 done 2026-05-18** — HIBP k-anonymity breach-password check shipped (`backend/internal/auth/hibp.go`) gated by `HIBP_CHECK_MODE={disabled|telemetry|enforce}` (default disabled, fail-open on network errors, 3s timeout, `Add-Padding: true` for traffic-analysis resistance); wired into `ChangePassword` + both `ConfirmPasswordReset*` paths via `s.CheckPasswordNotBreached(ctx, newPwd, userID)`; new `Problem.Code=breached_password` + `AuthBreachedPassword` user message for enforce mode; 7 unit tests pinning prefix/suffix wire format, padded-row safety, non-200 / network / malformed-count error paths. Account lockout was already implemented (`failed_login_count`/`locked_until` on `users` + `LOCKOUT_THRESHOLD=5` + `LOCKOUT_DURATION=15min`) since the early auth phase. Redis-backed rate limiter deferred — current single-process `httprate.LimitByIP` is correct for the dev tier; trigger filed as TD-SEC-REDIS-DEPENDENCY (multi-replica deployment). Rollout to enforce filed as TD-SEC-HIBP-PROMOTE-TO-ENFORCE. ✅ **P5 done 2026-05-18** — Console-log audit: dropped 3 noisy debug calls in `app/contexts/ScopeContext.tsx`; 6 placeholder `console.log` handlers (CustomFieldsTree + p_ObjectTree) filed as TD-UI-PLACEHOLDER-HANDLERS (S4 — UX issue, not security). Audit-event alerting: new `backend/internal/alerting/` package with `Webhook` implementing `audit.Alerter`; `audit.Logger.Log` fans selected action codes (configured via `AUDIT_ALERT_ACTIONS` allowlist) to `AUDIT_ALERT_WEBHOOK_URL` via async POST with `X-Vector-Signature` HMAC-SHA256 (when `AUDIT_ALERT_SECRET` set); fail-open semantics (never blocks audit row INSERT, never propagates errors, never re-enters audit/alerting); 13 tests pass under `-race`. Default config in all envs: disabled (no URL = no-op). Wired in main.go after `audit.New(pool)`; startup logs the config via `Webhook.String()` (secret redacted). Standards basis: NIST SP 800-63B-4, OWASP ASVS 4.0, NCSC Cyber Security Design Principles (28 sub-principles), FCA PS21/3, UK GDPR Article 32. Implementation plan: `/Users/rick/.claude/plans/velvet-dreaming-hamming.md`. `[P1]`
 > Commit `17d39a5` (2026-05-22): feat(skills): <read> + <write> — handover continuity pair over handovers/
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -4114,12 +4612,22 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
   - ✅ ~~**B16.8.1** Backend TOTP core~~ `[P1]` > Commit 2026-05-18: `mfa.go` + `roletypes.User` MFA fields + `auth/sql.go` MFA constants; `go build ./...` clean.
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `61061ef` (2026-05-21): refactor(topology): split middleware.go by responsibility (COD002 W1)
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
   - ✅ ~~**B16.8.2** Login partial-auth gate~~ `[P1]` > Commit 2026-05-18: `SignChallengeToken`/`ParseChallengeToken` in `tokens.go`; `LoginResult.MFARequired`+`MFAChallengeToken`; `Login()` forks to challenge on `mfa_enrolled=true`; handler returns `mfa_challenge_resp`.
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -4228,6 +4736,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   - ✅ ~~**B16.10.4 [P2]** — Add audit-log entry for revoke (actor + target key, success and denial).~~ [PLA060]
     - ✅ ~~AC: handler calls existing audit service with action `api_key.revoke`, actor = user id, target = key id, outcome = `success|denied`.~~
     - ✅ ~~AC: cross-tenant attempt records `outcome="denied"` with reason `cross_tenant_or_missing`.~~
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
     - ✅ ~~AC: test asserts exactly one audit row exists per call (success and denial paths).~~
     - ✅ ~~AC: audit row contains both subscription IDs (actor's and target's) for cross-tenant denials — forensic value.~~
   - ✅ ~~**B16.10.5 [P2]** — File TD-AUTH-KEYS-002 documenting the previous cross-tenant gap as resolved.~~ [PLA060]
@@ -4427,9 +4936,12 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 
 > Commit `17e5960` (2026-05-12): feat(PLA-0043): migration 046 — artefacts.topology_node_id [FE-POR-API-0002]
 > Commit `cc38e98` (2026-05-12): docs(PLA-0043): handover for cross-machine continuation [FE-POR-API-0002]
@@ -4516,6 +5028,24 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -4536,6 +5066,37 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -4643,6 +5204,10 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -4653,6 +5218,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
 ---
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
@@ -4680,6 +5246,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
@@ -4860,13 +5428,17 @@ Manage per-role access to pages and features. Control what each role (user, padm
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
   > Last checked: 2026-05-19
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
 - **B20.4.9** Profile image upload `[P4 — deferred]`. AC: column stub from B20.4.2 promoted; `POST /_site/users/{id}/profile-image` (multipart, ≤2 MB, png/jpeg, MIME-sniff server-side); avatar column on list renders image with initials fallback; audit row on upload/delete. `[P4]`
 - ✅ ~~**B20.4.10** Disabled column read-only checkbox (Rally pattern). AC: `/users` list shows Disabled state as read-only checkbox; toggle action stays in edit-row panel only; reduces accidental-disable risk; server-side check unchanged.~~ `[P3]`
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
 > Commit `af73778` (2026-05-21): feat(notifications): rules engine scaffold — JIRA/Rally model
 > Commit `56e26ad` (2026-05-21): feat(dev-reporting): DB-backed report viewer at /dev/reporting
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > Shipped 2026-05-19 in commit 6530c13. Status pill replaced with read-only checkbox; toggle action stays in the inline edit-row panel staged behind "Confirm changes". Also added `<PageDescription>` since the file moved out of legacy `/user-management/page.tsx`.
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Last checked: 2026-05-19
@@ -4878,6 +5450,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c53a94a` (2026-05-21): fix(notifications): rules are workspace-scoped; target is now type name
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
 
 > Commit `fb5f353` (2026-05-20): feat(rbac): PLA-0053 — collapse page-access to single users_roles_pages gate [B5.11–B5.16]
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
@@ -5130,6 +5703,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -5295,6 +5876,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -5364,6 +5952,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -5477,6 +6067,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -5615,6 +6210,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -5764,6 +6363,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -5850,6 +6457,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `d276da65` (2026-05-23): feat(apikeys): tenant-scope revoke + scope enforcement on /samantha/v2 [PLA060 B16.10 + B16.11]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -6022,6 +6633,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -6159,6 +6779,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -6276,6 +6902,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -6358,6 +6987,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -6468,6 +7101,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -6546,6 +7184,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -6581,6 +7222,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `728f01d` (2026-05-17): fix(nav): delete TestReplacePrefs_RejectsDevSetup — stale sentinel (TD-NAV-DEV-ITEM-RENAMED)
 > Commit `b60012c` (2026-05-18): fix(tests): unblock 4 cached test failures — DPoP signature drift + 1 assertion [TD-RF1-TEST-COLUMN-RENAME-DRIFT]
 > Commit `601d217` (2026-05-18): docs(tech-debt): retract over-optimistic sizing on TD-RF1-TEST-COLUMN-RENAME-DRIFT
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > `grep -rn "useWorkItemsWindow"` to enumerate. Most should be replaced; any pre-PLA-0030 holdouts get the rename.
   >
 
@@ -6704,6 +7347,37 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -6886,6 +7560,22 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -6997,6 +7687,20 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -7097,6 +7801,37 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -7206,6 +7941,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -7244,6 +7985,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `bb4c3e0` (2026-05-21): docs: scope-tracker breadcrumbs + PLA-0043 handover update
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
   > Add row: `/portfolio-items` joins `/work-items` under `artefactitemsv2`. Mark v1 portfolio routes for deprecation timeline.
   >
 - **B21.3.6** Update CLAUDE.md hard-rule index `[P3]` `[ ]B21.3.3`
@@ -7292,6 +8037,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -7372,6 +8121,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -7408,6 +8160,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -7504,6 +8257,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -7561,6 +8320,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `eaaf21b` (2026-05-22): feat(dev/visualiser): V2 Relationship Explorer — SCADA shell + groups + diff + K-hops
 > Commit `e5c0b690` (2026-05-22): docs(handover): agent_visual_app — Visualiser V1/V2 handover doc
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `10048c11` (2026-05-24): fix(api): inline-closure /dev/reporting mount so extract_routes sees it
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -7589,6 +8351,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c32e1ab` (2026-05-21): chore: remove orphan debug screenshots + handover scratch files
 > Commit `026c8f6` (2026-05-21): feat(dev): Visualiser — unified TS+Go code graph + cubes renderer
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
@@ -7944,6 +8707,13 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 **Phase 1 — Backend**
 
@@ -7952,9 +8722,18 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **OBJ1.1.3** Backend facets table-tests. AC: workspace clamp, topology clamp, archived exclusion, 403 on unauthorised scope, 404 on unknown scope. `[P3]`
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
@@ -7962,6 +8741,37 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 **Phase 2 — Frontend**
 
@@ -7973,13 +8783,23 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **OBJ1.2.2** ObjectTreeV2 wires facets hook to chips. AC: `p_ObjectTree.tsx` drops the temporary `windowRoots`-derivation block; chips populate from facets + workspace catalogue metadata (label + colour). `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 - **OBJ1.2.3** `WorkItemsFilterChipsProps` tightened. AC: `typeOptions` + `priorityOptions` required (no `?`, no `= []` default) after V1 ObjectTree retirement. `[P3]`
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
 
 **Phase 3 — Doc**
 
@@ -7992,6 +8812,37 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
+> Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
+> Commit `332bc138` (2026-05-24): test(sentinel): S02 — Sentinel test harness (Vitest tiers + Playwright config) [PLA062 S02]
+> Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
+> Commit `a4577e41` (2026-05-24): test(sentinel): S03 — RED middleware_test.go before package exists [PLA062 S03]
+> Commit `2d2cd68b` (2026-05-24): feat(sentinel): S04 — GREEN backend Sentinel substrate (types + ctx + middleware + errors) [PLA062 S04]
+> Commit `23aef348` (2026-05-24): docs(sentinel): backfill S04 commit SHA in backlog ledger
+> Commit `26fee3a6` (2026-05-24): feat(sentinel): S05 — mount sole clamp + absorb workspace clamp + close TD-SEN-01 [PLA062 S05]
+> Commit `72e69a5b` (2026-05-24): docs(sentinel): backfill S05 commit SHA in backlog ledger
+> Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
+> Commit `0dbb7222` (2026-05-24): docs(sentinel): backfill S06 commit SHA
+> Commit `67cd68d3` (2026-05-24): test(sentinel): S07 — RED app/sentinel/__tests__/sentinel_provider.test.tsx [PLA062 S07]
+> Commit `baecf16a` (2026-05-24): docs(sentinel): backfill S07 commit SHA
+> Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
+> Commit `e56b5545` (2026-05-24): docs(sentinel): backfill S08 commit SHA
+> Commit `d149a2cf` (2026-05-24): feat(sentinel): S09 — mount SentinelProvider in (user) + (overlay) layouts [PLA062 S09]
+> Commit `10a9035b` (2026-05-24): docs(sentinel): backfill S09 commit SHA — PLA062 gate closed
+> Commit `24a75a67` (2026-05-24): feat(sentinel): S10 — migrate /work-items page to Sentinel [PLA062 S10]
+> Commit `8c3bbe6f` (2026-05-24): docs(sentinel): backfill S10 commit SHA
+> Commit `b612df57` (2026-05-24): feat(sentinel): S11 — migrate /portfolio-items page to Sentinel [PLA062 S11]
+> Commit `c65a8e6c` (2026-05-24): docs(sentinel): backfill S11 commit SHA
+> Commit `2bf27308` (2026-05-24): test(sentinel): S12 — sentinel.page.risks coverage [PLA062 S12]
+> Commit `950f1e1e` (2026-05-24): docs(sentinel): backfill S12 commit SHA
+> Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
+> Commit `651825fd` (2026-05-24): docs(sentinel): backfill S13 commit SHA
+> Commit `ed5f34be` (2026-05-24): feat(sentinel): S14 — workspace-admin cluster + Sentinel scope expansion [PLA062 S14 + TD-SEN-02/03 paydown]
+> Commit `a3e06bd0` (2026-05-24): docs(sentinel): backfill S14 commit SHA
+> Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
+> Commit `22846ad5` (2026-05-24): docs(sentinel): backfill S15 commit SHA
+> Commit `a51bb4f3` (2026-05-24): feat(sentinel): S16 — catch-all (user)/* + overlay/topology migrations [PLA062 S16]
+> Commit `15ac1d93` (2026-05-24): docs(sentinel): backfill S16 commit SHA
+> Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 
 ---
 

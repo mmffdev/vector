@@ -297,5 +297,5 @@ $ npx vitest run app/sentinel "app/(user)" app/components/__tests__/BulkActionBa
 **tsc.** `npx tsc --noEmit` silent.
 **Scope.** 23 files migrated across `app/components/`, `app/user/`, `app/hooks/`, `app/contexts/LibraryReleasesContext.tsx`. Sentinel surface extended with `SentinelGrant.position`, `sentinel_scope_direction` + setter, and `SentinelUser.mfa_enrolled` / `force_password_change`.
 **Pre-existing fail (not S17).** `app/(user)/risk/__tests__/page.test.tsx` — Next `useRouter` invariant from `work-items-tree-config`. Verified red on `git stash` before S17 work.
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17].
 
