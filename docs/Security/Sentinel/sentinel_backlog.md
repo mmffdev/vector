@@ -210,7 +210,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Zero old-hook imports.
 - GREEN; attempts logged.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. Special case: `/risk` page never read from old contexts in the first place (zero useAuth/useScope/useTenant calls pre-S12). Test reduced to 2 ACs (static-grep negative + mount smoke); AC3 omitted because the page doesn't gate its initial fetch on Sentinel state (covered by the existing `page.test.tsx` sibling). Zero production code change needed; GREEN attempt 1.
 
 ---
 
@@ -434,3 +434,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S09 | 2026-05-24 | d149a2cf | SentinelProvider mounted in (user) + (overlay) layouts; tsc silent; `Compiled successfully in 18.1s` — **GATE CLOSED** |
 | S10 | 2026-05-24 | 24a75a67 | First Lane A page; 3/3 GREEN; static-grep + mount + apiSite-fired ACs; reference for S11–S16 |
 | S11 | 2026-05-24 | b612df57 | /portfolio-items; 3/3 GREEN attempt 1; pattern lifted from S10 |
+| S12 | 2026-05-24 | (this commit) | /risk; 2/2 GREEN — special case: page already had no old-hook imports |
