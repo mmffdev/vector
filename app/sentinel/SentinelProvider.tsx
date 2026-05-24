@@ -283,12 +283,24 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     // Only fire when transitioning to a NEW authenticated user. Skip on
     // logout (next is null) and on re-renders with the same user.
     if (authUserId && authUserId !== prev) {
-      // Clear any url_focus inherited from a pre-login URL (e.g. login
-      // redirect preserved ?meg=<old-node> in the address bar). Without
-      // this, the new user's default_focus_node_id is bypassed because
-      // URL beats user-default in resolveFocusNode(). The mirror effect
-      // will re-write ?meg= to the resolved focus on the next render.
+      // Clear ALL session-scoped focus state so the freshly-loaded
+      // user.default_focus_node_id wins on first post-login render.
+      // This is the architecturally correct behaviour per the user's
+      // 2026-05-24 directive: "when the user logs in, it fetches the
+      // meg string as part of login as part of the users profile, this
+      // way meg is not stale."
+      //
+      //   - url_focus: cleared so a stale pre-login ?meg= doesn't beat
+      //     the user's saved home.
+      //   - focus_override: cleared so a prior session's rail-click
+      //     pin doesn't survive logout.
+      //
+      // The URL mirror effect will then re-write ?meg= to the resolved
+      // focus (= user's default home) on the next render, so sharing /
+      // bookmarking still works correctly — the URL just becomes a
+      // per-session presentation artefact, not a source of truth.
       dispatch({ type: "set_url_focus", nodeId: null });
+      dispatch({ type: "set_focus", nodeId: null });
       void reload();
     }
   }, [authUserId, reload]);
