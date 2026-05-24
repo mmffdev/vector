@@ -1,6 +1,6 @@
 # Sentinel — System Documentation
 
-> **Status:** Under construction (PLA062 in flight, 2026-05-24).
+> **Status:** **Closed 2026-05-24** — PLA062 frontend + backend lint contract delivered (S01–S24). Two follow-ups carved out and tracked in [`sentinel_tech_debt.md`](sentinel_tech_debt.md): **S26** (subtree-aware SQL clamp + per-package integration tests) and **TD-SENT-AUTH-EXTRACT** (credential-flow lift from `AuthContext.tsx` into `app/lib/auth.ts`). S25 (delete `topology.ClampMiddleware`) is the last numbered story remaining.
 > **Spec source:** [PLA062 on Dev → Reporting → Plan tab](/dev/reporting?type=plan).
 > **Purpose of this file:** The synopsis, the reason, the process, the requirements, the outputs. Read this first if you're new to Sentinel.
 

@@ -22,6 +22,27 @@
 
 ## History (newest first)
 
+### 2026-05-24 — PLA062 close-out (S17–S24)
+
+**PLA / story.** PLA062 / S17 through S24.
+**Decision.** Sentinel is now the **sole** identity/tenant/scope owner across the frontend; the legacy `ScopeContext`, `TenantContext`, `Sentinel.tsx` bridge, and `scopeReloadRegistry` are deleted; the backend `lint:sentinel-clamp-required` allowlist is empty; the cross-tenant Playwright spec is in place. Two pieces were carved out as their own follow-ups: (a) the deeper subtree-aware SQL clamp + per-package integration tests (S26, carved from S21 mid-build); (b) the AuthContext credential-flow extraction to `app/lib/auth.ts` (deferred from S22).
+**What landed in this batch.**
+- **S17** `407b9e64` — 23 shared components/hooks/pages migrated to Sentinel (every `useHasPermission`/`useAuth`/`useScope` consumer outside the legacy contexts).
+- **S18** `b61c70f5` — `useActiveWorkspace` hook deleted; 10 active call sites inlined via `useSentinel().sentinel_user?.workspace_id`. F2 feature test repurposed onto Sentinel.
+- **S19** `55af5214` — Two frontend lint ratchets: `lint:no-direct-workspace-id` (0 exempt) + `lint:no-old-context-imports` (10 exempt at the time, 9 after S22). Paired self-test scripts.
+- **S20** `40a6b565` — Go lintcheck `TestSentinelClampRequired` + 3 fixture self-tests (negative / positive / comment-only). Wired into `go test ./internal/lintchecks/...`.
+- **S21** `61e9532a` — Emptied the `sentinelClampAllowlist`; all 6 previously-allowlisted packages already read `sentinel.WorkspaceIDFromCtx` from the S05 absorption. The deeper SQL-clamp layer is now S26.
+- **S22** `d14bcc70` — Hard-cut delete of `ScopeContext` (368 LOC), `TenantContext` (123 LOC), `Sentinel.tsx` bridge (128 LOC), `scopeReloadRegistry` (27 LOC), `f_sentinel_scope_reload.test.tsx`. Net −700 LOC. AuthContext.tsx deferred — extraction story TD-SENT-AUTH-EXTRACT.
+- **S23** `7e411939` — RED cross-tenant Playwright spec (`e2e/sentinel_cross_tenant_isolation.spec.mjs`, 3 test cases). GREEN gated on two-tenant fixture seed + S26 subtree SQL clamp.
+- **S24** (this commit) — Documentation close-out + CLAUDE.md HARD RULE.
+**Carved-out follow-ups.**
+- **S26** — Subtree-aware SQL clamp + per-package integration tests. Layer 2 of the procurement contract: handlers don't just READ the clamp, they USE its `AllowedSubtreeIDs` in WHERE clauses.
+- **TD-SENT-AUTH-EXTRACT** — Lift credential flow (login, mfaLogin, logout, refresh, DPoP keypair lifecycle, hard-logout sessionStorage banner) from `AuthContext.tsx` into `app/lib/auth.ts`; then delete AuthContext + its 9 remaining `lint:no-old-context-imports` exemptions.
+**Standard-ref.** Same baseline (NIST 800-53 AC-3/AC-4, SOC 2 CC6.1/CC6.6, CMMC L2 AC.L2-3.1.1, NIST 800-63B AAL2). Procurement story: "single source of truth for tenant scope" is now defensible — `useSentinel()` on the client, `sentinel.FromCtx(ctx)` on the server, both pinned by lint ratchets and the Playwright cross-tenant spec.
+**Touched files / surfaces.** ~50 files across `app/components/`, `app/contexts/`, `app/hooks/`, `app/user/`, `app/sentinel/`, `app/redesign/`, `app/(user)/`, `dev/scripts/`, `dev/registries/`, `backend/internal/lintchecks/`, `e2e/`, `docs/Security/Sentinel/`, `docs/c_c_lint_rules.md`.
+
+---
+
 ### 2026-05-24 — Sentinel scope expanded mid-S14: switchWorkspace + workspace settings absorbed
 
 **PLA / story.** PLA062 / mid-S14 (between commit `9fd3de55` and S14 resumption).

@@ -24,7 +24,30 @@
 
 ## Active entries
 
-(none — target state)
+### TD-SENT-CLAMP-SQL — Subtree-aware SQL clamp not yet applied in WHERE clauses
+
+**Severity.** S2 (planned for S26; structurally bounded today).
+**Trigger.** First cross-tenant compromise audit, OR procurement evidence request asking for "show me the SQL that filters by subtree", OR fixture seed + Playwright RED→GREEN flip on S23.
+**Discovered by.** S21 (carved out mid-build with user approval).
+**Standard-ref.** NIST 800-53 AC-4 (information flow enforcement) — handler-level workspace gate (`sentinel.WorkspaceIDFromCtx`) satisfies AC-3, but AC-4's data-flow control is layer 2.
+**Description.** Today's `lint:sentinel-clamp-required` (S20) ratchets the **structural** contract — no artefact-table read happens in a package that hasn't consulted Sentinel. But the `Clamp.AllowedSubtreeIDs` field computed by the middleware is not yet wired into SQL `WHERE` clauses. Concretely: handler calls `sentinel.WorkspaceIDFromCtx(ctx)` and applies workspace-level filtering, but a future workspace-internal compartmentation requirement (CMMC L3 / JSP 440) would not be served by this. The full procurement contract requires both layers.
+**Compensating control.**
+1. `sentinel.Middleware` rejects forged `?focus=<other-tenant-node>` with 403 BEFORE the handler runs (Cases 4 + 9 in `middleware_test.go`) — so the procurement isolation property "Alice cannot read Bob's data via a forged focus param" holds today even without SQL-level clamping.
+2. `WorkspaceID` IS in every handler's SQL via the S05 absorption.
+3. The Playwright cross-tenant spec (S23) will catch any regression once the two-tenant fixture is seeded.
+**Pay-down plan.** S26 (carved from S21).
+
+### TD-SENT-AUTH-EXTRACT — AuthContext.tsx still owns the credential flow
+
+**Severity.** S2 (cosmetic / migration debt, not a security gap).
+**Trigger.** Any future change to the credential flow (e.g. WebAuthn migration, OIDC SSO), OR procurement narrative review where "the auth context still exists" prompts a question.
+**Discovered by.** S22 (carved out at close-out with user approval).
+**Standard-ref.** None directly — this is migration hygiene, not a control gap. Sentinel still owns the authoritative identity state (`sentinel_user`); AuthContext is the credential-flow vestige (login, mfaLogin, logout, refresh, switchWorkspace, DPoP keypair lifecycle, hard-logout sessionStorage banner, session_alive cookie).
+**Description.** 9 files still import from `app/contexts/AuthContext.tsx` — the route-group layouts (root, (user), (overlay)), the credential pages (login, change-password), the legacy nav rails (rail_1, AccountFlyout), and two contexts that depend on `useAuth().user` readiness (NavPrefsContext, PageAccessContext). All are listed in `dev/registries/no_old_context_imports_exempt.json`. The clean fix is a multi-step refactor: lift the credential flow into a framework-agnostic `app/lib/auth.ts` (~250 LOC), migrate the 9 consumers to import from there + read user state from Sentinel, then delete AuthContext.
+**Compensating control.** The lint exemption registry IS the audit trail — every remaining consumer is documented with its specific reason. `lint:no-old-context-imports` still hard-fails on any NEW import from AuthContext outside this allowlist. The credential flow itself is unchanged from pre-PLA062 (no security regression).
+**Pay-down plan.** Open — separate initiative, not numbered under PLA062.
+
+---
 
 ---
 

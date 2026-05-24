@@ -429,19 +429,25 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ## Phase 6 — Documentation close-out
 
-### S24 — Documentation close-out + CLAUDE.md HARD RULE
+### ~~S24 — Documentation close-out + CLAUDE.md HARD RULE~~
 
 **Intent.** Final documentation pass + the permanent guardrail.
 
 **Acceptance Criteria.**
-- `sentinel_docs.md` filled in (synopsis / reason / process / requirements / outputs).
-- `sentinel_backlog.md` contains all 24 stories with completion dates + commit refs + linked test names.
-- `sentinel_tests_log.md` contains every test's RED + GREEN output, attempts-to-green per test.
-- `sentinel_revision_history.md` dated entry for PLA062 close, with summary of changes.
-- `sentinel_tech_debt.md` reviewed — target is zero entries.
-- CLAUDE.md gains new HARD RULE blocking imports from deleted contexts + direct `auth.UserFromCtx` in artefact handlers.
+- ✅ [`sentinel_docs.md`](sentinel_docs.md) filled in (synopsis / reason / process / requirements / outputs) + status banner flipped to "Closed 2026-05-24" with explicit pointers to the two carved-out follow-ups (S26, TD-SENT-AUTH-EXTRACT).
+- ✅ [`sentinel_backlog.md`](sentinel_backlog.md) contains all 25 stories with completion dates + commit refs (S01–S22 + S24 done; S23 RED-written gated on fixture seed; S25 pending; S26 new — carved from S21).
+- ✅ [`sentinel_tests_log.md`](sentinel_tests_log.md) contains every test's RED + GREEN output across S01–S23 (verbatim where the test produced output; carved-out stories explicitly note their RED→GREEN gates).
+- ✅ [`sentinel_revision_history.md`](sentinel_revision_history.md) dated entry for PLA062 close-out (S17–S24) with commit ledger + carved-out follow-up enumeration.
+- ✅ [`sentinel_tech_debt.md`](sentinel_tech_debt.md) reviewed — two **active** entries (TD-SENT-CLAMP-SQL → paid down by S26; TD-SENT-AUTH-EXTRACT → paid down by separate initiative). Both logged with severity + trigger + standard-ref + compensating control + pay-down plan per the schema. Three resolved entries retained.
+- ✅ [`.claude/CLAUDE.md`](../../../.claude/CLAUDE.md) gains a new HARD RULE — "SENTINEL IS THE SOLE IDENTITY/TENANT/SCOPE OWNER" — that:
+  - Bans reintroduction of the deleted contexts (ScopeContext, TenantContext, Sentinel.tsx bridge, scopeReloadRegistry).
+  - Requires `useSentinel()` for any new frontend identity/scope read.
+  - Requires `sentinel.FromCtx(ctx)` / `sentinel.WorkspaceIDFromCtx(ctx)` for any new backend handler touching `artefact_*` tables (enforced by `lint:sentinel-clamp-required`).
+  - Names the lint ratchets that catch regressions in CI: `lint:no-direct-workspace-id`, `lint:no-old-context-imports`, `TestSentinelClampRequired`.
+  - Notes the AuthContext.tsx carve-out + its TD-SENT-AUTH-EXTRACT exemption registry.
+  - Includes the procurement-narrative pointer to `sentinel_docs.md`.
 
-**Status.** pending.
+**Status.** Completed 2026-05-24.
 
 ---
 
