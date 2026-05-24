@@ -474,5 +474,5 @@ ok  (sentinel-clamp-required) — empty allowlist passes
 
 **Final grep result.** Zero CODE matches for the deleted symbols across backend/. Comments (sentinel migration narrative + one artefactitems doc-comment) preserved as audit-trail.
 
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]. PLA062 closes end-to-end.
 
