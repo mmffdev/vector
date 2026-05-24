@@ -9,7 +9,6 @@ import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
 import { MasterDebugProvider } from "@/app/contexts/MasterDebugContext";
 import { DomRegistryProvider } from "@/app/contexts/DomRegistryContext";
 import { ActiveNavProvider } from "@/app/contexts/ActiveNavContext";
-import { SentinelProvider } from "@/app/sentinel";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -29,11 +28,12 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   if (loading || !user || user.force_password_change) return null;
 
-  // PLA062 S22: legacy contexts (TenantContext, ScopeContext,
-  // SentinelBridge) deleted. SentinelProvider is now the sole owner
-  // of identity / tenant / scope state for this route group.
+  // PLA062 S22: legacy identity contexts (TenantContext, ScopeContext,
+  // SentinelBridge) deleted. SentinelProvider mounts at the root
+  // (app/layout.tsx) so it's available to every consumer including
+  // the catalogue providers — this layout just composes the route-
+  // group's own provider stack.
   return (
-    <SentinelProvider>
     <MasterDebugProvider>
     <LibraryReleasesProvider>
     <NavPrefsProvider>
@@ -47,6 +47,5 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     </NavPrefsProvider>
     </LibraryReleasesProvider>
     </MasterDebugProvider>
-    </SentinelProvider>
   );
 }

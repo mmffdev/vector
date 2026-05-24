@@ -50,9 +50,75 @@ async function sentinelCall<T = unknown>(path: string, opts?: Parameters<typeof 
   }
 }
 
-/** GET /sentinel/boot — populates the provider's full state bag. */
+/**
+ * GET /sentinel/boot — populates the provider's full state bag.
+ *
+ * PLA062 follow-up: the backend `/sentinel/boot` endpoint is not yet
+ * implemented (carved out alongside the S26 SQL clamp work). Until it
+ * lands, this function synthesises the boot payload by stitching
+ * together the already-existing `/auth/me` + `/topology/grants/me`
+ * endpoints. The wire shape Sentinel consumes is identical, so the
+ * provider doesn't care; when the real `/sentinel/boot` lands, this
+ * function collapses to a single round-trip.
+ *
+ * Returns null tenant fields when the user isn't authenticated yet
+ * (the auth/me call 401s); the provider treats that as "not booted"
+ * and the route-group layouts handle the redirect to /login.
+ */
 export async function fetchBoot(): Promise<SentinelBootPayload> {
-  return sentinelCall<SentinelBootPayload>("/sentinel/boot");
+  interface AuthMeResp {
+    id: string;
+    email: string;
+    subscription_id: string;
+    workspace_id: string;
+    role: { id: string; code: string };
+    permissions: string[];
+    mfa_enrolled?: boolean;
+    force_password_change?: boolean;
+  }
+  interface GrantRow {
+    grant_id?: string;
+    node_id: string;
+    workspace_id?: string;
+    parent_id?: string | null;
+    name?: string;
+    label_override?: string | null;
+    colour?: string | null;
+    icon?: string | null;
+    role: string;
+    granted_at?: string;
+    position?: number;
+  }
+  // Fire in parallel. Either call 401-ing surfaces as the same error
+  // the original sentinelCall would have thrown.
+  const [me, grantsRaw] = await Promise.all([
+    sentinelCall<AuthMeResp>("/auth/me"),
+    sentinelCall<{ grants?: GrantRow[] } | GrantRow[]>("/topology/grants/me").catch(() => [] as GrantRow[]),
+  ]);
+  const grants: GrantRow[] = Array.isArray(grantsRaw) ? grantsRaw : (grantsRaw?.grants ?? []);
+  // Pick a tenant root: prefer the topmost grant (no parent_id); fall
+  // back to the first grant's node_id; fall back to empty string.
+  const root = grants.find((g) => !g.parent_id)?.node_id ?? grants[0]?.node_id ?? "";
+  return {
+    user: {
+      id: me.id,
+      email: me.email,
+      tenant_id: me.subscription_id,
+      role: me.role?.code ?? "user",
+      role_id: me.role?.id ?? "",
+      permissions: me.permissions ?? [],
+      default_focus_node_id: null,
+      workspace_id: me.workspace_id ?? "",
+      mfa_enrolled: me.mfa_enrolled,
+      force_password_change: me.force_password_change,
+    },
+    tenant: {
+      id: me.subscription_id,
+      name: "",
+    },
+    grants,
+    tenant_root: root,
+  };
 }
 
 /** POST /sentinel/switch-tenant — re-mints JWT for the new tenant. */

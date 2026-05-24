@@ -9,6 +9,7 @@ import { PageAccessProvider } from "@/app/contexts/PageAccessContext";
 import { DevTabProvider } from "@/app/contexts/DevTabContext";
 import { ArtefactTypeCatalogueProvider } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { ArtefactPriorityCatalogueProvider } from "@/app/contexts/ArtefactPriorityCatalogueContext";
+import { SentinelProvider } from "@/app/sentinel";
 import { Toaster } from "@/app/components/Toaster";
 import DevStatusFloat from "@/app/components/DevStatusFloat";
 import AddressDevtool from "@/app/components/AddressDevtool";
@@ -69,15 +70,17 @@ export default async function RootLayout({
         <Toaster />
         <DevTabProvider>
           <AuthProvider>
-            <ArtefactTypeCatalogueProvider>
-              <ArtefactPriorityCatalogueProvider>
-                <PageAccessProvider>
-                  {children}
-                  <AddressDevtool />
-                  <AddressAnchorResolver />
-                </PageAccessProvider>
-              </ArtefactPriorityCatalogueProvider>
-            </ArtefactTypeCatalogueProvider>
+            <SentinelProvider>
+              <ArtefactTypeCatalogueProvider>
+                <ArtefactPriorityCatalogueProvider>
+                  <PageAccessProvider>
+                    {children}
+                    <AddressDevtool />
+                    <AddressAnchorResolver />
+                  </PageAccessProvider>
+                </ArtefactPriorityCatalogueProvider>
+              </ArtefactTypeCatalogueProvider>
+            </SentinelProvider>
           </AuthProvider>
         </DevTabProvider>
         <DevStatusFloat />
