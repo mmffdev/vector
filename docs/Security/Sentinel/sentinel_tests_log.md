@@ -317,3 +317,29 @@ $ npx vitest run app/sentinel "app/(user)" app/components/__tests__ app/contexts
 **Atomic-switch coherence (no-stale-reads guarantee).** Pinned by Sentinel provider Case 10 (`sentinel_switch_workspace re-mints JWT for new workspace (tenant unchanged)`).
 **Commit.** `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18].
 
+
+
+---
+
+## S19 — frontend lint ratchets GREEN (2026-05-24)
+
+```
+$ npm run lint:no-direct-workspace-id
+OK    278 file(s) checked, 0 exempt
+
+$ npm run lint:no-old-context-imports
+OK    285 file(s) checked, 10 exempt
+
+$ bash dev/scripts/lint_no_direct_workspace_id_self_test.sh
+OK    self-test passed — fixture violation was caught
+
+$ bash dev/scripts/lint_no_old_context_imports_self_test.sh
+OK    self-test passed — fixture violation was caught
+```
+
+**Scope.** Two new lint scripts + two paired self-test scripts + two registries (one empty, one with 10 day-one exemptions for the authentication boundary). Both lints wired into `npm run lint:rf1`. `backend/internal/sentinel` added to `cross_db_writer_test_exempt.json` as a read-only resolver (not a cross-DB writer; matches the registry's documented exemption category).
+
+**Documentation.** [`docs/c_c_lint_rules.md`](../../c_c_lint_rules.md) — table row added for each lint + dedicated detail section explaining rule, why, permitted patterns, exemption registry, and self-test command.
+
+**Commit.** _(to be backfilled after commit lands)_
+

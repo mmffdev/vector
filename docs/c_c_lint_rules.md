@@ -26,6 +26,8 @@ All lints share the same shape:
 | `lint:api-caller-discipline` | `dev/scripts/lint_api_caller_discipline.py` | `api_caller_exempt.json` | client-side code MUST NOT compose direct backend URLs (`localhost:5100`, `/_site/...`, `/samantha/v2/...`, `NEXT_PUBLIC_API_BASE`) outside `app/lib/api.ts` — every outbound call routes through `apiSite/apiV2/apiRoot`. Procurement story: defence/finance buyers want one audit chokepoint for backend egress (B20.5.H) |
 | `lint:api-helper-exclusive` | `dev/scripts/lint_api_helper_exclusive.py` | `api_caller_exempt.json` (shared) | client-side code MUST NOT call `fetch()` / `new XMLHttpRequest()` / `new WebSocket()` / `new EventSource()` outside `app/lib/api.ts` family. Relative URLs to `/api/...` (Next.js server routes) are honoured; SSE/realtime exemptions live in the registry (B20.5.H) |
 | `lint:route-orphans` | `dev/scripts/lint_route_orphans.py` | `route_orphan_exempt.json` | every spec route should either have a frontend caller (`apiSite()` / `apiV2()`) OR be in the exemption registry with a reason (backend-only, dev tool, cron-driven, etc.). Reports unexplained orphans; `--strict` makes it fail on any non-exempt. Drift detector for "dead endpoints" (B20.5.J) |
+| `lint:no-direct-workspace-id` | `dev/scripts/lint_no_direct_workspace_id.py` | `no_direct_workspace_id_exempt.json` | `user.workspace_id` read forbidden in files that don't import from `@/app/sentinel` — workspace-id MUST come from `useSentinel().sentinel_user?.workspace_id` (PLA062 S19) |
+| `lint:no-old-context-imports` | `dev/scripts/lint_no_old_context_imports.py` | `no_old_context_imports_exempt.json` | imports from `@/app/contexts/{Auth,Scope,Tenant}Context` forbidden — the canonical identity/scope source is `@/app/sentinel`. Day-one exemption list carries the 10 authentication-boundary files queued for S22 migration (PLA062 S19) |
 
 ---
 
@@ -154,6 +156,32 @@ The wrapping `<section id="…">` preserves the scroll anchor; the `<Panel>` car
 3. Run `npm run lint:h2-panel-only` — must exit 0.
 
 The exemption registry seeded on 2026-05-12 carries 5 paths: two modal/wizard overlays, the `_shared` settings modal, the theme showcase (bespoke `theme-panel` family), and the webhooks page (queued for `PageDescription` migration).
+
+---
+
+## `lint:no-direct-workspace-id` — detail (PLA062 S19)
+
+**Rule.** Reading `user.workspace_id` (or `_user.workspace_id`) is forbidden in files that do NOT import from `@/app/sentinel`. The canonical workspace-id read path is `useSentinel().sentinel_user?.workspace_id`, populated from the JWT claim via the Sentinel boot payload.
+
+**Why.** PLA062 makes Sentinel the single source of truth for identity/tenant/scope. Any consumer that bypasses Sentinel risks reading a stale user object (e.g. from an old AuthContext that hasn't picked up the latest JWT mint). The atomic switch contract (Sentinel Case 10) only protects readers that go through `useSentinel()`.
+
+**Permitted.** `sentinel_user.workspace_id` is allowed (it's the canonical name). `grant.workspace_id` is allowed (per-grant scope data, different concept). Files that import from `@/app/sentinel` are exempted on the assumption that any `user` they reference is aliased from `sentinel_user` (the established migration idiom).
+
+**Exemption registry.** `dev/registries/no_direct_workspace_id_exempt.json` — empty on day one. Any path added here MUST carry a one-line rationale + a TD entry.
+
+**Self-test.** `bash dev/scripts/lint_no_direct_workspace_id_self_test.sh` builds a fixture under `app/components/__fixture_workspace_id__/violation.tsx`, runs the lint, asserts the fixture is rejected, then cleans up. Re-run after editing the lint to catch regressions.
+
+---
+
+## `lint:no-old-context-imports` — detail (PLA062 S19)
+
+**Rule.** Importing from `@/app/contexts/AuthContext`, `@/app/contexts/ScopeContext`, or `@/app/contexts/TenantContext` is forbidden. The canonical identity/tenant/scope source is `@/app/sentinel`.
+
+**Why.** These legacy contexts are scheduled for deletion in PLA062 S22. The lint ratchets prevents a new import from sneaking in during the cleanup window.
+
+**Exemption registry.** `dev/registries/no_old_context_imports_exempt.json` — 10 entries on day one covering the authentication boundary (root layout, route-group layouts, login, change-password, nav rails, AccountFlyout, NavPrefs/PageAccess providers). Every entry is the LAST remaining consumer of its legacy context and is queued for migration in S22.
+
+**Self-test.** `bash dev/scripts/lint_no_old_context_imports_self_test.sh` — same fixture pattern as above.
 
 ---
 

@@ -328,18 +328,22 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ## Phase 4 — Lint ratchets
 
-### S19 — Add `lint:no-direct-workspace-id` + `lint:no-old-context-imports`
+### ~~S19 — Add `lint:no-direct-workspace-id` + `lint:no-old-context-imports`~~
 
 **Intent.** Frontend lint ratchets that prevent regression.
 
 **Acceptance Criteria.**
-- `dev/scripts/lint_no_direct_workspace_id.py` exists; fails on fixture file that reads `user.workspace_id`.
-- `dev/scripts/lint_no_old_context_imports.py` exists; fails on fixture file that imports from `app/contexts/AuthContext`.
-- Both lints pass on the current migrated tree.
-- Both lints wired into `npm run lint:rf1`.
-- Documented on `docs/c_c_lint_rules.md` with rationale + Sentinel back-ref.
+- ✅ `dev/scripts/lint_no_direct_workspace_id.py` exists; fails on fixture file that reads `user.workspace_id`. Self-test `dev/scripts/lint_no_direct_workspace_id_self_test.sh` builds a fixture, runs the lint, asserts the violation, cleans up.
+- ✅ `dev/scripts/lint_no_old_context_imports.py` exists; fails on fixture file that imports from `app/contexts/AuthContext`. Self-test pattern identical.
+- ✅ Both lints pass on the current migrated tree (`lint:no-direct-workspace-id` — 0 exempt; `lint:no-old-context-imports` — 10 exempt covering the S22 migration target).
+- ✅ Both lints wired into `npm run lint:rf1`.
+- ✅ Documented on [`docs/c_c_lint_rules.md`](../../c_c_lint_rules.md) (table row + dedicated section per lint, including the Sentinel cross-ref and self-test instructions).
 
-**Status.** pending.
+**Exemption registry rationale.** The 10 day-one exemptions for `lint:no-old-context-imports` are ALL the authentication-boundary surface: root layout, route-group layouts (`(user)/layout.tsx` + `(overlay)/layout.tsx`), `login/page.tsx`, `change-password/page.tsx`, the two nav rails (rail_1 + rail_2), `AccountFlyout`, plus the `NavPrefsContext` + `PageAccessContext` consumers. They are the LAST consumers of their legacy contexts and S22 migrates them while deleting the contexts themselves.
+
+**Cross-DB writer test exemption.** Added `backend/internal/sentinel` to `dev/registries/cross_db_writer_test_exempt.json` — sentinel is a read-only resolver (uses vaPool + mvPool for topology and users lookups respectively), not a cross-DB writer. The exemption matches the registry's "pools that legitimately span DBs but are NOT cross-DB writers" category.
+
+**Status.** Completed 2026-05-24.
 
 ---
 

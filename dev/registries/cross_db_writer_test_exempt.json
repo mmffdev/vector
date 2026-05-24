@@ -6,6 +6,7 @@
     "backend/internal/librarydb",
     "backend/internal/nav",
     "backend/internal/portfolio",
-    "backend/internal/topology"
+    "backend/internal/topology",
+    "backend/internal/sentinel"
   ]
 }
