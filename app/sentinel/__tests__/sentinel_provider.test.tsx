@@ -18,7 +18,7 @@
  *     resolves with sentinel_tenant.id === t2 AND
  *     sentinel_workspace_in_sync === true in the SAME render cycle.
  *   - sentinel_can(code) matches the permission catalogue.
- *   - Focus precedence: URL ?focus= > users.default_focus_node_id > tenant root.
+ *   - Focus precedence: URL ?meg= > users.default_focus_node_id > tenant root.
  *   - 401 on any sentinel-mediated call triggers sentinel_reload().
  *   - useSentinel() outside SentinelProvider throws (negative test).
  */
@@ -203,12 +203,12 @@ describe("sentinel.unit.SentinelProvider", () => {
   // Case 4 — Focus precedence: URL > default > tenant root
   // -------------------------------------------------------------------
 
-  it("Case 4a — URL ?focus= wins over user default", async () => {
-    // Simulate URL ?focus=<id> via window.location.search
+  it("Case 4a — URL ?meg= wins over user default", async () => {
+    // Simulate URL ?meg=<id> via window.location.search
     const orig = window.location.search;
     Object.defineProperty(window, "location", {
       writable: true,
-      value: { ...window.location, search: `?focus=${FIXTURE_URL_FOCUS}` },
+      value: { ...window.location, search: `?meg=${FIXTURE_URL_FOCUS}` },
     });
 
     await act(async () => {

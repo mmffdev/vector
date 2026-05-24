@@ -1,10 +1,11 @@
 "use client";
 
-// hook-allow-url-query: SentinelProvider writes `focus` (allow-listed in
-// shareableParams.ts SHAREABLE_PARAMS at S08) to the address bar when
-// sentinel_set_focus is called. This is the canonical scope-identity
-// writer — replaces the legacy ScopeContext's window.history.replaceState
-// in PLA062 S22. Every other params write in this file is read-only.
+// hook-allow-url-query: SentinelProvider writes `meg` (allow-listed in
+// shareableParams.ts SHAREABLE_PARAMS) to the address bar when
+// sentinel_set_focus is called. `meg` is the canonical scope-identity
+// URL param across the project — name preserved from PLA-0053 (named
+// after Rick's daughter Megan). This is the canonical writer; the
+// legacy ScopeContext's window.history.replaceState was deleted at S22.
 
 /**
  * SentinelProvider — single React provider that owns identity, tenant,
@@ -19,7 +20,7 @@
  * a single dispatch — there's no intermediate render where tenant has
  * changed but grants haven't.
  *
- * URL ?focus= is read once at boot via the parseFocusFromURL helper
+ * URL ?meg= is read once at boot via the parseMegFromURL helper
  * in app/lib/shareableParams.ts — that file is the canonical address-
  * bar param layer (allowlisted by the block-url-query-state hook).
  * Sentinel must not read window.location.search directly.
@@ -33,7 +34,7 @@ import {
   useReducer,
   type ReactNode,
 } from "react";
-import { parseFocusFromURL } from "@/app/lib/shareableParams";
+import { parseMegFromURL } from "@/app/lib/shareableParams";
 import {
   fetchBoot,
   postSwitchTenant,
@@ -65,9 +66,9 @@ interface InternalState {
   permissions: Set<SentinelPermission>;
   /** Tenant's root topology node — final fallback for focus resolution. */
   tenant_root: string | null;
-  /** Override pinned by sentinel_set_focus or the URL ?focus= param. */
+  /** Override pinned by sentinel_set_focus or the URL ?meg= param. */
   focus_override: string | null;
-  /** URL ?focus= sniffed once on mount; null if absent or invalid. */
+  /** URL ?meg= sniffed once on mount; null if absent or invalid. */
   url_focus: string | null;
   /** Workspace-level settings (theme, tenant_name, …) — absorbed mid-S14. */
   settings: SentinelWorkspaceSettings | null;
@@ -152,10 +153,10 @@ export { SentinelCtx };
 export function SentinelProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Sniff the URL ?focus= once on mount via the allowlisted helper.
+  // Sniff the URL ?meg= once on mount via the allowlisted helper.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const fromUrl = parseFocusFromURL(window.location.search);
+    const fromUrl = parseMegFromURL(window.location.search);
     if (fromUrl) dispatch({ type: "set_url_focus", nodeId: fromUrl });
   }, []);
 
@@ -205,15 +206,16 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   const setFocus = useCallback(async (nodeId: string | null) => {
     dispatch({ type: "set_focus", nodeId });
     // Write the focus to the URL so it survives a refresh and so the
-    // `?meg=` forwarder in app/lib/api.ts (legacy name — `meg` is from
-    // PLA-0053, named after Rick's daughter) can read the active scope
-    // through the canonical address-bar param. `focus` is allow-listed
-    // in SHAREABLE_PARAMS — block-url-query-state hook compliant.
+    // `?meg=` forwarder in app/lib/api.ts can read the active scope.
+    // `meg` is the canonical scope-identity URL param across the
+    // project (PLA-0053, named after Rick's daughter Megan) — it's in
+    // SHAREABLE_PARAMS, so the block-url-query-state hook permits this
+    // write via the file-level hook-allow-url-query annotation.
     if (typeof window !== "undefined") {
       try {
         const url = new URL(window.location.href);
-        if (nodeId) url.searchParams.set("focus", nodeId);
-        else url.searchParams.delete("focus");
+        if (nodeId) url.searchParams.set("meg", nodeId);
+        else url.searchParams.delete("meg");
         window.history.replaceState(window.history.state, "", url.toString());
       } catch {
         // edge environments may not expose URL; non-fatal

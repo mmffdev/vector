@@ -53,19 +53,25 @@ async function sentinelCall<T = unknown>(path: string, opts?: Parameters<typeof 
 /**
  * GET /sentinel/boot — populates the provider's full state bag.
  *
- * PLA062 follow-up: the backend `/sentinel/boot` endpoint is not yet
- * implemented (carved out alongside the S26 SQL clamp work). Until it
- * lands, this function synthesises the boot payload by stitching
- * together the already-existing `/auth/me` + `/topology/grants/me`
- * endpoints. The wire shape Sentinel consumes is identical, so the
- * provider doesn't care; when the real `/sentinel/boot` lands, this
- * function collapses to a single round-trip.
- *
- * Returns null tenant fields when the user isn't authenticated yet
- * (the auth/me call 401s); the provider treats that as "not booted"
- * and the route-group layouts handle the redirect to /login.
+ * Tries the canonical /sentinel/boot route first; falls back to a
+ * client-side synthesis from /auth/me + /topology/grants/me when the
+ * backend route isn't mounted (PLA062 follow-up). Wire shape returned
+ * to the provider is identical in both paths.
  */
 export async function fetchBoot(): Promise<SentinelBootPayload> {
+  // Path 1 — canonical /sentinel/boot. When the route is mounted this
+  // is the only round-trip; when it 404s we fall through. Other status
+  // codes (401, 500) bubble up unchanged so the provider's error
+  // handling (and the 401 reload hook) keeps working.
+  try {
+    return await sentinelCall<SentinelBootPayload>("/sentinel/boot");
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 404) throw err;
+    // fall through to the bridge
+  }
+
+  // Path 2 — bridge synthesis. /auth/me carries identity + permissions;
+  // /topology/grants/me carries the scope grants. Both exist today.
   interface AuthMeResp {
     id: string;
     email: string;

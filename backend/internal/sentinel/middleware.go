@@ -148,8 +148,9 @@ func resolveWorkspace(req *http.Request, u *roletypes.User, r Resolver) (uuid.UU
 // infrastructure failure (resolver / DB lookup), not a user-visible
 // 4xx — those come from ResolveSubtree.
 func resolveFocus(req *http.Request, userID, tenantID uuid.UUID, r Resolver) (uuid.UUID, error) {
-	// Step 1 — URL ?focus=
-	if raw := req.URL.Query().Get("focus"); raw != "" {
+	// Step 1 — URL ?meg= (PLA-0053; named after Rick's daughter Megan;
+	// canonical scope-identity URL param across the project)
+	if raw := req.URL.Query().Get("meg"); raw != "" {
 		if id, err := uuid.Parse(raw); err == nil {
 			return id, nil
 		}

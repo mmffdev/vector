@@ -8,7 +8,7 @@
 // get deleted in S25).
 //
 // The six test cases below pin the contract from the AC of S03:
-//   1. Valid JWT + ?focus=<uuid>          → 200, ctx carries clamp
+//   1. Valid JWT + ?meg=<uuid>          → 200, ctx carries clamp
 //   2. Valid JWT, no ?focus, user default → 200, focus = user's default
 //   3. Valid JWT, no ?focus, no default   → 200, focus = tenant root
 //   4. Focus outside tenant               → 403 problem+json
@@ -181,7 +181,7 @@ func (h *inspectorHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------
-// Case 1 — Valid JWT + ?focus=<uuid> → 200, ctx carries full clamp
+// Case 1 — Valid JWT + ?meg=<uuid> → 200, ctx carries full clamp
 // ---------------------------------------------------------------------
 
 func TestMiddleware_Case1_ValidJWTWithFocus_AttachesFullClamp(t *testing.T) {
@@ -201,7 +201,7 @@ func TestMiddleware_Case1_ValidJWTWithFocus_AttachesFullClamp(t *testing.T) {
 	insp := &inspectorHandler{}
 	h := mw(insp)
 
-	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req := httptest.NewRequest("GET", "/anything?meg="+fixtureFocusInA.String(), nil)
 	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA()))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -319,7 +319,7 @@ func TestMiddleware_Case4_FocusOutsideTenant_403ProblemJSON(t *testing.T) {
 	h := mw(insp)
 
 	// Alice (tenant A) asking for focus belonging to tenant B
-	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInB.String(), nil)
+	req := httptest.NewRequest("GET", "/anything?meg="+fixtureFocusInB.String(), nil)
 	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA()))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -358,7 +358,7 @@ func TestMiddleware_Case5_FocusNoAccess_403ProblemJSON(t *testing.T) {
 	insp := &inspectorHandler{}
 	h := mw(insp)
 
-	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req := httptest.NewRequest("GET", "/anything?meg="+fixtureFocusInA.String(), nil)
 	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA()))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -449,7 +449,7 @@ func TestMiddleware_Case7_JWTWorkspaceClaim_SetsWorkspaceID(t *testing.T) {
 	insp := &inspectorHandler{}
 	h := mw(insp)
 
-	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req := httptest.NewRequest("GET", "/anything?meg="+fixtureFocusInA.String(), nil)
 	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA())) // JWT has WorkspaceID = fixtureWorkspaceInA
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -497,7 +497,7 @@ func TestMiddleware_Case8_LegacyJWT_FallsBackToFirstLive(t *testing.T) {
 	insp := &inspectorHandler{}
 	h := mw(insp)
 
-	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req := httptest.NewRequest("GET", "/anything?meg="+fixtureFocusInA.String(), nil)
 	req = req.WithContext(withFixtureUser(req.Context(), fixtureLegacyUserA())) // no workspace_id
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -532,7 +532,7 @@ func TestMiddleware_Case9_NoActiveRoleOnWorkspace_403ProblemJSON(t *testing.T) {
 	insp := &inspectorHandler{}
 	h := mw(insp)
 
-	req := httptest.NewRequest("GET", "/anything?focus="+fixtureFocusInA.String(), nil)
+	req := httptest.NewRequest("GET", "/anything?meg="+fixtureFocusInA.String(), nil)
 	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA()))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
