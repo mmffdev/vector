@@ -429,3 +429,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S04 | 2026-05-24 | 2d2cd68b | 6 GREEN cases first try; substrate interface in place |
 | S05 | 2026-05-24 | 26fee3a6 | 9 GREEN cases (cases 7/8/9 added for workspace absorption); production Resolver + 10 mount migrations + 6 handler migrations + TD-SEN-01 closed |
 | S06 | 2026-05-24 | 0a6908a8 | migration 243 applied; users.default_focus_node_id + scope-default booleans live; PoolResolver.DefaultFocus wired |
+| S07 | 2026-05-24 | 67cd68d3 | 6 RED cases captured verbatim (vite import-resolution failure) |
