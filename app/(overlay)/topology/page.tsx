@@ -27,7 +27,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { topologyApi, type PreviewMoveResult } from "@/app/lib/topologyApi";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { useTopologyHandoffs } from "@/app/hooks/useTopologyHandoffs";
 import Panel from "@/app/components/Panel";
 import TopologyTreeFlyout from "@/app/components/TopologyTreeFlyout";
@@ -70,7 +70,9 @@ export default function TopologyOverlayPage() {
 
 function TopologyOverlayInner() {
   const router = useRouter();
-  const { user, switchWorkspace } = useAuth();
+  // PLA062 S16: identity + workspace-switch via Sentinel. The legacy
+  // AuthContext.switchWorkspace(ref) is now sentinel_switch_workspace.
+  const { sentinel_user: user, sentinel_switch_workspace: switchWorkspace } = useSentinel();
   // Custom zoom controls render at the canvas's bottom-center; we
   // replace React Flow's built-in <Controls> because the tree flyout's
   // left rail covered them.

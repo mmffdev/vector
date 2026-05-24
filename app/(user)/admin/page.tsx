@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 
 // /admin retired as of the workspace/portfolio/account split.
 // Redirect preserves old bookmarks. Permission-driven so any future
@@ -11,9 +11,9 @@ import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
 //   portfolio.model.edit    → padmin lands at /portfolio-settings
 //   neither                 → /dashboard (never had /admin access)
 export default function AdminRedirect() {
-  const { user } = useAuth();
-  const canAdminWorkspace = useHasPermission("workspace.archive");
-  const canEditPortfolioModel = useHasPermission("portfolio.model.edit");
+  const { sentinel_user: user, sentinel_can } = useSentinel();
+  const canAdminWorkspace = sentinel_can("workspace.archive");
+  const canEditPortfolioModel = sentinel_can("portfolio.model.edit");
   const router = useRouter();
 
   useEffect(() => {

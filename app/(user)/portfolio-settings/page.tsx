@@ -18,13 +18,13 @@ import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function PortfolioSettingsPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const canViewSettings = useHasPermission("portfolio_settings.view");
+  const { sentinel_user: user, sentinel_can } = useSentinel();
+  const canViewSettings = sentinel_can("portfolio_settings.view");
   const router = useRouter();
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table, { type Column } from "@/app/components/Table";
 import { PrimaryCellTreeLines } from "@/app/components/ResourceTree";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageAccess } from "@/app/contexts/PageAccessContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite } from "@/app/lib/api";
@@ -81,9 +81,10 @@ function bucketState(children: PageGrantRow[], roleID: string): TriState {
 
 export default function PermissionsPage() {
   const { full } = usePageTitle();
-  const { user, role } = useAuth();
+  const { sentinel_user: user, sentinel_role: role } = useSentinel();
 
-  const isGadmin = role?.code === "grp_global";
+  // PLA062 S16: sentinel_role is the role-code string directly (legacy useAuth().role was an object).
+  const isGadmin = role === "grp_global";
   const access = usePageAccess("um-permissions");
 
   const [rows, setRows] = useState<PageGrantRow[] | null>(null);

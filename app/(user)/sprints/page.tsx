@@ -14,16 +14,14 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth } from "@/app/contexts/AuthContext";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import TimeboxObjectTree from "@/app/components/TimeboxObjectTree";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function SprintsPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const { activeNodeId } = useScope();
-  const workspaceId = user?.subscription_id ?? "";
+  const { sentinel_user: user, sentinel_focus_node: activeNodeId } = useSentinel();
+  const workspaceId = user?.tenant_id ?? "";
 
   return (
     <PageContent>

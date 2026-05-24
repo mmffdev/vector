@@ -13,7 +13,7 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import {
@@ -38,7 +38,7 @@ function ViewBody({ view }: { view: CustomView }) {
 }
 
 export default function CustomContainerPage() {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const { full } = usePageTitle();
   const router = useRouter();
   // params.vid is the catch-all segment: undefined when URL is /p/<id>,

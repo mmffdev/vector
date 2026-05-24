@@ -13,11 +13,28 @@
 /** Permission code (lower_snake.dotted) — e.g. "work_items.list". */
 export type SentinelPermission = string;
 
-/** A grant the user holds on a topology node. */
+/**
+ * A grant the user holds on a topology node.
+ * Mirrors the MyGrant shape from topologyApi (legacy ScopeContext)
+ * so pages migrated to Sentinel can read the same surface they used
+ * to read off `activeGrant`/`grants[]`.
+ */
 export interface SentinelGrant {
+  grant_id?: string;
   node_id: string;
+  workspace_id?: string;
+  parent_id?: string | null;
+  /** Node name (display). */
+  name?: string;
+  /** User-set label override (display). */
+  label_override?: string | null;
+  /** Optional colour hex. */
+  colour?: string | null;
+  /** Optional icon name. */
+  icon?: string | null;
   /** Role on that node — "admin" | "editor" | "viewer". */
   role: string;
+  granted_at?: string;
 }
 
 export interface SentinelUser {

@@ -25,7 +25,7 @@
 //      (00018); this router just stops rendering it.
 //
 // Subscription ID for the overlay comes from the auth/session context
-// (`useAuth().user.subscription_id`) — the same source other padmin
+// (`useAuth().user?.tenant_id`) — the same source other padmin
 // surfaces use; never the URL.
 
 import { useCallback, useEffect, useState } from "react";
@@ -36,7 +36,7 @@ import Panel from "@/app/components/Panel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { portfolio as portfolioApi } from "@/app/lib/apiSite/index";
@@ -143,9 +143,9 @@ type StateView =
 
 export default function PortfolioModelPage() {
   const { full } = usePageTitle();
-  const { user, loading: authLoading } = useAuth();
+  const { sentinel_user: user, sentinel_can, sentinel_loading: authLoading } = useSentinel();
   const activeWorkspaceId = useActiveWorkspace();
-  const canEditModel = useHasPermission("portfolio.model.edit");
+  const canEditModel = sentinel_can("portfolio.model.edit");
   const router = useRouter();
   const [view, setView] = useState<StateView>({ kind: "loading" });
 
@@ -293,7 +293,7 @@ export default function PortfolioModelPage() {
     <StrictRoute>
       <PortfolioRouterBody
         view={view}
-        subscriptionId={user.subscription_id}
+        subscriptionId={user?.tenant_id}
         onAdoptStarted={handleAdoptStarted}
         onOverlayDone={handleOverlayDone}
         onOverlayFail={handleOverlayFail}

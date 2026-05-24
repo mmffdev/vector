@@ -22,8 +22,7 @@ import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { useAuth } from "@/app/contexts/AuthContext";
-import { useScope } from "@/app/contexts/ScopeContext";
+import { useSentinel } from "@/app/sentinel";
 import ObjectTreeV2, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import TimeboxObjectTree from "@/app/components/TimeboxObjectTree";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
@@ -57,10 +56,11 @@ function readStoredMode(): Mode {
 
 export default function ScopePage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const { activeNodeId, activeGrant } = useScope();
+  const { sentinel_user: user, sentinel_focus_node: activeNodeId, sentinel_grants } = useSentinel();
+  // Derive activeGrant: the grant covering the current focus node.
+  const activeGrant = sentinel_grants.find((g) => g.node_id === activeNodeId) ?? null;
   const { types } = useArtefactTypeCatalogue();
-  const workspaceId = user?.subscription_id ?? "";
+  const workspaceId = user?.tenant_id ?? "";
 
   const [mode, setMode] = useState<Mode>("work_items");
   // Read storage after first paint to avoid hydration mismatch.

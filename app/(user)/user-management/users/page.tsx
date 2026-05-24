@@ -9,7 +9,7 @@ import Table from "@/app/components/Table";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import ToggleBtn from "@/app/components/ToggleBtn";
 import UserNodeAssignment from "@/app/components/topology/UserNodeAssignment";
-import { useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { topologyApi, listGrantsByUser, type MyGrant, type OrgNode } from "@/app/lib/topologyApi";
 import { costCentresApi, type CostCentre } from "@/app/lib/costCentresApi";
@@ -219,6 +219,9 @@ function UserEditPanel({
   onIssueReset: (id: string) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
+  // PLA062 S16: permission gate via Sentinel.
+  const { sentinel_can } = useSentinel();
+
   // Account Information
   const [firstName,    setFirstName]    = useState(u.first_name ?? "");
   const [middleName,   setMiddleName]   = useState(u.middle_name ?? "");
@@ -251,7 +254,7 @@ function UserEditPanel({
   // PLA-0046 / story 00556 — gates the "Manage topology permissions"
   // entry button. Gadmin only; the per-user page also re-checks so
   // direct deep-links still surface the in-page Forbidden panel.
-  const hasManageGrants = useHasPermission("topology.grants.manage_others");
+  const hasManageGrants = sentinel_can("topology.grants.manage_others");
 
   // Cost-centre dropdown options (B20.4.3).
   const [costCentres, setCostCentres] = useState<CostCentre[] | null>(null);

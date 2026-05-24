@@ -18,7 +18,7 @@ import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite } from "@/app/lib/api";
 
@@ -46,14 +46,14 @@ interface Permission {
 
 export default function AdminRolesPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
+  const { sentinel_user: user, sentinel_can } = useSentinel();
   const router = useRouter();
-  const canList = useHasPermission("roles.list");
-  const canCreate = useHasPermission("roles.create");
-  const canUpdate = useHasPermission("roles.update");
-  const canArchive = useHasPermission("roles.archive");
-  const canAssign = useHasPermission("roles.assign_permissions");
-  const canRevoke = useHasPermission("roles.revoke_permissions");
+  const canList = sentinel_can("roles.list");
+  const canCreate = sentinel_can("roles.create");
+  const canUpdate = sentinel_can("roles.update");
+  const canArchive = sentinel_can("roles.archive");
+  const canAssign = sentinel_can("roles.assign_permissions");
+  const canRevoke = sentinel_can("roles.revoke_permissions");
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [perms, setPerms] = useState<Permission[]>([]);

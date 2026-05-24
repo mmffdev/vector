@@ -19,7 +19,7 @@ import Panel from "@/app/components/Panel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { apiSite } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
@@ -58,8 +58,8 @@ type LoadState =
 
 export default function LibraryReleasesPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const canViewReleases = useHasPermission("library.releases.view");
+  const { sentinel_user: user, sentinel_can } = useSentinel();
+  const canViewReleases = sentinel_can("library.releases.view");
   const router = useRouter();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [acking, setAcking] = useState<string | null>(null);

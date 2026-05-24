@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import { useAuth, useHasPermission } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
 export default function PortfolioModelCustomPage() {
   const { full } = usePageTitle();
-  const { user } = useAuth();
-  const canEditModel = useHasPermission("portfolio.model.edit");
+  const { sentinel_user: user, sentinel_can } = useSentinel();
+  const canEditModel = sentinel_can("portfolio.model.edit");
   const router = useRouter();
 
   useEffect(() => {

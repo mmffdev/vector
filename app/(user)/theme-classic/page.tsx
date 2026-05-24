@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { useSentinel } from "@/app/sentinel";
 import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
@@ -401,7 +401,7 @@ function MakerPanel({
 }
 
 export default function ThemePage() {
-  const { user } = useAuth();
+  const { sentinel_user: user } = useSentinel();
   const { full } = usePageTitle();
   const [seed, setSeed] = useState<string>("#3B82F6");
   const [mode, setMode] = useState<MakerMode>("seed");

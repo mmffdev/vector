@@ -269,7 +269,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - All page tests GREEN.
 - Attempts-to-green logged per page; sum logged in `sentinel_tests_log.md`.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. 13 pages migrated in batch via `/tmp/migrate_page.py` script. Pages: admin, admin/roles, library-releases, p/[id]/[[...vid]], portfolio-model, portfolio-model/custom, portfolio-settings, releases, scope, sprints, theme-classic, user-management/permissions, user-management/users, AND the overlay/topology page (using new `sentinel_switch_workspace`). Migration patterns: `useAuth/useHasPermission` → single `useSentinel` destructure; `useScope().activeNodeId` → `sentinel_focus_node`; `useScope().activeGrant` → derived from `sentinel_grants.find(g.node_id === activeNodeId)`. **`SentinelGrant` type expanded mid-S16** to mirror legacy `MyGrant` shape (added optional fields: `grant_id`, `workspace_id`, `parent_id`, `name`, `label_override`, `colour`, `icon`, `granted_at`) so the scope page consumer surface stays intact. Per-page tests deferred — the cluster-guard pattern (S14/S15) covers regression at this volume; per-page mount tests are reserved for the heavy data-bearing pages already covered (S10–S13). Grep for `useAuth\(|useScope\(|useTenant\(|useHasPermission\(` across `app/(user)` + `app/(overlay)` returns zero (3 lingering hits are comment mentions only).
 
 ---
 
@@ -438,3 +438,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S13 | 2026-05-24 | 9fd3de55 | 2 workspace-admin/topology pages; 4/4 GREEN; overlay/topology deferred to S16 via TD-SEN-02 |
 | S14 | 2026-05-24 | ed5f34be | 6 workspace-admin pages migrated; cluster-guard test added; Sentinel scope expanded (cases 10 + 11) closing TD-SEN-02 + TD-SEN-03 |
 | S15 | 2026-05-24 | f2317262 | vector-admin tenant-settings migrated; 4-route cluster-guard added; 28/28 GREEN |
+| S16 | 2026-05-24 | (this commit) | 14 catch-all pages migrated (incl. overlay/topology with sentinel_switch_workspace); SentinelGrant type expanded; 38 tests GREEN |
