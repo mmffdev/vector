@@ -6,7 +6,7 @@ import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import HomeLocationSection from "@/app/components/HomeLocationSection";
-import { useSentinel } from "@/app/sentinel";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -152,16 +152,22 @@ function MFASection() {
 
 export default function AccountSettingsPage() {
   const { full } = usePageTitle();
-  const { sentinel_user: user, sentinel_loading } = useSentinel();
+  // Read identity from AuthContext, NOT Sentinel. This is a per-user
+  // profile page — it does not depend on tenant/workspace/scope clamp
+  // state. Reading from Sentinel was the wrong source: if Sentinel boot
+  // fails for any reason (idle session, tenant resolution problem,
+  // workspace clamp gap), the user is still authenticated (AuthContext
+  // has their credentials + JWT) and the profile page should render so
+  // they can fix their account / sign out / etc. The HomeLocationSection
+  // below DOES need sentinel grants for its dropdown; it handles its own
+  // empty-grants state internally.
+  const { user, loading: authLoading } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [emailNotif, setEmailNotif] = useState(true);
   const [productNotif, setProductNotif] = useState(false);
   const [digestNotif, setDigestNotif] = useState(true);
 
-  // Sentinel boot is async; first render lands with user=null + loading=true.
-  // Return null only when the page genuinely has no user to display
-  // (post-boot, still null = signed out → route-group layout redirects).
-  if (sentinel_loading) {
+  if (authLoading) {
     return (
       <PageContent>
         <PageHeading level={1} title={full} subtitle="Loading your account…" />
