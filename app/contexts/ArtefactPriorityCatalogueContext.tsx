@@ -13,7 +13,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { artefactPrioritiesApi, type ArtefactPriority } from "@/app/lib/artefactPrioritiesApi";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
+import { useSentinel } from "@/app/sentinel";
 
 interface CatalogueState {
   workspaceId: string | null;
@@ -39,7 +39,8 @@ export function priorityCatalogueCacheKey(workspaceId: string | null): string {
 }
 
 export function ArtefactPriorityCatalogueProvider({ children }: { children: React.ReactNode }) {
-  const workspaceId = useActiveWorkspace();
+  const { sentinel_user } = useSentinel();
+  const workspaceId = sentinel_user?.workspace_id || null;
   const [priorities, setPriorities] = useState<ArtefactPriority[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

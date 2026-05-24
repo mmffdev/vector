@@ -21,7 +21,6 @@ import {
   type UserInScope,
 } from "@/app/lib/apiSite";
 import { apiSite } from "@/app/lib/api";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { useSentinel } from "@/app/sentinel";
 import { useParentCandidates } from "@/app/components/ArtefactInlineForm/useParentCandidates";
 import { ColourPicker } from "@/app/components/ColourPicker";
@@ -230,7 +229,7 @@ export default function ObjectTree({
   // Active topology scope. Used by duplicateArtefact to pin the clone
   // when the source artefact had no topology_node_id of its own
   // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
-  const { sentinel_focus_node: activeScopeNodeId } = useSentinel();
+  const { sentinel_focus_node: activeScopeNodeId, sentinel_user } = useSentinel();
 
   // Slice 4.5 — column-picker state. Hook MUST be called every render
   // (rules of hooks); we feed it an empty-catalogue sentinel when the
@@ -269,7 +268,7 @@ export default function ObjectTree({
   // for the active workspace, and parent candidates for the chosen type's
   // prefix. All fetches are tolerant — one failing source doesn't poison
   // the others; the dropdown falls back to "— None —" only.
-  const workspaceId = useActiveWorkspace();
+  const workspaceId = sentinel_user?.workspace_id || null;
   const { types: typeCatalogue } = useArtefactTypeCatalogue();
   const selectedType = useMemo(
     () => typeCatalogue.find((x) => x.id === actionTypeId) ?? null,

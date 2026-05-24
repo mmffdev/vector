@@ -21,7 +21,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { artefactTypesApi, type ArtefactType } from "@/app/lib/artefactTypesApi";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
+import { useSentinel } from "@/app/sentinel";
 
 interface CatalogueState {
   workspaceId: string | null;
@@ -47,7 +47,8 @@ export function catalogueCacheKey(workspaceId: string | null): string {
 }
 
 export function ArtefactTypeCatalogueProvider({ children }: { children: React.ReactNode }) {
-  const workspaceId = useActiveWorkspace();
+  const { sentinel_user } = useSentinel();
+  const workspaceId = sentinel_user?.workspace_id || null;
   const [types, setTypes] = useState<ArtefactType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

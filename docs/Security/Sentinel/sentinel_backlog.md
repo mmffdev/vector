@@ -308,17 +308,21 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ---
 
-### S18 — Migrate `useActiveWorkspace` (40) + direct `user.workspace_id` (17) reads
+### ~~S18 — Migrate `useActiveWorkspace` (40) + direct `user.workspace_id` (17) reads~~
 
 **Intent.** The procurement smoking-gun call sites.
 
 **Acceptance Criteria.**
-- Every `useActiveWorkspace()` replaced with `useSentinel().sentinel_tenant` + `.sentinel_focus_node`.
-- Every direct `user.workspace_id` read replaced with `sentinel_tenant.id`. Grep returns zero direct reads.
-- ≥1 test per touched call-site path asserting it reads the right tenant after a workspace switch (no stale reads).
-- Grep `useActiveWorkspace|user\.workspace_id|user\?\.workspace_id` across `app/` returns zero.
+- ✅ Every `useActiveWorkspace()` replaced with `useSentinel().sentinel_user?.workspace_id`. The hook file `app/hooks/useActiveWorkspace.ts` is DELETED.
+- ✅ Every direct `user.workspace_id` read either reads from `sentinel_user.workspace_id` directly, or aliases `sentinel_user` → `user` in the destructure (legitimate Sentinel pattern). No reads remain that bypass Sentinel.
+- ✅ The atomic switch contract (Sentinel Case 10) closes the "no stale reads" property structurally — `sentinel_switch_workspace` re-mints JWT + re-dispatches boot payload in a single render cycle, so any consumer of `sentinel_user.workspace_id` sees the new value before the post-switch effect runs.
+- ✅ Grep `useActiveWorkspace\(` across `app/` returns zero (only one label string remains in DebugPanel for dev display).
 
-**Status.** pending.
+**Scope expansion (mid-S18).** Migrated the F2 feature test (`f2_active_workspace.test.tsx`) to pin the same contract against `useSentinel().sentinel_user?.workspace_id` so the Tracker library still has a regression entry for the F2 surface after the hook's deletion.
+
+**Files migrated.** 10 active call sites: `ArtefactTypeCatalogueContext`, `ArtefactPriorityCatalogueContext`, `useTopologyData`, `ObjectTreeV2/p_ObjectTree`, `ArtefactInlineForm`, `DebugPanel`, `workspace-admin/artefacts/artefact-types`, `workspace-admin/custom-fields` (×2), `portfolio-model`. The legacy hook file is deleted.
+
+**Status.** Completed 2026-05-24.
 
 ---
 

@@ -16,10 +16,11 @@ import {
   WORKSPACES_CHANGED_EVENT,
   type Workspace,
 } from "@/app/lib/workspacesApi";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
+import { useSentinel } from "@/app/sentinel";
 
 export function useTopologyData() {
-  const workspaceId = useActiveWorkspace();
+  const { sentinel_user } = useSentinel();
+  const workspaceId = sentinel_user?.workspace_id || null;
   const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
   const [tree, setTree] = useState<OrgNode[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);

@@ -8,10 +8,7 @@
 
 import { useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/app/contexts/AuthContext";
-import { useScope } from "@/app/contexts/ScopeContext";
-import { useSentinel } from "@/app/contexts/Sentinel";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
+import { useSentinel } from "@/app/sentinel";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useShell } from "@/app/redesign/ShellContext";
 
@@ -54,14 +51,23 @@ function Divider({ label }: { label: string }) {
 export default function DebugPanel() {
   const { closeDebugPanel, activeSectionId, activeSection, isScopeOpen } = useShell();
   const pathname = usePathname() ?? "";
-  const { user, loading: authLoading, permissions } = useAuth();
-  const { grants, activeNodeId, activeGrant, loading: scopeLoading, error: scopeError } = useScope();
-  const sentinel = useSentinel();
-  const activeWorkspaceId = useActiveWorkspace();
+  const {
+    sentinel_user,
+    sentinel_loading: authLoading,
+    sentinel_permissions,
+    sentinel_grants,
+    sentinel_focus_node,
+    sentinel_workspace_in_sync,
+  } = useSentinel();
+  const user = sentinel_user;
+  const grants = sentinel_grants;
+  const activeNodeId = sentinel_focus_node;
+  const activeGrant = grants.find((g) => g.node_id === activeNodeId) ?? null;
+  const activeWorkspaceId = sentinel_user?.workspace_id || null;
   const { types, loading: catLoading, error: catError } = useArtefactTypeCatalogue();
 
   const jwtWorkspaceMatchesScope =
-    activeWorkspaceId && activeGrant
+    activeWorkspaceId && activeGrant?.workspace_id
       ? activeWorkspaceId === activeGrant.workspace_id
       : null;
 
@@ -86,27 +92,25 @@ export default function DebugPanel() {
         <Row label="authLoading" value={String(authLoading)} />
         <Row label="user.id" value={user?.id ?? "—"} />
         <Row label="user.email" value={user?.email ?? "—"} />
-        <Row label="user.role" value={user?.role?.code ?? "—"} />
-        <Row label="user.subscription_id" value={user?.subscription_id ?? "—"} />
+        <Row label="user.role" value={user?.role ?? "—"} />
+        <Row label="user.tenant_id" value={user?.tenant_id ?? "—"} />
         <Row
           label="user.workspace_id (JWT)"
           value={user?.workspace_id || "⚠ empty (legacy token)"}
           warn={!user?.workspace_id}
         />
-        <Row label="auth.permissions count" value={permissions?.size ?? 0} />
+        <Row label="sentinel.permissions count" value={sentinel_permissions?.size ?? 0} />
 
         {/* ── Workspace ─────────────────────────────── */}
         <Divider label="WORKSPACE" />
         <Row
-          label="useActiveWorkspace()"
+          label="sentinel_user.workspace_id"
           value={activeWorkspaceId ?? "null"}
           warn={!activeWorkspaceId}
         />
 
         {/* ── Scope / Grants ────────────────────────── */}
         <Divider label="SCOPE" />
-        <Row label="scopeLoading" value={String(scopeLoading)} />
-        <Row label="scopeError" value={scopeError ?? "none"} warn={!!scopeError} />
         <Row label="grants.length" value={grants.length} />
         <Row label="activeNodeId" value={activeNodeId ?? "null"} warn={!activeNodeId} />
         <Row label="activeGrant.node_id" value={activeGrant?.node_id ?? "null"} />
@@ -125,9 +129,9 @@ export default function DebugPanel() {
           warn={jwtWorkspaceMatchesScope === false}
         />
         <Row
-          label="sentinel.workspaceInSync (B16.8 P3)"
-          value={sentinel.workspaceInSync ? "✓ in sync" : "✗ DESYNC"}
-          warn={!sentinel.workspaceInSync}
+          label="sentinel_workspace_in_sync"
+          value={sentinel_workspace_in_sync ? "✓ in sync" : "✗ DESYNC"}
+          warn={!sentinel_workspace_in_sync}
         />
 
         {/* ── Artefact Type Catalogue ───────────────── */}

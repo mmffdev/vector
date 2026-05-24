@@ -23,7 +23,7 @@ import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import Table from "@/app/components/Table";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { ApiError } from "@/app/lib/api";
 import {
@@ -35,7 +35,8 @@ import {
 export default function CustomFieldsPage() {
   const { full } = usePageTitle();
   const router = useRouter();
-  const activeWorkspaceId = useActiveWorkspace();
+  const { sentinel_user } = useSentinel();
+  const activeWorkspaceId = sentinel_user?.workspace_id || null;
 
   const [rows, setRows] = useState<WorkspaceField[] | null>(null);
   const [err, setErr] = useState<string | null>(null);

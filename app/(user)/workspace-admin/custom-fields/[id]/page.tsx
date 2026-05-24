@@ -14,7 +14,7 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
+import { useSentinel } from "@/app/sentinel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { ApiError } from "@/app/lib/api";
 import {
@@ -47,7 +47,8 @@ export default function CustomFieldEditorPage() {
   const { full } = usePageTitle();
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const activeWorkspaceId = useActiveWorkspace();
+  const { sentinel_user } = useSentinel();
+  const activeWorkspaceId = sentinel_user?.workspace_id || null;
 
   const isNew = params.id === "new";
 

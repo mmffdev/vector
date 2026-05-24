@@ -37,7 +37,6 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import Table from "@/app/components/Table";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useSentinel } from "@/app/sentinel";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { portfolio as portfolioApi } from "@/app/lib/apiSite/index";
 import { notify } from "@/app/lib/toast";
@@ -144,7 +143,7 @@ type StateView =
 export default function PortfolioModelPage() {
   const { full } = usePageTitle();
   const { sentinel_user: user, sentinel_can, sentinel_loading: authLoading } = useSentinel();
-  const activeWorkspaceId = useActiveWorkspace();
+  const activeWorkspaceId = user?.workspace_id || null;
   const canEditModel = sentinel_can("portfolio.model.edit");
   const router = useRouter();
   const [view, setView] = useState<StateView>({ kind: "loading" });

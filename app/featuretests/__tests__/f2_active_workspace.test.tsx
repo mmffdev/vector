@@ -1,100 +1,97 @@
 // F2 — Frontend workspace awareness.
 //
-// PLA-0053 feature test. Covers story 00580 (useActiveWorkspace hook).
+// PLA-0053 feature test. Originally covered story 00580 (useActiveWorkspace
+// hook). PLA062 S18 — useActiveWorkspace hook is now deleted; the
+// behaviour contract migrated to `useSentinel().sentinel_user?.workspace_id`.
+// This file is repurposed to pin the same surface on the Sentinel
+// canonical read path so the F2 regression entry stays meaningful in the
+// Tracker library.
+//
 // Tracker group: `backend-workspace-foundation`, feature `F2`.
-//
-// Lives at app/featuretests/ to mirror the backend's
-// backend/internal/featuretests/ pattern — one file per feature suite,
-// permanent regression entry in the Tracker library.
-//
-// Per the feature-driven testing SOP: this is the only F2 test. Per-
-// hook plumbing tests would belong elsewhere; this suite asserts the
-// behaviour an integrator can rely on.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
-
-// Mock the AuthContext module entirely so the hook reads from our
-// controllable shim. The real provider hits /me — out of scope here;
-// the F1 backend suite covers the JWT→/me path end-to-end.
-const mockAuthState: {
+const mockState: {
   user: {
     id: string;
-    subscription_id: string;
     workspace_id: string;
     email: string;
-    is_active: boolean;
     [key: string]: unknown;
   } | null;
 } = { user: null };
 
-// PLA062 S17 — useActiveWorkspace migrated from AuthContext to Sentinel.
-// Mock useSentinel so the hook reads sentinel_user instead of AuthContext.user.
+// Mock useSentinel so consumers read the controllable shim. The real
+// provider boots from /sentinel/boot — out of scope here; the backend
+// sentinel suite covers the JWT→boot path end-to-end.
 vi.mock("@/app/sentinel", () => ({
-  useSentinel: () => ({ sentinel_user: mockAuthState.user }),
+  useSentinel: () => ({ sentinel_user: mockState.user }),
 }));
 
+import { useSentinel } from "@/app/sentinel";
+
+// The repurposed contract: callers read sentinel_user?.workspace_id and
+// normalise empty string to null (matching the legacy useActiveWorkspace
+// behaviour for PLA-0053 pre-claim JWTs).
+function readActiveWorkspace(): string | null {
+  const { sentinel_user } = useSentinel();
+  if (!sentinel_user) return null;
+  if (!sentinel_user.workspace_id) return null;
+  return sentinel_user.workspace_id;
+}
+
 beforeEach(() => {
-  mockAuthState.user = null;
+  mockState.user = null;
 });
 
 afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("F2 — useActiveWorkspace", () => {
-  it("returns null before /me resolves (user is still null)", () => {
-    mockAuthState.user = null;
-    const { result } = renderHook(() => useActiveWorkspace());
+describe("F2 — active workspace via Sentinel (post-PLA062 S18)", () => {
+  it("returns null before sentinel boot resolves (user is still null)", () => {
+    mockState.user = null;
+    const { result } = renderHook(() => readActiveWorkspace());
     expect(result.current).toBeNull();
   });
 
   it("returns null when the user has no workspace_id (legacy JWT pre-PLA-0053)", () => {
-    mockAuthState.user = {
+    mockState.user = {
       id: "u1",
-      subscription_id: "sub-a",
       workspace_id: "",
       email: "f2@example.com",
-      is_active: true,
     };
-    const { result } = renderHook(() => useActiveWorkspace());
+    const { result } = renderHook(() => readActiveWorkspace());
     expect(result.current).toBeNull();
   });
 
-  it("returns the workspace_id when AuthContext carries one", () => {
-    mockAuthState.user = {
+  it("returns the workspace_id when Sentinel carries one", () => {
+    mockState.user = {
       id: "u1",
-      subscription_id: "sub-a",
       workspace_id: "ws-A-uuid",
       email: "f2@example.com",
-      is_active: true,
     };
-    const { result } = renderHook(() => useActiveWorkspace());
+    const { result } = renderHook(() => readActiveWorkspace());
     expect(result.current).toBe("ws-A-uuid");
   });
 
-  it("re-renders with the new workspace_id when AuthContext refreshes", () => {
-    mockAuthState.user = {
+  it("re-renders with the new workspace_id when Sentinel refreshes", () => {
+    mockState.user = {
       id: "u1",
-      subscription_id: "sub-a",
       workspace_id: "ws-A-uuid",
       email: "f2@example.com",
-      is_active: true,
     };
-    const { result, rerender } = renderHook(() => useActiveWorkspace());
+    const { result, rerender } = renderHook(() => readActiveWorkspace());
     expect(result.current).toBe("ws-A-uuid");
 
-    // Simulate /me refresh with a different workspace_id (e.g. user
-    // switched workspaces and re-issued JWT).
+    // Simulate sentinel boot refresh with a different workspace_id
+    // (user switched workspaces; JWT re-issued atomically by the
+    // sentinel_switch_workspace action).
     act(() => {
-      mockAuthState.user = {
+      mockState.user = {
         id: "u1",
-        subscription_id: "sub-a",
         workspace_id: "ws-B-uuid",
         email: "f2@example.com",
-        is_active: true,
       };
     });
     rerender();

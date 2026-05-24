@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
+import { useSentinel } from "@/app/sentinel";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
 import PageContent from "@/app/components/PageContent";
@@ -230,7 +230,7 @@ function ColourPickerCell({
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ArtefactTypesPage() {
   const { full } = usePageTitle();
-  void useActiveWorkspace();
+  void useSentinel();
 
   const [types, setTypes] = useState<ArtefactType[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);

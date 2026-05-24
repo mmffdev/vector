@@ -13,7 +13,6 @@ import {
   type Milestone,
   type UserInScope,
 } from "@/app/lib/apiSite";
-import { useActiveWorkspace } from "@/app/hooks/useActiveWorkspace";
 import { useSentinel } from "@/app/sentinel";
 import { ColourPicker } from "@/app/components/ColourPicker";
 import { ArtefactNodeDiagram } from "@/app/components/ArtefactNodeDiagram";
@@ -59,8 +58,8 @@ export function ArtefactInlineForm({
   onNavigate,
   isDuplicate,
 }: ArtefactInlineFormProps) {
-  const workspaceId = useActiveWorkspace();
-  const { sentinel_focus_node: activeScopeNodeId } = useSentinel();
+  const { sentinel_focus_node: activeScopeNodeId, sentinel_user } = useSentinel();
+  const workspaceId = sentinel_user?.workspace_id || null;
   const { artefact, loading, error, patch } = useArtefactInline({
     artefactId,
     resourceUrl,
