@@ -831,4 +831,237 @@ describe("sentinel.unit.SentinelProvider", () => {
     expect(screen.getByTestId("follow-mode").textContent).toBe("false");
     expect(errors).toHaveLength(1);
   });
+
+  // -------------------------------------------------------------------
+  // Case 16 — Boot-time bridge failure: pin the silent-empty bug
+  // -------------------------------------------------------------------
+  // Symptom reproduced in dev 2026-05-24: signed-in user (AuthContext
+  // has email), Dev Debug bar shows user.id empty + grants.length 0 +
+  // sentinel_user.workspace_id null, page renders blank because
+  // AccountSettingsPage does `if (!user) return null` post-loading.
+  //
+  // Trace: reload() → fetchBoot() → /sentinel/boot 404 → bridge → Promise.all
+  // → /auth/me 401 (or /topology/grants/me 401 with no catch on auth.me side).
+  // The reject propagates out of fetchBoot; sentinelCall's catch fires
+  // _onUnauthorized; reload's outer catch swallows the error and dispatches
+  // loading_done. End state: { loading: false, user: null }.
+
+  function BootStateProbe() {
+    const s = useSentinel();
+    return (
+      <>
+        <span data-testid="boot-loading">{String(s.sentinel_loading)}</span>
+        <span data-testid="boot-user-id">{s.sentinel_user?.id ?? "null"}</span>
+        <span data-testid="boot-user-email">{s.sentinel_user?.email ?? "null"}</span>
+        <span data-testid="boot-grants-length">{String(s.sentinel_grants.length)}</span>
+      </>
+    );
+  }
+
+  it("Case 16a — bridge /auth/me 401 with NO terminal code leaves provider empty (boot is a no-op; layout redirects to /login)", async () => {
+    // Boot path: /sentinel/boot 404 → bridge fires /auth/me + /topology/grants/me.
+    // Make /auth/me return 401 with a generic problem+json (no terminal code).
+    // This is the "no session at all" path — the route-group layout's
+    // useEffect redirects to /login. We just need boot to land softly here.
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        return new Response("not found", { status: 404 });
+      }
+      if (u.includes("/auth/me")) {
+        return new Response(
+          JSON.stringify({ type: "about:blank", title: "Unauthorized", status: 401 }),
+          { status: 401, headers: { "Content-Type": "application/problem+json" } },
+        );
+      }
+      if (u.includes("/topology/grants/me")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (u.includes("/auth/refresh")) {
+        return new Response("", { status: 401 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <BootStateProbe />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("boot-loading").textContent).toBe("false");
+    expect(screen.getByTestId("boot-user-id").textContent).toBe("null");
+    expect(screen.getByTestId("boot-user-email").textContent).toBe("null");
+    expect(screen.getByTestId("boot-grants-length").textContent).toBe("0");
+  });
+
+  it("Case 16d — bridge /auth/me 401 WITH code=session_idle_expired triggers hard redirect to /login (real-world dev bug)", async () => {
+    // The actual bug: padmin session is 70min old, idle TTL is 30min,
+    // backend's RequireAuth returns 401 with code=session_idle_expired.
+    // BEFORE FIX: SentinelProvider's catch swallows the error silently
+    // and the user is stuck on a blank /user/account-settings page.
+    // AFTER FIX: SentinelProvider detects the terminal session code and
+    // hard-navigates to /login with sessionStorage carrying the reason.
+    const navigated: string[] = [];
+    const origLocation = window.location;
+    const origSessionStorage = window.sessionStorage;
+    const storedKeys: Record<string, string> = {};
+
+    // Override window.location.assign to capture navigations.
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: {
+        ...origLocation,
+        assign: (url: string) => navigated.push(url),
+      },
+    });
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      writable: true,
+      value: {
+        ...origSessionStorage,
+        setItem: (k: string, v: string) => { storedKeys[k] = v; },
+        getItem: (k: string) => storedKeys[k] ?? null,
+      },
+    });
+
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        return new Response("not found", { status: 404 });
+      }
+      if (u.includes("/auth/me")) {
+        return new Response(
+          JSON.stringify({
+            type: "about:blank",
+            title: "Unauthorized",
+            status: 401,
+            code: "session_idle_expired", // ← the terminal code
+            detail: "Your session has been idle too long. Please sign in again.",
+          }),
+          { status: 401, headers: { "Content-Type": "application/problem+json" } },
+        );
+      }
+      if (u.includes("/topology/grants/me")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (u.includes("/auth/refresh")) {
+        return new Response("", { status: 401 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <BootStateProbe />
+        </SentinelProvider>,
+      );
+    });
+
+    // Boot loading completed; user still null (the navigation kicked in
+    // before any further work).
+    expect(screen.getByTestId("boot-loading").textContent).toBe("false");
+    expect(screen.getByTestId("boot-user-id").textContent).toBe("null");
+
+    // The fix: SentinelProvider self-rescued and pushed /login.
+    expect(navigated).toContain("/login");
+    expect(storedKeys["vector_logout_reason"]).toBe("session_idle_expired");
+
+    // Restore.
+    Object.defineProperty(window, "location", { configurable: true, writable: true, value: origLocation });
+    Object.defineProperty(window, "sessionStorage", { configurable: true, writable: true, value: origSessionStorage });
+  });
+
+  it("Case 16b — bridge /topology/grants/me 401 still completes boot with user populated (because the .catch swallows)", async () => {
+    // Different shape: /auth/me succeeds but /topology/grants/me 401s.
+    // The bridge has a .catch(() => []) on grants/me, so the boot should
+    // still populate the user even with zero grants.
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        return new Response("not found", { status: 404 });
+      }
+      if (u.includes("/auth/me")) {
+        return new Response(
+          JSON.stringify({
+            id: FIXTURE_USER_A.id,
+            email: FIXTURE_USER_A.email,
+            subscription_id: FIXTURE_TENANT_A.id,
+            workspace_id: FIXTURE_USER_A.workspace_id,
+            role: { id: FIXTURE_USER_A.role_id, code: FIXTURE_USER_A.role },
+            permissions: FIXTURE_USER_A.permissions,
+            default_focus_node_id: FIXTURE_USER_DEFAULT_FOCUS,
+            home_location_follow_mode: false,
+          }),
+          { status: 200 },
+        );
+      }
+      if (u.includes("/topology/grants/me")) {
+        return new Response("not authorised", { status: 401 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <BootStateProbe />
+        </SentinelProvider>,
+      );
+    });
+
+    // grants/me 401 is caught + treated as empty grants, so user populates.
+    expect(screen.getByTestId("boot-loading").textContent).toBe("false");
+    expect(screen.getByTestId("boot-user-id").textContent).toBe(FIXTURE_USER_A.id);
+    expect(screen.getByTestId("boot-user-email").textContent).toBe(FIXTURE_USER_A.email);
+    expect(screen.getByTestId("boot-grants-length").textContent).toBe("0");
+  });
+
+  it("Case 16c — bridge /auth/me 200 + /topology/grants/me 200 with NO workspace_id in /auth/me payload still populates user", async () => {
+    // The Dev Debug bar showed "user.workspace_id (JWT) — empty (legacy token)".
+    // This case pins that even when /auth/me returns no workspace_id, the
+    // boot should still populate sentinel_user (workspace_id falls back to "").
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        return new Response("not found", { status: 404 });
+      }
+      if (u.includes("/auth/me")) {
+        return new Response(
+          JSON.stringify({
+            id: FIXTURE_USER_A.id,
+            email: FIXTURE_USER_A.email,
+            subscription_id: FIXTURE_TENANT_A.id,
+            // workspace_id omitted on purpose — the "legacy token" path
+            role: { id: FIXTURE_USER_A.role_id, code: FIXTURE_USER_A.role },
+            permissions: FIXTURE_USER_A.permissions,
+          }),
+          { status: 200 },
+        );
+      }
+      if (u.includes("/topology/grants/me")) {
+        return new Response(JSON.stringify([
+          { node_id: FIXTURE_TENANT_ROOT, role: "admin", parent_id: null },
+        ]), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <BootStateProbe />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("boot-loading").textContent).toBe("false");
+    expect(screen.getByTestId("boot-user-id").textContent).toBe(FIXTURE_USER_A.id);
+    expect(screen.getByTestId("boot-user-email").textContent).toBe(FIXTURE_USER_A.email);
+    expect(screen.getByTestId("boot-grants-length").textContent).toBe("1");
+  });
 });

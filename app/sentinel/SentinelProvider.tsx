@@ -35,6 +35,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { ApiError } from "@/app/lib/api";
 import { parseMegFromURL } from "@/app/lib/shareableParams";
 import {
   fetchBoot,
@@ -209,8 +210,28 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       const payload = await fetchBoot();
       dispatch({ type: "boot_loaded", payload });
       hasBootedRef.current = true;
-    } catch {
+    } catch (err) {
       dispatch({ type: "loading_done" });
+      // Terminal-session-state 401s (session_revoked, session_idle_expired,
+      // session_anomaly): the JWT is dead, the page would render an empty
+      // sentinel_user and the (user)/layout's route-group guard wouldn't
+      // know to redirect — AuthContext's hardLogout may not have registered
+      // yet because effect order runs child (SentinelProvider) before parent
+      // (AuthProvider). Self-rescue here: hard-navigate to /login with a
+      // reason hint so the user sees the right banner.
+      // SSR-safe: window check guards against the render pass.
+      if (typeof window !== "undefined" && err instanceof ApiError && err.status === 401) {
+        const code = err.code;
+        const terminalCodes = new Set(["session_revoked", "session_idle_expired", "session_anomaly"]);
+        if (code && terminalCodes.has(code)) {
+          try {
+            sessionStorage.setItem("vector_logout_reason", code);
+          } catch {
+            // sessionStorage unavailable (private mode, locked-down env) — non-fatal
+          }
+          window.location.assign("/login");
+        }
+      }
     }
   }, []);
 
