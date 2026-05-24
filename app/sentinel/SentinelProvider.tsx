@@ -1,5 +1,11 @@
 "use client";
 
+// hook-allow-url-query: SentinelProvider writes `focus` (allow-listed in
+// shareableParams.ts SHAREABLE_PARAMS at S08) to the address bar when
+// sentinel_set_focus is called. This is the canonical scope-identity
+// writer — replaces the legacy ScopeContext's window.history.replaceState
+// in PLA062 S22. Every other params write in this file is read-only.
+
 /**
  * SentinelProvider — single React provider that owns identity, tenant,
  * and scope state. Replaces AuthContext + ScopeContext + TenantContext
@@ -198,6 +204,21 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
 
   const setFocus = useCallback(async (nodeId: string | null) => {
     dispatch({ type: "set_focus", nodeId });
+    // Write the focus to the URL so it survives a refresh and so the
+    // `?meg=` forwarder in app/lib/api.ts (legacy name — `meg` is from
+    // PLA-0053, named after Rick's daughter) can read the active scope
+    // through the canonical address-bar param. `focus` is allow-listed
+    // in SHAREABLE_PARAMS — block-url-query-state hook compliant.
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        if (nodeId) url.searchParams.set("focus", nodeId);
+        else url.searchParams.delete("focus");
+        window.history.replaceState(window.history.state, "", url.toString());
+      } catch {
+        // edge environments may not expose URL; non-fatal
+      }
+    }
     await putFocus(nodeId);
   }, []);
 

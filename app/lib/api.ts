@@ -156,7 +156,15 @@ function withForwardedMeg(path: string, method: string): string {
   if (!/(^|\/)(work-items|portfolio-items)(\?|\/|$)/.test(path)) return path;
   if (path.includes("meg=") || path.includes("scope=")) return path;
   try {
-    let meg = new URLSearchParams(window.location.search).get("meg");
+    // PLA062 S22: ScopeContext deleted, so the legacy ?meg= URL writer
+    // is gone. Read from Sentinel's ?focus= first (the new canonical
+    // address-bar param, allowlisted in shareableParams.ts at S08),
+    // then fall back to the legacy ?meg= URL param (older bookmarks),
+    // then to the localStorage cache the legacy ScopeContext used to
+    // hydrate from. When nothing is set, the request goes out
+    // unclamped (admin path) — the same behaviour as pre-PLA062.
+    const params = new URLSearchParams(window.location.search);
+    let meg = params.get("focus") ?? params.get("meg");
     if (!meg) meg = window.localStorage.getItem("vector.scope.activeNodeId");
     if (!meg) return path;
     let out = path + (path.includes("?") ? "&" : "?") + "meg=" + encodeURIComponent(meg);

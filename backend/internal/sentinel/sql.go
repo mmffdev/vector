@@ -80,9 +80,13 @@ const sqlTenantRootNode = `
 // sqlFirstLiveWorkspace returns the actor's first live workspace in
 // their tenant ordered by created_at ASC (Default lands first). $1 =
 // subscriptionID.
+//
+// Table is `workspace` (singular) per the rename in §2.6 of the
+// naming-convention spec; every other handler in backend/internal/
+// uses the same. Sentinel was copy-pasted from a pre-rename draft.
 const sqlFirstLiveWorkspace = `
 	SELECT id
-	  FROM workspaces
+	  FROM workspace
 	 WHERE subscription_id = $1
 	   AND archived_at IS NULL
 	 ORDER BY created_at ASC
@@ -92,15 +96,18 @@ const sqlFirstLiveWorkspace = `
 // sqlExistsActiveWorkspaceRole returns TRUE when the user holds any
 // active grant on the workspace. $1 = workspaceID, $2 = userID.
 //
-// Mirrors the existing topology.sqlExistsActiveWorkspaceRole query.
-// roles_workspaces.archived_at IS NULL is the "active" gate.
+// Table is `users_roles_workspaces` (renamed from the older
+// `workspace_roles` → `roles_workspaces` lineage by migration 132).
+// Column-prefix convention (PLA naming spec §2.3): every column on a
+// renamed root-family table carries the table-name prefix. The
+// "active" gate is `users_roles_workspaces_revoked_at IS NULL`.
 const sqlExistsActiveWorkspaceRole = `
 	SELECT EXISTS (
 	  SELECT 1
-	    FROM roles_workspaces rw
-	   WHERE rw.workspace_id = $1
-	     AND rw.user_id = $2
-	     AND rw.archived_at IS NULL
+	    FROM users_roles_workspaces rw
+	   WHERE rw.users_roles_workspaces_id_workspace = $1
+	     AND rw.users_roles_workspaces_id_user = $2
+	     AND rw.users_roles_workspaces_revoked_at IS NULL
 	)
 `
 
