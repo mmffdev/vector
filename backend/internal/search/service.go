@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 )
 
 const defaultLimit = 20
@@ -74,6 +75,13 @@ func (s *Service) Search(ctx context.Context, q Query) ([]Result, error) {
 		typeFilter = fmt.Sprintf("AND a.artefact_type_id IN (%s)", strings.Join(placeholders, ","))
 	}
 
+	// PLA062 S26 — Sentinel mandatory subtree clamp. Search results
+	// MUST be bounded to the user's reachable subtree, otherwise a
+	// user with a narrow ?meg= focus would still see hits from
+	// outside their scope. When no clamp is on ctx (admin / dev), the
+	// fragment is empty and the workspace clamp alone narrows reads.
+	subtreeFilter, args, _ := sentinel.SubtreeClause(ctx, "a", args, n)
+
 	sql := fmt.Sprintf(`
 		SELECT
 			a.id,
@@ -91,8 +99,9 @@ func (s *Service) Search(ctx context.Context, q Query) ([]Result, error) {
 		  AND a.archived_at IS NULL
 		  AND a.search_index @@ plainto_tsquery('english', $1)
 		  %s
+		  %s
 		ORDER BY rank DESC
-		LIMIT $3`, typeFilter)
+		LIMIT $3`, typeFilter, subtreeFilter)
 
 	rows, err := s.pool.Query(ctx, sql, args...)
 	if err != nil {
