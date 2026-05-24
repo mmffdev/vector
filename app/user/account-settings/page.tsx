@@ -151,12 +151,22 @@ function MFASection() {
 
 export default function AccountSettingsPage() {
   const { full } = usePageTitle();
-  const { sentinel_user: user } = useSentinel();
+  const { sentinel_user: user, sentinel_loading } = useSentinel();
   const [displayName, setDisplayName] = useState("");
   const [emailNotif, setEmailNotif] = useState(true);
   const [productNotif, setProductNotif] = useState(false);
   const [digestNotif, setDigestNotif] = useState(true);
 
+  // Sentinel boot is async; first render lands with user=null + loading=true.
+  // Return null only when the page genuinely has no user to display
+  // (post-boot, still null = signed out → route-group layout redirects).
+  if (sentinel_loading) {
+    return (
+      <PageContent>
+        <PageHeading level={1} title={full} subtitle="Loading your account…" />
+      </PageContent>
+    );
+  }
   if (!user) return null;
 
   return (

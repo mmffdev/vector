@@ -191,6 +191,43 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [reload]);
 
+  // Mirror the resolved focus into the URL so a fresh tab / post-login
+  // load shows ?meg=<uuid> immediately — not blind. Without this the
+  // address bar stays bare until the user clicks something in the
+  // scope picker, which means bookmarks + refresh + share-the-URL
+  // don't survive a re-load of the same view.
+  //
+  // We re-derive the focus from internal state (same precedence the
+  // memo below uses): focus_override → url_focus → user default → tenant
+  // root. Writes only when:
+  //   - boot finished (tenant_root populated)
+  //   - the derived focus disagrees with the address bar's current ?meg=
+  // That second guard keeps us off an endless replaceState loop and
+  // honours the user's intent if they manually wipe ?meg= from the
+  // URL bar (we'd repopulate it on the next render, which is the right
+  // behaviour for the "always-mirrored" property).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (state.loading) return;
+    if (!state.tenant_root && !state.focus_override && !state.url_focus && !state.user?.default_focus_node_id) {
+      return; // nothing resolved yet; don't write a stale URL
+    }
+    const focus =
+      state.focus_override ??
+      state.url_focus ??
+      state.user?.default_focus_node_id ??
+      state.tenant_root;
+    if (!focus) return;
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("meg") === focus) return; // already in sync
+      url.searchParams.set("meg", focus);
+      window.history.replaceState(window.history.state, "", url.toString());
+    } catch {
+      // edge environments without window.URL — non-fatal
+    }
+  }, [state.loading, state.focus_override, state.url_focus, state.user, state.tenant_root]);
+
   const switchTenant = useCallback(async (tenantId: string) => {
     dispatch({ type: "loading_start" });
     const payload = await postSwitchTenant(tenantId);
