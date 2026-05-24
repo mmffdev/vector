@@ -18,6 +18,7 @@ import { LibraryReleasesProvider } from "@/app/contexts/LibraryReleasesContext";
 import { NavPrefsProvider } from "@/app/contexts/NavPrefsContext";
 import { PageHeaderProvider } from "@/app/contexts/PageHeaderContext";
 import { DomRegistryProvider, ViewportSlot } from "@/app/contexts/DomRegistryContext";
+import { SentinelProvider } from "@/app/sentinel";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function OverlayLayout({ children }: { children: React.ReactNode }) {
@@ -37,19 +38,24 @@ export default function OverlayLayout({ children }: { children: React.ReactNode 
 
   if (loading || !user || user.force_password_change) return null;
 
+  // PLA062 S09: SentinelProvider above the legacy stack so overlay
+  // pages can call useSentinel(). Same coexistence rationale as
+  // app/(user)/layout.tsx — legacy contexts retired at S22.
   return (
-    <MasterDebugProvider>
-      <LibraryReleasesProvider>
-        <NavPrefsProvider>
-          <PageHeaderProvider>
-            <DomRegistryProvider>
-              <ViewportSlot kind="app">
-                <div className="overlay-root">{children}</div>
-              </ViewportSlot>
-            </DomRegistryProvider>
-          </PageHeaderProvider>
-        </NavPrefsProvider>
-      </LibraryReleasesProvider>
-    </MasterDebugProvider>
+    <SentinelProvider>
+      <MasterDebugProvider>
+        <LibraryReleasesProvider>
+          <NavPrefsProvider>
+            <PageHeaderProvider>
+              <DomRegistryProvider>
+                <ViewportSlot kind="app">
+                  <div className="overlay-root">{children}</div>
+                </ViewportSlot>
+              </DomRegistryProvider>
+            </PageHeaderProvider>
+          </NavPrefsProvider>
+        </LibraryReleasesProvider>
+      </MasterDebugProvider>
+    </SentinelProvider>
   );
 }

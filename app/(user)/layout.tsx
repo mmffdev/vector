@@ -12,6 +12,7 @@ import { TenantProvider } from "@/app/contexts/TenantContext";
 import { ActiveNavProvider } from "@/app/contexts/ActiveNavContext";
 import { ScopeProvider } from "@/app/contexts/ScopeContext";
 import { SentinelBridge } from "@/app/contexts/Sentinel";
+import { SentinelProvider } from "@/app/sentinel";
 import { useAuth } from "@/app/contexts/AuthContext";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +32,14 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   if (loading || !user || user.force_password_change) return null;
 
+  // PLA062 S09: SentinelProvider mounts ABOVE the legacy stack so any
+  // consumer in this subtree can call useSentinel(). The old contexts
+  // (Tenant / Scope / SentinelBridge) coexist during the migration
+  // window (S10–S21 migrate consumers); S22 deletes them and this
+  // wrapping collapses to just SentinelProvider + the non-identity
+  // providers (PageHeader, NavPrefs, ...).
   return (
+    <SentinelProvider>
     <TenantProvider>
     <MasterDebugProvider>
     <LibraryReleasesProvider>
@@ -51,5 +59,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     </LibraryReleasesProvider>
     </MasterDebugProvider>
     </TenantProvider>
+    </SentinelProvider>
   );
 }
