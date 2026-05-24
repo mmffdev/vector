@@ -123,28 +123,19 @@ func (r *PoolResolver) queryNodeIDs(
 	return out, rows.Err()
 }
 
-// DefaultFocus implements Resolver. Returns (nil, nil) until S06's
-// migration ships users.default_focus_node_id. Once the column exists,
-// flip the body to read it; the contract (nil → fall through) is
-// already correct and middleware will start honouring user defaults
-// without any further code change.
-//
-// Returning (nil, nil) is a documented contract value, not a missing
-// implementation: it means "user has no default set", which middleware
-// treats as fall-through to tenant root.
+// DefaultFocus implements Resolver. Reads users.default_focus_node_id,
+// added by S06 migration 243. NULL row value → (nil, nil), which
+// middleware treats as fall-through to tenant root. Inactive user →
+// (nil, nil) too, because the sqlUserDefaultFocus query gates on
+// is_active = TRUE (an authenticated request from an inactive user
+// already failed at auth.RequireAuth; the gate here is defence-in-depth).
 func (r *PoolResolver) DefaultFocus(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
-	// S06 will land users.default_focus_node_id; until then every user
-	// effectively has nil default. The query is prepared but commented
-	// out so S06's commit is a one-line uncomment + delete-this-comment.
-	//
-	// var focus *uuid.UUID
-	// err := r.MVPool.QueryRow(ctx, sqlUserDefaultFocus, userID).Scan(&focus)
-	// if errors.Is(err, pgx.ErrNoRows) {
-	//     return nil, nil
-	// }
-	// return focus, err
-	_ = userID
-	return nil, nil
+	var focus *uuid.UUID
+	err := r.MVPool.QueryRow(ctx, sqlUserDefaultFocus, userID).Scan(&focus)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return focus, err
 }
 
 // TenantRoot implements Resolver. Returns the live root topology node

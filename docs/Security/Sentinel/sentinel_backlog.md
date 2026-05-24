@@ -117,7 +117,7 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 - Existing `users` rows backfill to `NULL` focus (no migration error).
 - Migration is reversible — down step drops the three columns.
 
-**Status.** pending.
+**Status.** done — 2026-05-24, commit TBD. Migration 243 applied clean; columns + partial index verified via `\d users`. `PoolResolver.DefaultFocus` now reads the column directly (no more (nil,nil) placeholder); sentinel tests still GREEN. No FK constraint on `default_focus_node_id` because `topology_nodes` lives in vector_artefacts (cross-DB FK not enforceable at SQL); middleware's existing tenant gate (ErrFocusNotInTenant) handles stale values gracefully.
 
 ---
 
@@ -428,3 +428,4 @@ This file is the long-form archive of the AC. PLA062 is the as-planned record; t
 | S03 | 2026-05-24 | a4577e41 | 6 RED cases captured verbatim |
 | S04 | 2026-05-24 | 2d2cd68b | 6 GREEN cases first try; substrate interface in place |
 | S05 | 2026-05-24 | 26fee3a6 | 9 GREEN cases (cases 7/8/9 added for workspace absorption); production Resolver + 10 mount migrations + 6 handler migrations + TD-SEN-01 closed |
+| S06 | 2026-05-24 | (this commit) | migration 243 applied; users.default_focus_node_id + scope-default booleans live; PoolResolver.DefaultFocus wired |
