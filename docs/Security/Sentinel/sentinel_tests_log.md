@@ -367,5 +367,5 @@ ok  	github.com/mmffdev/vector-backend/internal/lintchecks	0.456s
 
 **Comment-only skip.** Two false positives in `notifications/rules/` (godoc comments mentioning `artefact_types`) were silenced by stripping pure-comment lines before the regex match — same convention as the project's other Go lintchecks.
 
-**Commit.** _(to be backfilled after commit lands)_
+**Commit.** `40a6b565` (2026-05-24): feat(lint): S20 — Go TestSentinelClampRequired backend ratchet [PLA062 S20].
 
