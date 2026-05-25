@@ -1,18 +1,24 @@
 -- ============================================================
 -- MMFFDev - Vector: Work Items POC seed data
--- Seed 002 — applied on top of migrations 063-065
--- Run: PGPASSWORD=... psql -h localhost -p 5435 -U mmff_dev -d mmff_vector -v ON_ERROR_STOP=1 -f db/seed/002_work_items_poc.sql
+-- Seed 002 — RETIRED as of migration 250 (PLA064 CUT1.1.2)
 --
--- Creates realistic but fake data for the Work Items POC:
---   - 1 sprint (active)
---   - 2 custom field library entries
---   - 1 work item template (Bug Report) with 2 fields
---   - 3 epics
---   - 6 stories (2 per epic)
---   - 4 tasks + 2 defects (children of stories)
+-- THIS FILE IS BROKEN AND MUST NOT BE RUN.
 --
--- Idempotent: all INSERTs use ON CONFLICT DO NOTHING.
--- Subscription: 00000000-0000-0000-0000-000000000001 (MMFFDev dev tenant)
+-- Every table it references has been removed:
+--   sprints                          — dropped in mig 250 (dev-seed debt)
+--   o_execution_custom_field_library — renamed → obj_custom_field_lib (mig 123),
+--                                      then dropped in mig 250
+--   o_execution_work_item_templates  — renamed → obj_field_templates (mig 123),
+--                                      then dropped in mig 250
+--   o_execution_work_item_template_fields — renamed → obj_field_template_fields (mig 123),
+--                                      then dropped in mig 250
+--   o_artefacts_execution_work_items — renamed → obj_work_items (mig 123),
+--                                      then ETL'd to vector_artefacts.artefacts (PLA-0023)
+--
+-- The live dev fixture for artefacts now lives in:
+--   db/vector_artefacts/schema/seed/01_work_items_fixture.sql
+--
+-- This file is retained for historical reference only.
 -- ============================================================
 
 BEGIN;
