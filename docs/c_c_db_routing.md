@@ -2,6 +2,8 @@
 
 > **HARD RULE — NO ASSUMPTIONS:** before any psql query, schema lookup, or "the table is probably called X" claim, you MUST read this doc to confirm which pool serves the feature and which database that pool connects to. Memory: [`feedback_never_assume_database`](../.claude/memory/feedback_never_assume_database.md). Source-of-truth wiring: [`backend/cmd/server/main.go`](../backend/cmd/server/main.go).
 
+> **Planned post-cutover state (PLA064 / CUT1):** the three-pool world collapses to two — `vaPool` (vector_artefacts) absorbs `pool` (mmff_vector), and `libPools` stays as-is. The `master_record_workspaces` registry+sidecar pair and the `subscriptions`+`master_record_tenants` pair MERGE into single tables (denormalisation workarounds eliminated; merge plans at [`db/vector_artefacts/schema/merge_plan/`](../db/vector_artefacts/schema/merge_plan/)). The `workspacemasterrecord` and `tenantmasterrecord` packages are slated for deletion in CUT1.6.1 — the merged tables are read via the workspaces / subscriptions services since each is one concept post-merge. See `/dev/reporting/PLA064` for the 6-phase plan + per-story AC.
+
 The Vector backend connects to three Postgres databases via separate `pgxpool.Pool` variables in `main.go`. Every Go service in `backend/internal/<name>` takes one (or two) of these pools through `NewService(...)`. This doc maps every pool, every database, and every service that talks to it.
 
 ## Pools at a glance
