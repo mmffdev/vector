@@ -623,6 +623,13 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 		return nil, err
 	}
 
+	// Re-derive WorkspaceID — FindUserByID doesn't populate it (it's a
+	// per-session selection, not a column on users). Without this, every
+	// refresh would drop the workspace_id claim and the sentinel fallback
+	// would silently revert the user to the tenant's earliest-granted
+	// workspace. See deriveWorkspaceForRefresh for the three-tier rationale.
+	s.deriveWorkspaceForRefresh(ctx, u)
+
 	// Rotate: revoke old (stamping rotation metadata), insert new.
 	raw, newHash, err := GenerateRefreshToken()
 	if err != nil {
@@ -715,6 +722,10 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 	if err != nil {
 		return nil, err
 	}
+	// Re-derive WorkspaceID — same rationale as Refresh, applies on the
+	// grace-window path too. See deriveWorkspaceForRefresh.
+	s.deriveWorkspaceForRefresh(ctx, u)
+
 	// Successor session is already live — stamp its id as the sid claim
 	// and re-emit the same cnf.jkt the parent rotation set on the row.
 	access, err := SignAccessToken(u, sessID, boundJKT)
@@ -997,6 +1008,59 @@ func (s *Service) resolveDefaultWorkspace(ctx context.Context, subscriptionID uu
 		return uuid.Nil, err
 	}
 	return id, nil
+}
+
+// deriveWorkspaceForRefresh re-populates u.WorkspaceID on refresh
+// (Refresh + refreshFromSuccessor) so the re-minted access token
+// carries the workspace_id claim instead of dropping it. Three-tier
+// resolution:
+//
+//	Path A: u.DefaultFocusNodeID → topology_nodes.workspace_id,
+//	        validated against an active users_roles_workspaces grant.
+//	Path B: workspaceresolver.FirstGrantedWorkspace (earliest-created
+//	        workspace the user holds an active grant on in this tenant).
+//	Path C: leave u.WorkspaceID == uuid.Nil. SignAccessToken signs
+//	        without the claim; sentinel.Middleware will 403 no-workspace
+//	        on the next request, which is correct (user has no business
+//	        in this tenant any more).
+//
+// Fail-open on resolver errors: refresh is in the hot path and a pool
+// blip is far more common than a security-relevant condition. Log and
+// fall through to the next path or to Path C. The defence-in-depth still
+// holds: sentinel.HasActiveRole is the authoritative gate downstream
+// and runs regardless of whether the JWT claim is present.
+//
+// Nil-safe: when s.WorkspaceResolver is nil (tests that don't wire it),
+// returns immediately leaving u.WorkspaceID == uuid.Nil — same behaviour
+// as before this fix landed.
+func (s *Service) deriveWorkspaceForRefresh(ctx context.Context, u *roletypes.User) {
+	if s.WorkspaceResolver == nil {
+		return
+	}
+
+	// Path A — derive from default focus node.
+	if u.DefaultFocusNodeID != nil {
+		wsID, err := s.WorkspaceResolver.WorkspaceForFocusNode(ctx, *u.DefaultFocusNodeID, u.SubscriptionID)
+		if err == nil {
+			// Validate the user still holds an active grant on this
+			// workspace. If the grant was revoked since they last
+			// logged in, fall through to Path B.
+			ok, grantErr := s.WorkspaceResolver.UserHasActiveGrantOnWorkspace(ctx, u.ID, wsID)
+			if grantErr == nil && ok {
+				u.WorkspaceID = wsID
+				return
+			}
+		}
+		// pgx.ErrNoRows (focus deleted/archived/cross-tenant) or grant
+		// check failure → fall through silently to Path B.
+	}
+
+	// Path B — first granted workspace fallback.
+	if wsID, err := s.WorkspaceResolver.FirstGrantedWorkspace(ctx, u.ID, u.SubscriptionID); err == nil {
+		u.WorkspaceID = wsID
+		return
+	}
+	// Path C — leave uuid.Nil. JWT signs without claim.
 }
 
 // SwitchWorkspace re-mints the access token + rotates the refresh
