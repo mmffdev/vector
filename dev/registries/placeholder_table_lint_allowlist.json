@@ -8,6 +8,30 @@
     {
       "path": "db/mmff_vector/schema/005_item_types.sql",
       "reason": "Original CREATE TABLE definition for execution_item_types — the table definition itself. Exempt for the same reason as 004_portfolio_stack.sql."
+    },
+    {
+      "path": "db/mmff_vector/schema/013_polymorphic_dispatch_triggers.sql",
+      "reason": "Historical migration defining the polymorphic dispatch function dispatch_polymorphic_parent(), which resolves (kind, id) pairs via FROM workspace/portfolio/product/company_roadmap/execution_item_types. The function body as written here is superseded by the CREATE OR REPLACE in migration 017 (column rename), but the original 013 version is applied first and the live DB carries the 017 version. The procs ARE live in the DB. CUT1.1.1 writes a NEW migration that DROPs these dispatch functions BEFORE dropping the placeholder tables, breaking the dependency. Editing the applied migration is not an option — immutable history."
+    },
+    {
+      "path": "db/mmff_vector/schema/017_subscriptions_rename.sql",
+      "reason": "Historical rename migration (tenants -> subscriptions, tenant_id -> subscription_id). It CREATE OR REPLACEs dispatch_polymorphic_parent(), dispatch_item_type_parent(), and provision_subscription_defaults() with bodies that still reference FROM workspace/portfolio/product/company_roadmap/execution_item_types — necessary because the function bodies must be consistent with the renamed columns in the same transaction. These supersede the mig 013 versions. Immutable applied history; the live DB carries the final forms of these functions. CUT1.1.1 drops them via a NEW migration before dropping the tables."
+    },
+    {
+      "path": "db/mmff_vector/schema/032_drop_pre_adoption_item_types.sql",
+      "reason": "Historical migration that drops portfolio_item_types/item_type_states/item_type_transition_edges (the pre-library type cluster) and rebuilds provision_subscription_defaults() without the deleted tables. The rebuilt function body still references FROM workspace/portfolio/product/company_roadmap/execution_item_types — legitimately, as those tables still existed at migration 032 time. Immutable applied history; already a DROP migration for some tables, so the lint violation is noise relative to its actual purpose."
+    },
+    {
+      "path": "db/mmff_vector/schema/089_users_page_roles_role_id.sql",
+      "reason": "Historical migration adding users.role_id + page_roles.role_id columns (PLA-0007 / Story 00293). Near the end it CREATE OR REPLACEs provision_on_first_gadmin() to gate on role_id instead of the old role enum — that replacement body contains SELECT 1 FROM company_roadmap WHERE subscription_id = NEW.subscription_id. Immutable applied history. The live provision_on_first_gadmin() is this version; CUT1.1.1 drops it via a NEW migration."
+    },
+    {
+      "path": "db/seed/001_default_workspace.sql",
+      "reason": "Dev seed script that installs provision_tenant_defaults() (the pre-017 name) + a provision_on_first_gadmin trigger, then backfills the default MMFFDev tenant. The function body references FROM company_roadmap/workspace/product and INSERT INTO execution_item_types. This uses the old pre-rename column names (tenant_id), making it a historical artefact superseded by migration 017. To be retired alongside the placeholder tables in CUT1.1.1."
+    },
+    {
+      "path": "db/ops/cleanup_perm_test_tenants.sql",
+      "reason": "One-shot dev ops script written 2026-04-23 to clean up orphaned rows from botched perm-test-* tenant test runs. References FROM workspace/portfolio/product/company_roadmap/execution_item_types in DELETE ... WHERE tenant_id IN (...) patterns. Uses old pre-rename column names (tenant_id), confirming it predates migration 017. No ongoing operational use; to be retired alongside the placeholder tables in CUT1.1.1."
     }
   ]
 }
