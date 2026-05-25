@@ -101,8 +101,6 @@ export interface PutPrefsBody {
   groups?: PutPrefsGroupRow[];
 }
 
-export type EntityKind = "portfolio" | "product";
-
 interface NavPrefsState {
   prefs: PrefRow[];
   customGroups: NavCustomGroup[];
@@ -138,9 +136,6 @@ interface NavPrefsState {
   isPinnable: (key: string) => boolean;
   defaultPinned: NavCatalogEntry[];
   tagByEnum: (enumKey: string) => NavTagGroup | undefined;
-  isBookmarked: (kind: EntityKind, id: string) => boolean;
-  bookmark: (kind: EntityKind, id: string) => Promise<void>;
-  unbookmark: (kind: EntityKind, id: string) => Promise<void>;
   isPageBookmarked: (key: string) => boolean;
   bookmarkPage: (key: string) => Promise<void>;
   unbookmarkPage: (key: string) => Promise<void>;
@@ -558,39 +553,6 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     [catalogue, tagByEnumMap],
   );
 
-  const entityKey = useCallback(
-    (kind: EntityKind, id: string) => `entity:${kind}:${id}`,
-    [],
-  );
-
-  const isBookmarked = useCallback(
-    (kind: EntityKind, id: string) =>
-      prefs.some((p) => p.item_key === entityKey(kind, id)),
-    [prefs, entityKey],
-  );
-
-  const bookmark = useCallback(
-    async (kind: EntityKind, id: string) => {
-      await apiSite("/nav/bookmark", {
-        method: "POST",
-        body: JSON.stringify({ entity_kind: kind, entity_id: id }),
-      });
-      await refetch();
-    },
-    [refetch],
-  );
-
-  const unbookmark = useCallback(
-    async (kind: EntityKind, id: string) => {
-      await apiSite("/nav/bookmark", {
-        method: "DELETE",
-        body: JSON.stringify({ entity_kind: kind, entity_id: id }),
-      });
-      await refetch();
-    },
-    [refetch],
-  );
-
   const isPageBookmarked = useCallback(
     (key: string): boolean => prefs.some((p) => p.item_key === key && p.is_bookmark),
     [prefs],
@@ -616,7 +578,6 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     prefs, customGroups, catalogue, tags, profileGroups, loading, error,
     refetch, patchCatalogueEntry, save, setStartPageKey, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
-    isBookmarked, bookmark, unbookmark,
     isPageBookmarked, bookmarkPage, unbookmarkPage,
     profiles, activeProfileId,
     setActiveProfile, createProfile, renameProfile, deleteProfile, reorderProfiles,

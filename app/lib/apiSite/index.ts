@@ -12,7 +12,6 @@
  *   auth               — login, logout, refresh, me, changePassword, requestPasswordReset, confirmPasswordReset
  *   me                 — getThemePack, setThemePack
  *   nav                — getCatalogue, getPrefs, putPrefs, deletePrefs, getStartPage,
- *                        pinBookmark, unpinBookmark, checkBookmark, listEntities,
  *                        listProfiles, createProfile, reorderProfiles, setActiveProfile,
  *                        renameProfile, deleteProfile, listProfileGroups, setProfileGroups
  *   userTabOrder       — get, put, delete
@@ -183,20 +182,9 @@ export const nav = {
   getStartPage: () =>
     apiSite<{ key: string | null }>("/nav/start-page"),
 
-  pinBookmark: (entityKind: string, entityId: ID) =>
-    apiSite<void>("/nav/bookmark", {
-      method: "POST",
-      body: JSON.stringify({ entity_kind: entityKind, entity_id: entityId }),
-    }),
-
-  unpinBookmark: (entityKind: string, entityId: ID) =>
-    apiSite<void>("/nav/bookmark", {
-      method: "DELETE",
-      body: JSON.stringify({ entity_kind: entityKind, entity_id: entityId }),
-    }),
-
-  checkBookmark: (entityKind: string, entityId: ID) =>
-    apiSite<{ pinned: boolean }>(`/nav/bookmark/check?entity_kind=${entityKind}&entity_id=${entityId}`),
+  // Entity bookmarks (pinBookmark/unpinBookmark/checkBookmark) deleted with
+  // TD-CUT1.1.1-BOOKMARK-SURFACE — see backend/internal/nav/bookmarks.go.
+  // Page bookmarks (PageBookmarks) survive on their own routes.
 
   listProfiles: () =>
     apiSite<{ profiles: NavProfile[]; active_profile_id: string | null }>("/nav/profiles"),
