@@ -460,7 +460,7 @@ function TimeboxObjectTreeInner({
 export default function TimeboxObjectTree(props: TimeboxObjectTreeProps) {
   const { address, Provider } = useRegisterAddressable({
     kind: "timebox",
-    name: props.addressableName ?? `${props.kind}-v2`,
+    name: props.addressableName ?? `${props.kind}_v2`,
   });
   return (
     <Provider>

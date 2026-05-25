@@ -1796,7 +1796,7 @@ function ResourceTreeImpl<T>({
 
       {loading && visibleRoots.length === 0 && (
         <div className="placeholder">
-          <Loader type="threedotsradial" label="Loading…" />
+          <Loader type="helix" label="Loading…" />
         </div>
       )}
       {!loading && visibleRoots.length === 0 && (

@@ -52,3 +52,7 @@ backend/server
 .claude/active_handover.txt
 .claude/projects/
 
+# Playwright + test runner output (regenerate per run)
+test-results/
+dev/tests/playwright/test-results/
+

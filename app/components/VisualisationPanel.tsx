@@ -23,6 +23,7 @@ import FillPetalEqualChart, {
   type FillPetalEqual,
 } from "@/app/components/FillPetalEqualChart";
 import ArtefactTree from "@/app/components/ArtefactTree";
+import BlankCanvasOverlay from "@/app/components/BlankCanvasOverlay";
 
 export interface VisualisationPanelProps {
   // Explicit petal set, in render order. Each entry defines a slot;
@@ -57,6 +58,7 @@ export default function VisualisationPanel({
 }: VisualisationPanelProps) {
   const [chartsOpen, setChartsOpen] = useState(false);
   const [treeOpen, setTreeOpen] = useState(false);
+  const [canvasOpen, setCanvasOpen] = useState(false);
 
   // One petal per declared key. Missing key in byType → value 0; the
   // petal still renders so the chart's slot layout matches the
@@ -116,15 +118,19 @@ export default function VisualisationPanel({
           </button>
           <button
             type="button"
-            className="tree_accordion-dense__filterbar-chip"
-            disabled
-            aria-label="Stub action 3"
+            className={
+              "tree_accordion-dense__filterbar-chip" +
+              (canvasOpen ? " tree_accordion-dense__filterbar-chip--active" : "")
+            }
+            aria-pressed={canvasOpen}
+            aria-expanded={canvasOpen}
+            onClick={() => setCanvasOpen((v) => !v)}
           >
             <span className="tree_accordion-dense__filterbar-chip-icon">
               <MdAdd size={14} />
             </span>
             <span className="tree_accordion-dense__filterbar-chip-label">
-              Button 3
+              Canvas
             </span>
           </button>
         </div>
@@ -159,6 +165,10 @@ export default function VisualisationPanel({
           forceExpanded
           onRequestClose={() => setTreeOpen(false)}
         />
+      )}
+
+      {canvasOpen && (
+        <BlankCanvasOverlay onRequestClose={() => setCanvasOpen(false)} />
       )}
     </>
   );

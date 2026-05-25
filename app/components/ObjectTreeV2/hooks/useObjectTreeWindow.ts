@@ -204,7 +204,13 @@ export function useObjectTreeWindow<T>(
   const [rowsById, setRowsById] = useState<Map<string, T>>(new Map());
   const [order, setOrder] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
-  const [loadingWindow, setLoadingWindow] = useState(false);
+  // Initial state is `true` so the Loader paints from the very first
+  // render — covers the gap between mount and the first
+  // `setLoadingWindow(true)` call inside refetchWindow (which is gated
+  // by sentinel readiness + a 150ms debounce on subsequent fires).
+  // Flipped false in refetchWindow's finally{} once the first fetch
+  // resolves; the empty-state copy then takes over if there are no rows.
+  const [loadingWindow, setLoadingWindow] = useState(true);
 
   // Slice 4.6a — request generation counter. Every refetch bumps it
   // and captures its own generation at start; on response we drop
@@ -416,11 +422,19 @@ export function useObjectTreeWindow<T>(
     [resourceUrl],
   );
 
+  // Pre-fetch waiting state: while sentinel is still resolving, the
+  // refetch effect early-returns and `loadingWindow` stays false — which
+  // would render the empty-state ("No work items match…") instead of the
+  // spinner during cold load. Fold the gated-waiting state into the
+  // public loading flag so ResourceTree's `loading && visibleRoots===0`
+  // guard paints the Loader for the full wait, not just the fetch window.
+  const effectiveLoading = loadingWindow || !scopeReady;
+
   return {
     rowsById,
     windowRoots,
     total,
-    loadingWindow,
+    loadingWindow: effectiveLoading,
     refetchWindow,
     patchAndApply,
     fetchChildren,

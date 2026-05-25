@@ -424,7 +424,7 @@ export const admin = {
 // retro, code, api, misc). Backend handler: backend/internal/devreports.
 
 export type DevReportType =
-  | "research" | "plan" | "security" | "retro" | "code" | "api" | "misc";
+  | "research" | "plan" | "security" | "retro" | "code" | "api" | "misc" | "system";
 
 export interface DevReportMeta {
   id: string;
