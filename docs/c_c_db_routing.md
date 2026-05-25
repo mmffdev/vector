@@ -16,6 +16,35 @@ The Vector backend connects to three Postgres databases via separate `pgxpool.Po
 
 All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on dev.
 
+### Fourth pool — `devPool` (mmff_dev)
+
+| Pool variable | Database | Purpose |
+|---|---|---|
+| `devPool` | `mmff_dev` | `dev_reports` — every `<report>` output: SY003 (substrate inventory), PLA### (plans), COD### (audits), RES### (research), RET### (retros), SEC### (security). Sole accessor: `backend/internal/devreports/`. Wired in `backend/cmd/server/main.go:484-513`. |
+
+> **`mmff_dev` is the cutover's institutional memory.** Wipe-and-reseed plans MUST NOT touch this DB — losing SY003 / PLA064 / COD004 / every retro = losing the substrate documentation we built specifically to survive cutovers.
+
+### Snapshot DBs (created 2026-05-25 pre-wipe-and-reseed)
+
+Parallel queryable snapshots of all four live DBs, taken at 2026-05-25 ~22:25 UTC via `pg_dump | psql` inside the `vector-dev_postgres` Swarm container. **The running app does NOT connect to these — they are inspection-only.** Survive as long as the Postgres volume lives. Drop with `DROP DATABASE <name>_snapshot_20260525;` when no longer needed.
+
+| Snapshot DB | Source DB | Size | Tables (parity) |
+|---|---|---|---|
+| `mmff_vector_snapshot_20260525` | `mmff_vector` | 13 MB | 40 / 40 ✓ |
+| `vector_artefacts_snapshot_20260525` | `vector_artefacts` | 16 MB | 57 / 57 ✓ |
+| `mmff_library_snapshot_20260525` | `mmff_library` | 8 MB | 9 / 9 ✓ |
+| `mmff_dev_snapshot_20260525` | `mmff_dev` | 12 MB | 2 / 2 ✓ |
+
+Row-count spot checks at creation time: `users` 59/59, `pages` 59/59, `master_record_workspaces` 30/30, `artefacts` 136/136, `audit_logs` 15386/15386, `dev_reports` 125/125 — all match.
+
+Query a snapshot from the dev host:
+
+```bash
+ssh -o ExitOnForwardFailure=no vector-dev-pg \
+  "docker exec \$(docker ps --format '{{.Names}}' | grep '^vector-dev_postgres') \
+   psql -U mmff_dev -d mmff_vector_snapshot_20260525 -c '\\dt'"
+```
+
 ## Service → pool index
 
 > Source: `backend/cmd/server/main.go` constructor calls. When a service is constructed with multiple pools, the first is the primary write target.
