@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-25 (CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
-**Doc version:** 2.57 (CUT1.0.2 + CUT1.5.1 AC counts corrected 2026-05-25: soft-FK count updated 8 → 50 columns after SY003 regen v2 surfaced systematic undercount in prior version; CUT1.5.1 now scopes 50 migrations not 8, optionally decomposed into 4 sub-stories by target table; CUT1.0.2 cron now iterates live SY003 io-contract rather than hardcoded query count. PLA064 also bumped to v2 on /dev/reporting.)
+**Last updated:** 2026-05-25 (CUT1.5.0 added — orphan triage + remediation; the CUT1.0.2 cron's first run found 508 orphans across 14 columns; CUT1.5.0 blocks CUT1.5.1; PLA064 v3 posted. Earlier — CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
+**Doc version:** 2.58 (CUT1.5.0 added 2026-05-25 — orphan triage + remediation prep story, BLOCKS CUT1.5.1. The CUT1.0.2 cron's first real run surfaced 508 orphan UUIDs across 14 columns: 332 in artefacts_types (likely one deleted-tenant cohort), 92 in artefacts, 52 in artefact_priorities, 21 in audit_logs (LEGITIMATE per SOC 2 — gets SET NULL), 11 in settings sidecars, 1 in master_record_workspaces self-ref (eliminated by CUT1.3.3). PLA064 bumped to v3. Earlier: 2.57 — CUT1.0.2 + CUT1.5.1 AC counts corrected 8 → 50 columns after SY003 regen v2.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -305,13 +305,18 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 ### RF2.5 Phase 5 — Delete deprecated methods
 > Commit `eeff29f0` (2026-05-23): chore: gitignore per-session agent state + scope-tracker breadcrumbs
 > Commit `f0091092` (2026-05-25): feat(db): cascade nav_prefs cleanup on pages hard-delete (mig 248)
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 
 - **RF2.5.1** Delete **14 deprecated public Service methods**. **Cross-package cutover FIRST**: `backend/internal/featuretests/f1_workspace_clamp_test.go` L400 (`ListWorkItems`) and L448 (`GetWorkItemInWorkspace`) routed through `Service.Read` before any delete. Verify: `grep '^func (s \*Service) [A-Z]' service.go | wc -l == 12` (4 setters + 8 ops). Private impls (`getWorkItemImpl`, etc.) remain. `rules/evaluator.go` comment-only refs to `artefactitems.Service.Update` refreshed to `Service.Mutate`. **Repurpose Story 11 lint as a guard** — forbids any caller anywhere, not just deprecated. `go build ./...` green; full test suite green. `[P2]` 🔵 IN FLIGHT
 
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 ### RF2.6 Phase 6 — Document the win + open follow-up TD
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
@@ -361,6 +366,9 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
@@ -988,6 +996,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1219,6 +1228,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1765,6 +1775,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
@@ -2698,6 +2709,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3344,6 +3356,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3904,6 +3917,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
@@ -4181,6 +4195,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 - **B5.11** Migration: drop `pages_tags.pages_tags_min_auth_level` from the catalogue gate path (PLA-0053; column kept nullable for rollback). `pages_tags_is_admin_menu` is **kept** — still used by `UserAvatarMenu` to route avatar/notification buckets (separate concern from page-access gating). `[P2]`
 - **B5.12** Backend: remove `authLevelFor` / `TagsFor` tier filter / `CatalogFor` tier filter from `backend/internal/nav/registry.go`; `users_roles_pages` becomes the sole catalogue gate (PLA-0053) `[P2]`
 - **B5.13** Frontend: remove `deriveAuthLevel` + `userAuthLevel` filter from `app/redesign/ShellContext.tsx`; tag bucket appears iff it contains ≥1 page in `pages` array (PLA-0053) `[P2]`
@@ -4292,6 +4307,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -4388,6 +4404,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `82d3aed1` (2026-05-24): fix(sentinel): mirror resolved focus into ?meg= URL + loading-gate account-settings
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -4768,6 +4785,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c5baf48e` (2026-05-24): docs(sentinel): mid-build pivot — Replace decision logged + S25 added + S03-S05 AC expanded [PLA062 amendment]
 > Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
@@ -4923,6 +4941,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5145,6 +5164,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -5285,6 +5305,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `b756eb4c` (2026-05-25): docs(sentinel): refresh sentinel_docs + extend revision history
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -5634,6 +5655,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -5777,6 +5799,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -5857,6 +5880,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b756eb4c` (2026-05-25): docs(sentinel): refresh sentinel_docs + extend revision history
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -5991,6 +6016,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `1ce3607` (2026-05-18): feat(server): start WS session sweeper alongside rank listener [B16.8.12]
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
@@ -6210,6 +6236,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0091092` (2026-05-25): feat(db): cascade nav_prefs cleanup on pages hard-delete (mig 248)
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
@@ -6234,6 +6262,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
   > Shipped 2026-05-19 in commit 6530c13. Status pill replaced with read-only checkbox; toggle action stays in the inline edit-row panel staged behind "Confirm changes". Also added `<PageDescription>` since the file moved out of legacy `/user-management/page.tsx`.
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Last checked: 2026-05-19
@@ -7728,6 +7757,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -8098,6 +8128,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -8420,6 +8451,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -8812,6 +8845,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -8971,6 +9005,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b756eb4c` (2026-05-25): docs(sentinel): refresh sentinel_docs + extend revision history
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -9201,6 +9237,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -9506,6 +9543,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -9538,6 +9576,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `c2330eee` (2026-05-24): fix(sentinel): re-boot Sentinel when AuthContext.user transitions null → present
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
@@ -10180,6 +10219,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 
 ---
 
@@ -10402,6 +10443,17 @@ Continuation of CUT1.4.1 covering pages/nav/portfolio services and finally users
   - AC: Orphan-audit cron run after this story shows zero orphans across all 8 soft FKs.
   - AC: SY003 regenerated; § Itemized Catalogue shows `vaPool` for swapped services.
   - AC: Smoke — full login → workspace → artefact CRUD flow works end-to-end.
+
+### CUT1.5.0 [P2] — Phase 5 prep: orphan triage + remediation (blocks CUT1.5.1)
+
+The CUT1.0.2 cron's first real run (2026-05-25) surfaced **508 orphan UUIDs across 14 columns**. Hard-FK installation in CUT1.5.1 will fail on any column with orphans, so Phase 5 must remediate first. Distribution: `artefacts_types` (332 orphans — likely one cohort of deleted dev tenants), `artefacts` (92 orphans across user/workspace/subscription refs), `artefact_priorities.workspace_id` (52), `audit_logs.audit_logs_id_user` (21 — LEGITIMATE per SOC 2 audit-trail immutability), settings sidecars (11). The `master_record_workspaces` self-ref orphan (1) is eliminated by structure when CUT1.3.3 merges the sidecar into the registry. Full per-column count + sample IDs in the daily `SY-ORPHAN-YYYYMMDD` reports on Dev → Reporting.
+
+  - AC: Per-cohort investigation: are the 166 `artefacts_types` orphans really one cohort of deleted dev tenants (workspace_id + subscription_id matching count is the smoking gun)? Document findings inline.
+  - AC: Per-target-table remediation policy decided + documented: hard-delete for confirmed dev-tenant cleanup debt; `SET NULL` for nullable audit columns (preserve SOC 2 trail); skip the columns CUT1.3.3 eliminates by structure.
+  - AC: Dry-run remediation SQL committed to `db/vector_artefacts/schema/merge_plan/orphan_remediation.sql` — non-executable artefact reviewed BEFORE execution.
+  - AC: Execution migration applies clean; post-execution cron run shows 0 orphans across the target columns (excluding any columns explicitly deferred).
+  - AC: Deferred columns (e.g. CUT1.3.3-eliminated refs) flagged in `docs/c_tech_debt.md` with the merge as their resolution trigger.
+  - AC: CUT1.5.1 unblocked — fresh cron run + SY003 v3 regen confirm zero orphans on the FK-install target set.
 
 ### CUT1.5.1 [P2] — Phase 5: install hard Postgres FKs on all 50 previously-soft cross-DB UUID columns
 

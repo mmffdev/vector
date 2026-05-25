@@ -324,3 +324,4 @@ CUT1.4.2	swap pool vaPool mid-tier high-fan-in pages nav portfolio users subscri
 CUT1.5.1	hard Postgres FOREIGN KEY soft-FK promote topology_nodes users_roles_topology_nodes workspaces_fields errors_events audit_logs ON-DELETE matrix SET-NULL RESTRICT CASCADE c_schema
 CUT1.6.1	decommission mmff_vector connection pool variable retire DROP-DATABASE pg_dump backup SHA256 main.go db config archive Phase-0
 CUT1.6.2	docs HARD-RULE revision c_c_db_routing CLAUDE.md NEVER-ASSUME-A-DATABASE TD-CUTOVER-MONITORING TD-CUTOVER-CRON-PRODUCTION TD-CUTOVER-RLS-DEFERRAL row-level-security partitioning
+CUT1.5.0	orphan triage remediation cohort artefacts_types artefact_priorities audit_logs settings sidecars dev-tenant cleanup SET-NULL hard-delete SOC2 SY-ORPHAN dry-run merge_plan
