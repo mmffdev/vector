@@ -34,7 +34,7 @@ var (
 	ErrParentFlowStateDerived = errors.New("flow state is derived from children")
 )
 
-// WorkItem is the wire representation of obj_work_items.
+// WorkItem is the wire representation of vector_artefacts.artefacts.
 //
 // Points model: StoryPoints is the manually-entered value; RollupPoints is
 // the sum of leaf points across the descendant subtree (only populated for
@@ -42,7 +42,7 @@ var (
 // is the value the UI shows — the manual value is preserved in the DB but
 // shadowed. Tasks may not have manual points (see canHaveManualPoints).
 //
-// Flow state: FlowStateID is the UUID FK into obj_flow_tenant. FlowStateName
+// Flow state: FlowStateID is the UUID FK into vector_artefacts.flows_states. FlowStateName
 // and FlowStateCode are joined from that row so the frontend can render the
 // current state without a second request. Use FlowStateID (not Status) for
 // all state reads/writes — Status is the legacy shadow column kept for one
@@ -89,7 +89,7 @@ type WorkItem struct {
 	OwnerID        string     `json:"owner_id"`
 	Owner          *OwnerRef  `json:"owner"`
 	// PLA-0021 / 00460 (WS4-C) — DueDate is the wire form of the new
-	// nullable due_date column on obj_work_items. The
+	// nullable due_date column on vector_artefacts.artefacts. The
 	// SELECT casts to ::text so we read YYYY-MM-DD without paying for
 	// time.Time/RFC-3339 round-trip. Nil ⇒ JSON `null` (no `omitempty`)
 	// so absent vs cleared can both render as the em-dash placeholder.
@@ -351,7 +351,7 @@ type PatchSprintInput struct {
 	Status    *string
 }
 
-// CustomField is the wire representation of obj_custom_field_lib.
+// CustomField is the wire representation of vector_artefacts.artefacts_fields_library.
 type CustomField struct {
 	ID             string     `json:"id"`
 	SubscriptionID string     `json:"subscription_id"`
@@ -383,7 +383,7 @@ type PatchCustomFieldInput struct {
 	ConfigJSON  *string
 }
 
-// Template is the wire representation of obj_field_templates.
+// Template is deprecated — obj_field_templates was dropped in CUT1.1.2. Struct retained for back-compat.
 type Template struct {
 	ID             string          `json:"id"`
 	SubscriptionID string          `json:"subscription_id"`
@@ -397,7 +397,7 @@ type Template struct {
 	ArchivedAt     *time.Time      `json:"archived_at,omitempty"`
 }
 
-// TemplateField is one slot in obj_field_template_fields.
+// TemplateField is deprecated — obj_field_template_fields was dropped in CUT1.1.2. Struct retained for back-compat.
 type TemplateField struct {
 	ID             string  `json:"id"`
 	TemplateID     string  `json:"template_id"`
@@ -592,15 +592,15 @@ var validFieldTypes = map[string]bool{
 }
 
 // validItemTypesByScope is the per-scope allow-list for the item_type
-// discriminator on Create. Scope "work" mirrors the legacy CHECK on
-// obj_work_items (migration 066) plus the portfolio-item escape hatch
-// retained from PLA-0033. Scope "strategy" is intentionally an open set —
-// strategy artefacts_types are tenant-extensible (themes, objectives,
-// business epics, capabilities, …) and the canonical authority is the
-// `artefacts_types` row lookup performed by CreateWorkItem; an extra
-// hardcoded list here would force a code change every time a tenant
-// added a new strategy type. Returning nil from validItemTypesByScope
-// means "trust the DB lookup".
+// discriminator on Create. Scope "work" mirrors the legacy CHECK that
+// originally lived on obj_work_items (migration 066) plus the portfolio-item
+// escape hatch retained from PLA-0033. Scope "strategy" is intentionally an
+// open set — strategy artefacts_types are tenant-extensible (themes,
+// objectives, business epics, capabilities, …) and the canonical authority
+// is the `artefacts_types` row lookup performed by CreateWorkItem; an extra
+// hardcoded list here would force a code change every time a tenant added a
+// new strategy type. Returning nil from validItemTypesByScope means "trust
+// the DB lookup".
 //
 // B21 (PLA-0037): introduced when artefactitems became scope-parameterised.
 var validItemTypesByScope = map[string]map[string]bool{
