@@ -19,13 +19,12 @@ import (
 
 type Handler struct {
 	Svc          *Service
-	Bookmarks    *Bookmarks
 	PageBookmarks *PageBookmarks
 	CustomPages  *custompages.Service
 }
 
-func NewHandler(s *Service, b *Bookmarks, pb *PageBookmarks, cp *custompages.Service) *Handler {
-	return &Handler{Svc: s, Bookmarks: b, PageBookmarks: pb, CustomPages: cp}
+func NewHandler(s *Service, pb *PageBookmarks, cp *custompages.Service) *Handler {
+	return &Handler{Svc: s, PageBookmarks: pb, CustomPages: cp}
 }
 
 type catalogueResp struct {
@@ -269,64 +268,6 @@ func (h *Handler) StartPage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, startPageResp{Href: href})
 }
 
-type bookmarkReq struct {
-	EntityKind string    `json:"entity_kind"`
-	EntityID   uuid.UUID `json:"entity_id"`
-}
-
-type bookmarkResp struct {
-	ItemKey string `json:"item_key"`
-}
-
-// POST /api/nav/bookmark — pin an entity for the caller.
-func (h *Handler) PinBookmark(w http.ResponseWriter, r *http.Request) {
-	u := auth.UserFromCtx(r.Context())
-	var req bookmarkReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
-		return
-	}
-	key, err := h.Bookmarks.Pin(r.Context(), u.ID, u.SubscriptionID, u.Role, u.RoleID, EntityKind(req.EntityKind), req.EntityID)
-	if err != nil {
-		switch {
-		case errors.Is(err, ErrUnknownEntityKind):
-			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
-		case errors.Is(err, ErrEntityNotFound):
-			// 404 doesn't leak existence — same response either way.
-			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
-		case errors.Is(err, ErrEntityArchived):
-			httperr.Write(w, r, http.StatusConflict, usermessages.ResourceArchived)
-		case errors.Is(err, ErrBookmarkCap):
-			httperr.Write(w, r, http.StatusConflict, usermessages.LimitReached)
-		default:
-			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
-		}
-		return
-	}
-	writeJSON(w, http.StatusOK, bookmarkResp{ItemKey: key})
-}
-
-// DELETE /api/nav/bookmark — unpin an entity for the caller.
-// Body shape mirrors PinBookmark to keep the client surface symmetric.
-func (h *Handler) UnpinBookmark(w http.ResponseWriter, r *http.Request) {
-	u := auth.UserFromCtx(r.Context())
-	var req bookmarkReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
-		return
-	}
-	if err := h.Bookmarks.Unpin(r.Context(), u.ID, u.SubscriptionID, EntityKind(req.EntityKind), req.EntityID); err != nil {
-		switch {
-		case errors.Is(err, ErrUnknownEntityKind):
-			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
-		default:
-			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
-		}
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
 type pageBookmarkReq struct {
 	PageKey string `json:"page_key"`
 }
@@ -366,32 +307,6 @@ func (h *Handler) UnpinPageBookmark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-type bookmarkCheckResp struct {
-	Pinned bool `json:"pinned"`
-}
-
-// GET /api/nav/bookmark/check?entity_kind=...&entity_id=... — drives pin button state.
-func (h *Handler) CheckBookmark(w http.ResponseWriter, r *http.Request) {
-	u := auth.UserFromCtx(r.Context())
-	q := r.URL.Query()
-	kind := EntityKind(q.Get("entity_kind"))
-	id, err := uuid.Parse(q.Get("entity_id"))
-	if err != nil {
-		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
-		return
-	}
-	pinned, err := h.Bookmarks.IsPinned(r.Context(), u.ID, u.SubscriptionID, kind, id)
-	if err != nil {
-		if errors.Is(err, ErrUnknownEntityKind) {
-			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestBadRequest)
-			return
-		}
-		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
-		return
-	}
-	writeJSON(w, http.StatusOK, bookmarkCheckResp{Pinned: pinned})
 }
 
 // customPageEntriesFor returns the caller's custom pages as synthetic

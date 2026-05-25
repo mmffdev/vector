@@ -256,7 +256,6 @@ func main() {
 		bootstatus.Set("nav_registry", true, "")
 	}
 	navSvc := nav.New(pool, navRegistry)
-	navBookmarks := nav.NewBookmarks(pool, navRegistry, navSvc)
 	navPageBookmarks := nav.NewPageBookmarks(pool, navRegistry, navSvc)
 	customPagesSvc := custompages.New(pool)
 	customPagesH := custompages.NewHandler(customPagesSvc)
@@ -272,7 +271,7 @@ func main() {
 		os.Getenv("CI_SERVICE_TOKEN"),
 		os.Getenv("CUSTOM_APP_TOKEN"),
 	)
-	navH := nav.NewHandler(navSvc, navBookmarks, navPageBookmarks, customPagesSvc)
+	navH := nav.NewHandler(navSvc, navPageBookmarks, customPagesSvc)
 	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc, auditLog)
 
 	// PLA-0049 Phase 0.5: page-access resolver + handler. The resolver
@@ -1199,9 +1198,9 @@ func main() {
 		r.Delete("/prefs", navH.DeletePrefs)
 		r.Post("/reset", navH.ResetAll)
 		r.Get("/start-page", navH.StartPage)
-		r.Post("/bookmark", navH.PinBookmark)
-		r.Delete("/bookmark", navH.UnpinBookmark)
-		r.Get("/bookmark/check", navH.CheckBookmark)
+		// Entity bookmarks (/bookmark, /bookmark/check) deleted with
+		// TD-CUT1.1.1-BOOKMARK-SURFACE — see backend/internal/nav/bookmarks.go.
+		// Page bookmarks survive.
 		r.Post("/page-bookmark", navH.PinPageBookmark)
 		r.Delete("/page-bookmark", navH.UnpinPageBookmark)
 
