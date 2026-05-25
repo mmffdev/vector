@@ -310,3 +310,17 @@ DEP1.4.3	ArtefactDependencyPicker typeahead inline debounce search side-specific
 DEP1.5.1	Playwright dependencies-section.spec.ts end-to-end happy-path cycle reciprocity Container--dependencies _Actionbar_Btn--active picker confirm-on-click re-add
 DEP1.6.1	docs c_c_artefact_dependencies c_c_inline_form_modes Overview Schema Allow-matrix Wire-contract Cycle-prevention Sentinel-clamp Procurement-narrative CLAUDE.md modifier-table lift-from-Head-to-Container
 DEP1.7.1	tech-debt TD-DEPS-RISK-TYPE TD-DEPS-CROSS-SCOPE TD-DEPS-BLOCKED-ROLLUP-COMPUTED Risk Strategy auto-flip deferral severity measurement trigger recommendation
+CUT1.0.1	lint singular workspace table ratchet placeholder portfolio product company_roadmap execution_item_types subscriptions_item_type_icons grep FROM JOIN INSERT npm allowlist
+CUT1.0.2	cron cross-DB orphan-audit soft-FK launchd systemd SY-ORPHAN dev_reports system-type baseline drift Postgres-cannot-enforce
+CUT1.1.1	drop placeholder tables migration mmff_vector nav/sql.go polymorphicrefs DOWN stale-refs go-build SY003 dead-weight rollback
+CUT1.1.2	UNCERTAIN cluster obj_custom_field_lib obj_field_templates obj_field_template_fields sprints timeboxes_sprints ETL drop superseded artefacts_fields_library
+CUT1.2.1	master_record_workspaces sidecar merge schema audit registry settings denormalisation workaround timezone data_region owner_user primary_contact_email workdays week_start rank_method merge_plan workspacemasterrecord
+CUT1.2.2	subscriptions master_record_tenants sidecar merge schema audit registry settings tenantmasterrecord merge_plan denormalisation
+CUT1.3.1	replicate auth identity cluster admin_api_keys csp_reports dpop_jti_cache schema_migrations users_sessions ETL batches conflict-skip 0-inbound vector_artefacts vaPool
+CUT1.3.2	replicate mid-tier cluster workspaces pages nav portfolio adoption cost_centres parent_id self-referential two-pass ETL
+CUT1.3.3	replicate high-fan-in cluster users subscriptions master_record_workspaces MERGE master_record_workspaces_v2 subscriptions_v2 LEFT-JOIN sidecar drop temp-rename
+CUT1.4.1	swap pool vaPool auth identity NewService topology sentinel constructor lintchecks sentinel_clamp_test smoke artefacts
+CUT1.4.2	swap pool vaPool mid-tier high-fan-in pages nav portfolio users subscriptions workspaces orphan-audit zero-orphans Itemized-Catalogue
+CUT1.5.1	hard Postgres FOREIGN KEY soft-FK promote topology_nodes users_roles_topology_nodes workspaces_fields errors_events audit_logs ON-DELETE matrix SET-NULL RESTRICT CASCADE c_schema
+CUT1.6.1	decommission mmff_vector connection pool variable retire DROP-DATABASE pg_dump backup SHA256 main.go db config archive Phase-0
+CUT1.6.2	docs HARD-RULE revision c_c_db_routing CLAUDE.md NEVER-ASSUME-A-DATABASE TD-CUTOVER-MONITORING TD-CUTOVER-CRON-PRODUCTION TD-CUTOVER-RLS-DEFERRAL row-level-security partitioning

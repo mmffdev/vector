@@ -29,6 +29,7 @@
 /library/releases/{id}/ack
 /lookups/users-in-scope
 /me/active-scope
+/me/home-location-follow-mode
 /me/preferences/{key}
 /mentions/inbox
 /mentions/search
@@ -59,6 +60,7 @@
 /portfolio/master_record
 /roles/{id}
 /roles/{id}/permissions
+/sentinel/focus
 /tenant-settings
 /timeboxes/milestones/{id}
 /timeboxes/releases/columns
