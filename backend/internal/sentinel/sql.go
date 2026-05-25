@@ -78,20 +78,26 @@ const sqlTenantRootNode = `
 `
 
 // sqlFirstLiveWorkspace returns the actor's first live workspace in
-// their tenant ordered by created_at ASC (Default lands first). $1 =
-// subscriptionID.
+// their tenant that they hold an active grant on, ordered by
+// created_at ASC (Default lands first). $1 = subscriptionID,
+// $2 = userID.
 //
-// Table is `master_record_workspaces` — same as topology/sql.go and
-// every other handler in backend/internal/. A prior copy referenced
-// a `workspace` placeholder table that ships empty, which silently
-// failed `FirstLiveWorkspace` for every legacy-token request and 403'd
-// every page with "your tenant has no live workspaces" (TD-SENT-WS-TABLE).
+// The JOIN against users_roles_workspaces (added 2026-05-25
+// alongside the auth.Refresh JWT re-derivation fix) prevents the
+// fallback from returning a workspace the user has no grant on
+// — which then 403'd at sqlExistsActiveWorkspaceRole one step
+// later. Column-prefix convention (PLA naming spec §2.3): every
+// column on users_roles_workspaces carries the table-name prefix.
 const sqlFirstLiveWorkspace = `
-	SELECT id
-	  FROM master_record_workspaces
-	 WHERE subscription_id = $1
-	   AND archived_at IS NULL
-	 ORDER BY created_at ASC
+	SELECT mw.id
+	  FROM master_record_workspaces mw
+	  JOIN users_roles_workspaces urw
+	    ON urw.users_roles_workspaces_id_workspace = mw.id
+	   AND urw.users_roles_workspaces_id_user = $2
+	   AND urw.users_roles_workspaces_revoked_at IS NULL
+	 WHERE mw.subscription_id = $1
+	   AND mw.archived_at IS NULL
+	 ORDER BY mw.created_at ASC
 	 LIMIT 1
 `
 

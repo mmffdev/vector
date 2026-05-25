@@ -87,11 +87,18 @@ type Resolver interface {
 	TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
 
 	// FirstLiveWorkspace returns the actor's first live workspace in
-	// their tenant ordered by created_at ASC. Used as fallback when the
-	// JWT carries no workspace_id claim (legacy-token rollout window
-	// per PLA-0053 / story 00576). Returns ErrNoWorkspace when the
-	// tenant has zero live workspaces.
-	FirstLiveWorkspace(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+	// their tenant that they hold an active grant on, ordered by
+	// created_at ASC. Used as fallback when the JWT carries no
+	// workspace_id claim (legacy-token rollout window per PLA-0053 /
+	// story 00576, plus any code path that signs a JWT without the
+	// claim). The user-grant narrowing (added 2026-05-25 alongside the
+	// auth.Refresh re-derivation fix) prevents the fallback from
+	// returning a workspace the actor has no grant on — which then
+	// 403'd at HasActiveRole one step later.
+	//
+	// Returns ErrNoWorkspace when the user has zero active grants in
+	// the tenant.
+	FirstLiveWorkspace(ctx context.Context, tenant, userID uuid.UUID) (uuid.UUID, error)
 
 	// HasActiveRole returns true if the actor holds an active role on
 	// the resolved workspace. Called after workspace resolution to

@@ -106,7 +106,7 @@ type stubResolver struct {
 
 	// firstLiveWorkspaceFn returns the legacy-JWT-fallback workspace.
 	// Configured in S05.1 workspace-resolution tests (cases 7/8).
-	firstLiveWorkspaceFn func(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+	firstLiveWorkspaceFn func(ctx context.Context, tenant, userID uuid.UUID) (uuid.UUID, error)
 
 	// hasActiveRoleFn returns whether the actor has an active role on
 	// the resolved workspace. Configured per case.
@@ -158,11 +158,11 @@ func (s *stubResolver) TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.U
 // fixture workspace when firstLiveWorkspaceFn is unset — cases (1)-(6)
 // inject a workspace_id via the fixture user JWT so they never hit
 // this fallback.
-func (s *stubResolver) FirstLiveWorkspace(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error) {
+func (s *stubResolver) FirstLiveWorkspace(ctx context.Context, tenant, userID uuid.UUID) (uuid.UUID, error) {
 	if s.firstLiveWorkspaceFn == nil {
 		return fixtureWorkspaceInA, nil
 	}
-	return s.firstLiveWorkspaceFn(ctx, tenant)
+	return s.firstLiveWorkspaceFn(ctx, tenant, userID)
 }
 
 // HasActiveRole satisfies sentinel.Resolver. Default: true (most
@@ -459,7 +459,7 @@ func TestMiddleware_Case7_JWTWorkspaceClaim_SetsWorkspaceID(t *testing.T) {
 		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {
 			return []uuid.UUID{focus}, nil
 		},
-		firstLiveWorkspaceFn: func(_ context.Context, _ uuid.UUID) (uuid.UUID, error) {
+		firstLiveWorkspaceFn: func(_ context.Context, _, _ uuid.UUID) (uuid.UUID, error) {
 			firstLiveCalled = true
 			t.Fatal("FirstLiveWorkspace must NOT be called when JWT carries workspace_id")
 			return uuid.Nil, nil
@@ -512,10 +512,13 @@ func TestMiddleware_Case8_LegacyJWT_FallsBackToFirstLive(t *testing.T) {
 		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {
 			return []uuid.UUID{focus}, nil
 		},
-		firstLiveWorkspaceFn: func(_ context.Context, tenant uuid.UUID) (uuid.UUID, error) {
+		firstLiveWorkspaceFn: func(_ context.Context, tenant, userID uuid.UUID) (uuid.UUID, error) {
 			firstLiveCalled = true
 			if tenant != fixtureTenantA {
 				t.Errorf("FirstLiveWorkspace called with tenant=%s, want %s", tenant, fixtureTenantA)
+			}
+			if userID != uuid.MustParse("99999999-aaaa-aaaa-aaaa-999999999999") {
+				t.Errorf("FirstLiveWorkspace called with userID=%s, want fixtureUserA.ID", userID)
 			}
 			return fixtureWorkspaceInA, nil
 		},
@@ -538,6 +541,38 @@ func TestMiddleware_Case8_LegacyJWT_FallsBackToFirstLive(t *testing.T) {
 	}
 	if insp.clamp.WorkspaceID != fixtureWorkspaceInA {
 		t.Errorf("clamp.WorkspaceID = %s, want %s (first-live)", insp.clamp.WorkspaceID, fixtureWorkspaceInA)
+	}
+}
+
+// ---------------------------------------------------------------------
+// Case 8b — Legacy JWT + user has no workspace grants → 403 no-workspace
+// ---------------------------------------------------------------------
+// Tightening sqlFirstLiveWorkspace to JOIN users_roles_workspaces means
+// a user with zero active grants in the tenant now hits ErrNoWorkspace
+// instead of being silently handed the tenant's earliest workspace.
+// This is the contract the new 2026-05-25 fix preserves end-to-end:
+// the fallback can no longer return a workspace the user can't see.
+
+func TestMiddleware_Case8b_LegacyJWT_NoGrants_403NoWorkspace(t *testing.T) {
+	resolver := &stubResolver{
+		firstLiveWorkspaceFn: func(_ context.Context, _, _ uuid.UUID) (uuid.UUID, error) {
+			return uuid.Nil, ErrNoWorkspace
+		},
+	}
+
+	mw := Middleware(resolver)
+	h := mw(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+
+	req := httptest.NewRequest("GET", "/anything", nil)
+	req = req.WithContext(withFixtureUser(req.Context(), fixtureLegacyUserA()))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "no-workspace") {
+		t.Errorf("body missing no-workspace problem type: %q", rec.Body.String())
 	}
 }
 

@@ -133,14 +133,15 @@ func Middleware(r Resolver) func(http.Handler) http.Handler {
 }
 
 // resolveWorkspace picks the workspace per JWT claim > FirstLiveWorkspace
-// fallback. The fallback exists only for legacy tokens predating
-// PLA-0053 (story 00576, 2026-05-16); every fresh token carries the
-// workspace_id claim and skips the DB lookup entirely.
+// fallback. The fallback exists for tokens predating PLA-0053 (story
+// 00576, 2026-05-16) plus any future code path that signs without the
+// claim. As of 2026-05-25 the fallback narrows to user-granted workspaces
+// — see sentinel/sql.go for rationale.
 func resolveWorkspace(req *http.Request, u *roletypes.User, r Resolver) (uuid.UUID, error) {
 	if u.WorkspaceID != uuid.Nil {
 		return u.WorkspaceID, nil
 	}
-	return r.FirstLiveWorkspace(req.Context(), u.SubscriptionID)
+	return r.FirstLiveWorkspace(req.Context(), u.SubscriptionID, u.ID)
 }
 
 // resolveFocus picks the focus node per URL > user default > tenant root.

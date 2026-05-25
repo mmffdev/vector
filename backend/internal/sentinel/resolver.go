@@ -152,10 +152,11 @@ func (r *PoolResolver) TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.U
 
 // FirstLiveWorkspace implements Resolver. Maps the underlying
 // sql.ErrNoRows to sentinel.ErrNoWorkspace so middleware can render
-// the right ProblemJSON.
-func (r *PoolResolver) FirstLiveWorkspace(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error) {
+// the right ProblemJSON. Narrows by user-grant per the 2026-05-25
+// fix — see sql.go for rationale.
+func (r *PoolResolver) FirstLiveWorkspace(ctx context.Context, tenant, userID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := r.MVPool.QueryRow(ctx, sqlFirstLiveWorkspace, tenant).Scan(&id)
+	err := r.MVPool.QueryRow(ctx, sqlFirstLiveWorkspace, tenant, userID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, ErrNoWorkspace
 	}
