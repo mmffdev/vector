@@ -19,7 +19,7 @@ var (
 
 // ValidTypes is the canonical list of report types. Keep in sync with the
 // CHECK constraint in db/mmff_dev/schema/002_dev_reports.sql.
-var ValidTypes = []string{"research", "plan", "security", "retro", "code", "api", "misc"}
+var ValidTypes = []string{"research", "plan", "security", "retro", "code", "api", "misc", "system"}
 
 // Meta is the lightweight row returned by the list endpoint. Excludes the
 // HTML content blob so the page-load payload stays small (~1 KB per report
