@@ -323,6 +323,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 - **RF2.6.1** Record BEFORE/AFTER metrics in pattern doc `## Results` section. **BEFORE** (captured from main): `service.go=1929 LoC`, `handler.go=1167 LoC`, 17 exported ops, 1 pass-through pair, 16 call sites, 2 `hasWorkspace` branches. **AFTER** (populated post-Story-12): target 12 public methods (8 ops + 4 setters), 0 pass-through pairs, 0 branches, `handler.go ≤1050 LoC`. File `TD-SVC-DEPTH-PATTERN` S3 row in `docs/c_tech_debt.md` with cap (pattern doc link) + pay-down trigger (service is next substantially touched OR method count crosses 15) + **ranked candidate next-services list**: `workspaces` (2794 LoC, 14 methods — **adopt**, strongest fit), `users` (2057 LoC, 13 methods — **adopt**, watch auth coupling), `timeboxsprints` (**excluded** per audit — "appropriately shallow"), `portfoliomodels` (9083 LoC, 7 methods — **defer** until method count grows), `polymorphicrefs` (4 methods — **exclude**, too small to benefit). Story 13 closes the loop; converts one-off refactor into a reusable pattern. `[P2]` 🔵 IN FLIGHT
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
@@ -370,12 +371,23 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 ---
 
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
@@ -604,6 +616,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -1000,6 +1013,9 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1233,6 +1249,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1532,6 +1550,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1695,6 +1715,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -1780,6 +1801,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
@@ -1796,6 +1818,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
@@ -1830,6 +1853,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
 > Commit `60ae79c9` (2026-05-24): test(sentinel): reset window.location between tests so URL-mirror effect doesn't bleed through
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
 ### FLOW1.4 Future — explicitly out of scope here
@@ -1875,6 +1899,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -1961,6 +1986,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2085,6 +2111,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -2178,6 +2205,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2278,6 +2306,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2437,6 +2466,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2717,6 +2748,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2921,6 +2955,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -3133,6 +3168,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -3285,6 +3321,9 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3344,6 +3383,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -3427,6 +3467,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3926,10 +3967,12 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > - `GET    /artefacts/:id` — read one
 > Commit `89068e2` (2026-05-20): feat(security): CSRF bypass for api-key bearer auth — B20.5.L follow-on
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
@@ -4192,6 +4235,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `7e1b7d8e` (2026-05-25): docs(td): register TD-NAV-MAXPINNED-SEED-OVERCAP for the cap-bump hack
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -4214,6 +4259,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - **B5.14** Permissions page UX: confirm `/user-management/permissions` matrix is the sole authoring surface for `users_roles_pages` — banner copy + remove tier-tier UI hints from related screens (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
@@ -4240,6 +4286,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -4316,6 +4364,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -4454,6 +4505,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9add87a9` (2026-05-24): fix(sentinel): also clear focus_override on login transition (sole source of truth = user.default_focus_node_id)
 > Commit `7e1b7d8e` (2026-05-25): docs(td): register TD-NAV-MAXPINNED-SEED-OVERCAP for the cap-bump hack
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
   > Rally-validated seed mechanism (R054 §N2): one workspace-level enum `{none, viewer, editor}` (default `none`). When a user is created inside a workspace, the user-creation path issues a grant at this level on the workspace root node so the user is never in a permission vacuum. Adds a column to `master_record_tenant` (the tenant-settings substrate, see B6.1) plus a hook in the user-create service. Distinct from grant-inheritance: this is a per-user seed at creation time, not a live cascade.
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
@@ -4532,6 +4584,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B6.10** Opt-in one-shot copy-grants on child-node creation `[P3]`
 > Commit `fea4fc9` (2026-05-12): feat(PLA-0043): chrome rework — typecase.css, viewport-anchored title, breadcrumbs [FE-POR-0003.1]
 > Commit `51776f3` (2026-05-13): fix(PLA-0043): lazy-seed admin nav groups + profile placements on Default profile fetch [FE-POR-0003.1]
@@ -4628,6 +4682,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `0fab5d66` (2026-05-24): feat(home-location): "home topology node" dropdown on account-settings [PLA062 follow-up]
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B6.12** Node re-parent permission policy — preserve / replace / merge `[P3]`
 > Commit `f515b71` (2026-05-13): fix(001_redesign): rail click + bottom util visibility [FE-POR-0003.1]
 > Commit `db60132` (2026-05-13): fix(001_redesign): pin rail + flyout to viewport [FE-POR-0003.1]
@@ -4737,6 +4792,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -4808,6 +4864,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
@@ -4951,6 +5008,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5061,6 +5120,7 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 > Commit `b19d591` (2026-05-21): feat(notifications): rules fire on custom-field writes + batched body shape
 > Commit `0fab5d66` (2026-05-24): feat(home-location): "home topology node" dropdown on account-settings [PLA062 follow-up]
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
   > UI dropdown in `WebhookForm.tsx` lists "Item blocked" today but no fire site exists. The orthogonal blocked-state model (separate from flow state, with its own provenance fields) lives under B1.8; the webhook fire happens from the `Block`/`Unblock` service methods in B1.8.2.
   >
 
@@ -5175,6 +5235,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -5316,6 +5378,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -5667,6 +5730,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -5811,6 +5876,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -5893,6 +5959,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -5913,6 +5981,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -6021,6 +6090,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -6066,6 +6136,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
@@ -6249,15 +6320,18 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
   > Last checked: 2026-05-19
 > Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **B20.4.9** Profile image upload `[P4 — deferred]`. AC: column stub from B20.4.2 promoted; `POST /_site/users/{id}/profile-image` (multipart, ≤2 MB, png/jpeg, MIME-sniff server-side); avatar column on list renders image with initials fallback; audit row on upload/delete. `[P4]`
 - ✅ ~~**B20.4.10** Disabled column read-only checkbox (Rally pattern). AC: `/users` list shows Disabled state as read-only checkbox; toggle action stays in edit-row panel only; reduces accidental-disable risk; server-side check unchanged.~~ `[P3]`
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
@@ -6575,6 +6649,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -6767,6 +6842,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -6845,6 +6921,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -6972,6 +7049,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f0091092` (2026-05-25): feat(db): cascade nav_prefs cleanup on pages hard-delete (mig 248)
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -7134,6 +7212,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -7314,6 +7393,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -7409,6 +7491,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
 > Commit `7e1b7d8e` (2026-05-25): docs(td): register TD-NAV-MAXPINNED-SEED-OVERCAP for the cap-bump hack
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -7607,6 +7690,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -7773,6 +7857,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -8147,6 +8233,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -8472,6 +8560,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -8708,6 +8798,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -8865,6 +8957,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -9026,6 +9119,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -9155,6 +9250,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -9257,6 +9355,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -9344,6 +9443,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -9385,6 +9485,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1bdbfebc` (2026-05-25): fix(sentinel): point sqlFirstLiveWorkspace at the real workspaces table
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -9496,6 +9597,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -9563,6 +9665,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -9979,6 +10084,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 **Phase 1 — Backend**
 
@@ -10011,6 +10117,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
@@ -10105,6 +10213,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 **Phase 2 — Frontend**
 
@@ -10136,6 +10246,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **OBJ1.2.2** ObjectTreeV2 wires facets hook to chips. AC: `p_ObjectTree.tsx` drops the temporary `windowRoots`-derivation block; chips populate from facets + workspace catalogue metadata (label + colour). `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
@@ -10154,6 +10266,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 - **OBJ1.2.3** `WorkItemsFilterChipsProps` tightened. AC: `typeOptions` + `priorityOptions` required (no `?`, no `= []` default) after V1 ObjectTree retirement. `[P3]`
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
@@ -10241,6 +10355,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 
 ---
 
@@ -10466,14 +10582,14 @@ Continuation of CUT1.4.1 covering pages/nav/portfolio services and finally users
 
 ### CUT1.5.0 [P2] — Phase 5 prep: orphan triage + remediation (blocks CUT1.5.1)
 
-The CUT1.0.2 cron's first real run (2026-05-25) surfaced **508 orphan UUIDs across 14 columns**. Hard-FK installation in CUT1.5.1 will fail on any column with orphans, so Phase 5 must remediate first. Distribution: `artefacts_types` (332 orphans — likely one cohort of deleted dev tenants), `artefacts` (92 orphans across user/workspace/subscription refs), `artefact_priorities.workspace_id` (52), `audit_logs.audit_logs_id_user` (21 — LEGITIMATE per SOC 2 audit-trail immutability), settings sidecars (11). The `master_record_workspaces` self-ref orphan (1) is eliminated by structure when CUT1.3.3 merges the sidecar into the registry. Full per-column count + sample IDs in the daily `SY-ORPHAN-YYYYMMDD` reports on Dev → Reporting.
+The CUT1.0.2 cron's first real run (2026-05-25) surfaced **508 orphan UUIDs across 14 columns** (live investigation found 1,263 orphan column-instances — cron likely undercounted via a stale snapshot). Hard-FK installation in CUT1.5.1 will fail on any column with orphans, so Phase 5 must remediate first. Distribution (live count 2026-05-25): `artefacts_types` (427 orphan rows across WS + sub — CONFIRMED: all 427 rows orphan in BOTH columns, 168 distinct dead (ws, sub) pairs = one cohort of dev tenants per pair), `artefacts` (50 rows with any orphan col), `artefact_priorities.workspace_id` (140 rows, 53 dead WS), `audit_logs.audit_logs_id_user` (89 rows, 29 dead users — SOC 2 legitimate), `master_record_portfolios` (11 rows), `timeboxes_*` (19 rows total across 3 tables), `webhooks_subscriptions` (3 rows), VA sidecar (1 row). The `master_record_workspaces` VA sidecar orphan + timeboxes/webhooks share a zero-ID bootstrap cluster (COHORT-B). The `master_record_workspaces` sidecar column itself is also eliminated by structure when CUT1.3.3 merges the sidecar into the registry. Full per-column count + sample IDs in the daily `SY-ORPHAN-YYYYMMDD` reports on Dev → Reporting.
 
-  - AC: Per-cohort investigation: are the 166 `artefacts_types` orphans really one cohort of deleted dev tenants (workspace_id + subscription_id matching count is the smoking gun)? Document findings inline.
-  - AC: Per-target-table remediation policy decided + documented: hard-delete for confirmed dev-tenant cleanup debt; `SET NULL` for nullable audit columns (preserve SOC 2 trail); skip the columns CUT1.3.3 eliminates by structure.
-  - AC: Dry-run remediation SQL committed to `db/vector_artefacts/schema/merge_plan/orphan_remediation.sql` — non-executable artefact reviewed BEFORE execution.
-  - AC: Execution migration applies clean; post-execution cron run shows 0 orphans across the target columns (excluding any columns explicitly deferred).
-  - AC: Deferred columns (e.g. CUT1.3.3-eliminated refs) flagged in `docs/c_tech_debt.md` with the merge as their resolution trigger.
-  - AC: CUT1.5.1 unblocked — fresh cron run + SY003 v3 regen confirm zero orphans on the FK-install target set.
+  - AC: ✅ Per-cohort investigation: the `artefacts_types` orphans ARE one cohort of deleted dev tenants — CONFIRMED: all 427 rows orphan in BOTH workspace_id AND subscription_id; 168 distinct (dead_ws, dead_sub) pairs with strict 1:1 mapping; every dead WS maps to exactly 1 dead sub. Cron-reported 166 was undercounted. Full cohort findings in `db/vector_artefacts/schema/merge_plan/orphan_remediation.sql` header (COHORT-A/B/C/D/E).
+  - AC: ✅ Per-target-table remediation policy decided + documented: COHORT-A (179 dead WS, dev-tenant cleanup) → HARD-DELETE across 5 tables; COHORT-B (zero-ID bootstrap placeholder) → HARD-DELETE across 5 tables; COHORT-C (dead-user artefact refs) → TRANSITIVE via COHORT-A + NULL guard; COHORT-D (89 audit_logs rows, 29 dead users) → NULL (SOC 2 preserved); COHORT-E (VA sidecar self-ref) → HARD-DELETE via COHORT-B + structural elimination at CUT1.3.3. No deferred cohorts — all confidently classified.
+  - AC: ✅ Dry-run remediation SQL committed to `db/vector_artefacts/schema/merge_plan/orphan_remediation.sql` — non-executable artefact reviewed BEFORE execution. Commit: see `[CUT1.5.0]` tag.
+  - AC: Execution migration applies clean; post-execution cron run shows 0 orphans across the target columns (excluding any columns explicitly deferred). ← NOT YET (CUT1.5.0 part 2)
+  - AC: No deferred columns — no TD entries needed. The CUT1.3.3-eliminated sidecar col is already noted in the SQL header.
+  - AC: CUT1.5.1 unblocked — fresh cron run + SY003 v3 regen confirm zero orphans on the FK-install target set. ← NOT YET (after execution)
 
 ### CUT1.5.1 [P2] — Phase 5: install hard Postgres FKs on all 50 previously-soft cross-DB UUID columns
 
