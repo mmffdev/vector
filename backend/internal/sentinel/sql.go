@@ -81,12 +81,14 @@ const sqlTenantRootNode = `
 // their tenant ordered by created_at ASC (Default lands first). $1 =
 // subscriptionID.
 //
-// Table is `workspace` (singular) per the rename in §2.6 of the
-// naming-convention spec; every other handler in backend/internal/
-// uses the same. Sentinel was copy-pasted from a pre-rename draft.
+// Table is `master_record_workspaces` — same as topology/sql.go and
+// every other handler in backend/internal/. A prior copy referenced
+// a `workspace` placeholder table that ships empty, which silently
+// failed `FirstLiveWorkspace` for every legacy-token request and 403'd
+// every page with "your tenant has no live workspaces" (TD-SENT-WS-TABLE).
 const sqlFirstLiveWorkspace = `
 	SELECT id
-	  FROM workspace
+	  FROM master_record_workspaces
 	 WHERE subscription_id = $1
 	   AND archived_at IS NULL
 	 ORDER BY created_at ASC
