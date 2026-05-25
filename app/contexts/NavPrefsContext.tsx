@@ -127,6 +127,12 @@ interface NavPrefsState {
   // Returns canonical groups in payload order so callers can map any
   // synthetic "new:" ids they sent to the server-minted UUIDs.
   save: (body: PutPrefsBody) => Promise<NavCustomGroup[]>;
+  // Convenience wrapper for the Account-Settings homepage dropdown: writes
+  // start_page_key while preserving the existing pinned list + groups, and
+  // auto-pins the target page if it isn't already pinned (the backend
+  // rejects start_page_key not present in the pinned list with
+  // ErrStartPageNotPinned — service.go:424).
+  setStartPageKey: (next: string | null) => Promise<void>;
   reset: () => Promise<void>;
   findEntry: (key: string) => NavCatalogEntry | undefined;
   isPinnable: (key: string) => boolean;
@@ -156,16 +162,65 @@ interface NavPrefsState {
 
 const Ctx = createContext<NavPrefsState | null>(null);
 
+// SWR cache for the full nav payload. Hydrated synchronously on mount so
+// rails 1 + 2 render with last session's contents instead of empty arrays
+// (which produced a 150-400ms FOUC while /nav/profiles + /nav/catalogue +
+// /nav/prefs + /nav/profiles/{id}/groups round-tripped). The network
+// refetch still runs every mount and silently overwrites state when it
+// resolves, so out-of-tab edits reconcile within one request cycle.
+//
+// Cache key is user-scoped so account switching never bleeds prefs from
+// one user to another. Bumping CACHE_VERSION invalidates every existing
+// cache (used when the payload shape changes incompatibly).
+const CACHE_VERSION = "v1";
+const cacheKey = (userId: string) => `nav:${CACHE_VERSION}:${userId}`;
+
+interface NavCacheShape {
+  prefs: PrefRow[];
+  customGroups: NavCustomGroup[];
+  catalogue: NavCatalogEntry[];
+  tags: NavTagGroup[];
+  profiles: NavProfile[];
+  activeProfileId: string | null;
+  profileGroups: ProfileGroupPlacement[];
+}
+
+function readCache(userId: string | undefined): NavCacheShape | null {
+  if (!userId || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(cacheKey(userId));
+    if (!raw) return null;
+    return JSON.parse(raw) as NavCacheShape;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(userId: string | undefined, payload: NavCacheShape): void {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(cacheKey(userId), JSON.stringify(payload));
+  } catch {
+    // Quota or private mode — silent. Worst case the user sees the same
+    // 150-400ms flash on their next visit; nothing functional breaks.
+  }
+}
+
 export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [prefs, setPrefs] = useState<PrefRow[]>([]);
-  const [customGroups, setCustomGroups] = useState<NavCustomGroup[]>([]);
-  const [catalogue, setCatalogue] = useState<NavCatalogEntry[]>([]);
-  const [tags, setTags] = useState<NavTagGroup[]>([]);
-  const [profiles, setProfiles] = useState<NavProfile[]>([]);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
-  const [profileGroups, setProfileGroupsState] = useState<ProfileGroupPlacement[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Hydrate from cache synchronously so the very first render has data.
+  // The network refetch still runs and overwrites everything when it lands.
+  const initial = useMemo(() => readCache(user?.id), [user?.id]);
+  const [prefs, setPrefs] = useState<PrefRow[]>(initial?.prefs ?? []);
+  const [customGroups, setCustomGroups] = useState<NavCustomGroup[]>(initial?.customGroups ?? []);
+  const [catalogue, setCatalogue] = useState<NavCatalogEntry[]>(initial?.catalogue ?? []);
+  const [tags, setTags] = useState<NavTagGroup[]>(initial?.tags ?? []);
+  const [profiles, setProfiles] = useState<NavProfile[]>(initial?.profiles ?? []);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(initial?.activeProfileId ?? null);
+  const [profileGroups, setProfileGroupsState] = useState<ProfileGroupPlacement[]>(initial?.profileGroups ?? []);
+  // `loading` is true only when there's no cache to render. With a cache
+  // hit the rails render immediately and the background refetch is silent.
+  const [loading, setLoading] = useState(initial === null);
   const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
@@ -180,7 +235,10 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    // Only flip `loading=true` when the rails have nothing to render. With
+    // a cache hit the rails are already populated — the refetch is silent
+    // background reconciliation and shouldn't trigger any skeleton flash.
+    setLoading((prev) => prev || prefs.length === 0);
     setError(null);
     try {
       const [profilesRes, catRes] = await Promise.all([
@@ -188,9 +246,11 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
         apiSite<CatalogueResp>("/nav/catalogue"),
       ]);
       const profileList = profilesRes.profiles ?? [];
+      const nextCatalogue = catRes.catalogue ?? [];
+      const nextTags = catRes.tags ?? [];
       setProfiles(profileList);
-      setCatalogue(catRes.catalogue ?? []);
-      setTags(catRes.tags ?? []);
+      setCatalogue(nextCatalogue);
+      setTags(nextTags);
 
       // Pick active: server-tracked → first profile (Default).
       const targetId =
@@ -204,8 +264,10 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
         ? `/nav/prefs?profile_id=${encodeURIComponent(targetId)}`
         : "/nav/prefs";
       const prefsRes = await apiSite<PrefsResp>(prefsPath);
-      setPrefs(prefsRes.prefs ?? []);
-      setCustomGroups(prefsRes.groups ?? []);
+      const nextPrefs = prefsRes.prefs ?? [];
+      const nextGroups = prefsRes.groups ?? [];
+      setPrefs(nextPrefs);
+      setCustomGroups(nextGroups);
       // Server returns the resolved profile_id — trust it as the source of truth
       // (it accounts for lazy-seed of Default on first load).
       const resolvedProfileId = prefsRes.profile_id ?? targetId;
@@ -214,31 +276,49 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
       // Per-profile placements (tag-bucket + custom-group order). Best-
       // effort: if the call fails we fall back to canonical order rather
       // than blocking the whole prefs load.
+      let nextProfileGroups: ProfileGroupPlacement[] = [];
       if (resolvedProfileId) {
         try {
           const groupsRes = await apiSite<ProfileGroupsResp>(
             `/nav/profiles/${encodeURIComponent(resolvedProfileId)}/groups`,
           );
-          setProfileGroupsState(groupsRes.placements ?? []);
+          nextProfileGroups = groupsRes.placements ?? [];
         } catch {
-          setProfileGroupsState([]);
+          nextProfileGroups = [];
         }
-      } else {
-        setProfileGroupsState([]);
       }
+      setProfileGroupsState(nextProfileGroups);
+
+      // Persist for next session's SWR hydration. Writing only after a
+      // fully successful round trip avoids caching a partial payload
+      // (e.g. when the profile-groups call failed silently above).
+      writeCache(user.id, {
+        prefs: nextPrefs,
+        customGroups: nextGroups,
+        catalogue: nextCatalogue,
+        tags: nextTags,
+        profiles: profileList,
+        activeProfileId: resolvedProfileId,
+        profileGroups: nextProfileGroups,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load nav");
-      setPrefs([]);
-      setCustomGroups([]);
-      setCatalogue([]);
-      setTags([]);
-      setProfiles([]);
-      setActiveProfileId(null);
-      setProfileGroupsState([]);
+      // Don't wipe state on failure when we have cached data — keep the
+      // rails showing the last-known-good payload rather than collapsing
+      // to empty. Only clear when there was nothing to lose.
+      if (prefs.length === 0) {
+        setPrefs([]);
+        setCustomGroups([]);
+        setCatalogue([]);
+        setTags([]);
+        setProfiles([]);
+        setActiveProfileId(null);
+        setProfileGroupsState([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, prefs.length]);
 
   useEffect(() => { void refetch(); }, [refetch]);
 
@@ -331,6 +411,118 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     return m;
   }, [catalogue]);
 
+  const setStartPageKey = useCallback(
+    async (next: string | null) => {
+      // The backend's validatePinned enforces (service.go:602):
+      //   - top-level positions form contiguous 0..N-1
+      //   - top-level items sharing a tag/custom group must be contiguous
+      //   - per-parent child positions: no duplicates
+      // We can't just copy prefs[].position through — it's per-bucket-
+      // relative. Mirror /user/navigation/page.tsx:1804-1814: group by
+      // bucket (tag for catalogue items, group_id for user_custom), preserve
+      // relative order within each bucket, then assign fresh positions.
+      // Filter to keys currently visible in this caller's role-clamped
+      // catalogue. The hydrated-from-localStorage prefs can carry keys
+      // from a previous session under a different role — sending them
+      // back triggers ErrRoleForbidden (service.go:626) which the
+      // backend (correctly) treats as a hard 400. Drop silently here;
+      // the user's intent is "set my home page", not "preserve every
+      // pinned entry from a prior identity".
+      const inCatalogue = (key: string): boolean => byKey.has(key);
+      const topLevel = prefs.filter(
+        (p) => !p.is_bookmark && !p.parent_item_key && inCatalogue(p.item_key),
+      );
+      const childrenByParent = new Map<string, PrefRow[]>();
+      const topLevelKeys = new Set(topLevel.map((p) => p.item_key));
+      for (const p of prefs) {
+        if (p.is_bookmark || !p.parent_item_key) continue;
+        if (!inCatalogue(p.item_key)) continue;
+        if (!topLevelKeys.has(p.parent_item_key)) continue;
+        const arr = childrenByParent.get(p.parent_item_key) ?? [];
+        arr.push(p);
+        childrenByParent.set(p.parent_item_key, arr);
+      }
+
+      // Bucket the top-level items (tag for catalogue rows, group:<id> for
+      // user_custom). First-seen ordering preserves the user's current
+      // arrangement; auto-pin of `next` appends to its bucket if needed.
+      const bucketOrder: string[] = [];
+      const byBucket = new Map<string, PrefRow[]>();
+      const bucketOf = (p: PrefRow): string => {
+        if (p.group_id) return `g:${p.group_id}`;
+        const entry = byKey.get(p.item_key);
+        const tag = entry?.tagEnum || "personal";
+        return `t:${tag}`;
+      };
+      for (const p of topLevel.slice().sort((a, b) => a.position - b.position)) {
+        const b = bucketOf(p);
+        if (!byBucket.has(b)) { byBucket.set(b, []); bucketOrder.push(b); }
+        byBucket.get(b)!.push(p);
+      }
+
+      // Auto-pin the target page if absent (backend rejects start_page_key
+      // not present in pinned, ErrStartPageNotPinned at service.go:424).
+      if (next && !topLevel.some((p) => p.item_key === next)) {
+        const entry = byKey.get(next);
+        if (entry) {
+          const bucket = entry.kind === "user_custom"
+            ? null // never auto-create user_custom; punt to navigation page
+            : `t:${entry.tagEnum || "personal"}`;
+          if (bucket) {
+            if (!byBucket.has(bucket)) { byBucket.set(bucket, []); bucketOrder.push(bucket); }
+            byBucket.get(bucket)!.push({
+              item_key: next,
+              position: 0,
+              is_start_page: false,
+              is_bookmark: false,
+              parent_item_key: null,
+              group_id: null,
+              icon_override: null,
+            });
+          }
+        }
+      }
+
+      const pinned: PutPrefsPinnedRow[] = [];
+      let topPos = 0;
+      for (const bucket of bucketOrder) {
+        for (const p of byBucket.get(bucket)!) {
+          pinned.push({
+            item_key: p.item_key,
+            position: topPos++,
+            parent_item_key: null,
+            group_id: p.group_id,
+            icon_override: p.icon_override,
+          });
+          const kids = childrenByParent.get(p.item_key) ?? [];
+          let childPos = 0;
+          for (const c of kids.slice().sort((a, b) => a.position - b.position)) {
+            pinned.push({
+              item_key: c.item_key,
+              position: childPos++,
+              parent_item_key: p.item_key,
+              group_id: null,
+              icon_override: c.icon_override,
+            });
+          }
+        }
+      }
+
+      // Rewrite group positions from array index to guarantee contiguous
+      // 0..N-1 — matches /user/navigation/page.tsx:1815-1820. Trusting the
+      // cached g.position can fire ErrBadPositions if the cache is stale.
+      const sortedGroups = customGroups.slice().sort((a, b) => a.position - b.position);
+      const groups: PutPrefsGroupRow[] = sortedGroups.map((g, i) => ({
+        id: g.id,
+        label: g.label,
+        position: i,
+        icon: g.icon,
+      }));
+      await save({ pinned, start_page_key: next, groups });
+    },
+    [prefs, customGroups, save, byKey],
+  );
+
   const tagByEnumMap = useMemo(() => {
     const m = new Map<string, NavTagGroup>();
     for (const t of tags) m.set(t.enum, t);
@@ -422,7 +614,7 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
 
   const value: NavPrefsState = {
     prefs, customGroups, catalogue, tags, profileGroups, loading, error,
-    refetch, patchCatalogueEntry, save, reset,
+    refetch, patchCatalogueEntry, save, setStartPageKey, reset,
     findEntry, isPinnable, defaultPinned, tagByEnum,
     isBookmarked, bookmark, unbookmark,
     isPageBookmarked, bookmarkPage, unbookmarkPage,

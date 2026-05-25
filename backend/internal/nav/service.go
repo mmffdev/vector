@@ -16,8 +16,13 @@ import (
 // MaxPinned caps the server-side pinned list length. Mirrors MAX_PINNED in
 // the frontend modal — client enforcement is cosmetic; this is the real gate.
 // Raised from 20 to 50 alongside entity bookmarks (Phase 3) so pinned static
-// items + entity bookmarks share one comfortable budget.
-const MaxPinned = 50
+// items + entity bookmarks share one comfortable budget. Raised to 100 in
+// 2026-05 once pages.default_pinned=TRUE seed grew past 50 for higher-role
+// users (padmin/gadmin) — at 50 the seed itself produced over-cap state
+// that any subsequent PUT /_site/nav/prefs round-trip rejected with
+// ErrTooManyPinned, breaking read-modify-write paths (account-settings
+// homepage dropdown, nav editor save).
+const MaxPinned = 100
 
 // MaxCustomGroups / MaxChildrenPerParent are product caps for the
 // sub-pages + custom groups phase. Server is the source of truth — the

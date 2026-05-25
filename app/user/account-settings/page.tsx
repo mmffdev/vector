@@ -6,6 +6,7 @@ import PageContent from "@/app/components/PageContent";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import HomeLocationSection from "@/app/components/HomeLocationSection";
+import HomepageSection from "@/app/components/HomepageSection";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { apiSite, ApiError } from "@/app/lib/api";
@@ -226,6 +227,8 @@ export default function AccountSettingsPage() {
       </form>
 
       <HomeLocationSection />
+
+      <HomepageSection />
 
       <h3 className="eyebrow">Password</h3>
       <form

@@ -46,7 +46,7 @@ import { ConfirmModal } from "@/app/components/topology/ConfirmModal";
 import { useDraft } from "@/app/hooks/useDraft";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 
-const MAX_PINNED = 50;
+const MAX_PINNED = 100;
 const MAX_CUSTOM_GROUPS = 10;
 const MAX_CHILDREN_PER_PARENT = 8;
 const MAX_GROUP_LABEL_LEN = 64;
