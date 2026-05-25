@@ -558,9 +558,26 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 
 const loginContinuationCookieName = "vector_login_continuation"
 
-// isSafeContinuationPath enforces the same surface as the legacy
-// frontend regex `/^\/(?![\\/])/.test(raw) && !raw.startsWith("/v2/")`.
-// Reject empty, non-leading-slash, protocol-relative, and /v2/* paths.
+// isSafeContinuationPath restricts the continuation cookie to real
+// Next.js app routes. Background probes that arrive unauthenticated
+// (Chrome DevTools workspace discovery at /.well-known/appspecific/...,
+// /favicon.ico, sitemap pings, security.txt scanners) get caught by
+// the middleware bounce and would otherwise poison the cookie — on the
+// next successful login the frontend would send the user to the probe
+// path rather than their start page. Reject anything that isn't a
+// plausible app-route path:
+//
+//   - non-leading-slash, protocol-relative, empty, overlong
+//   - /v2/*           (legacy API surface, never a user-visible page)
+//   - /.well-known/*  (DevTools, ACME, security.txt, openid-config)
+//   - /api/*          (Next.js BFF mounts)
+//   - /_next/*        (build assets)
+//   - /_site/*        (Go backend mount; reaching it means the bouncer
+//                      misclassified the request — refuse to redirect back)
+//   - paths whose terminal segment carries a file extension
+//     (.json/.txt/.xml/.png/.svg/.ico/.map/.js/.css/.html/.woff*/.well-known
+//     style probes). A dot inside an earlier segment (e.g.
+//     /workspace/v1.2/something) is fine.
 func isSafeContinuationPath(p string) bool {
 	if p == "" || len(p) > 2048 {
 		return false
@@ -571,8 +588,41 @@ func isSafeContinuationPath(p string) bool {
 	if len(p) >= 2 && (p[1] == '/' || p[1] == '\\') {
 		return false
 	}
-	if strings.HasPrefix(p, "/v2/") || p == "/v2" {
-		return false
+	for _, bad := range []string{"/v2/", "/.well-known/", "/api/", "/_next/", "/_site/"} {
+		if strings.HasPrefix(p, bad) {
+			return false
+		}
+	}
+	for _, exact := range []string{"/v2", "/.well-known", "/api", "/_next", "/_site"} {
+		if p == exact {
+			return false
+		}
+	}
+	// File-extension probe defence. Look at the path before the query
+	// string; if the final segment carries a `.` followed by ≤8 ASCII
+	// letters/digits with no further slash, treat it as a static-asset
+	// probe and refuse.
+	pathOnly := p
+	if i := strings.IndexAny(pathOnly, "?#"); i >= 0 {
+		pathOnly = pathOnly[:i]
+	}
+	if slash := strings.LastIndex(pathOnly, "/"); slash >= 0 {
+		seg := pathOnly[slash+1:]
+		if dot := strings.LastIndex(seg, "."); dot > 0 && dot < len(seg)-1 {
+			ext := seg[dot+1:]
+			if len(ext) <= 8 {
+				ok := true
+				for _, r := range ext {
+					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')) {
+						ok = false
+						break
+					}
+				}
+				if ok {
+					return false
+				}
+			}
+		}
 	}
 	return true
 }
