@@ -59,18 +59,11 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	).Scan(&subscriptionID); err != nil {
 		t.Fatalf("insert tenant: %v", err)
 	}
-	// Dependency-ordered teardown. Subscriptions can accumulate portfolio-stack +
-	// item-type seed data whose FKs RESTRICT both `users` and `subscriptions`, so a
-	// users/subscription delete alone leaves orphans and silently fails. Delete from
-	// the leaves up; let CASCADE handle users_sessions/perms/nav off `users`.
+	// Dependency-ordered teardown. Let CASCADE handle users_sessions/perms/nav off `users`.
+	// CUT1.1.1 (PLA064): execution_item_types, subscriptions_stakeholders, product,
+	// portfolio, workspace, company_roadmap dropped in mig 249 — removed from teardown.
 	cleanup := func() {
 		stmts := []string{
-			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
-			`DELETE FROM subscriptions_stakeholders  WHERE subscriptions_stakeholders_id_subscription = $1`,
-			`DELETE FROM product                     WHERE subscription_id = $1`,
-			`DELETE FROM portfolio                   WHERE subscription_id = $1`,
-			`DELETE FROM workspace                   WHERE subscription_id = $1`,
-			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
 			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,

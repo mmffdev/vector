@@ -4443,23 +4443,6 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /nav/entities:
-    get:
-      tags:
-      - navigation
-      summary: List navigation entities
-      operationId: listNavEntities
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          description: Navigation entities
-          content:
-            application/json:
-              schema:
-                type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
   /nav/page-bookmark:
     delete:
       tags:

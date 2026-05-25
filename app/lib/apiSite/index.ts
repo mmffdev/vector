@@ -198,9 +198,6 @@ export const nav = {
   checkBookmark: (entityKind: string, entityId: ID) =>
     apiSite<{ pinned: boolean }>(`/nav/bookmark/check?entity_kind=${entityKind}&entity_id=${entityId}`),
 
-  listEntities: () =>
-    apiSite<{ entities: unknown[] }>("/nav/entities"),
-
   listProfiles: () =>
     apiSite<{ profiles: NavProfile[]; active_profile_id: string | null }>("/nav/profiles"),
 

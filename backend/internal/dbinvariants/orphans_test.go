@@ -46,29 +46,18 @@ func TestNoPolymorphicOrphans(t *testing.T) {
 
 	checks := []check{
 		{
+			// CUT1.1.1 (PLA064): company_roadmap, workspace, portfolio, product
+			// tables were dropped in migration 249. subscriptions_stakeholders has
+			// no remaining valid entity kinds, so any row is an orphan. The table
+			// should be empty; this check enforces that invariant.
 			name: "subscriptions_stakeholders",
-			sql: `
-				SELECT count(*) FROM subscriptions_stakeholders es
-				WHERE NOT EXISTS (
-				  SELECT 1 FROM company_roadmap cr WHERE es.subscriptions_stakeholders_entity_kind = 'company_roadmap' AND es.subscriptions_stakeholders_entity_id = cr.id
-				  UNION ALL SELECT 1 FROM workspace w  WHERE es.subscriptions_stakeholders_entity_kind = 'workspace'        AND es.subscriptions_stakeholders_entity_id = w.id
-				  UNION ALL SELECT 1 FROM portfolio p  WHERE es.subscriptions_stakeholders_entity_kind = 'portfolio'        AND es.subscriptions_stakeholders_entity_id = p.id
-				  UNION ALL SELECT 1 FROM product   pr WHERE es.subscriptions_stakeholders_entity_kind = 'product'          AND es.subscriptions_stakeholders_entity_id = pr.id
-				)`,
+			sql:  `SELECT count(*) FROM subscriptions_stakeholders`,
 		},
 		{
-			// page_entity_refs CHECK is {portfolio, product} only —
-			// workspace bookmarks are not implemented (see
-			// backend/internal/nav/bookmarks.go EntityKind constants).
-			// If workspace bookmarking lands later, both the CHECK and
-			// this quadrant must grow together.
+			// CUT1.1.1 (PLA064): portfolio and product tables dropped in mig 249.
+			// page_entity_refs must be empty — no valid entity kinds remain.
 			name: "page_entity_refs",
-			sql: `
-				SELECT count(*) FROM page_entity_refs per
-				WHERE NOT EXISTS (
-				  SELECT 1 FROM portfolio p  WHERE per.entity_kind = 'portfolio' AND per.entity_id = p.id
-				  UNION ALL SELECT 1 FROM product   pr WHERE per.entity_kind = 'product'   AND per.entity_id = pr.id
-				)`,
+			sql:  `SELECT count(*) FROM page_entity_refs`,
 		},
 	}
 

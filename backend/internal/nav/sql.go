@@ -236,21 +236,6 @@ const sqlCountUserNavPrefByKey = `
 		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_item_key = $4
 	`
 
-// ── entities.go ─────────────────────────────────────────────────────────────
-
-// sqlListPortfoliosAndProductsInTenant unions the two entity tables
-// for the /api/nav/entities surface. Used by EntitiesService.ListInTenant.
-// No paging — demo volumes are tiny; revisit when crossing a few
-// hundred rows.
-const sqlListPortfoliosAndProductsInTenant = `
-		SELECT 'portfolio' AS kind, id, name FROM portfolio
-		 WHERE subscription_id = $1 AND archived_at IS NULL
-		UNION ALL
-		SELECT 'product' AS kind, id, name FROM product
-		 WHERE subscription_id = $1 AND archived_at IS NULL
-		ORDER BY kind, name
-	`
-
 // ── registry.go ─────────────────────────────────────────────────────────────
 
 // sqlListPageTags returns the page_tags catalogue in default order.

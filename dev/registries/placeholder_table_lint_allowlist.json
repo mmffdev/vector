@@ -32,6 +32,10 @@
     {
       "path": "db/ops/cleanup_perm_test_tenants.sql",
       "reason": "One-shot dev ops script written 2026-04-23 to clean up orphaned rows from botched perm-test-* tenant test runs. References FROM workspace/portfolio/product/company_roadmap/execution_item_types in DELETE ... WHERE tenant_id IN (...) patterns. Uses old pre-rename column names (tenant_id), confirming it predates migration 017. No ongoing operational use; to be retired alongside the placeholder tables in CUT1.1.1."
+    },
+    {
+      "path": "db/mmff_vector/schema/down/249_drop_placeholder_tables_DOWN.sql",
+      "reason": "DOWN migration for mig 249. Legitimately reconstructs all 6 dropped tables (workspace, portfolio, product, company_roadmap, execution_item_types, subscriptions_item_type_icons) via CREATE TABLE statements — these are the rollback definitions, not active references. Also recreates the dispatch procs that SELECT FROM those tables. This file is the canonical rollback artefact for CUT1.1.1."
     }
   ]
 }

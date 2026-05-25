@@ -14,7 +14,12 @@ import (
 )
 
 // EntityKind names a real-world thing a user can bookmark.
-// Mirrors the CHECK constraint on page_entity_refs.entity_kind.
+//
+// CUT1.1.1 (PLA064): portfolio and product tables were dropped in migration 249.
+// The entity-bookmark surface (Pin/Unpin) now returns ErrUnknownEntityKind for
+// every kind. EntityKindPortfolio and EntityKindProduct are retained as named
+// constants so existing callers compile; the Valid() method rejects them so
+// no write reaches the DB. See TD-CUT1.1.1-BOOKMARK-SURFACE.
 type EntityKind string
 
 const (
@@ -23,7 +28,7 @@ const (
 )
 
 func (k EntityKind) Valid() bool {
-	return k == EntityKindPortfolio || k == EntityKindProduct
+	return false // all entity kinds removed in CUT1.1.1 — tables dropped in mig 249
 }
 
 // Re-export the polymorphic sentinels so existing handler code that
@@ -80,35 +85,14 @@ func tagEnumForBookmark(kind EntityKind) string {
 }
 
 // loadEntity fetches the bare minimum needed to mint a page: name,
-// subscription_id, archived state. Tenant fence: the caller's tenant must
-// match the entity's tenant. Archived entities cannot be bookmarked.
+// subscription_id, archived state.
+//
+// CUT1.1.1 (PLA064): portfolio and product tables were dropped in migration 249.
+// This function now always returns ErrUnknownEntityKind. It is kept so
+// Pin() compiles unchanged; Pin() itself is gated by Valid() which rejects
+// all kinds before reaching here. See TD-CUT1.1.1-BOOKMARK-SURFACE.
 func (b *Bookmarks) loadEntity(ctx context.Context, q pgx.Tx, kind EntityKind, id uuid.UUID, callerSubscription uuid.UUID) (name string, subscriptionID uuid.UUID, err error) {
-	var table string
-	switch kind {
-	case EntityKindPortfolio:
-		table = "portfolio"
-	case EntityKindProduct:
-		table = "product"
-	default:
-		return "", uuid.Nil, ErrUnknownEntityKind
-	}
-	var archived *string
-	// SQL injection note: table is a hard-coded enum, never user input.
-	row := q.QueryRow(ctx, fmt.Sprintf(sqlSelectEntityForBookmarkTemplate, table), id)
-	if err := row.Scan(&name, &subscriptionID, &archived); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", uuid.Nil, ErrEntityNotFound
-		}
-		return "", uuid.Nil, err
-	}
-	if subscriptionID != callerSubscription {
-		// Don't leak existence — same error as not-found.
-		return "", uuid.Nil, ErrEntityNotFound
-	}
-	if archived != nil {
-		return "", uuid.Nil, ErrEntityArchived
-	}
-	return name, subscriptionID, nil
+	return "", uuid.Nil, ErrUnknownEntityKind
 }
 
 // hrefFor returns the canonical detail-page URL for an entity. These

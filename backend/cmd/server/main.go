@@ -273,8 +273,6 @@ func main() {
 		os.Getenv("CUSTOM_APP_TOKEN"),
 	)
 	navH := nav.NewHandler(navSvc, navBookmarks, navPageBookmarks, customPagesSvc)
-	navEntitiesSvc := nav.NewEntitiesService(pool)
-	navEntitiesH := nav.NewEntitiesHandler(navEntitiesSvc)
 	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc, auditLog)
 
 	// PLA-0049 Phase 0.5: page-access resolver + handler. The resolver
@@ -1206,7 +1204,6 @@ func main() {
 		r.Get("/bookmark/check", navH.CheckBookmark)
 		r.Post("/page-bookmark", navH.PinPageBookmark)
 		r.Delete("/page-bookmark", navH.UnpinPageBookmark)
-		r.Get("/entities", navEntitiesH.List)
 
 		r.Get("/profiles", navH.ListProfiles)
 		r.Post("/profiles", navH.CreateProfile)

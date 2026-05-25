@@ -70,13 +70,9 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 		// go before users_roles. users_password_resets and other user-FK leaves go
 		// before users.
 		stmts := []string{
+			// CUT1.1.1 (PLA064): execution_item_types, subscriptions_stakeholders,
+			// product, portfolio, workspace, company_roadmap dropped in mig 249 — removed.
 			`DELETE FROM users_roles_permissions            WHERE users_roles_permissions_id_role IN (SELECT users_roles_id FROM users_roles WHERE users_roles_id_subscription = $1)`,
-			`DELETE FROM execution_item_types        WHERE subscription_id = $1`,
-			`DELETE FROM subscriptions_stakeholders  WHERE subscriptions_stakeholders_id_subscription = $1`,
-			`DELETE FROM product                     WHERE subscription_id = $1`,
-			`DELETE FROM portfolio                   WHERE subscription_id = $1`,
-			`DELETE FROM workspace                   WHERE subscription_id = $1`,
-			`DELETE FROM company_roadmap             WHERE subscription_id = $1`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
 			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,

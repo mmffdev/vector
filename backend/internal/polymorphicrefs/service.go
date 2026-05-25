@@ -27,14 +27,12 @@ import (
 // for any given child relationship is narrower than this — see
 // page_entity_refs and entity_stakeholders below — but the dispatch
 // rules are identical, so we expose one type and gate per relationship.
+//
+// NOTE (CUT1.1.1 / PLA064): KindCompanyRoadmap, KindWorkspace, KindPortfolio,
+// KindProduct were removed when the corresponding tables were dropped in
+// migration 249. Any caller that used those kinds must be updated to remove
+// the dead references.
 type EntityKind string
-
-const (
-	KindCompanyRoadmap EntityKind = "company_roadmap"
-	KindWorkspace      EntityKind = "workspace"
-	KindPortfolio      EntityKind = "portfolio"
-	KindProduct        EntityKind = "product"
-)
 
 // Sentinel errors. All four are returned in preference to the raw
 // Postgres error so callers can switch on them without unpacking
@@ -50,19 +48,11 @@ var (
 // never derived from user input — so the table name is always safe to
 // interpolate into the SQL string. Returns ("", false) for any unknown
 // kind; callers must treat that as ErrUnknownEntityKind.
+//
+// CUT1.1.1 (PLA064): company_roadmap, workspace, portfolio, product tables
+// were dropped in migration 249 — those kinds are no longer valid.
 func parentTableFor(kind EntityKind) (string, bool) {
-	switch kind {
-	case KindCompanyRoadmap:
-		return "company_roadmap", true
-	case KindWorkspace:
-		return "workspace", true
-	case KindPortfolio:
-		return "portfolio", true
-	case KindProduct:
-		return "product", true
-	default:
-		return "", false
-	}
+	return "", false
 }
 
 // Service is the writer for polymorphic relationships. Stateless apart
@@ -132,15 +122,15 @@ func (s *Service) InsertEntityStakeholder(ctx context.Context, tx pgx.Tx, kind E
 
 // InsertPageEntityRef writes one row to page_entity_refs after
 // validating the polymorphic parent. Idempotent on (entity_kind,
-// entity_id) — re-inserting collapses onto the existing ref. Note that
-// page_entity_refs accepts a narrower vocabulary than the type allows:
-// {portfolio, product} only — workspace bookmarking is not implemented
-// (CHECK rejects it). Passing KindWorkspace returns ErrUnknownEntityKind.
+// entity_id) — re-inserting collapses onto the existing ref.
+//
+// CUT1.1.1 (PLA064): portfolio and product tables were dropped in
+// migration 249. page_entity_refs vocabulary is now empty — all kinds
+// return ErrUnknownEntityKind. The method is kept to avoid breaking
+// callers at compile time; callers should be updated to remove entity
+// bookmark operations (TD-CUT1.1.1-BOOKMARK-SURFACE).
 func (s *Service) InsertPageEntityRef(ctx context.Context, tx pgx.Tx, pageID uuid.UUID, kind EntityKind, entityID, callerSubscription uuid.UUID) error {
-	switch kind {
-	case KindPortfolio, KindProduct:
-		// allowed
-	default:
+	{
 		return ErrUnknownEntityKind
 	}
 	if _, err := s.LoadParent(ctx, tx, kind, entityID, callerSubscription); err != nil {
@@ -206,22 +196,10 @@ var (
 )
 
 // childRelationshipsFor returns every polymorphic child table whose
-// vocabulary accepts the given parent kind. Mirrors the table in
-// docs/c_polymorphic_writes.md "Cleanup registry" section — keep them
-// in lockstep. Note: page_entity_refs CHECK rejects workspace, so the
-// workspace branch returns only entity_stakeholders.
+// vocabulary accepts the given parent kind.
+//
+// CUT1.1.1 (PLA064): company_roadmap, workspace, portfolio, product tables
+// were dropped in migration 249 — all kinds now return (nil, false).
 func childRelationshipsFor(kind EntityKind) ([]childRel, bool) {
-	switch kind {
-	case KindCompanyRoadmap:
-		return []childRel{childRelStakeholders}, true
-	case KindWorkspace:
-		// page_entity_refs CHECK is {portfolio, product} only.
-		return []childRel{childRelStakeholders}, true
-	case KindPortfolio:
-		return []childRel{childRelStakeholders, childRelPageRefs}, true
-	case KindProduct:
-		return []childRel{childRelStakeholders, childRelPageRefs}, true
-	default:
-		return nil, false
-	}
+	return nil, false
 }
