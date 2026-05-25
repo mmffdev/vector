@@ -22,6 +22,27 @@
 
 ## History (newest first)
 
+### 2026-05-24 — `sentinel_docs.md` synced to current end-to-end state; new § I/O
+
+**PLA / story.** PLA062 / docs follow-up (no story; doc-truth pass after the home-location + login-transition work landed).
+**Decision.** Resync `sentinel_docs.md` so that anyone reading it sees what the system actually IS today rather than what it was at PLA062 close-out (S24). Specifically:
+1. Added a new **§ I/O** below § Synopsis with two tables — Inputs (what Sentinel consumes) and Outputs (what the Vector site reads from Sentinel) — plus a § Sentinel vs AuthContext note pinning why `/user/account-settings` is the only page that reads identity off `useAuth()`.
+2. Updated § Synopsis to enumerate the full action surface (`sentinel_switch_workspace`, `sentinel_set_default_focus`, `sentinel_set_home_follow_mode`, `sentinel_set_settings`) instead of the S24-era abbreviated list, and to describe the `Clamp` struct's three fields (`WorkspaceID` + `FocusNodeID` + `AllowedSubtreeIDs`) rather than the early "calls topology.Service.ResolveSubtree" phrasing.
+3. Refreshed the test-tier counts (`sentinel.unit` is now 23 FE + 6 BE handler + 9 middleware) and added a pointer to the BE handler/middleware test files.
+4. Expanded § Outputs to list the additional substrate that landed post-S24: `Handler.PutFocus` on the backend, `prefs.SetHomeLocationFollowMode`, migrations 243 + 244, and `HomeLocationSection.tsx`.
+
+**Why now.** Previous docs said `sentinel_set_focus(nodeId)` is end-to-end durable as of 2026-05-24, which is true, but didn't reflect the Pinned/Follow split that landed the same day (Pinned mode session-only, Follow mode persists), the new `sentinel_set_default_focus` action that always persists (used by the dropdown), or the migration-244 column that gates the split. The login-transition re-boot effect was also undocumented. Doc-truth drifted within one day of the underlying landing — fixing it now keeps procurement narrative current.
+
+**Doc-only change.** No code touched. No tests added/changed.
+
+**Touched files / surfaces.**
+- `docs/Security/Sentinel/sentinel_docs.md` (§ Synopsis refresh, new § I/O, § Outputs expansion)
+- `docs/Security/Sentinel/sentinel_revision_history.md` (this entry)
+
+**Commit(s).** (this commit)
+
+---
+
 ### 2026-05-24 — `PUT /sentinel/focus` handler shipped (PLA062 follow-up)
 
 **PLA / story.** PLA062 / post-S26 follow-up (logged as TD-SEN-04 in `sentinel_tech_debt.md`).
