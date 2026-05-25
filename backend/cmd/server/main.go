@@ -75,6 +75,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
+	"github.com/mmffdev/vector-backend/internal/workspaceresolver"
 )
 
 // Build-time identity. Set via -ldflags "-X main.Commit=… -X main.BuildTime=…"
@@ -469,6 +470,17 @@ func main() {
 	} else {
 		logger.Warn("VECTOR_ARTEFACTS_DB_URL unset — v2 artefact-items will return empty pages")
 		makeStubHandlers()
+	}
+	// Cross-pool workspace re-derivation for auth.Refresh — without this
+	// the JWT drops its workspace_id claim on every refresh and the
+	// sentinel fallback silently reverts the user to the tenant's
+	// earliest-granted workspace. The resolver needs both pools because
+	// topology_nodes lives in vector_artefacts and users_roles_workspaces
+	// lives in mmff_vector. Wired only when vaPool is up — pre-cutover
+	// environments without vector_artefacts skip this enhancement (the
+	// sentinel fallback still works; it just doesn't preserve user picks).
+	if vaPool != nil {
+		authSvc.WorkspaceResolver = workspaceresolver.NewPoolResolver(vaPool, pool)
 	}
 
 	// mmff_dev pool — holds dev_reports (research/plan/security/retro/code/api).
