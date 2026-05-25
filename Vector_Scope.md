@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-25 — PLA064 v4 doc refresh: orphan count 508 → 1,263 corrected post-cron-bug-fix (commit 57ed1958); cohort framing updated to match CUT1.5.0 remediation plan. Earlier — CUT1.5.0 added — orphan triage + remediation; the CUT1.0.2 cron's first run found 508 orphans across 14 columns (corrected to 1,263 post-bug-fix); CUT1.5.0 blocks CUT1.5.1; PLA064 v3 posted. Earlier — CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
-**Doc version:** 2.60 (PLA064 v4 doc refresh: orphan count corrected 508 → 1,263 across Vector_Scope.md CUT1.5.0 entry and PLA064 on /dev/reporting; cohort framing (A/B/C/D/E) replaces old per-table list. Earlier: 2.59 — CUT1.2.1 + CUT1.2.2 merge-plan DDLs; 2.58 — CUT1.5.0 added; 2.57 — CUT1.5.1 corrected 8→50.)
+**Last updated:** 2026-05-25 — B18.9 added: 3-letter column-prefix HARD RULE (`users.usr_*`, `subscriptions.sub_*`, `master_record_workspaces.mrw_*`, etc.) + `lint:column-prefix` ratchet; registry doc `docs/c_c_column_prefix_registry.md` is single source of truth; supersedes legacy RF1.4.4 full-table-name prefix convention; effective from the wipe-and-reseed forward. Earlier — B18.8 added: dev-action "Wipe & Reseed Vector substrate" button (one-click rebuild of mmff_vector + vector_artefacts from canonical seed, scoped to vector DBs only — mmff_dev + mmff_library untouched). Picked up after wipe-and-reseed plan completes. Earlier — PLA064 v4 doc refresh: orphan count 508 → 1,263 corrected post-cron-bug-fix (commit 57ed1958); cohort framing updated to match CUT1.5.0 remediation plan. Earlier — CUT1.5.0 added — orphan triage + remediation; the CUT1.0.2 cron's first run found 508 orphans across 14 columns (corrected to 1,263 post-bug-fix); CUT1.5.0 blocks CUT1.5.1; PLA064 v3 posted. Earlier — CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
+**Doc version:** 2.62 (B18.9 added — 3-letter column-prefix HARD RULE + registry doc + lint:column-prefix ratchet; supersedes legacy RF1.4.4 full-name prefix convention; effective from wipe-and-reseed forward. Earlier: 2.61 — B18.8 dev wipe-and-reseed action button; 2.60 — PLA064 v4 doc refresh; 2.59 — CUT1.2.1 + CUT1.2.2 merge-plan DDLs; 2.58 — CUT1.5.0 added; 2.57 — CUT1.5.1 corrected 8→50.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -329,6 +329,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **RF2.6.1** Record BEFORE/AFTER metrics in pattern doc `## Results` section. **BEFORE** (captured from main): `service.go=1929 LoC`, `handler.go=1167 LoC`, 17 exported ops, 1 pass-through pair, 16 call sites, 2 `hasWorkspace` branches. **AFTER** (populated post-Story-12): target 12 public methods (8 ops + 4 setters), 0 pass-through pairs, 0 branches, `handler.go ≤1050 LoC`. File `TD-SVC-DEPTH-PATTERN` S3 row in `docs/c_tech_debt.md` with cap (pattern doc link) + pay-down trigger (service is next substantially touched OR method count crosses 15) + **ranked candidate next-services list**: `workspaces` (2794 LoC, 14 methods — **adopt**, strongest fit), `users` (2057 LoC, 13 methods — **adopt**, watch auth coupling), `timeboxsprints` (**excluded** per audit — "appropriately shallow"), `portfoliomodels` (9083 LoC, 7 methods — **defer** until method count grows), `polymorphicrefs` (4 methods — **exclude**, too small to benefit). Story 13 closes the loop; converts one-off refactor into a reusable pattern. `[P2]` 🔵 IN FLIGHT
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
@@ -1260,6 +1261,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1561,6 +1563,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1910,6 +1913,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
+> Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -2966,6 +2970,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -3179,6 +3184,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -3334,6 +3340,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3394,6 +3401,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -3954,6 +3962,7 @@ Full lifecycle management for tasks, bugs, epics.
   > **Why:** today's create/edit/delete is split across `/work-items` (work scope) and `/portfolio-items` (strategy scope), each with its own clamp wiring. Same Go service runs behind both, instantiated twice. The flyout being designed for ObjectTree on `/work-items` will also need to work on `/portfolio-items` — without consolidation we either build the flyout twice or hardcode it to the wrong abstraction. Scope (work/strategy) belongs on the `artefact_types` record, not on the URL. One REST surface keeps the client uniform, gives audit/SOC2 a single clamp story ("every write goes through one chokepoint"), and unblocks the kill of the legacy `item_type` string discriminator.
   >
   > **What:** one resource `/artefacts` with full CRUD + intent verbs. The payload carries `artefact_type_id` (UUID); the server reads `scope` off the type record and gates accordingly. Tenant/workspace/permission clamp runs as middleware on every route — structurally impossible to bypass.
+> Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
   >
   > **Routes:**
 > Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
@@ -3979,6 +3988,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
@@ -4301,6 +4311,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -4381,6 +4393,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -4809,6 +4822,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -5026,6 +5040,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5397,6 +5412,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -5750,6 +5766,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -5818,6 +5835,27 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
   > `error_code` field referenced in `errorsreport/handler.go` and `portfoliomodels/adopt.go` / `adopt_stream.go` — exists on adoption error paths but not consistently on all 4xx/5xx handlers
   > Last checked: 2026-05-08
   >
+
+- **B18.9 [P1] 🔵 IN FLIGHT** — 3-letter column-prefix HARD RULE + `lint:column-prefix` ratchet. Every column on every table in `mmff_vector` + `vector_artefacts` carries the registered 3-letter table prefix (e.g. `users.usr_email`, `subscriptions.sub_tier`, `master_record_workspaces.mrw_id`). Registry at [`docs/c_c_column_prefix_registry.md`](docs/c_c_column_prefix_registry.md) is single source of truth. HARD RULE landed in `.claude/CLAUDE.md` 2026-05-25. Effective from the wipe-and-reseed forward — pre-wipe migrations get rewritten as part of the reseed pipeline. Supersedes the legacy RF1.4.4 full-table-name prefix convention.
+  - AC: HARD RULE present in `.claude/CLAUDE.md` (✅ landed 2026-05-25).
+  - AC: Registry doc at `docs/c_c_column_prefix_registry.md` populated with the final table set after the wipe-and-reseed audit returns.
+  - AC: `dev/scripts/lint_column_prefix.sh` exists and exits non-zero when any column in `db/{mmff_vector,vector_artefacts}/schema/**/*.sql` lacks the registered prefix for its parent table.
+  - AC: Lint also scans `backend/internal/**/sql.go` for SELECT/INSERT column references that lack the prefix.
+  - AC: `npm run lint:column-prefix` wired in `package.json`; CI gate.
+  - AC: Allow-list at `dev/registries/column_prefix_lint_allowlist.json` exempts the wipe-and-reseed migration set itself (it renames old→new) and any legacy migrations that pre-date the rule.
+  - AC: Regression smoke — a temp branch adding `id` (unprefixed) to `users` fails the lint.
+  - AC: Documented in [`docs/c_c_lint_rules.md`](docs/c_c_lint_rules.md) ledger.
+
+- **B18.8 [P2]** — Dev action: "Wipe & Reseed Vector substrate" button. One-click rebuild of `mmff_vector` + `vector_artefacts` from canonical seed at any point in time, so dev can test and rebuild the substrate without manual SQL. Scoped to vector DBs only — must NOT touch `mmff_dev` (dev_reports / SY003 / PLA / RET / COD / RES institutional memory) or `mmff_library` (read-only spine). Lives on Dev → Substrate (or equivalent /dev page) gated behind padmin + a two-step confirm. Added 2026-05-25 to be picked up AFTER the wipe-and-reseed plan ([`/Users/rick/.claude/plans/glittery-doodling-metcalfe.md`](/Users/rick/.claude/plans/glittery-doodling-metcalfe.md)) completes and the canonical seed pipeline exists.
+  - AC: Endpoint `POST /_site/admin/dev/wipe-and-reseed` exists on the dev API surface (apikeys.Middleware-protected, padmin role required server-side).
+  - AC: Handler executes the canonical seed pipeline against `mmff_vector` + `vector_artefacts` ONLY — confirmed by reading pool variable in handler (`pool` + `vaPool`, NEVER `devPool` or `libPools`).
+  - AC: Handler refuses to run if `BACKEND_ENV != dev` (defence-in-depth — production must never hit this).
+  - AC: Pre-flight emits row counts for the 4 DBs (current state) into the response so dev sees what's about to be lost.
+  - AC: Two-step confirm — first POST returns `{action:"confirm",confirm_token:"<random>"}`; second POST with `{confirm_token, confirm:true}` actually executes. No "are you sure" dialogues — explicit token round-trip.
+  - AC: After wipe, runs every migration in order then every seed file in order then verifies padmin can log in (synthetic auth call against the freshly seeded `users` row).
+  - AC: Frontend button on Dev → Substrate page calls the endpoint, shows pre-flight counts, confirms, streams status, surfaces failures with the failing migration/seed file name + SQL error.
+  - AC: SY003 regenerated automatically after a successful wipe-and-reseed (so substrate inventory matches new reality).
+  - AC: Documented in `docs/c_infra_index.md` under a new "Dev actions" subsection.
 
 ### B18.7 Shared methods catalogue (PLA-0045) — **PARKED 2026-05-18** (swapped out for B16.8 security hardening)
 
@@ -5897,6 +5935,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -6113,6 +6152,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -6344,6 +6384,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 > Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
+> Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
@@ -6675,6 +6717,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -6869,6 +6912,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -6948,6 +6992,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -7077,6 +7122,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -7520,6 +7566,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7e1b7d8e` (2026-05-25): docs(td): register TD-NAV-MAXPINNED-SEED-OVERCAP for the cap-bump hack
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -7720,6 +7767,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -8833,6 +8881,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
+> Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -9482,6 +9532,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -9638,6 +9689,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`

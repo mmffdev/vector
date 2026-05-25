@@ -325,3 +325,5 @@ CUT1.5.1	hard Postgres FOREIGN KEY soft-FK promote topology_nodes users_roles_to
 CUT1.6.1	decommission mmff_vector connection pool variable retire DROP-DATABASE pg_dump backup SHA256 main.go db config archive Phase-0
 CUT1.6.2	docs HARD-RULE revision c_c_db_routing CLAUDE.md NEVER-ASSUME-A-DATABASE TD-CUTOVER-MONITORING TD-CUTOVER-CRON-PRODUCTION TD-CUTOVER-RLS-DEFERRAL row-level-security partitioning
 CUT1.5.0	orphan triage remediation cohort artefacts_types artefact_priorities audit_logs settings sidecars dev-tenant cleanup SET-NULL hard-delete SOC2 SY-ORPHAN dry-run merge_plan
+B18.8	wipe reseed dev action vector substrate button substrate one-click rebuild mmff_vector vector_artefacts canonical seed pipeline padmin confirm token endpoint substrate apikeys middleware backend_env dev pre-flight row counts SY003 regenerate
+B18.9	column prefix three letter table abbreviation registry mmff_vector vector_artefacts usr_ sub_ mrw_ tpn_ pag_ art_ lint column-prefix ratchet allowlist CI ratchet HARD RULE wipe reseed migration RF1.4.4 superseded
