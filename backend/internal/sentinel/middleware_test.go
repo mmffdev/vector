@@ -571,8 +571,12 @@ func TestMiddleware_Case8b_LegacyJWT_NoGrants_403NoWorkspace(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d (body=%q)", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), "no-workspace") {
-		t.Errorf("body missing no-workspace problem type: %q", rec.Body.String())
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("body not JSON: %v", err)
+	}
+	if body["type"] != "/errors/sentinel/no-workspace" {
+		t.Errorf("body.type = %v, want /errors/sentinel/no-workspace", body["type"])
 	}
 }
 

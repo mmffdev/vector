@@ -53,7 +53,7 @@ func Middleware(r Resolver) func(http.Handler) http.Handler {
 				switch {
 				case errors.Is(werr, ErrNoWorkspace):
 					writeProblem(w, req, http.StatusForbidden, "no-workspace",
-						"your tenant has no live workspaces")
+						"you have no accessible live workspace in this tenant")
 					return
 				default:
 					log.Printf("sentinel.Middleware resolveWorkspace: %v", werr)

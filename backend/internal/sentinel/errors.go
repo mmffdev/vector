@@ -23,11 +23,15 @@ var (
 	// would cover it via descend-inheritance). 403.
 	ErrFocusNoAccess = errors.New("sentinel: user has no grant on focus node")
 
-	// ErrNoWorkspace — the subscription has zero live workspaces. The
-	// JWT carried no workspace_id claim, the FirstLiveWorkspace
-	// fallback hit an empty set, and the request cannot be served.
+	// ErrNoWorkspace — fired in two scenarios:
+	//   (a) the tenant has zero live workspaces (legacy substrate case —
+	//       JWT carried no workspace_id claim, FirstLiveWorkspace fallback
+	//       hit an empty set; mostly closed post-2026-05-25 cutover);
+	//   (b) the tenant has live workspaces but the requesting user holds
+	//       no active grants on any of them (post-841ea926 JOIN tightening).
+	// Either way the request cannot be served.
 	// 403 /errors/sentinel/no-workspace.
-	ErrNoWorkspace = errors.New("sentinel: tenant has no live workspaces")
+	ErrNoWorkspace = errors.New("sentinel: no accessible live workspace for user")
 
 	// ErrNoWorkspaceRole — workspace was resolved successfully (either
 	// from the JWT claim or the first-live fallback) but the actor
