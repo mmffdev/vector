@@ -54,11 +54,45 @@ type PermissionResolver interface {
 	PermissionCodesFor(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
+// WorkspaceResolver is the small surface auth.Service needs to re-derive
+// the user's active workspace_id on Refresh. Mirrors PermissionResolver:
+// auth depends on a tiny interface, main.go injects the concrete impl
+// from backend/internal/workspaceresolver/ at boot, keeping auth free
+// of a vaPool field and the auth → vector_artefacts dependency edge.
+//
+// Used by Refresh + refreshFromSuccessor between FindUserByID and
+// SignAccessToken — see service.go:587 / service.go:680.
+//
+// Nil-safe: when Service.WorkspaceResolver is nil (tests that don't
+// wire it), the re-derivation block in Refresh skips and SignAccessToken
+// signs without the workspace_id claim — same behaviour as before this
+// fix landed, so the sentinel fallback remains the defence-in-depth gate.
+//
+// Method contract:
+//   - WorkspaceForFocusNode: tenant-gated lookup of topology_nodes.workspace_id.
+//     Returns pgx.ErrNoRows when the focus node was deleted/archived/cross-tenant.
+//   - FirstGrantedWorkspace: earliest-created live workspace the user holds
+//     an active grant on. Returns workspaceresolver.ErrNoWorkspace when none.
+//   - UserHasActiveGrantOnWorkspace: revocation check — true when the user
+//     still holds a live (non-revoked) grant on the workspace.
+type WorkspaceResolver interface {
+	WorkspaceForFocusNode(ctx context.Context, focusNodeID, tenantID uuid.UUID) (uuid.UUID, error)
+	FirstGrantedWorkspace(ctx context.Context, userID, tenantID uuid.UUID) (uuid.UUID, error)
+	UserHasActiveGrantOnWorkspace(ctx context.Context, userID, workspaceID uuid.UUID) (bool, error)
+}
+
 type Service struct {
 	Pool     *pgxpool.Pool
 	Audit    *audit.Logger
 	Mailer   *email.Service
 	Resolver PermissionResolver
+	// WorkspaceResolver re-derives the user's active workspace_id on
+	// Refresh + refreshFromSuccessor — see WorkspaceResolver interface
+	// above. Nil-safe: when unset, the derivation block is skipped and
+	// SignAccessToken signs without the workspace_id claim (sentinel
+	// fallback remains as defence-in-depth). Wired by main.go to
+	// workspaceresolver.PoolResolver{vaPool, mvPool}.
+	WorkspaceResolver WorkspaceResolver
 
 	// JTICache backs RFC 9449 § 4.3 item 11 (DPoP proof jti replay
 	// prevention). Wired by main.go to a Postgres-backed cache against
