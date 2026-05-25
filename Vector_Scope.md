@@ -342,11 +342,14 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 ---
 
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
@@ -958,6 +961,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1482,6 +1486,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1643,6 +1648,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0fab5d66` (2026-05-24): feat(home-location): "home topology node" dropdown on account-settings [PLA062 follow-up]
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - **FLOW1.3.4** Flow-map shows the implicit Backlog-zone boundary visually (left edge of pullable pill = "team handoff line") `[P3]`
 > Last checked: 2026-05-10 — KIND_LABEL/KIND_STROKE include backlog (slate-300 stroke); inferKind ORDER+KEY widened to 6 kinds; FlowState DTO + flowStatesApi + apiSite registry carry is_pullable; new "Pullable" checkbox column in StateRow PATCHes `{ is_pullable }`. tsc clean for touched files.
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
@@ -1702,6 +1708,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `541391ad` (2026-05-24): docs(sentinel): sync 5 PLA062 docs to current code state
 > Commit `a378b693` (2026-05-24): chore(api): snap v4 baseline — clear oasdiff doc-correction noise
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 > Commit `2421fa3` (2026-05-14): refactor(PLA-0048 / RF1.4.1): Go package renames + v-suffix doc [RF1.4.1]
 ### FLOW1.5 Reset to factory-default per artefact type
@@ -1816,6 +1823,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `52f74f66` (2026-05-23): feat(skills): <report> -p — offline planning report + handover cross-ref
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -2371,6 +2379,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2643,6 +2652,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -2845,6 +2855,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -3264,6 +3275,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -3280,6 +3292,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
 > Commit `55af5214` (2026-05-24): feat(lint): S19 — frontend ratchets lint:no-direct-workspace-id + lint:no-old-context-imports [PLA062 S19]
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3342,6 +3355,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21]
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3834,6 +3848,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `1bdbfebc` (2026-05-25): fix(sentinel): point sqlFirstLiveWorkspace at the real workspaces table
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
@@ -4482,6 +4497,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9add87a9` (2026-05-24): fix(sentinel): also clear focus_override on login transition (sole source of truth = user.default_focus_node_id)
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -4841,6 +4857,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5543,6 +5560,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -5682,6 +5700,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -5885,6 +5904,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `0fab5d66` (2026-05-24): feat(home-location): "home topology node" dropdown on account-settings [PLA062 follow-up]
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -5928,6 +5948,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `407b9e64` (2026-05-24): feat(sentinel): S17 — migrate 23 shared components/hooks/pages to Sentinel [PLA062 S17]
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 > Commit `ded3f12` (2026-05-18): feat(auth): capture users_sessions_id at session insert [B16.8.11]
 > Commit `b922d58` (2026-05-18): feat(auth): stamp sid claim on access tokens [B16.8.11]
@@ -6429,6 +6450,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -6696,6 +6718,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -6981,6 +7004,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -7156,6 +7180,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -7607,6 +7632,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -7739,6 +7765,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `dca96bac` (2026-05-24): fix(sentinel): rename URL param focus → meg (canonical scope-identity name)
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -7837,6 +7864,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `dca96bac` (2026-05-24): fix(sentinel): rename URL param focus → meg (canonical scope-identity name)
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -7967,6 +7995,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -8060,6 +8089,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `dca96bac` (2026-05-24): fix(sentinel): rename URL param focus → meg (canonical scope-identity name)
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -8517,6 +8547,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1bdbfebc` (2026-05-25): fix(sentinel): point sqlFirstLiveWorkspace at the real workspaces table
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -8672,6 +8703,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -9055,6 +9087,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -9767,6 +9800,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `7e1b7d8e` (2026-05-25): docs(td): register TD-NAV-MAXPINNED-SEED-OVERCAP for the cap-bump hack
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 **Phase 1 — Backend**
 
@@ -9916,6 +9950,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `1bdbfebc` (2026-05-25): fix(sentinel): point sqlFirstLiveWorkspace at the real workspaces table
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - **OBJ1.2.2** ObjectTreeV2 wires facets hook to chips. AC: `p_ObjectTree.tsx` drops the temporary `windowRoots`-derivation block; chips populate from facets + workspace catalogue metadata (label + colour). `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
@@ -9931,6 +9966,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `1bdbfebc` (2026-05-25): fix(sentinel): point sqlFirstLiveWorkspace at the real workspaces table
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 - **OBJ1.2.3** `WorkItemsFilterChipsProps` tightened. AC: `typeOptions` + `priorityOptions` required (no `?`, no `= []` default) after V1 ObjectTree retirement. `[P3]`
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
@@ -10014,6 +10050,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `b756eb4c` (2026-05-25): docs(sentinel): refresh sentinel_docs + extend revision history
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
+> Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 
 ---
 
