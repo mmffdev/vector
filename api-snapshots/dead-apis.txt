@@ -34,7 +34,6 @@
 /mentions/inbox
 /mentions/search
 /mentions/{id}/read
-/nav/bookmark/check
 /nav/profiles/{id}
 /nav/profiles/{id}/groups
 /notifications

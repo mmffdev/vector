@@ -326,6 +326,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
@@ -396,6 +397,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
@@ -1654,6 +1656,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `541391ad` (2026-05-24): docs(sentinel): sync 5 PLA062 docs to current code state
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -2991,6 +2994,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -3205,6 +3209,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -3362,6 +3367,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3424,6 +3430,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -3444,6 +3451,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -4011,6 +4019,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
@@ -4337,6 +4346,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -5068,6 +5079,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5794,6 +5806,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -5963,6 +5976,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -6051,6 +6065,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -6073,6 +6088,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -6183,6 +6199,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `f931ee49` (2026-05-25): chore: trailing hook breadcrumbs + api-snapshots regen post CUT1.0.1
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -6190,6 +6207,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
@@ -6416,6 +6434,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
 > Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
@@ -7153,6 +7172,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `269a9528` (2026-05-25): docs(artefactitems): scrub obj_* doc-comment drift in types.go
 > Commit `c4698ffe` (2026-05-25): refactor(nav): remove entity-bookmark surface; keep PageBookmarks
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -7966,6 +7986,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -9074,6 +9095,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -9478,6 +9500,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -9799,6 +9822,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `39bc088f` (2026-05-25): feat(db): drop UNCERTAIN cluster — obj_* + sprints [CUT1.1.2]
 > Commit `b483acd3` (2026-05-25): docs(cutover): orphan triage + remediation plan [CUT1.5.0]
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -10251,6 +10275,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
+> Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
