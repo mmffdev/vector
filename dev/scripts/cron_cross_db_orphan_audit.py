@@ -216,8 +216,17 @@ def discover_soft_fk_columns(va_cur) -> list[tuple[str, str, str, str, str]]:
 
 def check_orphans(va_cur, mv_cur, source_table: str, source_col: str,
                   target_table: str, verbose: bool) -> tuple[int, list[str]]:
-    """Return (orphan_count, sample_ids) for a single source_table.source_col → target_table.id check."""
-    # Fetch distinct non-null values from vector_artefacts
+    """Return (orphan_count, sample_ids) for a single source_table.source_col → target_table.id check.
+
+    orphan_count = number of ROWS in source_table whose source_col value has no
+    matching id in target_table.  This is NOT the count of distinct dead UUIDs —
+    it is the count of row-instances that would fail a FK constraint.  Using the
+    distinct-UUID count was the CUT1.0.2 bug: it undercounted by ~2.5× because
+    many rows share the same dead UUID (e.g. 427 artefacts_types rows all pointing
+    at 168 dead workspace UUIDs counted as 168, not 427).  Fixed in CUT1.0.2-fix.
+    """
+    # Fetch distinct non-null values from vector_artefacts (used to identify
+    # which UUIDs are orphaned, and to build sample_ids for the report)
     va_cur.execute(
         f"SELECT DISTINCT {source_col} FROM {source_table} WHERE {source_col} IS NOT NULL"
     )
@@ -232,15 +241,33 @@ def check_orphans(va_cur, mv_cur, source_table: str, source_col: str,
     mv_cur.execute(f"SELECT id FROM {target_table}")
     mv_ids = {str(r[0]) for r in mv_cur.fetchall()}
 
-    orphans = sorted(va_values - mv_ids)
-    count = len(orphans)
-    sample = orphans[:10]
+    # Distinct orphan UUIDs — used for sample_ids only (not the reported count)
+    orphan_uuids = sorted(va_values - mv_ids)
+
+    if not orphan_uuids:
+        if verbose:
+            print(f"  {'CLEAN':12s}  {source_table}.{source_col} → {target_table}.id  (source vals: {len(va_values)})")
+        return 0, []
+
+    # Row-instance count: how many rows contain a dead UUID.
+    # This is the correct count for FK-constraint purposes.
+    # Build the IN-list as a VALUES clause to avoid SQL injection and handle
+    # large sets safely (psycopg2 mogrify + execute_values not available in all
+    # versions, so we use %s list expansion which psycopg2 handles correctly).
+    placeholders = ",".join(["%s"] * len(orphan_uuids))
+    va_cur.execute(
+        f"SELECT COUNT(*) FROM {source_table} WHERE {source_col}::text IN ({placeholders})",
+        orphan_uuids,
+    )
+    row_count = va_cur.fetchone()[0]
+
+    sample = orphan_uuids[:10]  # sample dead UUIDs for the report detail section
 
     if verbose:
-        status = f"ORPHAN x{count}" if count > 0 else "CLEAN"
-        print(f"  {status:12s}  {source_table}.{source_col} → {target_table}.id  (source vals: {len(va_values)})")
+        status = f"ORPHAN x{row_count}"
+        print(f"  {status:12s}  {source_table}.{source_col} → {target_table}.id  (source vals: {len(va_values)}, dead UUIDs: {len(orphan_uuids)})")
 
-    return count, sample
+    return row_count, sample
 
 
 # ---------------------------------------------------------------------------
@@ -303,17 +330,19 @@ def build_html(
     verdict_label = "ORPHANS FOUND — Phase-5 requires remediation before FK installation" if total_orphans > 0 else "CLEAN — no orphans detected; Phase-5 FK installation is safe"
 
     html = f"""<h2 id="synopsis">Synopsis</h2>
-<p>Run date: <strong>{run_date}</strong>. Columns checked: <strong>{columns_checked}</strong>. Total orphan UUIDs: <strong style="color:{verdict_color}">{total_orphans}</strong>.</p>
+<p>Run date: <strong>{run_date}</strong>. Columns checked: <strong>{columns_checked}</strong>. Total orphan row-instances: <strong style="color:{verdict_color}">{total_orphans}</strong>.</p>
 <p style="color:{verdict_color};font-weight:600">{verdict_label}</p>
 
 <h2 id="methodology">Methodology</h2>
 <p>The cron opens two Postgres connections — one to <code>vector_artefacts</code>, one to <code>mmff_vector</code>. For each UUID column in <code>vector_artefacts</code> that carries a cross-DB soft-FK reference (per <a href="/dev/reporting/SY003">SY003</a>), it:</p>
 <ol>
   <li>Queries <code>information_schema.columns</code> live (not a baked-in column list) to discover UUID columns in scope.</li>
-  <li>Fetches all distinct non-null values from the source column.</li>
+  <li>Fetches all distinct non-null values from the source column to identify which UUIDs are orphaned.</li>
   <li>Fetches all <code>id</code> values from the target table in <code>mmff_vector</code>.</li>
-  <li>Computes orphans = source values not present in the target id set.</li>
+  <li>Identifies orphan UUIDs = source distinct values not present in the target id set.</li>
+  <li>Counts orphan <em>row-instances</em>: how many source rows contain a dead UUID (i.e. <code>COUNT(*) WHERE col IN (dead_uuid_set)</code>). This is the FK-constraint-relevant count — it is the number of rows that would fail a <code>ADD CONSTRAINT ... FOREIGN KEY</code> if one were applied today.</li>
 </ol>
+<p><strong>Note:</strong> the "orphan row-instances" count is higher than the count of distinct dead UUIDs when multiple rows share the same dead UUID. For example, 427 <code>artefacts_types</code> rows pointing at 168 dead workspaces = 427 row-instances but only 168 distinct dead UUIDs. Reports prior to CUT1.0.2-fix (2026-05-25) reported the distinct-UUID count, which undercounted by ~2.5×.</p>
 <p>FDW views (<code>fdw_*</code> tables) are excluded — they are virtual projections of legacy data, not live vector_artefacts rows. Group E (mmff_library references) is excluded from orphan counts because the library DB is read-only and its tables are not the FK installation target in Phase 5.</p>
 
 <h2 id="results">Results by target group</h2>
@@ -337,7 +366,7 @@ def build_html(
 </ul>
 
 <h2 id="change-log">Change Log</h2>
-<p><strong>{run_date}</strong> — Automated run. Columns checked: {columns_checked}. Total orphans: {total_orphans}.</p>
+<p><strong>{run_date} (v2 — CUT1.0.2-fix)</strong> — Orphan count corrected from distinct-dead-UUID count to row-instance count. Prior run (v1) reported ~508 (distinct dead UUIDs); corrected count is {total_orphans} row-instances. Columns checked: {columns_checked}. See Methodology note.</p>
 """
     return html
 
