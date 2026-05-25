@@ -13,13 +13,20 @@ package portfolio
 const sqlSelectWorkspaceSubscriptionID = `SELECT subscription_id FROM master_record_workspaces WHERE id = $1`
 
 // sqlExistsActiveWorkspaceMembership probes whether the user holds
-// any active grant on the workspace.
+// any active grant on the workspace. Column names match migration 188
+// (users_roles_workspaces_id_workspace / _id_user / _revoked_at — the
+// column-prefix convention for users_roles_* family tables). Pre-188
+// names (workspace_id / user_id / revoked_at) were a latent runtime
+// bug — hidden from admin testing by the early-return at
+// master_record_service.go:171, but every non-admin caller 500'd with
+// a "column does not exist" error. Fixed 2026-05-25 alongside the
+// JWT-refresh substrate audit.
 const sqlExistsActiveWorkspaceMembership = `
 		SELECT EXISTS (
 		    SELECT 1 FROM users_roles_workspaces
-		     WHERE workspace_id = $1
-		       AND user_id = $2
-		       AND revoked_at IS NULL
+		     WHERE users_roles_workspaces_id_workspace = $1
+		       AND users_roles_workspaces_id_user = $2
+		       AND users_roles_workspaces_revoked_at IS NULL
 		)
 	`
 
