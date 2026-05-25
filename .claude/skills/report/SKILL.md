@@ -1,7 +1,7 @@
 ---
 name: report
 description: Umbrella skill for every audit / analysis that produces a narrative report on the Dev → Reporting page. Flags pick the report type; each one runs its own protocol, builds the HTML body, and POSTs to /_site/admin/dev/reporting so the report lands in mmff_dev.dev_reports and is viewable immediately. Replaces the retired /research, /codebase, /sec, /code, /retro, /plan skills.
-argument-hint: -r <url> "<topic>" | -b | -s | -c [<file>] | -retro [--auto-loop] | -p
+argument-hint: -r <url> "<topic>" | -b | -s | -c [<file>] | -retro [--auto-loop] | -p | -sy [--source <path>] "<topic>"
 allowed-tools: Read Grep Glob WebFetch WebSearch Write Edit Bash Agent
 ---
 
@@ -21,6 +21,7 @@ allowed-tools: Read Grep Glob WebFetch WebSearch Write Edit Bash Agent
 | `-c [<file>]` | code | Single-file import/dependency trace + boundary-violation check | `COD###` |
 | `-retro [--auto-loop]` | retro | Honest retrospective: 5 Whys + reversal + ledger sync | `RET###` |
 | `-p` | plan | Offline implementation plan from chat + repo context; proposes stories; on confirm, hands off to `<scope> -a` | `PLA###` |
+| `-sy [--source <path>] "<topic>"` | system | Developer-facing System paper: explains a section/feature end-to-end (purpose, architecture, I/O contract, how to use, examples, caveats) | `SY###` |
 
 No flag → list available flags and stop. Unknown flag → list available flags and stop. **Never** pick a default.
 
@@ -84,6 +85,7 @@ The Dev → Reporting panel rebuilds the TOC from the actual headings in the sto
 | `-c` code | Synopsis, Entry File Layer, Direct Imports, First-Order Neighbours, Violations, Warnings, Conclusion, Change Log | `synopsis`, `entry-file-layer`, `direct-imports`, `first-order-neighbours`, `violations`, `warnings`, `conclusion`, `change-log` |
 | `-retro` retro | Synopsis, Signals, Root Cause Table, What Went Well, Ledger Update, Tech-Debt Promotions, CLAUDE.md Proposals, Change Log | `synopsis`, `signals`, `root-cause-table`, `what-went-well`, `ledger-update`, `tech-debt-promotions`, `claudemd-proposals`, `change-log` |
 | `-p` plan | Synopsis, Problem, Approach, Areas Impacted, Implementation Steps, Proposed Stories, Risks, Verification, Change Log | `synopsis`, `problem`, `approach`, `areas-impacted`, `implementation-steps`, `proposed-stories`, `risks`, `verification`, `change-log` |
+| `-sy` system | Synopsis, Purpose, Architecture, Components, I/O Contract, How to Use, Examples, Constraints, Backlog, Change Log | `synopsis`, `purpose`, `architecture`, `components`, `io-contract`, `how-to-use`, `examples`, `constraints`, `backlog`, `change-log` |
 
 ### Synopsis section (every type)
 
@@ -707,6 +709,125 @@ Agent: [calls <scope> -a with the formatted multi-AC list]
        - 0 duplicates found.
        - scope-refs.map updated.
 ```
+
+---
+
+## `-sy` — System paper
+
+### Arguments
+
+```
+<report> -sy [--source <path>] "<topic text>"
+```
+
+- `<topic text>` — free-form, quoted. Framing: "explain how X works end-to-end so a developer understands its function, requirements, I/O, and how to use it."
+- `--source <path>` — optional. Pins the agent's *documentation* reading to one directory or file (e.g. `docs/Security/Sentinel/`). The agent may still read source code that the subtree's docs reference. Default: repo-wide `Grep`/`Glob` driven by topic keywords.
+
+### Behaviour — **offline only, no web access**
+
+Like `-p`, the `-sy` flag is offline. The paper draws exclusively from the local repository. **Do not call `WebFetch` or `WebSearch` from this flag.** If external research is needed, route the user to `<report> -r` first and reference the RES### in the System paper.
+
+### Pipeline
+
+1. **Parse args.** Extract `--source <path>` if present, then the remaining `<topic text>`. If `<topic text>` is empty, ask the user — STOP, don't guess.
+
+2. **Resolve sources.**
+   - If `--source` is given, treat that directory/file as the documentation spine.
+   - Otherwise, `Grep`/`Glob` the topic keywords across the repo to locate doc + code clusters.
+   - Read the located docs first. Then walk the source code paths they reference (frontend `app/<feature>/` + backend `backend/internal/<feature>/`) for the I/O Contract and Examples sections.
+
+3. **Spawn sub-agent** (`subagent_type: general-purpose`) with the SYSTEM-PAPER BRIEF below. Substitute `{{TOPIC}}` with the topic text and `{{SOURCE}}` with the `--source` path or the literal string `repo-wide`.
+
+4. **Compute next SY ID** via the standard list-endpoint pattern (`SY###`, 3-digit, zero-padded). First paper = `SY001`.
+
+5. **Convert markdown → HTML** (`##` → `<h2 id>`, `###` → `<h3 id>`, tables/lists/bold/code preserved).
+
+6. **POST** to `/_site/admin/dev/reporting/` with:
+
+   ```json
+   {
+     "id": "SY###",
+     "type": "system",
+     "title": "<system name + one-line framing>",
+     "category": "<domain area, e.g. 'Identity & Scope', 'Auth', 'Visualisation'>",
+     "topic": "<the topic text>",
+     "summary": "<Synopsis text>",
+     "content": "<HTML body>",
+     "report_date": "YYYY-MM-DD"
+   }
+   ```
+
+7. **Tell the user**: "System paper filed as SY###. View on /dev/reporting → System tab." Show the Synopsis inline.
+
+### SYSTEM-PAPER BRIEF (verbatim — substitute `{{TOPIC}}` and `{{SOURCE}}`)
+
+You are writing a System paper for the Vector codebase. A System paper is a developer-facing explainer of a section/feature of the codebase — what it is, how it works, what depends on it, its I/O contract, and how to integrate against it.
+
+**Topic:** {{TOPIC}}
+
+**Source scope:** {{SOURCE}} (if `repo-wide`, use `Grep`/`Glob` against the topic keywords; otherwise treat the given path as the documentation spine and walk outward into the source code it references).
+
+**Your job:**
+
+1. **Read the documentation spine.** Identify the canonical doc(s) for the system. For a `docs/<area>/` source, the main `*_docs.md` is usually the spine; sibling files (`*_tech_debt.md`, `*_backlog.md`, `*_revision_history.md`, `*_tests_log.md`) provide supporting context.
+
+2. **Walk the source code.** For every component the docs name, open the actual source file and read it. Capture verbatim function signatures, route paths, struct fields, hook return types — do NOT paraphrase the I/O contract. Cite `file:line` everywhere.
+
+3. **Cross-reference docs vs implementation.** Where the docs describe behaviour, verify against the code. Where they diverge, note it under Constraints.
+
+4. **Write the paper as markdown** matching the section template below. Every `##` heading becomes an `<h2 id>` anchor using the canonical slug.
+
+**Output format (markdown — sections in this exact order):**
+
+```
+## Synopsis        id="synopsis"        (2–4 sentences: what this system is + headline + top takeaway)
+## Purpose         id="purpose"         (what problem it solves, who/what depends on it, why it exists)
+## Architecture    id="architecture"    (layers, key files, data flow, where it sits in the stack)
+## Components      id="components"      (named parts + responsibilities — frontend + backend + DB)
+## I/O Contract    id="io-contract"     (inputs, outputs, side effects, error modes — verbatim signatures)
+## How to Use      id="how-to-use"      (call patterns, do/don't, integration points for new code)
+## Examples        id="examples"        (concrete code snippets, wire payloads, common flows)
+## Constraints     id="constraints"     (invariants, caveats, known limits, gotchas, tech debt)
+## Backlog         id="backlog"         (in-flight work + tech debt against this system — stub if N/A)
+## Change Log      id="change-log"      (newest first; auto-appended on regeneration)
+```
+
+**Free rein** between/inside required sections — add additional `<h2>` (e.g. "Security narrative") or any number of `<h3>` sub-headings. The required-section contract is a minimum, not a maximum.
+
+**Missing-section discipline:** if a section truly has no content (e.g. a finished system has no Backlog), emit `<p><em>Not applicable for this system.</em></p>` rather than skip — TOC consistency is non-negotiable.
+
+**Tone:** developer-onboarding. Assume the reader is a competent engineer who has never seen this system. Cite `file:line` for every claim about code; cite the doc path for every claim about contracts. Quote signatures verbatim. Do not invent.
+
+**Length budget:** dense and complete beats sparse. Aim for 1500–3000 words of body text. A paper this reader can read once and integrate against is the goal — not a teaser that punts to the source.
+
+### Output format (markdown)
+
+Sections in this exact order, matching the system template:
+
+```
+## Synopsis        id="synopsis"
+## Purpose         id="purpose"
+## Architecture    id="architecture"
+## Components      id="components"
+## I/O Contract    id="io-contract"
+## How to Use      id="how-to-use"
+## Examples        id="examples"
+## Constraints     id="constraints"
+## Backlog         id="backlog"
+## Change Log      id="change-log"
+```
+
+### Examples
+
+```
+<report> -sy --source docs/Security/Sentinel/ "explain how sentinel works end-to-end so a developer understands its function, requirements, I/O, and how to use it"
+<report> -sy "how does the <Table> primitive work and how do I use it in a new page"
+<report> -sy --source docs/c_c_topology.md "the federated canvas topology system"
+```
+
+### Idempotency
+
+Re-running `<report> -sy` with the same topic creates a NEW `SY###` — System papers are point-in-time artefacts. To revise an existing paper, the user GETs the existing SY### from /dev/reporting, hands the ID to the agent ("update SY001 with X"), and the agent POSTs the same ID with a prepended Change Log entry.
 
 ---
 
