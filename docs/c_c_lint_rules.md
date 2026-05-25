@@ -28,6 +28,7 @@ All lints share the same shape:
 | `lint:route-orphans` | `dev/scripts/lint_route_orphans.py` | `route_orphan_exempt.json` | every spec route should either have a frontend caller (`apiSite()` / `apiV2()`) OR be in the exemption registry with a reason (backend-only, dev tool, cron-driven, etc.). Reports unexplained orphans; `--strict` makes it fail on any non-exempt. Drift detector for "dead endpoints" (B20.5.J) |
 | `lint:no-direct-workspace-id` | `dev/scripts/lint_no_direct_workspace_id.py` | `no_direct_workspace_id_exempt.json` | `user.workspace_id` read forbidden in files that don't import from `@/app/sentinel` — workspace-id MUST come from `useSentinel().sentinel_user?.workspace_id` (PLA062 S19) |
 | `lint:no-old-context-imports` | `dev/scripts/lint_no_old_context_imports.py` | `no_old_context_imports_exempt.json` | imports from `@/app/contexts/{Auth,Scope,Tenant}Context` forbidden — the canonical identity/scope source is `@/app/sentinel`. Day-one exemption list carries the 10 authentication-boundary files queued for S22 migration (PLA062 S19) |
+| `lint:no-singular-workspace-table` | `dev/scripts/lint_no_singular_workspace_table.py` | `placeholder_table_lint_allowlist.json` | SQL keyword contexts (`FROM`, `JOIN`, `UPDATE`, `INSERT INTO`, `DELETE FROM`) referencing any of the 6 placeholder/dead mmff_vector tables (`workspace`, `portfolio`, `product`, `company_roadmap`, `execution_item_types`, `subscriptions_item_type_icons`) are forbidden — these tables are queued for DROP in CUT1.1.1. Retired in CUT1.6.1 once the tables are gone. (PLA064 CUT1.0.1) |
 | `TestSentinelClampRequired` (Go) | `backend/internal/lintchecks/sentinel_clamp_test.go` | `sentinelClampAllowlist` in same file | any Go file that reads `artefact_*` tables (items/types/priorities/field_values/links) MUST sit in a package that calls `sentinel.FromCtx` / `sentinel.WorkspaceIDFromCtx` / `sentinel.MustFromCtx`. Day-one allowlist names 6 packages awaiting the S21 handler refactor; each entry carries a TD-* reference. Runs in `go test ./internal/lintchecks/...` (PLA062 S20) |
 
 ---
@@ -200,6 +201,37 @@ The exemption registry seeded on 2026-05-12 carries 5 paths: two modal/wizard ov
 **Exemption registry.** `dev/registries/no_old_context_imports_exempt.json` — 10 entries on day one covering the authentication boundary (root layout, route-group layouts, login, change-password, nav rails, AccountFlyout, NavPrefs/PageAccess providers). Every entry is the LAST remaining consumer of its legacy context and is queued for migration in S22.
 
 **Self-test.** `bash dev/scripts/lint_no_old_context_imports_self_test.sh` — same fixture pattern as above.
+
+---
+
+## `lint:no-singular-workspace-table` — detail (PLA064 CUT1.0.1)
+
+**Rule.** Any `*.go` under `backend/` or `*.sql` under `db/` that contains a SQL keyword context (`FROM`, `JOIN`, `UPDATE`, `INSERT INTO`, `DELETE FROM`) referencing one of the 6 placeholder/dead mmff_vector tables is forbidden:
+
+| Table | Why dead |
+|---|---|
+| `workspace` | Singular placeholder (0 rows); the real registry is `master_record_workspaces`. Caused the 2026-05-25 sentinel bug. |
+| `portfolio` | Placeholder predecessor of `master_record_portfolios` in `vector_artefacts`. |
+| `product` | Placeholder predecessor; no live production queries should target it. |
+| `company_roadmap` | Dead stub; roadmap data lives in the artefacts substrate. |
+| `execution_item_types` | Replaced by `artefact_types` in `vector_artefacts`. |
+| `subscriptions_item_type_icons` | Dead icon sidecar; no live callers. |
+
+**Why.** The sentinel bug (May 2026) was a direct result of a stale `FROM workspace` reference in `sentinel/sql.go` that returned 0 rows, silently failing every legacy-token authentication check. This lint ratchets so a future PR cannot reintroduce the same class of mistake, and it tracks the cleanup progress for CUT1.1.1 (the Phase 1 DROP step).
+
+**Word-boundary precision.** The regex uses `\b` so `FROM workspaces`, `FROM master_record_workspaces`, `FROM production`, and `FROM portfoliomodels` are NOT flagged — only the exact dead table names match.
+
+**Exemption registry.** `dev/registries/placeholder_table_lint_allowlist.json` — seeded with the two CREATE TABLE source migrations (`004_portfolio_stack.sql`, `005_item_types.sql`) which ARE the table definitions. All other violations are active cleanup work for CUT1.1.1.
+
+**Expected violations at CUT1.0.1 ship.** The lint surfaces ~60 pre-existing references across Go test files, `backend/internal/nav/sql.go` (production — most urgent), historical stored-procedure migration files, and seed/ops SQL. These are the exact cleanup targets for CUT1.1.1.
+
+**Retirement.** Once CUT1.1.1 drops the 6 tables and all callers have migrated, the allowlist should be empty and the lint is structurally mooted. It is archived in CUT1.6.1 — remove the `npm run lint:no-singular-workspace-table` entry from `package.json` and move this file's entry to a retired-lints section at that time.
+
+**Migration playbook when cleaning up a file for CUT1.1.1:**
+
+1. Replace the dead table reference with the correct target (e.g. `workspace` → `master_record_workspaces`, `portfolio` → `master_record_portfolios`, `execution_item_types` → `artefact_types`, etc.).
+2. Remove the file's path from `placeholder_table_lint_allowlist.json` (if it was exempted).
+3. Run `npm run lint:no-singular-workspace-table` — must exit 0 with no new fails.
 
 ---
 

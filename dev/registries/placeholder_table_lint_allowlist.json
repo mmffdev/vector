@@ -1,0 +1,13 @@
+{
+  "_note": "lint:no-singular-workspace-table allowlist — exempts files that legitimately reference the 6 placeholder/dead mmff_vector tables (workspace, portfolio, product, company_roadmap, execution_item_types, subscriptions_item_type_icons) in SQL keyword contexts.\n\nOrigin: 2026-05-25 — the sentinel bug where sentinel/sql.go used 'FROM workspace' (singular, 0-row placeholder) instead of master_record_workspaces (the real registry), silently 403ing every legacy-token request. This lint would have caught it at PR time.\n\nThe 6 tables are queued for DROP in PLA064 Phase 1 (CUT1.1.1). The exemption list here represents the known-good historical references (CREATE TABLE definitions) that cannot be refactored. Every other violation surfaced by the lint is active cleanup work for CUT1.1.1.\n\nTHIS REGISTRY SHOULD SHRINK TO ZERO before CUT1.1.1 closes. As each consuming file is migrated to the replacement table (master_record_workspaces etc.), remove its path from exemptions here. When the 6 tables are fully dropped and the lint is structurally mooted, the entire lint is retired in PLA064 CUT1.6.1 (archive step).\n\nNote: applied SQL migrations that use FROM/INSERT INTO on these tables in historical stored procedures are NOT exempt — they appear as violations so CUT1.1.1 knows their full scope. Only the CREATE TABLE definitions (which ARE the table) are exempt here.",
+  "exemptions": [
+    {
+      "path": "db/mmff_vector/schema/004_portfolio_stack.sql",
+      "reason": "Original CREATE TABLE definitions for workspace, portfolio, product, and company_roadmap — these statements ARE the table, not a reference to it. Exempt from CUT1.1.1 cleanup (the DROP migration replaces these rows in schema_migrations)."
+    },
+    {
+      "path": "db/mmff_vector/schema/005_item_types.sql",
+      "reason": "Original CREATE TABLE definition for execution_item_types — the table definition itself. Exempt for the same reason as 004_portfolio_stack.sql."
+    }
+  ]
+}

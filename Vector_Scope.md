@@ -313,6 +313,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 - **RF2.6.1** Record BEFORE/AFTER metrics in pattern doc `## Results` section. **BEFORE** (captured from main): `service.go=1929 LoC`, `handler.go=1167 LoC`, 17 exported ops, 1 pass-through pair, 16 call sites, 2 `hasWorkspace` branches. **AFTER** (populated post-Story-12): target 12 public methods (8 ops + 4 setters), 0 pass-through pairs, 0 branches, `handler.go ≤1050 LoC`. File `TD-SVC-DEPTH-PATTERN` S3 row in `docs/c_tech_debt.md` with cap (pattern doc link) + pay-down trigger (service is next substantially touched OR method count crosses 15) + **ranked candidate next-services list**: `workspaces` (2794 LoC, 14 methods — **adopt**, strongest fit), `users` (2057 LoC, 13 methods — **adopt**, watch auth coupling), `timeboxsprints` (**excluded** per audit — "appropriately shallow"), `portfoliomodels` (9083 LoC, 7 methods — **defer** until method count grows), `polymorphicrefs` (4 methods — **exclude**, too small to benefit). Story 13 closes the loop; converts one-off refactor into a reusable pattern. `[P2]` 🔵 IN FLIGHT
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
@@ -349,6 +350,10 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
@@ -645,6 +650,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f0091092` (2026-05-25): feat(db): cascade nav_prefs cleanup on pages hard-delete (mig 248)
 > Commit `b756eb4c` (2026-05-25): docs(sentinel): refresh sentinel_docs + extend revision history
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -970,6 +976,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1199,6 +1206,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `133fae8c` (2026-05-25): fix(auth): harden login continuation against asset/probe paths
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1757,6 +1765,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `a378b693` (2026-05-24): chore(api): snap v4 baseline — clear oasdiff doc-correction noise
 > Commit `7e1b7d8e` (2026-05-25): docs(td): register TD-NAV-MAXPINNED-SEED-OVERCAP for the cap-bump hack
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
@@ -1835,6 +1844,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -2041,6 +2051,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `b756eb4c` (2026-05-25): docs(sentinel): refresh sentinel_docs + extend revision history
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -2665,6 +2676,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `7bbd4f2b` (2026-05-25): feat(redesign): login page refresh + primary nav rail polish + globals.css expansion
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3863,6 +3875,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > - `GET    /artefacts` — list (existing filter/sort/page params, `?artefact_type_id=` replaces `?item_type=`)
 > Commit `f2317262` (2026-05-24): feat(sentinel): S15 — migrate vector-admin/tenant-settings + cluster guard [PLA062 S15]
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
@@ -4876,6 +4889,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5094,6 +5108,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `a378b693` (2026-05-24): chore(api): snap v4 baseline — clear oasdiff doc-correction noise
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -5581,6 +5596,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -6159,6 +6175,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
   > Last checked: 2026-05-19
 > Commit `9fd3de55` (2026-05-24): feat(sentinel): S13 — migrate workspace-admin /topology + /topology-map [PLA062 S13]
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 - **B20.4.9** Profile image upload `[P4 — deferred]`. AC: column stub from B20.4.2 promoted; `POST /_site/users/{id}/profile-image` (multipart, ≤2 MB, png/jpeg, MIME-sniff server-side); avatar column on list renders image with initials fallback; audit row on upload/delete. `[P4]`
 - ✅ ~~**B20.4.10** Disabled column read-only checkbox (Rally pattern). AC: `/users` list shows Disabled state as read-only checkbox; toggle action stays in edit-row panel only; reduces accidental-disable risk; server-side check unchanged.~~ `[P3]`
 > Commit `5ba6579` (2026-05-20): feat(tree): permanent 10px type-colour stripe + barber-pole candidate field on drag
@@ -6473,6 +6490,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -7029,6 +7047,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -7206,6 +7225,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -7659,6 +7679,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -7792,6 +7813,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -7891,6 +7913,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -8022,6 +8045,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -8116,6 +8140,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -8340,6 +8365,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `b756eb4c` (2026-05-25): docs(sentinel): refresh sentinel_docs + extend revision history
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -8575,6 +8601,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -9202,6 +9229,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b61c70f5` (2026-05-24): feat(sentinel): S18 — delete useActiveWorkspace + inline workspace_id reads via Sentinel [PLA062 S18]
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -9351,6 +9379,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0fab5d66` (2026-05-24): feat(home-location): "home topology node" dropdown on account-settings [PLA062 follow-up]
 > Commit `783668fe` (2026-05-24): feat(home-location): split source-of-truth: Pinned (default) vs Follow toggle [mig 244]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -9416,6 +9445,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0fab5d66` (2026-05-24): feat(home-location): "home topology node" dropdown on account-settings [PLA062 follow-up]
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -9829,6 +9859,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `baeca8e6` (2026-05-25): docs: spec + plan for JWT-refresh fix, report-sy spec, memory notes, skill updates
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
+> Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 
 **Phase 1 — Backend**
 
@@ -10214,7 +10245,7 @@ Bash + Go script that runs 8 queries (one per soft FK) and posts results as a sy
   - AC: Cron self-disables if `mmff_vector` connection fails (post-Phase-6 graceful shutdown).
   - AC: Documented in `docs/c_infra_index.md`.
 
-### CUT1.1.1 [P2] 🔵 IN FLIGHT — Phase 1: drop 6 placeholder/dead tables + remove stale Go refs
+### CUT1.1.1 [P2] — Phase 1: drop 6 placeholder/dead tables + remove stale Go refs
 
 Single migration in `mmff_vector` dropping the six tables, preceded by removal of the stale references in `nav/sql.go` and `polymorphicrefs/service.go`.
 
@@ -10225,7 +10256,7 @@ Single migration in `mmff_vector` dropping the six tables, preceded by removal o
   - AC: SY003 regenerated; new version shows 0 PLACEHOLDER/DEAD rows in dead-weight table.
   - AC: DOWN migration restores empty tables with original schema for rollback safety.
 
-### CUT1.1.2 [P2] 🔵 IN FLIGHT — Phase 1: audit + drop UNCERTAIN cluster (obj_* + sprints)
+### CUT1.1.2 [P2] — Phase 1: audit + drop UNCERTAIN cluster (obj_* + sprints)
 
 Audit `obj_custom_field_lib` / `obj_field_templates` / `obj_field_template_fields` (superseded by `artefacts_fields_library`) and `sprints` (10 rows, superseded by `timeboxes_sprints`); drop the confirmed-dead ones.
 
@@ -10234,7 +10265,7 @@ Audit `obj_custom_field_lib` / `obj_field_templates` / `obj_field_template_field
   - AC: Migration drops confirmed-dead tables from `mmff_vector`; any deferred drops flagged in `docs/c_tech_debt.md` with a trigger.
   - AC: SY003 regenerated; UNCERTAIN cluster either empty or reduced with reasons documented.
 
-### CUT1.2.1 [P2] 🔵 IN FLIGHT — Phase 2: design the merged master_record_workspaces target schema + sidecar audit
+### CUT1.2.1 [P2] — Phase 2: design the merged master_record_workspaces target schema + sidecar audit
 
 Confirm the VA sidecar is 1:1 with the mmff_vector registry, decide merge-column-policy, and pre-stage the merged DDL as a target for Phase 3. **Not a rename — a merge.** The VA sidecar duplicates name/description/timestamps from the registry as a denormalisation workaround for the cross-DB join cost.
 
@@ -10245,7 +10276,7 @@ Confirm the VA sidecar is 1:1 with the mmff_vector registry, decide merge-column
   - AC: `docs/c_c_db_routing.md` updated with planned post-merge state (sidecar package deprecated, settings columns absorbed).
   - AC: SY003 regenerated; § Components reflects the planned merge.
 
-### CUT1.2.2 [P2] 🔵 IN FLIGHT — Phase 2: design the merged subscriptions target schema + sidecar audit
+### CUT1.2.2 [P2] — Phase 2: design the merged subscriptions target schema + sidecar audit
 
 Same merge pattern as CUT1.2.1 for the subscriptions registry + master_record_tenants sidecar pair.
 
@@ -10256,7 +10287,7 @@ Same merge pattern as CUT1.2.1 for the subscriptions registry + master_record_te
   - AC: `docs/c_c_db_routing.md` updated.
   - AC: SY003 regenerated.
 
-### CUT1.3.1 [P2] 🔵 IN FLIGHT — Phase 3: replicate 0-inbound auth/identity cluster into vector_artefacts
+### CUT1.3.1 [P2] — Phase 3: replicate 0-inbound auth/identity cluster into vector_artefacts
 
 Migrate `admin_api_keys`, `csp_reports`, `dpop_jti_cache`, `schema_migrations`, `users_sessions` first (zero inbound FKs = no ordering constraint).
 
@@ -10266,7 +10297,7 @@ Migrate `admin_api_keys`, `csp_reports`, `dpop_jti_cache`, `schema_migrations`, 
   - AC: Migrations include verification clause that halts if row count diverges.
   - AC: Pool injection in `main.go` NOT yet swapped (that's Phase 4); tables exist in both DBs at end of story.
 
-### CUT1.3.2 [P2] 🔵 IN FLIGHT — Phase 3: replicate mid-tier cluster (workspaces/pages/nav/portfolio adoption survivors)
+### CUT1.3.2 [P2] — Phase 3: replicate mid-tier cluster (workspaces/pages/nav/portfolio adoption survivors)
 
 Mid FK in-degree tables — workspaces registry, pages_*, nav_*, anything between auth and the high-fan-in users/subscriptions.
 
@@ -10275,7 +10306,7 @@ Mid FK in-degree tables — workspaces registry, pages_*, nav_*, anything betwee
   - AC: Pre-/post-ETL row counts match per table.
   - AC: SY003 regenerated; § Components shows replicated tables in BOTH DBs with identical schemas + row counts.
 
-### CUT1.3.3 [P2] 🔵 IN FLIGHT — Phase 3: replicate high-fan-in cluster (users/subscriptions/master_record_workspaces) WITH MERGE
+### CUT1.3.3 [P2] — Phase 3: replicate high-fan-in cluster (users/subscriptions/master_record_workspaces) WITH MERGE
 
 The 3 most-referenced tables (33 / 26 / 1 inbound FKs respectively) — moved last, with the registry/settings sidecars MERGED into the registry rows at the same step (per Phase 2 design at CUT1.2.1 + CUT1.2.2).
 
@@ -10287,7 +10318,7 @@ The 3 most-referenced tables (33 / 26 / 1 inbound FKs respectively) — moved la
   - AC: Duplicate `name`/`description`/timestamp fields from dropped sidecar are NOT carried into merged table — registry wins per Phase 2 column-merge policy.
   - AC: SY003 regenerated; § naming-collisions shows zero, § Components shows merged tables.
 
-### CUT1.4.1 [P2] 🔵 IN FLIGHT — Phase 4: swap services from pool to vaPool (auth + identity cluster)
+### CUT1.4.1 [P2] — Phase 4: swap services from pool to vaPool (auth + identity cluster)
 
 For every service whose tables now live in `vector_artefacts`, swap the pool injection in `main.go`.
 
@@ -10297,7 +10328,7 @@ For every service whose tables now live in `vector_artefacts`, swap the pool inj
   - AC: `backend/internal/lintchecks/sentinel_clamp_test.go` still green.
   - AC: Manual smoke — login + sentinel-clamped /artefacts call works against running stack.
 
-### CUT1.4.2 [P2] 🔵 IN FLIGHT — Phase 4: swap services for mid-tier + high-fan-in clusters
+### CUT1.4.2 [P2] — Phase 4: swap services for mid-tier + high-fan-in clusters
 
 Continuation of CUT1.4.1 covering pages/nav/portfolio services and finally users/subscriptions/workspaces services.
 
@@ -10306,7 +10337,7 @@ Continuation of CUT1.4.1 covering pages/nav/portfolio services and finally users
   - AC: SY003 regenerated; § Itemized Catalogue shows `vaPool` for swapped services.
   - AC: Smoke — full login → workspace → artefact CRUD flow works end-to-end.
 
-### CUT1.5.1 [P2] 🔵 IN FLIGHT — Phase 5: install hard Postgres FKs on the 8 previously-soft references
+### CUT1.5.1 [P2] — Phase 5: install hard Postgres FKs on the 8 previously-soft references
 
 Promote every cross-DB soft FK in SY003 § io-cross-db-soft-refs to a real `FOREIGN KEY` constraint, now that both endpoints live in `vector_artefacts`.
 
@@ -10316,7 +10347,7 @@ Promote every cross-DB soft FK in SY003 § io-cross-db-soft-refs to a real `FORE
   - AC: `ON DELETE` matrix documented in `docs/c_schema.md` — `SET NULL` for audit_logs (preserve log, anonymize), `RESTRICT` for subscriptions←workspaces, `CASCADE` for owner-controlled hierarchies.
   - AC: SY003 regenerated; § io-cross-db-soft-refs shows zero soft refs remaining.
 
-### CUT1.6.1 [P2] 🔵 IN FLIGHT — Phase 6: decommission mmff_vector connection + retire pool variable
+### CUT1.6.1 [P2] — Phase 6: decommission mmff_vector connection + retire pool variable
 
 Drop the `mmff_vector` database, retire the `pool` variable from `main.go`, archive Phase-0 tooling.
 
@@ -10327,7 +10358,7 @@ Drop the `mmff_vector` database, retire the `pool` variable from `main.go`, arch
   - AC: Phase-0 lint rule and orphan-audit cron archived to `dev/scripts/archive/`.
   - AC: Final SY003 regeneration shows: 2 databases, 0 cross-DB soft FKs, 0 naming collisions.
 
-### CUT1.6.2 [P2] 🔵 IN FLIGHT — Phase 6: docs + HARD RULE revision + tech-debt entries
+### CUT1.6.2 [P2] — Phase 6: docs + HARD RULE revision + tech-debt entries
 
 Update `docs/c_c_db_routing.md` + `.claude/CLAUDE.md` to reflect the two-DB world; open post-cutover monitoring tech debt.
 

@@ -33,6 +33,7 @@
     "lint:no-direct-workspace-id": "python3 dev/scripts/lint_no_direct_workspace_id.py",
     "lint:no-old-context-imports": "python3 dev/scripts/lint_no_old_context_imports.py",
     "lint:no-ghost-scope-ls-reads": "python3 dev/scripts/lint_no_ghost_scope_ls_reads.py",
+    "lint:no-singular-workspace-table": "python3 dev/scripts/lint_no_singular_workspace_table.py",
     "lint:route-orphans": "python3 dev/scripts/lint_route_orphans.py",
     "lint:route-orphans:strict": "python3 dev/scripts/lint_route_orphans.py --strict",
     "lint:rf1": "npm run lint:sql-in-sqlfile-only && npm run lint:no-empty-route-block && npm run lint:exemption-ratchet && npm run lint:package-naming-convention && npm run lint:cross-db-writer-test && npm run lint:column-prefix-convention && npm run lint:no-direct-workspace-id && npm run lint:no-old-context-imports && npm run lint:no-ghost-scope-ls-reads",
