@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mmffdev.vector.cron-cross-db-orphan-audit</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/dev/scripts/cron_cross_db_orphan_audit.py</string>
+    </array>
+
+    <!-- Run at 03:00 local time every day. RunAtLoad is false — only fires on schedule. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector</string>
+
+    <!-- RunAtLoad false: do NOT run immediately on plist load / launchctl load. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- Stdout / stderr logs. Directory must exist before loading the plist.
+         Create once: mkdir -p /Users/rick/Documents/MMFFDev\ -\ Projects/MMFFDev\ -\ Vector/local-assets/logs -->
+    <key>StandardOutPath</key>
+    <string>/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/local-assets/logs/cron-cross-db-orphan-audit.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/local-assets/logs/cron-cross-db-orphan-audit.err.log</string>
+</dict>
+</plist>
