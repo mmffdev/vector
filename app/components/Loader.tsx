@@ -47,15 +47,6 @@ function HelixLoader({ label, size }: { label: string; size: number }) {
 }
 
 function ThreeDotsRadialLoader({ label, size }: { label: string; size: number }) {
-  // Geometry — SVG viewBox is 100×100 abstract units so the geometry
-  // numbers below stay readable. CSS scales the rendered size.
-  const VB = 100;
-  const CENTRE = VB / 2;
-  const ORBIT_R = 38; // arc radius inside the viewBox
-  const STROKE = 7;   // dot/trail thickness
-  const CIRC = 2 * Math.PI * ORBIT_R;
-  const ARC_LEN = CIRC * 0.18; // ~65° trailing arc per dot
-  const GAP = CIRC - ARC_LEN;
   const style: CSSProperties & Record<string, string> = {
     "--loader__threedotsradial-size": `${size}px`,
   };
@@ -68,33 +59,18 @@ function ThreeDotsRadialLoader({ label, size }: { label: string; size: number })
       aria-live="polite"
       aria-label={label}
     >
-      <svg
-        className="loader__threedotsradial_Svg"
-        viewBox={`0 0 ${VB} ${VB}`}
-        aria-hidden="true"
-      >
-        <g className="loader__threedotsradial_Svg_Orbit">
-          {Array.from({ length: THREEDOTSRADIAL_DOTS }).map((_, i) => (
-            <circle
-              key={i}
-              className="loader__threedotsradial_Svg_Trail"
-              cx={CENTRE}
-              cy={CENTRE}
-              r={ORBIT_R}
-              fill="none"
-              strokeWidth={STROKE}
-              strokeLinecap="round"
-              strokeDasharray={`${ARC_LEN} ${GAP}`}
-              style={
-                {
-                  "--loader__threedotsradial-i": String(i),
-                  transform: `rotate(${i * 120}deg)`,
-                } as CSSProperties
-              }
-            />
-          ))}
-        </g>
-      </svg>
+      <div className="loader__threedotsradial_Orbit" aria-hidden="true">
+        {Array.from({ length: THREEDOTSRADIAL_DOTS }).map((_, i) => (
+          <div
+            key={i}
+            className="loader__threedotsradial_Slot"
+            style={{ "--loader__threedotsradial-i": String(i) } as CSSProperties}
+          >
+            <span className="loader__threedotsradial_Slot_Ghost" />
+            <span className="loader__threedotsradial_Slot_Dot" />
+          </div>
+        ))}
+      </div>
       <span className="loader__threedotsradial_SrLabel">{label}</span>
     </div>
   );

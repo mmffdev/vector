@@ -166,6 +166,23 @@
   letter-spacing: 0.01em;
 }
 
+/* First-ever-load skeletons (no NavPrefs cache to hydrate from). Shared
+   pulse keyframes for rail-1 + rail-2 ghosts — tinted surface, no copy,
+   gentle 1.2s breathing so the rails read as "loading" not "broken". */
+@keyframes rail-skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.85; }
+}
+.rail-1__nav-btn--skeleton {
+  background: var(--surface-sunken);
+  cursor: default;
+  pointer-events: none;
+  animation: rail-skeleton-pulse 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-1__nav-btn--skeleton { animation: none; opacity: 0.65; }
+}
+
 /* Util buttons (bottom cluster) */
 .rail-1__util-btn {
   width: 44px;
@@ -430,6 +447,17 @@
   color: var(--ink);
   font-weight: 500;
 }
+.rail-2__nav-row--skeleton {
+  margin: 4px 12px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--surface-sunken);
+  cursor: default;
+  pointer-events: none;
+  animation: rail-skeleton-pulse 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-2__nav-row--skeleton { animation: none; opacity: 0.65; }
+}
 .rail-2__nav-row_link {
   display: flex;
   align-items: center;
@@ -514,6 +542,13 @@
   color: var(--ink-subtle);
   padding: 0 22px 4px;
   font-weight: 600;
+}
+.rail-2__bookmarks_empty {
+  font-size: 12px;
+  color: var(--ink-subtle);
+  padding: 4px 22px 8px;
+  margin: 0;
+  font-style: italic;
 }
 
 /* ============================================================

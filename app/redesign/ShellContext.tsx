@@ -17,6 +17,7 @@ export const ACCOUNT_SECTION_ID = "__account";
 const TAG_ICON_DEFAULTS: Record<string, string> = {
   personal: "home",
   planning: "clipboard",
+  value: "paper-plane",
   strategic: "star",
   bookmarks: "pin",
   dev_tools: "terminal-square",

@@ -35,10 +35,75 @@ function formatNow(d: Date): string {
   return `${date} · ${time}`;
 }
 
-function RailHeader({ title, now }: { title: string; now: Date }) {
+// Dev pages live under /dev/* and intentionally do NOT show the global
+// bookmark bucket — the dev tab catalogue owns its own rail-2 contents.
+// Every other rail-2 surface (section, scope, account) shows the bucket
+// unconditionally, even when empty (renders an empty-state hint).
+export function isDevPath(pathname: string): boolean {
+  return pathname === "/dev" || pathname.startsWith("/dev/");
+}
+
+export function BookmarkBucket({
+  bookmarkPages,
+  isActivePage,
+  activeKey,
+}: {
+  bookmarkPages: ShellPage[];
+  isActivePage: (href: string) => boolean;
+  activeKey: string | null;
+}) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const { indicator, phase, setTarget } = useTravelIndicator(groupRef, activeKey, { inset: 4 });
+  return (
+    <div className="rail-2__bookmarks">
+      <div className="rail-2__bookmarks_divider" aria-hidden />
+      <span className="rail-2__bookmarks_label">Bookmarks</span>
+      {bookmarkPages.length > 0 ? (
+        <div className="rail-2__nav" ref={groupRef}>
+          <TravelIndicator
+            id="rail-2__bookmarks_travel-indicator"
+            indicator={indicator}
+            phase={phase}
+          />
+          {bookmarkPages.map((p) => (
+            <PageRow key={p.itemKey} page={p} active={isActivePage(p.href)} setRef={setTarget} />
+          ))}
+        </div>
+      ) : (
+        <p className="rail-2__bookmarks_empty">No bookmarks yet</p>
+      )}
+    </div>
+  );
+}
+
+// First-ever-load skeleton (no NavPrefs cache to hydrate from). Renders
+// the same shell chrome (header band + clock) so layout is stable, with
+// ghost rows where pages will appear. Cache hits skip this entirely.
+function RailSkeleton({ now }: { now: Date }) {
+  return (
+    <aside className="rail-2" aria-label="Loading section" aria-busy="true">
+      <RailHeader title={null} now={now} />
+      <div className="rail-2__content">
+        <div className="rail-2__top">
+          <div className="rail-2__nav">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rail-2__nav-row rail-2__nav-row--skeleton" aria-hidden="true" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function RailHeader({ title, now }: { title: string | null | undefined; now: Date }) {
+  // Rail-2 title MUST show the focused topology-node name (Sentinel scope
+  // label) — never the page/section title. When no node is focused (boot,
+  // no grants, per-user pages like account-settings), render an empty
+  // <h3> so the band keeps its height but carries no fallback text.
   return (
     <div className="rail-2__header header-band">
-      <h3 className="rail-2__title">{title}</h3>
+      <h3 className="rail-2__title">{title ?? ""}</h3>
       <p className="rail-2__date" aria-live="off">{formatNow(now)}</p>
     </div>
   );
@@ -46,6 +111,7 @@ function RailHeader({ title, now }: { title: string; now: Date }) {
 
 export default function SectionFlyout() {
   const { activeSection, bookmarkPages } = useShell();
+  const { loading: navLoading } = useNavPrefs();
   const pathname = usePathname() ?? "";
   const [now, setNow] = useState<Date>(() => new Date());
 
@@ -55,9 +121,15 @@ export default function SectionFlyout() {
   }, []);
 
   const groupRef = useRef<HTMLDivElement>(null);
-  const bookmarkGroupRef = useRef<HTMLDivElement>(null);
+  const showBookmarks = !isDevPath(pathname);
 
-  if (!activeSection) return <aside className="rail-2" aria-label="Section" />;
+  // First-ever load (no cache): activeSection is undefined AND nav is still
+  // loading. Render a skeleton instead of an empty aside so the rail reads
+  // as "loading" not "missing". Cache hits skip this branch entirely.
+  if (!activeSection) {
+    if (navLoading) return <RailSkeleton now={now} />;
+    return <aside className="rail-2" aria-label="Section" />;
+  }
 
   const isActivePage = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -90,10 +162,10 @@ export default function SectionFlyout() {
       tops={tops}
       childrenByParent={childrenByParent}
       bookmarkPages={bookmarkPages}
+      showBookmarks={showBookmarks}
       isActivePage={isActivePage}
       activeKey={activeKey}
       groupRef={groupRef}
-      bookmarkGroupRef={bookmarkGroupRef}
       now={now}
     />
   );
@@ -104,24 +176,23 @@ function SectionFlyoutBody({
   tops,
   childrenByParent,
   bookmarkPages,
+  showBookmarks,
   isActivePage,
   activeKey,
   groupRef,
-  bookmarkGroupRef,
   now,
 }: {
   activeSection: NonNullable<ReturnType<typeof useShell>["activeSection"]>;
   tops: ShellPage[];
   childrenByParent: Map<string, ShellPage[]>;
   bookmarkPages: ShellPage[];
+  showBookmarks: boolean;
   isActivePage: (href: string) => boolean;
   activeKey: string | null;
   groupRef: React.RefObject<HTMLDivElement>;
-  bookmarkGroupRef: React.RefObject<HTMLDivElement>;
   now: Date;
 }) {
   const { indicator, phase, setTarget } = useTravelIndicator(groupRef, activeKey, { inset: 4 });
-  const { indicator: bmIndicator, phase: bmPhase, setTarget: bmSetTarget } = useTravelIndicator(bookmarkGroupRef, activeKey, { inset: 4 });
   const { activeGrant } = useActiveGrantFromSentinel();
   const scopeLabel = activeGrant
     ? (activeGrant.label_override?.trim() || activeGrant.name)
@@ -129,7 +200,7 @@ function SectionFlyoutBody({
 
   return (
     <aside className="rail-2" aria-label={`${activeSection.name} pages`}>
-      <RailHeader title={scopeLabel ?? activeSection.name} now={now} />
+      <RailHeader title={scopeLabel} now={now} />
 
       <div className="rail-2__content">
         <div className="rail-2__top">
@@ -154,21 +225,12 @@ function SectionFlyoutBody({
             })}
           </div>
 
-          {bookmarkPages.length > 0 && (
-            <div className="rail-2__bookmarks">
-              <div className="rail-2__bookmarks_divider" aria-hidden />
-              <span className="rail-2__bookmarks_label">Bookmarks</span>
-              <div className="rail-2__nav" ref={bookmarkGroupRef}>
-                <TravelIndicator
-                  id="rail-2__bookmarks_travel-indicator"
-                  indicator={bmIndicator}
-                  phase={bmPhase}
-                />
-                {bookmarkPages.map((p) => (
-                  <PageRow key={p.itemKey} page={p} active={isActivePage(p.href)} setRef={bmSetTarget} />
-                ))}
-              </div>
-            </div>
+          {showBookmarks && (
+            <BookmarkBucket
+              bookmarkPages={bookmarkPages}
+              isActivePage={isActivePage}
+              activeKey={activeKey}
+            />
           )}
         </div>
       </div>
@@ -178,8 +240,9 @@ function SectionFlyoutBody({
 
 /** Grouped scope panel — replaces the normal SectionFlyout when isScopeOpen=true. */
 export function ScopeFlyout2() {
-  const { activeSection } = useShell();
+  const { bookmarkPages } = useShell();
   const { activeGrant, reload } = useActiveGrantFromSentinel();
+  const pathname = usePathname() ?? "";
   const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
@@ -193,12 +256,22 @@ export function ScopeFlyout2() {
   const scopeLabel = activeGrant
     ? (activeGrant.label_override?.trim() || activeGrant.name)
     : null;
+  const isActivePage = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const activeKey = bookmarkPages.find((p) => isActivePage(p.href))?.itemKey ?? null;
+  const showBookmarks = !isDevPath(pathname);
 
   return (
     <aside className="rail-2 rail-2--scope" aria-label="Workspace scope">
-      <RailHeader title={scopeLabel ?? activeSection?.name ?? "Workspace"} now={now} />
+      <RailHeader title={scopeLabel} now={now} />
       <div className="rail-2__content rail-2__content--scope vector-scroll">
         <ScopeGroupPanel />
+        {showBookmarks && (
+          <BookmarkBucket
+            bookmarkPages={bookmarkPages}
+            isActivePage={isActivePage}
+            activeKey={activeKey}
+          />
+        )}
       </div>
     </aside>
   );
@@ -206,8 +279,9 @@ export function ScopeFlyout2() {
 
 /** @deprecated use ScopeFlyout2 */
 export function ScopeFlyout() {
-  const { activeSection } = useShell();
+  const { bookmarkPages } = useShell();
   const { activeGrant } = useActiveGrantFromSentinel();
+  const pathname = usePathname() ?? "";
   const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
@@ -218,12 +292,22 @@ export function ScopeFlyout() {
   const scopeLabel = activeGrant
     ? (activeGrant.label_override?.trim() || activeGrant.name)
     : null;
+  const isActivePage = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const activeKey = bookmarkPages.find((p) => isActivePage(p.href))?.itemKey ?? null;
+  const showBookmarks = !isDevPath(pathname);
 
   return (
     <aside className="rail-2 rail-2--scope" aria-label="Workspace scope">
-      <RailHeader title={scopeLabel ?? activeSection?.name ?? "Workspace"} now={now} />
+      <RailHeader title={scopeLabel} now={now} />
       <div className="rail-2__content rail-2__content--scope vector-scroll">
         <ScopeTreePanel />
+        {showBookmarks && (
+          <BookmarkBucket
+            bookmarkPages={bookmarkPages}
+            isActivePage={isActivePage}
+            activeKey={activeKey}
+          />
+        )}
       </div>
     </aside>
   );

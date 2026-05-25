@@ -8,7 +8,9 @@ import SectionFlyout, { ScopeFlyout2 } from "./nav_primary_rail_2";
 import AccountFlyout from "./AccountFlyout";
 import RedesignTopBar from "./RedesignTopBar";
 import DebugPanel from "./DebugPanel";
-import QRCodeTrigger from "@/app/components/QRCodeTrigger";
+// QRCodeTrigger import removed 2026-05-24 when the global trigger
+// was hidden. Re-add the import + uncomment the JSX below to unhide.
+// Tracked: Vector_Scope.md → CHROME-QR.1.
 import NotificationToastHost from "@/app/components/NotificationToastHost";
 
 function ShellBody({ children }: { children: React.ReactNode }) {
@@ -30,9 +32,12 @@ function ShellBody({ children }: { children: React.ReactNode }) {
           {isDebugOpen && <DebugPanel />}
           <div className="rd-shell__main-body">{children}</div>
         </ViewportSlot>
-        <div className="rd-shell__main_QrAnchor">
+        {/* Global QR trigger hidden 2026-05-24 pending design review.
+            Re-enable via Vector_Scope.md → CHROME-QR.1 ("unhide the
+            global QR trigger"). Import kept so re-enable is one line. */}
+        {/* <div className="rd-shell__main_QrAnchor">
           <QRCodeTrigger />
-        </div>
+        </div> */}
       </main>
       {/* Live notification toast stack — top-right overlay, lives
           above all other shell chrome. Self-renders nothing when

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Globe, LogOut, Pencil, Settings } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useShell, ACCOUNT_SECTION_ID } from "../ShellContext";
+import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
 import { NavIcon } from "@/app/components/nav_primary_rail_NavPageIcons";
 import { TravelIndicator, useTravelIndicator } from "./nav_travel_indicator";
 import { notifications } from "@/app/lib/apiSite";
@@ -17,8 +18,14 @@ const UNREAD_POLL_MS = 60_000;
 
 export default function IconRail() {
   const { sections, accountSection, activeSectionId, setActiveSectionId, isScopeOpen, toggleScopeOpen, isDebugOpen, toggleDebugOpen } = useShell();
+  const { loading: navLoading } = useNavPrefs();
   const { user, logout } = useAuth();
   const router = useRouter();
+  // First-ever load only: NavPrefs has no cache to hydrate from so
+  // `sections` is empty AND `loading=true`. Show a skeleton so the rail
+  // reads as "loading" not "broken". With a cache hit, sections render
+  // immediately and this branch is skipped.
+  const showSkeleton = navLoading && sections.length === 0;
   const accountActive = activeSectionId === ACCOUNT_SECTION_ID;
   const initials = user ? user.email.slice(0, 2).toUpperCase() : "??";
 
@@ -83,31 +90,37 @@ export default function IconRail() {
             <span className="rail-1__nav-btn_label">Workspace</span>
           </button>
 
-          <ul className="rail-1__nav" ref={listRef}>
+          <ul className="rail-1__nav" ref={listRef} aria-busy={showSkeleton || undefined}>
             <TravelIndicator id="rail-1__nav_travel-indicator" indicator={indicator} phase={phase} />
-            {sections.map((s) => {
-              const active = s.id === activeSectionId;
-              return (
-                <li key={s.id} className="rail-1__nav_item">
-                  <button
-                    ref={(el) => setTarget(s.id, el)}
-                    type="button"
-                    className={`rail-1__nav-btn${active ? " is-active" : ""}`}
-                    title={s.name}
-                    aria-label={s.name}
-                    aria-pressed={active}
-                    onClick={() => {
-                      setActiveSectionId(s.id);
-                      const first = s.pages[0]?.href;
-                      if (first) router.push(first);
-                    }}
-                  >
-                    <NavIcon iconKey={s.icon} />
-                    <span className="rail-1__nav-btn_label">{s.name}</span>
-                  </button>
-                </li>
-              );
-            })}
+            {showSkeleton
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <li key={`skeleton-${i}`} className="rail-1__nav_item" aria-hidden="true">
+                    <div className="rail-1__nav-btn rail-1__nav-btn--skeleton" />
+                  </li>
+                ))
+              : sections.map((s) => {
+                  const active = s.id === activeSectionId;
+                  return (
+                    <li key={s.id} className="rail-1__nav_item">
+                      <button
+                        ref={(el) => setTarget(s.id, el)}
+                        type="button"
+                        className={`rail-1__nav-btn${active ? " is-active" : ""}`}
+                        title={s.name}
+                        aria-label={s.name}
+                        aria-pressed={active}
+                        onClick={() => {
+                          setActiveSectionId(s.id);
+                          const first = s.pages[0]?.href;
+                          if (first) router.push(first);
+                        }}
+                      >
+                        <NavIcon iconKey={s.icon} />
+                        <span className="rail-1__nav-btn_label">{s.name}</span>
+                      </button>
+                    </li>
+                  );
+                })}
           </ul>
         </div>
 
