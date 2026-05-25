@@ -109,6 +109,21 @@ View: /dev/visualiser
 
 The numbers come from the script's stderr summary.
 
+### Node enrichment (V4 visualiser)
+
+Each node carries four derived fields used by the 3D visualiser to encode
+type, criticality, and connections without any time/git axis:
+
+| Field | Source | V4 channel |
+|---|---|---|
+| `sloc` | `wc -l` at emit time | node **size** |
+| `fan_in` | incoming edge count | criticality input |
+| `fan_out` | outgoing edge count | criticality input |
+| `criticality` | `fan_in * log(sloc+1)` | node **glow / colour intensity** |
+
+`layer` (existing) drives the **hue / cluster** channel. Louvain clustering
+is computed client-side at render — the audit stays language-agnostic.
+
 ---
 
 ## See also

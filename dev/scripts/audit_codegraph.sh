@@ -16,12 +16,19 @@
 #     "stats": { "ts_files": N, "go_files": N, "import_edges": N, "bridge_edges": N },
 #     "nodes": [
 #       { "id": "<relpath>", "side": "frontend"|"backend",
-#         "folder": "<dir>", "layer": "<page|component|lib|handler|service|sql|...>" }
+#         "folder": "<dir>", "layer": "<page|component|lib|handler|service|sql|...>",
+#         "sloc": N, "fan_in": N, "fan_out": N, "criticality": F }
 #     ],
 #     "edges": [
 #       { "source": "<id>", "target": "<id>", "kind": "import"|"bridge" }
 #     ]
 #   }
+#
+# Node enrichment (added 2026-05-24 for V4 3D visualiser):
+#   - sloc        : line count (size channel)
+#   - fan_in      : incoming-edge count   (how many files depend on this one)
+#   - fan_out     : outgoing-edge count   (how many files this one depends on)
+#   - criticality : fan_in * log(sloc+1)  (blast-radius score for risk overlay)
 #
 # Read-only. Idempotent. ~5s on Vector's tree.
 
@@ -73,9 +80,17 @@ go_layer() {
 }
 
 emit_node() {
+  # sloc is measured here at emit time; fan_in/fan_out/criticality are
+  # derived in the final jq stitch step once all edges are known.
+  local id="$1" side="$2" folder="$3" layer="$4"
+  local sloc=0
+  if [[ -f "$REPO_ROOT/$id" ]]; then
+    sloc=$(wc -l < "$REPO_ROOT/$id" | tr -d ' ')
+  fi
   jq -nc \
-    --arg id "$1" --arg side "$2" --arg folder "$3" --arg layer "$4" \
-    '{id:$id, side:$side, folder:$folder, layer:$layer}' >> "$NODES"
+    --arg id "$id" --arg side "$side" --arg folder "$folder" --arg layer "$layer" \
+    --argjson sloc "$sloc" \
+    '{id:$id, side:$side, folder:$folder, layer:$layer, sloc:$sloc}' >> "$NODES"
 }
 
 emit_edge() {
@@ -224,6 +239,28 @@ while IFS= read -r f; do
             | sort -u)
 done < "$TS_FILES"
 
+# ─── 3b. Phase B + C enrichment (Python helper) ──────────────────────────────
+#
+# At this point NODES has the bare node records and EDGES has all edges.
+# The Python helper does the heavy lifting we don't want in bash:
+#   - per-file grep for tag heuristics (auth/authz/db/security/...)
+#   - system_areas.yaml mapping → node.system
+#   - critical_path_seeds.yaml BFS → node.in_critical_path
+#   - Tarjan SCC → node.in_cycle + node.cycle_id
+#   - visibility / generated / test-sibling detection
+#   - complexity composite (0–100)
+#
+# The helper rewrites NODES in place with the enriched records.
+echo "▶ enriching nodes (Python helper — tags, system, cycles, paths, complexity)…" >&2
+
+NODES_ENRICHED="$TMP_DIR/nodes_enriched.jsonl"
+python3 "$REPO_ROOT/dev/scripts/audit_codegraph_enrich.py" \
+  "$REPO_ROOT" \
+  "$NODES" \
+  "$EDGES" \
+  "$NODES_ENRICHED"
+mv "$NODES_ENRICHED" "$NODES"
+
 # ─── 4. Stitch into final JSON ───────────────────────────────────────────────
 echo "▶ stitching JSON…" >&2
 
@@ -241,12 +278,28 @@ jq -n \
   --argjson be "$BRIDGE_COUNT" \
   --slurpfile nodes "$NODES" \
   --slurpfile edges "$EDGES" \
-  '{
-    generated_at: $gen,
-    stats: { ts_files: $ts, go_files: $go, import_edges: $ie, bridge_edges: $be },
-    nodes: $nodes,
-    edges: $edges
-  }' > "$OUT"
+  '
+    # Build fan-in / fan-out maps from edges, then attach + score each node.
+    ($edges | group_by(.target) | map({key:.[0].target, value:length}) | from_entries) as $fan_in
+    | ($edges | group_by(.source) | map({key:.[0].source, value:length}) | from_entries) as $fan_out
+    | {
+        generated_at: $gen,
+        stats: { ts_files: $ts, go_files: $go, import_edges: $ie, bridge_edges: $be },
+        nodes: ($nodes | map(
+          . as $n
+          | ($fan_in[$n.id]  // 0) as $fi
+          | ($fan_out[$n.id] // 0) as $fo
+          | . + {
+              fan_in: $fi,
+              fan_out: $fo,
+              # criticality = fan_in * log(sloc+1) ; rounded to 2dp.
+              # captures blast-radius: many dependents AND non-trivial size.
+              criticality: (($fi | tonumber) * (($n.sloc + 1) | log) * 100 | round / 100)
+            }
+        )),
+        edges: $edges
+      }
+  ' > "$OUT"
 
 echo "" >&2
 echo "✓ Code-graph written to $OUT" >&2

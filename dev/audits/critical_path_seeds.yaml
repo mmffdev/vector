@@ -1,0 +1,37 @@
+# critical_path_seeds.yaml — files on Vector's load-bearing paths.
+#
+# Each seed group defines a named entry point (login, app boot, etc.)
+# and the source files that ARE the entry. The audit BFS-walks the
+# import graph from each seed; reachable nodes are tagged with the
+# seed name in node.critical_paths[] and node.in_critical_path=true.
+
+seeds:
+  - name: app_boot
+    files:
+      - app/layout.tsx
+      - app/(user)/layout.tsx
+      - app/(overlay)/layout.tsx
+      - backend/cmd/server/main.go
+
+  - name: login
+    files:
+      - app/login/page.tsx
+      - backend/internal/auth/handler.go
+      - backend/internal/auth/service.go
+
+  - name: sentinel_boot
+    files:
+      - app/sentinel/SentinelProvider.tsx
+      - app/sentinel/index.ts
+      - backend/internal/sentinel/middleware.go
+
+  - name: api_root
+    files:
+      - app/lib/api.ts
+      - app/lib/apiSite/index.ts
+
+  - name: tenant_switch
+    files:
+      - app/sentinel/SentinelProvider.tsx
+      - backend/internal/auth/handler.go
+      - app/redesign/components/AccountFlyout.tsx

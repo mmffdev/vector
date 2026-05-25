@@ -1,6 +1,12 @@
 "use client";
 
-// DevVisualiserPanelV2 — the next-gen Vector Relationship Explorer.
+// DevVisualiserPanelV2A — A/B fork of V2.
+//
+// Byte-for-byte clone of V2 created 2026-05-24 as the foundation for the
+// new 31-filter left-rail experiment. V2 remains the baseline; V2A is the
+// variant. Both share V2's card mesh, scene, drag behaviour, and topbar
+// style — V2A only diverges on the LEFT RAIL filter surface (work
+// landing in subsequent commits, scoped via `<report> -c` 2026-05-24).
 //
 // Today the data source is dev/audits/codegraph.json (files + imports +
 // HTTP bridges). Tomorrow it becomes Vector's artefact/topology/RBAC
@@ -23,8 +29,14 @@
 // node is clicked (path · edges by kind · K-hops · source preview).
 // Fullscreen button moves the whole stage to document.fullscreen.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { apiSite } from "@/app/lib/api";
+import { FilterRail, ActiveFilterSummary } from "./V2A/FilterRail";
+import {
+  DEFAULT_STATE as V2A_FILTER_DEFAULT,
+  buildDimPredicate as v2aBuildDimPredicate,
+  filterReducer as v2aFilterReducer,
+} from "./V2A/filterState";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -802,7 +814,7 @@ function computeStandoff(camera: any) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DevVisualiserPanelV2() {
+export default function DevVisualiserPanelV2A() {
   const [graph, setGraph] = useState<Codegraph | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -813,6 +825,23 @@ export default function DevVisualiserPanelV2() {
   // Rail / panel state
   const [railPanel, setRailPanel] = useState<RailPanelId>("files");
   const [fileSearch, setFileSearch] = useState("");
+
+  // V2A 31-filter rail — single reducer replaces V2's nine ad-hoc
+  // filter hooks. Old hooks below are kept during the transition (per
+  // COD003 warning #3); the new predicate composes via OR with them.
+  const [v2aFilterState, v2aFilterDispatch] = useReducer(v2aFilterReducer, V2A_FILTER_DEFAULT);
+  // Mirror V2's selectedId into the V2A reducer so node-seeded filters
+  // (Import Direction, Dependency Depth) light up when the user clicks
+  // a card in the canvas.
+  const [v2aRailCollapsed, setV2aRailCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem("v2a.rail.collapsed") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("v2a.rail.collapsed", v2aRailCollapsed ? "1" : "0"); } catch { /* noop */ }
+  }, [v2aRailCollapsed]);
+
+  // The seed-sync effect is declared further down once selectedId exists.
 
   // Selected node + analyses
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -953,6 +982,18 @@ export default function DevVisualiserPanelV2() {
     if (!selectedId || kHops <= 0) return null;
     return bfsKHops(liveAdjRef.current, selectedId, kHops);
   }, [selectedId, kHops, displayGraph]);
+
+  // V2A seed sync — push V2's selectedId into the V2A reducer so the
+  // node-seeded filters (Direction, Depth) become live.
+  useEffect(() => {
+    v2aFilterDispatch({ type: "setSeed", nodeId: selectedId });
+  }, [selectedId]);
+
+  // V2A dim predicate — built once per render from filter state + edges.
+  const v2aDimNode = useMemo(() => {
+    if (!displayGraph) return null;
+    return v2aBuildDimPredicate(v2aFilterState, displayGraph.edges as any);
+  }, [v2aFilterState, displayGraph]);
 
   // "By Group" filter visibility set:
   //   - no category + no item → null (no filter)
@@ -1430,7 +1471,11 @@ export default function DevVisualiserPanelV2() {
         const hiddenByGroup = hiddenNodeIds.has(n.id);
         const outOfSelection = selectionSet.size > 0 && !selectionSet.has(n.id) && !groupColour;
         const outOfFilter = filterDimSet !== null && !filterDimSet.has(n.id);
-        const dimmed = isolated || hiddenByGroup || outOfSelection || outOfFilter;
+        // V2A NEW: 31-filter rail predicate. Composes via OR so any
+        // reason to dim wins. When the rail has no active filters,
+        // v2aDimNode returns false uniformly and this is a no-op.
+        const v2aDimmed = v2aDimNode ? v2aDimNode(n as any) : false;
+        const dimmed = isolated || hiddenByGroup || outOfSelection || outOfFilter || v2aDimmed;
         const tex = buildCardTexture(THREE, cache, n.id, n.layer, score, colour, dimmed);
         const cardMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: dimmed ? 0.3 : 1 });
         const sideMat = new THREE.MeshBasicMaterial({
@@ -1624,7 +1669,7 @@ export default function DevVisualiserPanelV2() {
     return () => {
       cancelled = true;
     };
-  }, [displayGraph, scores, showEdgeLabels, frameNode, isolateSet, groupColourByNode, hiddenNodeIds, selectionSet, diffColourByNode, filterDimSet, isolationMode, filterItemNodeIds, layout, selectedId, filterItem]);
+  }, [displayGraph, scores, showEdgeLabels, frameNode, isolateSet, groupColourByNode, hiddenNodeIds, selectionSet, diffColourByNode, filterDimSet, isolationMode, filterItemNodeIds, layout, selectedId, filterItem, v2aDimNode]);
 
   // Window resize → re-size the renderer
   useEffect(() => {
@@ -1821,9 +1866,23 @@ export default function DevVisualiserPanelV2() {
         </div>
       </div>
 
-      {/* BODY: rail + panel + canvas + selected panel */}
+      {/* V2A active-filter summary line — sits below the topbar */}
+      <ActiveFilterSummary state={v2aFilterState} dispatch={v2aFilterDispatch} />
+
+      {/* BODY: V2A rail + V2 icon rail + V2 panel + canvas + selected panel */}
       <div className="dui-viz-v2__body">
-        {/* Left icon rail */}
+        {/* V2A NEW: 31-filter collapsible rail */}
+        {displayGraph && (
+          <FilterRail
+            state={v2aFilterState}
+            dispatch={v2aFilterDispatch}
+            nodes={displayGraph.nodes as any}
+            collapsed={v2aRailCollapsed}
+            onToggleCollapsed={() => setV2aRailCollapsed(c => !c)}
+          />
+        )}
+
+        {/* Left icon rail (V2 legacy — preserved during transition) */}
         <div className="dui-viz-v2__rail">
           <RailButton id="files" icon="📁" label="Files" active={railPanel === "files"} onToggle={setRailPanel} />
           <RailButton id="search" icon="🔍" label="Search" active={railPanel === "search"} onToggle={setRailPanel} />

@@ -1,0 +1,84 @@
+# system_areas.yaml — manual taxonomy of Vector's system areas.
+#
+# Used by audit_codegraph.sh to tag each node with node.system. First
+# matching prefix wins (top-down). A file matches at most one system.
+#
+# Add new systems as Vector's surface grows; the audit re-tags everything
+# on each run.
+
+systems:
+  - name: Sentinel
+    prefixes:
+      - app/sentinel/
+      - backend/internal/sentinel/
+      - docs/Security/Sentinel/
+
+  - name: Topology
+    prefixes:
+      - app/topology/
+      - backend/internal/topology/
+      - app/user/topology
+
+  - name: Roles
+    prefixes:
+      - backend/internal/roletypes/
+      - backend/internal/permissions/
+      - app/user/admin/roles
+
+  - name: Library
+    prefixes:
+      - backend/internal/library/
+      - backend/internal/field_library/
+      - app/user/library
+
+  - name: Visualiser
+    prefixes:
+      - dev/pages/DevVisualiserPanel
+      - dev/pages/DevVisualiserPanelV
+      - backend/internal/portfoliomodels/dev_reset.go
+
+  - name: ObjectTree
+    prefixes:
+      - app/components/ObjectTree
+      - app/components/ObjectTreeV2/
+
+  - name: Artefacts
+    prefixes:
+      - backend/internal/artefactitems/
+      - backend/internal/artefacttypes/
+      - backend/internal/artefactpriorities/
+      - app/user/work-items
+      - app/user/portfolio-items
+      - app/user/risks
+
+  - name: Auth
+    prefixes:
+      - backend/internal/auth/
+      - app/login
+      - app/components/ReauthModal
+
+  - name: Reporting
+    prefixes:
+      - .claude/skills/report/
+      - dev/pages/DevReporting
+      - backend/internal/devreports/
+
+  - name: Dev tooling
+    prefixes:
+      - dev/
+      - app/dev
+      - app/api/dev
+
+  - name: Samantha SDK
+    prefixes:
+      - app/lib/samantha
+      - backend/internal/samantha
+
+  - name: Workitems v2
+    prefixes:
+      - backend/internal/workitems/
+      - backend/internal/workitemcontainers/
+
+  - name: Redesign shell
+    prefixes:
+      - app/redesign/
