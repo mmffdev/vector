@@ -211,7 +211,7 @@ func testVectorPool(t *testing.T) (*pgxpool.Pool, *roletypes.User) {
 		envOr("DB_PORT", "5434"),
 		envOr("DB_USER", "mmff_dev"),
 		os.Getenv("DB_PASSWORD"),
-		envOr("DB_NAME", "mmff_vector"),
+		envOr("DB_NAME", "vector_artefacts"),
 	)
 	mainPool, err := pgxpool.New(context.Background(), mainDSN)
 	if err != nil {

@@ -1,4 +1,24 @@
 -- ============================================================
+-- POST-REFACTOR HAZARD (2026-05-26)
+-- ---------------------------------
+-- This migration was applied successfully against the pre-refactor
+-- substrate, when mmff_vector + the fdw_mmff_vector FDW server still
+-- existed. After the three-pillar refactor (tag
+-- refactorDB-complete-2026-05-26):
+--   * mmff_vector was DROPped
+--   * fdw_mmff_vector server + user mapping were dropped (migration 119)
+--   * The fdw_* foreign tables referenced below no longer exist
+--
+-- DO NOT RE-APPLY this migration against a post-refactor environment —
+-- the CREATE FOREIGN TABLE + FROM fdw_* statements will fail. The data
+-- it backfilled is already in vector_artefacts native tables post
+-- Pillar 2 merge. If you need to replay this for forensic reasons,
+-- restore the pre-refactor snapshot first
+-- (mmff_vector_snapshot_20260525 / vector_artefacts_snapshot_20260525).
+-- ============================================================
+--
+-- ORIGINAL HEADER (kept for history):
+--
 -- MMFFDev - vector_artefacts: M6 (PLA-0026 / story 00481)
 -- Backfill master_record_portfolio for currently-adopted workspaces.
 --

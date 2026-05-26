@@ -1,6 +1,5 @@
 // cmd/migrate runs ordered SQL migrations against vector_artefacts and
-// mmff_library (and, for historical compatibility, against the now-retired
-// mmff_vector when -db=vector is passed explicitly).
+// mmff_library — the two live Vector databases post-refactor (2026-05-26).
 //
 // Usage (from repo root):
 //
@@ -9,7 +8,7 @@
 // Flags:
 //
 //	-dry-run   print which migrations would run; make no changes
-//	-db        which database to migrate: "vector_artefacts", "library", "vector" (legacy / retired), or "both" (default "both")
+//	-db        which database to migrate: "vector_artefacts", "library", or "both" (default "both")
 //	-dir       repo root directory (default: auto-detected from executable path)
 //	-env       path to .env file (default: backend/.env.local)
 //
@@ -17,12 +16,13 @@
 //
 //	<dir>/db/vector_artefacts/schema/ → vector_artefacts (canonical tenant DB)
 //	<dir>/db/mmff_library/schema/     → mmff_library
-//	<dir>/db/mmff_vector/schema/      → mmff_vector (FROZEN — retired 2026-05-26)
 //
-// "both" means {vector_artefacts, mmff_library} — the two live DBs after the
-// 2026-05-26 refactor. mmff_vector migrations are NOT run by "both"; pass
-// `-db=vector` explicitly only if you need to operate against a historical
-// snapshot of mmff_vector that hasn't been merged yet.
+// "both" means {vector_artefacts, mmff_library}. The legacy mmff_vector tier
+// was DROPped at the end of refactorDB Pillar 3 (commit 41bd3d60, tag
+// refactorDB-complete-2026-05-26); its historical schema lives at
+// db/mmff_vector/schema/ as FROZEN reference only (see the README in that
+// directory). To replay those migrations against a restored snapshot, use
+// `psql` directly rather than this runner.
 //
 // Each database gets a schema_migrations table on first run that records which
 // files have been applied. Files already in that table are skipped.
@@ -52,7 +52,7 @@ import (
 
 func main() {
 	dryRun := flag.Bool("dry-run", false, "print pending migrations without applying them")
-	which := flag.String("db", "both", `which DB to migrate: "vector_artefacts", "library", "vector" (legacy / retired), or "both"`)
+	which := flag.String("db", "both", `which DB to migrate: "vector_artefacts", "library", or "both"`)
 	repoDir := flag.String("dir", "", "repo root (default: auto-detected)")
 	envFile := flag.String("env", "", "path to .env file (default: <dir>/backend/.env.local)")
 	flag.Parse()
@@ -73,51 +73,16 @@ func main() {
 	ctx := context.Background()
 
 	switch *which {
-	case "vector":
-		// Legacy / retired — mmff_vector was DROPped at the end of refactorDB
-		// Pillar 3 (2026-05-26). Allowed only for operating against a
-		// historical snapshot. "both" no longer runs this.
-		must(migrateVector(ctx, root, *dryRun))
 	case "library":
 		must(migrateLibrary(ctx, root, *dryRun))
 	case "vector_artefacts":
 		must(migrateVectorArtefacts(ctx, root, *dryRun))
 	case "both":
-		// Post-2026-05-26: "both" = {vector_artefacts, mmff_library}. The
-		// retired mmff_vector tier is NOT included; pass -db=vector
-		// explicitly if you need it against a historical snapshot.
 		must(migrateVectorArtefacts(ctx, root, *dryRun))
 		must(migrateLibrary(ctx, root, *dryRun))
 	default:
-		log.Fatalf("-db must be vector_artefacts, library, vector (legacy), or both; got %q", *which)
+		log.Fatalf("-db must be vector_artefacts, library, or both; got %q", *which)
 	}
-}
-
-// ── vector (legacy / retired — kept as a historical escape hatch) ─────────────
-//
-// Post-2026-05-26: mmff_vector was DROPped at the end of refactorDB Pillar 3.
-// This function is preserved ONLY so a fresh-restored historical snapshot can
-// be migrated forward in isolation. It is NO LONGER called by -db=both.
-// Callers that pass -db=vector are expected to point DB_NAME at the snapshot
-// they want to migrate (the default below is the original mmff_vector name
-// purely as historical fact — at runtime the live DB does not exist).
-func migrateVector(ctx context.Context, root string, dryRun bool) error {
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable application_name=mmff_migrate_vector_legacy",
-		envOr("DB_HOST", "localhost"),
-		envOr("DB_PORT", "5434"),
-		secrets.Get("DB_USER"),
-		secrets.Get("DB_PASSWORD"),
-		envOr("DB_NAME", "mmff_vector"),
-	)
-	pool, err := openPool(ctx, dsn, "vector")
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-
-	dir := filepath.Join(root, "db", "mmff_vector", "schema")
-	return runMigrations(ctx, pool, "vector", dir, dryRun)
 }
 
 // ── library ───────────────────────────────────────────────────────────────────

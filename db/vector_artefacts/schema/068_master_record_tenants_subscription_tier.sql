@@ -1,4 +1,25 @@
 -- ============================================================
+-- POST-REFACTOR HAZARD (2026-05-26)
+-- ---------------------------------
+-- This migration was applied successfully against the pre-refactor
+-- substrate, when mmff_vector + the fdw_mmff_vector FDW server still
+-- existed. After the three-pillar refactor (tag
+-- refactorDB-complete-2026-05-26):
+--   * mmff_vector was DROPped
+--   * fdw_mmff_vector server + user mapping were dropped (migration 119)
+--   * The fdw_subscriptions foreign table referenced near line 109 no
+--     longer exists
+--
+-- DO NOT RE-APPLY this migration against a post-refactor environment —
+-- the CREATE FOREIGN TABLE fdw_subscriptions + FROM fdw_subscriptions
+-- statements will fail. The data it backfilled is already in
+-- vector_artefacts native tables post Pillar 2 merge. If you need to
+-- replay this for forensic reasons, restore the pre-refactor snapshot
+-- first.
+-- ============================================================
+--
+-- ORIGINAL HEADER (kept for history):
+--
 -- 068_master_record_tenants_subscription_tier.sql
 --
 -- PLA-0050 / Story 00568 — tenant-level defaults table.
