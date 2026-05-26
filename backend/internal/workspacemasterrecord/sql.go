@@ -41,15 +41,21 @@ const sqlUpdateTenantTemplate = `UPDATE master_record_workspaces SET %s WHERE ma
 // ── inheritance_wiring.go ─────────────────────────────────────────────────────
 
 // sqlSelectSubscriptionByWorkspace resolves the subscription_id that
-// owns a given workspace via the fdw_workspaces FDW shadow.
-// Used by FDWSubscriptionResolver.SubscriptionFor.
-const sqlSelectSubscriptionByWorkspace = `SELECT subscription_id FROM fdw_workspaces WHERE id = $1`
+// owns a given workspace. Pre Pillar 3 step 1 (refactorDB) this read
+// went via the fdw_workspaces foreign table; after the merge,
+// master_record_workspaces lives natively in vector_artefacts so the
+// query is now a single-DB lookup against the local table.
+// Used by FDWSubscriptionResolver.SubscriptionFor (the type name keeps
+// the FDW prefix for back-compat; the underlying read is no longer
+// foreign).
+const sqlSelectSubscriptionByWorkspace = `SELECT master_record_workspaces_id_subscription FROM master_record_workspaces WHERE master_record_workspaces_id = $1`
 
 // sqlSelectActiveWorkspaceBySubscription returns the workspace_id
-// owned by a given subscription. LIMIT 1 + ORDER BY id keeps the
-// choice deterministic under the single-workspace assumption (mig 067).
-// Used by FDWActiveWorkspaceResolver.ActiveWorkspaceFor.
-const sqlSelectActiveWorkspaceBySubscription = `SELECT id FROM fdw_workspaces WHERE subscription_id = $1 ORDER BY id LIMIT 1`
+// owned by a given subscription. LIMIT 1 + ORDER BY master_record_workspaces_id
+// keeps the choice deterministic under the single-workspace assumption
+// (mig 067). Used by FDWActiveWorkspaceResolver.ActiveWorkspaceFor.
+// Post Pillar 3 step 1: local table read, no FDW indirection.
+const sqlSelectActiveWorkspaceBySubscription = `SELECT master_record_workspaces_id FROM master_record_workspaces WHERE master_record_workspaces_id_subscription = $1 ORDER BY master_record_workspaces_id LIMIT 1`
 
 // sqlSelectTenantDefaults reads every NULL-aware inheritable column from
 // master_record_tenants for a given subscription. Pointer-typed scan in

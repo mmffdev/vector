@@ -2,123 +2,117 @@
 
 > **HARD RULE — NO ASSUMPTIONS:** before any psql query, schema lookup, or "the table is probably called X" claim, you MUST read this doc to confirm which pool serves the feature and which database that pool connects to. Memory: [`feedback_never_assume_database`](../.claude/memory/feedback_never_assume_database.md). Source-of-truth wiring: [`backend/cmd/server/main.go`](../backend/cmd/server/main.go).
 
-> **Planned post-cutover state (PLA064 / CUT1):** the three-pool world collapses to two — `vaPool` (vector_artefacts) absorbs `pool` (mmff_vector), and `libPools` stays as-is. The `master_record_workspaces` registry+sidecar pair and the `subscriptions`+`master_record_tenants` pair MERGE into single tables (denormalisation workarounds eliminated; merge plans at [`db/vector_artefacts/schema/merge_plan/`](../db/vector_artefacts/schema/merge_plan/)). The `workspacemasterrecord` and `tenantmasterrecord` packages are slated for deletion in CUT1.6.1 — the merged tables are read via the workspaces / subscriptions services since each is one concept post-merge. See `/dev/reporting/PLA064` for the 6-phase plan + per-story AC.
+> **POST-CUTOVER STATUS (Pillar 3 step 1, 2026-05-26):** `vector_artefacts` is now the PRIMARY tenant DB and absorbs every former `mmff_vector` table. `mmff_vector` is a write-mute zombie — its `pool` variable is still wired into `main.go` so the DB stays connect-able for emergency reads, but NO backend service issues SQL against it. Pillar 3 step 2 drops the 16 FDW foreign tables in vector_artefacts; Pillar 3 step 3 drops the `mmff_vector` database itself.
 
-The Vector backend connects to three Postgres databases via separate `pgxpool.Pool` variables in `main.go`. Every Go service in `backend/internal/<name>` takes one (or two) of these pools through `NewService(...)`. This doc maps every pool, every database, and every service that talks to it.
+The Vector backend connects to two tenant Postgres databases via separate `pgxpool.Pool` variables in `main.go`. Every Go service in `backend/internal/<name>` takes `servicePool` (vaPool when available, mmff_vector fallback for legacy envs) through `NewService(...)`. This doc maps every pool, every database, and every service that talks to it.
 
 ## Pools at a glance
 
 | Pool variable | Database name | Env vars on `dev` | Purpose |
 |---|---|---|---|
-| `pool` | `mmff_vector` | `DB_HOST`, `DB_PORT=5435`, `DB_NAME=mmff_vector`, `DB_USER=mmff_dev` | Primary app DB. Auth, nav, users, roles, permissions, tenant settings (until M2 cutover), portfolio adoption, **legacy `obj_*` artefact substrate**. (audit moved to `vaPool` 2026-05-13 — PLA-0023 P1.) |
-| `vaPool` | `vector_artefacts` | `VECTOR_ARTEFACTS_DB_URL` (full DSN) or `VA_DB_HOST` / `VA_DB_PORT=5435` / `VA_DB_NAME=vector_artefacts` / `VA_DB_USER=mmff_dev` | PoC cutover target. **Current production substrate for PLA-0023 onwards.** Artefact types, artefacts, flows, fields, sprints/releases, search, webhooks, topology nodes (post-M6.2.7). |
-| `libPools.RO` / `libPools.RW` | `mmff_library` | `LIBRARY_DB_HOST`, `LIBRARY_DB_PORT=5435`, `LIBRARY_DB_NAME=mmff_library`, `LIBRARY_DB_USER=mmff_dev` | Read-only library spine + ack flow. Catalogue lookups for portfolio adoption and library releases. |
+| `vaPool` (alias `servicePool` when wired) | `vector_artefacts` | `VECTOR_ARTEFACTS_DB_URL` (full DSN) or `VA_DB_HOST` / `VA_DB_PORT=5435` / `VA_DB_NAME=vector_artefacts` / `VA_DB_USER=mmff_dev` | **PRIMARY tenant DB.** All 71 tables: artefact substrate (artefacts, artefacts_types, artefacts_fields_*, flows, timeboxes_*, search outbox, webhooks, topology_nodes, audit_logs, errors_events, library_releases_acknowledgements, master_record_*) AND the 37 ex-mmff_v tables merged in Pillar 2 (users, users_sessions, users_password_resets, users_roles*, users_permissions, users_nav_*, users_notifications*, users_mentions, users_tab_order, users_reauth_nonces, dpop_jti_cache, admin_api_keys, pages, pages_tags, pages_addressables, pages_help, pages_access_version, users_roles_pages, users_custom_pages, users_custom_page_views, master_record_workspaces, users_roles_workspaces, subscriptions, subscriptions_sequence, subscriptions_stakeholders, cost_centres, csp_reports, notifications_outbox, vector_icons, library_help_defaults, page_entity_refs). |
+| `pool` | `mmff_vector` | `DB_HOST`, `DB_PORT=5435`, `DB_NAME=mmff_vector`, `DB_USER=mmff_dev` | **ZOMBIE — will be dropped in Pillar 3 step 3.** Connect-able but NO ACTIVE BACKEND CODE issues SQL against this DB. The pool variable is still declared + deferred-close in `main.go` so the connection stays warm (defensive against partial rollback scenarios) but no `*NewService(pool, …)*` call in main.go consumes it after the Pillar 3 step 1 repoint. |
+| `libPools.RO` / `libPools.RW` | `mmff_library` | `LIBRARY_DB_HOST`, `LIBRARY_DB_PORT=5435`, `LIBRARY_DB_NAME=mmff_library`, `LIBRARY_DB_USER=mmff_dev` | Read-only library spine + ack flow. Catalogue lookups for portfolio adoption and library releases. Unchanged by Pillar 3. |
+| `devPool` | `mmff_dev` | `MMFF_DEV_DB_URL` | `dev_reports` — every `<report>` output: SY003 (substrate inventory), PLA### (plans), COD### (audits), RES### (research), RET### (retros), SEC### (security). Sole accessor: `backend/internal/devreports/`. Wired in `backend/cmd/server/main.go`. Unchanged by Pillar 3. |
 
-All three pools run through the SSH tunnel `localhost:5435 → remote :5432` on dev.
+All four pools run through the SSH tunnel `localhost:5435 → remote :5432` on dev.
 
-### Fourth pool — `devPool` (mmff_dev)
+### Snapshot DBs (created 2026-05-25 pre-wipe-and-reseed; ALSO 2026-05-26 pre-rewind)
 
-| Pool variable | Database | Purpose |
-|---|---|---|
-| `devPool` | `mmff_dev` | `dev_reports` — every `<report>` output: SY003 (substrate inventory), PLA### (plans), COD### (audits), RES### (research), RET### (retros), SEC### (security). Sole accessor: `backend/internal/devreports/`. Wired in `backend/cmd/server/main.go:484-513`. |
+Parallel queryable snapshots of all four live DBs. **The running app does NOT connect to these — they are inspection-only.** Drop with `DROP DATABASE <name>_snapshot_20260525;` when no longer needed. See handover `handovers/refactorDB.md` for full snapshot inventory.
 
-> **`mmff_dev` is the cutover's institutional memory.** Wipe-and-reseed plans MUST NOT touch this DB — losing SY003 / PLA064 / COD004 / every retro = losing the substrate documentation we built specifically to survive cutovers.
+## Service → pool index (post Pillar 3 step 1)
 
-### Snapshot DBs (created 2026-05-25 pre-wipe-and-reseed)
+> Source: `backend/cmd/server/main.go` constructor calls. The internal struct fields are still named `pool` for back-compat (`s.pool`, `c.pool`, etc.); the VALUE injected is `servicePool` (= vaPool when configured), so every SQL statement lands on vector_artefacts.
 
-Parallel queryable snapshots of all four live DBs, taken at 2026-05-25 ~22:25 UTC via `pg_dump | psql` inside the `vector-dev_postgres` Swarm container. **The running app does NOT connect to these — they are inspection-only.** Survive as long as the Postgres volume lives. Drop with `DROP DATABASE <name>_snapshot_20260525;` when no longer needed.
-
-| Snapshot DB | Source DB | Size | Tables (parity) |
-|---|---|---|---|
-| `mmff_vector_snapshot_20260525` | `mmff_vector` | 13 MB | 40 / 40 ✓ |
-| `vector_artefacts_snapshot_20260525` | `vector_artefacts` | 16 MB | 57 / 57 ✓ |
-| `mmff_library_snapshot_20260525` | `mmff_library` | 8 MB | 9 / 9 ✓ |
-| `mmff_dev_snapshot_20260525` | `mmff_dev` | 12 MB | 2 / 2 ✓ |
-
-Row-count spot checks at creation time: `users` 59/59, `pages` 59/59, `master_record_workspaces` 30/30, `artefacts` 136/136, `audit_logs` 15386/15386, `dev_reports` 125/125 — all match.
-
-Query a snapshot from the dev host:
-
-```bash
-ssh -o ExitOnForwardFailure=no vector-dev-pg \
-  "docker exec \$(docker ps --format '{{.Names}}' | grep '^vector-dev_postgres') \
-   psql -U mmff_dev -d mmff_vector_snapshot_20260525 -c '\\dt'"
-```
-
-## Service → pool index
-
-> Source: `backend/cmd/server/main.go` constructor calls. When a service is constructed with multiple pools, the first is the primary write target.
-
-### Services on `pool` (mmff_vector)
+### Services on `servicePool` / `vaPool` (vector_artefacts) — the entire tenant surface
 
 | Service | Constructor line | Owns / writes |
 |---|---|---|
-| `auth` | `auth.NewService(pool, auditLog, mailer)` | `users`, `users_sessions`, `users_password_resets` (post RF1.4.2.users) |
-| `apikeys` | `apikeys.New(pool)` | `admin_api_keys` (post RF1.4.2.admin) |
-| `users` | `users.New(pool, auditLog, mailer)` | `users` (role + profile fields) |
-| `roles` | `roles.New(pool, auditLog)` | `users_roles`, `users_permissions`, `users_roles_permissions` (post RF1.4.2.users) |
-| `nav` | `nav.New(pool, navRegistry)` | `pages`, `pages_tags`, `users_roles_pages`, `users_nav_prefs`, `users_nav_groups`, `users_nav_profile_groups` (post RF1.4.2.pages + .users) |
-| `custompages` | `custompages.New(pool)` | `pages` rows with `kind='user_custom'` + `users_custom_pages` views |
-| `addressables` | `addressables.New(pool, ...)` | `pages_addressables`, `pages_help` (post RF1.4.2.pages) |
-| `usertaborder` | `usertaborder.New(pool)` | `users_tab_order` (post RF1.4.2.users) |
-| `workspaces` | `workspaces.New(pool, auditLog, permResolver)` | `master_record_workspaces`, `users_roles_workspaces` (master_record_workspaces → workspaces cross-DB move deferred per TD-NAME-001) |
-
-### Services on `vaPool` (vector_artefacts) — **the cutover substrate**
-
-| Service | Constructor line | Owns / writes |
-|---|---|---|
-| `artefacttypes` | `artefacttypes.NewService(vaPool)` | **`artefacts_types`** (post RF1.4.2.artefacts; the table the `/workspace-admin/artefact-types` page reads/writes) |
-| `artefactitems` | `artefactitems.NewService(vaPool, pool, "work"\|"strategy")` | `artefacts`, `artefacts_fields_values` (post RF1.4.2.artefacts + RF1.4.4 column-prefix); `pool` for cross-DB tenant joins. v-suffix dropped 2026-05-14 (RF1.4.4) — v1 obj_* substrate retired. |
-| `flows` | `flows.NewHandler(flows.New(vaPool, pool))` | `flows`, `flows_states`, `flows_transitions`, `flows_states_exit_rules`, `flows_defaults`, `flows_states_defaults`, `flows_transitions_defaults` (post RF1.4.2.flows) |
-| `fields` | `fields.NewService(pool, vaPool)` — **vaPool is `artefactsPool`** | `artefacts_fields_library`, `artefacts_types_fields`, `workspaces_fields` (post RF1.4.2.artefacts) |
-| `timeboxsprints` | `timeboxsprints.NewService(vaPool)` | `timeboxes_sprints` (post RF1.4.2.timeboxes — full column-prefix applied) |
-| `timeboxreleases` | `timeboxreleases.NewService(vaPool)` | `timeboxes_releases` (post RF1.4.2.timeboxes — full column-prefix applied) |
+| `auth` | `auth.NewService(servicePool, auditLog, mailer)` | `users`, `users_sessions`, `users_password_resets`, `users_reauth_nonces`, `dpop_jti_cache` |
+| `apikeys` | `apikeys.New(servicePool)` | `admin_api_keys` |
+| `users` | `users.New(servicePool, auditLog, mailer)` | `users` |
+| `roles` | `roles.New(servicePool, auditLog)` | `users_roles`, `users_permissions`, `users_roles_permissions` |
+| `nav` | `nav.New(servicePool, navRegistry)` | `pages`, `pages_tags`, `users_roles_pages`, `users_nav_prefs`, `users_nav_groups`, `users_nav_profiles`, `users_nav_profile_groups` |
+| `nav.NewCachedRegistry` | `nav.NewCachedRegistry(servicePool, ...)` | reads `pages`, `pages_tags`, `users_roles_pages` |
+| `nav.NewPageBookmarks` | `nav.NewPageBookmarks(servicePool, ...)` | `users_nav_prefs` (bookmark rows) |
+| `nav.NewGrantsAdminHandler` | `nav.NewGrantsAdminHandler(servicePool, ...)` | `users_roles_pages`, `pages` |
+| `custompages` | `custompages.New(servicePool)` | `users_custom_pages`, `users_custom_page_views`, `pages` (kind='user_custom') |
+| `addressables` | `addressables.New(servicePool, ...)` | `pages_addressables`, `pages_help` |
+| `usertaborder` | `usertaborder.New(servicePool)` | `users_tab_order` |
+| `cspreport` | `cspreport.NewService(servicePool)` | `csp_reports` (columns now prefixed per `csp_reports_<col>` rule) |
+| `costcentres` | `costcentres.NewService(servicePool)` | `cost_centres` |
+| `lookups` | `lookups.NewService(servicePool)` | reads `users` |
+| `pageaccess` | `pageaccess.New(servicePool, ...)` | `pages_access_version`, `pages`, `users_roles_pages` |
+| `permissions.NewResolver` | `permissions.NewResolver(servicePool, ...)` | `users`, `users_permissions`, `users_roles_permissions` |
+| `workspaces` | `workspaces.New(servicePool, auditLog, permResolver)` | `master_record_workspaces`, `users_roles_workspaces` (+ optional VAPool guard for cross-DB orphan checks against artefact tables) |
+| `workspacemasterrecord` | `workspacemasterrecord.New(servicePool)` | `master_record_workspaces` (settings sidecar — FDW indirection retired, reads/writes the local table directly). The `FDWSubscriptionResolver` / `FDWActiveWorkspaceResolver` types keep the legacy name but their SQL now hits the local table. |
+| `tenantmasterrecord` | `tenantmasterrecord.New(servicePool)` | `master_record_tenants` (subscription-tier defaults). |
+| `audit` | `audit.New(servicePool)` + `auditLog.SetPool(vaPool)` | `audit_logs` |
+| `notifications.NewPrefs` | `notifications.NewPrefs(servicePool)` | `users_notifications_prefs` |
+| `notifications.NewService` | `notifications.NewService(servicePool, ...)` | `users_notifications`, `notifications_outbox` |
+| `notifications.NewDBNotifier` | `notifications.NewDBNotifier(servicePool)` | `notifications_outbox` (transactional enqueue) |
+| `notifications.NewRelay` | `notifications.NewRelay(servicePool, ...)` | outbox relay claim/mark loop |
+| `dispatchers.NewInApp` | `dispatchers.NewInApp(servicePool, ...)` | `users_notifications` writes |
+| `dispatchers.NewEmail` | `dispatchers.NewEmail(servicePool, ...)` | reads `users` for recipient address; writes `notifications_outbox` (delivery state) |
+| `notifrules.NewService` | `notifrules.NewService(servicePool)` | `users_notification_rules` |
+| `notifrules.NewEvaluator` | `notifrules.NewEvaluator(servicePool, ...)` | reads `users_notification_rules` |
+| `notifrules.NewSchema` | `notifrules.NewSchema(vaPool)` | reads `artefacts_types` + `artefacts_types_fields` |
+| `mentions` | `mentions.NewService(servicePool, vaPool, notifier)` | `users_mentions` (1st arg); also reads `artefacts*` via 2nd arg for context resolution. Both args point at vaPool post step 1. |
+| `realtime.StartRankListener` | `realtime.StartRankListener(ctx, servicePool, hub)` | `LISTEN rank_changed` on `artefacts` trigger (vector_artefacts) |
+| `realtime.StartSessionSweeper` | `realtime.StartSessionSweeper(ctx, servicePool, registry)` | reads `users_sessions` |
+| `auth.OnLogin` (closure) | `servicePool.QueryRow(ctx, "SELECT subscriptions_tier FROM subscriptions WHERE subscriptions_id = $1", ...)` | reads `subscriptions` |
+| `artefacttypes` | `artefacttypes.NewService(vaPool)` | `artefacts_types` |
+| `artefactitems` | `artefactitems.NewService(vaPool, servicePool, "work"\|"strategy")` | `artefacts`, `artefacts_fields_values`. 2nd arg historically read mmff_vector for cross-DB joins; post step 1 both arguments target vector_artefacts. |
+| `flows` | `flows.NewHandler(flows.New(vaPool, servicePool))` | `flows`, `flows_states`, `flows_transitions`, `flows_states_exit_rules`, `flows_defaults`, `flows_states_defaults`, `flows_transitions_defaults` |
+| `fields` | `fields.NewService(servicePool, vaPool)` | `artefacts_fields_library`, `artefacts_types_fields`, `workspaces_fields` |
+| `timeboxsprints` | `timeboxsprints.NewService(vaPool)` | `timeboxes_sprints` |
+| `timeboxreleases` | `timeboxreleases.NewService(vaPool)` | `timeboxes_releases` |
+| `timeboxmilestones` | `timeboxmilestones.NewService(vaPool)` | `timeboxes_milestones` |
 | `ranking` | `ranking.New(vaPool)` | rank-listener channel + `position` columns on VA tables |
-| `search` | `search.New(vaPool)` | search index + outbox |
+| `search` | `search.New(vaPool)` | search index + outbox reads |
 | `searchworker` | `searchworker.New(vaPool, swCfg)` | indexer consumer; reads outbox, writes index |
-| `webhooks` | `webhooks.New(vaPool)` | `webhooks_subscriptions`, `webhooks_deliveries` (post RF1.4.2.webhooks — full column-prefix applied) |
-| `audit` | `audit.New(pool)` + `auditLog.SetPool(vaPool)` | `audit_logs` (post RF1.4.2.audit — full column-prefix applied); early-bound on `pool` so service constructors capture the reference; pool atomically swapped to `vaPool` after vaPool init |
-| `errorsreport` (writes) | `errorsreport.NewService(libPools.RO, errorsReportPool)` — `errorsReportPool = vaPool` when available, else `pool` | `errors_events` (VA, post RF1.4.2.errors); `libPools.RO` still reads `errors_codes` from mmff_library |
-| `libraryreleases` (acks) | `libraryreleases.NewService(libPools.RO, pool, pool)` + `libReleasesSvc.SetAcksPool(vaPool)` | `library_releases_acknowledgements` (post RF1.4.2.library — hierarchically re-anchored under releases per §2.2) |
-| `topology` | `topology.New(pool, vaPool)` — **vaPool is the canonical write target** | `topology_nodes`, `topology_view_states`, `users_roles_topology_nodes`, `topology_commits` (post RF1.4.2.topology + RF1.4.1 orgdesign→topology rename) |
-| `portfolio` (master record) | `portfolio.NewService(vaPool).WithVectorPool(pool)` | `master_record_portfolios`, `master_record_tenants` (post RF1.4.2.master_record) |
-| `workspacemasterrecord` | `workspacemasterrecord.New(workspaceSettingsPool)` — **vaPool if available, else falls back to `pool`** | `master_record_workspaces` (renamed from `master_record_tenants` by mig 067 / PLA-0032 on 2026-05-15; workspace-tier settings sidecar keyed by `workspace_id`) |
-| `tenantmasterrecord` | `tenantmasterrecord.New(tenantSettingsPool)` — **vaPool if available, else falls back to `pool`** | `master_record_tenants` (NEW table in vector_artefacts, mig 068 / PLA-0050 on 2026-05-15; subscription-tier defaults keyed by `subscription_id`; distinct from `master_record_workspaces` above) |
+| `webhooks` | `webhooks.New(vaPool)` | `webhooks_subscriptions`, `webhooks_deliveries` |
+| `topology` | `topology.New(servicePool, vaPool).WithNotifier(...)` | `topology_nodes`, `topology_view_states`, `users_roles_topology_nodes`, `topology_commits`. The legacy "membership/auth" pool slot also targets vector_artefacts post step 1. |
+| `portfolio` (master record) | `portfolio.NewService(vaPool).WithVectorPool(servicePool)` | `master_record_portfolios`, `master_record_tenants` |
+| `portfoliomodels.NewService` | `portfoliomodels.NewService(libPools.RO, servicePool, nil)` | adoption-state reads (vaPool wired later via `WithVAPool`) |
+| `portfoliomodels.NewAdoptHandler` | `portfoliomodels.NewAdoptHandler(libPools.RO, servicePool, vaPool, masterRecordSvc)` | adopt saga |
+| `portfoliomodels.NewResyncHandler` | `portfoliomodels.NewResyncHandler(libPools.RO, servicePool, vaPool)` | re-sync from adopted bundle |
+| `portfoliomodels.NewAdoptionStateHandler` | `portfoliomodels.NewAdoptionStateHandler(servicePool, vaPool)` | read-side state for `/dev` adoption |
+| `portfoliomodels.NewDevResetHandler` | `portfoliomodels.NewDevResetHandler(servicePool, vaPool, orgDesignSvc)` | dev reset for both pools |
+| `sentinel.NewPoolResolver` | `sentinel.NewPoolResolver(servicePool, servicePool)` | reads `topology_nodes`, `master_record_workspaces`, `users_roles_workspaces`, `users` (all in vaPool post step 1) |
+| `workspaceresolver.NewPoolResolver` | `workspaceresolver.NewPoolResolver(vaPool, vaPool)` | reads `topology_nodes`, `users_roles_workspaces`, `master_record_workspaces` |
+| `errorsreport` | `errorsreport.NewService(libPools.RO, servicePool)` | reads `errors_codes` from mmff_library; writes `errors_events` to vector_artefacts |
+| `libraryreleases` | `libraryreleases.NewService(libPools.RO, servicePool, servicePool)` + `SetAcksPool(vaPool)` | reads `subscriptions.subscriptions_tier`; writes `library_releases_acknowledgements`. All three pool slots target vector_artefacts post step 1. |
+| `libraryreleases.NewReconciler` | `libraryreleases.NewReconciler(libPools.RO, servicePool)` + `SetAcksPool(vaPool)` | refresh-time recounts |
 
 ### Services on `libPools` (mmff_library)
 
+Unchanged by Pillar 3.
+
 | Service | Constructor line | Owns / reads |
 |---|---|---|
-| `librarydb` | `librarydb.New(ctx)` (L135) | Read-only bundle fetch: `library_strategy_layers`, `library_artefact_types`, `library_flows`, etc. |
-| `librarydb` (releases helpers) | `librarydb.ListReleasesSinceAck/AckRelease/CountOutstandingForSubscription/loadAckedSet` (releases.go) | Reads `library_releases` from `libPools`; reads + writes `library_releases_acknowledgements` on `acksPool` (= vaPool post-PLA-0023 P1, fallback `pool`) (post RF1.4.2.library hierarchical re-anchor) |
-
-### Services on more than one pool
-
-| Service | Pools | Notes |
-|---|---|---|
-| `portfoliomodels` | `libPools.RO` + `pool` | Reads adoption catalogue from library; dual-writes adoption state to `mmff_vector` (with optional `vaPool` PLA-0026 mirror) |
-| `errorsreport` | `libPools.RO` + `vaPool` (fallback `pool`) | Reads `errors_codes` catalogue from library (post RF1.4.2.errors); writes `errors_events` to `vector_artefacts` post-PLA-0023 P1 (2026-05-13); falls back to `pool` only when `vaPool` is unavailable |
-| `libraryreleases` | `libPools.RO` + `pool` (subscriptions) + `acksPool` (= `vaPool` post-PLA-0023 P1, fallback `pool`) | 3-pool cross-DB workflow: read `library_releases` from library, look up `subscriptions.tier` on mmff_vector, write `library_releases_acknowledgements` on vector_artefacts (post RF1.4.2.library hierarchical re-anchor). `Service` + `Reconciler` both expose `SetAcksPool` for boot-time swap (audit.Logger pattern) |
-| `portfoliomodels` (errors writer) | `vaPool` (fallback `vectorPool`) via `Orchestrator.ErrorsPool` | `appendErrorEvent` saga writes `errors_events` to vaPool (post RF1.4.2.errors); other saga writes (adoption_state, etc.) stay on `vectorPool` until their tables migrate |
-| `portfoliomodels.NewDevResetHandler` | `pool` + `vaPool` (L397) | Cross-DB reset; tolerates `vaPool == nil` |
+| `librarydb` | `librarydb.New(ctx)` | Read-only bundle fetch: `library_strategy_layers`, `library_artefact_types`, `library_flows`, etc. |
+| `librarydb` (releases helpers) | `ListReleasesSinceAck/AckRelease/CountOutstandingForSubscription/loadAckedSet` | Reads `library_releases` from `libPools`; reads + writes `library_releases_acknowledgements` on `acksPool` (= vaPool). |
 
 ## How to verify a feature's DB before querying
 
 1. **Find the handler.** `grep -rn '<route-or-table-name>' backend/internal/`.
-2. **Find the constructor.** Inside `backend/cmd/server/main.go`, find `<service>.NewService(...)` and note the pool argument(s).
-3. **Look up the pool here.** Match the pool variable name to the table above to get the DB name.
+2. **Find the constructor.** Inside `backend/cmd/server/main.go`, find `<service>.New*(...)` and note the pool argument(s).
+3. **Look up the pool here.** After Pillar 3 step 1 the answer is almost always `vector_artefacts`. The only exceptions are `mmff_library` (read-only library spine) and `mmff_dev` (dev_reports).
 4. **Run psql with the matching `-d <dbname>` flag.** Connection string is always `host=localhost port=5435 user=mmff_dev` on dev; only the DB name changes.
 
 ## Common confusions to avoid
 
-- `obj_*` tables (`obj_execution_types`, `obj_strategy_types`, `obj_work_items`, etc.) live in **`mmff_vector`** as the *legacy* substrate. They are being phased out by PLA-0023 cutover.
-- `artefacts_types`, `artefacts`, `artefacts_fields_library`, `artefacts_fields_values`, `flows`, `flows_states`, `flows_transitions`, `timeboxes_*` live in **`vector_artefacts`** as the *current* substrate (post RF1.4.2.artefacts + RF1.4.2.flows + RF1.4.2.timeboxes).
-- A feature with a "v2" suffix (e.g. `/api/v2/work-items`) almost certainly reads `vaPool`. A non-v2 route may still read `vaPool` post-cutover — always verify via main.go.
-- `vector_icons` and `subscription_item_type_icons` live in **`mmff_vector`** — they predate the cutover and have not been migrated yet.
+- The legacy `obj_*` tables are GONE — they never existed in vector_artefacts and the mmff_vector copies were retired pre-Pillar 2.
+- The internal struct field is still named `pool` (e.g. `s.pool` in `Service`); the VALUE it holds is `servicePool` = vaPool. Don't rename the fields in this wave — it's mechanical churn for no behaviour change.
+- `subscriptions` and `master_record_workspaces` lived in mmff_vector pre-Pillar-2; they are now natively in vector_artefacts (no FDW indirection). The `workspacemasterrecord.FDWSubscriptionResolver` type name is a misnomer post step 1 — the underlying SQL is a local-table read.
+- `mmff_dev` is the cutover's institutional memory and is NEVER part of the tenant-pool repoint. Wipe-and-reseed plans MUST NOT touch this DB.
 
 ## Cross-references
 
-- Schema golden source for `mmff_vector` → [`c_schema.md`](c_schema.md).
+- Schema golden source for `mmff_vector` (zombie) → [`c_schema.md`](c_schema.md).
 - vector_artefacts cutover plan → [`c_c_vector_artefacts_backfill.md`](c_c_vector_artefacts_backfill.md).
 - Library bundle fetch contract → [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md).
 - Tenant isolation invariants → [`c_schema.md`](c_schema.md) (tenant-id sections).
+- Pillar 3 handover → [`../handovers/refactorDB.md`](../handovers/refactorDB.md).

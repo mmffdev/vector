@@ -85,9 +85,18 @@ const sqlSearchMentionablesTenant = `
 		LIMIT $3
 	`
 
-// sqlSearchMentionablesTeam — same shape, narrowed to users on the
-// caller's team(s). The join uses users_teams + users_teams_members.
-// When the caller belongs to no team, this returns zero rows.
+// sqlSearchMentionablesTeam — DEAD-CODE per refactorDB Pillar 3 step 1
+// (2026-05-26). The users_teams and users_teams_members tables do not
+// exist in either mmff_vector or vector_artefacts — the "team scope"
+// branch of mention search was scaffolded but never materialised.
+// Service.SearchMentionables falls through to the tenant query when
+// the team query returns zero rows, so this string is unreferenced in
+// practice at runtime; the constant is kept here as the documented
+// dropping point. Remove with the matching service.go branch when
+// teams ship (or sooner, as a follow-up after step 1 lands).
+// Same shape as sqlSearchMentionablesTenant otherwise; narrowed to
+// users on the caller's team(s). The join uses users_teams +
+// users_teams_members.
 const sqlSearchMentionablesTeam = `
 		SELECT DISTINCT
 			u.users_id,

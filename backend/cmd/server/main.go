@@ -123,6 +123,60 @@ func main() {
 	defer pool.Close()
 	bootstatus.Set("db", true, "")
 
+	// Pillar 3 step 1 (refactorDB): vector_artefacts is now the canonical
+	// home for every former mmff_vector table (users, sessions, pages,
+	// nav_*, roles, permissions, workspaces, master_record_workspaces,
+	// subscriptions, audit_logs, cost_centres, csp_reports, etc.). Open
+	// vaPool here so every downstream service constructor can take it
+	// instead of `pool`. The legacy `pool` (mmff_vector) stays open until
+	// Pillar 3 step 3 drops the DB; nothing in backend/internal/ should
+	// be issuing SQL against it after this wave.
+	//
+	// VECTOR_ARTEFACTS_DB_URL is optional — when unset (legacy /
+	// pre-cutover envs), vaPool is nil and we fall back to `pool` for
+	// the services that historically read mmff_vector. v2 artefact-items
+	// + topology + sprints/releases continue to stub-degrade in that
+	// mode (pre-existing behaviour).
+	var vaPool *pgxpool.Pool
+	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
+		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
+		if vaErr != nil {
+			logger.Warn("vector_artefacts pool config error — falling back to mmff_vector pool", "err", vaErr)
+		} else {
+			vaCfg.MinConns = 2
+			vaCfg.MaxConnIdleTime = 5 * time.Minute
+			p, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
+			if vaErr != nil {
+				logger.Warn("vector_artefacts pool connect failed — falling back to mmff_vector pool", "err", vaErr)
+			} else if vaErr = p.Ping(ctx); vaErr != nil {
+				logger.Warn("vector_artefacts pool ping failed — falling back to mmff_vector pool", "err", vaErr)
+				p.Close()
+			} else {
+				vaPool = p
+				defer vaPool.Close()
+				maskedURL := vaURL
+				if i := strings.Index(vaURL, "@"); i > 0 {
+					if j := strings.LastIndex(vaURL[:i], ":"); j > 0 {
+						maskedURL = vaURL[:j+1] + "***" + vaURL[i:]
+					}
+				}
+				logger.Info("vector_artefacts pool connected", "url", maskedURL)
+				bootstatus.Set("vector_artefacts_db", true, "")
+			}
+		}
+	} else {
+		logger.Warn("VECTOR_ARTEFACTS_DB_URL unset — services will fall back to mmff_vector pool")
+	}
+
+	// servicePool is the pool every "moved-table" service takes after
+	// Pillar 3 step 1. It is vaPool when available; otherwise we fall
+	// back to `pool` so pre-cutover envs still boot. Refer to
+	// docs/c_c_db_routing.md for the post-cutover wiring.
+	servicePool := pool
+	if vaPool != nil {
+		servicePool = vaPool
+	}
+
 	// PLA-0007: parity check between the Go catalogue and the DB. Drift
 	// (or a missing `permissions` table when migrations are behind on the
 	// active env) is loud-but-not-fatal: the resolver already denies on
@@ -130,7 +184,7 @@ func main() {
 	// so the operator sees it, but the server still boots — otherwise
 	// switching env to one that lacks migration 088 makes the backend
 	// unstartable, which is the worst possible failure mode for a launcher.
-	if err := permissions.VerifyParity(ctx, pool); err != nil {
+	if err := permissions.VerifyParity(ctx, servicePool); err != nil {
 		logger.Warn("permissions parity FAILED — RBAC-gated routes will deny by default until fixed", "err", err)
 		bootstatus.Set("permissions_parity", false, err.Error())
 	} else {
@@ -141,7 +195,7 @@ func main() {
 	// per user. 60s TTL keeps cross-process drift bounded; explicit
 	// Invalidate hooks fire from roles/users mutations within this process.
 	// Consumed by auth.RequirePermission middleware on every route below.
-	permResolver := permissions.NewResolver(pool, 60*time.Second)
+	permResolver := permissions.NewResolver(servicePool, 60*time.Second)
 
 	// Library DB pools (mmff_library). Phase 3 only consumes RO; the
 	// publish + ack pools are wired the moment a handler needs them.
@@ -158,11 +212,13 @@ func main() {
 	bootstatus.Set("library_db", true, "")
 	defer libPools.Close()
 
-	// audit_log moved to vector_artefacts 2026-05-13 (mmff_vector → VA consolidation P1).
-	// Constructed early with `pool` so service constructors can capture the reference;
-	// repointed to vaPool below via SetPool once vaPool is initialised. If
-	// VECTOR_ARTEFACTS_DB_URL is unset (legacy path), writes continue against pool.
-	auditLog := audit.New(pool)
+	// audit_log lives in vector_artefacts post-Pillar-3 step 1
+	// (mmff_vector → VA consolidation, refactorDB). Constructed against
+	// servicePool which is vaPool when available; SetPool below also
+	// pins vaPool explicitly for back-compat with the early-bound
+	// reference pattern. If VECTOR_ARTEFACTS_DB_URL is unset (legacy
+	// path), writes continue against the mmff_vector pool fallback.
+	auditLog := audit.New(servicePool)
 	// B16.8 P5 — audit-event alerting. NewWebhook reads
 	// AUDIT_ALERT_{WEBHOOK_URL,ACTIONS,SECRET}; returns a disabled
 	// Webhook (no-op) unless both URL and allowlist are set. Wired
@@ -173,7 +229,7 @@ func main() {
 	log.Printf("audit-alerting: %s", alertWebhook.String())
 	mailer := email.NewFromEnv()
 
-	authSvc := auth.NewService(pool, auditLog, mailer)
+	authSvc := auth.NewService(servicePool, auditLog, mailer)
 	authSvc.Resolver = permResolver
 	// TD-SEC-SESSION-ANOMALY — geo resolver. Loads GeoLite2-City +
 	// GeoLite2-ASN .mmdb files from GEOIP_CITY_DB / GEOIP_ASN_DB env
@@ -213,26 +269,27 @@ func main() {
 		}
 	}()
 
-	apiKeysSvc := apikeys.New(pool)
+	apiKeysSvc := apikeys.New(servicePool)
 	apiKeysH := apikeys.NewHandler(apiKeysSvc, auditLog)
 
 	// Seed dev API key for local testing (story 00443).
 	// Only in development; logs the key once for curl testing.
-	if err := apikeys.SeedDevKey(ctx, pool, appEnv, os.Getenv("DEV_API_KEY")); err != nil {
+	if err := apikeys.SeedDevKey(ctx, servicePool, appEnv, os.Getenv("DEV_API_KEY")); err != nil {
 		log.Fatalf("seed dev api key: %v", err)
 	}
 
-	usersSvc := users.New(pool, auditLog, mailer)
+	usersSvc := users.New(servicePool, auditLog, mailer)
 	usersH := users.NewHandler(usersSvc, permResolver)
 
 	// TD-SEC-CSP-NONCES-SRI Phase 2 — browser-side CSP violation reporting.
-	// Mounted unauthenticated below; service writes to mmff_vector.csp_reports
-	// (mig 209). Per-IP rate limit is the only DoS protection.
-	cspReportH := cspreport.NewHandler(cspreport.NewService(pool))
+	// Mounted unauthenticated below; service writes to csp_reports in
+	// vector_artefacts (post-Pillar-3 step 1). Per-IP rate limit is the
+	// only DoS protection.
+	cspReportH := cspreport.NewHandler(cspreport.NewService(servicePool))
 
 	// Roles HTTP surface (PLA-0007 G3). Service is sole writer for
 	// roles + role_permissions; the handler is a thin translation layer.
-	rolesSvc := roles.New(pool, auditLog)
+	rolesSvc := roles.New(servicePool, auditLog)
 	rolesSvc.Resolver = permResolver
 	// PLA-0049: resolve the seven grp_* system role UUIDs at boot. Random
 	// gen_random_uuid() values mean we can't use compile-time constants;
@@ -248,16 +305,16 @@ func main() {
 	// Prime at startup; on failure record degraded state and continue.
 	// nav.CachedRegistry.Get refreshes on demand, so the first nav request
 	// after the DB recovers will populate the cache without a restart.
-	navRegistry := nav.NewCachedRegistry(pool, 60*time.Second)
+	navRegistry := nav.NewCachedRegistry(servicePool, 60*time.Second)
 	if _, err := navRegistry.Load(ctx); err != nil {
 		logger.Warn("nav registry initial load failed — will retry on first request", "err", err)
 		bootstatus.Set("nav_registry", false, err.Error())
 	} else {
 		bootstatus.Set("nav_registry", true, "")
 	}
-	navSvc := nav.New(pool, navRegistry)
-	navPageBookmarks := nav.NewPageBookmarks(pool, navRegistry, navSvc)
-	customPagesSvc := custompages.New(pool)
+	navSvc := nav.New(servicePool, navRegistry)
+	navPageBookmarks := nav.NewPageBookmarks(servicePool, navRegistry, navSvc)
+	customPagesSvc := custompages.New(servicePool)
 	customPagesH := custompages.NewHandler(customPagesSvc)
 
 	// Universal addressables registry (PLA-0005). Service is the SOLE
@@ -265,21 +322,21 @@ func main() {
 	// endpoints — see backend/internal/addressables/handler.go for the
 	// auth contract (CI token gate on /build-reconcile, prod gate on
 	// /register).
-	addressablesSvc := addressables.New(pool, appEnv == "production")
+	addressablesSvc := addressables.New(servicePool, appEnv == "production")
 	addressablesH := addressables.NewHandler(
 		addressablesSvc,
 		os.Getenv("CI_SERVICE_TOKEN"),
 		os.Getenv("CUSTOM_APP_TOKEN"),
 	)
 	navH := nav.NewHandler(navSvc, navPageBookmarks, customPagesSvc)
-	navGrantsAdminH := nav.NewGrantsAdminHandler(pool, navRegistry, rolesSvc, auditLog)
+	navGrantsAdminH := nav.NewGrantsAdminHandler(servicePool, navRegistry, rolesSvc, auditLog)
 
 	// PLA-0049 Phase 0.5: page-access resolver + handler. The resolver
 	// caches the global pages_access_version (1s in-process) and a
 	// per-user key_enum access set (re-fetched on version mismatch).
 	// auth.RequirePageAccess(keyEnum) middleware reads from this same
 	// instance so the cache is shared across all gated routes.
-	pageAccessResolver := pageaccess.New(pool, 1*time.Second)
+	pageAccessResolver := pageaccess.New(servicePool, 1*time.Second)
 	pageAccessH := pageaccess.NewHandler(pageAccessResolver, func(ctx context.Context) (uuid.UUID, bool) {
 		u := auth.UserFromCtx(ctx)
 		if u == nil {
@@ -290,13 +347,16 @@ func main() {
 
 	// Per-user, per-page tab ordering for SecondaryNavigation reorder mode (PLA-0014).
 	// Sole writer for users_tab_order; mounted at /api/user/tab-order below.
-	userTabOrderSvc := usertaborder.New(pool)
+	userTabOrderSvc := usertaborder.New(servicePool)
 	userTabOrderH := usertaborder.NewHandler(userTabOrderSvc)
 
 	// PLA-0039 / Story 00530: portfoliomodels.Service hosts all DB I/O
 	// for the package. vaPool is wired further down — pmSvc is rebound
 	// after the vaPool block so workspace-layers reads see the live pool.
-	portfolioModelsSvc := portfoliomodels.NewService(libPools.RO, pool, nil)
+	// The middle pool ("vectorPool" historically) reads subscriptions /
+	// users / master_record_workspaces — all in vector_artefacts post
+	// Pillar 3 step 1, so it takes servicePool now.
+	portfolioModelsSvc := portfoliomodels.NewService(libPools.RO, servicePool, nil)
 	portfolioModelsH := portfoliomodels.NewHandler(portfolioModelsSvc)
 	// vaPool is wired below; nil = legacy-only adoption path. The
 	// orchestrator skips PLA-0026 dual-writes when nil.
@@ -318,19 +378,23 @@ func main() {
 	// On-login hook warms the cache so the first badge poll after sign-in
 	// returns instantly. Cache is invalidated on every successful ack.
 	//
-	// library_acknowledgements moved to vector_artefacts 2026-05-13
-	// (PLA-0023 P1). Early-bound on `pool`; SetAcksPool below swaps to
-	// vaPool once it is initialised. Same pattern as audit.Logger.
-	libReleasesRec := libraryreleases.NewReconciler(libPools.RO, pool)
+	// library_acknowledgements + subscriptions both live in
+	// vector_artefacts post Pillar 3 step 1. Reconciler + Service take
+	// servicePool (which is vaPool when configured) for the vectorPool
+	// slot; SetAcksPool below still pins vaPool explicitly for back-
+	// compat with the early-bound pattern.
+	libReleasesRec := libraryreleases.NewReconciler(libPools.RO, servicePool)
 	libReleasesRec.Start(ctx)
 	defer libReleasesRec.Stop()
-	libReleasesSvc := libraryreleases.NewService(libPools.RO, pool, pool)
+	libReleasesSvc := libraryreleases.NewService(libPools.RO, servicePool, servicePool)
 	libReleasesH := libraryreleases.NewHandler(libReleasesSvc, auditLog, libReleasesRec)
 
 	// Realtime hub + Postgres LISTEN bridge. The hub is in-memory; the
 	// bridge runs LISTEN rank_changed on a dedicated connection and
 	// fans NOTIFY payloads (emitted by the notify_rank_changed trigger
-	// in db/mmff_vector/schema/069) to subscribed clients.
+	// on the artefacts table — vector_artefacts) to subscribed clients.
+	// The session sweeper polls users_sessions, also in vector_artefacts
+	// after Pillar 3 step 1.
 	//
 	// Constructed early so other services can inject it as a notifier
 	// (e.g. topology GrantNotifier for story 00283 handoff inbox).
@@ -341,8 +405,8 @@ func main() {
 	// session enforcement contract would silently break.
 	rtRegistry := realtime.NewSessionRegistry()
 	rtHub := realtime.NewHubWithRegistry(rtRegistry)
-	realtime.StartRankListener(context.Background(), pool, rtHub)
-	realtime.StartSessionSweeper(context.Background(), pool, rtRegistry)
+	realtime.StartRankListener(context.Background(), servicePool, rtHub)
+	realtime.StartSessionSweeper(context.Background(), servicePool, rtRegistry)
 
 	// Topology / federated org canvas (PLA-0006). topology is the SOLE
 	// writer for topology_nodes, topology_role_grants, and
@@ -363,15 +427,16 @@ func main() {
 	// service holds its own permission resolver so /api/workspaces
 	// routes only need RequireAuth + RequireFreshPassword at the
 	// router; per-route gating happens inside Service.requirePermission.
-	workspacesSvc := workspaces.New(pool, auditLog, permResolver)
+	workspacesSvc := workspaces.New(servicePool, auditLog, permResolver)
 	workspacesH := workspaces.NewHandler(workspacesSvc)
 
-	// vector_artefacts pool — reads/writes the cutover DB. Shared by
-	// v2 work-items (PLA-0023) AND portfolio adoption dual-writes
-	// (PLA-0026). VECTOR_ARTEFACTS_DB_URL is optional; absent = v2
-	// route returns empty pages AND adoption falls back to legacy-only
-	// (no PLA-0026 dual-writes).
-	var vaPool *pgxpool.Pool
+	// vector_artefacts pool — initialised at the top of main so every
+	// "moved-table" service can take it via servicePool. The remaining
+	// vaPool-only wiring (v2 artefact-items handlers, webhook service,
+	// audit/libreleases pool swap, workspaces VA guard) happens below.
+	// vaPool is nil only when VECTOR_ARTEFACTS_DB_URL is unset (legacy);
+	// in that case v2 routes return stub handlers — pre-cutover behaviour.
+	//
 	// B21 (PLA-0037): two handler instances on the same artefactitems
 	// codebase — workItemsV2H mounted at /samantha/v2/work-items with
 	// scope="work" (legacy compat), portfolioItemsV2H mounted at
@@ -392,92 +457,59 @@ func main() {
 	// engine + notifier are constructed further down. Nil when v2
 	// is stubbed or when the rules engine isn't initialised.
 	var v2RuleHookAttach func(notifrules.RuleHook)
-	makeStubHandlers := func() {
+	if vaPool != nil {
+		// audit_log + library_acknowledgements moved to vaPool 2026-05-13
+		// (PLA-0023 P1). Swap the early-bound pool on the audit Logger,
+		// the libreleases reconciler, and the libreleases service so
+		// downstream callers that captured these references write into
+		// vector_artefacts. libRO stays on mmff_library.
+		auditLog.SetPool(vaPool)
+		libReleasesRec.SetAcksPool(vaPool)
+		libReleasesSvc.SetAcksPool(vaPool)
+		webhookSvc = webhooks.New(vaPool)
+		notifier := webhooks.NewNotifier(webhookSvc)
+		wiSvc := artefactitems.NewService(vaPool, servicePool, "work")
+		wiSvc.WithNotifier(notifier)
+		workItemsV2H = artefactitems.NewHandler(wiSvc)
+		piSvc := artefactitems.NewService(vaPool, servicePool, "strategy")
+		piSvc.WithNotifier(notifier)
+		portfolioItemsV2H = artefactitems.NewHandler(piSvc)
+		// PLA-0043 — defer wiring orgDesignSvc until after it is
+		// constructed below; assign back through closures so the
+		// scope clamp is available on both v2 services.
+		v2ScopeAttach = func(t artefactitems.TopologyScopeResolver) {
+			wiSvc.WithTopologyResolver(t)
+			piSvc.WithTopologyResolver(t)
+		}
+		// Same late-binding pattern for the notification-rules hook
+		// (see the v2RuleHookAttach declaration above).
+		v2RuleHookAttach = func(h notifrules.RuleHook) {
+			wiSvc.WithRuleHook(h)
+			piSvc.WithRuleHook(h)
+		}
+		// PLA-0026 / story 00502 (B13): attach the VA pool to the
+		// workspaces service so DELETE /api/workspaces/{id} can
+		// scan vector_artefacts for orphan rows BEFORE deletion.
+		// Without this attach, workspacesSvc.CheckCrossDBOrphans
+		// is a documented no-op (guard disabled).
+		workspacesSvc.WithVAPool(vaPool)
+	} else {
 		workItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "work"))
 		portfolioItemsV2H = artefactitems.NewHandler(artefactitems.NewService(nil, nil, "strategy"))
-	}
-	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
-		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
-		if vaErr != nil {
-			logger.Warn("vector_artefacts pool config error — v2 artefact-items will return empty", "err", vaErr)
-			makeStubHandlers()
-		} else {
-			vaCfg.MinConns = 2
-			vaCfg.MaxConnIdleTime = 5 * time.Minute
-			p, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
-			if vaErr != nil {
-				logger.Warn("vector_artefacts pool connect failed — v2 artefact-items will return empty", "err", vaErr)
-				makeStubHandlers()
-			} else if vaErr = p.Ping(ctx); vaErr != nil {
-				logger.Warn("vector_artefacts pool ping failed — v2 artefact-items will return empty", "err", vaErr)
-				p.Close()
-				makeStubHandlers()
-			} else {
-				vaPool = p
-				defer vaPool.Close()
-				// PLA-0023 / mmff_vector → vector_artefacts consolidation (P1):
-				// audit_log lives on vaPool from 2026-05-13. Repoint the
-				// early-bound Logger so every service that captured it now
-				// writes against vector_artefacts.
-				auditLog.SetPool(vaPool)
-				// library_acknowledgements moved to vaPool 2026-05-13
-				// (PLA-0023 P1). Swap the early-bound pool on both the
-				// reconciler (writes refresh-time recounts) and the
-				// service (writes acks). libRO + subscriptions stays put.
-				libReleasesRec.SetAcksPool(vaPool)
-				libReleasesSvc.SetAcksPool(vaPool)
-				// Mask password in log: strip :password@ from the URL.
-				maskedURL := vaURL
-				if i := strings.Index(vaURL, "@"); i > 0 {
-					if j := strings.LastIndex(vaURL[:i], ":"); j > 0 {
-						maskedURL = vaURL[:j+1] + "***" + vaURL[i:]
-					}
-				}
-				logger.Info("vector_artefacts pool connected", "url", maskedURL)
-				webhookSvc = webhooks.New(vaPool)
-				notifier := webhooks.NewNotifier(webhookSvc)
-				wiSvc := artefactitems.NewService(vaPool, pool, "work")
-				wiSvc.WithNotifier(notifier)
-				workItemsV2H = artefactitems.NewHandler(wiSvc)
-				piSvc := artefactitems.NewService(vaPool, pool, "strategy")
-				piSvc.WithNotifier(notifier)
-				portfolioItemsV2H = artefactitems.NewHandler(piSvc)
-				// PLA-0043 — defer wiring orgDesignSvc until after it is
-				// constructed below; assign back through closures so the
-				// scope clamp is available on both v2 services.
-				v2ScopeAttach = func(t artefactitems.TopologyScopeResolver) {
-					wiSvc.WithTopologyResolver(t)
-					piSvc.WithTopologyResolver(t)
-				}
-				// Same late-binding pattern for the notification-rules hook
-				// (see the v2RuleHookAttach declaration above).
-				v2RuleHookAttach = func(h notifrules.RuleHook) {
-					wiSvc.WithRuleHook(h)
-					piSvc.WithRuleHook(h)
-				}
-				// PLA-0026 / story 00502 (B13): attach the VA pool to the
-				// workspaces service so DELETE /api/workspaces/{id} can
-				// scan vector_artefacts for orphan rows BEFORE deletion.
-				// Without this attach, workspacesSvc.CheckCrossDBOrphans
-				// is a documented no-op (guard disabled).
-				workspacesSvc.WithVAPool(vaPool)
-				bootstatus.Set("vector_artefacts_db", true, "")
-			}
-		}
-	} else {
-		logger.Warn("VECTOR_ARTEFACTS_DB_URL unset — v2 artefact-items will return empty pages")
-		makeStubHandlers()
 	}
 	// Cross-pool workspace re-derivation for auth.Refresh — without this
 	// the JWT drops its workspace_id claim on every refresh and the
 	// sentinel fallback silently reverts the user to the tenant's
-	// earliest-granted workspace. The resolver needs both pools because
-	// topology_nodes lives in vector_artefacts and users_roles_workspaces
-	// lives in mmff_vector. Wired only when vaPool is up — pre-cutover
-	// environments without vector_artefacts skip this enhancement (the
-	// sentinel fallback still works; it just doesn't preserve user picks).
+	// earliest-granted workspace.
+	//
+	// Pillar 3 step 1: both topology_nodes (VA-owned) AND
+	// users_roles_workspaces (moved from mmff_vector → VA) now live in
+	// vector_artefacts. We still pass two pool arguments because the
+	// PoolResolver carries both pools explicitly today (will collapse
+	// to one in Pillar 3 step 3 when mmff_vector is dropped); both
+	// slots take vaPool now.
 	if vaPool != nil {
-		authSvc.WorkspaceResolver = workspaceresolver.NewPoolResolver(vaPool, pool)
+		authSvc.WorkspaceResolver = workspaceresolver.NewPoolResolver(vaPool, vaPool)
 	}
 
 	// mmff_dev pool — holds dev_reports (research/plan/security/retro/code/api).
@@ -517,12 +549,12 @@ func main() {
 		logger.Warn("MMFF_DEV_DB_URL unset — /dev/reporting will return empty")
 	}
 
-	// Topology service (PLA-0006 / M6.2.7). Constructed here, after
-	// the vaPool block, because every topology read/write goes through
-	// vector_artefacts. The legacy `pool` (mmff_vector) is retained on
-	// the service for membership/auth lookups (PoolWorkspaceLookup) and
-	// for the subscriptions.topology_committed_* checkpoint columns
-	// which still live in mmff_vector.
+	// Topology service (PLA-0006 / M6.2.7). Every topology read/write
+	// goes through vector_artefacts. After Pillar 3 step 1 the legacy
+	// "pool" slot (used historically for membership/auth lookups +
+	// subscriptions.topology_committed_* checkpoints) also points at
+	// vector_artefacts — subscriptions moved with the rest of the 37
+	// tables — so we pass servicePool for both arguments.
 	//
 	// vaPool may be nil (no VECTOR_ARTEFACTS_DB_URL): the handler is
 	// still wired so the routes return 5xx-with-context rather than
@@ -530,7 +562,7 @@ func main() {
 	// call until vaPool is provisioned. WithNotifier wires the
 	// realtime hub so a fresh role grant publishes a per-user
 	// "topology-handoff" event (story 00283).
-	orgDesignSvc = topology.New(pool, vaPool).WithNotifier(topology.HubNotifier{Hub: rtHub})
+	orgDesignSvc = topology.New(servicePool, vaPool).WithNotifier(topology.HubNotifier{Hub: rtHub})
 	orgDesignH = topology.NewHandler(orgDesignSvc).WithAudit(auditLog)
 
 	// Wire topology seeder so every new workspace gets a root topology node.
@@ -558,72 +590,63 @@ func main() {
 	var masterRecordSvc *portfolio.Service
 	if vaPool != nil {
 		// PLA-0039 / Story 00530: Service holds both pools so the
-		// handler can be DB-free. WithVectorPool wires mmff_vector for
-		// the read authz path (CanReadMasterRecord).
-		masterRecordSvc = portfolio.NewService(vaPool).WithVectorPool(pool)
+		// handler can be DB-free. WithVectorPool historically wired
+		// mmff_vector for the read authz path (CanReadMasterRecord);
+		// post Pillar 3 step 1 that data lives in vaPool too.
+		masterRecordSvc = portfolio.NewService(vaPool).WithVectorPool(servicePool)
 	}
-	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, pool, vaPool, masterRecordSvc)
+	portfolioAdoptH = portfoliomodels.NewAdoptHandler(libPools.RO, servicePool, vaPool, masterRecordSvc)
 	portfolioAdoptStreamH = portfoliomodels.NewAdoptStreamHandler(portfolioAdoptH.Orchestrator)
-	portfolioResyncH = portfoliomodels.NewResyncHandler(libPools.RO, pool, vaPool)
+	portfolioResyncH = portfoliomodels.NewResyncHandler(libPools.RO, servicePool, vaPool)
 
 	// PLA-0026 / Story 00501 (B12): adoption-state reads from the new
 	// substrate (master_record_portfolios + artefacts_types) via vaPool.
-	// vectorPool is still required to resolve subscription_id →
-	// workspace_id; vaPool may be nil (handler returns notStarted).
-	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(pool, vaPool)
+	// The "vectorPool" slot resolved subscription_id → workspace_id;
+	// post Pillar 3 step 1 that data lives in vaPool too. vaPool may
+	// be nil (handler returns notStarted).
+	portfolioAdoptionStateH = portfoliomodels.NewAdoptionStateHandler(servicePool, vaPool)
 
 	// Dev reset handler — constructed here (after vaPool) so MasterReset
-	// can target both mmff_vector (pool) and vector_artefacts (vaPool).
-	// vaPool may be nil; MasterReset skips the VA leg gracefully when nil.
-	devResetH = portfoliomodels.NewDevResetHandler(pool, vaPool, orgDesignSvc)
+	// can target both pools. After Pillar 3 step 1 the legacy mmff_vector
+	// reset path is a no-op against an empty zombie DB, but we still
+	// pass servicePool to keep the existing wiring shape intact until
+	// Pillar 3 step 3 collapses to a single pool argument.
+	devResetH = portfoliomodels.NewDevResetHandler(servicePool, vaPool, orgDesignSvc)
 
 	// Tenant settings (master_record_workspaces — renamed from
-	// master_record_tenants by migration 067 on 2026-05-15). M2: reads/writes
-	// vector_artefacts (mig 036). Falls back to mmff_vector pool until 036 is
-	// applied on dev.
-	workspaceSettingsPool := pool
-	if vaPool != nil {
-		workspaceSettingsPool = vaPool
-	}
-	workspaceSettingsSvc := workspacemasterrecord.New(workspaceSettingsPool)
+	// master_record_tenants by migration 067 on 2026-05-15). Reads /
+	// writes vector_artefacts via servicePool (vaPool when available;
+	// mmff_vector fallback only for pre-cutover envs).
+	workspaceSettingsSvc := workspacemasterrecord.New(servicePool)
 	workspaceSettingsH := workspacemasterrecord.NewHandler(workspaceSettingsSvc)
 
 	// Tenant settings (master_record_tenants in vector_artefacts —
-	// subscription-keyed, PLA-0050). Reuses the same pool fallback
-	// pattern as workspace-settings above.
-	tenantSettingsPool := pool
-	if vaPool != nil {
-		tenantSettingsPool = vaPool
-	}
-	tenantSettingsSvc := tenantmasterrecord.New(tenantSettingsPool)
+	// subscription-keyed, PLA-0050). Same servicePool wiring.
+	tenantSettingsSvc := tenantmasterrecord.New(servicePool)
 	tenantSettingsH := tenantmasterrecord.NewHandler(tenantSettingsSvc)
 
 	// PLA-0051 Story 3.5 — wire tenant→workspace inheritance read-path.
-	// SubscriptionResolver reads fdw_workspaces in vector_artefacts to
-	// resolve workspace_id → subscription_id; TenantDefaultsReader
-	// reads master_record_tenants with pointer types so NULLs survive
-	// the scan (the merge in workspacemasterrecord.Service uses NULL
-	// to mean "fall through to schema default"). Both share the
-	// workspace-settings pool which is vaPool when available.
-	//
-	// Both pools land in the same DB (vector_artefacts) but the wiring
-	// is intentionally conservative: if vaPool is nil (test env / pool
-	// fallback to mmff_vector), the resolver would fail on fdw_workspaces
-	// — Service.mergeInheritance treats that as "no tenant tier" and
-	// falls to schema defaults, so the surface degrades gracefully
-	// rather than crashes.
+	// SubscriptionResolver and ActiveWorkspaceResolver historically read
+	// the fdw_workspaces foreign table in vector_artefacts; after
+	// Pillar 3 step 1 the source data (master_record_workspaces) lives
+	// natively in vector_artefacts, so the resolvers query the local
+	// table directly. Both run against servicePool (vaPool when up).
+	// TenantDefaultsReader reads master_record_tenants with pointer
+	// types so NULLs survive the scan (the merge in
+	// workspacemasterrecord.Service uses NULL to mean "fall through to
+	// schema default").
 	if vaPool != nil {
 		workspaceSettingsSvc.WithInheritance(
-			workspacemasterrecord.NewFDWSubscriptionResolver(workspaceSettingsPool),
-			workspacemasterrecord.NewPGTenantDefaultsReader(workspaceSettingsPool),
+			workspacemasterrecord.NewFDWSubscriptionResolver(servicePool),
+			workspacemasterrecord.NewPGTenantDefaultsReader(servicePool),
 		)
 		// TD-WS-001 pay-down — handler resolves the active workspace_id
-		// from the caller's subscription via FDWActiveWorkspaceResolver.
+		// from the caller's subscription via the ActiveWorkspaceResolver.
 		// No URL params, no client involvement. The user never sees a
 		// workspace UUID.
 		// See: .claude/memory/project_workspace_scope_invisible.md
 		workspaceSettingsH.WithResolver(
-			workspacemasterrecord.NewFDWActiveWorkspaceResolver(workspaceSettingsPool),
+			workspacemasterrecord.NewFDWActiveWorkspaceResolver(servicePool),
 		)
 	}
 
@@ -643,10 +666,11 @@ func main() {
 	// PLA-0026 / Story 00500 (B11): GET /api/workspace/{id}/fields —
 	// returns the admitted field set for one workspace, computed by
 	// the same admit/deny rules the per-field resolver uses (R047 §5).
-	// vectorPool is required (membership + tenancy lookups); vaPool
-	// may be nil — in that case the handler returns an empty fields
-	// slice after the auth gate succeeds (mirrors v2 work-items).
-	fieldsSvc := fields.NewService(pool, vaPool)
+	// The "vectorPool" slot historically resolved membership / tenancy;
+	// post Pillar 3 step 1 those lookups land in vector_artefacts too.
+	// vaPool may be nil — in that case the handler returns an empty
+	// fields slice after the auth gate succeeds (mirrors v2 work-items).
+	fieldsSvc := fields.NewService(servicePool, vaPool)
 	fieldsH := fields.NewHandler(fieldsSvc)
 
 	// PLA-0026 / Story 00499 (B10): workspace-scoped successor to the
@@ -665,7 +689,7 @@ func main() {
 	// dial failure also falls back to noop with a warning, so a broker
 	// outage doesn't take the whole API down.
 	notifLogger := slog.Default()
-	notifPrefs := notifications.NewPrefs(pool)
+	notifPrefs := notifications.NewPrefs(servicePool)
 	notifTemplates := notifications.NewTemplates()
 	notifications.RegisterMentionDefault(notifTemplates)
 	notifications.RegisterArtefactDefault(notifTemplates)
@@ -681,21 +705,21 @@ func main() {
 			notifier = notifications.NewNoop(notifLogger)
 		} else {
 			notifBroker = rb
-			notifier = notifications.NewDBNotifier(pool)
+			notifier = notifications.NewDBNotifier(servicePool)
 			// Start the outbox relay (LISTEN/NOTIFY-driven, +30s tick safety net).
 			go func() {
-				if err := notifications.NewRelay(pool, notifBroker, notifLogger).Run(ctx); err != nil && ctx.Err() == nil {
+				if err := notifications.NewRelay(servicePool, notifBroker, notifLogger).Run(ctx); err != nil && ctx.Err() == nil {
 					notifLogger.Error("notifications.relay: exited", "err", err)
 				}
 			}()
 			// Start dispatchers — one goroutine each, bound to *.<channel>.
 			go func() {
-				if err := dispatchers.NewInApp(pool, notifTemplates, notifPrefs, notifLogger).Run(ctx, notifBroker); err != nil && ctx.Err() == nil {
+				if err := dispatchers.NewInApp(servicePool, notifTemplates, notifPrefs, notifLogger).Run(ctx, notifBroker); err != nil && ctx.Err() == nil {
 					notifLogger.Error("notifications.inapp: exited", "err", err)
 				}
 			}()
 			go func() {
-				if err := dispatchers.NewEmail(pool, mailer, notifTemplates, notifPrefs, notifLogger).Run(ctx, notifBroker); err != nil && ctx.Err() == nil {
+				if err := dispatchers.NewEmail(servicePool, mailer, notifTemplates, notifPrefs, notifLogger).Run(ctx, notifBroker); err != nil && ctx.Err() == nil {
 					notifLogger.Error("notifications.email: exited", "err", err)
 				}
 			}()
@@ -712,14 +736,14 @@ func main() {
 		notifier = notifications.NewNoop(notifLogger)
 	}
 	_ = notifBroker // currently no main.go-level shutdown hook; relay goroutines exit on ctx
-	notifSvc := notifications.NewService(pool, notifPrefs)
+	notifSvc := notifications.NewService(servicePool, notifPrefs)
 	notifH := notifications.NewHandler(notifSvc)
 	notifStreamH := notifications.NewStreamHandler(rtHub)
 	// Rules engine — CRUD on users_notification_rules + the per-tenant
 	// field/operator catalogue endpoint the settings UI consumes.
 	// Storage lives on mmff_vector; schema endpoint reads vaPool for
 	// artefact_types + their bound fields (which is why both pools land here).
-	notifRulesSvc := notifrules.NewService(pool)
+	notifRulesSvc := notifrules.NewService(servicePool)
 	notifRulesH := notifrules.NewHandler(notifRulesSvc)
 	notifSchemaH := notifrules.NewSchemaHandler(notifrules.NewSchema(vaPool))
 	// Evaluator + producer-side hook adapter. The artefactitems
@@ -728,7 +752,7 @@ func main() {
 	// notifications outbox via the existing Notifier. Bridging here
 	// (in main.go) avoids any artefactitems↔rules↔notifications
 	// import cycle — main is the only place that holds all three.
-	notifEvaluator := notifrules.NewEvaluator(pool, notifLogger)
+	notifEvaluator := notifrules.NewEvaluator(servicePool, notifLogger)
 	v2RuleHook := newRulesProducerHook(notifEvaluator, notifier, notifLogger)
 	if v2RuleHookAttach != nil {
 		v2RuleHookAttach(v2RuleHook)
@@ -740,7 +764,7 @@ func main() {
 	// scope='tenant' (master_record_tenants lives in vector_artefacts).
 	// Notifier is now DBNotifier (writes outbox in tx) when AMQP_URL is
 	// set, falls back to NoopNotifier otherwise.
-	mentionsSvc := mentions.NewService(pool, vaPool, notifier)
+	mentionsSvc := mentions.NewService(servicePool, vaPool, notifier)
 	// Mention context resolvers — turn (kind, UUID) into a
 	// "PREFIX-NUM — Title" label. Segregated in
 	// notifications/resolvers so the wiring is a single line here;
@@ -781,12 +805,13 @@ func main() {
 	}
 
 	// Lookups handler — slim scope-bound lookup endpoints (users-in-scope
-	// etc.) used by inline form pickers. Backed by mmff_vector pool.
-	lookupsH := lookups.NewHandler(lookups.NewService(pool))
+	// etc.) used by inline form pickers. Backed by servicePool
+	// (vector_artefacts post Pillar 3 step 1; users lives there now).
+	lookupsH := lookups.NewHandler(lookups.NewService(servicePool))
 
 	var flowsH *flows.Handler
 	if vaPool != nil {
-		flowsH = flows.NewHandler(flows.New(vaPool, pool))
+		flowsH = flows.NewHandler(flows.New(vaPool, servicePool))
 	}
 
 	// Generic rank service. Backed by vaPool (vector_artefacts) for
@@ -816,28 +841,29 @@ func main() {
 	artefactTypesH := artefacttypes.NewHandler(artefactTypesSvc)
 	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))
 
-	// B20.4.3 — cost_centres lives in mmff_vector (subscription-scoped
-	// finance reference data; FK target of users.cost_centre_id, which
-	// also lives in mmff_vector). Writes gated by cost_centres.manage;
-	// reads available to any authenticated tenant member (server-side
-	// SubscriptionID clamp ensures no cross-tenant leak).
-	costCentresH := costcentres.NewHandler(costcentres.NewService(pool), permResolver)
+	// B20.4.3 — cost_centres moved to vector_artefacts in Pillar 3 step 1
+	// (subscription-scoped finance reference data; FK target of
+	// users.cost_centre_id, which also lives in vector_artefacts now).
+	// Writes gated by cost_centres.manage; reads available to any
+	// authenticated tenant member (server-side SubscriptionID clamp
+	// ensures no cross-tenant leak).
+	costCentresH := costcentres.NewHandler(costcentres.NewService(servicePool), permResolver)
 
 	// PLA062 S05.4: Sentinel is the sole request-level clamp surface.
 	// Replaces the prior topology.PoolWorkspaceLookup + per-route
 	// WorkspaceClampMiddleware mounts that were hoisted in PLA-0053 /
-	// story 00578. PoolResolver carries vaPool (topology_nodes) + pool
-	// (workspaces / roles_workspaces / users) and satisfies
-	// sentinel.Resolver. sentinelMW is the one middleware mounted in
-	// front of every route group that needs the JWT-anchored workspace
-	// clamp; handlers read sentinel.FromCtx(ctx) for workspace_id,
-	// tenant_id, focus_node_id, and the resolved allowed-subtree set.
+	// story 00578. PoolResolver carries two pool arguments (historically
+	// VA for topology_nodes + mmff_vector for workspaces/roles_workspaces/
+	// users); post Pillar 3 step 1 every one of those tables lives in
+	// vector_artefacts, so both slots take servicePool. sentinelMW is
+	// the one middleware mounted in front of every route group that
+	// needs the JWT-anchored workspace clamp.
 	//
 	// The legacy-token fallback (FirstLiveWorkspace), the forgery /
 	// role-revocation guard (HasActiveRole), and the per-grant subtree
 	// clamp all live inside sentinel.Middleware now — no caller need
 	// know about workspaces vs topology_nodes vs roles_workspaces.
-	sentinelResolver := sentinel.NewPoolResolver(vaPool, pool)
+	sentinelResolver := sentinel.NewPoolResolver(servicePool, servicePool)
 	sentinelMW := sentinel.Middleware(sentinelResolver)
 
 	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
@@ -850,18 +876,15 @@ func main() {
 	// Generic error reporter: any authenticated role can POST a
 	// {code, context} pair; we validate the code against the cross-DB
 	// mmff_library.error_codes catalogue and append-only insert into
-	// vector_artefacts.error_events (moved from mmff_vector 2026-05-13,
-	// PLA-0023 P1). Falls back to `pool` when vaPool is unavailable so
-	// pre-cutover environments keep working.
-	errorsReportPool := pool
-	if vaPool != nil {
-		errorsReportPool = vaPool
-	}
-	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, errorsReportPool))
+	// vector_artefacts.error_events. Post Pillar 3 step 1 the writes
+	// always land on servicePool (vaPool when available).
+	errorsReportH := errorsreport.NewHandler(errorsreport.NewService(libPools.RO, servicePool))
 
+	// subscriptions moved to vector_artefacts in Pillar 3 step 1 — the
+	// on-login tier lookup queries servicePool.
 	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *roletypes.User) {
 		var tier string
-		if err := pool.QueryRow(ctx,
+		if err := servicePool.QueryRow(ctx,
 			`SELECT subscriptions_tier FROM subscriptions WHERE subscriptions_id = $1`, u.SubscriptionID,
 		).Scan(&tier); err != nil {
 			return // tier lookup failed — reconciler will warm on first poll

@@ -19,17 +19,17 @@ package nav
 
 // ── bookmarks.go ────────────────────────────────────────────────────────────
 
-// sqlSelectEntityForBookmarkTemplate is the parameterised-by-table read
-// used by Bookmarks.loadEntity. The `%s` placeholder is the table name —
-// resolved from a hard-coded EntityKind switch, NEVER from user input,
-// so substitution is safe. Returns name + subscription_id + archived_at
-// (as text for nullable scan).
+// sqlSelectEntityForBookmarkTemplate — DEAD-CODE per refactorDB
+// Pillar 3 step 1 (2026-05-26). The original caller (Bookmarks.loadEntity)
+// was deleted with TD-CUT1.1.1-BOOKMARK-SURFACE — see
+// bookmarks.go header. No Go code references this constant; it is
+// retained as the documented dropping point and will be removed in a
+// follow-up commit once the lint:sql-in-sqlfile-only check confirms
+// no other reference materialises.
 //
-// NOTE (RF1.5.6): this template is keyed on legacy bare column names
-// (name / subscription_id / archived_at / id) that target tables which
-// have NOT been swept yet. When those tables are swept their respective
-// waves will rewrite the column references here; pages + subscriptions
-// don't participate in this template, so wave-5 leaves it untouched.
+// Pre-deletion template: returned name + subscription_id +
+// archived_at for a parameterised entity table. Kept verbatim below
+// for archaeological reference.
 const sqlSelectEntityForBookmarkTemplate = `
 		SELECT name, subscription_id, archived_at::text FROM %s WHERE id = $1
 	`
