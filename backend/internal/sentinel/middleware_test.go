@@ -10,7 +10,7 @@
 // The six test cases below pin the contract from the AC of S03:
 //   1. Valid JWT + ?meg=<uuid>          → 200, ctx carries clamp
 //   2. Valid JWT, no ?focus, user default → 200, focus = user's default
-//   3. Valid JWT, no ?focus, no default   → 200, focus = tenant root
+//   3. Valid JWT, no ?focus, no default   → 200, focus = workspace root
 //   4. Focus outside tenant               → 403 problem+json
 //   5. Focus user has no grant on         → 403 problem+json
 //   6. No JWT at all                      → 401 problem+json
@@ -98,11 +98,19 @@ type stubResolver struct {
 	resolveFn func(ctx context.Context, tenant, focus uuid.UUID, scopeUp, scopeDown bool) ([]uuid.UUID, error)
 
 	// defaultFocusFn returns the per-user persisted default focus.
-	// nil = no default (falls back to tenant root).
+	// nil = no default (falls back to workspace root).
 	defaultFocusFn func(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
 
 	// tenantRootFn returns the tenant-root node for fallback case (3).
 	tenantRootFn func(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
+
+	// focusWorkspaceFn returns the workspace that owns a focus node.
+	// Configured in stale-cross-workspace tests.
+	focusWorkspaceFn func(ctx context.Context, tenant, focus uuid.UUID) (uuid.UUID, error)
+
+	// workspaceRootFn returns the root node for the resolved workspace.
+	// Configured in fallback tests.
+	workspaceRootFn func(ctx context.Context, tenant, workspaceID uuid.UUID) (uuid.UUID, error)
 
 	// firstLiveWorkspaceFn returns the legacy-JWT-fallback workspace.
 	// Configured in S05.1 workspace-resolution tests (cases 7/8).
@@ -135,7 +143,7 @@ func (s *stubResolver) ResolveSubtree(ctx context.Context, tenant, focus uuid.UU
 
 // DefaultFocus satisfies sentinel.Resolver. Returns (nil, nil) when
 // defaultFocusFn is unset — meaning "user has no default", which the
-// middleware treats as fall-through to tenant root.
+// middleware treats as fall-through to workspace root.
 func (s *stubResolver) DefaultFocus(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
 	if s.defaultFocusFn == nil {
 		return nil, nil
@@ -152,6 +160,24 @@ func (s *stubResolver) TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.U
 		return fixtureTenantARootA, nil
 	}
 	return s.tenantRootFn(ctx, tenant)
+}
+
+// FocusWorkspace satisfies sentinel.Resolver. Defaults to the fixture
+// user's workspace so existing cases keep exercising their original path.
+func (s *stubResolver) FocusWorkspace(ctx context.Context, tenant, focus uuid.UUID) (uuid.UUID, error) {
+	if s.focusWorkspaceFn == nil {
+		return fixtureWorkspaceInA, nil
+	}
+	return s.focusWorkspaceFn(ctx, tenant, focus)
+}
+
+// WorkspaceRoot satisfies sentinel.Resolver. Defaults to the historical
+// tenant-root fixture so pre-existing fallback tests remain stable.
+func (s *stubResolver) WorkspaceRoot(ctx context.Context, tenant, workspaceID uuid.UUID) (uuid.UUID, error) {
+	if s.workspaceRootFn == nil {
+		return fixtureTenantARootA, nil
+	}
+	return s.workspaceRootFn(ctx, tenant, workspaceID)
 }
 
 // FirstLiveWorkspace satisfies sentinel.Resolver. Returns a default
@@ -175,11 +201,11 @@ func (s *stubResolver) HasActiveRole(ctx context.Context, workspaceID, userID uu
 	return s.hasActiveRoleFn(ctx, workspaceID, userID)
 }
 
-// GrantOnNode satisfies sentinel.Resolver. Defaults to false — handler
-// tests for PutFocus install a closure returning true on the happy path.
+// GrantOnNode satisfies sentinel.Resolver. Defaults to true for middleware
+// tests; PutFocus handler tests install explicit grant/no-grant closures.
 func (s *stubResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error) {
 	if s.grantOnNodeFn == nil {
-		return false, nil
+		return true, nil
 	}
 	return s.grantOnNodeFn(ctx, tenant, userID, nodeID)
 }
@@ -260,6 +286,42 @@ func TestMiddleware_Case1_ValidJWTWithFocus_AttachesFullClamp(t *testing.T) {
 	}
 }
 
+func TestMiddleware_Case1b_URLFocusInDifferentWorkspaceFallsBackToUserDefault(t *testing.T) {
+	resolver := &stubResolver{
+		defaultFocusFn: func(_ context.Context, userID uuid.UUID) (*uuid.UUID, error) {
+			return &fixtureUserDefault, nil
+		},
+		focusWorkspaceFn: func(_ context.Context, _ uuid.UUID, focus uuid.UUID) (uuid.UUID, error) {
+			if focus == fixtureFocusInB {
+				return fixtureWorkspaceInB, nil
+			}
+			return fixtureWorkspaceInA, nil
+		},
+		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {
+			if focus != fixtureUserDefault {
+				t.Fatalf("expected stale cross-workspace URL focus to fall back to default %s, got %s", fixtureUserDefault, focus)
+			}
+			return []uuid.UUID{focus}, nil
+		},
+	}
+
+	mw := Middleware(resolver)
+	insp := &inspectorHandler{}
+	h := mw(insp)
+
+	req := httptest.NewRequest("GET", "/anything?meg="+fixtureFocusInB.String(), nil)
+	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA()))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+	if insp.clamp == nil || insp.clamp.FocusNodeID != fixtureUserDefault {
+		t.Fatalf("expected clamp.FocusNodeID = user default, got %+v", insp.clamp)
+	}
+}
+
 // ---------------------------------------------------------------------
 // Case 2 — Valid JWT, no ?focus, user has a default → falls back to default
 // ---------------------------------------------------------------------
@@ -294,8 +356,47 @@ func TestMiddleware_Case2_NoFocusFallsBackToUserDefault(t *testing.T) {
 	}
 }
 
+func TestMiddleware_Case2b_StaleUserDefaultFallsBackToWorkspaceRoot(t *testing.T) {
+	resolver := &stubResolver{
+		defaultFocusFn: func(_ context.Context, userID uuid.UUID) (*uuid.UUID, error) {
+			return &fixtureUserDefault, nil
+		},
+		workspaceRootFn: func(_ context.Context, tenant, workspaceID uuid.UUID) (uuid.UUID, error) {
+			if workspaceID != fixtureWorkspaceInA {
+				t.Fatalf("expected workspace root lookup for workspace %s, got %s", fixtureWorkspaceInA, workspaceID)
+			}
+			return fixtureTenantARootA, nil
+		},
+		grantOnNodeFn: func(_ context.Context, _, _, nodeID uuid.UUID) (bool, error) {
+			return nodeID != fixtureUserDefault, nil
+		},
+		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {
+			if focus != fixtureTenantARootA {
+				t.Fatalf("expected fallback focus %s, got %s", fixtureTenantARootA, focus)
+			}
+			return []uuid.UUID{focus}, nil
+		},
+	}
+
+	mw := Middleware(resolver)
+	insp := &inspectorHandler{}
+	h := mw(insp)
+
+	req := httptest.NewRequest("GET", "/anything", nil)
+	req = req.WithContext(withFixtureUser(req.Context(), fixtureUserA()))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 fallback, got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+	if insp.clamp == nil || insp.clamp.FocusNodeID != fixtureTenantARootA {
+		t.Fatalf("expected clamp.FocusNodeID = workspace root fallback, got %+v", insp.clamp)
+	}
+}
+
 // ---------------------------------------------------------------------
-// Case 3 — Valid JWT, no ?focus, no user default → falls back to tenant root
+// Case 3 — Valid JWT, no ?focus, no user default → falls back to workspace root
 // ---------------------------------------------------------------------
 
 func TestMiddleware_Case3_NoFocusNoDefaultFallsBackToTenantRoot(t *testing.T) {
@@ -308,7 +409,7 @@ func TestMiddleware_Case3_NoFocusNoDefaultFallsBackToTenantRoot(t *testing.T) {
 		},
 		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {
 			if focus != fixtureTenantARootA {
-				t.Fatalf("expected focus = tenant root, got %s", focus)
+				t.Fatalf("expected focus = workspace root, got %s", focus)
 			}
 			return []uuid.UUID{focus}, nil
 		},
@@ -327,7 +428,7 @@ func TestMiddleware_Case3_NoFocusNoDefaultFallsBackToTenantRoot(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rec.Code)
 	}
 	if insp.clamp.FocusNodeID != fixtureTenantARootA {
-		t.Errorf("clamp.FocusNodeID = %s, want %s (tenant root)", insp.clamp.FocusNodeID, fixtureTenantARootA)
+		t.Errorf("clamp.FocusNodeID = %s, want %s (workspace root)", insp.clamp.FocusNodeID, fixtureTenantARootA)
 	}
 }
 

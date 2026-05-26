@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 )
@@ -15,16 +16,17 @@ import (
 // of auth.RequireAuth — see S05.
 //
 // Resolution order for the workspace_id (PLA-0053 + S05 absorption):
-//   1. JWT workspace_id claim   (PLA-0053 era; the common path)
-//   2. resolver.FirstLiveWorkspace(tenantID) (legacy-token fallback)
-//   Then resolver.HasActiveRole(workspaceID, userID) MUST return true
-//   (forgery guard + role-revocation guard) regardless of which path
-//   was taken — false → 403 /errors/sentinel/no-workspace-role.
+//  1. JWT workspace_id claim   (PLA-0053 era; the common path)
+//  2. resolver.FirstLiveWorkspace(tenantID) (legacy-token fallback)
+//     Then resolver.HasActiveRole(workspaceID, userID) MUST return true
+//     (forgery guard + role-revocation guard) regardless of which path
+//     was taken — false → 403 /errors/sentinel/no-workspace-role.
 //
 // Resolution order for the focus node:
-//   1. ?focus=<uuid> query parameter (URL wins — bookmarkable scope)
-//   2. resolver.DefaultFocus(userID)  (per-user persisted preference)
-//   3. resolver.TenantRoot(tenantID)  (final fallback — subscription root)
+//  1. ?focus=<uuid> query parameter (URL wins when it is in the JWT workspace)
+//  2. resolver.DefaultFocus(userID)  (per-user persisted preference)
+//  3. resolver.WorkspaceRoot(workspaceID) (current workspace root)
+//  4. resolver.TenantRoot(tenantID)  (final emergency fallback)
 //
 // Scope-up / scope-down default to true (Rally idiom — see RES059).
 // Both must be explicitly "false" to clamp to the focus node alone.
@@ -86,17 +88,39 @@ func Middleware(r Resolver) func(http.Handler) http.Handler {
 			scopeUp := !isQueryFalse(req, "scope_up")
 			scopeDown := !isQueryFalse(req, "scope_down")
 
-			// Step 5 — resolve focus node (URL > user default > tenant root).
-			focus, ferr := resolveFocus(req, u.ID, u.SubscriptionID, r)
+			// Step 5 — resolve focus node (URL > user default > workspace root > tenant root).
+			focus, source, ferr := resolveFocus(req, u.ID, u.SubscriptionID, workspaceID, r)
 			if ferr != nil {
-				log.Printf("sentinel.Middleware resolveFocus: %v", ferr)
-				writeProblem(w, req, http.StatusInternalServerError, "internal",
-					"focus resolution failed")
+				switch {
+				case errors.Is(ferr, ErrFocusNoAccess):
+					writeProblem(w, req, http.StatusForbidden, "focus-no-access",
+						"you do not have access to the requested focus node")
+				default:
+					log.Printf("sentinel.Middleware resolveFocus: %v", ferr)
+					writeProblem(w, req, http.StatusInternalServerError, "internal",
+						"focus resolution failed")
+				}
 				return
 			}
 
 			// Step 6 — resolve allowed subtree (or get a sentinel error).
 			ids, serr := r.ResolveSubtree(req.Context(), u.SubscriptionID, focus, scopeUp, scopeDown)
+			if serr != nil && source == focusSourceDefault &&
+				(errors.Is(serr, ErrFocusNotInTenant) || errors.Is(serr, ErrFocusNoAccess)) {
+				fallback, ferr := fallbackFocus(req, u.SubscriptionID, workspaceID, r)
+				if ferr != nil {
+					log.Printf("sentinel.Middleware fallbackFocus: %v", ferr)
+					writeProblem(w, req, http.StatusInternalServerError, "internal",
+						"focus fallback failed")
+					return
+				}
+				fallbackIDs, fallbackErr := r.ResolveSubtree(req.Context(), u.SubscriptionID, fallback, scopeUp, scopeDown)
+				if fallbackErr == nil {
+					focus = fallback
+					ids = fallbackIDs
+					serr = nil
+				}
+			}
 			if serr != nil {
 				switch {
 				case errors.Is(serr, ErrFocusNotInTenant):
@@ -144,16 +168,41 @@ func resolveWorkspace(req *http.Request, u *roletypes.User, r Resolver) (uuid.UU
 	return r.FirstLiveWorkspace(req.Context(), u.SubscriptionID, u.ID)
 }
 
-// resolveFocus picks the focus node per URL > user default > tenant root.
+type focusSource string
+
+const (
+	focusSourceURL           focusSource = "url"
+	focusSourceDefault       focusSource = "default"
+	focusSourceWorkspaceRoot focusSource = "workspace-root"
+	focusSourceTenantRoot    focusSource = "tenant-root"
+)
+
+// resolveFocus picks the focus node per URL > user default > workspace root > tenant root.
 // Returns the resolved UUID; an error from this function indicates an
 // infrastructure failure (resolver / DB lookup), not a user-visible
 // 4xx — those come from ResolveSubtree.
-func resolveFocus(req *http.Request, userID, tenantID uuid.UUID, r Resolver) (uuid.UUID, error) {
+func resolveFocus(req *http.Request, userID, tenantID, workspaceID uuid.UUID, r Resolver) (uuid.UUID, focusSource, error) {
 	// Step 1 — URL ?meg= (PLA-0053; named after Rick's daughter Megan;
 	// canonical scope-identity URL param across the project)
 	if raw := req.URL.Query().Get("meg"); raw != "" {
 		if id, err := uuid.Parse(raw); err == nil {
-			return id, nil
+			if ok, werr := focusInWorkspace(req, tenantID, workspaceID, id, r); werr != nil {
+				// Preserve the historical explicit-bad-link behaviour:
+				// a URL focus that is archived/cross-tenant should 403 in
+				// ResolveSubtree, while a same-tenant focus from a different
+				// workspace is treated as stale and falls through.
+				if !errors.Is(werr, pgx.ErrNoRows) {
+					return uuid.Nil, "", werr
+				}
+				return id, focusSourceURL, nil
+			} else if ok {
+				if accessOK, aerr := r.GrantOnNode(req.Context(), tenantID, userID, id); aerr != nil {
+					return uuid.Nil, "", aerr
+				} else if !accessOK {
+					return uuid.Nil, "", ErrFocusNoAccess
+				}
+				return id, focusSourceURL, nil
+			}
 		}
 		// Malformed UUID in the URL → treat as if absent and fall through.
 		// A future S## may decide to 400 on this instead; for now we
@@ -163,13 +212,48 @@ func resolveFocus(req *http.Request, userID, tenantID uuid.UUID, r Resolver) (uu
 	// Step 2 — user default (only call if resolver provides it; the
 	// stub in tests may set defaultFocusFn nil)
 	if def, err := r.DefaultFocus(req.Context(), userID); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, "", err
 	} else if def != nil {
-		return *def, nil
+		if ok, werr := focusInWorkspace(req, tenantID, workspaceID, *def, r); werr != nil {
+			// Deleted/archived/cross-tenant saved default: ignore and
+			// fall back. This is a user preference, not an explicit
+			// request, so it should never strand the session.
+			if !errors.Is(werr, pgx.ErrNoRows) {
+				return uuid.Nil, "", werr
+			}
+		} else if ok {
+			if accessOK, aerr := r.GrantOnNode(req.Context(), tenantID, userID, *def); aerr != nil {
+				return uuid.Nil, "", aerr
+			} else if !accessOK {
+				return fallbackFocusWithSource(req, tenantID, workspaceID, r)
+			}
+			return *def, focusSourceDefault, nil
+		}
 	}
 
-	// Step 3 — tenant root
-	return r.TenantRoot(req.Context(), tenantID)
+	// Step 3 — current workspace root.
+	return fallbackFocusWithSource(req, tenantID, workspaceID, r)
+}
+
+func fallbackFocus(req *http.Request, tenantID, workspaceID uuid.UUID, r Resolver) (uuid.UUID, error) {
+	root, _, err := fallbackFocusWithSource(req, tenantID, workspaceID, r)
+	return root, err
+}
+
+func fallbackFocusWithSource(req *http.Request, tenantID, workspaceID uuid.UUID, r Resolver) (uuid.UUID, focusSource, error) {
+	if root, err := r.WorkspaceRoot(req.Context(), tenantID, workspaceID); err == nil {
+		return root, focusSourceWorkspaceRoot, nil
+	}
+	root, err := r.TenantRoot(req.Context(), tenantID)
+	return root, focusSourceTenantRoot, err
+}
+
+func focusInWorkspace(req *http.Request, tenantID, workspaceID, focus uuid.UUID, r Resolver) (bool, error) {
+	focusWorkspace, err := r.FocusWorkspace(req.Context(), tenantID, focus)
+	if err != nil {
+		return false, err
+	}
+	return focusWorkspace == workspaceID, nil
 }
 
 // isQueryFalse returns true when the named query param is explicitly

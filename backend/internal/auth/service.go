@@ -329,8 +329,8 @@ type LoginResult struct {
 	// MFA challenge path — set when mfa_enrolled=true.
 	// MFARequired=true means no refresh cookie should be set; the caller
 	// must redirect the user to POST /auth/mfa/verify with MFAChallengeToken.
-	MFARequired        bool
-	MFAChallengeToken  string
+	MFARequired       bool
+	MFAChallengeToken string
 }
 
 // dpopJKT (TD-SEC-DPOP-BINDING Phase 3) is the RFC 7638 thumbprint
@@ -376,15 +376,11 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua, dpopJKT 
 		return &LoginResult{User: u, MFARequired: true, MFAChallengeToken: challengeToken}, nil
 	}
 
-	// PLA-0053 / story 00575: attach the user's first live workspace
-	// to the JWT claim. Failure (no workspaces yet, DB error) is
-	// non-fatal — the access token signs without a workspace_id claim
-	// and WorkspaceClampMiddleware falls back to FirstLiveWorkspace
-	// per the legacy-token rollout window. Login itself never blocks
-	// on workspace resolution.
-	if wsID, werr := s.resolveDefaultWorkspace(ctx, u.SubscriptionID); werr == nil {
-		u.WorkspaceID = wsID
-	}
+	// PLA-0053 / story 00575: attach the user's active workspace to the
+	// JWT claim. Prefer the saved home node's workspace; fall back to
+	// the first granted workspace; if neither resolves, sign without a
+	// workspace_id claim and let Sentinel reject downstream requests.
+	s.deriveWorkspaceForSession(ctx, u)
 
 	raw, hash, err := GenerateRefreshToken()
 	if err != nil {
@@ -459,9 +455,7 @@ func (s *Service) MFAVerifyLogin(ctx context.Context, challengeToken, code, ip, 
 	}
 
 	// MFA passed — issue full session (mirrors the non-MFA Login tail).
-	if wsID, werr := s.resolveDefaultWorkspace(ctx, u.SubscriptionID); werr == nil {
-		u.WorkspaceID = wsID
-	}
+	s.deriveWorkspaceForSession(ctx, u)
 	raw, hash, err := GenerateRefreshToken()
 	if err != nil {
 		return nil, err
@@ -530,7 +524,7 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 	var revoked bool
 	var rotatedAt *time.Time
 	var successorHash *string
-	var boundJKT string           // RFC 9449 cnf.jkt inherited onto the new session
+	var boundJKT string               // RFC 9449 cnf.jkt inherited onto the new session
 	var firstCountry, firstASN string // TD-SEC-SESSION-ANOMALY drift baseline
 	err := s.Pool.QueryRow(ctx, sqlSelectSessionByHash, hash).
 		Scan(&sessID, &userID, &expiresAt, &revoked, &rotatedAt, &successorHash, &boundJKT, &firstCountry, &firstASN)
@@ -608,11 +602,11 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 			Action:    "auth.refresh_session_anomaly",
 			IPAddress: &ip,
 			Metadata: fp.auditMetadata(map[string]any{
-				"session_id":     sessID.String(),
-				"first_country":  firstCountry,
-				"first_asn":      firstASN,
-				"drift_country":  driftCountry,
-				"drift_asn":      driftASN,
+				"session_id":    sessID.String(),
+				"first_country": firstCountry,
+				"first_asn":     firstASN,
+				"drift_country": driftCountry,
+				"drift_asn":     driftASN,
 			}),
 		})
 		return nil, ErrSessionAnomaly
@@ -627,8 +621,8 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 	// per-session selection, not a column on users). Without this, every
 	// refresh would drop the workspace_id claim and the sentinel fallback
 	// would silently revert the user to the tenant's earliest-granted
-	// workspace. See deriveWorkspaceForRefresh for the three-tier rationale.
-	s.deriveWorkspaceForRefresh(ctx, u)
+	// workspace. See deriveWorkspaceForSession for the three-tier rationale.
+	s.deriveWorkspaceForSession(ctx, u)
 
 	// Rotate: revoke old (stamping rotation metadata), insert new.
 	raw, newHash, err := GenerateRefreshToken()
@@ -723,8 +717,8 @@ func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, u
 		return nil, err
 	}
 	// Re-derive WorkspaceID — same rationale as Refresh, applies on the
-	// grace-window path too. See deriveWorkspaceForRefresh.
-	s.deriveWorkspaceForRefresh(ctx, u)
+	// grace-window path too. See deriveWorkspaceForSession.
+	s.deriveWorkspaceForSession(ctx, u)
 
 	// Successor session is already live — stamp its id as the sid claim
 	// and re-emit the same cnf.jkt the parent rotation set on the row.
@@ -1010,10 +1004,10 @@ func (s *Service) resolveDefaultWorkspace(ctx context.Context, subscriptionID uu
 	return id, nil
 }
 
-// deriveWorkspaceForRefresh re-populates u.WorkspaceID on refresh
-// (Refresh + refreshFromSuccessor) so the re-minted access token
-// carries the workspace_id claim instead of dropping it. Three-tier
-// resolution:
+// deriveWorkspaceForSession populates u.WorkspaceID before any access
+// token is signed (Login, MFA login, Refresh, refreshFromSuccessor) so
+// the JWT workspace_id claim follows the user's saved home instead of
+// drifting to the tenant's earliest workspace. Three-tier resolution:
 //
 //	Path A: u.DefaultFocusNodeID → topology_nodes.workspace_id,
 //	        validated against an active users_roles_workspaces grant.
@@ -1030,11 +1024,16 @@ func (s *Service) resolveDefaultWorkspace(ctx context.Context, subscriptionID uu
 // holds: sentinel.HasActiveRole is the authoritative gate downstream
 // and runs regardless of whether the JWT claim is present.
 //
-// Nil-safe: when s.WorkspaceResolver is nil (tests that don't wire it),
-// returns immediately leaving u.WorkspaceID == uuid.Nil — same behaviour
-// as before this fix landed.
-func (s *Service) deriveWorkspaceForRefresh(ctx context.Context, u *roletypes.User) {
+// Nil-safe: when s.WorkspaceResolver is nil (older tests that don't wire
+// it), falls back to the legacy first-live-workspace lookup if Pool is
+// available; otherwise leaves u.WorkspaceID == uuid.Nil.
+func (s *Service) deriveWorkspaceForSession(ctx context.Context, u *roletypes.User) {
 	if s.WorkspaceResolver == nil {
+		if s.Pool != nil {
+			if wsID, err := s.resolveDefaultWorkspace(ctx, u.SubscriptionID); err == nil {
+				u.WorkspaceID = wsID
+			}
+		}
 		return
 	}
 

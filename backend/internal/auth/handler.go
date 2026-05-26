@@ -13,9 +13,9 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/httperr"
-	"github.com/mmffdev/vector-backend/internal/usermessages"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/security"
+	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
 type Handler struct {
@@ -86,8 +86,8 @@ type loginResp struct {
 // mfaChallengeResp is returned instead of loginResp when the user has
 // MFA enrolled. The frontend must POST /auth/mfa/verify with this token.
 type mfaChallengeResp struct {
-	MFARequired     bool   `json:"mfa_required"`
-	ChallengeToken  string `json:"challenge_token"`
+	MFARequired    bool   `json:"mfa_required"`
+	ChallengeToken string `json:"challenge_token"`
 }
 
 // userPayload mirrors AuthContext.AuthUser on the frontend. Adding the
@@ -95,8 +95,8 @@ type mfaChallengeResp struct {
 // trip on app boot — every consumer that previously branched on
 // user.role can now branch on a permission code instead.
 type userPayload struct {
-	ID                  uuid.UUID   `json:"id"`
-	SubscriptionID      uuid.UUID   `json:"subscription_id"`
+	ID             uuid.UUID `json:"id"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
 	// WorkspaceID surfaces the user's active workspace_id from the JWT
 	// claim (PLA-0053 / story 00580). Frontend's useActiveWorkspace
 	// hook reads this off AuthContext to key per-workspace caches.
@@ -114,37 +114,37 @@ type userPayload struct {
 	// Surfacing this on the user payload (rather than a /me/mfa-status
 	// round-trip) means useStepUpAction can decide the form shape
 	// without an extra fetch.
-	MFAEnrolled         bool        `json:"mfa_enrolled"`
+	MFAEnrolled bool `json:"mfa_enrolled"`
 	// DefaultFocusNodeID is the user's "home topology node" preference
 	// (migration 243). Frontend SentinelUser.default_focus_node_id
 	// mirrors this; SentinelProvider.resolveFocusNode() uses it as the
-	// second rung of focus precedence (?meg= URL > this > tenant root).
+	// second rung of focus precedence (?meg= URL > this > workspace root).
 	// Written via PUT /_site/sentinel/focus (commit 19df4e33).
-	DefaultFocusNodeID  *uuid.UUID  `json:"default_focus_node_id"`
+	DefaultFocusNodeID *uuid.UUID `json:"default_focus_node_id"`
 	// HomeLocationFollowMode (migration 244) gates whether scope-rail
 	// clicks persist into DefaultFocusNodeID. FALSE = Pinned (rail clicks
 	// are session-only); TRUE = Follow (rail clicks PUT to /sentinel/focus
 	// and mirror into the home column). Default FALSE.
 	HomeLocationFollowMode bool     `json:"home_location_follow_mode"`
-	Permissions         []string    `json:"permissions"`
+	Permissions            []string `json:"permissions"`
 }
 
 func (h *Handler) buildUserPayload(ctx context.Context, u *roletypes.User) userPayload {
 	role, perms := h.Svc.LoadRoleAndPermissions(ctx, u.ID)
 	return userPayload{
-		ID:                  u.ID,
-		SubscriptionID:      u.SubscriptionID,
-		WorkspaceID:         u.WorkspaceID,
-		Email:               u.Email,
-		Role:                role,
-		IsActive:            u.IsActive,
-		ForcePasswordChange: u.ForcePasswordChange,
-		AuthMethod:          u.AuthMethod,
-		LastLogin:           u.LastLogin,
-		MFAEnrolled:         u.MFAEnrolled,
-		DefaultFocusNodeID:  u.DefaultFocusNodeID,
+		ID:                     u.ID,
+		SubscriptionID:         u.SubscriptionID,
+		WorkspaceID:            u.WorkspaceID,
+		Email:                  u.Email,
+		Role:                   role,
+		IsActive:               u.IsActive,
+		ForcePasswordChange:    u.ForcePasswordChange,
+		AuthMethod:             u.AuthMethod,
+		LastLogin:              u.LastLogin,
+		MFAEnrolled:            u.MFAEnrolled,
+		DefaultFocusNodeID:     u.DefaultFocusNodeID,
 		HomeLocationFollowMode: u.HomeLocationFollowMode,
-		Permissions:         perms,
+		Permissions:            perms,
 	}
 }
 
@@ -185,9 +185,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		// if this browser was previously trusted on this account.
 		if security.CheckMFARememberCookie(r, res.User.ID.String()) {
 			// Trusted device: issue full session without MFA challenge.
-			if wsID, werr := h.Svc.resolveDefaultWorkspace(r.Context(), res.User.SubscriptionID); werr == nil {
-				res.User.WorkspaceID = wsID
-			}
+			h.Svc.deriveWorkspaceForSession(r.Context(), res.User)
 			raw, hash, rerr := GenerateRefreshToken()
 			if rerr != nil {
 				httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
@@ -392,7 +390,9 @@ func (h *Handler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 const resetHandoffCookieName = "vector_reset_handoff"
 
 // PasswordResetRedeem handles the email link.
-//   GET /_site/auth/password-reset/redeem?t=<raw>
+//
+//	GET /_site/auth/password-reset/redeem?t=<raw>
+//
 // On valid raw token: mint handoff JWT, set HttpOnly cookie, 302 to
 // /login/reset/confirm. On invalid/expired: 302 to /login/reset/confirm
 // without setting the cookie (the frontend's /state probe returns the
@@ -442,7 +442,9 @@ func (h *Handler) PasswordResetRedeem(w http.ResponseWriter, r *http.Request) {
 }
 
 // PasswordResetState is the frontend's "is my handoff cookie alive?" probe.
-//   GET /_site/auth/password-reset/state
+//
+//	GET /_site/auth/password-reset/state
+//
 // Returns 200 + { "ready": true } if a valid cookie is present, 401
 // otherwise. The page mounts and calls this once before showing the form;
 // failure renders the "link expired" message.
@@ -573,7 +575,7 @@ const loginContinuationCookieName = "vector_login_continuation"
 //   - /api/*          (Next.js BFF mounts)
 //   - /_next/*        (build assets)
 //   - /_site/*        (Go backend mount; reaching it means the bouncer
-//                      misclassified the request — refuse to redirect back)
+//     misclassified the request — refuse to redirect back)
 //   - paths whose terminal segment carries a file extension
 //     (.json/.txt/.xml/.png/.svg/.ico/.map/.js/.css/.html/.woff*/.well-known
 //     style probes). A dot inside an earlier segment (e.g.
@@ -668,7 +670,9 @@ func (h *Handler) LoginRequired(w http.ResponseWriter, r *http.Request) {
 // before being bounced to /login. Cleared in the same response so a
 // repeat call is a 204 (and a back/forward to /login post-auth doesn't
 // re-trigger navigation).
-//   GET /_site/auth/login-continuation
+//
+//	GET /_site/auth/login-continuation
+//
 // 200 { "path": "/portfolio-items" } if cookie alive + signed; 204 if
 // no cookie / invalid / expired.
 func (h *Handler) LoginContinuation(w http.ResponseWriter, r *http.Request) {
@@ -924,4 +928,3 @@ func clearRefreshCookie(w http.ResponseWriter) {
 		})
 	}
 }
-

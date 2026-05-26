@@ -66,6 +66,29 @@ const sqlNodeBelongsToTenant = `
 	 LIMIT 1
 `
 
+// sqlFocusWorkspace returns the workspace that owns a live focus node.
+// $1 = nodeID, $2 = subscriptionID.
+const sqlFocusWorkspace = `
+	SELECT topology_nodes_id_workspace
+	  FROM topology_nodes
+	 WHERE topology_nodes_id = $1
+	   AND topology_nodes_id_subscription = $2
+	   AND topology_nodes_archived_at IS NULL
+	 LIMIT 1
+`
+
+// sqlWorkspaceRootNode returns the root topology node for the resolved
+// workspace. $1 = subscriptionID, $2 = workspaceID.
+const sqlWorkspaceRootNode = `
+	SELECT topology_nodes_id
+	  FROM topology_nodes
+	 WHERE topology_nodes_id_subscription = $1
+	   AND topology_nodes_id_workspace = $2
+	   AND topology_nodes_id_parent IS NULL
+	   AND topology_nodes_archived_at IS NULL
+	 LIMIT 1
+`
+
 // sqlTenantRootNode returns the root topology node for the tenant
 // (topology_nodes_id_parent IS NULL, live). $1 = subscriptionID.
 const sqlTenantRootNode = `
@@ -130,7 +153,7 @@ const sqlUserDefaultFocus = `
 `
 
 // sqlUpdateUserDefaultFocus persists the user's home/default focus
-// node. Pass NULL ($1) to clear (user falls back to tenant root on
+// node. Pass NULL ($1) to clear (user falls back to workspace root on
 // next boot). $2 = userID. Closes the write-side counterpart of
 // sqlUserDefaultFocus — the read side has shipped since S06.
 const sqlUpdateUserDefaultFocus = `

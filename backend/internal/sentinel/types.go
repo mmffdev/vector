@@ -32,7 +32,7 @@ import (
 //   - Role             — legacy role enum (display only, do not authorise)
 //   - RoleID           — UUID role id (authoritative)
 //   - WorkspaceID      — JWT workspace_id claim > FirstLiveWorkspace fallback (PLA-0053)
-//   - FocusNodeID      — the resolved focus node (URL > user default > tenant root)
+//   - FocusNodeID      — the resolved focus node (URL > user default > workspace root > tenant root)
 //   - ScopeUp          — include ancestors of FocusNodeID
 //   - ScopeDown        — include descendants of FocusNodeID
 //   - AllowedSubtreeIDs — the resolved subtree the request may see
@@ -82,8 +82,21 @@ type Resolver interface {
 	// A nil-without-error result triggers the tenant-root fallback.
 	DefaultFocus(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
 
+	// FocusWorkspace returns the workspace that owns a live focus node
+	// in the tenant. Used to reject stale cross-workspace URL/default
+	// focus values before they split the JWT workspace clamp from the
+	// scope clamp.
+	FocusWorkspace(ctx context.Context, tenant, focus uuid.UUID) (uuid.UUID, error)
+
+	// WorkspaceRoot returns the live root topology node for the resolved
+	// workspace. This is the correct fallback when the user has no saved
+	// default or their saved default went stale; tenant root is only the
+	// final emergency fallback for older single-root tenants.
+	WorkspaceRoot(ctx context.Context, tenant, workspaceID uuid.UUID) (uuid.UUID, error)
+
 	// TenantRoot returns the subscription's root topology node — the
-	// final fallback when neither ?focus nor user default is set.
+	// final fallback when neither ?focus, user default, nor workspace
+	// root can be resolved.
 	TenantRoot(ctx context.Context, tenant uuid.UUID) (uuid.UUID, error)
 
 	// FirstLiveWorkspace returns the actor's first live workspace in
@@ -116,7 +129,7 @@ type Resolver interface {
 	GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error)
 
 	// SetUserDefaultFocus persists the user's home/default focus node.
-	// Pass nil to clear (user falls back to tenant root on next boot).
+	// Pass nil to clear (user falls back to workspace root on next boot).
 	// Returns the underlying error verbatim — callers map it to the
 	// right HTTP status (sql.ErrNoRows → 401-user-vanished, anything
 	// else → 500).

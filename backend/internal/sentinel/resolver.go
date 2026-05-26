@@ -37,25 +37,26 @@ func NewPoolResolver(vaPool, mvPool *pgxpool.Pool) *PoolResolver {
 }
 
 // ResolveSubtree implements Resolver. Steps:
-//   1. Verify the focus node exists inside the tenant — if not,
-//      return ErrFocusNotInTenant (mapped to 403 by Middleware).
-//   2. If scopeDown, gather descendants. If scopeUp, gather ancestors.
-//      Always include focus itself.
-//   3. Union the result, deduplicating.
+//  1. Verify the focus node exists inside the tenant — if not,
+//     return ErrFocusNotInTenant (mapped to 403 by Middleware).
+//  2. If scopeDown, gather descendants. If scopeUp, gather ancestors.
+//     Always include focus itself.
+//  3. Union the result, deduplicating.
 //
 // Per-grant filtering (ErrFocusNoAccess) is NOT yet implemented in
 // this resolver — that requires reading users_roles_topology_nodes
 // and intersecting with the resolved subtree. Tracked as a follow-up
 // in S05's GREEN log; not gating because:
-//   (a) workspace gating + tenant gating already filter most cross-
-//       tenant + cross-workspace attempts at higher layers,
-//   (b) the existing topology.ClampPredicate already does this
-//       per-grant filtering for the handlers that need it, and S05.4
-//       leaves those handler-level calls in place — sentinel.Middleware
-//       provides the OUTER clamp; handlers still do their per-grant
-//       inner clamp using existing topology helpers (which is fine
-//       under the Replace decision since topology.Subtree /
-//       DescendantNodeIDs are READ helpers, not middleware).
+//
+//	(a) workspace gating + tenant gating already filter most cross-
+//	    tenant + cross-workspace attempts at higher layers,
+//	(b) the existing topology.ClampPredicate already does this
+//	    per-grant filtering for the handlers that need it, and S05.4
+//	    leaves those handler-level calls in place — sentinel.Middleware
+//	    provides the OUTER clamp; handlers still do their per-grant
+//	    inner clamp using existing topology helpers (which is fine
+//	    under the Replace decision since topology.Subtree /
+//	    DescendantNodeIDs are READ helpers, not middleware).
 func (r *PoolResolver) ResolveSubtree(
 	ctx context.Context,
 	tenant, focus uuid.UUID,
@@ -125,7 +126,7 @@ func (r *PoolResolver) queryNodeIDs(
 
 // DefaultFocus implements Resolver. Reads users.default_focus_node_id,
 // added by S06 migration 243. NULL row value → (nil, nil), which
-// middleware treats as fall-through to tenant root. Inactive user →
+// middleware treats as fall-through to workspace root. Inactive user →
 // (nil, nil) too, because the sqlUserDefaultFocus query gates on
 // is_active = TRUE (an authenticated request from an inactive user
 // already failed at auth.RequireAuth; the gate here is defence-in-depth).
@@ -136,6 +137,30 @@ func (r *PoolResolver) DefaultFocus(ctx context.Context, userID uuid.UUID) (*uui
 		return nil, nil
 	}
 	return focus, err
+}
+
+// FocusWorkspace implements Resolver. Returns the workspace that owns a
+// live focus node inside the tenant. pgx.ErrNoRows is returned as-is so
+// callers can decide whether a bad explicit URL should 403 or a stale
+// saved default should fall back.
+func (r *PoolResolver) FocusWorkspace(ctx context.Context, tenant, focus uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.VAPool.QueryRow(ctx, sqlFocusWorkspace, focus, tenant).Scan(&id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
+}
+
+// WorkspaceRoot implements Resolver. Returns the live root topology
+// node for the current workspace.
+func (r *PoolResolver) WorkspaceRoot(ctx context.Context, tenant, workspaceID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.VAPool.QueryRow(ctx, sqlWorkspaceRootNode, tenant, workspaceID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, fmt.Errorf("sentinel.WorkspaceRoot: workspace %s has no root topology node", workspaceID)
+	}
+	return id, err
 }
 
 // TenantRoot implements Resolver. Returns the live root topology node
