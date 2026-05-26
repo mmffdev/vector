@@ -361,25 +361,31 @@ After Pillar 2 is fully shipped and green.
 
 1. **Read this whole doc top to bottom.**
 2. **Re-read `docs/c_c_naming_conventions.md` §2.3 + §2.4 + §2.8 + §2.9** — rule + pattern + status truth.
-3. **STEP 0 — Resolve the 4 non-MRW collisions** (locked 2026-05-26 as the first action before any other Pillar work):
-   - Dump full schemas (columns + types + constraints + indexes) for `admin_api_keys`, `users_sessions`, `csp_reports`, `dpop_jti_cache` from BOTH `mmff_vector` and `vector_artefacts`.
-   - Per-table verdict: parity-drop / fold / rename-before-move.
-   - Write `handovers/refactorDB_collisions.md` documenting each decision.
-   - The MRW fold is already specified above; that one does NOT need this step (PK normalization is in Pillar 1, column merge is in Pillar 2).
-   - The §2.9 carve-out is already CONFIRMED OUT (sweep `users` + `artefacts` in Pillar 1, coordinated JSON tag rewrite included).
-4. **Dispatch Pillar 1 ONE subagent** (or sequence of agents if scope warrants):
-   - Goal: write 27 ALTER TABLE column-prefix migrations following the 186 template
+3. **Step 0 — DONE 2026-05-26.** All 4 non-MRW collisions are **parity-drops** (verified). Full per-table inventory + Pillar 2 actions live in `handovers/refactorDB_collisions.md`. Headline:
+   - `admin_api_keys` (50 rows in mmff_vector, 0 in VA) — parity-drop, both already prefix-swept; data moves in Pillar 2 after `subscriptions` + `users` land; re-add 2 FKs at move time.
+   - `users_sessions` (1409 rows in mmff_vector, 0 in VA) — parity-drop, both already prefix-swept; data moves in Pillar 2 after `users` lands; re-add 1 FK.
+   - `csp_reports` (0 / 0 — empty defensive log) — parity-drop, **skip Pillar 1**, fresh-create in VA at Pillar 2.
+   - `dpop_jti_cache` (15 ephemeral rows / 0 — DPoP replay cache) — parity-drop, **skip Pillar 1**, fresh-create in VA at Pillar 2 (15 rows discardable, TTL).
+4. **Updated bare-column gap list for Pillar 1 scope** (Step 0 trimmed `csp_reports` + `dpop_jti_cache` off both sides — 8 migrations saved):
+   - **mmff_vector (11 tables):** cost_centres (9), library_help_defaults (10), master_record_workspaces (10), page_entity_refs (3), pages (14), subscriptions (7), users (43), users_custom_page_views (8), users_custom_pages (7), users_tab_order (8), vector_icons (7).
+   - **vector_artefacts (12 tables):** artefact_priorities (9), artefacts (26), artefacts_adoption_states (10), artefacts_fields_library (12), artefacts_number_sequences (3), artefacts_search_outbox (6), artefacts_types_fields (8), etl_backfill_audit (5), strategy_layers_adopted (8), topology_commits (5), topology_nodes (20), workspaces_fields (4).
+   - **Plus PK normalization** on `vector_artefacts.master_record_workspaces` (`_id_workspace` → `_id`).
+   - **MRW fold prep**: Pillar 1 also prefixes `mmff_vector.master_record_workspaces` (currently bare) using the eventual fold-target column names (so Pillar 2's column-add migration in VA has matching column names to UPDATE-from-dblink). See the MRW fold section for exact target shape.
+5. **Dispatch Pillar 1 wave 1** (SINGLE agent, ≈4–6 tables per wave per the single-agent serial discipline rule above):
+   - Goal: write Pillar 1 column-prefix migrations following the 186 template for the wave's tables
    - Source of truth: live snapshot DB schema (`*_snapshot_20260525`) for column inventory
    - Per-table: derive PK + FK column names per §2.4 (e.g. `users.subscription_id` → `users_id_subscription`, NOT `users_subscription_id`)
    - Sweep Go SQL + struct tags + frontend types in the same wave — every renamed column gets corresponding Go + TS rewrites
    - JSON wire-tags get updated and frontend coordinated rewrite is in scope
    - Dry-run against `*_dryrun` throwaway DBs before declaring done
    - Output: `db/{mmff_vector,vector_artefacts}/schema/NNN_*_column_prefix.sql` + DOWN counterparts + Go diffs + TS diffs
-5. **Verify Pillar 1 by opening files** — DO NOT trust subagent summaries. The last attempt's agent claimed "verified by spot-check" and shipped 4 structural defects.
-6. **Apply Pillar 1 against snapshot DBs first**, then live. Restart backend, smoke test, regenerate SY003.
-7. **Move to Pillar 2** once Pillar 1 is DONE. Take fresh snapshots first.
-8. **Move to Pillar 3** once Pillar 2 is DONE.
-9. **Final commit + push** when all three pillars are green. Tag the commit (`refactorDB-complete-<date>`) for easy rollback reference.
+   - **Total Pillar 1 scope: 23 tables** (11 mmff_vector + 12 vector_artefacts, post-Step-0) + PK normalization on VA's MRW. Estimated 4–5 waves.
+6. **Verify each wave by opening files** — DO NOT trust subagent summaries. The last attempt's agent claimed "verified by spot-check" and shipped 4 structural defects. Cross-check at least one DB-introspection claim per wave against the live DB.
+7. **Apply each wave against snapshot DBs first**, then live. Commit wave-by-wave with `[wave-N]` subject tag. Restart backend, smoke test, regenerate SY003 at Pillar 1 completion.
+8. **Honor the 75% context rule** — if main context fills mid-Pillar, update this handover + commit + push + clear context + reload. Wave boundaries are natural break points.
+9. **Move to Pillar 2** once Pillar 1 is DONE. Take fresh snapshots first.
+10. **Move to Pillar 3** once Pillar 2 is DONE.
+11. **Final commit + push** when all three pillars are green. Tag the commit (`refactorDB-complete-<date>`) for easy rollback reference.
 
 **Total effort estimate:** ~10-15 hours across all three pillars if briefed into subagents with proper verification gates between waves. Each pillar is independently testable.
 
@@ -477,12 +483,26 @@ Pre-commit hook auto-regenerates the API spec when backend route surface changes
 **RULE:** This refactor runs ONE subagent at a time. No parallel dispatch, no chaining.
 
 **Loop:**
-1. Dispatch ONE subagent with a tightly scoped brief (one wave of work — e.g. "write the 5 Pillar 1 migrations for the cost_centres / csp_reports / dpop_jti_cache / library_help_defaults / page_entity_refs tables; Go SQL + struct tag sweep included; dry-run against `*_dryrun`; output the diff").
+1. Dispatch ONE subagent with a tightly scoped brief (one wave of work — e.g. "write the 5 Pillar 1 migrations for the cost_centres / library_help_defaults / page_entity_refs / users_custom_pages / users_tab_order tables; Go SQL + struct tag sweep included; dry-run against `*_dryrun`; output the diff").
 2. Agent runs to completion and returns.
-3. **MAIN CONTEXT validates the output by opening files** — not by reading the agent's summary. Verify migrations against the 186 template. Verify Go diffs compile. Verify dry-run output is what the agent claimed.
+3. **MAIN CONTEXT validates the output by opening files** — not by reading the agent's summary. Verify migrations against the 186 template. Verify Go diffs compile. Verify dry-run output is what the agent claimed. CROSS-CHECK at least one DB-introspection claim against the live DB (don't trust the dump in the file alone).
 4. If validation passes: commit the wave. If validation fails: write a TIGHT corrective brief for the NEXT agent (not the same one — context is gone) and dispatch a fresh agent for the fix.
 5. **The original subagent is killed off** (its conversation is gone the moment it returns — there is no "send it back to the same agent"; every dispatch is a fresh agent with zero memory).
 6. Dispatch the NEXT agent for the NEXT wave. Repeat.
+
+### 75% context rule (LOCKED 2026-05-26)
+
+**TRIGGER:** when main context fills to ≈75%, STOP, don't start a new wave.
+
+**Procedure:**
+1. **Update this handover** with the current state — what's done in this session, what's the immediate next action, the wave-boundary commit SHA, the exact next subagent brief (so the fresh-context session doesn't need to re-derive it).
+2. **Commit + push the handover update** to origin (pre-push hook captures fresh DB backups as part of the boundary marker).
+3. **Clear context** (close session / start fresh).
+4. **Reload this handover** in the fresh session and resume from the documented "next action."
+
+**Why:** main context bloats across waves even with serial dispatch — every validation step (file reads, DB cross-checks, diff inspection) accumulates. A 75% ceiling leaves room for one more clean wave + handover write without spilling into auto-compact behavior, which is unsafe mid-refactor. The single-agent serial discipline only protects context-per-wave; the 75% rule protects context-across-waves.
+
+**Wave-boundary commit convention:** each wave's commit subject includes `[wave-N]` and the SHA-after-commit becomes the next session's "Live HEAD when handover landed" line. Example: `feat(prefix): Pillar 1 wave 1 — cost_centres + library_help_defaults + page_entity_refs prefix sweep [wave-1] [RF1.5.1]`.
 
 **Why this matters (context-protection mandate):**
 - Main context stays small. The agent's working context (file dumps, dry-run output, intermediate reasoning) does NOT pollute the main context — only the agent's final summary + the files it produced come back.
