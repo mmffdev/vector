@@ -136,10 +136,11 @@ export interface SentinelState {
   sentinel_set_focus: (nodeId: string | null) => Promise<void>;
   /**
    * Persist a new home topology node — direct write to
-   * users.default_focus_node_id via PUT /sentinel/focus. Does NOT
-   * change the session focus_override or the URL. Used by the
-   * Home Location dropdown on /user/account-settings (which is an
-   * explicit "save this as my home" action regardless of follow mode).
+   * users.default_focus_node_id via PUT /sentinel/focus, and re-anchor
+   * the current session focus + URL to the same node so stale ?meg=
+   * state cannot keep the shell pointed elsewhere. Used by the Home
+   * Location dropdown on /user/account-settings (which is an explicit
+   * "save this as my home" action regardless of follow mode).
    */
   sentinel_set_default_focus: (nodeId: string | null) => Promise<void>;
   /**

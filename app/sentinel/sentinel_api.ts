@@ -90,7 +90,7 @@ export async function fetchBoot(): Promise<SentinelBootPayload> {
     // Mirrors users.default_focus_node_id (migration 243). Drives the
     // home-topology-node preference in account-settings; null when the
     // user hasn't picked one yet (resolveFocusNode falls through to
-    // tenant root).
+    // workspace root / tenant root).
     default_focus_node_id?: string | null;
     // Mirrors users.home_location_follow_mode (migration 244). FALSE
     // (Pinned, default) means scope-rail clicks are session-only;

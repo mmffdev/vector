@@ -18,7 +18,7 @@
  *     resolves with sentinel_tenant.id === t2 AND
  *     sentinel_workspace_in_sync === true in the SAME render cycle.
  *   - sentinel_can(code) matches the permission catalogue.
- *   - Focus precedence: URL ?meg= > users.default_focus_node_id > tenant root.
+ *   - Focus precedence: URL ?meg= > users.default_focus_node_id > workspace root > tenant root.
  *   - 401 on any sentinel-mediated call triggers sentinel_reload().
  *   - useSentinel() outside SentinelProvider throws (negative test).
  */
@@ -44,6 +44,8 @@ const FIXTURE_TENANT_B = {
 const FIXTURE_USER_DEFAULT_FOCUS = "cccccccc-cccc-cccc-cccc-cccccccccccc";
 const FIXTURE_URL_FOCUS = "dddddddd-dddd-dddd-dddd-dddddddddddd";
 const FIXTURE_TENANT_ROOT = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
+const FIXTURE_WORKSPACE_A = "ws-a-uuid";
+const FIXTURE_WORKSPACE_B = "ws-b-uuid";
 
 const FIXTURE_USER_A = {
   id: "99999999-aaaa-aaaa-aaaa-999999999999",
@@ -56,7 +58,7 @@ const FIXTURE_USER_A = {
   // Pinned by default — migration 244. Tests that exercise the Follow
   // path override this via stubBoot({ home_location_follow_mode: true }).
   home_location_follow_mode: false,
-  workspace_id: "ws-a-uuid",
+  workspace_id: FIXTURE_WORKSPACE_A,
 };
 
 // stubBoot is the test-side equivalent of the production sentinel_api
@@ -216,7 +218,7 @@ describe("sentinel.unit.SentinelProvider", () => {
   });
 
   // -------------------------------------------------------------------
-  // Case 4 — Focus precedence: URL > default > tenant root
+  // Case 4 — Focus precedence: URL > default > workspace root > tenant root
   // -------------------------------------------------------------------
 
   it("Case 4a — URL ?meg= wins over user default", async () => {
@@ -256,7 +258,7 @@ describe("sentinel.unit.SentinelProvider", () => {
     expect(screen.getByTestId("focus-node").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
   });
 
-  it("Case 4c — absent URL + no user default falls back to tenant root", async () => {
+  it("Case 4c — absent URL + no user default falls back to tenant root fixture", async () => {
     globalThis.fetch = vi.fn(async (url: any) => {
       if (String(url).includes("/sentinel/boot")) {
         return new Response(
@@ -737,6 +739,87 @@ describe("sentinel.unit.SentinelProvider", () => {
     expect(putBody).toEqual({ focus_node_id: FIXTURE_NEW_FOCUS });
   });
 
+  it("Case 14b — sentinel_set_default_focus clears stale URL focus so the saved home becomes active immediately", async () => {
+    const origLocation = window.location;
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: {
+        ...origLocation,
+        href: `http://localhost/user/account-settings?meg=${FIXTURE_URL_FOCUS}`,
+        search: `?meg=${FIXTURE_URL_FOCUS}`,
+      },
+    });
+
+    let putBody: any = null;
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/focus") && init?.method === "PUT") {
+        putBody = init.body ? JSON.parse(init.body as string) : null;
+        return new Response(null, { status: 204 });
+      }
+      if (u.includes("/sentinel/boot")) {
+        return new Response(
+          JSON.stringify({
+            ...stubBoot(),
+            grants: [
+              { node_id: FIXTURE_URL_FOCUS, role: "admin", workspace_id: FIXTURE_WORKSPACE_A },
+              { node_id: FIXTURE_USER_DEFAULT_FOCUS, role: "admin", workspace_id: FIXTURE_WORKSPACE_A },
+              { node_id: FIXTURE_NEW_FOCUS, role: "admin", workspace_id: FIXTURE_WORKSPACE_A },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    let savePromise: Promise<void> | null = null;
+    function SaveDefaultTrigger() {
+      const s = useSentinel();
+      return (
+        <button
+          data-testid="save-default-focus-btn"
+          onClick={() => {
+            savePromise = s.sentinel_set_default_focus(FIXTURE_NEW_FOCUS);
+          }}
+        >
+          save
+        </button>
+      );
+    }
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <DefaultFocusProbe />
+          <FocusNodeProbe />
+          <SaveDefaultTrigger />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("session-focus-node").textContent).toBe(FIXTURE_URL_FOCUS);
+
+    await act(async () => {
+      screen.getByTestId("save-default-focus-btn").click();
+      await savePromise;
+    });
+
+    expect(screen.getByTestId("user-default-focus").textContent).toBe(FIXTURE_NEW_FOCUS);
+    expect(screen.getByTestId("session-focus-node").textContent).toBe(FIXTURE_NEW_FOCUS);
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      window.history.state,
+      "",
+      expect.stringContaining(`meg=${FIXTURE_NEW_FOCUS}`),
+    );
+    expect(putBody).toEqual({ focus_node_id: FIXTURE_NEW_FOCUS });
+
+    Object.defineProperty(window, "location", { configurable: true, writable: true, value: origLocation });
+    replaceStateSpy.mockRestore();
+  });
+
   // -------------------------------------------------------------------
   // Case 15 — sentinel_set_home_follow_mode persists + reverts
   // -------------------------------------------------------------------
@@ -952,6 +1035,11 @@ describe("sentinel.unit.SentinelProvider", () => {
   function FocusProbe() {
     const s = useSentinel();
     return <span data-testid="resolved-focus">{s.sentinel_focus_node ?? "null"}</span>;
+  }
+
+  function WorkspaceInSyncProbe() {
+    const s = useSentinel();
+    return <span data-testid="workspace-in-sync">{String(s.sentinel_workspace_in_sync)}</span>;
   }
 
   it("Case 18 — login transition clears stale url_focus so user's saved home wins", async () => {
@@ -1486,6 +1574,58 @@ describe("sentinel.unit.SentinelProvider", () => {
     });
     expect(bootCallCount).toBe(1);
     expect(screen.getByTestId("boot-user-id").textContent).toBe("null");
+  });
+
+  it("Case 21 — direct URL focus from another workspace is treated as stale", async () => {
+    const otherWorkspaceFocus = "77777777-7777-7777-7777-777777777777";
+    const origLocation = window.location;
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: {
+        ...origLocation,
+        href: `http://localhost/value-sprint?meg=${otherWorkspaceFocus}`,
+        search: `?meg=${otherWorkspaceFocus}`,
+      },
+    });
+
+    globalThis.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes("/sentinel/boot")) {
+        return new Response(
+          JSON.stringify({
+            ...stubBoot(),
+            grants: [
+              { node_id: otherWorkspaceFocus, role: "admin", workspace_id: FIXTURE_WORKSPACE_B },
+              { node_id: FIXTURE_USER_DEFAULT_FOCUS, role: "admin", workspace_id: FIXTURE_WORKSPACE_A },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as any;
+
+    await act(async () => {
+      render(
+        <SentinelProvider>
+          <FocusProbe />
+          <WorkspaceInSyncProbe />
+        </SentinelProvider>,
+      );
+    });
+
+    expect(screen.getByTestId("resolved-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+    expect(screen.getByTestId("workspace-in-sync").textContent).toBe("true");
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      window.history.state,
+      "",
+      expect.stringContaining(`meg=${FIXTURE_USER_DEFAULT_FOCUS}`),
+    );
+
+    Object.defineProperty(window, "location", { configurable: true, writable: true, value: origLocation });
+    replaceStateSpy.mockRestore();
   });
 
   // -----------------------------------------------------------------

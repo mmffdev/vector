@@ -158,15 +158,52 @@ function reducer(state: InternalState, action: Action): InternalState {
 }
 
 // ---------------------------------------------------------------------
-// Resolve focus per the URL > user default > tenant root precedence.
+// Resolve focus per the URL > user default > workspace root > tenant
+// root precedence, ignoring stale URL/session focus from another
+// workspace.
 // Mirrors the backend's resolveFocus logic; both must agree.
 // ---------------------------------------------------------------------
 
+function focusPointsOutsideActiveWorkspace(state: InternalState, nodeId: string | null): boolean {
+  if (!nodeId || !state.user?.workspace_id) return false;
+  const grant = state.grants.find((g) => g.node_id === nodeId);
+  return !!grant?.workspace_id && grant.workspace_id !== state.user.workspace_id;
+}
+
+function workspaceRootFromGrants(state: InternalState): string | null {
+  const workspaceId = state.user?.workspace_id;
+  if (!workspaceId) return null;
+  return state.grants.find((g) => g.workspace_id === workspaceId && !g.parent_id)?.node_id ?? null;
+}
+
 function resolveFocusNode(state: InternalState): string | null {
-  if (state.focus_override !== null) return state.focus_override;
-  if (state.url_focus) return state.url_focus;
-  if (state.user?.default_focus_node_id) return state.user.default_focus_node_id;
+  if (state.focus_override !== null && !focusPointsOutsideActiveWorkspace(state, state.focus_override)) {
+    return state.focus_override;
+  }
+  if (state.url_focus && !focusPointsOutsideActiveWorkspace(state, state.url_focus)) {
+    return state.url_focus;
+  }
+  if (
+    state.user?.default_focus_node_id &&
+    !focusPointsOutsideActiveWorkspace(state, state.user.default_focus_node_id)
+  ) {
+    return state.user.default_focus_node_id;
+  }
+  const workspaceRoot = workspaceRootFromGrants(state);
+  if (workspaceRoot) return workspaceRoot;
   return state.tenant_root;
+}
+
+function replaceMegInURL(nodeId: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const url = new URL(window.location.href);
+    if (nodeId) url.searchParams.set("meg", nodeId);
+    else url.searchParams.delete("meg");
+    window.history.replaceState(window.history.state, "", url.toString());
+  } catch {
+    // edge environments may not expose URL; non-fatal
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -340,14 +377,45 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       //     pin doesn't survive logout.
       //
       // The URL mirror effect will then re-write ?meg= to the resolved
-      // focus (= user's default home) on the next render, so sharing /
-      // bookmarking still works correctly — the URL just becomes a
+      // focus (= user's default home / workspace root) on the next render,
+      // so sharing and bookmarking still work correctly — the URL just becomes a
       // per-session presentation artefact, not a source of truth.
       dispatch({ type: "set_url_focus", nodeId: null });
       dispatch({ type: "set_focus", nodeId: null });
       void reload();
     }
   }, [authUserId, reload]);
+
+  // A URL/session focus is only coherent when it belongs to the same
+  // workspace as the JWT's workspace_id claim. If a stale ?meg= points
+  // at a direct grant in another workspace, data requests go out with
+  // workspace=A but scope=B and the ObjectTree/catalogues 403 or render
+  // empty. Drop that stale focus and let the saved home / workspace root
+  // re-stamp the URL on the next render.
+  useEffect(() => {
+    if (state.loading) return;
+    const staleUrlFocus = focusPointsOutsideActiveWorkspace(state, state.url_focus);
+    const staleOverride = focusPointsOutsideActiveWorkspace(state, state.focus_override);
+    if (!staleUrlFocus && !staleOverride) return;
+
+    if (staleUrlFocus) dispatch({ type: "set_url_focus", nodeId: null });
+    if (staleOverride) dispatch({ type: "set_focus", nodeId: null });
+
+    const fallback = resolveFocusNode({
+      ...state,
+      url_focus: staleUrlFocus ? null : state.url_focus,
+      focus_override: staleOverride ? null : state.focus_override,
+    });
+    replaceMegInURL(fallback);
+  }, [
+    state.loading,
+    state.url_focus,
+    state.focus_override,
+    state.user?.workspace_id,
+    state.user?.default_focus_node_id,
+    state.tenant_root,
+    state.grants,
+  ]);
 
   // Mirror the resolved focus into the URL so a fresh tab / post-login
   // load shows ?meg=<uuid> immediately — not blind. Without this the
@@ -356,8 +424,8 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   // don't survive a re-load of the same view.
   //
   // We re-derive the focus from internal state (same precedence the
-  // memo below uses): focus_override → url_focus → user default → tenant
-  // root. Writes only when:
+  // memo below uses): focus_override → url_focus → user default →
+  // workspace root → tenant root. Writes only when:
   //   - boot finished (tenant_root populated)
   //   - the derived focus disagrees with the address bar's current ?meg=
   // That second guard keeps us off an endless replaceState loop and
@@ -377,11 +445,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     if (!state.tenant_root && !state.focus_override && !state.url_focus && !state.user?.default_focus_node_id) {
       return; // nothing resolved yet; don't write a stale URL
     }
-    const focus =
-      state.focus_override ??
-      state.url_focus ??
-      state.user?.default_focus_node_id ??
-      state.tenant_root;
+    const focus = resolveFocusNode(state);
     if (!focus) return;
     try {
       const url = new URL(window.location.href);
@@ -391,7 +455,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     } catch {
       // edge environments without window.URL — non-fatal
     }
-  }, [pathname, state.loading, state.focus_override, state.url_focus, state.user, state.tenant_root]);
+  }, [pathname, state.loading, state.focus_override, state.url_focus, state.user, state.tenant_root, state.grants]);
 
   const switchTenant = useCallback(async (tenantId: string) => {
     dispatch({ type: "loading_start" });
@@ -436,16 +500,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     // project (PLA-0053, named after Rick's daughter Megan) — it's in
     // SHAREABLE_PARAMS, so the block-url-query-state hook permits this
     // write via the file-level hook-allow-url-query annotation.
-    if (typeof window !== "undefined") {
-      try {
-        const url = new URL(window.location.href);
-        if (nodeId) url.searchParams.set("meg", nodeId);
-        else url.searchParams.delete("meg");
-        window.history.replaceState(window.history.state, "", url.toString());
-      } catch {
-        // edge environments may not expose URL; non-fatal
-      }
-    }
+    replaceMegInURL(nodeId);
 
     // Pinned mode (default): NO server PUT. Scope-rail clicks update
     // only the session focus + URL ?meg=; the user's saved home stays
@@ -475,11 +530,26 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   // shape as the follow-mode path in setFocus().
   const setDefaultFocus = useCallback(async (nodeId: string | null) => {
     const prevDefault = stateRef.current.user?.default_focus_node_id ?? null;
+    const prevFocusOverride = stateRef.current.focus_override;
+    const prevUrlFocus = stateRef.current.url_focus;
+    const prevHref = typeof window !== "undefined" ? window.location.href : null;
     dispatch({ type: "set_user_default_focus", nodeId });
+    dispatch({ type: "set_url_focus", nodeId: null });
+    dispatch({ type: "set_focus", nodeId });
+    replaceMegInURL(nodeId);
     try {
       await putFocus(nodeId);
     } catch (err) {
       dispatch({ type: "set_user_default_focus", nodeId: prevDefault });
+      dispatch({ type: "set_url_focus", nodeId: prevUrlFocus });
+      dispatch({ type: "set_focus", nodeId: prevFocusOverride });
+      if (prevHref && typeof window !== "undefined") {
+        try {
+          window.history.replaceState(window.history.state, "", prevHref);
+        } catch {
+          // edge environments may not expose history; non-fatal
+        }
+      }
       throw err;
     }
   }, []);
@@ -517,8 +587,13 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
 
   const value: SentinelState = useMemo(() => {
     const focus_node = resolveFocusNode(state);
-    const workspaceInSync =
-      !state.tenant || !state.user || state.user.tenant_id === state.tenant.id;
+    const activeGrant = state.grants.find((g) => g.node_id === focus_node) ?? null;
+    const tenantInSync = !state.tenant || !state.user || state.user.tenant_id === state.tenant.id;
+    const focusWorkspaceInSync =
+      !state.user?.workspace_id ||
+      !activeGrant?.workspace_id ||
+      state.user.workspace_id === activeGrant.workspace_id;
+    const workspaceInSync = tenantInSync && focusWorkspaceInSync;
 
     return {
       sentinel_user: state.user,
