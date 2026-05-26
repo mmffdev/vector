@@ -303,12 +303,12 @@ func TestUpdate_TypeChange_WithValues_Returns409(t *testing.T) {
 	// if the schema demands more than we can provide here.
 	var artefactID uuid.UUID
 	err = aPool.QueryRow(ctx, `
-		INSERT INTO artefacts (subscription_id, workspace_id, type_id, title)
-		SELECT $1, $2, t.id, 'typechange test'
+		INSERT INTO artefacts (artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_title)
+		SELECT $1, $2, t.artefacts_types_id, 'typechange test'
 		  FROM artefacts_types t
-		 WHERE t.subscription_id = $1
+		 WHERE t.artefacts_types_id_subscription = $1
 		 LIMIT 1
-		RETURNING id`,
+		RETURNING artefacts_id`,
 		g.SubscriptionID, wsID,
 	).Scan(&artefactID)
 	if err != nil {
@@ -316,7 +316,7 @@ func TestUpdate_TypeChange_WithValues_Returns409(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = aPool.Exec(context.Background(),
-			`DELETE FROM artefacts WHERE id = $1`, artefactID)
+			`DELETE FROM artefacts WHERE artefacts_id = $1`, artefactID)
 	})
 
 	_, err = aPool.Exec(ctx, `

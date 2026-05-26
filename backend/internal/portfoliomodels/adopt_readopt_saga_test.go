@@ -102,7 +102,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	// types in the workspace don't affect the assertion.
 	defer func() {
 		c := context.Background()
-		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, workspaceID)
+		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE artefacts_id_workspace = $1`, workspaceID)
 	}()
 
 	mrSvc := portfolio.NewService(va)
@@ -170,11 +170,11 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	var oldStrategyArtefactID uuid.UUID
 	if err := va.QueryRow(ctx, `
 		INSERT INTO artefacts (
-			subscription_id, workspace_id,
-			artefact_type_id, number,
-			title, parent_artefact_id, position
+			artefacts_id_subscription, artefacts_id_workspace,
+			artefacts_id_artefact_type, artefacts_number,
+			artefacts_title, artefacts_id_parent, artefacts_position
 		) VALUES ($1, $2, $3, 1, 'cycle-1 strategy tracer', NULL, 0)
-		RETURNING id`,
+		RETURNING artefacts_id`,
 		user.SubscriptionID, workspaceID, leafStrategyTypeID,
 	).Scan(&oldStrategyArtefactID); err != nil {
 		t.Fatalf("seed old strategy artefact: %v", err)
@@ -202,11 +202,11 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	var tracerWorkID uuid.UUID
 	if err := va.QueryRow(ctx, `
 		INSERT INTO artefacts (
-			subscription_id, workspace_id,
-			artefact_type_id, number,
-			title, parent_artefact_id, position
+			artefacts_id_subscription, artefacts_id_workspace,
+			artefacts_id_artefact_type, artefacts_number,
+			artefacts_title, artefacts_id_parent, artefacts_position
 		) VALUES ($1, $2, $3, 1, 'tracer work item', $4, 0)
-		RETURNING id`,
+		RETURNING artefacts_id`,
 		user.SubscriptionID, workspaceID, workTypeID, oldStrategyArtefactID,
 	).Scan(&tracerWorkID); err != nil {
 		t.Fatalf("seed tracer work artefact: %v", err)
@@ -230,7 +230,7 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	//    AND must point at the live placeholder artefact for this ws.
 	var tracerParent *uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT parent_artefact_id FROM artefacts WHERE id = $1`,
+		SELECT artefacts_id_parent FROM artefacts WHERE artefacts_id = $1`,
 		tracerWorkID,
 	).Scan(&tracerParent); err != nil {
 		t.Fatalf("read tracer parent: %v", err)
@@ -242,14 +242,14 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 
 	var placeholderArtefactID uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT a.id
+		SELECT a.artefacts_id
 		  FROM artefacts a
-		  JOIN artefacts_types t ON t.id = a.artefact_type_id
-		 WHERE a.workspace_id     = $1
-		   AND t.is_placeholder   = TRUE
-		   AND t.archived_at     IS NULL
-		   AND a.archived_at     IS NULL
-		 ORDER BY a.created_at
+		  JOIN artefacts_types t ON t.artefacts_types_id = a.artefacts_id_artefact_type
+		 WHERE a.artefacts_id_workspace          = $1
+		   AND t.artefacts_types_is_placeholder  = TRUE
+		   AND t.artefacts_types_archived_at    IS NULL
+		   AND a.artefacts_archived_at          IS NULL
+		 ORDER BY a.artefacts_created_at
 		 LIMIT 1`,
 		workspaceID,
 	).Scan(&placeholderArtefactID); err != nil {

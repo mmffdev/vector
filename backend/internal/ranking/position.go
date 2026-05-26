@@ -93,6 +93,7 @@ func needsRebalance(cohort []rankRow, movingID uuid.UUID, newPos int) bool {
 // values, preserving current order. Runs inside the same transaction
 // as the move, so observers see the move + rebalance atomically.
 func rebalance(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.UUID, scope Scope, scopeID *uuid.UUID) error {
+	idCol, posCol, subCol, _, archCol := cfg.columnsResolved()
 	scopeCond := fmt.Sprintf("%s IS NULL", cfg.ScopeColumn)
 	args := []any{subID}
 	if scope == ScopeSprint {
@@ -100,7 +101,14 @@ func rebalance(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.UU
 		args = append(args, *scopeID)
 	}
 
-	q := fmt.Sprintf(sqlRebalanceRanksFmt, defaultGap, cfg.Table, scopeCond, cfg.Table)
+	q := fmt.Sprintf(sqlRebalanceRanksFmt,
+		idCol, posCol, idCol, defaultGap,
+		cfg.Table,
+		subCol, scopeCond, archCol,
+		cfg.Table,
+		posCol,
+		idCol, idCol,
+	)
 
 	_, err := tx.Exec(ctx, q, args...)
 	return err

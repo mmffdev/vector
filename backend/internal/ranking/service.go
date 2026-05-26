@@ -100,8 +100,9 @@ func (s *Service) Move(ctx context.Context, req MoveRequest) (MoveResult, error)
 			return err
 		}
 
+		idCol, posCol, _, updCol, _ := cfg.columnsResolved()
 		_, err = tx.Exec(ctx,
-			fmt.Sprintf(sqlUpdateRankPositionFmt, cfg.Table),
+			fmt.Sprintf(sqlUpdateRankPositionFmt, cfg.Table, posCol, updCol, idCol),
 			newPos, row.id)
 		if err != nil {
 			return fmt.Errorf("write new position: %w", err)
@@ -112,7 +113,7 @@ func (s *Service) Move(ctx context.Context, req MoveRequest) (MoveResult, error)
 				return fmt.Errorf("rebalance: %w", err)
 			}
 			// Re-read final position after rebalance.
-			final, err := readPosition(ctx, tx, cfg.Table, row.id)
+			final, err := readPosition(ctx, tx, cfg, row.id)
 			if err != nil {
 				return err
 			}
@@ -145,7 +146,12 @@ func (r rankRow) scope() (Scope, *uuid.UUID) {
 func (r rankRow) currentPosition() int { return r.position }
 
 func loadRowForUpdate(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID, rowID uuid.UUID) (rankRow, error) {
-	q := fmt.Sprintf(sqlSelectRankRowForUpdateFmt, cfg.ScopeColumn, cfg.Table)
+	idCol, posCol, subCol, _, archCol := cfg.columnsResolved()
+	q := fmt.Sprintf(sqlSelectRankRowForUpdateFmt,
+		idCol, subCol, cfg.ScopeColumn, posCol,
+		cfg.Table,
+		idCol, subCol, archCol,
+	)
 	var r rankRow
 	err := tx.QueryRow(ctx, q, rowID, subID).
 		Scan(&r.id, &r.subscriptionID, &r.scopeID, &r.position)
@@ -159,15 +165,26 @@ func loadRowForUpdate(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID,
 }
 
 func lockCohort(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.UUID, scope Scope, scopeID *uuid.UUID) ([]rankRow, error) {
+	idCol, posCol, subCol, _, archCol := cfg.columnsResolved()
 	var (
 		q    string
 		args []any
 	)
 	if scope == ScopeBacklog {
-		q = fmt.Sprintf(sqlSelectRankCohortBacklogFmt, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
+		q = fmt.Sprintf(sqlSelectRankCohortBacklogFmt,
+			idCol, subCol, cfg.ScopeColumn, posCol,
+			cfg.Table,
+			subCol, cfg.ScopeColumn, archCol,
+			posCol, idCol,
+		)
 		args = []any{subID}
 	} else {
-		q = fmt.Sprintf(sqlSelectRankCohortScopedFmt, cfg.ScopeColumn, cfg.Table, cfg.ScopeColumn)
+		q = fmt.Sprintf(sqlSelectRankCohortScopedFmt,
+			idCol, subCol, cfg.ScopeColumn, posCol,
+			cfg.Table,
+			subCol, cfg.ScopeColumn, archCol,
+			posCol, idCol,
+		)
 		args = []any{subID, *scopeID}
 	}
 
@@ -188,10 +205,11 @@ func lockCohort(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, subID uuid.U
 	return out, rows.Err()
 }
 
-func readPosition(ctx context.Context, tx pgx.Tx, table string, rowID uuid.UUID) (int, error) {
+func readPosition(ctx context.Context, tx pgx.Tx, cfg ResourceConfig, rowID uuid.UUID) (int, error) {
+	idCol, posCol, _, _, _ := cfg.columnsResolved()
 	var pos int
 	err := tx.QueryRow(ctx,
-		fmt.Sprintf(sqlSelectRankPositionFmt, table),
+		fmt.Sprintf(sqlSelectRankPositionFmt, posCol, cfg.Table, idCol),
 		rowID,
 	).Scan(&pos)
 	if err != nil {

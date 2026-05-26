@@ -210,8 +210,8 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 
 	var wsID uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT id FROM artefacts
-		WHERE subscription_id=$1 LIMIT 1`, subID,
+		SELECT artefacts_id FROM artefacts
+		WHERE artefacts_id_subscription=$1 LIMIT 1`, subID,
 	).Scan(&wsID); err != nil {
 		// Use subscription_id as workspace sentinel (matches ETL backfill).
 		wsID = subID
@@ -234,7 +234,7 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 	// Derive workspace_id from an existing artefact row if possible.
 	var realWS uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT workspace_id FROM artefacts WHERE subscription_id=$1 LIMIT 1`, subID,
+		SELECT artefacts_id_workspace FROM artefacts WHERE artefacts_id_subscription=$1 LIMIT 1`, subID,
 	).Scan(&realWS); err == nil {
 		wsID = realWS
 	}
@@ -252,16 +252,16 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 	var id uuid.UUID
 	err := va.QueryRow(ctx, `
 		INSERT INTO artefacts
-			(subscription_id, workspace_id, artefact_type_id, number, title, flow_state_id, priority_id, position)
+			(artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_number, artefacts_title, artefacts_id_flow_state, artefacts_id_priority, artefacts_position)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,100)
-		RETURNING id`,
+		RETURNING artefacts_id`,
 		subID, wsID, atID, num, title, fsID, priorityID,
 	).Scan(&id)
 	if err != nil {
 		t.Skipf("cannot seed artefact %q (%s): %v", title, itemType, err)
 	}
 	t.Cleanup(func() {
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 	return id
 }
@@ -504,7 +504,7 @@ func TestCreateWorkItem_StoresRow(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(wi.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	if wi.Title != in.Title {
@@ -643,13 +643,13 @@ func TestCreateWorkItem_TopologyNodeID_persisted(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(wi.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	// Verify topology_node_id actually landed in the row.
 	var got uuid.UUID
 	if err := va.QueryRow(ctx,
-		`SELECT topology_node_id FROM artefacts WHERE id=$1`, uuid.MustParse(wi.ID),
+		`SELECT artefacts_id_topology_node FROM artefacts WHERE artefacts_id=$1`, uuid.MustParse(wi.ID),
 	).Scan(&got); err != nil {
 		t.Fatalf("read-back topology_node_id: %v", err)
 	}
@@ -767,7 +767,7 @@ func TestPatchWorkItem_UpdatesTitle(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(wi.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	newTitle := "patch-title-after"
@@ -809,7 +809,7 @@ func TestPatchWorkItem_DueDate_SetAndClear(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(wi.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 	id := uuid.MustParse(wi.ID)
 
@@ -874,7 +874,7 @@ func TestArchiveWorkItem_SoftDeletes(t *testing.T) {
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(wi.ID)
 		// Hard-delete the archived row so it doesn't pollute later runs.
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 	id := uuid.MustParse(wi.ID)
 
@@ -989,7 +989,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(parent.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	child, err := svc.CreateWorkItem(ctx, sub, artefactitems.CreateWorkItemInput{
@@ -1004,7 +1004,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(child.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	parentID := uuid.MustParse(parent.ID)

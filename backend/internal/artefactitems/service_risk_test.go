@@ -78,7 +78,7 @@ func TestCreateWorkItem_RiskType_ReturnsRSKKey(t *testing.T) {
 	}
 	// Cleanup
 	t.Cleanup(func() {
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, wi.ID)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, wi.ID)
 	})
 }
 

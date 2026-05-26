@@ -321,7 +321,7 @@ const sqlListSnapshotTransitionsWithNames = `
 // sqlCountArtefactsOnFlowState is the impact probe per "remove" pill:
 // counts how many live artefacts would need to rebind onto a successor.
 const sqlCountArtefactsOnFlowState = `
-		SELECT COUNT(*) FROM artefacts WHERE flow_state_id = $1 AND archived_at IS NULL
+		SELECT COUNT(*) FROM artefacts WHERE artefacts_id_flow_state = $1 AND artefacts_archived_at IS NULL
 	`
 
 // sqlRebindArtefactsToSuccessor moves every live artefact from a
@@ -329,8 +329,8 @@ const sqlCountArtefactsOnFlowState = `
 // Runs BEFORE the source pill is archived to avoid momentary FK
 // confusion (though FKs allow soft-archived rows).
 const sqlRebindArtefactsToSuccessor = `
-		UPDATE artefacts SET flow_state_id = $1, updated_at = now()
-		WHERE flow_state_id = $2 AND archived_at IS NULL
+		UPDATE artefacts SET artefacts_id_flow_state = $1, artefacts_updated_at = now()
+		WHERE artefacts_id_flow_state = $2 AND artefacts_archived_at IS NULL
 	`
 
 // sqlArchiveFlowStateByID is the unconditional soft-archive used by

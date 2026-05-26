@@ -63,8 +63,13 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 
 	ranking.ResetForTests()
 	ranking.Register("work_item", ranking.ResourceConfig{
-		Table:       "artefacts",
-		ScopeColumn: "artefacts_id_timebox_sprint",
+		Table:                "artefacts",
+		ScopeColumn:          "artefacts_id_timebox_sprint",
+		IDColumn:             "artefacts_id",
+		PositionColumn:       "artefacts_position",
+		SubscriptionIDColumn: "artefacts_id_subscription",
+		UpdatedAtColumn:      "artefacts_updated_at",
+		ArchivedAtColumn:     "artefacts_archived_at",
 		Permissions: ranking.PermissionCheckerFunc(func(_ context.Context, _, _ uuid.UUID) (bool, error) {
 			return true, nil
 		}),
@@ -87,7 +92,7 @@ func TestMove_LastWriteWins_TwoConcurrentMovers(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(),
-			`UPDATE artefacts SET archived_at = now() WHERE id = ANY($1)`,
+			`UPDATE artefacts SET artefacts_archived_at = now() WHERE artefacts_id = ANY($1)`,
 			[]uuid.UUID{a, b, c},
 		)
 	})
@@ -146,10 +151,10 @@ func pickFixtures(t *testing.T, pool *pgxpool.Pool) (subID, wsID, typeID uuid.UU
 	t.Helper()
 	// workspace gives us both subscription_id and workspace_id in one query.
 	err := pool.QueryRow(context.Background(),
-		`SELECT w.master_record_workspaces_id_subscription, w.master_record_workspaces_id, at.id
+		`SELECT w.master_record_workspaces_id_subscription, w.master_record_workspaces_id, at.artefacts_types_id
 		 FROM master_record_workspaces w
-		 JOIN artefacts_types at ON at.subscription_id = w.master_record_workspaces_id_subscription
-		 WHERE w.master_record_workspaces_archived_at IS NULL AND at.archived_at IS NULL
+		 JOIN artefacts_types at ON at.artefacts_types_id_subscription = w.master_record_workspaces_id_subscription
+		 WHERE w.master_record_workspaces_archived_at IS NULL AND at.artefacts_types_archived_at IS NULL
 		 LIMIT 1`,
 	).Scan(&subID, &wsID, &typeID)
 	if err != nil {
@@ -169,9 +174,9 @@ func seedThreeBacklogRows(t *testing.T, ctx context.Context, tx pgx.Tx, subID, w
 		var id uuid.UUID
 		err := tx.QueryRow(ctx,
 			`INSERT INTO artefacts
-			   (subscription_id, workspace_id, artefact_type_id, number, title, position, created_at, updated_at)
+			   (artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_number, artefacts_title, artefacts_position, artefacts_created_at, artefacts_updated_at)
 			 VALUES ($1, $2, $3, $4, $5, $6, now(), now())
-			 RETURNING id`,
+			 RETURNING artefacts_id`,
 			subID, wsID, typeID,
 			base+int64(i),
 			fmt.Sprintf("rank-test row %d", i+1), pos,
@@ -187,9 +192,9 @@ func seedThreeBacklogRows(t *testing.T, ctx context.Context, tx pgx.Tx, subID, w
 func readBacklogCohort(t *testing.T, ctx context.Context, pool *pgxpool.Pool, subID uuid.UUID, ids []uuid.UUID) map[uuid.UUID]int {
 	t.Helper()
 	rows, err := pool.Query(ctx,
-		`SELECT id, position
+		`SELECT artefacts_id, artefacts_position
 		 FROM artefacts
-		 WHERE id = ANY($1) AND subscription_id = $2`,
+		 WHERE artefacts_id = ANY($1) AND artefacts_id_subscription = $2`,
 		ids, subID,
 	)
 	if err != nil {

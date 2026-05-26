@@ -215,7 +215,7 @@ func TestF7_BackfillNoNullPriorityID(t *testing.T) {
 	}
 
 	var n int
-	err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM artefacts WHERE priority_id IS NULL`).Scan(&n)
+	err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM artefacts WHERE artefacts_id_priority IS NULL`).Scan(&n)
 	if err != nil {
 		t.Fatalf("count NULL priority_id: %v", err)
 	}
@@ -240,8 +240,8 @@ func TestF7_BackfillNoOrphanFK(t *testing.T) {
 	err := pool.QueryRow(ctx, `
 		SELECT COUNT(*)
 		  FROM artefacts a
-		  LEFT JOIN artefact_priorities p ON a.priority_id = p.artefact_priorities_id
-		 WHERE a.priority_id IS NOT NULL AND p.artefact_priorities_id IS NULL
+		  LEFT JOIN artefact_priorities p ON a.artefacts_id_priority = p.artefact_priorities_id
+		 WHERE a.artefacts_id_priority IS NOT NULL AND p.artefact_priorities_id IS NULL
 	`).Scan(&n)
 	if err != nil {
 		t.Fatalf("count orphan FKs: %v", err)
@@ -277,11 +277,11 @@ func f7PriorityIDColumnExists(ctx context.Context, t *testing.T, pool *pgxpool.P
 		SELECT EXISTS (
 			SELECT 1 FROM information_schema.columns
 			 WHERE table_name  = 'artefacts'
-			   AND column_name = 'priority_id'
+			   AND column_name = 'artefacts_id_priority'
 		)
 	`).Scan(&exists)
 	if err != nil {
-		t.Fatalf("query information_schema for artefacts.priority_id: %v", err)
+		t.Fatalf("query information_schema for artefacts.artefacts_id_priority: %v", err)
 	}
 	return exists
 }

@@ -14,40 +14,40 @@ package artefactitems
 // tests that import this symbol keep working unchanged.)
 const rollupCTE = `rollup_points AS (
 	SELECT
-		a.id,
+		a.artefacts_id,
 		CASE WHEN EXISTS (
 			SELECT 1 FROM artefacts c
-			WHERE c.parent_artefact_id = a.id AND c.archived_at IS NULL
+			WHERE c.artefacts_id_parent = a.artefacts_id AND c.artefacts_archived_at IS NULL
 		) THEN (
 			WITH RECURSIVE descendants AS (
-				SELECT id, story_points
+				SELECT artefacts_id, artefacts_story_points
 				FROM artefacts
-				WHERE parent_artefact_id = a.id AND archived_at IS NULL
+				WHERE artefacts_id_parent = a.artefacts_id AND artefacts_archived_at IS NULL
 				UNION ALL
-				SELECT child.id, child.story_points
+				SELECT child.artefacts_id, child.artefacts_story_points
 				FROM artefacts child
-				JOIN descendants d ON child.parent_artefact_id = d.id
-				WHERE child.archived_at IS NULL
+				JOIN descendants d ON child.artefacts_id_parent = d.artefacts_id
+				WHERE child.artefacts_archived_at IS NULL
 			)
-			SELECT COALESCE(SUM(story_points), 0) FROM descendants
+			SELECT COALESCE(SUM(artefacts_story_points), 0) FROM descendants
 		) ELSE NULL END AS rollup_points
 	FROM artefacts a
-	WHERE a.subscription_id = $1
-	  AND a.archived_at IS NULL
+	WHERE a.artefacts_id_subscription = $1
+	  AND a.artefacts_archived_at IS NULL
 )`
 
 // sqlWorkItemColumns is the shared SELECT column list used by the data
 // queries (List + Get + ListChildren). Kept as a fragment string so all
 // three projections stay in lockstep.
 const sqlWorkItemColumns = `
-	a.id::text,
-	a.subscription_id::text,
-	a.number                        AS key_num,
+	a.artefacts_id::text,
+	a.artefacts_id_subscription::text,
+	a.artefacts_number              AS key_num,
 	lower(at.artefacts_types_name)  AS item_type,
 	at.artefacts_types_prefix       AS type_prefix,
-	a.artefact_type_id::text        AS artefact_type_id,
-	a.title,
-	a.description,
+	a.artefacts_id_artefact_type::text AS artefact_type_id,
+	a.artefacts_title               AS title,
+	a.artefacts_description         AS description,
 	''                              AS status,
 	COALESCE(fs.flows_states_id::text, '')        AS flow_state_id,
 	COALESCE(fs.flows_states_name, '')            AS flow_state_name,
@@ -60,50 +60,50 @@ const sqlWorkItemColumns = `
 		WHEN 'cancelled'   THEN 'cancelled'
 		ELSE                    'backlog'
 	END                             AS flow_state_code,
-	a.priority_id::text                        AS priority_id,
+	a.artefacts_id_priority::text              AS priority_id,
 	pri.artefact_priorities_name               AS priority_name,
 	pri.artefact_priorities_slot               AS priority_slot,
 	pri.artefact_priorities_sort_order         AS priority_sort_order,
-	a.story_points,
+	a.artefacts_story_points        AS story_points,
 	a.artefacts_id_timebox_sprint::text,
 	NULL::text                      AS sprint_ref_id,
 	NULL::text                      AS sprint_ref_alias,
-	a.parent_artefact_id::text      AS parent_id,
-	ap.id::text                     AS parent_ref_id,
+	a.artefacts_id_parent::text     AS parent_id,
+	ap.artefacts_id::text           AS parent_ref_id,
 	apt.artefacts_types_prefix      AS parent_ref_type_prefix,
-	ap.number                       AS parent_ref_key_num,
-	ap.title                        AS parent_ref_title,
+	ap.artefacts_number             AS parent_ref_key_num,
+	ap.artefacts_title              AS parent_ref_title,
 	NULL::text                      AS root_feature_id,
-	COALESCE(a.owned_by_user_id::text, '') AS owner_id,
+	COALESCE(a.artefacts_id_user_owned_by::text, '') AS owner_id,
 	NULL::text                      AS owner_ref_id,
 	NULL::text                      AS owner_display_name,
 	NULL::text                      AS owner_avatar_url,
-	a.due_date::text,
-	COALESCE(a.created_by_user_id::text, '') AS created_by,
-	a.created_at,
-	a.updated_at,
-	a.archived_at,
+	a.artefacts_due_date::text      AS due_date,
+	COALESCE(a.artefacts_id_user_created_by::text, '') AS created_by,
+	a.artefacts_created_at          AS created_at,
+	a.artefacts_updated_at          AS updated_at,
+	a.artefacts_archived_at         AS archived_at,
 	(SELECT count(*) FROM artefacts child
-	 WHERE child.parent_artefact_id = a.id
-	   AND child.archived_at IS NULL)        AS children_count,
-	COALESCE(rp.rollup_points, a.story_points) AS rollup_points,
-	a.topology_node_id::text                AS topology_node_id,
-	a.colour                                AS colour,
-	a.is_blocked                            AS is_blocked,
-	a.blocked_reason                        AS blocked_reason,
+	 WHERE child.artefacts_id_parent = a.artefacts_id
+	   AND child.artefacts_archived_at IS NULL)        AS children_count,
+	COALESCE(rp.rollup_points, a.artefacts_story_points) AS rollup_points,
+	a.artefacts_id_topology_node::text      AS topology_node_id,
+	a.artefacts_colour                      AS colour,
+	a.artefacts_is_blocked                  AS is_blocked,
+	a.artefacts_blocked_reason              AS blocked_reason,
 	a.artefacts_id_timebox_release::text    AS release_id,
 	a.artefacts_id_timebox_milestone::text  AS milestone_id,
-	a.description_doc                       AS description_doc`
+	a.artefacts_description_doc             AS description_doc`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
 const sqlCountWorkItemsTemplate = `
 		SELECT count(*) FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
-		WHERE a.subscription_id = $1
-		  AND a.archived_at IS NULL
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
+		WHERE a.artefacts_id_subscription = $1
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_scope = $2%s
 	`
 
@@ -113,14 +113,14 @@ const sqlListWorkItemsTemplate = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
-		LEFT JOIN rollup_points rp ON rp.id = a.id
-		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
-		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
-		WHERE a.subscription_id = $1
-		  AND a.archived_at IS NULL
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
+		LEFT JOIN rollup_points rp ON rp.artefacts_id = a.artefacts_id
+		LEFT JOIN artefacts ap ON ap.artefacts_id = a.artefacts_id_parent AND ap.artefacts_archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefacts_id_artefact_type
+		WHERE a.artefacts_id_subscription = $1
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_scope = $2%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
@@ -138,32 +138,32 @@ const sqlListWorkItemsTemplate = `
 const sqlSelectAncestors = `
 		WITH RECURSIVE chain AS (
 			SELECT
-				a.id, a.parent_artefact_id, a.artefact_type_id, a.number, a.title,
+				a.artefacts_id, a.artefacts_id_parent, a.artefacts_id_artefact_type, a.artefacts_number, a.artefacts_title,
 				1 AS depth
 			FROM artefacts a
-			WHERE a.id = (
-				SELECT parent_artefact_id FROM artefacts
-				WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
+			WHERE a.artefacts_id = (
+				SELECT artefacts_id_parent FROM artefacts
+				WHERE artefacts_id = $1 AND artefacts_id_subscription = $2 AND artefacts_archived_at IS NULL
 			)
-			  AND a.subscription_id = $2
-			  AND a.archived_at IS NULL
+			  AND a.artefacts_id_subscription = $2
+			  AND a.artefacts_archived_at IS NULL
 			UNION ALL
 			SELECT
-				p.id, p.parent_artefact_id, p.artefact_type_id, p.number, p.title,
+				p.artefacts_id, p.artefacts_id_parent, p.artefacts_id_artefact_type, p.artefacts_number, p.artefacts_title,
 				c.depth + 1
 			FROM artefacts p
-			JOIN chain c ON p.id = c.parent_artefact_id
-			WHERE p.subscription_id = $2
-			  AND p.archived_at IS NULL
+			JOIN chain c ON p.artefacts_id = c.artefacts_id_parent
+			WHERE p.artefacts_id_subscription = $2
+			  AND p.artefacts_archived_at IS NULL
 		)
 		SELECT
-			c.id::text,
+			c.artefacts_id::text,
 			at.artefacts_types_prefix AS type_prefix,
-			c.number AS key_num,
-			c.title,
-			c.parent_artefact_id::text AS parent_id
+			c.artefacts_number AS key_num,
+			c.artefacts_title AS title,
+			c.artefacts_id_parent::text AS parent_id
 		FROM chain c
-		JOIN artefacts_types at ON at.artefacts_types_id = c.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = c.artefacts_id_artefact_type
 		ORDER BY c.depth ASC
 	`
 
@@ -174,15 +174,15 @@ const sqlSelectWorkItemByID = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
-		LEFT JOIN rollup_points rp ON rp.id = a.id
-		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
-		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
-		WHERE a.id = $2
-		  AND a.subscription_id = $1
-		  AND a.archived_at IS NULL
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
+		LEFT JOIN rollup_points rp ON rp.artefacts_id = a.artefacts_id
+		LEFT JOIN artefacts ap ON ap.artefacts_id = a.artefacts_id_parent AND ap.artefacts_archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefacts_id_artefact_type
+		WHERE a.artefacts_id = $2
+		  AND a.artefacts_id_subscription = $1
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_scope = $3
 	`
 
@@ -195,15 +195,15 @@ const sqlSelectWorkItemByIDInWorkspace = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
-		LEFT JOIN rollup_points rp ON rp.id = a.id
-		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
-		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
-		WHERE a.id = $2
-		  AND a.subscription_id = $1
-		  AND a.archived_at IS NULL
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
+		LEFT JOIN rollup_points rp ON rp.artefacts_id = a.artefacts_id
+		LEFT JOIN artefacts ap ON ap.artefacts_id = a.artefacts_id_parent AND ap.artefacts_archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefacts_id_artefact_type
+		WHERE a.artefacts_id = $2
+		  AND a.artefacts_id_subscription = $1
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_scope = $3
 		  AND at.artefacts_types_id_workspace = $4
 	`
@@ -213,17 +213,17 @@ const sqlListChildWorkItems = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
-		LEFT JOIN rollup_points rp ON rp.id = a.id
-		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
-		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
-		WHERE a.subscription_id = $1
-		  AND a.parent_artefact_id = $2
-		  AND a.archived_at IS NULL
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
+		LEFT JOIN rollup_points rp ON rp.artefacts_id = a.artefacts_id
+		LEFT JOIN artefacts ap ON ap.artefacts_id = a.artefacts_id_parent AND ap.artefacts_archived_at IS NULL
+		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefacts_id_artefact_type
+		WHERE a.artefacts_id_subscription = $1
+		  AND a.artefacts_id_parent = $2
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_scope = $3
-		ORDER BY a.position ASC, a.number ASC
+		ORDER BY a.artefacts_position ASC, a.artefacts_number ASC
 	`
 
 // ── SummariseWorkItems ─────────────────────────────────────────────────────
@@ -235,12 +235,12 @@ const sqlSummariseTotalTemplate = `
 			COUNT(*) AS total,
 			COUNT(*) FILTER (
 				WHERE (fs.flows_states_kind = 'todo' OR fs.flows_states_id IS NULL)
-				  AND a.updated_at < NOW() - INTERVAL '14 days'
+				  AND a.artefacts_updated_at < NOW() - INTERVAL '14 days'
 			) AS blocked
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
 		WHERE %s
 	`
 
@@ -249,12 +249,12 @@ const sqlSummariseTotalTemplate = `
 // extra-clause string (workspace + topology scope) — see Service.ListFacets.
 // Same JOIN shape as the summarise queries so the clamp logic is shared.
 const sqlListFacetTypesTemplate = `
-		SELECT DISTINCT a.artefact_type_id
+		SELECT DISTINCT a.artefacts_id_artefact_type
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
 		WHERE at.artefacts_types_id_subscription = $1
 		  AND at.artefacts_types_scope = $2
-		  AND a.archived_at IS NULL
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_archived_at IS NULL%s
 	`
 
@@ -262,14 +262,14 @@ const sqlListFacetTypesTemplate = `
 // query. priority_id is NOT NULL post-PLA-0055 but the IS NOT NULL guard
 // keeps the query safe against legacy fixtures.
 const sqlListFacetPrioritiesTemplate = `
-		SELECT DISTINCT a.priority_id
+		SELECT DISTINCT a.artefacts_id_priority
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
 		WHERE at.artefacts_types_id_subscription = $1
 		  AND at.artefacts_types_scope = $2
-		  AND a.archived_at IS NULL
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_archived_at IS NULL
-		  AND a.priority_id IS NOT NULL%s
+		  AND a.artefacts_id_priority IS NOT NULL%s
 	`
 
 // sqlSummariseByTypeTemplate buckets counts by artefact_type.name. %s
@@ -277,9 +277,9 @@ const sqlListFacetPrioritiesTemplate = `
 const sqlSummariseByTypeTemplate = `
 		SELECT lower(at.artefacts_types_name) AS name, COUNT(*)
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
 		WHERE %s
 		GROUP BY lower(at.artefacts_types_name)
 	`
@@ -294,7 +294,7 @@ const sqlSummariseByTypeTemplate = `
 const sqlSummariseRisks = `
 		WITH r AS (
 			SELECT
-				a.id,
+				a.artefacts_id,
 				fs.flows_states_kind AS flow_kind,
 				LOWER(MAX(fvi.artefacts_fields_values_string_value) FILTER (
 					WHERE fli.artefacts_fields_library_field_name = 'risk_impact'
@@ -303,21 +303,21 @@ const sqlSummariseRisks = `
 					WHERE flp.artefacts_fields_library_field_name = 'risk_probability'
 				)) AS likelihood
 			FROM artefacts a
-			JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-			LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
+			JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+			LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.artefacts_id_priority
 			LEFT JOIN artefacts_fields_values fvi
-				ON fvi.artefacts_fields_values_id_artefact = a.id
+				ON fvi.artefacts_fields_values_id_artefact = a.artefacts_id
 			LEFT JOIN artefacts_fields_library fli
 				ON fli.artefacts_fields_library_id = fvi.artefacts_fields_values_id_field_library
 			LEFT JOIN artefacts_fields_values fvp
-				ON fvp.artefacts_fields_values_id_artefact = a.id
+				ON fvp.artefacts_fields_values_id_artefact = a.artefacts_id
 			LEFT JOIN artefacts_fields_library flp
 				ON flp.artefacts_fields_library_id = fvp.artefacts_fields_values_id_field_library
-			WHERE a.subscription_id = $1
-			  AND a.archived_at IS NULL
+			WHERE a.artefacts_id_subscription = $1
+			  AND a.artefacts_archived_at IS NULL
 			  AND lower(at.artefacts_types_name) = 'risk'
-			GROUP BY a.id, fs.flows_states_kind
+			GROUP BY a.artefacts_id, fs.flows_states_kind
 		)
 		SELECT
 			COUNT(*) AS total,
@@ -420,12 +420,12 @@ const sqlAllocateArtefactNumber = `
 		)
 		VALUES (
 			$1, $2,
-			(SELECT COALESCE(MAX(number), 0) + 2 FROM artefacts WHERE subscription_id = $1 AND artefact_type_id = $2)
+			(SELECT COALESCE(MAX(artefacts_number), 0) + 2 FROM artefacts WHERE artefacts_id_subscription = $1 AND artefacts_id_artefact_type = $2)
 		)
 		ON CONFLICT (artefacts_number_sequences_id_subscription, artefacts_number_sequences_id_artefact_type) DO UPDATE
 			SET artefacts_number_sequences_next_num = GREATEST(
 				artefacts_number_sequences.artefacts_number_sequences_next_num + 1,
-				(SELECT COALESCE(MAX(number), 0) + 2 FROM artefacts WHERE subscription_id = $1 AND artefact_type_id = $2)
+				(SELECT COALESCE(MAX(artefacts_number), 0) + 2 FROM artefacts WHERE artefacts_id_subscription = $1 AND artefacts_id_artefact_type = $2)
 			)
 		RETURNING artefacts_number_sequences_next_num - 1
 	`
@@ -448,19 +448,19 @@ const sqlSelectFirstLiveWorkspaceForSubscription = `
 	`
 
 const sqlSelectNextArtefactPosition = `
-		SELECT COALESCE(MAX(position), 0) + 100 FROM artefacts
-		WHERE subscription_id = $1
-		  AND artefact_type_id = $2
-		  AND archived_at IS NULL
+		SELECT COALESCE(MAX(artefacts_position), 0) + 100 FROM artefacts
+		WHERE artefacts_id_subscription = $1
+		  AND artefacts_id_artefact_type = $2
+		  AND artefacts_archived_at IS NULL
 	`
 
 const sqlInsertArtefact = `
 		INSERT INTO artefacts
-			(subscription_id, workspace_id, artefact_type_id, number, title, description,
-			 flow_state_id, priority_id, story_points, artefacts_id_timebox_sprint, parent_artefact_id,
-			 owned_by_user_id, created_by_user_id, position, topology_node_id)
+			(artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_number, artefacts_title, artefacts_description,
+			 artefacts_id_flow_state, artefacts_id_priority, artefacts_story_points, artefacts_id_timebox_sprint, artefacts_id_parent,
+			 artefacts_id_user_owned_by, artefacts_id_user_created_by, artefacts_position, artefacts_id_topology_node)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8::uuid,$9,$10,$11,$12,$13,$14,$15)
-		RETURNING id
+		RETURNING artefacts_id
 	`
 
 // ── PatchWorkItem ──────────────────────────────────────────────────────────
@@ -480,14 +480,14 @@ const sqlExistsFlowStateInSubscription = `
 // the comma-separated SET clause; %d %d hold the (id, subscription_id)
 // bind indexes.
 const sqlPatchArtefactTemplate = `UPDATE artefacts SET %s
-		WHERE id = $%d AND subscription_id = $%d AND archived_at IS NULL`
+		WHERE artefacts_id = $%d AND artefacts_id_subscription = $%d AND artefacts_archived_at IS NULL`
 
 // ── ArchiveWorkItem ────────────────────────────────────────────────────────
 
 const sqlArchiveArtefact = `
 		UPDATE artefacts
-		SET archived_at = now(), updated_at = now()
-		WHERE id = $1 AND subscription_id = $2 AND archived_at IS NULL
+		SET artefacts_archived_at = now(), artefacts_updated_at = now()
+		WHERE artefacts_id = $1 AND artefacts_id_subscription = $2 AND artefacts_archived_at IS NULL
 	`
 
 // ── Flow-state cascade (recalc) ────────────────────────────────────────────
@@ -513,15 +513,15 @@ const sqlArchiveArtefact = `
 const sqlSelectArtefactForRecalc = `
 		SELECT
 			at.artefacts_types_scope,
-			a.artefact_type_id,
-			a.flow_state_id,
+			a.artefacts_id_artefact_type,
+			a.artefacts_id_flow_state,
 			COALESCE(fs.flows_states_kind, '') AS current_kind,
-			a.parent_artefact_id,
-			a.archived_at
+			a.artefacts_id_parent,
+			a.artefacts_archived_at
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		WHERE a.id = $1 AND a.subscription_id = $2
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		WHERE a.artefacts_id = $1 AND a.artefacts_id_subscription = $2
 	`
 
 // sqlCountChildrenByKind — bucket the parent's LIVE children by canonical
@@ -533,10 +533,10 @@ const sqlCountChildrenByKind = `
 			COALESCE(fs.flows_states_kind, 'unknown') AS kind,
 			count(*) AS n
 		FROM artefacts a
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		WHERE a.parent_artefact_id = $1
-		  AND a.subscription_id = $2
-		  AND a.archived_at IS NULL
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		WHERE a.artefacts_id_parent = $1
+		  AND a.artefacts_id_subscription = $2
+		  AND a.artefacts_archived_at IS NULL
 		GROUP BY kind
 	`
 
@@ -564,9 +564,9 @@ const sqlSelectFirstFlowStateByKind = `
 // writes on parented rows (HARD RULE: SERVER IS THE GATE).
 const sqlCountLiveChildrenOnly = `
 		SELECT count(*) FROM artefacts
-		WHERE parent_artefact_id = $1
-		  AND subscription_id = $2
-		  AND archived_at IS NULL
+		WHERE artefacts_id_parent = $1
+		  AND artefacts_id_subscription = $2
+		  AND artefacts_archived_at IS NULL
 	`
 
 // sqlSetFlowStateInternal — UPDATE used by the recalc engine ONLY.
@@ -575,17 +575,17 @@ const sqlCountLiveChildrenOnly = `
 // to keep the audit trail honest.
 const sqlSetFlowStateInternal = `
 		UPDATE artefacts
-		SET flow_state_id = $1::uuid, updated_at = now()
-		WHERE id = $2 AND subscription_id = $3 AND archived_at IS NULL
+		SET artefacts_id_flow_state = $1::uuid, artefacts_updated_at = now()
+		WHERE artefacts_id = $2 AND artefacts_id_subscription = $3 AND artefacts_archived_at IS NULL
 	`
 
 // sqlSelectParentForRecalc — fetch ONLY the parent_artefact_id and
 // subscription_id of an artefact, used when wiring patch/archive into
 // the cascade (we need the parent id BEFORE the row is changed/gone).
 const sqlSelectParentForRecalc = `
-		SELECT parent_artefact_id, subscription_id
+		SELECT artefacts_id_parent, artefacts_id_subscription
 		FROM artefacts
-		WHERE id = $1
+		WHERE artefacts_id = $1
 	`
 
 // sqlSelectCurrentFlowKind — reads the current flows_states_kind of an
@@ -597,8 +597,8 @@ const sqlSelectParentForRecalc = `
 const sqlSelectCurrentFlowKind = `
 		SELECT COALESCE(fs.flows_states_kind, '')
 		FROM artefacts a
-		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		WHERE a.id = $1 AND a.subscription_id = $2
+		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
+		WHERE a.artefacts_id = $1 AND a.artefacts_id_subscription = $2
 	`
 
 // sqlSelectFirstReachableStateByKind — finds the first state of the
@@ -630,14 +630,14 @@ const sqlSelectFirstReachableStateByKind = `
 // ── BulkOps ────────────────────────────────────────────────────────────────
 
 const sqlSelectArtefactsForBulkLock = `
-		SELECT a.id::text, lower(at.artefacts_types_name)
+		SELECT a.artefacts_id::text, lower(at.artefacts_types_name)
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		WHERE a.subscription_id = $1 AND a.id::text = ANY($2) AND a.archived_at IS NULL
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		WHERE a.artefacts_id_subscription = $1 AND a.artefacts_id::text = ANY($2) AND a.artefacts_archived_at IS NULL
 		FOR UPDATE OF a
 	`
 
-const sqlBulkSetPriority = `UPDATE artefacts SET priority_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`
+const sqlBulkSetPriority = `UPDATE artefacts SET artefacts_id_priority=$1::uuid, artefacts_updated_at=now() WHERE artefacts_id=$2::uuid AND artefacts_id_subscription=$3`
 
 // sqlSelectDefaultPriorityForWorkspace mirrors the frontend's
 // pickDefaultPriority: prefer the pri_medium-slotted row in this
@@ -652,11 +652,11 @@ const sqlSelectDefaultPriorityForWorkspace = `
 		 LIMIT 1
 	`
 
-const sqlBulkSetOwner = `UPDATE artefacts SET owned_by_user_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`
+const sqlBulkSetOwner = `UPDATE artefacts SET artefacts_id_user_owned_by=$1::uuid, artefacts_updated_at=now() WHERE artefacts_id=$2::uuid AND artefacts_id_subscription=$3`
 
-const sqlBulkArchive = `UPDATE artefacts SET archived_at=now(), updated_at=now() WHERE id=$1::uuid AND subscription_id=$2`
+const sqlBulkArchive = `UPDATE artefacts SET artefacts_archived_at=now(), artefacts_updated_at=now() WHERE artefacts_id=$1::uuid AND artefacts_id_subscription=$2`
 
-const sqlBulkSetFlowState = `UPDATE artefacts SET flow_state_id=$1::uuid, updated_at=now() WHERE id=$2::uuid AND subscription_id=$3`
+const sqlBulkSetFlowState = `UPDATE artefacts SET artefacts_id_flow_state=$1::uuid, artefacts_updated_at=now() WHERE artefacts_id=$2::uuid AND artefacts_id_subscription=$3`
 
 // ── ListFieldsForType ──────────────────────────────────────────────────────
 
@@ -746,7 +746,7 @@ const sqlSelectFieldValueByArtefactAndField = `
 // have the subscription_id in hand, but UpsertFieldValue / DeleteFieldValue
 // don't, and the rules envelope needs it.
 const sqlSelectArtefactSubscriptionID = `
-		SELECT subscription_id FROM artefacts WHERE id = $1
+		SELECT artefacts_id_subscription FROM artefacts WHERE artefacts_id = $1
 	`
 
 // sqlSelectFieldValueByValueRowID is the symmetric lookup for the
@@ -802,8 +802,8 @@ const sqlSelectActiveUserDisplayNamesByIDs = `
 // workspace_id from artefacts and joins to artefacts_types for the
 // type NAME (rules engine targets by name post mig 237).
 const sqlArtefactWorkspaceAndTypeName = `
-		SELECT a.workspace_id, t.artefacts_types_name
+		SELECT a.artefacts_id_workspace, t.artefacts_types_name
 		FROM artefacts a
-		JOIN artefacts_types t ON t.artefacts_types_id = a.artefact_type_id
-		WHERE a.id = $1
+		JOIN artefacts_types t ON t.artefacts_types_id = a.artefacts_id_artefact_type
+		WHERE a.artefacts_id = $1
 	`

@@ -83,22 +83,22 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 		}
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO artefacts (
-				subscription_id, workspace_id,
-				artefact_type_id, number, title,
-				parent_artefact_id, position, priority_id
+				artefacts_id_subscription, artefacts_id_workspace,
+				artefacts_id_artefact_type, artefacts_number, artefacts_title,
+				artefacts_id_parent, artefacts_position, artefacts_id_priority
 			) VALUES ($1, $2, $3, 1, 'Old root artefact', NULL, 0, $4)
-			RETURNING id`,
+			RETURNING artefacts_id`,
 			subID, wsID, oldStrategyTypeID, priorityID,
 		).Scan(&oldStrategyArtefactID); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO artefacts (
-				subscription_id, workspace_id,
-				artefact_type_id, number, title,
-				parent_artefact_id, position, priority_id
+				artefacts_id_subscription, artefacts_id_workspace,
+				artefacts_id_artefact_type, artefacts_number, artefacts_title,
+				artefacts_id_parent, artefacts_position, artefacts_id_priority
 			) VALUES ($1, $2, $3, 1, 'Story under old root', $4, 0, $5)
-			RETURNING id`,
+			RETURNING artefacts_id`,
 			subID, wsID, workTypeID, oldStrategyArtefactID, priorityID,
 		).Scan(&workArtefactID); err != nil {
 			return err
@@ -110,7 +110,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	t.Cleanup(func() {
 		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_, _ = pool.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, wsID)
+		_, _ = pool.Exec(c, `DELETE FROM artefacts WHERE artefacts_id_workspace = $1`, wsID)
 		_, _ = pool.Exec(c, `DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1`, wsID)
 		_, _ = pool.Exec(c, `DELETE FROM artefact_priorities WHERE artefact_priorities_id_workspace = $1`, wsID)
 	})
@@ -144,9 +144,9 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	// (b) exactly one strategy artefact under the placeholder type.
 	if err := pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM artefacts
-		 WHERE workspace_id = $1
-		   AND artefact_type_id = $2
-		   AND archived_at IS NULL`, wsID, placeholderTypeID).Scan(&ct); err != nil {
+		 WHERE artefacts_id_workspace = $1
+		   AND artefacts_id_artefact_type = $2
+		   AND artefacts_archived_at IS NULL`, wsID, placeholderTypeID).Scan(&ct); err != nil {
 		t.Fatalf("count placeholder artefacts: %v", err)
 	}
 	if ct != 1 {
@@ -157,7 +157,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	//     (NOT NULL invariant preserved).
 	var actualParent *uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		SELECT parent_artefact_id FROM artefacts WHERE id = $1`,
+		SELECT artefacts_id_parent FROM artefacts WHERE artefacts_id = $1`,
 		workArtefactID,
 	).Scan(&actualParent); err != nil {
 		t.Fatalf("read repointed work artefact: %v", err)
@@ -172,7 +172,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 
 	// (d) original strategy artefact deleted.
 	if err := pool.QueryRow(ctx, `
-		SELECT COUNT(*) FROM artefacts WHERE id = $1`,
+		SELECT COUNT(*) FROM artefacts WHERE artefacts_id = $1`,
 		oldStrategyArtefactID,
 	).Scan(&ct); err != nil {
 		t.Fatalf("count old strategy artefact: %v", err)

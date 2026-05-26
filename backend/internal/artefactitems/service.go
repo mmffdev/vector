@@ -255,20 +255,20 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		}
 		// Intersect with the Sentinel clamp (no-op when clamp absent).
 		ids = sentinel.ApplyClampToIDs(ctx, ids)
-		extra = append(extra, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
 		args = append(args, ids)
 		n++
 	}
 
 	if filters.ParentID != nil {
-		extra = append(extra, fmt.Sprintf("a.parent_artefact_id = $%d::uuid", n))
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_parent = $%d::uuid", n))
 		args = append(args, *filters.ParentID)
 		n++
 	} else if len(filters.ItemType) == 0 && filters.ScopeNodeID == nil {
 		// Default: top-level items only when no scope clamp is active.
 		// When scope is active, artefacts at any depth in the topology
 		// subtree are visible (their parents may live outside the node).
-		extra = append(extra, "a.parent_artefact_id IS NULL")
+		extra = append(extra, "a.artefacts_id_parent IS NULL")
 	}
 	// PLA-0054 / story 00586: multi-value UUID filters. Empty slice is a
 	// no-op; otherwise emit ANY($N::uuid[]) so the JOIN predicate matches
@@ -282,12 +282,12 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	if len(filters.Status) > 0 {
 		// PLA-0054 / story 00585: Status filter is now flow_state_id list
 		// (the artefact's current flow state, not a translated kind slug).
-		extra = append(extra, fmt.Sprintf("a.flow_state_id = ANY($%d::uuid[])", n))
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_flow_state = ANY($%d::uuid[])", n))
 		args = append(args, filters.Status)
 		n++
 	}
 	if len(filters.Priority) > 0 {
-		extra = append(extra, fmt.Sprintf("a.priority_id = ANY($%d::uuid[])", n))
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_priority = ANY($%d::uuid[])", n))
 		args = append(args, filters.Priority)
 		n++
 	}
@@ -297,7 +297,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		n++
 	}
 	if len(filters.OwnerID) > 0 {
-		extra = append(extra, fmt.Sprintf("a.owned_by_user_id = ANY($%d::uuid[])", n))
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_user_owned_by = ANY($%d::uuid[])", n))
 		args = append(args, filters.OwnerID)
 		n++
 	}
@@ -427,7 +427,7 @@ func (s *Service) ListFacets(
 			return FacetSet{}, resolveErr
 		}
 		ids = sentinel.ApplyClampToIDs(ctx, ids)
-		extra = append(extra, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
 		args = append(args, ids)
 		n++
 	}
@@ -594,8 +594,8 @@ func (s *Service) SummariseWorkItems(
 	}
 	args := []any{subscriptionID, s.scope}
 	conds := []string{
-		"a.subscription_id = $1",
-		"a.archived_at IS NULL",
+		"a.artefacts_id_subscription = $1",
+		"a.artefacts_archived_at IS NULL",
 		"at.artefacts_types_scope = $2",
 	}
 	n := 3
@@ -650,7 +650,7 @@ func (s *Service) SummariseWorkItems(
 			return out, resolveErr
 		}
 		ids = sentinel.ApplyClampToIDs(ctx, ids)
-		conds = append(conds, fmt.Sprintf("a.topology_node_id = ANY($%d::uuid[])", n))
+		conds = append(conds, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
 		args = append(args, ids)
 		n++
 	}
@@ -1089,17 +1089,17 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		}
 	}
 
-	sets := []string{"updated_at = now()"}
+	sets := []string{"artefacts_updated_at = now()"}
 	args := []any{}
 	n := 1
 
 	if in.Title != nil {
-		sets = append(sets, fmt.Sprintf("title = $%d", n))
+		sets = append(sets, fmt.Sprintf("artefacts_title = $%d", n))
 		args = append(args, *in.Title)
 		n++
 	}
 	if in.Description != nil {
-		sets = append(sets, fmt.Sprintf("description = $%d", n))
+		sets = append(sets, fmt.Sprintf("artefacts_description = $%d", n))
 		args = append(args, *in.Description)
 		n++
 	}
@@ -1112,7 +1112,7 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		if err != nil || !fsExists {
 			return nil, fmt.Errorf("%w: flow_state_id not found", ErrInvalidInput)
 		}
-		sets = append(sets, fmt.Sprintf("flow_state_id = $%d::uuid", n))
+		sets = append(sets, fmt.Sprintf("artefacts_id_flow_state = $%d::uuid", n))
 		args = append(args, *in.FlowStateID)
 		n++
 	}
@@ -1121,12 +1121,12 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		// NULL" path is no longer supported. Callers wanting to "reset"
 		// must send the workspace's default priority UUID (resolved via
 		// the catalogue's useDefaultPriority on the frontend).
-		sets = append(sets, fmt.Sprintf("priority_id = $%d::uuid", n))
+		sets = append(sets, fmt.Sprintf("artefacts_id_priority = $%d::uuid", n))
 		args = append(args, *in.PriorityID)
 		n++
 	}
 	if in.StoryPoints != nil {
-		sets = append(sets, fmt.Sprintf("story_points = $%d", n))
+		sets = append(sets, fmt.Sprintf("artefacts_story_points = $%d", n))
 		args = append(args, *in.StoryPoints)
 		n++
 	}
@@ -1141,32 +1141,32 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	}
 	if in.DueDate != nil {
 		if *in.DueDate == "" {
-			sets = append(sets, "due_date = NULL")
+			sets = append(sets, "artefacts_due_date = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("due_date = $%d::date", n))
+			sets = append(sets, fmt.Sprintf("artefacts_due_date = $%d::date", n))
 			args = append(args, *in.DueDate)
 			n++
 		}
 	}
 	if in.Colour != nil {
 		if *in.Colour == "" {
-			sets = append(sets, "colour = NULL")
+			sets = append(sets, "artefacts_colour = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("colour = $%d", n))
+			sets = append(sets, fmt.Sprintf("artefacts_colour = $%d", n))
 			args = append(args, *in.Colour)
 			n++
 		}
 	}
 	if in.IsBlocked != nil {
-		sets = append(sets, fmt.Sprintf("is_blocked = $%d", n))
+		sets = append(sets, fmt.Sprintf("artefacts_is_blocked = $%d", n))
 		args = append(args, *in.IsBlocked)
 		n++
 	}
 	if in.BlockedReason != nil {
 		if *in.BlockedReason == "" {
-			sets = append(sets, "blocked_reason = NULL")
+			sets = append(sets, "artefacts_blocked_reason = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("blocked_reason = $%d", n))
+			sets = append(sets, fmt.Sprintf("artefacts_blocked_reason = $%d", n))
 			args = append(args, *in.BlockedReason)
 			n++
 		}
@@ -1191,27 +1191,27 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	}
 	if in.OwnedByUserID != nil {
 		if *in.OwnedByUserID == "" {
-			sets = append(sets, "owned_by_user_id = NULL")
+			sets = append(sets, "artefacts_id_user_owned_by = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("owned_by_user_id = $%d::uuid", n))
+			sets = append(sets, fmt.Sprintf("artefacts_id_user_owned_by = $%d::uuid", n))
 			args = append(args, *in.OwnedByUserID)
 			n++
 		}
 	}
 	if in.ParentArtefactID != nil {
 		if *in.ParentArtefactID == "" {
-			sets = append(sets, "parent_artefact_id = NULL")
+			sets = append(sets, "artefacts_id_parent = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("parent_artefact_id = $%d::uuid", n))
+			sets = append(sets, fmt.Sprintf("artefacts_id_parent = $%d::uuid", n))
 			args = append(args, *in.ParentArtefactID)
 			n++
 		}
 	}
 	if in.TopologyNodeID != nil {
 		if *in.TopologyNodeID == "" {
-			sets = append(sets, "topology_node_id = NULL")
+			sets = append(sets, "artefacts_id_topology_node = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("topology_node_id = $%d::uuid", n))
+			sets = append(sets, fmt.Sprintf("artefacts_id_topology_node = $%d::uuid", n))
 			args = append(args, *in.TopologyNodeID)
 			n++
 		}
@@ -1221,9 +1221,9 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		// "null", "" or "{}" all mean "clear to NULL". Any other JSON
 		// is stored verbatim — pgx maps json.RawMessage to JSONB.
 		if raw == "" || raw == "null" || raw == "{}" {
-			sets = append(sets, "description_doc = NULL")
+			sets = append(sets, "artefacts_description_doc = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("description_doc = $%d::jsonb", n))
+			sets = append(sets, fmt.Sprintf("artefacts_description_doc = $%d::jsonb", n))
 			args = append(args, *in.DescriptionDoc)
 			n++
 		}
@@ -1917,7 +1917,7 @@ func (s *Service) decorateOwners(ctx context.Context, items []WorkItem) error {
 // sort keys mirror the v1 frontend SortKey union; dir is clamped to ASC/DESC.
 func buildOrderBy(sort, dir string) string {
 	if sort == "" {
-		return "a.position ASC, a.number ASC"
+		return "a.artefacts_position ASC, a.artefacts_number ASC"
 	}
 	d := "ASC"
 	if dir == "desc" {
@@ -1930,26 +1930,26 @@ func buildOrderBy(sort, dir string) string {
 		// of a hardcoded CASE WHEN that grew a line for every new type.
 		// Adding a new artefact type now requires only the seed migration —
 		// no Go change.
-		return fmt.Sprintf(`at.artefacts_types_sort_order ASC NULLS LAST, a.number %s`, d)
+		return fmt.Sprintf(`at.artefacts_types_sort_order ASC NULLS LAST, a.artefacts_number %s`, d)
 	case "title":
-		return fmt.Sprintf("a.title %s, a.number ASC", d)
+		return fmt.Sprintf("a.artefacts_title %s, a.artefacts_number ASC", d)
 	case "status":
-		return fmt.Sprintf("fs.sort_order %s NULLS LAST, a.number ASC", d)
+		return fmt.Sprintf("fs.flows_states_sort_order %s NULLS LAST, a.artefacts_number ASC", d)
 	case "priority":
 		// PLA-0055 / story 00595+00597 — sort by the priority row's
 		// catalogue sort_order. Same TD-WORKITEMS-GENERIC pay-down as
 		// item_type: hardcoded CASE WHEN replaced with the joined
 		// sort_order so tenant-added custom priorities slot into the
 		// ordering without any Go change.
-		return fmt.Sprintf(`pri.sort_order %s NULLS LAST, a.number ASC`, d)
+		return fmt.Sprintf(`pri.artefact_priorities_sort_order %s NULLS LAST, a.artefacts_number ASC`, d)
 	case "points":
-		return fmt.Sprintf("COALESCE(rp.rollup_points, a.story_points) %s NULLS LAST, a.number ASC", d)
+		return fmt.Sprintf("COALESCE(rp.rollup_points, a.artefacts_story_points) %s NULLS LAST, a.artefacts_number ASC", d)
 	case "sprint_id":
-		return fmt.Sprintf("a.artefacts_id_timebox_sprint %s NULLS LAST, a.number ASC", d)
+		return fmt.Sprintf("a.artefacts_id_timebox_sprint %s NULLS LAST, a.artefacts_number ASC", d)
 	case "due_date":
-		return fmt.Sprintf("a.due_date %s NULLS LAST, a.number ASC", d)
+		return fmt.Sprintf("a.artefacts_due_date %s NULLS LAST, a.artefacts_number ASC", d)
 	default:
-		return "a.position ASC, a.number ASC"
+		return "a.artefacts_position ASC, a.artefacts_number ASC"
 	}
 }
 

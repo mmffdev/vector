@@ -38,7 +38,7 @@ func TestSubtreeClause_ClampPresentSplicesFragment(t *testing.T) {
 	})
 	args := []any{"sub-id", "scope"}
 	frag, out, n := SubtreeClause(ctx, "a", args, 3)
-	want := " AND a.topology_node_id = ANY($3::uuid[])"
+	want := " AND a.artefacts_id_topology_node = ANY($3::uuid[])"
 	if frag != want {
 		t.Errorf("frag = %q, want %q", frag, want)
 	}

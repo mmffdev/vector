@@ -62,7 +62,7 @@ func TestOrchestrator_HappyPath(t *testing.T) {
 	defer func() { _ = resetAdoptionFixture(context.Background(), vec, user.SubscriptionID) }()
 	defer func() {
 		c := context.Background()
-		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, workspaceID)
+		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE artefacts_id_workspace = $1`, workspaceID)
 		_, _ = va.Exec(c, `DELETE FROM artefacts_types WHERE workspace_id = $1`, workspaceID)
 	}()
 

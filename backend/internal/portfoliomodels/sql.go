@@ -382,14 +382,14 @@ const sqlUpsertReadoptPlaceholderType = `
 
 const sqlUpsertReadoptPlaceholderArtefact = `
 		INSERT INTO artefacts (
-			subscription_id, workspace_id,
-			artefact_type_id,
-			number,
-			title, description,
-			parent_artefact_id, flow_state_id,
-			priority_id,
-			created_by_user_id, owned_by_user_id,
-			position
+			artefacts_id_subscription, artefacts_id_workspace,
+			artefacts_id_artefact_type,
+			artefacts_number,
+			artefacts_title, artefacts_description,
+			artefacts_id_parent, artefacts_id_flow_state,
+			artefacts_id_priority,
+			artefacts_id_user_created_by, artefacts_id_user_owned_by,
+			artefacts_position
 		) VALUES (
 			$1, $2,
 			$3,
@@ -401,20 +401,20 @@ const sqlUpsertReadoptPlaceholderArtefact = `
 			$4, $4,
 			0
 		)
-		ON CONFLICT (subscription_id, artefact_type_id, number) DO UPDATE
-			SET updated_at = now()
-		RETURNING id
+		ON CONFLICT (artefacts_id_subscription, artefacts_id_artefact_type, artefacts_number) DO UPDATE
+			SET artefacts_updated_at = now()
+		RETURNING artefacts_id
 	`
 
 const sqlRepointOrphanWorkArtefactsToPlaceholder = `
 		UPDATE artefacts AS a
-		   SET parent_artefact_id = $1,
-		       updated_at = now()
+		   SET artefacts_id_parent = $1,
+		       artefacts_updated_at = now()
 		  FROM artefacts AS p
-		  JOIN artefacts_types AS pt ON pt.artefacts_types_id = p.artefact_type_id
-		 WHERE a.parent_artefact_id = p.id
-		   AND a.workspace_id = $2
-		   AND a.archived_at IS NULL
+		  JOIN artefacts_types AS pt ON pt.artefacts_types_id = p.artefacts_id_artefact_type
+		 WHERE a.artefacts_id_parent = p.artefacts_id
+		   AND a.artefacts_id_workspace = $2
+		   AND a.artefacts_archived_at IS NULL
 		   AND pt.artefacts_types_scope = 'strategy'
 		   AND pt.artefacts_types_is_placeholder = FALSE
 		   AND pt.artefacts_types_id_workspace = $2
@@ -423,8 +423,8 @@ const sqlRepointOrphanWorkArtefactsToPlaceholder = `
 const sqlDeleteOldStrategyArtefacts = `
 		DELETE FROM artefacts AS a
 		 USING artefacts_types AS t
-		 WHERE a.artefact_type_id = t.artefacts_types_id
-		   AND a.workspace_id = $1
+		 WHERE a.artefacts_id_artefact_type = t.artefacts_types_id
+		   AND a.artefacts_id_workspace = $1
 		   AND t.artefacts_types_id_workspace = $1
 		   AND t.artefacts_types_scope = 'strategy'
 		   AND t.artefacts_types_is_placeholder = FALSE
@@ -547,22 +547,22 @@ const sqlDeleteAllAdoptionStateForSubscription = `DELETE FROM artefacts_adoption
 const sqlDeleteAllArtefactFieldValuesForSubscription = `
 		DELETE FROM artefacts_fields_values fv
 		 USING artefacts a
-		 WHERE fv.artefacts_fields_values_id_artefact = a.id
-		   AND a.subscription_id = $1
+		 WHERE fv.artefacts_fields_values_id_artefact = a.artefacts_id
+		   AND a.artefacts_id_subscription = $1
 	`
 
-const sqlDeleteAllArtefactsForSubscription = `DELETE FROM artefacts WHERE subscription_id = $1`
+const sqlDeleteAllArtefactsForSubscription = `DELETE FROM artefacts WHERE artefacts_id_subscription = $1`
 
 // sqlCountArtefactsForSubscription — used by ArtefactsCount pre-flight
 // (GET /_site/admin/dev/artefacts-count). Returns live / archived / total
 // rows for one tenant; archived_at NULL = live.
 const sqlCountArtefactsForSubscription = `
 	SELECT
-	  count(*) FILTER (WHERE archived_at IS NULL),
-	  count(*) FILTER (WHERE archived_at IS NOT NULL),
+	  count(*) FILTER (WHERE artefacts_archived_at IS NULL),
+	  count(*) FILTER (WHERE artefacts_archived_at IS NOT NULL),
 	  count(*)
 	FROM artefacts
-	WHERE subscription_id = $1
+	WHERE artefacts_id_subscription = $1
 `
 
 const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefacts_number_sequences WHERE artefacts_number_sequences_id_subscription = $1`
@@ -649,15 +649,20 @@ const sqlSeedRisks = `
 		     AND flows_states_archived_at IS NULL
 		),
 		existing AS (
-		  SELECT COALESCE(MAX(number), 0) AS max_num
+		  SELECT COALESCE(MAX(artefacts_number), 0) AS max_num
 		    FROM artefacts
-		   WHERE artefact_type_id = $3 AND subscription_id = $1
+		   WHERE artefacts_id_artefact_type = $3 AND artefacts_id_subscription = $1
 		),
 		seq AS (SELECT generate_series(1, $5::int) AS n),
 		ins AS (
+		  -- NOTE: this INSERT references a priority column that does not exist on artefacts
+		  -- (the live schema has priority_id uuid, not a string priority). Pre-existing latent
+		  -- defect from the seed code; tracked separately. This wave only renames the columns
+		  -- that DO exist; the bad priority token stays bare and remains broken at runtime
+		  -- (the call has been broken since the priority cutover).
 		  INSERT INTO artefacts (
-		    subscription_id, workspace_id, artefact_type_id, number, title, description,
-		    flow_state_id, created_by_user_id, assigned_to_user_id, owned_by_user_id, priority
+		    artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_number, artefacts_title, artefacts_description,
+		    artefacts_id_flow_state, artefacts_id_user_created_by, artefacts_id_user_assigned_to, artefacts_id_user_owned_by, priority
 		  )
 		  SELECT
 		    $1, $2, $3,

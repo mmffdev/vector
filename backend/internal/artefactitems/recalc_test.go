@@ -78,7 +78,7 @@ func seedArtefactWithFlow(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemT
 	// Workspace + priority resolution (mirror of seedArtefact).
 	var wsID uuid.UUID
 	if err := va.QueryRow(ctx,
-		`SELECT workspace_id FROM artefacts WHERE subscription_id=$1 LIMIT 1`, subID,
+		`SELECT artefacts_id_workspace FROM artefacts WHERE artefacts_id_subscription=$1 LIMIT 1`, subID,
 	).Scan(&wsID); err != nil {
 		wsID = subID
 	}
@@ -109,15 +109,15 @@ func seedArtefactWithFlow(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemT
 	var id uuid.UUID
 	if err := va.QueryRow(ctx, `
 		INSERT INTO artefacts
-			(subscription_id, workspace_id, artefact_type_id, number, title, flow_state_id, priority_id, position)
+			(artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_number, artefacts_title, artefacts_id_flow_state, artefacts_id_priority, artefacts_position)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,100)
-		RETURNING id`,
+		RETURNING artefacts_id`,
 		subID, wsID, atID, num, title, fsID, priorityID,
 	).Scan(&id); err != nil {
 		t.Fatalf("insert artefact %s: %v", title, err)
 	}
 	t.Cleanup(func() {
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 	return id, atID
 }
@@ -180,7 +180,7 @@ func readFlowStateID(t *testing.T, va *pgxpool.Pool, id uuid.UUID) uuid.UUID {
 	t.Helper()
 	var fsID uuid.UUID
 	if err := va.QueryRow(context.Background(),
-		`SELECT flow_state_id FROM artefacts WHERE id = $1`, id,
+		`SELECT artefacts_id_flow_state FROM artefacts WHERE artefacts_id = $1`, id,
 	).Scan(&fsID); err != nil {
 		t.Fatalf("read flow_state_id for %s: %v", id, err)
 	}
@@ -192,7 +192,7 @@ func readFlowStateID(t *testing.T, va *pgxpool.Pool, id uuid.UUID) uuid.UUID {
 func reparentArtefact(t *testing.T, va *pgxpool.Pool, child, parent uuid.UUID) {
 	t.Helper()
 	if _, err := va.Exec(context.Background(),
-		`UPDATE artefacts SET parent_artefact_id = $1 WHERE id = $2`, parent, child,
+		`UPDATE artefacts SET artefacts_id_parent = $1 WHERE artefacts_id = $2`, parent, child,
 	); err != nil {
 		t.Fatalf("reparent %s -> %s: %v", child, parent, err)
 	}

@@ -22,13 +22,13 @@ package resolvers
 const sqlSelectArtefactLabel = `
 		SELECT
 			at.artefacts_types_prefix AS prefix,
-			a.number                  AS key_num,
-			a.title                   AS title,
+			a.artefacts_number        AS key_num,
+			a.artefacts_title         AS title,
 			lower(at.artefacts_types_name) AS type_slug
 		FROM artefacts a
-		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
-		WHERE a.id = $1
-		  AND a.subscription_id = $2
-		  AND a.archived_at IS NULL
+		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
+		WHERE a.artefacts_id = $1
+		  AND a.artefacts_id_subscription = $2
+		  AND a.artefacts_archived_at IS NULL
 		  AND at.artefacts_types_archived_at IS NULL
 	`

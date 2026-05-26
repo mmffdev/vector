@@ -347,7 +347,7 @@ func TestHandler_Create_ThenGet(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(created.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	// GET the created item.
@@ -397,7 +397,7 @@ func TestHandler_Archive_Returns204(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(wi.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	user := &roletypes.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
@@ -442,7 +442,7 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		id, _ := uuid.Parse(wi.ID)
-		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE id=$1`, id)
+		_, _ = va.Exec(context.Background(), `DELETE FROM artefacts WHERE artefacts_id=$1`, id)
 	})
 
 	// PLA-0055 / story 00595+00597 — bulk set_priority payload is now a
@@ -453,8 +453,8 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 		SELECT p.artefact_priorities_id::text
 		  FROM artefact_priorities p
 		  JOIN artefacts_types at ON at.artefacts_types_id_workspace = p.artefact_priorities_id_workspace
-		  JOIN artefacts a ON a.artefact_type_id = at.artefacts_types_id
-		 WHERE a.id = $1::uuid
+		  JOIN artefacts a ON a.artefacts_id_artefact_type = at.artefacts_types_id
+		 WHERE a.artefacts_id = $1::uuid
 		   AND p.artefact_priorities_slot = 'pri_high'
 		   AND p.artefact_priorities_archived_at IS NULL
 		 LIMIT 1

@@ -28,8 +28,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// ResourceConfig describes one orderable resource. All fields are
-// required. The registry rejects partial configs at Register time.
+// ResourceConfig describes one orderable resource. The Table +
+// Permissions fields are required; the column-name overrides default
+// to bare names (`id`, `position`, `subscription_id`, `updated_at`,
+// `archived_at`) and may be overridden for resources whose tables
+// use the project's column-prefix convention.
 type ResourceConfig struct {
 	// Table is the schema-qualified or unqualified Postgres table name
 	// (e.g. "artefacts"). The rank service writes the position column
@@ -43,11 +46,60 @@ type ResourceConfig struct {
 	// string to mean "always backlog scope".
 	ScopeColumn string
 
+	// IDColumn is the PK column on the table. Defaults to "id" when
+	// empty; tables under the §2.3 column-prefix convention pass
+	// "<table>_id" (e.g. "artefacts_id").
+	IDColumn string
+
+	// PositionColumn is the integer rank column. Defaults to "position"
+	// when empty; prefix-swept tables pass "<table>_position".
+	PositionColumn string
+
+	// SubscriptionIDColumn is the tenant FK column used for the
+	// subscription clamp. Defaults to "subscription_id"; prefix-swept
+	// tables pass "<table>_id_subscription".
+	SubscriptionIDColumn string
+
+	// UpdatedAtColumn is the timestamp the rank UPDATE bumps. Defaults
+	// to "updated_at"; prefix-swept tables pass "<table>_updated_at".
+	UpdatedAtColumn string
+
+	// ArchivedAtColumn is the soft-delete column the cohort + locker
+	// queries filter for NULL. Defaults to "archived_at"; prefix-swept
+	// tables pass "<table>_archived_at".
+	ArchivedAtColumn string
+
 	// Permissions returns whether the caller is allowed to rank this
 	// row. Called once per move attempt, BEFORE the FOR UPDATE lock.
 	// Implementations should be cheap (cached lookup, simple grant
 	// check); they must not perform writes.
 	Permissions PermissionChecker
+}
+
+// columnsResolved returns the four override-able column names with
+// pre-prefix defaults filled in. Internal helper for the SQL builders.
+func (cfg ResourceConfig) columnsResolved() (idCol, posCol, subCol, updCol, archCol string) {
+	idCol = cfg.IDColumn
+	if idCol == "" {
+		idCol = "id"
+	}
+	posCol = cfg.PositionColumn
+	if posCol == "" {
+		posCol = "position"
+	}
+	subCol = cfg.SubscriptionIDColumn
+	if subCol == "" {
+		subCol = "subscription_id"
+	}
+	updCol = cfg.UpdatedAtColumn
+	if updCol == "" {
+		updCol = "updated_at"
+	}
+	archCol = cfg.ArchivedAtColumn
+	if archCol == "" {
+		archCol = "archived_at"
+	}
+	return
 }
 
 // PermissionChecker decides whether the authenticated principal in

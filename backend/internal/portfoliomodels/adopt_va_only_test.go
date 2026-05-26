@@ -90,7 +90,7 @@ func TestAdoptSaga_VectorArtefactsOnly(t *testing.T) {
 	// a prior run, so the cutover-side count post-saga is meaningful.
 	defer func() {
 		c := context.Background()
-		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, workspaceID)
+		_, _ = va.Exec(c, `DELETE FROM artefacts WHERE artefacts_id_workspace = $1`, workspaceID)
 		_, _ = va.Exec(c, `DELETE FROM artefacts_types WHERE workspace_id = $1`, workspaceID)
 	}()
 

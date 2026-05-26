@@ -31,8 +31,8 @@ const sqlDeleteOutboxRow = `DELETE FROM artefacts_search_outbox WHERE artefacts_
 // sqlSelectArtefactTitleAndDescription fetches the content fields used
 // to compute TSVECTOR + embedding for one live artefact.
 const sqlSelectArtefactTitleAndDescription = `
-		SELECT title, description
-		FROM artefacts WHERE id = $1 AND archived_at IS NULL
+		SELECT artefacts_title, artefacts_description
+		FROM artefacts WHERE artefacts_id = $1 AND artefacts_archived_at IS NULL
 	`
 
 // sqlComputeTsvector recomputes the TSVECTOR via Postgres so we don't
@@ -44,9 +44,9 @@ const sqlComputeTsvector = `SELECT to_tsvector('english', $1)::text`
 // pgvector columns back to the artefacts row in one shot.
 const sqlUpdateArtefactSearchAndEmbedding = `
 		UPDATE artefacts
-		SET search_index       = $2::tsvector,
-		    content_embedding  = $3::vector
-		WHERE id = $1
+		SET artefacts_search_index      = $2::tsvector,
+		    artefacts_content_embedding = $3::vector
+		WHERE artefacts_id = $1
 	`
 
 // sqlRecordOutboxFailure bumps attempts, stamps last_error, and
