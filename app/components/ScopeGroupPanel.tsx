@@ -1,46 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
 import { useSentinel } from "@/app/sentinel";
 import type { SentinelGrant } from "@/app/sentinel/types";
-import { byPosition, walkTopology } from "@/app/lib/shared/topology/walker";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface Row {
-  grant: SentinelGrant;
-  label: string;
-  depth: number;
-  isLast: boolean;
-  hasChildren: boolean;
-  ancestorMoreChildren: boolean[];
-}
-
-type GrantNode = { id: string; parent_id: string | null; position: number; grant: SentinelGrant };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function labelOf(g: SentinelGrant) {
-  return g.label_override?.trim() || g.name || g.node_id;
-}
-
-function flattenGrants(grants: readonly SentinelGrant[]): Row[] {
-  const wrapped: GrantNode[] = grants.map((g) => ({
-    id: g.node_id,
-    parent_id: g.parent_id ?? null,
-    position: g.position ?? 0,
-    grant: g,
-  }));
-  const { rows } = walkTopology(wrapped, { collapsed: new Set(), sort: byPosition });
-  return rows.map((r) => ({
-    grant: r.node.grant,
-    label: labelOf(r.node.grant),
-    depth: r.depth,
-    isLast: r.isLast,
-    hasChildren: r.hasChildren,
-    ancestorMoreChildren: r.depth > 0 ? r.ancestorMoreChildren.slice(1) : [],
-  }));
-}
+import { useScopedTopologyNodes } from "@/app/components/topology/useScopedTopologyNodes";
 
 // ── Spine SVG (T / elbow connectors) ─────────────────────────────────────────
 
@@ -100,18 +62,15 @@ function Spine({ depth, isLast, ancestorMoreChildren }: {
 
 export default function ScopeGroupPanel() {
   const {
-    sentinel_grants: grants,
     sentinel_focus_node: activeNodeId,
     sentinel_set_focus,
-    sentinel_loading: loading,
     sentinel_user: user,
     sentinel_switch_workspace: switchWorkspace,
   } = useSentinel();
+  const { rows, loading } = useScopedTopologyNodes();
   const setActiveNodeId = (id: string) => { void sentinel_set_focus(id); };
 
-  const rows = useMemo(() => flattenGrants(grants), [grants]);
-
-  if (loading && grants.length === 0) {
+  if (loading && rows.length === 0) {
     return <div className="scope-group-panel__status">Loading…</div>;
   }
   if (rows.length === 0) {

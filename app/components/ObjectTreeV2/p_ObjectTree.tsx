@@ -9,19 +9,18 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   workItems as workItemsApi,
   portfolioItems as portfolioItemsApi,
-  topology,
   sprints,
   releases,
   milestones,
   lookups,
   workItems as workItemsLookup,
-  type OrgNode,
   type Timebox,
   type Milestone,
   type UserInScope,
 } from "@/app/lib/apiSite";
 import { apiSite } from "@/app/lib/api";
 import { useSentinel } from "@/app/sentinel";
+import { useScopedTopologyNodes } from "@/app/components/topology/useScopedTopologyNodes";
 import { useParentCandidates } from "@/app/components/ArtefactInlineForm/useParentCandidates";
 import { ColourPicker } from "@/app/components/ColourPicker";
 import { RichTextField } from "@/app/components/RichTextField";
@@ -289,7 +288,12 @@ export default function ObjectTree({
   const showRelease = !isStrategic && !isRisk;
   const showPlanEstimate = !isStrategic;
 
-  const [createTopologyNodes, setCreateTopologyNodes] = useState<OrgNode[]>([]);
+  // Topology nodes come from useScopedTopologyNodes (backed by
+  // sentinel_grants) so a non-gadmin actor only sees nodes they hold
+  // a grant on (incl. descend-inheritance). Don't fetch /topology/tree
+  // here — that endpoint is the unclamped admin-canvas view and would
+  // leak the whole workspace topology.
+  const { nodes: createTopologyNodes } = useScopedTopologyNodes();
   const [createFlowStates, setCreateFlowStates] = useState<
     Array<{ id: string; name: string; flow_position?: number }>
   >([]);
@@ -385,8 +389,7 @@ export default function ObjectTree({
     let cancelled = false;
     (async () => {
       try {
-        const [topo, fs, us, sp, rel, ms] = await Promise.all([
-          topology.tree().catch(() => [] as OrgNode[]),
+        const [fs, us, sp, rel, ms] = await Promise.all([
           workItemsLookup
             .listFlowStates(`artefact_type_id=${encodeURIComponent(actionTypeId)}`)
             .catch(() => ({ flow_states: [] as unknown[] })),
@@ -398,7 +401,6 @@ export default function ObjectTree({
             .catch(() => ({ milestones: [] as Milestone[], count: 0 })),
         ]);
         if (cancelled) return;
-        setCreateTopologyNodes(Array.isArray(topo) ? topo : []);
         setCreateFlowStates(
           ((fs as { flow_states: unknown[] }).flow_states ?? []) as Array<{
             id: string;

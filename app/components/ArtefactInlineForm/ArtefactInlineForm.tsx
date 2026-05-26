@@ -2,18 +2,17 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  topology,
   sprints,
   releases,
   milestones,
   lookups,
   workItems,
-  type OrgNode,
   type Timebox,
   type Milestone,
   type UserInScope,
 } from "@/app/lib/apiSite";
 import { useSentinel } from "@/app/sentinel";
+import { useScopedTopologyNodes } from "@/app/components/topology/useScopedTopologyNodes";
 import { ColourPicker } from "@/app/components/ColourPicker";
 import { ArtefactNodeDiagram } from "@/app/components/ArtefactNodeDiagram";
 import { RichTextField } from "@/app/components/RichTextField";
@@ -92,7 +91,12 @@ export function ArtefactInlineForm({
   }, [artefact?.id, artefact?.title, artefact?.story_points]);
 
   // Right-column dropdown sources.
-  const [topologyNodes, setTopologyNodes] = useState<OrgNode[]>([]);
+  // Topology nodes come from useScopedTopologyNodes (backed by
+  // sentinel_grants) so a non-gadmin actor only sees nodes they hold
+  // a grant on (incl. descend-inheritance). Don't fetch /topology/tree
+  // here — that endpoint is the unclamped admin-canvas view and would
+  // leak the whole workspace topology.
+  const { nodes: topologyNodes } = useScopedTopologyNodes();
   const [flowStates, setFlowStates] = useState<FlowStateLite[]>([]);
   const [users, setUsers] = useState<UserInScope[]>([]);
   const [sprintList, setSprintList] = useState<Timebox[]>([]);
@@ -110,12 +114,7 @@ export function ArtefactInlineForm({
     let cancelled = false;
     (async () => {
       try {
-        const [topo, fs, us, sp, rel, ms] = await Promise.all([
-          // GET /_site/topology/tree — backend resolves workspace via
-          // JWT clamp and narrows the result by the active topology
-          // scope (?meg= header forwarded by apiSite()). Bare array
-          // response, not { nodes: ... }.
-          topology.tree().catch(() => [] as OrgNode[]),
+        const [fs, us, sp, rel, ms] = await Promise.all([
           // GET /_site/work-items/flow-states?artefact_type_id=<id>
           // returns ONLY this artefact's type's flow states. Without
           // the filter the backend falls back to "first work-scoped
@@ -133,7 +132,6 @@ export function ArtefactInlineForm({
           milestones.list(`workspace_id=${workspaceId}`).catch(() => ({ milestones: [] as Milestone[], count: 0 })),
         ]);
         if (cancelled) return;
-        setTopologyNodes(Array.isArray(topo) ? topo : []);
         setFlowStates(((fs as { flow_states: unknown[] }).flow_states ?? []) as FlowStateLite[]);
         setUsers((us as { users: UserInScope[] }).users ?? []);
         setSprintList((sp as { items?: Timebox[] }).items ?? []);

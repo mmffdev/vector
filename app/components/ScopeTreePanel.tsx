@@ -4,44 +4,12 @@
 // ScopePicker but rendered as a flat scrollable list rather than a dropdown.
 // Selecting a node sets active scope; does NOT navigate or close the panel.
 
-import { useMemo } from "react";
 import { useSentinel } from "@/app/sentinel";
-import type { SentinelGrant } from "@/app/sentinel/types";
-import { byPosition, walkTopology } from "@/app/lib/shared/topology/walker";
+import { useScopedTopologyNodes } from "@/app/components/topology/useScopedTopologyNodes";
 
 const STEP = 16;
 const ROW_H = 32;
 const LINE_X = 8;
-
-interface TreeRow {
-  grant: SentinelGrant;
-  label: string;
-  depth: number;
-  isLast: boolean;
-  hasChildren: boolean;
-  ancestorMoreChildren: boolean[];
-}
-
-type GrantNode = { id: string; parent_id: string | null; position: number; grant: SentinelGrant };
-
-function labelOf(g: SentinelGrant) {
-  return g.label_override?.trim() || g.name || g.node_id;
-}
-
-function flattenGrants(grants: readonly SentinelGrant[]): TreeRow[] {
-  const wrapped: GrantNode[] = grants.map((g) => ({
-    id: g.node_id, parent_id: g.parent_id ?? null, position: g.position ?? 0, grant: g,
-  }));
-  const { rows } = walkTopology(wrapped, { collapsed: new Set(), sort: byPosition });
-  return rows.map((r) => ({
-    grant: r.node.grant,
-    label: labelOf(r.node.grant),
-    depth: r.depth,
-    isLast: r.isLast,
-    hasChildren: r.hasChildren,
-    ancestorMoreChildren: r.depth > 0 ? r.ancestorMoreChildren.slice(1) : [],
-  }));
-}
 
 function Spine({ depth, isLast, ancestorMoreChildren }: {
   depth: number; isLast: boolean; hasChildren: boolean; ancestorMoreChildren: boolean[];
@@ -78,24 +46,20 @@ function Spine({ depth, isLast, ancestorMoreChildren }: {
 
 export default function ScopeTreePanel() {
   const {
-    sentinel_grants,
     sentinel_focus_node: activeNodeId,
     sentinel_set_focus,
     sentinel_scope_direction: direction,
     sentinel_set_scope_direction: setDirection,
-    sentinel_loading: loading,
     sentinel_user: user,
     sentinel_switch_workspace: switchWorkspace,
   } = useSentinel();
-  const grants = sentinel_grants;
+  const { rows: tree, loading } = useScopedTopologyNodes();
   const setActiveNodeId = (id: string) => { void sentinel_set_focus(id); };
 
-  const tree = useMemo(() => flattenGrants(grants), [grants]);
-
-  if (loading && grants.length === 0) {
+  if (loading && tree.length === 0) {
     return <div className="scope-tree-panel__status">Loading…</div>;
   }
-  if (grants.length === 0) {
+  if (tree.length === 0) {
     return <div className="scope-tree-panel__status">No scope grants.</div>;
   }
 
