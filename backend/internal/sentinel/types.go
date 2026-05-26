@@ -122,11 +122,20 @@ type Resolver interface {
 
 	// GrantOnNode returns true when the user holds an active grant on
 	// the node OR any of its ancestors within the tenant (descend-
-	// inheritance). Used by the PutFocus handler to gate writes to
+	// inheritance). Used by the request-time middleware to gate URL
+	// ?meg= focus values, and by the PutFocus handler to gate writes to
 	// users.default_focus_node_id so a user cannot store a default
 	// pointing at a node they have no access to. Matches the
 	// PLA-0043 scope-read predicate.
-	GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error)
+	//
+	// roleID — the actor's role UUID. Production resolver short-circuits
+	// to (true, nil) when roleID == roles.SystemGrpGlobalID, mirroring
+	// the synthetic grant fabric topology.ListMyGrants ships for the
+	// platform-support role. Without this gate, gadmin's URL ?meg= would
+	// 403 because they hold no real users_roles_topology_nodes rows.
+	// padmin and below are NOT short-circuited — they must hold an actual
+	// grant row (direct or via ancestor walk).
+	GrantOnNode(ctx context.Context, tenant, userID, nodeID, roleID uuid.UUID) (bool, error)
 
 	// SetUserDefaultFocus persists the user's home/default focus node.
 	// Pass nil to clear (user falls back to workspace root on next boot).

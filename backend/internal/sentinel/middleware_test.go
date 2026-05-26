@@ -121,10 +121,11 @@ type stubResolver struct {
 	hasActiveRoleFn func(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
 
 	// grantOnNodeFn returns whether the actor holds an active grant on
-	// the node or any ancestor. Used by handler tests (PutFocus); the
-	// middleware itself never calls this — added here so stubResolver
-	// continues to satisfy the Resolver interface after S26-followup.
-	grantOnNodeFn func(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error)
+	// the node or any ancestor. Used by both the middleware's URL-focus
+	// branch (post-2026-05-26 gadmin short-circuit work) and the
+	// PutFocus handler. roleID is the actor's role UUID — the production
+	// PoolResolver short-circuits to true when roleID == grp_global.
+	grantOnNodeFn func(ctx context.Context, tenant, userID, nodeID, roleID uuid.UUID) (bool, error)
 
 	// setUserDefaultFocusFn captures the write-side of PutFocus.
 	// Tests inspect last-call state via the closure they install.
@@ -203,11 +204,11 @@ func (s *stubResolver) HasActiveRole(ctx context.Context, workspaceID, userID uu
 
 // GrantOnNode satisfies sentinel.Resolver. Defaults to true for middleware
 // tests; PutFocus handler tests install explicit grant/no-grant closures.
-func (s *stubResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error) {
+func (s *stubResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID, roleID uuid.UUID) (bool, error) {
 	if s.grantOnNodeFn == nil {
 		return true, nil
 	}
-	return s.grantOnNodeFn(ctx, tenant, userID, nodeID)
+	return s.grantOnNodeFn(ctx, tenant, userID, nodeID, roleID)
 }
 
 // SetUserDefaultFocus satisfies sentinel.Resolver. Defaults to nil
@@ -367,7 +368,7 @@ func TestMiddleware_Case2b_StaleUserDefaultFallsBackToWorkspaceRoot(t *testing.T
 			}
 			return fixtureTenantARootA, nil
 		},
-		grantOnNodeFn: func(_ context.Context, _, _, nodeID uuid.UUID) (bool, error) {
+		grantOnNodeFn: func(_ context.Context, _, _, nodeID, _ uuid.UUID) (bool, error) {
 			return nodeID != fixtureUserDefault, nil
 		},
 		resolveFn: func(_ context.Context, _, focus uuid.UUID, _, _ bool) ([]uuid.UUID, error) {

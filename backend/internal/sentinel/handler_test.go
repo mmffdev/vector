@@ -40,7 +40,7 @@ var fixtureNodeForFocus = uuid.MustParse("12345678-1234-1234-1234-123456789012")
 func TestPutFocus_Case1_HasGrant_204AndPersists(t *testing.T) {
 	var captured *uuid.UUID
 	resolver := &stubResolver{
-		grantOnNodeFn: func(_ context.Context, tenant, userID, nodeID uuid.UUID) (bool, error) {
+		grantOnNodeFn: func(_ context.Context, tenant, userID, nodeID, _ uuid.UUID) (bool, error) {
 			if tenant != fixtureTenantA {
 				t.Errorf("GrantOnNode tenant = %s, want %s", tenant, fixtureTenantA)
 			}
@@ -85,7 +85,7 @@ func TestPutFocus_Case2_NullClearsAndSkipsGrantCheck(t *testing.T) {
 	var setCalled bool
 	var capturedWasNil bool
 	resolver := &stubResolver{
-		grantOnNodeFn: func(_ context.Context, _, _, _ uuid.UUID) (bool, error) {
+		grantOnNodeFn: func(_ context.Context, _, _, _, _ uuid.UUID) (bool, error) {
 			grantCalled = true
 			return true, nil // shouldn't be reached
 		},
@@ -125,7 +125,7 @@ func TestPutFocus_Case2_NullClearsAndSkipsGrantCheck(t *testing.T) {
 func TestPutFocus_Case3_NoGrant_403AndNoWrite(t *testing.T) {
 	setCalled := false
 	resolver := &stubResolver{
-		grantOnNodeFn: func(_ context.Context, _, _, _ uuid.UUID) (bool, error) {
+		grantOnNodeFn: func(_ context.Context, _, _, _, _ uuid.UUID) (bool, error) {
 			return false, nil
 		},
 		setUserDefaultFocusFn: func(_ context.Context, _ uuid.UUID, _ *uuid.UUID) error {
@@ -168,7 +168,7 @@ func TestPutFocus_Case4_MalformedUUID_400AndNoWrite(t *testing.T) {
 	grantCalled := false
 	setCalled := false
 	resolver := &stubResolver{
-		grantOnNodeFn: func(_ context.Context, _, _, _ uuid.UUID) (bool, error) {
+		grantOnNodeFn: func(_ context.Context, _, _, _, _ uuid.UUID) (bool, error) {
 			grantCalled = true
 			return true, nil
 		},

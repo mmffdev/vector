@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
 // PoolResolver is the production Resolver implementation. It is the
@@ -199,7 +200,27 @@ func (r *PoolResolver) HasActiveRole(ctx context.Context, workspaceID, userID uu
 // when the user holds an active grant on the node OR any ancestor.
 // Runs against the vector_artefacts pool (topology_nodes +
 // users_roles_topology_nodes both live there).
-func (r *PoolResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID uuid.UUID) (bool, error) {
+//
+// Gadmin short-circuit: when the actor's roleID equals
+// roles.SystemGrpGlobalID, return (true, nil) without touching SQL.
+// This mirrors topology.ListMyGrants which fabricates a synthetic
+// admin grant for gadmin on every live node in the subscription —
+// gadmin is the platform-support role and holds no real
+// users_roles_topology_nodes rows. Without this gate, a gadmin
+// session's URL ?meg= 403s at the request-time middleware because
+// the recursive CTE finds no matching grant row. padmin and below
+// are NOT short-circuited — they must hold an actual grant row
+// (direct or via ancestor walk) to pass.
+//
+// SAFETY: callers MUST pass the actor's authenticated roleID. The
+// middleware reads it off auth.UserFromCtx(ctx).RoleID; the handler
+// reads it off auth.UserFromCtx(r.Context()).RoleID. Never accept a
+// roleID from request input — that would let a non-gadmin claim the
+// short-circuit.
+func (r *PoolResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID, roleID uuid.UUID) (bool, error) {
+	if roleID != uuid.Nil && roleID == roles.SystemGrpGlobalID {
+		return true, nil
+	}
 	var ok bool
 	err := r.VAPool.QueryRow(ctx, sqlUserHasGrantOnNodeOrAncestor, nodeID, tenant, userID).Scan(&ok)
 	return ok, err

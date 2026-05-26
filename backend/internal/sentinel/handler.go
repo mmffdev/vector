@@ -97,7 +97,8 @@ func (h *Handler) PutFocus(w http.ResponseWriter, r *http.Request) {
 		// Grant gate. Matches the descend-inheritance rule the
 		// request-time middleware enforces in ResolveSubtree — if
 		// the user can READ the node, they can store it as default.
-		ok, err := h.R.GrantOnNode(r.Context(), actor.SubscriptionID, actor.ID, parsed)
+		// actor.RoleID drives the gadmin short-circuit in PoolResolver.
+		ok, err := h.R.GrantOnNode(r.Context(), actor.SubscriptionID, actor.ID, parsed, actor.RoleID)
 		if err != nil {
 			log.Printf("sentinel.PutFocus GrantOnNode: %v", err)
 			writeProblem(w, r, http.StatusInternalServerError, "internal",

@@ -89,7 +89,7 @@ func Middleware(r Resolver) func(http.Handler) http.Handler {
 			scopeDown := !isQueryFalse(req, "scope_down")
 
 			// Step 5 — resolve focus node (URL > user default > workspace root > tenant root).
-			focus, source, ferr := resolveFocus(req, u.ID, u.SubscriptionID, workspaceID, r)
+			focus, source, ferr := resolveFocus(req, u.ID, u.SubscriptionID, workspaceID, u.RoleID, r)
 			if ferr != nil {
 				switch {
 				case errors.Is(ferr, ErrFocusNoAccess):
@@ -181,7 +181,11 @@ const (
 // Returns the resolved UUID; an error from this function indicates an
 // infrastructure failure (resolver / DB lookup), not a user-visible
 // 4xx — those come from ResolveSubtree.
-func resolveFocus(req *http.Request, userID, tenantID, workspaceID uuid.UUID, r Resolver) (uuid.UUID, focusSource, error) {
+//
+// roleID is threaded into r.GrantOnNode so the gadmin short-circuit
+// fires here — see PoolResolver.GrantOnNode docs for the rationale.
+// Callers (middleware) MUST pass the actor's authenticated u.RoleID.
+func resolveFocus(req *http.Request, userID, tenantID, workspaceID, roleID uuid.UUID, r Resolver) (uuid.UUID, focusSource, error) {
 	// Step 1 — URL ?meg= (PLA-0053; named after Rick's daughter Megan;
 	// canonical scope-identity URL param across the project)
 	if raw := req.URL.Query().Get("meg"); raw != "" {
@@ -196,7 +200,7 @@ func resolveFocus(req *http.Request, userID, tenantID, workspaceID uuid.UUID, r 
 				}
 				return id, focusSourceURL, nil
 			} else if ok {
-				if accessOK, aerr := r.GrantOnNode(req.Context(), tenantID, userID, id); aerr != nil {
+				if accessOK, aerr := r.GrantOnNode(req.Context(), tenantID, userID, id, roleID); aerr != nil {
 					return uuid.Nil, "", aerr
 				} else if !accessOK {
 					return uuid.Nil, "", ErrFocusNoAccess
@@ -222,7 +226,7 @@ func resolveFocus(req *http.Request, userID, tenantID, workspaceID uuid.UUID, r 
 				return uuid.Nil, "", werr
 			}
 		} else if ok {
-			if accessOK, aerr := r.GrantOnNode(req.Context(), tenantID, userID, *def); aerr != nil {
+			if accessOK, aerr := r.GrantOnNode(req.Context(), tenantID, userID, *def, roleID); aerr != nil {
 				return uuid.Nil, "", aerr
 			} else if !accessOK {
 				return fallbackFocusWithSource(req, tenantID, workspaceID, r)
