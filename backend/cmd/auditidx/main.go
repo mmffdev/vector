@@ -1,6 +1,9 @@
 // Throwaway one-shot for PLA-0011/00396: dump pg_stat_user_indexes rows
-// where idx_scan = 0 on mmff_vector and write the list to a file.
+// where idx_scan = 0 on the tenant DB and write the list to a file.
 // Connects via backend/.env.dev only; never logs credentials.
+//
+// Post-2026-05-26 (refactorDB Pillar 3): the tenant DB is vector_artefacts;
+// mmff_vector was retired. The default below reflects that.
 package main
 
 import (
@@ -40,7 +43,7 @@ func main() {
 		secrets.Get("DB_PASSWORD"),
 		envOr("DB_HOST", "localhost"),
 		envOr("DB_PORT", "5435"),
-		envOr("DB_NAME", "mmff_vector"),
+		envOr("DB_NAME", "vector_artefacts"),
 	)
 
 	ctx := context.Background()
@@ -101,7 +104,7 @@ ORDER BY s.schemaname, s.relname, s.indexrelname
 		}
 	}
 	if err := enc.Encode(map[string]any{
-		"db":          envOr("DB_NAME", "mmff_vector"),
+		"db":          envOr("DB_NAME", "vector_artefacts"),
 		"host":        envOr("DB_HOST", "localhost") + ":" + envOr("DB_PORT", "5435"),
 		"count_total": len(list),
 		"count_droppable_secondary_nonunique": droppable,

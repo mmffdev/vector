@@ -348,8 +348,11 @@ verify_pg_stat_statements() {
   # swarm service args survived the last deploy; (2) the extension exists and
   # the view is queryable. If either fails, infra/swarm/vector-dev-stack.yml
   # has drifted from the live service spec — see infra/swarm/README.md.
+  # Post-2026-05-26 (refactorDB Pillar 3): mmff_vector was DROPped. The
+  # pg_stat_statements view is a cluster-wide extension installed on every
+  # DB — point the probe at vector_artefacts (the canonical tenant DB).
   local preload
-  preload=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d mmff_vector -tAc "SHOW shared_preload_libraries;" 2>&1) || {
+  preload=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d vector_artefacts -tAc "SHOW shared_preload_libraries;" 2>&1) || {
     err "pg_stat_statements check: SHOW failed: $preload"
     return 1
   }
@@ -358,7 +361,7 @@ verify_pg_stat_statements() {
     return 1
   fi
   local probe
-  probe=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d mmff_vector -tAc "SELECT 1 FROM pg_stat_statements LIMIT 1;" 2>&1) || {
+  probe=$(PGPASSWORD="$pw" psql -h localhost -p "$TUNNEL_PORT" -U mmff_dev -d vector_artefacts -tAc "SELECT 1 FROM pg_stat_statements LIMIT 1;" 2>&1) || {
     err "pg_stat_statements view query failed: $probe"
     return 1
   }

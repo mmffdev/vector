@@ -13,14 +13,19 @@
 # Usage:
 #   dev/scripts/dry_run_migration.sh <db> <migration_file>
 #
-#   <db> is one of: mmff_vector | vector_artefacts | mmff_library
+#   <db> is one of: vector_artefacts | mmff_library | mmff_vector (RETIRED)
+#
+# Post-2026-05-26 (refactorDB Pillar 3): mmff_vector was DROPped at the
+# end of the three-pillar refactor. The `mmff_vector` arg is preserved
+# ONLY for replaying historical migrations against a restored snapshot.
+# New dry-runs against the tenant DB use `vector_artefacts`.
 #
 # Reads DB connection info from backend/.env.dev. Emits the psql
 # transcript to stdout — the migration's DDL ran inside the
 # transaction, then ROLLBACK undid every effect.
 #
 # Example:
-#   dev/scripts/dry_run_migration.sh mmff_vector db/mmff_vector/schema/220_my_new_thing.sql
+#   dev/scripts/dry_run_migration.sh vector_artefacts db/vector_artefacts/schema/220_my_new_thing.sql
 
 set -euo pipefail
 
@@ -29,7 +34,7 @@ FILE="${2:-}"
 
 if [[ -z "$DB" || -z "$FILE" ]]; then
   echo "Usage: $0 <db> <migration_file>" >&2
-  echo "  db: mmff_vector | vector_artefacts | mmff_library" >&2
+  echo "  db: vector_artefacts | mmff_library | mmff_vector (retired — snapshot replay only)" >&2
   exit 1
 fi
 
@@ -66,7 +71,7 @@ case "$DB" in
     DBNAME="${LIBRARY_DB_NAME:-mmff_library}"
     ;;
   *)
-    echo "ERROR: unknown db '$DB' (expected: mmff_vector | vector_artefacts | mmff_library)" >&2
+    echo "ERROR: unknown db '$DB' (expected: vector_artefacts | mmff_library | mmff_vector)" >&2
     exit 1
     ;;
 esac

@@ -225,33 +225,14 @@ if [[ ! -x "$PG_DUMP" ]]; then
   exit 0
 fi
 
-# -- Dump mmff_vector -------------------------------------------------------
-# Filename shape: <ts>_<sha>_dev_<dbname>.sql — matches the <backupsql> shortcut.
-# `dev_` is the env tag (this script only runs against the pinned-dev tunnel).
+# -- mmff_vector dump (RETIRED 2026-05-26 — refactorDB Pillar 3) ------------
+# The mmff_vector database was DROPped at the end of the three-pillar
+# refactor. This script previously dumped three DBs (mmff_vector,
+# vector_artefacts, mmff_library); post-DROP it dumps just two
+# (vector_artefacts, mmff_library). The OUT variable below is reused
+# by the iCloud mirror block at the bottom; it now reflects the
+# vector_artefacts dump, which is taken as the first / primary dump.
 TS=$(ts_fname)
-OUT="$BACKUP_DIR/${TS}_${LABEL}_dev_mmff_vector.sql"
-START_MS=$(($(date +%s) * 1000))
-
-if ! PGPASSWORD="$PW" "$PG_DUMP" \
-    -h localhost -p "$DB_PORT" -U mmff_dev -d mmff_vector \
-    --no-owner --no-privileges \
-    > "$OUT" 2> "$OUT.err"; then
-  ERR_TAIL=$(tail -c 300 "$OUT.err" 2>/dev/null | tr '\n' ' ')
-  rm -f "$OUT" "$OUT.err"
-  reason="pg_dump_failed: $ERR_TAIL"
-  log_entry "skipped" "$SHA" "$LABEL" "" 0 0 "$reason"
-  write_diag_log "$reason" "$SHA"
-  emit_skip_banner "pg_dump failed: $ERR_TAIL"
-  exit 0
-fi
-rm -f "$OUT.err"
-
-END_MS=$(($(date +%s) * 1000))
-DUR=$(( END_MS - START_MS ))
-BYTES=$(wc -c < "$OUT" | tr -d ' ')
-log_entry "ok" "$SHA" "$LABEL" "$(basename "$OUT")" "$BYTES" "$DUR" ""
-printf 'backup-on-push: ok [%s] %s (%s bytes, %sms, channel=%s)\n' \
-  "$LABEL" "$(basename "$OUT")" "$BYTES" "$DUR" "$CHANNEL"
 
 # Track per-DB success so we only mirror to iCloud if everything dumped cleanly.
 LIB_OK=0
@@ -316,10 +297,11 @@ if [[ -n "$VA_PW" ]]; then
 fi
 
 # -- iCloud mirror ----------------------------------------------------------
-# Mirror only if all three DBs dumped successfully — otherwise the iCloud copy
+# Mirror only if BOTH live DBs dumped successfully — otherwise the iCloud copy
 # would be partial and confusing. Failures here are non-fatal (push never blocks).
+# Post-2026-05-26 (refactorDB Pillar 3): mmff_vector was DROPped; only
+# vector_artefacts + mmff_library are dumped now.
 if [[ $LIB_OK -eq 1 && $VA_OK -eq 1 && -d "$ICLOUD_DIR" ]]; then
-  cp "$OUT"     "$ICLOUD_DIR/" 2>/dev/null || true
   cp "$OUT_LIB" "$ICLOUD_DIR/" 2>/dev/null || true
   cp "$OUT_VA"  "$ICLOUD_DIR/" 2>/dev/null || true
 fi

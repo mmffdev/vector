@@ -10,6 +10,12 @@
 //
 // Env: reads backend/.env.dev (DB_HOST/PORT/USER/PASSWORD/DB_NAME +
 // VECTOR_ARTEFACTS_DB_URL). Falls back to OS env if .env.dev is absent.
+//
+// Post-2026-05-26 (refactorDB Pillar 3): DB_NAME and VECTOR_ARTEFACTS_DB_URL
+// both point at vector_artefacts — mmff_vector was retired. The subscriptions
+// / users / master_record_workspaces / users_roles_workspaces rows inserted
+// below now live in vector_artefacts; the topology root still goes through
+// the same topology.Service writer-boundary.
 package main
 
 import (
@@ -43,16 +49,20 @@ func main() {
 
 	ctx := context.Background()
 
-	// mmff_vector pool.
+	// Legacy "vector" pool — post-refactorDB Pillar 3 (2026-05-26), DB_NAME
+	// points at vector_artefacts (the former mmff_vector tables —
+	// subscriptions, users, master_record_workspaces, users_roles_workspaces —
+	// all live in vector_artefacts now). The variable name `vectorPool` is
+	// kept for diff minimisation.
 	vectorDSN := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"),
 	)
 	vectorPool, err := pgxpool.New(ctx, vectorDSN)
-	must(err, "open mmff_vector pool")
+	must(err, "open legacy DB_NAME pool (vector_artefacts post-refactor)")
 	defer vectorPool.Close()
-	must(vectorPool.Ping(ctx), "ping mmff_vector")
+	must(vectorPool.Ping(ctx), "ping legacy DB_NAME pool")
 
 	// vector_artefacts pool.
 	vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL")

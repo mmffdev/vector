@@ -123,33 +123,35 @@ func main() {
 	defer pool.Close()
 	bootstatus.Set("db", true, "")
 
-	// Pillar 3 step 1 (refactorDB): vector_artefacts is now the canonical
-	// home for every former mmff_vector table (users, sessions, pages,
-	// nav_*, roles, permissions, workspaces, master_record_workspaces,
-	// subscriptions, audit_logs, cost_centres, csp_reports, etc.). Open
-	// vaPool here so every downstream service constructor can take it
-	// instead of `pool`. The legacy `pool` (mmff_vector) stays open until
-	// Pillar 3 step 3 drops the DB; nothing in backend/internal/ should
-	// be issuing SQL against it after this wave.
+	// Pillar 3 step 3 (refactorDB, 2026-05-26): mmff_vector is retired.
+	// The legacy `pool` opened above from $DB_NAME now points at
+	// vector_artefacts — same DB as vaPool. Option A: both pools survive
+	// (~2 extra connections, smallest possible diff). Collapsing to a
+	// single pool is a TD follow-up, NOT this wave.
+	//
+	// Pillar 3 step 1 history: vector_artefacts is the canonical home
+	// for every former mmff_vector table (users, sessions, pages, nav_*,
+	// roles, permissions, workspaces, master_record_workspaces,
+	// subscriptions, audit_logs, cost_centres, csp_reports, etc.).
 	//
 	// VECTOR_ARTEFACTS_DB_URL is optional — when unset (legacy /
-	// pre-cutover envs), vaPool is nil and we fall back to `pool` for
-	// the services that historically read mmff_vector. v2 artefact-items
-	// + topology + sprints/releases continue to stub-degrade in that
-	// mode (pre-existing behaviour).
+	// pre-cutover envs), vaPool is nil and we fall back to the legacy
+	// `pool` for the services that historically read mmff_vector. v2
+	// artefact-items + topology + sprints/releases continue to
+	// stub-degrade in that mode (pre-existing behaviour).
 	var vaPool *pgxpool.Pool
 	if vaURL := os.Getenv("VECTOR_ARTEFACTS_DB_URL"); vaURL != "" {
 		vaCfg, vaErr := pgxpool.ParseConfig(vaURL)
 		if vaErr != nil {
-			logger.Warn("vector_artefacts pool config error — falling back to mmff_vector pool", "err", vaErr)
+			logger.Warn("vector_artefacts pool config error — falling back to legacy DB_NAME pool", "err", vaErr)
 		} else {
 			vaCfg.MinConns = 2
 			vaCfg.MaxConnIdleTime = 5 * time.Minute
 			p, vaErr := pgxpool.NewWithConfig(ctx, vaCfg)
 			if vaErr != nil {
-				logger.Warn("vector_artefacts pool connect failed — falling back to mmff_vector pool", "err", vaErr)
+				logger.Warn("vector_artefacts pool connect failed — falling back to legacy DB_NAME pool", "err", vaErr)
 			} else if vaErr = p.Ping(ctx); vaErr != nil {
-				logger.Warn("vector_artefacts pool ping failed — falling back to mmff_vector pool", "err", vaErr)
+				logger.Warn("vector_artefacts pool ping failed — falling back to legacy DB_NAME pool", "err", vaErr)
 				p.Close()
 			} else {
 				vaPool = p
@@ -165,7 +167,7 @@ func main() {
 			}
 		}
 	} else {
-		logger.Warn("VECTOR_ARTEFACTS_DB_URL unset — services will fall back to mmff_vector pool")
+		logger.Warn("VECTOR_ARTEFACTS_DB_URL unset — services will fall back to legacy DB_NAME pool")
 	}
 
 	// servicePool is the pool every "moved-table" service takes after

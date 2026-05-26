@@ -28,7 +28,13 @@ services:
       - "-c"
       - "pg_stat_statements.track=all"
     environment:
-      POSTGRES_DB: mmff_vector
+      # Pillar 3 step 3 (refactorDB, 2026-05-26): mmff_vector was DROPped at
+      # the end of the three-pillar refactor. POSTGRES_DB only matters for
+      # FRESH-volume rebuilds (the live pgdata volume already has all DBs
+      # created — mmff_vector lingered as a write-mute zombie until step 3
+      # and was then dropped). For any fresh volume, vector_artefacts is
+      # now the canonical tenant DB.
+      POSTGRES_DB: vector_artefacts
       POSTGRES_USER: mmff_dev
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     volumes:

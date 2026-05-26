@@ -1,5 +1,10 @@
 //go:build ignore
 
+// Backfill one-shot: seed default artefact types for every workspace in the
+// tenant DB. Post-2026-05-26 (refactorDB Pillar 3), the tenant DB is
+// vector_artefacts; the variable name `vectorPool` is kept for diff
+// minimisation but the connection now points at vector_artefacts. "vector" is
+// legacy nomenclature here — both pools end up at the same DB.
 package main
 
 import (
@@ -16,10 +21,13 @@ import (
 func main() {
 	ctx := context.Background()
 
+	// "vector" is legacy nomenclature: post-refactorDB the tenant DB is
+	// vector_artefacts. Default switched to vector_artefacts so a fresh
+	// env (with DB_NAME unset) connects to the live tenant DB.
 	vectorDSN := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		getenv("DB_HOST", "localhost"), getenv("DB_PORT", "5435"),
 		getenv("DB_USER", "mmff_dev"), getenv("DB_PASSWORD", ""),
-		getenv("DB_NAME", "mmff_vector"),
+		getenv("DB_NAME", "vector_artefacts"),
 	)
 	vaDSN := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		getenv("VA_DB_HOST", "localhost"), getenv("VA_DB_PORT", "5435"),

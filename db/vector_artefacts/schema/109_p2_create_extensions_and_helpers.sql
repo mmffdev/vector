@@ -1,6 +1,21 @@
 -- ============================================================
 -- 109_p2_create_extensions_and_helpers.sql
 --
+-- POST-REFACTOR HAZARD — DO NOT RE-APPLY (2026-05-26)
+-- ---------------------------------------------------
+-- mmff_vector was DROPped at the end of Pillar 3 step 3 of refactorDB.
+-- The _p2_source_conn() helper installed by this migration defaults
+-- to dbname='mmff_vector' (see body, ~line 72), which no longer
+-- exists. Re-running this migration would install a helper pointing
+-- at a nonexistent DB and would silently misroute any future dblink
+-- caller that relied on the default.
+--
+-- This file is historical-only. If you need a similar dblink helper
+-- for a future cross-DB job, FORK this file into a new NNN_*.sql
+-- migration with the correct source-DB default — do not modify or
+-- re-run 109.
+-- ============================================================
+--
 -- Pillar 2 (cross-DB merge: mmff_vector → vector_artefacts) —
 -- migration 1 of N.
 --

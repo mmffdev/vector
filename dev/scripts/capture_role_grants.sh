@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # capture_role_grants.sh — PLA-0049 Phase 2.
 #
-# Captures the live mmff_vector users_roles_pages state for the 5
-# editable system roles into a replace-all seed migration:
-#
-#   db/mmff_vector/schema/199_seed_role_page_grants_locked.sql
+# Captures the live users_roles_pages state for the 5 editable system
+# roles into a replace-all seed migration. Post-2026-05-26 (refactorDB
+# Pillar 3) the source DB is vector_artefacts; the historical 199
+# seed file under db/mmff_vector/schema/ is frozen. New captures land
+# under db/vector_artefacts/schema/. Existing 199 in db/mmff_vector
+# stays as historical reference (mmff_vector was DROPped).
 #
 # Idempotent: re-running the migration always produces the same row
 # set scoped to the 5 system role UUIDs (grp_portfolio, grp_product,
@@ -22,7 +24,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-OUT="$ROOT_DIR/db/mmff_vector/schema/199_seed_role_page_grants_locked.sql"
+# Post-refactorDB: re-capture seeds land in vector_artefacts/schema/.
+# The seed filename is preserved (NNN renumbering happens during
+# Pillar 2's table-move migration ordering, not here).
+OUT="$ROOT_DIR/db/vector_artefacts/schema/199_seed_role_page_grants_locked.sql"
 
 if [[ ! -f "$ROOT_DIR/backend/.env.dev" ]]; then
     echo "FATAL: backend/.env.dev not found" >&2
@@ -31,7 +36,9 @@ fi
 
 PW=$(grep '^DB_PASSWORD=' "$ROOT_DIR/backend/.env.dev" | cut -d= -f2-)
 PSQL="/opt/homebrew/opt/libpq/bin/psql"
-CONN="host=localhost port=5435 user=mmff_dev dbname=mmff_vector"
+# Post-2026-05-26 (refactorDB Pillar 3): mmff_vector retired; users_roles,
+# users_roles_pages, pages all live in vector_artefacts.
+CONN="host=localhost port=5435 user=mmff_dev dbname=vector_artefacts"
 
 ROLES=("grp_portfolio" "grp_product" "grp_team_lead" "grp_team_member" "grp_stakeholder")
 
