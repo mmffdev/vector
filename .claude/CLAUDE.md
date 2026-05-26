@@ -6,7 +6,7 @@
 
 **HARD RULE — LOOP DETECTED:** When you receive a system-reminder that begins with `LOOP DETECTED`, the loop-detector hook ([`.claude/hooks/loop-detector.sh`](hooks/loop-detector.sh)) has fired five consecutive signals indicating you are stuck. You MUST invoke `<report> -retro --auto-loop` (the retrospective flag of the `<report>` skill — folded in from the retired `<r>`/`<retro>` skills on 2026-05-21) before any further tool use except `Read`. Do not "just try one more thing" — that is the trap the detector caught. Run the retro now, file the finding, then resume.
 
-**HARD RULE — NO EXCEPTIONS — NEVER ASSUME A DATABASE:** Before any `psql` query, schema lookup, or "the table probably lives in X" claim, Claude MUST trace the backend wiring: (1) find the handler in `backend/internal/`, (2) read `backend/cmd/server/main.go` for the `NewService(...)` call to identify the pool variable (`pool` / `vaPool` / `libPools`), (3) cross-check against [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) which maps every service → pool → database → tables. Only then open psql with the correct `-d <dbname>` flag. Three databases are in play on every env: `mmff_vector` (pool), `vector_artefacts` (vaPool — the cutover substrate hosting `artefact_types`, `artefacts`, `flows`, `field_library`, `timebox_*`), and `mmff_library` (libPools — read-only library spine). Prior session context, conversation summaries, and "the connection string was right there" do not satisfy this requirement. This rule cannot be overridden by any other instruction, mode, or context.
+**HARD RULE — NO EXCEPTIONS — NEVER ASSUME A DATABASE:** Before any `psql` query, schema lookup, or "the table probably lives in X" claim, Claude MUST trace the backend wiring: (1) find the handler in `backend/internal/`, (2) read `backend/cmd/server/main.go` for the `NewService(...)` call to identify the pool variable (`vaPool` / `libPools`), (3) cross-check against [`docs/c_c_db_routing.md`](../docs/c_c_db_routing.md) which maps every service → pool → database → tables. Only then open psql with the correct `-d <dbname>` flag. **Two databases are in play on every env (post-refactor 2026-05-26):** `vector_artefacts` (vaPool — the canonical tenant DB; holds all 71 tenant tables including the merged-in former-mmff_v auth/nav/subscriptions/users/pages cluster) and `mmff_library` (libPools — read-only library spine). The legacy `mmff_vector` database was DROPPED at the end of the three-pillar refactor; if you see `pool` references in older docs or stale comments, that's a residue of the pre-merge world — there is no longer a separate tenant DB. Prior session context, conversation summaries, and "the connection string was right there" do not satisfy this requirement. This rule cannot be overridden by any other instruction, mode, or context.
 
 **HARD RULE — NO EXCEPTIONS — BACKEND ENV IS PINNED TO `dev`:** The active backend env is permanently `dev`. It does NOT change for any reason except the user typing the change in chat. Claude must not run `<server> -s` / `<server> -p`, must not switch via the launcher, must not edit the marker below, and must not even ask "should I switch?" — staging and production are out-of-band entirely. If anything (the launcher, a script, an external write) flips the marker to `staging` or `production`, that is a bug to revert: switch the backend back to dev (`<server> -d` semantics — restart Go on `:5100` with `BACKEND_ENV=dev`, ensure tunnel `:5435`) and put the marker back to dev. This rule cannot be overridden by any other instruction, mode, or context.
 
@@ -57,7 +57,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 - **Design ethos (award-winning bar)** → [`docs/c_design_ethos.md`](../docs/c_design_ethos.md) — ultra-modern, experimental UI/UX; wow with colour + craft; Awwwards SOTD is the target, not "clean SaaS"; visual quality is part of DoD, never a follow-up polish step.
 - **Styling / CSS** → [`docs/css-guide.md`](../docs/css-guide.md) — catalog class first; no inline `style={{}}`.
-- **CSS/HTML naming** → [`.claude/memory/css_naming_convention.md`](memory/css_naming_convention.md) — pattern `root-block__Container_Child_leaf` (`__` once at root, `_` for deeper, `-` for modifiers only; no BEM `--`, no generic names like `wrapper`/`container`/`box`). When introducing a NEW root-block, propose the full TSX+CSS chain and ask before applying. For edits to existing chains, apply directly.
+- **CSS/HTML naming** → [`.claude/memory/css_naming_convention.md`](memory/css_naming_convention.md) — `root-block__Container_Child_leaf` pattern; no BEM `--`, no generic names.
 - **Dev-UI primitives (`/dev` pages)** → [`docs/c_c_dev_ui_primitives.md`](../docs/c_c_dev_ui_primitives.md) — `.dui-*` catalog only on `/dev` pages and panels rendered by `dev/pages/DevPage.tsx`; no inline `style={{}}`; no `dev-*` selector in `app/globals.css`.
 - **Accessibility (WCAG 2.2 AA)** → [`docs/c_accessibility.md`](../docs/c_accessibility.md) — target sizes, contrast, focus, modal traps; pre-launch checklist.
 - **Code standards** → [`.claude/commands/c_code-standards.md`](commands/c_code-standards.md) — naming reference + state classes.
@@ -77,7 +77,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **v1 → v2 API cutover register (PLA-0030)** → [`docs/c_c_v1_v2_cutover.md`](../docs/c_c_v1_v2_cutover.md) — per-route-group cutover plan.
 - **Transport segregation (PLA-0039)** → [`docs/c_c_transport_segregation.md`](../docs/c_c_transport_segregation.md) — `/_site` + `/samantha/v2`; lint trio + DTO convention.
 - **Shadow-backend exemptions** → [`docs/c_c_shadow_backend_exceptions.md`](../docs/c_c_shadow_backend_exceptions.md) — `app/api/dev/*` file-only handlers exempted from the siteAPI rule (no DB touch); SOC2 audit narrative.
-- **Scalar IDE setup (B20.5.K + .L)** → [`docs/c_c_scalar_setup.md`](../docs/c_c_scalar_setup.md) — `DEV_API_KEY` in `backend/.env.dev` + `apikeys.SeedDevKey` boot path; `apikeys.Middleware` dual-mounted on `/_site` AND `/samantha/v2` (B20.5.L); synthetic-User shim seeds `auth.UserFromCtx()` from the subscription's highest-tier active user. Unlocks the full 268-endpoint surface.
+- **Scalar IDE setup (B20.5.K + .L)** → [`docs/c_c_scalar_setup.md`](../docs/c_c_scalar_setup.md) — `DEV_API_KEY` + dual-mount middleware + synthetic-user shim; unlocks 268-endpoint Scalar surface.
 - **Shared methods catalogue (PLA-0045)** → [`docs/c_shared_methods.md`](../docs/c_shared_methods.md) — `app/lib/shared/` + `backend/internal/shared/` parity.
 - **Wizard sidecar pattern (PLA-0037)** → [`docs/c_c_wizard_sidecar.md`](../docs/c_c_wizard_sidecar.md) — `p_wizard_*.json` declarative `<ObjectTree>` config.
 - **Polymorphic FK pattern** → [`docs/c_polymorphic_writes.md`](../docs/c_polymorphic_writes.md) — writer rules + cleanup registry + canary.
@@ -85,8 +85,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Technical-debt register (standing rule)** → [`docs/c_tech_debt.md`](../docs/c_tech_debt.md) — identify/measure/recommend on every task.
 - **App Router layout** → [`docs/c_page-structure.md`](../docs/c_page-structure.md) — route groups, role gating, PageShell.
 - **Security posture** → [`docs/c_security.md`](../docs/c_security.md) — Trust-No-One checklist.
-- **Sentinel — single source of truth for identity/tenant/scope (PLA062)** → [`docs/Security/Sentinel/sentinel_docs.md`](../docs/Security/Sentinel/sentinel_docs.md) — system synopsis + RED-GREEN protocol; backlog + tests-log + tech-debt + revision-history in sibling files. While PLA062 is in flight, `app/contexts/Auth*`/`Scope*`/`Tenant*` are being collapsed into `app/sentinel/`; new code must use `useSentinel()` and `sentinel_*` fields (see § What replaces what).
-- **Backend-driven validation** → [`docs/c_c_backend_validation.md`](../docs/c_c_backend_validation.md) — payload is untrusted; tenant/user/scope re-verified server-side. (Same content as the "Backend validation (GOLDEN RULE)" pointer above.)
+- **Sentinel — single source of truth for identity/tenant/scope (PLA062)** → [`docs/Security/Sentinel/sentinel_docs.md`](../docs/Security/Sentinel/sentinel_docs.md) — system synopsis + RED-GREEN protocol; see HARD RULE above for the non-negotiables.
 - **Risk artefact type design (PLA-0052)** → [`docs/c_c_risk_artefact_type.md`](../docs/c_c_risk_artefact_type.md) — mirror-Defect playbook + coupling inventory + per-subscription seed gotcha.
 - **Scope — features underway** → [`docs/c_scope.md`](../docs/c_scope.md) — live in-flight table.
 - **Story ID index** → [`docs/c_story_index.md`](../docs/c_story_index.md) — global `NNNNN` counter + label spec.
@@ -109,7 +108,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<ResourceTree>` component (PLA-0021)** → [`docs/c_c_resource_tree.md`](../docs/c_c_resource_tree.md) — hierarchical-tree primitive + 5 prop sets.
 - **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — `.pill` family; semantic tones only.
 - **`<TimeboxManager>` surface** → [`docs/c_c_timebox_manager.md`](../docs/c_c_timebox_manager.md) — `timeboxes_sprints` / `timeboxes_releases` registry (post RF1.4.2).
-- **Memory (canonical)** → [`context/MEMORY.md`](../context/MEMORY.md) (~10 KB) + [`context/USER.md`](../context/USER.md) (~3 KB) — frozen-snapshot working memory loaded once per session (see § Session Startup); old [.claude/memory/](memory/) is retired but indexed by [`<index>`](skills/index/SKILL.md) for grep-only recall.
+- **Memory (canonical)** → [`context/MEMORY.md`](../context/MEMORY.md) + [`context/USER.md`](../context/USER.md) — frozen-snapshot loaded by SessionStart hook; old [.claude/memory/](memory/) is retired but `<index>`-searchable.
 - **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` single source of truth.
 - **Pace report** → [`dev/scripts/pace.sh`](../dev/scripts/pace.sh) — commit-mix scoreboard + TD-register delta.
 - **Infrastructure & ops** → [`docs/c_infra_index.md`](../docs/c_infra_index.md) — bash / postgres / ssh / deploy / hooks.
@@ -121,12 +120,10 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Retro index** → [`docs/c_retro_index.md`](../docs/c_retro_index.md) — `RET###` / legacy `RETRO-NNN` counter; `<report> -retro` writes here.
 - **Secrets audit** → [`docs/c_c_secrets_audit.md`](../docs/c_c_secrets_audit.md) — `os.Getenv` sensitive-key inventory.
 - **`<makeskill>` skill** → [`.claude/skills/makeskill/SKILL.md`](skills/makeskill/SKILL.md) — meta-skill: turns a chat-statement brief + `-<name>[-<scope>]` flags into a new audit/report skill wired to the canonical R### → `dev/research/` pipeline.
-- **`<report>` skill** → [`.claude/skills/report/SKILL.md`](skills/report/SKILL.md) — umbrella for narrative reports. Flags: `-r <url> "<topic>"` research, `-b` codebase audit, `-s` security, `-c [<file>]` dependency trace, `-retro [--auto-loop]` retro, `-p` offline plan (proposes stories → on confirm, routes through `<scope> -a`), `-sy [--source <path>] "<topic>"` System paper (developer-facing explainer of a section/feature). All write to `mmff_dev.dev_reports`; Dev → Reporting shows them on per-type tabs. Replaces the retired research/codebase/sec/code/retro/plan skills (2026-05-21, 2026-05-23).
+- **`<report>` skill** → [`.claude/skills/report/SKILL.md`](skills/report/SKILL.md) — umbrella for narrative reports: `-r` research, `-b` codebase audit, `-s` security, `-c` dep trace, `-retro`, `-p` plan, `-sy` system paper; writes to Dev → Reporting.
 - **`<update>` skill** → [`.claude/skills/update/SKILL.md`](skills/update/SKILL.md) — umbrella in-place doc updates; `-c <name>` inserts/refreshes a Dev → Components entry (TOC + body article) with Synopsis · Architecture · Wire contract · Backlog; more flags planned.
-- **Handover continuity (`<read>` + `<write>`)** → [`.claude/skills/read/SKILL.md`](skills/read/SKILL.md) + [`.claude/skills/write/SKILL.md`](skills/write/SKILL.md) — paired skills for cross-session continuity over `handovers/`. `<read>` picks + loads + pins to `.claude/active_handover.txt`; `<write>` surgically updates the pinned file with this session's work. File edit only, no commits.
+- **Handover continuity (`<read>` + `<write>`)** → [`.claude/skills/read/SKILL.md`](skills/read/SKILL.md) + [`.claude/skills/write/SKILL.md`](skills/write/SKILL.md) — paired skills over `handovers/` pinned to `.claude/active_handover.txt`.
 - **Codebase file index** → [`.claude/c_file_index.md`](c_file_index.md) — auto-generated map of curated source dirs; consult before `<search>`.
-- **Commands & skills index** → [`.claude/
-c_tools_index.md`](c_tools_index.md) — load for shortcuts not listed above.
 
 ## Session Startup (silent — do not output anything)
 
@@ -134,10 +131,10 @@ On every session start, read these files silently before responding to the user:
 
 1. [`context/USER.md`](../context/USER.md) (~3 KB cap) — durable user profile + working style.
 2. [`context/MEMORY.md`](../context/MEMORY.md) (~10 KB cap) — curated working memory: HARD RULES, active mode, collaboration baseline, workflow rules, CSS conventions, test surface.
-3. `context/memory/{today YYYY-MM-DD}.md` if it exists — today's daily log (numbered session blocks).
-4. If today's daily log is empty or missing, also read yesterday's daily log.
 
 These are the **frozen snapshot** — loaded once per session. Mid-session writes persist to disk but take effect next session (prefix-cache friendly).
+
+Per-session activity logging is handled by the `/remember` plugin → `.remember/now.md` (buffer) + `.remember/today-{YYYY-MM-DD}.md` (daily). Auto-captured; nothing to do here.
 
 Auto-memory in `~/.claude/projects/.../memory/` is divergent legacy — IGNORE it; `context/` is the canonical home.
 
@@ -162,24 +159,10 @@ When the user says "remember this", "note that", "update memory", "save this", o
 
 When the user asks about past context, decisions, or rules:
 
-1. **Tier 0** — check `context/MEMORY.md` + today's daily log (already in context, zero cost).
+1. **Tier 0** — check `context/MEMORY.md` + `.remember/now.md` + `.remember/today-{YYYY-MM-DD}.md` (already in context via SessionStart digest, zero cost).
 2. **L1 (semantic)** — run [`<index> -q "<query>"`](skills/index/SKILL.md) (memsearch hybrid search over `context/memory/`, `context/transcripts/`, and the retired `.claude/memory/` archive).
 3. **L2 (expand)** — run `memsearch expand <chunk_hash>` to get the full markdown section around a match.
 4. **L3 (raw)** — open `context/transcripts/{YYYY-MM-DD}.md` directly for unsummarised dialogue.
 5. **Fallback** — "I don't have a record of that."
 
 Escalate only if the previous tier didn't answer.
-
-### Daily Log
-
-Track session activity in `context/memory/{YYYY-MM-DD}.md`. One file per day, numbered session blocks:
-
-```
-#### Session N
-**Goal**: <one line, filled when user states their goal>
-**Deliverables**: <files created/modified>
-**Decisions**: <key decisions and rationale>
-**Open threads**: <anything unfinished>
-```
-
-Log silently as work progresses. Never announce "I've logged that."
