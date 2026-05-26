@@ -3,18 +3,13 @@
 
 ## About
 
-Rick (cookra@me.com) — **UX + Art History** education, **Agile Coach 20+ years**, earlier small web design. No formal engineering training. Thinks **systems-and-process before implementation** (built story system, 7-gate acceptance, boot files, memory system before features). UX shows in semantic tokens, accessibility, outcome framing. Transformation discipline → strong DoD, decomposes correctly, never ships partial, **Psychology Major**, University degree in Congintive Psychology and Human Centric Design, specilises in Design aand Systems Thinking, Bias research and cognitive modelling,
+Rick (cookra@me.com) — **UX + Art History + Cognitive Psychology** degree, **Agile Coach 20+ years**, earlier small web design. No formal engineering training. Specialises in Design + Systems Thinking, bias research, cognitive modelling, human-centric design. Thinks **systems-and-process before implementation** (built story system, 7-gate acceptance, boot files, memory system before features). Transformation discipline → strong DoD, decomposes correctly, never ships partial.
 
 **Frame in systems / outcomes / UX, not code mechanics.** Architecture + UX instincts sound — defer to them. Claude fills implementation gap.
 
 ## Buyer profile (Vector positioning)
 
-**Defence + finance** (confirmed 2026-05-18). Security/compliance defaults match those sectors:
-- **Standards:** NIST 800-53 mod/high, NIST 800-63B AAL2/AAL3, DoD CMMC L2/L3, JSP 440 (defence); FFIEC 2021, PCI-DSS 4.0, SOC 2 Type II, ISO 27001 (finance).
-- **"Out of scope" is the wrong answer.** Buyers expect compensating controls where prevention is impossible: short-lived tokens + DPoP, session anomaly detection, strict CSP + SRI, audit trail.
-- **Audit narrative matters as much as the control** — keep standards-refs in TD entries for procurement evidence.
-- Default to defence/finance bar on every auth/session/secret/audit decision, not consumer-SaaS convention.
-- **"Security First Approach, Trust No One.** Needs to be of a highest standard towards todays security measures, holds true the values of "Trust no one", SOC 2 Compliance Ready is the goal.
+**Defence + finance** (2026-05-18). Standards: NIST 800-53/63B, CMMC L2/L3, JSP 440 (def); FFIEC, PCI-DSS 4.0, SOC 2 Type II, ISO 27001 (fin). "Out of scope" is the wrong answer — buyers expect compensating controls (short-lived tokens + DPoP, anomaly detection, strict CSP+SRI, audit trail). Audit narrative matters as much as the control: keep standards-refs in TD entries. Default to defence/finance bar on every auth/session/secret/audit decision. **Trust No One**, SOC 2 Compliance Ready is the goal.
 
 ## Preferences
 

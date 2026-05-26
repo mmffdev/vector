@@ -28,7 +28,7 @@ Sentinel's contract with the rest of the Vector site, expressed as inputs (what 
 | `Cookie: jwt` (BE, every protected request) | `user_id`, `subscription_id` (tenant), `workspace_id` claim | Identity + tenant + JWT-asserted workspace narrowing. |
 | `URL ?meg=<node_id>` | Shareable scope-identity param (PLA-0053, canonical name) | One-shot session override of the focus node — read once on mount via `parseMegFromURL` (allow-listed in `app/lib/shareableParams.ts`); cleared on login transition. |
 | `GET /sentinel/boot` (or bridge: `/auth/me` + `/topology/grants/me` when boot is 404) | `SentinelBootPayload` — `user`, `tenant`, `grants[]`, `tenant_root`, optional `settings` | Hydrates the full Sentinel state bag in one round trip (or two when falling back to the bridge). |
-| `users.default_focus_node_id` (mig 243) | Persistent home topology node | Sole source of truth for the home location. Loaded into `sentinel_user.default_focus_node_id` on every boot; resolveFocusNode precedence is `focus_override → url_focus → user.default_focus_node_id → tenant_root`. |
+| `users.default_focus_node_id` (mig 243) | Persistent home topology node | Sole source of truth for the home location. Loaded into `sentinel_user.default_focus_node_id` on every boot; resolveFocusNode precedence is `focus_override → url_focus → user.default_focus_node_id → workspace_root → tenant_root`. |
 | `users.home_location_follow_mode` (mig 244, default FALSE = Pinned) | Boolean | Gates whether `sentinel_set_focus` (rail clicks) also writes through to `default_focus_node_id`. |
 | `users_roles_topology_nodes` + `topology_nodes` (recursive CTE) | Grants on nodes + descend-inheritance | Backend `Resolver.GrantOnNode` / `ResolveSubtree`; gates the `PUT /sentinel/focus` write path and produces `AllowedSubtreeIDs` for the request clamp. |
 | `users_roles_workspaces` | Active role on workspace | Backend `HasActiveRole` forgery check — rejects requests where the JWT claims a workspace the user has no live role on. |
@@ -41,7 +41,7 @@ Sentinel's contract with the rest of the Vector site, expressed as inputs (what 
 | `sentinel_user` | `SentinelUser` ‑ `id`, `email`, `tenant_id`, `role`, `role_id`, `permissions[]`, `workspace_id`, `default_focus_node_id`, `home_location_follow_mode`, `mfa_enrolled`, `force_password_change` | Identity gating, profile pages (`/user/account-settings` reads via `useAuth` deliberately — see § Sentinel vs AuthContext for identity gating). |
 | `sentinel_tenant` | `{ id, name }` | Tenant headers, switcher UI. |
 | `sentinel_grants` | `ReadonlyArray<SentinelGrant>` | Scope rail, `HomeLocationSection` dropdown, `<ArtefactTree>`, `<ResourceTree>` grant-filtered renders. |
-| `sentinel_focus_node` | `string \| null` (resolved from `focus_override → url_focus → user.default_focus_node_id → tenant_root`) | The "current scope" pin every artefact list reads. |
+| `sentinel_focus_node` | `string \| null` (resolved from `focus_override → url_focus → user.default_focus_node_id → workspace_root → tenant_root`) | The "current scope" pin every artefact list reads. |
 | `sentinel_scope_direction` | `"ascend" \| "descend"` | Tree-panel toggle. |
 | `sentinel_settings` | `SentinelWorkspaceSettings` (theme, tenant_name, forward-compat) | Workspace-admin → workspace-details, theme bootstrap. |
 | `sentinel_workspace_in_sync` | `boolean` (derived) | Loading-gate predicate that closes the workspace-switch race. |
