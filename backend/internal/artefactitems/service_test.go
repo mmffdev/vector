@@ -219,11 +219,15 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 
 	var num int64
 	_ = va.QueryRow(ctx, `
-		INSERT INTO artefacts_number_sequences (subscription_id, artefact_type_id, next_num)
+		INSERT INTO artefacts_number_sequences (
+			artefacts_number_sequences_id_subscription,
+			artefacts_number_sequences_id_artefact_type,
+			artefacts_number_sequences_next_num
+		)
 		VALUES ($1,$2,2)
-		ON CONFLICT (subscription_id, artefact_type_id) DO UPDATE
-			SET next_num = artefacts_number_sequences.next_num + 1
-		RETURNING next_num - 1`,
+		ON CONFLICT (artefacts_number_sequences_id_subscription, artefacts_number_sequences_id_artefact_type) DO UPDATE
+			SET artefacts_number_sequences_next_num = artefacts_number_sequences.artefacts_number_sequences_next_num + 1
+		RETURNING artefacts_number_sequences_next_num - 1`,
 		subID, atID,
 	).Scan(&num)
 
@@ -238,9 +242,9 @@ func seedArtefact(t *testing.T, va *pgxpool.Pool, subID uuid.UUID, itemType, tit
 	// Look up any priority for the workspace (artefacts.priority_id is NOT NULL).
 	var priorityID uuid.UUID
 	if err := va.QueryRow(ctx, `
-		SELECT id FROM artefact_priorities
-		WHERE workspace_id=$1 AND archived_at IS NULL
-		ORDER BY sort_order LIMIT 1`, wsID,
+		SELECT artefact_priorities_id FROM artefact_priorities
+		WHERE artefact_priorities_id_workspace=$1 AND artefact_priorities_archived_at IS NULL
+		ORDER BY artefact_priorities_sort_order LIMIT 1`, wsID,
 	).Scan(&priorityID); err != nil {
 		t.Skipf("no artefact_priorities row for workspace %s: %v", wsID, err)
 	}

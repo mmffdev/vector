@@ -83,7 +83,10 @@ func (s *Service) Patch(ctx context.Context, id, workspaceID uuid.UUID, in Patch
 		return nil, errors.New("vector_artefacts pool not available")
 	}
 
-	sets := []string{"updated_at = now()"}
+	// RF1.5.2 — every column on artefact_priorities now carries the
+	// `artefact_priorities_` prefix (migration 094). Keep the SET clauses
+	// aligned with the new column names.
+	sets := []string{"artefact_priorities_updated_at = now()"}
 	args := []any{id, workspaceID}
 	n := 3
 	if in.Name != nil {
@@ -91,17 +94,17 @@ func (s *Service) Patch(ctx context.Context, id, workspaceID uuid.UUID, in Patch
 		if name == "" || len(name) > 64 {
 			return nil, fmt.Errorf("%w: name must be 1-64 chars", ErrInvalidInput)
 		}
-		sets = append(sets, fmt.Sprintf("name = $%d", n))
+		sets = append(sets, fmt.Sprintf("artefact_priorities_name = $%d", n))
 		args = append(args, name)
 		n++
 	}
 	if in.SortOrder != nil {
-		sets = append(sets, fmt.Sprintf("sort_order = $%d", n))
+		sets = append(sets, fmt.Sprintf("artefact_priorities_sort_order = $%d", n))
 		args = append(args, *in.SortOrder)
 		n++
 	}
 	if in.Colour != nil {
-		sets = append(sets, fmt.Sprintf("colour = $%d", n))
+		sets = append(sets, fmt.Sprintf("artefact_priorities_colour = $%d", n))
 		if *in.Colour == "" {
 			args = append(args, nil)
 		} else {

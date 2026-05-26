@@ -407,7 +407,7 @@ func TestList_AdmittedSet_MatchesResolverRules(t *testing.T) {
 		t.Fatalf("seed workspace: %v", err)
 	}
 	if _, err := artPool.Exec(ctx,
-		`INSERT INTO workspaces_fields (workspace_id, field_library_id) VALUES ($1, $2)`,
+		`INSERT INTO workspaces_fields (workspaces_fields_id_workspace, workspaces_fields_id_field_library) VALUES ($1, $2)`,
 		wsID, workspaceID,
 	); err != nil {
 		t.Fatalf("seed whitelist: %v", err)

@@ -317,7 +317,7 @@ func TestVAWorkspaceTables_MatchesCanary(t *testing.T) {
 	}
 	want := []entry{
 		{"artefacts_types", "artefacts_types_id_workspace", "artefacts_types_archived_at"},
-		{"workspaces_fields", "workspace_id", ""},
+		{"workspaces_fields", "workspaces_fields_id_workspace", ""}, // RF1.5.2 mig 098
 		{"artefacts", "workspace_id", "archived_at"},
 		{"master_record_portfolios", "master_record_portfolios_id_workspace", ""},
 		{"timeboxes_sprints", "timeboxes_sprints_id_workspace", "timeboxes_sprints_archived_at"},

@@ -64,7 +64,7 @@ var vaCanaryTables = []struct {
 	// to fully-qualified `<table>_<role>` form. The canary loops through
 	// distinct column names per-table since not every VA table was renamed.
 	{"artefacts_types", "artefacts_types_id_workspace", "artefacts_types_archived_at"},
-	{"workspaces_fields", "workspace_id", ""}, // admit-row table; lifetime = workspace
+	{"workspaces_fields", "workspaces_fields_id_workspace", ""}, // admit-row table; lifetime = workspace (RF1.5.2 mig 098)
 	{"artefacts", "workspace_id", "archived_at"},
 	{"master_record_portfolios", "master_record_portfolios_id_workspace", ""}, // PK = workspace_id; lifetime = workspace
 	// {"timeboxes_sprints", "...", "..."}, -- add once migration 025 is applied to dev DB

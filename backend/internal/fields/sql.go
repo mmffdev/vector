@@ -54,8 +54,8 @@ const sqlLoadAdmittedFields = `
 		      OR (fl.scope = 'tenant'    AND fl.subscription_id = $2)
 		      OR (fl.scope = 'workspace' AND fl.subscription_id = $2 AND EXISTS (
 		             SELECT 1 FROM workspaces_fields awf
-		              WHERE awf.workspace_id = $1
-		                AND awf.field_library_id = fl.id
+		              WHERE awf.workspaces_fields_id_workspace = $1
+		                AND awf.workspaces_fields_id_field_library = fl.id
 		         ))
 		       )
 		 ORDER BY fl.label ASC, fl.field_name ASC
@@ -73,10 +73,12 @@ const sqlSelectFieldLibraryRow = `
 
 // sqlExistsWorkspaceFieldAdmit is the admit-row probe for the
 // workspace-scope resolver path.
+//
+// RF1.5.2 — column prefixes applied to workspaces_fields (migration 098).
 const sqlExistsWorkspaceFieldAdmit = `
 		SELECT EXISTS (
 			SELECT 1 FROM workspaces_fields
-			 WHERE workspace_id = $1 AND field_library_id = $2
+			 WHERE workspaces_fields_id_workspace = $1 AND workspaces_fields_id_field_library = $2
 		)
 	`
 
@@ -112,12 +114,18 @@ const sqlInsertFieldLibrary = `
 // sqlInsertWorkspaceFieldAdmit admits a newly-created scope='workspace'
 // field into the workspace that created it. Without this row the field
 // is invisible to its own workspace (per the resolver's deny-by-default
-// rule). PRIMARY KEY (workspace_id, field_library_id) makes the insert
-// idempotent on retry.
+// rule). PRIMARY KEY (workspaces_fields_id_workspace, workspaces_fields_id_field_library)
+// makes the insert idempotent on retry.
+//
+// RF1.5.2 — column prefixes applied to workspaces_fields (migration 098).
 const sqlInsertWorkspaceFieldAdmit = `
-		INSERT INTO workspaces_fields (workspace_id, field_library_id, created_by)
+		INSERT INTO workspaces_fields (
+			workspaces_fields_id_workspace,
+			workspaces_fields_id_field_library,
+			workspaces_fields_id_user_created_by
+		)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (workspace_id, field_library_id) DO NOTHING
+		ON CONFLICT (workspaces_fields_id_workspace, workspaces_fields_id_field_library) DO NOTHING
 	`
 
 // sqlSelectFieldLibraryFull loads one row by id (including the columns

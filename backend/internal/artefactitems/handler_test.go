@@ -450,13 +450,13 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 	// so the test survives gadmin renames and per-workspace customisation.
 	var priHighID string
 	if err := va.QueryRow(ctx, `
-		SELECT p.id::text
+		SELECT p.artefact_priorities_id::text
 		  FROM artefact_priorities p
-		  JOIN artefacts_types at ON at.artefacts_types_id_workspace = p.workspace_id
+		  JOIN artefacts_types at ON at.artefacts_types_id_workspace = p.artefact_priorities_id_workspace
 		  JOIN artefacts a ON a.artefact_type_id = at.artefacts_types_id
 		 WHERE a.id = $1::uuid
-		   AND p.slot = 'pri_high'
-		   AND p.archived_at IS NULL
+		   AND p.artefact_priorities_slot = 'pri_high'
+		   AND p.artefact_priorities_archived_at IS NULL
 		 LIMIT 1
 	`, wi.ID).Scan(&priHighID); err != nil {
 		t.Fatalf("resolve pri_high for workspace: %v", err)

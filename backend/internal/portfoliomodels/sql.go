@@ -390,7 +390,7 @@ const sqlUpsertReadoptPlaceholderArtefact = `
 			'Pending re-classification',
 			'These work items were attached to the previous portfolio model. Move each into a layer of the new model, then archive this bin.',
 			NULL, NULL,
-			(SELECT id FROM artefact_priorities WHERE workspace_id = $2 AND archived_at IS NULL ORDER BY sort_order LIMIT 1),
+			(SELECT artefact_priorities_id FROM artefact_priorities WHERE artefact_priorities_id_workspace = $2 AND artefact_priorities_archived_at IS NULL ORDER BY artefact_priorities_sort_order LIMIT 1),
 			$4, $4,
 			0
 		)
@@ -558,7 +558,7 @@ const sqlCountArtefactsForSubscription = `
 	WHERE subscription_id = $1
 `
 
-const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefacts_number_sequences WHERE subscription_id = $1`
+const sqlDeleteArtefactNumberSequenceForSubscription = `DELETE FROM artefacts_number_sequences WHERE artefacts_number_sequences_id_subscription = $1`
 
 const sqlDeleteTenantArtefactTypesForSubscription = `DELETE FROM artefacts_types WHERE artefacts_types_id_subscription = $1 AND artefacts_types_source = 'tenant'`
 

@@ -52,8 +52,12 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 	)
 	runInVATx(t, ctx, pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO artefact_priorities (workspace_id, name, sort_order)
-			VALUES ($1, 'Medium', 0) RETURNING id`, wsID,
+			INSERT INTO artefact_priorities (
+				artefact_priorities_id_workspace,
+				artefact_priorities_name,
+				artefact_priorities_sort_order
+			)
+			VALUES ($1, 'Medium', 0) RETURNING artefact_priorities_id`, wsID,
 		).Scan(&priorityID); err != nil {
 			return err
 		}
@@ -108,7 +112,7 @@ func TestRunReadoption_HappyPath(t *testing.T) {
 		defer cancel()
 		_, _ = pool.Exec(c, `DELETE FROM artefacts WHERE workspace_id = $1`, wsID)
 		_, _ = pool.Exec(c, `DELETE FROM artefacts_types WHERE artefacts_types_id_workspace = $1`, wsID)
-		_, _ = pool.Exec(c, `DELETE FROM artefact_priorities WHERE workspace_id = $1`, wsID)
+		_, _ = pool.Exec(c, `DELETE FROM artefact_priorities WHERE artefact_priorities_id_workspace = $1`, wsID)
 	})
 
 	// ── Run the re-adoption flow.

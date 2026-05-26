@@ -61,9 +61,9 @@ const sqlWorkItemColumns = `
 		ELSE                    'backlog'
 	END                             AS flow_state_code,
 	a.priority_id::text                        AS priority_id,
-	pri.name                                   AS priority_name,
-	pri.slot                                   AS priority_slot,
-	pri.sort_order                             AS priority_sort_order,
+	pri.artefact_priorities_name               AS priority_name,
+	pri.artefact_priorities_slot               AS priority_slot,
+	pri.artefact_priorities_sort_order         AS priority_sort_order,
 	a.story_points,
 	a.artefacts_id_timebox_sprint::text,
 	NULL::text                      AS sprint_ref_id,
@@ -101,7 +101,7 @@ const sqlCountWorkItemsTemplate = `
 		SELECT count(*) FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 		WHERE a.subscription_id = $1
 		  AND a.archived_at IS NULL
 		  AND at.artefacts_types_scope = $2%s
@@ -115,7 +115,7 @@ const sqlListWorkItemsTemplate = `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
 		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
@@ -176,7 +176,7 @@ const sqlSelectWorkItemByID = `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
 		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
@@ -197,7 +197,7 @@ const sqlSelectWorkItemByIDInWorkspace = `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
 		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
@@ -215,7 +215,7 @@ const sqlListChildWorkItems = `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 		LEFT JOIN rollup_points rp ON rp.id = a.id
 		LEFT JOIN artefacts ap ON ap.id = a.parent_artefact_id AND ap.archived_at IS NULL
 		LEFT JOIN artefacts_types apt ON apt.artefacts_types_id = ap.artefact_type_id
@@ -240,7 +240,7 @@ const sqlSummariseTotalTemplate = `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 		WHERE %s
 	`
 
@@ -279,7 +279,7 @@ const sqlSummariseByTypeTemplate = `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 		WHERE %s
 		GROUP BY lower(at.artefacts_types_name)
 	`
@@ -305,7 +305,7 @@ const sqlSummariseRisks = `
 			FROM artefacts a
 			JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
 			LEFT JOIN flows_states fs ON fs.flows_states_id = a.flow_state_id
-		LEFT JOIN artefact_priorities pri ON pri.id = a.priority_id
+		LEFT JOIN artefact_priorities pri ON pri.artefact_priorities_id = a.priority_id
 			LEFT JOIN artefacts_fields_values fvi
 				ON fvi.artefacts_fields_values_id_artefact = a.id
 			LEFT JOIN artefacts_fields_library fli
@@ -413,17 +413,21 @@ const sqlSelectArtefactTypeIDForCreate = `
 	`
 
 const sqlAllocateArtefactNumber = `
-		INSERT INTO artefacts_number_sequences (subscription_id, artefact_type_id, next_num)
+		INSERT INTO artefacts_number_sequences (
+			artefacts_number_sequences_id_subscription,
+			artefacts_number_sequences_id_artefact_type,
+			artefacts_number_sequences_next_num
+		)
 		VALUES (
 			$1, $2,
 			(SELECT COALESCE(MAX(number), 0) + 2 FROM artefacts WHERE subscription_id = $1 AND artefact_type_id = $2)
 		)
-		ON CONFLICT (subscription_id, artefact_type_id) DO UPDATE
-			SET next_num = GREATEST(
-				artefacts_number_sequences.next_num + 1,
+		ON CONFLICT (artefacts_number_sequences_id_subscription, artefacts_number_sequences_id_artefact_type) DO UPDATE
+			SET artefacts_number_sequences_next_num = GREATEST(
+				artefacts_number_sequences.artefacts_number_sequences_next_num + 1,
 				(SELECT COALESCE(MAX(number), 0) + 2 FROM artefacts WHERE subscription_id = $1 AND artefact_type_id = $2)
 			)
-		RETURNING next_num - 1
+		RETURNING artefacts_number_sequences_next_num - 1
 	`
 
 const sqlSelectDefaultInitialFlowState = `
@@ -641,10 +645,10 @@ const sqlBulkSetPriority = `UPDATE artefacts SET priority_id=$1::uuid, updated_a
 // PLA-0055 / story 00595 — used by CreateWorkItem when the caller
 // doesn't supply a priority_id.
 const sqlSelectDefaultPriorityForWorkspace = `
-		SELECT id FROM artefact_priorities
-		 WHERE workspace_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY (slot = 'pri_medium') DESC, sort_order ASC
+		SELECT artefact_priorities_id FROM artefact_priorities
+		 WHERE artefact_priorities_id_workspace = $1
+		   AND artefact_priorities_archived_at IS NULL
+		 ORDER BY (artefact_priorities_slot = 'pri_medium') DESC, artefact_priorities_sort_order ASC
 		 LIMIT 1
 	`
 

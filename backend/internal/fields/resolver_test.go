@@ -120,7 +120,7 @@ func mkFixture(t *testing.T, pool *pgxpool.Pool) (fixture, func()) {
 
 	// Whitelist the workspace field into workspaceA.
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO workspaces_fields (workspace_id, field_library_id)
+		INSERT INTO workspaces_fields (workspaces_fields_id_workspace, workspaces_fields_id_field_library)
 		VALUES ($1, $2)`,
 		f.workspaceA, f.workspaceFieldID,
 	); err != nil {

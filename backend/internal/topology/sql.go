@@ -87,10 +87,12 @@ const sqlListDisconnectedRootsTemplate = `
 
 // sqlSelectCommitStatus reads the current commit checkpoint row from
 // topology_commits. Used by GetCommitStatus.
+//
+// RF1.5.2 — column prefixes applied to topology_commits (migration 097).
 const sqlSelectCommitStatus = `
-		SELECT committed_at, committed_by
+		SELECT topology_commits_committed_at, topology_commits_id_user_committed_by
 		  FROM topology_commits
-		 WHERE subscription_id = $1
+		 WHERE topology_commits_id_subscription = $1
 	`
 
 // sqlSelectMaxNodeUpdatedAt computes MAX(updated_at) across live
@@ -102,13 +104,19 @@ const sqlSelectMaxNodeUpdatedAt = `
 // sqlUpsertCommit stamps the working-model commit checkpoint. Single
 // row per subscription; ON CONFLICT bumps committed_at/_by and the
 // updated_at bookkeeping column.
+//
+// RF1.5.2 — column prefixes applied to topology_commits (migration 097).
 const sqlUpsertCommit = `
-		INSERT INTO topology_commits (subscription_id, committed_at, committed_by)
+		INSERT INTO topology_commits (
+			topology_commits_id_subscription,
+			topology_commits_committed_at,
+			topology_commits_id_user_committed_by
+		)
 		VALUES ($1, NOW(), $2)
-		ON CONFLICT (subscription_id) DO UPDATE
-		   SET committed_at = EXCLUDED.committed_at,
-		       committed_by = EXCLUDED.committed_by,
-		       updated_at   = NOW()
+		ON CONFLICT (topology_commits_id_subscription) DO UPDATE
+		   SET topology_commits_committed_at         = EXCLUDED.topology_commits_committed_at,
+		       topology_commits_id_user_committed_by = EXCLUDED.topology_commits_id_user_committed_by,
+		       topology_commits_updated_at           = NOW()
 	`
 
 // sqlArchiveAllLiveNodes archives every live topology_nodes row in a

@@ -68,7 +68,12 @@ func TestF7_PrioritySlotCheck_Enforced(t *testing.T) {
 	}
 
 	insertWithSlot := `
-		INSERT INTO artefact_priorities (workspace_id, name, slot, sort_order)
+		INSERT INTO artefact_priorities (
+			artefact_priorities_id_workspace,
+			artefact_priorities_name,
+			artefact_priorities_slot,
+			artefact_priorities_sort_order
+		)
 		VALUES ($1::uuid, $2, $3, 99)
 	`
 
@@ -117,12 +122,12 @@ func TestF7_SeededSlotsPerWorkspace(t *testing.T) {
 	}
 
 	rows, err := pool.Query(ctx, `
-		SELECT slot, COUNT(*)
+		SELECT artefact_priorities_slot, COUNT(*)
 		  FROM artefact_priorities
-		 WHERE slot IS NOT NULL
-		   AND archived_at IS NULL
-		 GROUP BY slot
-		 ORDER BY slot
+		 WHERE artefact_priorities_slot IS NOT NULL
+		   AND artefact_priorities_archived_at IS NULL
+		 GROUP BY artefact_priorities_slot
+		 ORDER BY artefact_priorities_slot
 	`)
 	if err != nil {
 		t.Fatalf("query slot counts: %v", err)
@@ -235,8 +240,8 @@ func TestF7_BackfillNoOrphanFK(t *testing.T) {
 	err := pool.QueryRow(ctx, `
 		SELECT COUNT(*)
 		  FROM artefacts a
-		  LEFT JOIN artefact_priorities p ON a.priority_id = p.id
-		 WHERE a.priority_id IS NOT NULL AND p.id IS NULL
+		  LEFT JOIN artefact_priorities p ON a.priority_id = p.artefact_priorities_id
+		 WHERE a.priority_id IS NOT NULL AND p.artefact_priorities_id IS NULL
 	`).Scan(&n)
 	if err != nil {
 		t.Fatalf("count orphan FKs: %v", err)
