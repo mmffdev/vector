@@ -82,7 +82,7 @@ func seedSubAndKey(t *testing.T, pool *pgxpool.Pool, label string) (subID, keyID
 	ctx := context.Background()
 	slug := fmt.Sprintf("_test-pla060-%s-%s", label, uuid.NewString()[:8])
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
+		`INSERT INTO subscriptions (subscriptions_name, subscriptions_slug) VALUES ($1, $2) RETURNING subscriptions_id`,
 		"PLA060 test "+label, slug,
 	).Scan(&subID); err != nil {
 		t.Fatalf("seed subscription %s: %v", label, err)
@@ -103,7 +103,7 @@ func seedSubAndKey(t *testing.T, pool *pgxpool.Pool, label string) (subID, keyID
 		t.Fatalf("seed key %s: %v", label, err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, subID)
+		_, _ = pool.Exec(ctx, `DELETE FROM subscriptions WHERE subscriptions_id = $1`, subID)
 	})
 	return subID, keyID
 }

@@ -857,7 +857,7 @@ func main() {
 	authSvc.OnLogin = append(authSvc.OnLogin, func(ctx context.Context, u *roletypes.User) {
 		var tier string
 		if err := pool.QueryRow(ctx,
-			`SELECT tier FROM subscriptions WHERE id = $1`, u.SubscriptionID,
+			`SELECT subscriptions_tier FROM subscriptions WHERE subscriptions_id = $1`, u.SubscriptionID,
 		).Scan(&tier); err != nil {
 			return // tier lookup failed — reconciler will warm on first poll
 		}

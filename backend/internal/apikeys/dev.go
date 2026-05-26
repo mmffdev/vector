@@ -26,7 +26,7 @@ func SeedDevKey(ctx context.Context, db *pgxpool.Pool, appEnv string, devKeyRaw 
 	// Find any subscription to attach the key to (for dev, use the first one).
 	// This is temporary — in production, keys are issued per-subscription via API.
 	var subID string
-	err := db.QueryRow(ctx, `SELECT id FROM subscriptions LIMIT 1`).Scan(&subID)
+	err := db.QueryRow(ctx, `SELECT subscriptions_id FROM subscriptions LIMIT 1`).Scan(&subID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Printf("⚠ no subscriptions found; skipping dev API key seed")

@@ -87,7 +87,7 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (subscriptionID, userID, roleI
 
 	suffix := uuid.NewString()[:8]
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
+		INSERT INTO subscriptions (subscriptions_name, subscriptions_slug) VALUES ($1, $2) RETURNING subscriptions_id`,
 		"nav-test-"+suffix, "nav-test-"+suffix).Scan(&subscriptionID); err != nil {
 		t.Fatalf("insert tenant: %v", err)
 	}
@@ -108,7 +108,7 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (subscriptionID, userID, roleI
 		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
 			t.Logf("cleanup user: %v", err)
 		}
-		if _, err := pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, subscriptionID); err != nil {
+		if _, err := pool.Exec(ctx, `DELETE FROM subscriptions WHERE subscriptions_id = $1`, subscriptionID); err != nil {
 			t.Logf("cleanup tenant: %v", err)
 		}
 	}
@@ -453,12 +453,12 @@ func TestCatalogFor_RoleFiltering(t *testing.T) {
 	// out of the way of any seeded grants for system roles.
 	tenantID := uuid.New()
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO subscriptions (id, name, slug, is_active)
+		INSERT INTO subscriptions (subscriptions_id, subscriptions_name, subscriptions_slug, subscriptions_is_active)
 		VALUES ($1, 'nav-test-tenant', $2, true)
 	`, tenantID, fmt.Sprintf("nav-test-%s", tenantID.String()[:8])); err != nil {
 		t.Fatalf("seed subscription: %v", err)
 	}
-	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, tenantID)
+	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE subscriptions_id = $1`, tenantID)
 
 	var isolatedRoleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
@@ -523,12 +523,12 @@ func TestTagsFor_PageGrantDerived(t *testing.T) {
 
 	tenantID := uuid.New()
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO subscriptions (id, name, slug, is_active)
+		INSERT INTO subscriptions (subscriptions_id, subscriptions_name, subscriptions_slug, subscriptions_is_active)
 		VALUES ($1, 'tagsfor-test-tenant', $2, true)
 	`, tenantID, fmt.Sprintf("tagsfor-test-%s", tenantID.String()[:8])); err != nil {
 		t.Fatalf("seed subscription: %v", err)
 	}
-	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, tenantID)
+	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE subscriptions_id = $1`, tenantID)
 
 	var isolatedRoleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
@@ -563,7 +563,7 @@ func TestTagsFor_PageGrantDerived(t *testing.T) {
 		// Grant the role exactly one page (dashboard, under 'personal').
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
-			SELECT id, $1 FROM pages WHERE key_enum = 'dashboard' AND created_by IS NULL AND subscription_id IS NULL
+			SELECT pages_id, $1 FROM pages WHERE pages_key_enum = 'dashboard' AND pages_id_user_creator IS NULL AND pages_id_subscription IS NULL
 		`, isolatedRoleID); err != nil {
 			t.Fatalf("grant dashboard: %v", err)
 		}
@@ -604,12 +604,12 @@ func TestCatalogFor_PageGrantIsSoleGate(t *testing.T) {
 
 	tenantID := uuid.New()
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO subscriptions (id, name, slug, is_active)
+		INSERT INTO subscriptions (subscriptions_id, subscriptions_name, subscriptions_slug, subscriptions_is_active)
 		VALUES ($1, 'sole-gate-tenant', $2, true)
 	`, tenantID, fmt.Sprintf("sole-gate-%s", tenantID.String()[:8])); err != nil {
 		t.Fatalf("seed subscription: %v", err)
 	}
-	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, tenantID)
+	defer pool.Exec(ctx, `DELETE FROM subscriptions WHERE subscriptions_id = $1`, tenantID)
 
 	var roleID uuid.UUID
 	if err := pool.QueryRow(ctx, `
@@ -632,7 +632,7 @@ func TestCatalogFor_PageGrantIsSoleGate(t *testing.T) {
 	// Step 2 — grant dev-security-audits (an admin-tag page). It must appear.
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
-		SELECT id, $1 FROM pages WHERE key_enum = 'dev-security-audits' AND created_by IS NULL AND subscription_id IS NULL
+		SELECT pages_id, $1 FROM pages WHERE pages_key_enum = 'dev-security-audits' AND pages_id_user_creator IS NULL AND pages_id_subscription IS NULL
 	`, roleID); err != nil {
 		t.Fatalf("grant dev-security-audits: %v", err)
 	}

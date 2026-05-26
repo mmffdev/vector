@@ -24,6 +24,12 @@ package nav
 // resolved from a hard-coded EntityKind switch, NEVER from user input,
 // so substitution is safe. Returns name + subscription_id + archived_at
 // (as text for nullable scan).
+//
+// NOTE (RF1.5.6): this template is keyed on legacy bare column names
+// (name / subscription_id / archived_at / id) that target tables which
+// have NOT been swept yet. When those tables are swept their respective
+// waves will rewrite the column references here; pages + subscriptions
+// don't participate in this template, so wave-5 leaves it untouched.
 const sqlSelectEntityForBookmarkTemplate = `
 		SELECT name, subscription_id, archived_at::text FROM %s WHERE id = $1
 	`
@@ -44,45 +50,46 @@ const sqlPgAdvisoryXactLockForPin = `
 // $1=userID, $2=subscriptionID, $3=profileID
 const sqlCountUserEntityBookmarks = `
 		SELECT COUNT(*) FROM users_nav_prefs unp
-		JOIN pages p ON p.key_enum = unp.users_nav_prefs_item_key
+		JOIN pages p ON p.pages_key_enum = unp.users_nav_prefs_item_key
 		WHERE unp.users_nav_prefs_id_user = $1 AND unp.users_nav_prefs_id_subscription = $2 AND unp.users_nav_prefs_id_profile = $3
 		  AND unp.users_nav_prefs_is_bookmark = TRUE
-		  AND p.kind = 'entity'
+		  AND p.pages_kind = 'entity'
 	`
 
 // sqlSelectStaticPageForBookmark validates that a page key exists, is static
 // and pinnable, and is visible to the caller's subscription.
 const sqlSelectStaticPageForBookmark = `
-		SELECT key_enum FROM pages
-		WHERE key_enum = $1
-		  AND kind = 'static'
-		  AND pinnable = TRUE
-		  AND (subscription_id IS NULL OR subscription_id = $2)
+		SELECT pages_key_enum FROM pages
+		WHERE pages_key_enum = $1
+		  AND pages_kind = 'static'
+		  AND pages_pinnable = TRUE
+		  AND (pages_id_subscription IS NULL OR pages_id_subscription = $2)
 	`
 
 // sqlCountUserStaticBookmarks counts static-kind user bookmarks for the cap check.
 // $1=userID, $2=subscriptionID, $3=profileID
 const sqlCountUserStaticBookmarks = `
 		SELECT COUNT(*) FROM users_nav_prefs unp
-		JOIN pages p ON p.key_enum = unp.users_nav_prefs_item_key
+		JOIN pages p ON p.pages_key_enum = unp.users_nav_prefs_item_key
 		WHERE unp.users_nav_prefs_id_user = $1 AND unp.users_nav_prefs_id_subscription = $2 AND unp.users_nav_prefs_id_profile = $3
 		  AND unp.users_nav_prefs_is_bookmark = TRUE
-		  AND p.kind = 'static'
+		  AND p.pages_kind = 'static'
 	`
 
 // sqlUpsertSharedEntityPage get-or-creates the shared pages row backing
 // an entity bookmark. The partial unique index
-// pages_unique_key_shared_tenant covers (key_enum, subscription_id)
-// WHERE created_by IS NULL, so concurrent Pin calls collapse onto one
-// row instead of duplicating it.
+// pages_key_enum_id_subscription_shared_unique covers
+// (pages_key_enum, pages_id_subscription) WHERE pages_id_user_creator
+// IS NULL, so concurrent Pin calls collapse onto one row instead of
+// duplicating it.
 const sqlUpsertSharedEntityPage = `
-		INSERT INTO pages (key_enum, label, href, icon, tag_enum, kind,
-		                   pinnable, default_pinned, default_order,
-		                   created_by, subscription_id)
+		INSERT INTO pages (pages_key_enum, pages_label, pages_href, pages_icon, pages_tag_enum, pages_kind,
+		                   pages_pinnable, pages_default_pinned, pages_default_order,
+		                   pages_id_user_creator, pages_id_subscription)
 		VALUES ($1, $2, $3, $4, $5, 'entity', TRUE, FALSE, 0, NULL, $6)
-		ON CONFLICT (key_enum, subscription_id) WHERE created_by IS NULL AND subscription_id IS NOT NULL DO UPDATE
-		  SET label = EXCLUDED.label, updated_at = NOW()
-		RETURNING id
+		ON CONFLICT (pages_key_enum, pages_id_subscription) WHERE pages_id_user_creator IS NULL AND pages_id_subscription IS NOT NULL DO UPDATE
+		  SET pages_label = EXCLUDED.pages_label, pages_updated_at = NOW()
+		RETURNING pages_id
 	`
 
 // sqlUpsertPageRoleGrant idempotently grants a role access to a page.
@@ -100,18 +107,18 @@ const sqlUpsertPageRoleGrant = `
 // users_roles_pages_id_role into a sorted UUID array so the grid can
 // match cells against role columns without N+1.
 const sqlListSystemPagesForGrantsAdmin = `
-		SELECT p.id, p.key_enum, p.label, p.href, p.tag_enum, p.default_order,
-		       COALESCE(t.pages_tags_display_name, p.tag_enum)        AS bucket_label,
+		SELECT p.pages_id, p.pages_key_enum, p.pages_label, p.pages_href, p.pages_tag_enum, p.pages_default_order,
+		       COALESCE(t.pages_tags_display_name, p.pages_tag_enum)  AS bucket_label,
 		       COALESCE(t.pages_tags_default_order, 9999)             AS bucket_order,
 		       COALESCE(array_agg(pr.users_roles_pages_id_role ORDER BY pr.users_roles_pages_id_role)
 		                FILTER (WHERE pr.users_roles_pages_id_role IS NOT NULL), '{}'::uuid[]) AS role_ids
 		FROM pages p
-		LEFT JOIN pages_tags t ON t.pages_tags_tag_enum = p.tag_enum
-		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
-		WHERE p.created_by IS NULL
-		  AND p.subscription_id IS NULL
-		GROUP BY p.id, t.pages_tags_display_name, t.pages_tags_default_order
-		ORDER BY bucket_order, bucket_label, p.default_order, p.label
+		LEFT JOIN pages_tags t ON t.pages_tags_tag_enum = p.pages_tag_enum
+		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.pages_id
+		WHERE p.pages_id_user_creator IS NULL
+		  AND p.pages_id_subscription IS NULL
+		GROUP BY p.pages_id, t.pages_tags_display_name, t.pages_tags_default_order
+		ORDER BY bucket_order, bucket_label, p.pages_default_order, p.pages_label
 	`
 
 // sqlDeletePageRoleGrant revokes one (page, role) pair. PLA-0049:
@@ -128,9 +135,9 @@ const sqlDeletePageRoleGrant = `
 // grid — only system pages are.
 const sqlPageExistsForGrantsAdmin = `
 		SELECT 1 FROM pages
-		 WHERE id = $1
-		   AND created_by      IS NULL
-		   AND subscription_id IS NULL
+		 WHERE pages_id              = $1
+		   AND pages_id_user_creator IS NULL
+		   AND pages_id_subscription IS NULL
 	`
 
 // sqlPageTagEnumByID returns the tag_enum bucket for a page. Used by
@@ -138,7 +145,7 @@ const sqlPageExistsForGrantsAdmin = `
 // 'avatar_menu' is refused (409 ResourceLocked) so every role keeps
 // access to their personal-account pages.
 const sqlPageTagEnumByID = `
-		SELECT tag_enum FROM pages WHERE id = $1
+		SELECT pages_tag_enum FROM pages WHERE pages_id = $1
 	`
 
 // sqlBatchGrantSystemPagesByBucket inserts (page_id, role_id) for
@@ -148,11 +155,11 @@ const sqlPageTagEnumByID = `
 // converges to all-on in a single statement.
 const sqlBatchGrantSystemPagesByBucket = `
 		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
-		SELECT p.id, $2
+		SELECT p.pages_id, $2
 		  FROM pages p
-		 WHERE p.tag_enum        = $1
-		   AND p.created_by      IS NULL
-		   AND p.subscription_id IS NULL
+		 WHERE p.pages_tag_enum        = $1
+		   AND p.pages_id_user_creator IS NULL
+		   AND p.pages_id_subscription IS NULL
 		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_id_role) DO NOTHING
 	`
 
@@ -164,10 +171,10 @@ const sqlBatchRevokeSystemPagesByBucket = `
 		DELETE FROM users_roles_pages
 		 WHERE users_roles_pages_id_role = $2
 		   AND users_roles_pages_id_page IN (
-		     SELECT id FROM pages
-		      WHERE tag_enum        = $1
-		        AND created_by      IS NULL
-		        AND subscription_id IS NULL
+		     SELECT pages_id FROM pages
+		      WHERE pages_tag_enum        = $1
+		        AND pages_id_user_creator IS NULL
+		        AND pages_id_subscription IS NULL
 		   )
 	`
 
@@ -263,15 +270,15 @@ const sqlListPageTags = `
 // user_role enum. Aggregate emits uuid[] which the registry scans
 // straight into []uuid.UUID on CatalogEntry.Roles.
 const sqlListSystemPagesWithRoles = `
-		SELECT p.key_enum, p.label, p.href, p.icon, p.tag_enum, p.kind,
-		       p.pinnable, p.default_pinned, p.default_order, p.subscription_id,
+		SELECT p.pages_key_enum, p.pages_label, p.pages_href, p.pages_icon, p.pages_tag_enum, p.pages_kind,
+		       p.pages_pinnable, p.pages_default_pinned, p.pages_default_order, p.pages_id_subscription,
 		       COALESCE(array_agg(pr.users_roles_pages_id_role ORDER BY pr.users_roles_pages_id_role) FILTER (WHERE pr.users_roles_pages_id_role IS NOT NULL), '{}'::uuid[]) AS role_ids
 		FROM pages p
-		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
-		WHERE p.created_by IS NULL
-		  AND (p.subscription_id IS NULL OR p.kind = 'entity')
-		GROUP BY p.id
-		ORDER BY p.tag_enum, p.default_order
+		LEFT JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.pages_id
+		WHERE p.pages_id_user_creator IS NULL
+		  AND (p.pages_id_subscription IS NULL OR p.pages_kind = 'entity')
+		GROUP BY p.pages_id
+		ORDER BY p.pages_tag_enum, p.pages_default_order
 	`
 
 // ── profiles.go ─────────────────────────────────────────────────────────────
@@ -585,7 +592,7 @@ const sqlBackfillDefaultPinnedPages = `
 			$1::uuid,
 			$2::uuid,
 			$4::uuid,
-			p.key_enum,
+			p.pages_key_enum,
 			COALESCE(
 				(SELECT MAX(unp.users_nav_prefs_position) + 1
 				 FROM users_nav_prefs unp
@@ -593,22 +600,22 @@ const sqlBackfillDefaultPinnedPages = `
 				   AND unp.users_nav_prefs_id_subscription = $2::uuid
 				   AND unp.users_nav_prefs_id_profile = $4::uuid),
 				0
-			) + (ROW_NUMBER() OVER (ORDER BY p.default_order, p.key_enum) - 1),
+			) + (ROW_NUMBER() OVER (ORDER BY p.pages_default_order, p.pages_key_enum) - 1),
 			FALSE
 		FROM pages p
-		JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.id
+		JOIN users_roles_pages pr ON pr.users_roles_pages_id_page = p.pages_id
 		JOIN users_nav_profiles d ON d.users_nav_profiles_id = $4::uuid AND d.users_nav_profiles_is_default = TRUE
-		WHERE p.created_by IS NULL
-		  AND p.subscription_id IS NULL
-		  AND p.default_pinned = TRUE
-		  AND p.pinnable = TRUE
+		WHERE p.pages_id_user_creator IS NULL
+		  AND p.pages_id_subscription IS NULL
+		  AND p.pages_default_pinned = TRUE
+		  AND p.pages_pinnable = TRUE
 		  AND pr.users_roles_pages_id_role = $3::uuid
 		  AND NOT EXISTS (
 			  SELECT 1 FROM users_nav_prefs unp
 			  WHERE unp.users_nav_prefs_id_user = $1::uuid
 				AND unp.users_nav_prefs_id_subscription = $2::uuid
 				AND unp.users_nav_prefs_id_profile = $4::uuid
-				AND unp.users_nav_prefs_item_key = p.key_enum
+				AND unp.users_nav_prefs_item_key = p.pages_key_enum
 		  )
 	`
 

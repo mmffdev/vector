@@ -68,13 +68,13 @@ func main() {
 	var subscriptionID uuid.UUID
 	if *subscriptionSlug != "" {
 		if err := vectorPool.QueryRow(ctx,
-			`SELECT id FROM subscriptions WHERE slug = $1`, *subscriptionSlug,
+			`SELECT subscriptions_id FROM subscriptions WHERE subscriptions_slug = $1`, *subscriptionSlug,
 		).Scan(&subscriptionID); err != nil {
 			fatalf("subscription %q not found: %v", *subscriptionSlug, err)
 		}
 	} else {
 		if err := vectorPool.QueryRow(ctx,
-			`SELECT id FROM subscriptions ORDER BY created_at LIMIT 1`,
+			`SELECT subscriptions_id FROM subscriptions ORDER BY subscriptions_created_at LIMIT 1`,
 		).Scan(&subscriptionID); err != nil {
 			fatalf("no subscriptions found: %v", err)
 		}

@@ -8,4 +8,4 @@ package libraryreleases
 // sqlSelectSubscriptionTier returns the subscription's current tier
 // (e.g. 'pro', 'free') for the entitlement-gating logic in
 // CountOutstanding / ListSinceAck.
-const sqlSelectSubscriptionTier = `SELECT tier FROM subscriptions WHERE id = $1`
+const sqlSelectSubscriptionTier = `SELECT subscriptions_tier FROM subscriptions WHERE subscriptions_id = $1`

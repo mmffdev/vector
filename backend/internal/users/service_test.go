@@ -54,7 +54,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 	suffix := uuid.NewString()[:8]
 	var subscriptionID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
+		`INSERT INTO subscriptions (subscriptions_name, subscriptions_slug) VALUES ($1, $2) RETURNING subscriptions_id`,
 		"users-test-"+label+"-"+suffix, "users-test-"+label+"-"+suffix,
 	).Scan(&subscriptionID); err != nil {
 		t.Fatalf("insert tenant: %v", err)
@@ -67,7 +67,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
 			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
 			`DELETE FROM users                       WHERE subscription_id = $1`,
-			`DELETE FROM subscriptions               WHERE id = $1`,
+			`DELETE FROM subscriptions               WHERE subscriptions_id = $1`,
 		}
 		for _, sql := range stmts {
 			if _, err := pool.Exec(ctx, sql, subscriptionID); err != nil {

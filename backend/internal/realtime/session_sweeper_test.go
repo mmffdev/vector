@@ -93,7 +93,7 @@ func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Po
 	// well-known MMFFDev seed subscription if it exists (id 0…001) to
 	// keep the fabrication deterministic across reruns.
 	var subID uuid.UUID
-	err := pool.QueryRow(ctx, `SELECT id FROM subscriptions WHERE is_active = TRUE ORDER BY created_at ASC LIMIT 1`).Scan(&subID)
+	err := pool.QueryRow(ctx, `SELECT subscriptions_id FROM subscriptions WHERE subscriptions_is_active = TRUE ORDER BY subscriptions_created_at ASC LIMIT 1`).Scan(&subID)
 	if err != nil {
 		t.Skipf("no live subscription available for fabrication: %v", err)
 	}

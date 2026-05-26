@@ -55,13 +55,13 @@ func TestMiddleware_StashesScopesOnContext(t *testing.T) {
 	slug := "_test-pla060-mw-" + uuid.NewString()[:8]
 	var subID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
+		`INSERT INTO subscriptions (subscriptions_name, subscriptions_slug) VALUES ($1, $2) RETURNING subscriptions_id`,
 		"PLA060 middleware test", slug,
 	).Scan(&subID); err != nil {
 		t.Fatalf("seed subscription: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM subscriptions WHERE id = $1`, subID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM subscriptions WHERE subscriptions_id = $1`, subID)
 	})
 
 	want := []string{ScopeWorkItemsRead, ScopePortfolioItemsWrite}
@@ -102,13 +102,13 @@ func TestMiddleware_EmptyScopesAttachedAsZeroLengthSlice(t *testing.T) {
 	slug := "_test-pla060-mw-empty-" + uuid.NewString()[:8]
 	var subID uuid.UUID
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO subscriptions (name, slug) VALUES ($1, $2) RETURNING id`,
+		`INSERT INTO subscriptions (subscriptions_name, subscriptions_slug) VALUES ($1, $2) RETURNING subscriptions_id`,
 		"PLA060 middleware test empty", slug,
 	).Scan(&subID); err != nil {
 		t.Fatalf("seed subscription: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM subscriptions WHERE id = $1`, subID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM subscriptions WHERE subscriptions_id = $1`, subID)
 	})
 
 	// Issue with explicitly empty scopes (back-compat path).

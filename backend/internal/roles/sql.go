@@ -173,11 +173,11 @@ const sqlListPermissionIDsForRole = `SELECT users_roles_permissions_id_permissio
 // avatar floor.
 const sqlInsertAvatarGrantsForRole = `
 		INSERT INTO users_roles_pages (users_roles_pages_id_page, users_roles_pages_id_role)
-		SELECT p.id, $1
+		SELECT p.pages_id, $1
 		  FROM pages p
-		 WHERE p.tag_enum        = 'avatar_menu'
-		   AND p.created_by      IS NULL
-		   AND p.subscription_id IS NULL
+		 WHERE p.pages_tag_enum        = 'avatar_menu'
+		   AND p.pages_id_user_creator IS NULL
+		   AND p.pages_id_subscription IS NULL
 		ON CONFLICT (users_roles_pages_id_page, users_roles_pages_id_role) DO NOTHING
 	`
 

@@ -230,8 +230,8 @@ func testVectorPoolAndSeed(t *testing.T) (*pgxpool.Pool, uuid.UUID, uuid.UUID, s
 	var subID, userID uuid.UUID
 	var tier string
 	err = mainPool.QueryRow(context.Background(), `
-		SELECT u.subscription_id, u.id, s.tier
-		FROM users u JOIN subscriptions s ON s.id = u.subscription_id
+		SELECT u.subscription_id, u.id, s.subscriptions_tier
+		FROM users u JOIN subscriptions s ON s.subscriptions_id = u.subscription_id
 		WHERE u.is_active = TRUE AND u.role = 'gadmin'
 		ORDER BY u.created_at
 		LIMIT 1`).Scan(&subID, &userID, &tier)

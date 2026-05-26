@@ -22,11 +22,11 @@ const sqlSelectAccessVersion = `
 // per-user pinned bookmarks (those have their own visibility model
 // via users_nav_prefs).
 const sqlSelectUserAccessSet = `
-		SELECT p.key_enum
+		SELECT p.pages_key_enum
 		  FROM users u
 		  JOIN users_roles_pages rp ON rp.users_roles_pages_id_role = u.role_id
-		  JOIN pages p              ON p.id = rp.users_roles_pages_id_page
-		 WHERE u.id              = $1
-		   AND p.created_by      IS NULL
-		   AND p.subscription_id IS NULL
+		  JOIN pages p              ON p.pages_id = rp.users_roles_pages_id_page
+		 WHERE u.id                    = $1
+		   AND p.pages_id_user_creator IS NULL
+		   AND p.pages_id_subscription IS NULL
 	`

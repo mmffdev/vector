@@ -254,8 +254,8 @@ func testVectorPool(t *testing.T) (*pgxpool.Pool, *subRef, *roletypes.User) {
 	var u roletypes.User
 	var sub subRef
 	err = pool.QueryRow(context.Background(), `
-		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, s.id, s.tier
-		FROM users u JOIN subscriptions s ON s.id = u.subscription_id
+		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, s.subscriptions_id, s.subscriptions_tier
+		FROM users u JOIN subscriptions s ON s.subscriptions_id = u.subscription_id
 		WHERE u.is_active = TRUE AND u.role = 'gadmin'
 		ORDER BY u.created_at
 		LIMIT 1`).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &sub.ID, &sub.Tier)
