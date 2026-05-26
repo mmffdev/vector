@@ -1207,13 +1207,50 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 			n++
 		}
 	}
+	// Track whether the patch rebinds topology so the post-write GetWorkItem
+	// can carve out of the entry-time subtree clamp — if we let it 404 here
+	// the user just moved a row "out of their own view" and gets a hostile
+	// error even though the write succeeded and was authorised.
+	topologyRebound := false
 	if in.TopologyNodeID != nil {
 		if *in.TopologyNodeID == "" {
 			sets = append(sets, "artefacts_id_topology_node = NULL")
+			topologyRebound = true
 		} else {
+			// SERVER-IS-GATE: mirror the CanReadScope check that
+			// CreateWorkItem already runs (service.go § create). Without it
+			// a non-gadmin can PATCH topology_node_id to any UUID — moving
+			// the artefact onto a node they hold no grant on, effectively
+			// hiding it from themselves AND from anyone whose scope doesn't
+			// include the new node. The Resolver short-circuits to true for
+			// SystemGrpGlobalID so gadmin keeps its synthetic-grant freedom.
+			if s.topology == nil {
+				return nil, ErrInvalidInput
+			}
+			if in.ActorRoleID == uuid.Nil {
+				return nil, ErrInvalidInput
+			}
+			nodeUUID, parseErr := uuid.Parse(*in.TopologyNodeID)
+			if parseErr != nil {
+				return nil, fmt.Errorf("%w: invalid topology_node_id", ErrInvalidInput)
+			}
+			if in.AuthorUserID == uuid.Nil {
+				return nil, ErrInvalidInput
+			}
+			ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, in.AuthorUserID, nodeUUID, in.ActorRoleID)
+			if permErr != nil {
+				if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
+					return nil, ErrScopeNodeNotFound
+				}
+				return nil, permErr
+			}
+			if !ok {
+				return nil, ErrScopeForbidden
+			}
 			sets = append(sets, fmt.Sprintf("artefacts_id_topology_node = $%d::uuid", n))
 			args = append(args, *in.TopologyNodeID)
 			n++
+			topologyRebound = true
 		}
 	}
 	if in.DescriptionDoc != nil {
@@ -1245,7 +1282,22 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if ct.RowsAffected() == 0 {
 		return nil, ErrNotFound
 	}
-	item, err := s.GetWorkItem(ctx, subscriptionID, id)
+	// Post-write read context. When the patch rebinds topology, the row's
+	// NEW topology_node may fall outside the request's entry-time
+	// AllowedSubtreeIDs (because the clamp was computed from the URL ?meg=
+	// BEFORE this UPDATE ran). Bypass the subtree gate on this single read
+	// so we can return the row the actor was just authorised to write.
+	// The bypass is safe here because:
+	//   (a) the actor was either authorised by topology.CanReadScope above
+	//       when writing a non-NULL node, or
+	//   (b) the actor cleared the field to NULL, which doesn't require a
+	//       read-scope grant on any node.
+	// All other clamp fields (WorkspaceID, RoleID, …) stay intact.
+	readCtx := ctx
+	if topologyRebound {
+		readCtx = sentinel.WithBypassedSubtreeClamp(ctx)
+	}
+	item, err := s.GetWorkItem(readCtx, subscriptionID, id)
 	if err != nil {
 		return nil, err
 	}

@@ -51,3 +51,46 @@ func WorkspaceIDFromCtx(ctx context.Context) (uuid.UUID, bool) {
 	}
 	return c.WorkspaceID, true
 }
+
+// TestingWithClamp attaches a Clamp to ctx for test fixtures. Production
+// code MUST use Middleware — only the middleware should ever attach a
+// Clamp on the request path. This helper exists so package-level unit
+// tests in OTHER packages (artefactitems, etc.) can simulate the
+// middleware's contract without booting a full HTTP stack.
+//
+// The function is exported but the name carries a "Testing" prefix so
+// any non-test call site stands out in code review. A lint rule may
+// later forbid TestingWithClamp outside `*_test.go` files; for now the
+// naming convention is the gate.
+func TestingWithClamp(ctx context.Context, c Clamp) context.Context {
+	return withClamp(ctx, c)
+}
+
+// WithBypassedSubtreeClamp returns a derived context whose Clamp keeps
+// every field EXCEPT AllowedSubtreeIDs, which is set to nil so the
+// post-SELECT subtree gate in getWorkItemImpl no-ops. Use ONLY on the
+// read that immediately follows a write the actor was already
+// authorised for (e.g. PatchWorkItem's post-UPDATE GetWorkItem) — so
+// the response can return the row even when the write moved it out of
+// the entry-time focus subtree.
+//
+// Other invariants stay intact: WorkspaceID, TenantID, UserID, Role,
+// RoleID, FocusNodeID, ScopeUp, ScopeDown — handlers that rely on
+// these still see the right values. The bypass is narrow by construction:
+// only the AllowedSubtreeIDs field is cleared, and only on the derived
+// ctx. The parent ctx (and any work that branches off it) keeps the
+// original clamp.
+//
+// SAFETY: the caller MUST have already performed an authorisation
+// check on the affected row (e.g. topology.CanReadScope on the new
+// node, or a successful UPDATE on a row gated by some other means).
+// Bypassing the read clamp without a prior write-gate would defeat
+// the existence-leak invariant the subtree clamp protects.
+func WithBypassedSubtreeClamp(ctx context.Context) context.Context {
+	c, ok := ctx.Value(clampCtxKey).(Clamp)
+	if !ok {
+		return ctx
+	}
+	c.AllowedSubtreeIDs = nil
+	return context.WithValue(ctx, clampCtxKey, c)
+}

@@ -316,6 +316,15 @@ type PatchWorkItemInput struct {
 	// uuid.Nil means "unauthenticated path" (rules fire with a zero
 	// author — same as before this field existed).
 	AuthorUserID uuid.UUID
+	// ActorRoleID is the role UUID of the caller, required ONLY when
+	// the patch sets TopologyNodeID — the service runs topology.CanReadScope
+	// against the new node to gate the write, and that resolver short-
+	// circuits on roles.SystemGrpGlobalID (gadmin). Mirrors the field on
+	// CreateWorkItemInput which has the same downstream call.
+	// Passing uuid.Nil when TopologyNodeID is non-nil returns
+	// ErrInvalidInput; passing uuid.Nil when TopologyNodeID is nil is
+	// fine (no scope gate runs).
+	ActorRoleID uuid.UUID
 }
 
 // Sprint is the wire representation of the sprints table.

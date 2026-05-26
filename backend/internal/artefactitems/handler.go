@@ -958,12 +958,24 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		TopologyNodeID:   req.TopologyNodeID,
 		DescriptionDoc:   ptrRawMessage(req.DescriptionDoc),
 		AuthorUserID:     u.ID,
+		// Required for the topology.CanReadScope gate the service runs
+		// when TopologyNodeID is non-nil. Mirrors CreateWorkItem's wiring.
+		ActorRoleID:      u.RoleID,
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"error":"not found"}`))
+		case errors.Is(err, ErrScopeForbidden):
+			// 403 — actor tried to rebind topology_node_id to a node
+			// they hold no grant on. Mirrors CreateWorkItem's mapping.
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"scope_write_denied"}`))
+		case errors.Is(err, ErrScopeNodeNotFound):
+			// 404 — the new topology_node_id doesn't resolve in the tenant.
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"scope node not found"}`))
 		case errors.Is(err, ErrParentFlowStateDerived):
 			// 409 — the row has live children, so its flow state is
 			// derived from them (work flows up). Frontend pill row is
