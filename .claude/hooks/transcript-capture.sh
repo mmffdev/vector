@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Stop hook — captures a one-line summary of the final assistant turn to
-# context/transcripts/{YYYY-MM-DD}.md. Fire-and-forget; never fails the session.
+# Stop hook — appends the most recent user prompt + full assistant turn
+# (all text blocks concatenated) to context/transcripts/{YYYY-MM-DD}.md.
+# Fire-and-forget; never fails the session.
 #
 # Claude Code Stop-hook payload (stdin JSON):
 #   { "session_id": "...", "transcript_path": "/Users/.../sessions/<id>.jsonl",
 #     "cwd": "...", "stop_hook_active": true|false }
 #
-# We read the last `type:"assistant"` line from the transcript JSONL and
-# slice its first text block to ~500 chars.
+# Purpose: feed the L3 (raw) retrieval tier in CLAUDE.md with unsummarised
+# dialogue. The full turn (not a 500-char slice) is what makes <index>
+# semantic-search useful — short summaries hit nothing.
 
 set -u
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
@@ -25,12 +27,14 @@ TODAY="$(date +%Y-%m-%d)"
 TIME="$(date +%H:%M:%S)"
 OUT_FILE="$OUT_DIR/$TODAY.md"
 
-# Extract last assistant message's first text block, slice to 500 chars,
-# collapse whitespace. Silent on failure.
-SUMMARY="$(/usr/bin/python3 - "$TRANSCRIPT_PATH" <<'PY' 2>/dev/null
-import json, sys, re
+# Extract last user prompt + full assistant turn (all text blocks joined).
+# Outputs two lines separated by a sentinel; bash splits them.
+PAYLOAD="$(/usr/bin/python3 - "$TRANSCRIPT_PATH" <<'PY' 2>/dev/null
+import json, sys
 path = sys.argv[1]
-last = None
+last_user = None
+last_asst_blocks = []
+last_asst_open = False
 with open(path) as f:
     for line in f:
         line = line.strip()
@@ -39,26 +43,56 @@ with open(path) as f:
             obj = json.loads(line)
         except Exception:
             continue
-        if obj.get("type") == "assistant":
-            msg = obj.get("message", {})
-            content = msg.get("content", [])
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    txt = block.get("text", "").strip()
-                    if txt:
-                        last = txt
-                        break
-text = last or ""
-text = re.sub(r"\s+", " ", text)[:500]
-print(text)
+        t = obj.get("type")
+        msg = obj.get("message", {})
+        content = msg.get("content", [])
+        if t == "user":
+            # capture user text; skip tool_result-only messages
+            texts = []
+            if isinstance(content, str):
+                texts.append(content)
+            elif isinstance(content, list):
+                for b in content:
+                    if isinstance(b, dict) and b.get("type") == "text":
+                        texts.append(b.get("text", ""))
+                    elif isinstance(b, str):
+                        texts.append(b)
+            joined = "\n".join(t for t in texts if t).strip()
+            if joined:
+                last_user = joined
+                last_asst_blocks = []  # reset; new turn begins
+                last_asst_open = True
+        elif t == "assistant" and last_asst_open:
+            if isinstance(content, list):
+                for b in content:
+                    if isinstance(b, dict) and b.get("type") == "text":
+                        txt = b.get("text", "").strip()
+                        if txt:
+                            last_asst_blocks.append(txt)
+user_out = last_user or ""
+asst_out = "\n\n".join(last_asst_blocks).strip()
+# Cap each at 8 KB to keep transcript files bounded.
+user_out = user_out[:8000]
+asst_out = asst_out[:8000]
+print(user_out)
+print("---ASST---")
+print(asst_out)
 PY
 )"
 
-[ -z "$SUMMARY" ] && exit 0
+[ -z "$PAYLOAD" ] && exit 0
+
+USER_MSG="$(printf '%s' "$PAYLOAD" | awk 'BEGIN{p=1} /^---ASST---$/{p=0; next} p')"
+ASST_MSG="$(printf '%s' "$PAYLOAD" | awk 'BEGIN{p=0} /^---ASST---$/{p=1; next} p')"
+
+[ -z "$ASST_MSG" ] && exit 0
 
 {
-    printf '\n## %s — %s\n' "$TIME" "${SESSION_ID:0:8}"
-    printf '%s\n' "$SUMMARY"
+    printf '\n---\n## %s — %s\n\n' "$TIME" "${SESSION_ID:0:8}"
+    if [ -n "$USER_MSG" ]; then
+        printf '### User\n\n%s\n\n' "$USER_MSG"
+    fi
+    printf '### Assistant\n\n%s\n' "$ASST_MSG"
 } >> "$OUT_FILE"
 
 exit 0

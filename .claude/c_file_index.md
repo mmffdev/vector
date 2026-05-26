@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-05-24 23:54:58
+**Generated:** 2026-05-26 23:18:22
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -55,7 +55,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components
-74 file(s) · key: nav_primary_rail_NavPageIcons.tsx, HomeLocationSection.tsx, ResourceTree.tsx
+75 file(s) · key: nav_primary_rail_NavPageIcons.tsx, VisualisationPanel.tsx, ResourceTree.tsx
 Purpose: _(unset)_
 
 ### app/components/ArtefactInlineForm
@@ -135,7 +135,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/redesign/components
-8 file(s) · key: nav_primary_rail_2.tsx, nav_primary_rail_1.tsx, AccountFlyout.tsx
+8 file(s) · key: nav_primary_rail_2.tsx, nav_primary_rail_1.tsx, RedesignShell.tsx
 Purpose: _(unset)_
 
 ### app/sentinel
@@ -165,7 +165,6 @@ Purpose: _(unset)_
 - app/(user)/portfolio-model/__tests__
 - app/(user)/portfolio-model/custom
 - app/(user)/portfolio-settings
-- app/(user)/product/[id]
 - app/(user)/releases
 - app/(user)/risk
 - app/(user)/scope
@@ -311,7 +310,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/addressables
-9 file(s) · key: service_test.go, sql.go, service.go
+9 file(s) · key: service_test.go, help_lifecycle_test.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/alerting
@@ -319,15 +318,15 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/apikeys
-11 file(s) · key: middleware.go, handler.go, apikeys.go
+11 file(s) · key: middleware_scopes_test.go, handler_revoke_test.go, dev.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-17 file(s) · key: service.go, sql.go, types.go
+17 file(s) · key: service_risk_test.go, handler_test.go, service_test.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
-4 file(s) · key: handler.go, types.go, sql.go
+4 file(s) · key: service.go, sql.go, handler.go
 Purpose: _(unset)_
 
 ### backend/internal/artefacttypes
@@ -339,7 +338,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/auth
-19 file(s) · key: handler.go, service.go, sql.go
+20 file(s) · key: handler.go, service.go, service_workspace_test.go
 Purpose: _(unset)_
 
 ### backend/internal/bootstatus
@@ -347,11 +346,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/costcentres
-4 file(s) · key: handler.go, service.go, sql.go
+4 file(s) · key: service.go, sql.go, handler.go
 Purpose: _(unset)_
 
 ### backend/internal/cspreport
-3 file(s) · key: handler.go, sql.go, service.go
+3 file(s) · key: sql.go, handler.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/custompages
@@ -363,7 +362,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/dbinvariants
-2 file(s) · key: orphans_test.go, dispatch_triggers_test.go
+1 file(s) · key: orphans_test.go
 Purpose: _(unset)_
 
 ### backend/internal/devreports
@@ -375,15 +374,15 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/featuretests
-7 file(s) · key: f8_priority_crud_wire_test.go, f8_priorities_pkg_shape_test.go, f7_priority_substrate_test
+7 file(s) · key: f7_priority_substrate_test.go, f8_priority_crud_wire_test.go, f8_priorities_pkg_shape_test
 Purpose: _(unset)_
 
 ### backend/internal/fields
-7 file(s) · key: handler.go, service.go, sql.go
+7 file(s) · key: handler_test.go, writer_test.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/flows
-10 file(s) · key: handler.go, sql.go, service.go
+10 file(s) · key: sql.go, handler.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/geo
@@ -411,11 +410,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/lookups
-4 file(s) · key: handler.go, service.go, sql.go
+4 file(s) · key: sql.go, handler.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/mentions
-5 file(s) · key: service.go, dto.go, handler.go
+5 file(s) · key: sql.go, service.go, dto.go
 Purpose: _(unset)_
 
 ### backend/internal/messaging/email
@@ -423,11 +422,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/nav
-10 file(s) · key: handler.go, service_test.go, sql.go
+9 file(s) · key: sql.go, service_test.go, handler.go
 Purpose: _(unset)_
 
 ### backend/internal/notifications
-12 file(s) · key: stream.go, stream_problemjson_test.go, templates.go
+12 file(s) · key: sql.go, stream.go, stream_problemjson_test.go
 Purpose: _(unset)_
 
 ### backend/internal/notifications/broker
@@ -443,7 +442,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/notifications/rules
-7 file(s) · key: types.go, sql.go, service.go
+7 file(s) · key: sql.go, types.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/pageaccess
@@ -451,7 +450,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/permissions
-5 file(s) · key: catalogue.go, sql.go, resolver.go
+5 file(s) · key: sql.go, catalogue.go, resolver.go
 Purpose: _(unset)_
 
 ### backend/internal/polymorphicrefs
@@ -459,23 +458,23 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/portfolio
-4 file(s) · key: master_record_handler_test.go, master_record_service.go, sql.go
+4 file(s) · key: sql.go, master_record_handler_test.go, master_record_service.go
 Purpose: _(unset)_
 
 ### backend/internal/portfoliomodels
-35 file(s) · key: adoption_state.go, adopt.go, resync.go
+35 file(s) · key: cross_db_canary_test.go, adopt_va_only_test.go, adopt_test.go
 Purpose: _(unset)_
 
 ### backend/internal/ranking
-7 file(s) · key: position.go, service.go, sql.go
+7 file(s) · key: service_integration_test.go, position.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/realtime
-14 file(s) · key: client.go, client_problemjson_test.go, hub.go
+14 file(s) · key: session_sweeper_test.go, sql.go, client.go
 Purpose: _(unset)_
 
 ### backend/internal/roles
-7 file(s) · key: service.go, audit_smoke_test.go, cache_invalidation_test.go
+7 file(s) · key: cache_invalidation_test.go, handler_test.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/roletypes
@@ -487,7 +486,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/searchworker
-2 file(s) · key: worker.go, sql.go
+2 file(s) · key: sql.go, worker.go
 Purpose: _(unset)_
 
 ### backend/internal/secrets
@@ -499,7 +498,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/sentinel
-11 file(s) · key: middleware.go, handler_test.go, handler.go
+11 file(s) · key: middleware_test.go, middleware.go, types.go
 Purpose: _(unset)_
 
 ### backend/internal/shared/topology
@@ -523,7 +522,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/topology
-9 file(s) · key: sql_helpers.go, handler.go, service.go
+9 file(s) · key: sql.go, commands.go, sql_helpers.go
 Purpose: _(unset)_
 
 ### backend/internal/transport
@@ -535,7 +534,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/users
-8 file(s) · key: prefs.go, sql.go, prefs_problemjson_test.go
+8 file(s) · key: protected_accounts_test.go, handler_creator_matrix_test.go, service_test.go
 Purpose: _(unset)_
 
 ### backend/internal/usertaborder
@@ -547,25 +546,29 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/workspacemasterrecord
-6 file(s) · key: service_inheritance_test.go, sql.go, inheritance_wiring.go
+6 file(s) · key: sql.go, service_inheritance_test.go, inheritance_wiring.go
+Purpose: _(unset)_
+
+### backend/internal/workspaceresolver
+2 file(s) · key: sql.go, resolver.go
 Purpose: _(unset)_
 
 ### backend/internal/workspaces
-10 file(s) · key: crossdb_integration_test.go, handler_test.go, sql.go
+10 file(s) · key: crossdb.go, handler_test.go, commands.go
 Purpose: _(unset)_
 
 ## Dev tooling
 
 ### dev/pages
-25 file(s) · key: DevVisualiserPanelV2A.tsx, DevVisualiserPanel.tsx, DevVisualiserPanelV2.tsx
+25 file(s) · key: DevVisualiserPanelV2.tsx, DevVisualiserPanel.tsx, DevReportingPanel.tsx
 Purpose: _(unset)_
 
 ### dev/pages/V2A
-3 file(s) · key: FilterRail.tsx, filterState.ts, filterRegistry.ts
+3 file(s) · key: filterState.ts, filterRegistry.ts, FilterRail.tsx
 Purpose: _(unset)_
 
 ### dev/scripts
-55 file(s) · key: audit_codegraph_enrich.py, audit_codegraph.sh, lint_no_old_context_imports_self_test.sh
+58 file(s) · key: dry_run_migration.sh, ssh_manager.sh, backup-on-push.sh
 Purpose: _(unset)_
 
 ### dev/scripts/backup/lib
@@ -577,7 +580,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/tests/playwright
-5 file(s) · key: playwright.sentinel.config.ts, work-item-relations.spec.ts, work-items-drag.spec.ts
+6 file(s) · key: sentinel-meg-persistence.spec.ts, playwright.sentinel.config.ts, work-item-relations.spec.
 Purpose: _(unset)_
 
 ### _Single-file dirs (rolled up)_
@@ -601,11 +604,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/registries
-18 file(s) · key: no_old_context_imports_exempt.json, cross_db_writer_test_exempt.json, api_caller_exempt.js
+20 file(s) · key: placeholder_table_lint_allowlist.json, no_ghost_scope_ls_reads_exempt.json, no_old_context
 Purpose: _(unset)_
 
 ### dev/reports
-740 file(s) · key: 20260524-065702-addressables.json, 20260524-063820-addressables.json, 20260524-062746-addr
+806 file(s) · key: 20260526-121605-addressables.json, 20260526-103728-addressables.json, 20260526-103315-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -643,11 +646,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/mmff_vector/schema
-244 file(s) · key: 245_value_nav_bucket.sql, 244_users_home_location_follow_mode.sql, 243_sentinel_user_colum
+264 file(s) · key: 264_users_column_prefix_RF1_5_7.sql, 265_fix_updated_at_triggers_users_RF1_5_7.sql, 263_fi
 Purpose: _(unset)_
 
 ### db/mmff_vector/schema/down
-54 file(s) · key: 245_value_nav_bucket_DOWN.sql, 244_users_home_location_follow_mode_DOWN.sql, 243_sentinel_
+73 file(s) · key: 264_users_column_prefix_RF1_5_7_DOWN.sql, 265_fix_updated_at_triggers_users_RF1_5_7_DOWN.s
 Purpose: _(unset)_
 
 ### db/ops
@@ -655,7 +658,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/seed
-5 file(s) · key: 010_master_reset.sql, 003_load_test_work_items_DOWN.sql, 003_load_test_work_items.sql
+5 file(s) · key: 002_work_items_poc.sql, 010_master_reset.sql, 003_load_test_work_items_DOWN.sql
 Purpose: _(unset)_
 
 ### db/vector_artefacts/dev-seeds
@@ -663,11 +666,15 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-89 file(s) · key: 092_grant_padmin_insurance_siblings.sql, 091_timebox_scope_propagation.sql, 090_grant_clau
+116 file(s) · key: 068_master_record_tenants_subscription_tier.sql, 021_master_record_portfolio_backfill.sql,
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-36 file(s) · key: 092_grant_padmin_insurance_siblings_DOWN.sql, 091_timebox_scope_propagation_DOWN.sql, 090_
+63 file(s) · key: 119_p3_drop_fdw_mmff_vector_DOWN.sql, 118_p2_add_all_fks_DOWN.sql, 117_p2_move_pages_clust
+Purpose: _(unset)_
+
+### db/vector_artefacts/schema/merge_plan
+3 file(s) · key: orphan_remediation.sql, subscriptions_merged.sql, master_record_workspaces_merged.sql
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/seed
@@ -681,11 +688,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs
-75 file(s) · key: c_c_lint_rules.md, c_tech_debt.md, c_security.md
+76 file(s) · key: c_tech_debt.md, c_c_db_routing.md, c_infra_index.md
 Purpose: _(unset)_
 
 ### docs/Security/Sentinel
-5 file(s) · key: sentinel_revision_history.md, sentinel_docs.md, sentinel_tech_debt.md
+5 file(s) · key: sentinel_docs.md, sentinel_revision_history.md, sentinel_tech_debt.md
 Purpose: _(unset)_
 
 ### docs/notes
@@ -693,10 +700,10 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/superpowers/plans
-4 file(s) · key: 2026-05-07-pla-0024-subscriptions-cutover.md, 2026-05-08-samantha-api-rename.md, 2026-05-0
+5 file(s) · key: 2026-05-25-jwt-workspace-claim-refresh.md, 2026-05-07-pla-0024-subscriptions-cutover.md, 2
 Purpose: _(unset)_
 
 ### docs/superpowers/specs
-5 file(s) · key: 2026-05-24-report-sy-system-paper-design.md, 2026-05-24-home-location-dropdown-design.md, 
+6 file(s) · key: 2026-05-25-jwt-workspace-claim-refresh-design.md, 2026-05-24-report-sy-system-paper-design
 Purpose: _(unset)_
 
