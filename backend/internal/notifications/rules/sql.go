@@ -157,17 +157,17 @@ const sqlSelectArtefactTypesByWorkspace = `
 // alpha-order tie-break).
 const sqlSelectArtefactTypeFieldsByName = `
 	SELECT
-		fl.field_name,
-		COALESCE(fl.label, fl.field_name) AS label,
-		fl.field_type,
-		fl.options_json
+		fl.artefacts_fields_library_field_name,
+		COALESCE(fl.artefacts_fields_library_label, fl.artefacts_fields_library_field_name) AS label,
+		fl.artefacts_fields_library_field_type,
+		fl.artefacts_fields_library_options_json
 	FROM artefacts_types_fields tf
-	JOIN artefacts_fields_library fl ON fl.id = tf.field_library_id
-	JOIN artefacts_types at ON at.artefacts_types_id = tf.artefact_type_id
+	JOIN artefacts_fields_library fl ON fl.artefacts_fields_library_id = tf.artefacts_types_fields_id_field_library
+	JOIN artefacts_types at ON at.artefacts_types_id = tf.artefacts_types_fields_id_artefact_type
 	WHERE at.artefacts_types_id_subscription = $1
 	  AND at.artefacts_types_id_workspace    = $2
 	  AND at.artefacts_types_name            = $3
 	  AND at.artefacts_types_archived_at IS NULL
-	  AND fl.archived_at IS NULL
-	ORDER BY fl.field_name ASC, tf.position ASC
+	  AND fl.artefacts_fields_library_archived_at IS NULL
+	ORDER BY fl.artefacts_fields_library_field_name ASC, tf.artefacts_types_fields_position ASC
 `

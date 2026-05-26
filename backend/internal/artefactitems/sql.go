@@ -297,10 +297,10 @@ const sqlSummariseRisks = `
 				a.id,
 				fs.flows_states_kind AS flow_kind,
 				LOWER(MAX(fvi.artefacts_fields_values_string_value) FILTER (
-					WHERE fli.field_name = 'risk_impact'
+					WHERE fli.artefacts_fields_library_field_name = 'risk_impact'
 				)) AS severity,
 				LOWER(MAX(fvp.artefacts_fields_values_string_value) FILTER (
-					WHERE flp.field_name = 'risk_probability'
+					WHERE flp.artefacts_fields_library_field_name = 'risk_probability'
 				)) AS likelihood
 			FROM artefacts a
 			JOIN artefacts_types at ON at.artefacts_types_id = a.artefact_type_id
@@ -309,11 +309,11 @@ const sqlSummariseRisks = `
 			LEFT JOIN artefacts_fields_values fvi
 				ON fvi.artefacts_fields_values_id_artefact = a.id
 			LEFT JOIN artefacts_fields_library fli
-				ON fli.id = fvi.artefacts_fields_values_id_field_library
+				ON fli.artefacts_fields_library_id = fvi.artefacts_fields_values_id_field_library
 			LEFT JOIN artefacts_fields_values fvp
 				ON fvp.artefacts_fields_values_id_artefact = a.id
 			LEFT JOIN artefacts_fields_library flp
-				ON flp.id = fvp.artefacts_fields_values_id_field_library
+				ON flp.artefacts_fields_library_id = fvp.artefacts_fields_values_id_field_library
 			WHERE a.subscription_id = $1
 			  AND a.archived_at IS NULL
 			  AND lower(at.artefacts_types_name) = 'risk'
@@ -671,22 +671,22 @@ const sqlBulkSetFlowState = `UPDATE artefacts SET flow_state_id=$1::uuid, update
 //      tenant-private (gen_random_uuid), but cross-tenant scans should
 //      never come back even on an enumerating UUID.
 const sqlListFieldsForType = `
-		SELECT fl.id::text,
-		       fl.field_name,
-		       fl.label,
-		       fl.field_type,
-		       fl.options_json::text,
-		       tf.position,
-		       tf.required,
-		       tf.default_value
+		SELECT fl.artefacts_fields_library_id::text,
+		       fl.artefacts_fields_library_field_name,
+		       fl.artefacts_fields_library_label,
+		       fl.artefacts_fields_library_field_type,
+		       fl.artefacts_fields_library_options_json::text,
+		       tf.artefacts_types_fields_position,
+		       tf.artefacts_types_fields_required,
+		       tf.artefacts_types_fields_default_value
 		  FROM artefacts_types_fields tf
-		  JOIN artefacts_fields_library fl ON fl.id = tf.field_library_id
-		  JOIN artefacts_types at ON at.artefacts_types_id = tf.artefact_type_id
-		 WHERE tf.artefact_type_id = $1
+		  JOIN artefacts_fields_library fl ON fl.artefacts_fields_library_id = tf.artefacts_types_fields_id_field_library
+		  JOIN artefacts_types at ON at.artefacts_types_id = tf.artefacts_types_fields_id_artefact_type
+		 WHERE tf.artefacts_types_fields_id_artefact_type = $1
 		   AND at.artefacts_types_id_subscription = $2
-		   AND fl.archived_at IS NULL
+		   AND fl.artefacts_fields_library_archived_at IS NULL
 		   AND at.artefacts_types_archived_at IS NULL
-		 ORDER BY tf.position ASC, fl.field_name ASC
+		 ORDER BY tf.artefacts_types_fields_position ASC, fl.artefacts_fields_library_field_name ASC
 	`
 
 // ── ListFieldValues + UpsertFieldValue + DeleteFieldValue ──────────────────
@@ -694,21 +694,21 @@ const sqlListFieldsForType = `
 const sqlListFieldValuesForArtefact = `
 		SELECT fv.artefacts_fields_values_id,
 		       fv.artefacts_fields_values_id_artefact::text,
-		       fl.id::text,
+		       fl.artefacts_fields_library_id::text,
 		       NULL::text,
-		       fl.name, fl.label, fl.field_type, fl.options_json,
+		       fl.artefacts_fields_library_field_name, fl.artefacts_fields_library_label, fl.artefacts_fields_library_field_type, fl.artefacts_fields_library_options_json,
 		       fv.artefacts_fields_values_string_value,
 		       fv.artefacts_fields_values_number_value::text,
 		       fv.artefacts_fields_values_text_value,
 		       fv.artefacts_fields_values_date_value::text
 		  FROM artefacts_fields_values fv
-		  JOIN artefacts_fields_library fl ON fl.id = fv.artefacts_fields_values_id_field_library
+		  JOIN artefacts_fields_library fl ON fl.artefacts_fields_library_id = fv.artefacts_fields_values_id_field_library
 		 WHERE fv.artefacts_fields_values_id_artefact = $1
-		 ORDER BY fl.name ASC
+		 ORDER BY fl.artefacts_fields_library_field_name ASC
 	`
 
 const sqlSelectFieldLibraryType = `
-		SELECT field_type FROM artefacts_fields_library WHERE id = $1 AND subscription_id = $2
+		SELECT artefacts_fields_library_field_type FROM artefacts_fields_library WHERE artefacts_fields_library_id = $1 AND artefacts_fields_library_id_subscription = $2
 	`
 
 // sqlSelectFieldLibraryNameAndType returns the field's stable wire name
@@ -723,7 +723,7 @@ const sqlSelectFieldLibraryType = `
 // fail at runtime against the same DB — pre-existing latent bug logged
 // separately; do not align without auditing all callers of that query.
 const sqlSelectFieldLibraryNameAndType = `
-		SELECT field_name, field_type FROM artefacts_fields_library WHERE id = $1 AND subscription_id = $2
+		SELECT artefacts_fields_library_field_name, artefacts_fields_library_field_type FROM artefacts_fields_library WHERE artefacts_fields_library_id = $1 AND artefacts_fields_library_id_subscription = $2
 	`
 
 // sqlSelectFieldValueByArtefactAndField loads the current row for a
@@ -755,13 +755,13 @@ const sqlSelectArtefactSubscriptionID = `
 // join through to the library row to recover the field name + type
 // and the soon-to-be-deleted value. One round-trip.
 const sqlSelectFieldValueByValueRowID = `
-		SELECT fl.field_name, fl.field_type,
+		SELECT fl.artefacts_fields_library_field_name, fl.artefacts_fields_library_field_type,
 		       fv.artefacts_fields_values_string_value,
 		       fv.artefacts_fields_values_number_value::text,
 		       fv.artefacts_fields_values_text_value,
 		       fv.artefacts_fields_values_date_value::text
 		  FROM artefacts_fields_values fv
-		  JOIN artefacts_fields_library fl ON fl.id = fv.artefacts_fields_values_id_field_library
+		  JOIN artefacts_fields_library fl ON fl.artefacts_fields_library_id = fv.artefacts_fields_values_id_field_library
 		 WHERE fv.artefacts_fields_values_id = $1
 		   AND fv.artefacts_fields_values_id_artefact = $2
 	`

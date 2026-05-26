@@ -25,11 +25,11 @@ package workspaceresolver
 // topology_nodes.workspace_id is NOT NULL (vector_artefacts schema),
 // so a successful return guarantees a non-nil uuid.
 const sqlWorkspaceForFocusNode = `
-	SELECT workspace_id
+	SELECT topology_nodes_id_workspace
 	  FROM topology_nodes
-	 WHERE id = $1
-	   AND subscription_id = $2
-	   AND archived_at IS NULL
+	 WHERE topology_nodes_id = $1
+	   AND topology_nodes_id_subscription = $2
+	   AND topology_nodes_archived_at IS NULL
 	 LIMIT 1
 `
 

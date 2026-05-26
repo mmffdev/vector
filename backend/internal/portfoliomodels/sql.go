@@ -120,73 +120,80 @@ const sqlSelectAdoptedModelForWorkspace = `
 // sqlSelectActiveAdoptionState returns the live (non-archived)
 // artefacts_adoption_states row for a workspace.
 const sqlSelectActiveAdoptionState = `
-		SELECT id, model_id, status, adopted_at
+		SELECT artefacts_adoption_states_id,
+		       artefacts_adoption_states_id_model,
+		       artefacts_adoption_states_status,
+		       artefacts_adoption_states_adopted_at
 		  FROM artefacts_adoption_states
-		 WHERE workspace_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY created_at DESC
+		 WHERE artefacts_adoption_states_id_workspace = $1
+		   AND artefacts_adoption_states_archived_at IS NULL
+		 ORDER BY artefacts_adoption_states_created_at DESC
 		 LIMIT 1
 	`
 
 // sqlInsertAdoptionState writes a fresh in_progress row.
 const sqlInsertAdoptionState = `
 		INSERT INTO artefacts_adoption_states
-		    (workspace_id, subscription_id, model_id, adopted_by_user_id, status)
+		    (artefacts_adoption_states_id_workspace,
+		     artefacts_adoption_states_id_subscription,
+		     artefacts_adoption_states_id_model,
+		     artefacts_adoption_states_id_user_adopted_by,
+		     artefacts_adoption_states_status)
 		VALUES ($1, $2, $3, $4, 'in_progress')
-		RETURNING id
+		RETURNING artefacts_adoption_states_id
 	`
 
 // sqlArchiveCompletedStateForReadoption soft-archives a completed row
 // when the operator switches to a different model.
 const sqlArchiveCompletedStateForReadoption = `
 		UPDATE artefacts_adoption_states
-		   SET archived_at = NOW()
-		 WHERE id = $1
-		   AND workspace_id = $2
-		   AND status = 'completed'
-		   AND archived_at IS NULL
+		   SET artefacts_adoption_states_archived_at = NOW()
+		 WHERE artefacts_adoption_states_id = $1
+		   AND artefacts_adoption_states_id_workspace = $2
+		   AND artefacts_adoption_states_status = 'completed'
+		   AND artefacts_adoption_states_archived_at IS NULL
 	`
 
 // sqlArchiveStaleFailedAdoptionState soft-archives a failed row for a
 // different model so the partial unique index admits a fresh row.
 const sqlArchiveStaleFailedAdoptionState = `
 		UPDATE artefacts_adoption_states
-		   SET archived_at = NOW()
-		 WHERE id = $1
-		   AND workspace_id = $2
-		   AND status = 'failed'
-		   AND archived_at IS NULL
+		   SET artefacts_adoption_states_archived_at = NOW()
+		 WHERE artefacts_adoption_states_id = $1
+		   AND artefacts_adoption_states_id_workspace = $2
+		   AND artefacts_adoption_states_status = 'failed'
+		   AND artefacts_adoption_states_archived_at IS NULL
 	`
 
 // sqlResetFailedAdoptionStateToInProgress flips a previously-failed
 // row back so a retry of the same model resumes idempotently.
 const sqlResetFailedAdoptionStateToInProgress = `
 		UPDATE artefacts_adoption_states
-		   SET status = 'in_progress'
-		 WHERE id = $1
-		   AND workspace_id = $2
-		   AND status = 'failed'
-		   AND archived_at IS NULL
+		   SET artefacts_adoption_states_status = 'in_progress'
+		 WHERE artefacts_adoption_states_id = $1
+		   AND artefacts_adoption_states_id_workspace = $2
+		   AND artefacts_adoption_states_status = 'failed'
+		   AND artefacts_adoption_states_archived_at IS NULL
 	`
 
 // sqlMarkAdoptionStateCompleted finalises the saga.
 const sqlMarkAdoptionStateCompleted = `
 		UPDATE artefacts_adoption_states
-		   SET status = 'completed',
-		       adopted_by_user_id = $2,
-		       adopted_at = NOW()
-		 WHERE id = $1
-		   AND workspace_id = $3
-		 RETURNING adopted_at
+		   SET artefacts_adoption_states_status = 'completed',
+		       artefacts_adoption_states_id_user_adopted_by = $2,
+		       artefacts_adoption_states_adopted_at = NOW()
+		 WHERE artefacts_adoption_states_id = $1
+		   AND artefacts_adoption_states_id_workspace = $3
+		 RETURNING artefacts_adoption_states_adopted_at
 	`
 
 // sqlMarkAdoptionStateFailed flips the row to failed in the abort path.
 const sqlMarkAdoptionStateFailed = `
 		UPDATE artefacts_adoption_states
-		   SET status = 'failed'
-		 WHERE id = $1
-		   AND workspace_id = $2
-		   AND archived_at IS NULL
+		   SET artefacts_adoption_states_status = 'failed'
+		 WHERE artefacts_adoption_states_id = $1
+		   AND artefacts_adoption_states_id_workspace = $2
+		   AND artefacts_adoption_states_archived_at IS NULL
 	`
 
 // sqlInsertErrorEvent persists one error_events row (the saga's
@@ -531,7 +538,7 @@ const sqlSelectWorkPrefixMapAnySource = `
 
 // ── dev_reset.go ───────────────────────────────────────────────────────────
 
-const sqlDeleteAllAdoptionStateForSubscription = `DELETE FROM artefacts_adoption_states WHERE subscription_id = $1`
+const sqlDeleteAllAdoptionStateForSubscription = `DELETE FROM artefacts_adoption_states WHERE artefacts_adoption_states_id_subscription = $1`
 
 // TD-RESET-001 fix (2026-05-14): artefacts_fields_values has NO subscription_id
 // column — scoping reaches through artefacts.subscription_id (FK on the parent

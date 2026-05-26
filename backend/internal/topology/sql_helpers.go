@@ -31,7 +31,7 @@ func workspaceClause(ctx context.Context, alias string, args []any) (clause stri
 	}
 	args = append(args, wsID)
 	slot = len(args)
-	return fmt.Sprintf(" AND %s.workspace_id = $%d", alias, slot), args, slot
+	return fmt.Sprintf(" AND %s.topology_nodes_id_workspace = $%d", alias, slot), args, slot
 }
 
 // workspaceClauseAt returns the same fragment workspaceClause produces
@@ -46,7 +46,7 @@ func workspaceClauseAt(alias string, slot int) string {
 	if slot == 0 {
 		return ""
 	}
-	return fmt.Sprintf(" AND %s.workspace_id = $%d", alias, slot)
+	return fmt.Sprintf(" AND %s.topology_nodes_id_workspace = $%d", alias, slot)
 }
 
 // itoa avoids importing strconv just for line-number formatting in

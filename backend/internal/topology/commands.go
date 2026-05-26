@@ -76,25 +76,25 @@ func (s *Service) PatchNode(ctx context.Context, subscriptionID, nodeID uuid.UUI
 		idx++
 	}
 	if in.Name != nil {
-		add("name", strings.TrimSpace(*in.Name))
+		add("topology_nodes_name", strings.TrimSpace(*in.Name))
 	}
 	if in.Description != nil {
 		// PLA-0006/00312: column is NOT NULL DEFAULT ''. Pass the raw
 		// string through (including '') so clearing the field stores
 		// the empty default rather than violating NOT NULL.
-		add("description", *in.Description)
+		add("topology_nodes_description", *in.Description)
 	}
 	if in.LabelOverride != nil {
-		add("label_override", nullIfEmpty(*in.LabelOverride))
+		add("topology_nodes_label_override", nullIfEmpty(*in.LabelOverride))
 	}
 	if in.Icon != nil {
-		add("icon", nullIfEmpty(*in.Icon))
+		add("topology_nodes_icon", nullIfEmpty(*in.Icon))
 	}
 	if in.Colour != nil {
-		add("colour", nullIfEmpty(*in.Colour))
+		add("topology_nodes_colour", nullIfEmpty(*in.Colour))
 	}
 	if in.AvatarURL != nil {
-		add("avatar_url", nullIfEmpty(*in.AvatarURL))
+		add("topology_nodes_avatar_url", nullIfEmpty(*in.AvatarURL))
 	}
 	args = append(args, nodeID)
 	sql := fmt.Sprintf(sqlPatchNodeTemplate, strings.Join(parts, ", "), "$"+itoa(idx))

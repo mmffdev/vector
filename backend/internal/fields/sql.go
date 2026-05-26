@@ -36,29 +36,29 @@ const sqlExistsActiveWorkspaceMembership = `
 // workspace scope when there's a matching workspaces_fields row.
 const sqlLoadAdmittedFields = `
 		SELECT
-		    fl.id,
-		    fl.subscription_id,
-		    fl.field_name,
-		    fl.label,
-		    fl.field_type,
-		    fl.options_json,
-		    fl.config_json,
-		    fl.description,
-		    fl.scope,
-		    fl.created_at,
-		    fl.updated_at
+		    fl.artefacts_fields_library_id,
+		    fl.artefacts_fields_library_id_subscription,
+		    fl.artefacts_fields_library_field_name,
+		    fl.artefacts_fields_library_label,
+		    fl.artefacts_fields_library_field_type,
+		    fl.artefacts_fields_library_options_json,
+		    fl.artefacts_fields_library_config_json,
+		    fl.artefacts_fields_library_description,
+		    fl.artefacts_fields_library_scope,
+		    fl.artefacts_fields_library_created_at,
+		    fl.artefacts_fields_library_updated_at
 		  FROM artefacts_fields_library fl
-		 WHERE fl.archived_at IS NULL
+		 WHERE fl.artefacts_fields_library_archived_at IS NULL
 		   AND (
-		         fl.scope = 'global'
-		      OR (fl.scope = 'tenant'    AND fl.subscription_id = $2)
-		      OR (fl.scope = 'workspace' AND fl.subscription_id = $2 AND EXISTS (
+		         fl.artefacts_fields_library_scope = 'global'
+		      OR (fl.artefacts_fields_library_scope = 'tenant'    AND fl.artefacts_fields_library_id_subscription = $2)
+		      OR (fl.artefacts_fields_library_scope = 'workspace' AND fl.artefacts_fields_library_id_subscription = $2 AND EXISTS (
 		             SELECT 1 FROM workspaces_fields awf
 		              WHERE awf.workspaces_fields_id_workspace = $1
-		                AND awf.workspaces_fields_id_field_library = fl.id
+		                AND awf.workspaces_fields_id_field_library = fl.artefacts_fields_library_id
 		         ))
 		       )
-		 ORDER BY fl.label ASC, fl.field_name ASC
+		 ORDER BY fl.artefacts_fields_library_label ASC, fl.artefacts_fields_library_field_name ASC
 	`
 
 // ── resolver.go ────────────────────────────────────────────────────────────
@@ -66,9 +66,11 @@ const sqlLoadAdmittedFields = `
 // sqlSelectFieldLibraryRow returns the scope + subscription_id columns
 // the Resolver needs to decide admission for a single field.
 const sqlSelectFieldLibraryRow = `
-		SELECT scope, subscription_id
+		SELECT artefacts_fields_library_scope,
+		       artefacts_fields_library_id_subscription
 		  FROM artefacts_fields_library
-		 WHERE id = $1 AND archived_at IS NULL
+		 WHERE artefacts_fields_library_id = $1
+		   AND artefacts_fields_library_archived_at IS NULL
 	`
 
 // sqlExistsWorkspaceFieldAdmit is the admit-row probe for the
@@ -94,21 +96,27 @@ const sqlExistsWorkspaceFieldAdmit = `
 // so the caller can hydrate a FieldRow without an extra round-trip.
 const sqlInsertFieldLibrary = `
 		INSERT INTO artefacts_fields_library
-			(subscription_id, field_name, label, field_type,
-			 options_json, config_json, description, scope)
+			(artefacts_fields_library_id_subscription,
+			 artefacts_fields_library_field_name,
+			 artefacts_fields_library_label,
+			 artefacts_fields_library_field_type,
+			 artefacts_fields_library_options_json,
+			 artefacts_fields_library_config_json,
+			 artefacts_fields_library_description,
+			 artefacts_fields_library_scope)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING
-			id,
-			subscription_id,
-			field_name,
-			label,
-			field_type,
-			options_json,
-			config_json,
-			description,
-			scope,
-			created_at,
-			updated_at
+			artefacts_fields_library_id,
+			artefacts_fields_library_id_subscription,
+			artefacts_fields_library_field_name,
+			artefacts_fields_library_label,
+			artefacts_fields_library_field_type,
+			artefacts_fields_library_options_json,
+			artefacts_fields_library_config_json,
+			artefacts_fields_library_description,
+			artefacts_fields_library_scope,
+			artefacts_fields_library_created_at,
+			artefacts_fields_library_updated_at
 	`
 
 // sqlInsertWorkspaceFieldAdmit admits a newly-created scope='workspace'
@@ -134,20 +142,20 @@ const sqlInsertWorkspaceFieldAdmit = `
 // of what they're editing.
 const sqlSelectFieldLibraryFull = `
 		SELECT
-			id,
-			subscription_id,
-			field_name,
-			label,
-			field_type,
-			options_json,
-			config_json,
-			description,
-			scope,
-			created_at,
-			updated_at,
-			archived_at
+			artefacts_fields_library_id,
+			artefacts_fields_library_id_subscription,
+			artefacts_fields_library_field_name,
+			artefacts_fields_library_label,
+			artefacts_fields_library_field_type,
+			artefacts_fields_library_options_json,
+			artefacts_fields_library_config_json,
+			artefacts_fields_library_description,
+			artefacts_fields_library_scope,
+			artefacts_fields_library_created_at,
+			artefacts_fields_library_updated_at,
+			artefacts_fields_library_archived_at
 		  FROM artefacts_fields_library
-		 WHERE id = $1
+		 WHERE artefacts_fields_library_id = $1
 	`
 
 // sqlCountFieldValues returns the number of artefacts_fields_values
@@ -174,26 +182,26 @@ const sqlCountFieldValues = `
 // Returns the hydrated row so the handler can echo the post-state.
 const sqlUpdateFieldLibrary = `
 		UPDATE artefacts_fields_library SET
-			label        = COALESCE($2, label),
-			field_type   = COALESCE($3, field_type),
-			options_json = COALESCE($4, options_json),
-			config_json  = COALESCE($5, config_json),
-			description  = COALESCE($6, description),
-			updated_at   = now()
-		 WHERE id = $1
-		   AND archived_at IS NULL
+			artefacts_fields_library_label        = COALESCE($2, artefacts_fields_library_label),
+			artefacts_fields_library_field_type   = COALESCE($3, artefacts_fields_library_field_type),
+			artefacts_fields_library_options_json = COALESCE($4, artefacts_fields_library_options_json),
+			artefacts_fields_library_config_json  = COALESCE($5, artefacts_fields_library_config_json),
+			artefacts_fields_library_description  = COALESCE($6, artefacts_fields_library_description),
+			artefacts_fields_library_updated_at   = now()
+		 WHERE artefacts_fields_library_id = $1
+		   AND artefacts_fields_library_archived_at IS NULL
 		 RETURNING
-			id,
-			subscription_id,
-			field_name,
-			label,
-			field_type,
-			options_json,
-			config_json,
-			description,
-			scope,
-			created_at,
-			updated_at
+			artefacts_fields_library_id,
+			artefacts_fields_library_id_subscription,
+			artefacts_fields_library_field_name,
+			artefacts_fields_library_label,
+			artefacts_fields_library_field_type,
+			artefacts_fields_library_options_json,
+			artefacts_fields_library_config_json,
+			artefacts_fields_library_description,
+			artefacts_fields_library_scope,
+			artefacts_fields_library_created_at,
+			artefacts_fields_library_updated_at
 	`
 
 // sqlSelectFieldLibraryGate is the lightweight pre-fetch the Archive
@@ -201,9 +209,11 @@ const sqlUpdateFieldLibrary = `
 // need the three discriminator columns; the heavier sqlSelectFieldLibraryFull
 // is for Update which has to round-trip the full row state.
 const sqlSelectFieldLibraryGate = `
-		SELECT subscription_id, scope, archived_at
+		SELECT artefacts_fields_library_id_subscription,
+		       artefacts_fields_library_scope,
+		       artefacts_fields_library_archived_at
 		  FROM artefacts_fields_library
-		 WHERE id = $1
+		 WHERE artefacts_fields_library_id = $1
 	`
 
 // sqlArchiveFieldLibrary is the soft-delete writer: sets archived_at
@@ -212,8 +222,8 @@ const sqlSelectFieldLibraryGate = `
 // caller doesn't see a 200 for an already-archived row).
 const sqlArchiveFieldLibrary = `
 		UPDATE artefacts_fields_library
-		   SET archived_at = now(),
-		       updated_at  = now()
-		 WHERE id = $1
-		   AND archived_at IS NULL
+		   SET artefacts_fields_library_archived_at = now(),
+		       artefacts_fields_library_updated_at  = now()
+		 WHERE artefacts_fields_library_id = $1
+		   AND artefacts_fields_library_archived_at IS NULL
 	`

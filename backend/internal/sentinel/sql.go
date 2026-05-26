@@ -18,19 +18,19 @@ package sentinel
 // $2 = subscriptionID.
 const sqlDescendantNodeIDs = `
 	WITH RECURSIVE live_down AS (
-	    SELECT n.id
+	    SELECT n.topology_nodes_id
 	      FROM topology_nodes n
-	     WHERE n.id = $1
-	       AND n.subscription_id = $2
-	       AND n.archived_at IS NULL
+	     WHERE n.topology_nodes_id = $1
+	       AND n.topology_nodes_id_subscription = $2
+	       AND n.topology_nodes_archived_at IS NULL
 	    UNION ALL
-	    SELECT c.id
+	    SELECT c.topology_nodes_id
 	      FROM topology_nodes c
-	      JOIN live_down ld ON c.parent_id = ld.id
-	     WHERE c.subscription_id = $2
-	       AND c.archived_at IS NULL
+	      JOIN live_down ld ON c.topology_nodes_id_parent = ld.topology_nodes_id
+	     WHERE c.topology_nodes_id_subscription = $2
+	       AND c.topology_nodes_archived_at IS NULL
 	)
-	SELECT id FROM live_down
+	SELECT topology_nodes_id FROM live_down
 `
 
 // sqlAncestorNodeIDs returns rootNodeID plus every live ancestor up to
@@ -38,19 +38,19 @@ const sqlDescendantNodeIDs = `
 // $2 = subscriptionID.
 const sqlAncestorNodeIDs = `
 	WITH RECURSIVE live_up AS (
-	    SELECT n.id, n.parent_id
+	    SELECT n.topology_nodes_id, n.topology_nodes_id_parent
 	      FROM topology_nodes n
-	     WHERE n.id = $1
-	       AND n.subscription_id = $2
-	       AND n.archived_at IS NULL
+	     WHERE n.topology_nodes_id = $1
+	       AND n.topology_nodes_id_subscription = $2
+	       AND n.topology_nodes_archived_at IS NULL
 	    UNION ALL
-	    SELECT p.id, p.parent_id
+	    SELECT p.topology_nodes_id, p.topology_nodes_id_parent
 	      FROM topology_nodes p
-	      JOIN live_up lu ON lu.parent_id = p.id
-	     WHERE p.subscription_id = $2
-	       AND p.archived_at IS NULL
+	      JOIN live_up lu ON lu.topology_nodes_id_parent = p.topology_nodes_id
+	     WHERE p.topology_nodes_id_subscription = $2
+	       AND p.topology_nodes_archived_at IS NULL
 	)
-	SELECT id FROM live_up
+	SELECT topology_nodes_id FROM live_up
 `
 
 // sqlNodeBelongsToTenant returns one row when the focus node exists
@@ -60,20 +60,20 @@ const sqlAncestorNodeIDs = `
 const sqlNodeBelongsToTenant = `
 	SELECT 1
 	  FROM topology_nodes
-	 WHERE id = $1
-	   AND subscription_id = $2
-	   AND archived_at IS NULL
+	 WHERE topology_nodes_id = $1
+	   AND topology_nodes_id_subscription = $2
+	   AND topology_nodes_archived_at IS NULL
 	 LIMIT 1
 `
 
 // sqlTenantRootNode returns the root topology node for the tenant
-// (parent_id IS NULL, live). $1 = subscriptionID.
+// (topology_nodes_id_parent IS NULL, live). $1 = subscriptionID.
 const sqlTenantRootNode = `
-	SELECT id
+	SELECT topology_nodes_id
 	  FROM topology_nodes
-	 WHERE subscription_id = $1
-	   AND parent_id IS NULL
-	   AND archived_at IS NULL
+	 WHERE topology_nodes_id_subscription = $1
+	   AND topology_nodes_id_parent IS NULL
+	   AND topology_nodes_archived_at IS NULL
 	 LIMIT 1
 `
 
@@ -153,23 +153,23 @@ const sqlUpdateUserDefaultFocus = `
 // expands the user's access at read time (scope-down by default).
 const sqlUserHasGrantOnNodeOrAncestor = `
 	WITH RECURSIVE ancestors AS (
-	    SELECT id, parent_id
+	    SELECT topology_nodes_id, topology_nodes_id_parent
 	      FROM topology_nodes
-	     WHERE id = $1
-	       AND subscription_id = $2
-	       AND archived_at IS NULL
+	     WHERE topology_nodes_id = $1
+	       AND topology_nodes_id_subscription = $2
+	       AND topology_nodes_archived_at IS NULL
 	    UNION ALL
-	    SELECT p.id, p.parent_id
+	    SELECT p.topology_nodes_id, p.topology_nodes_id_parent
 	      FROM topology_nodes p
-	      JOIN ancestors a ON a.parent_id = p.id
-	     WHERE p.subscription_id = $2
-	       AND p.archived_at IS NULL
+	      JOIN ancestors a ON a.topology_nodes_id_parent = p.topology_nodes_id
+	     WHERE p.topology_nodes_id_subscription = $2
+	       AND p.topology_nodes_archived_at IS NULL
 	)
 	SELECT EXISTS (
 	    SELECT 1
 	      FROM ancestors a
 	      JOIN users_roles_topology_nodes r
-	        ON r.users_roles_topology_nodes_id_topology_node = a.id
+	        ON r.users_roles_topology_nodes_id_topology_node = a.topology_nodes_id
 	     WHERE r.users_roles_topology_nodes_id_subscription = $2
 	       AND r.users_roles_topology_nodes_id_user = $3
 	       AND r.users_roles_topology_nodes_revoked_at IS NULL
