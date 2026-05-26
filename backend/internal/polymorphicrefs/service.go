@@ -192,7 +192,7 @@ type childRel struct {
 
 var (
 	childRelStakeholders = childRel{table: "subscriptions_stakeholders", kindCol: "subscriptions_stakeholders_entity_kind", idCol: "subscriptions_stakeholders_entity_id"}
-	childRelPageRefs     = childRel{table: "page_entity_refs", kindCol: "entity_kind", idCol: "entity_id"}
+	childRelPageRefs     = childRel{table: "page_entity_refs", kindCol: "page_entity_refs_entity_kind", idCol: "page_entity_refs_entity_id"}
 )
 
 // childRelationshipsFor returns every polymorphic child table whose

@@ -217,10 +217,10 @@ const sqlSelectAddressableIDByRouteAndAddress = `
 	`
 
 const sqlSelectLibraryHelpDefault = `
-		SELECT id, title, body_html, video_embeds, image_urls
+		SELECT library_help_defaults_id, library_help_defaults_title, library_help_defaults_body_html, library_help_defaults_video_embeds, library_help_defaults_image_urls
 		  FROM library_help_defaults
-		 WHERE kind = $1 AND locale = 'en' AND name_pattern IN ($2, '*')
-		 ORDER BY (name_pattern = $2) DESC
+		 WHERE library_help_defaults_kind = $1 AND library_help_defaults_locale = 'en' AND library_help_defaults_name_pattern IN ($2, '*')
+		 ORDER BY (library_help_defaults_name_pattern = $2) DESC
 		 LIMIT 1
 	`
 

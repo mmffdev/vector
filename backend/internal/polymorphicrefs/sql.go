@@ -43,12 +43,12 @@ const (
 		RETURNING subscriptions_stakeholders_id`
 
 	// sqlInsertPageEntityRef writes one page_entity_refs row, idempotent
-	// on (entity_kind, entity_id). $1 = page id, $2 = entity kind,
-	// $3 = entity id.
+	// on (page_entity_refs_entity_kind, page_entity_refs_entity_id).
+	// $1 = page id, $2 = entity kind, $3 = entity id.
 	sqlInsertPageEntityRef = `
-		INSERT INTO page_entity_refs (page_id, entity_kind, entity_id)
+		INSERT INTO page_entity_refs (page_entity_refs_id_page, page_entity_refs_entity_kind, page_entity_refs_entity_id)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (entity_kind, entity_id) DO NOTHING`
+		ON CONFLICT (page_entity_refs_entity_kind, page_entity_refs_entity_id) DO NOTHING`
 
 	// sqlDeletePolymorphicChildFmt removes child rows pointing at a
 	// (kind, id) pair. Three %s slots: (child table, kind column,

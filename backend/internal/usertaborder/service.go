@@ -49,10 +49,10 @@ func (s *Service) List(
 	pageID string,
 ) ([]Row, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT tab_key, position
+		SELECT users_tab_order_tab_key, users_tab_order_position
 		FROM users_tab_order
-		WHERE user_id = $1 AND subscription_id = $2 AND page_id = $3
-		ORDER BY position`,
+		WHERE users_tab_order_id_user = $1 AND users_tab_order_id_subscription = $2 AND users_tab_order_page_id = $3
+		ORDER BY users_tab_order_position`,
 		userID, subscriptionID, pageID)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (s *Service) Replace(
 
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM users_tab_order
-		WHERE user_id = $1 AND subscription_id = $2 AND page_id = $3`,
+		WHERE users_tab_order_id_user = $1 AND users_tab_order_id_subscription = $2 AND users_tab_order_page_id = $3`,
 		userID, subscriptionID, pageID); err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (s *Service) Replace(
 		batch := &pgx.Batch{}
 		for _, it := range items {
 			batch.Queue(`
-				INSERT INTO users_tab_order (user_id, subscription_id, page_id, tab_key, position)
+				INSERT INTO users_tab_order (users_tab_order_id_user, users_tab_order_id_subscription, users_tab_order_page_id, users_tab_order_tab_key, users_tab_order_position)
 				VALUES ($1, $2, $3, $4, $5)`,
 				userID, subscriptionID, pageID, it.TabKey, it.Position)
 		}
@@ -166,7 +166,7 @@ func (s *Service) Reset(
 	}
 	_, err := s.Pool.Exec(ctx, `
 		DELETE FROM users_tab_order
-		WHERE user_id = $1 AND subscription_id = $2 AND page_id = $3`,
+		WHERE users_tab_order_id_user = $1 AND users_tab_order_id_subscription = $2 AND users_tab_order_page_id = $3`,
 		userID, subscriptionID, pageID)
 	return err
 }

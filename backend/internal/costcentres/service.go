@@ -141,7 +141,7 @@ func (s *Service) Update(ctx context.Context, id, subscriptionID uuid.UUID, in U
 		if v == "" {
 			return nil, ErrInvalid
 		}
-		sets = append(sets, fmt.Sprintf("code = $%d", i))
+		sets = append(sets, fmt.Sprintf("cost_centres_code = $%d", i))
 		args = append(args, v)
 		i++
 	}
@@ -150,7 +150,7 @@ func (s *Service) Update(ctx context.Context, id, subscriptionID uuid.UUID, in U
 		if v == "" {
 			return nil, ErrInvalid
 		}
-		sets = append(sets, fmt.Sprintf("name = $%d", i))
+		sets = append(sets, fmt.Sprintf("cost_centres_name = $%d", i))
 		args = append(args, v)
 		i++
 	}
@@ -160,15 +160,15 @@ func (s *Service) Update(ctx context.Context, id, subscriptionID uuid.UUID, in U
 		// uuid.UUID; the handler converts JSON null → nil pointer
 		// and JSON missing → also nil pointer — same as our policy.)
 		if *in.ParentID == uuid.Nil {
-			sets = append(sets, fmt.Sprintf("parent_id = NULL"))
+			sets = append(sets, fmt.Sprintf("cost_centres_id_parent = NULL"))
 		} else {
-			sets = append(sets, fmt.Sprintf("parent_id = $%d", i))
+			sets = append(sets, fmt.Sprintf("cost_centres_id_parent = $%d", i))
 			args = append(args, *in.ParentID)
 			i++
 		}
 	}
 	if in.IsActive != nil {
-		sets = append(sets, fmt.Sprintf("is_active = $%d", i))
+		sets = append(sets, fmt.Sprintf("cost_centres_is_active = $%d", i))
 		args = append(args, *in.IsActive)
 		i++
 	}
