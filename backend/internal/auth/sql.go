@@ -334,10 +334,10 @@ const sqlSelectPasswordResetByID = `
 // archived_at, created_at) is the source of truth; if both copies drift,
 // favour topology since that's where the read-side substrate lives.
 const sqlSelectFirstLiveWorkspaceID = `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY created_at ASC
+		SELECT master_record_workspaces_id FROM master_record_workspaces
+		 WHERE master_record_workspaces_id_subscription = $1
+		   AND master_record_workspaces_archived_at IS NULL
+		 ORDER BY master_record_workspaces_created_at ASC
 		 LIMIT 1
 	`
 
@@ -355,12 +355,12 @@ const sqlAssertWorkspaceMemberLive = `
 		SELECT 1
 		  FROM master_record_workspaces ws
 		  JOIN users_roles_workspaces urw
-		    ON urw.users_roles_workspaces_id_workspace = ws.id
+		    ON urw.users_roles_workspaces_id_workspace = ws.master_record_workspaces_id
 		   AND urw.users_roles_workspaces_id_user      = $3::uuid
 		   AND urw.users_roles_workspaces_revoked_at IS NULL
-		 WHERE ws.subscription_id = $1::uuid
-		   AND ws.id              = $2::uuid
-		   AND ws.archived_at IS NULL
+		 WHERE ws.master_record_workspaces_id_subscription = $1::uuid
+		   AND ws.master_record_workspaces_id              = $2::uuid
+		   AND ws.master_record_workspaces_archived_at IS NULL
 		 LIMIT 1
 	`
 

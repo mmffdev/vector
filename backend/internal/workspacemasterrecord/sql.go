@@ -6,13 +6,13 @@ package workspacemasterrecord
 // sqlEnsureTenantRow defensively inserts an empty row for workspaces
 // seeded before mig 036. ON CONFLICT keeps it idempotent.
 const sqlEnsureTenantRow = `
-		INSERT INTO master_record_workspaces (master_record_workspaces_id_workspace) VALUES ($1)
-		ON CONFLICT (master_record_workspaces_id_workspace) DO NOTHING
+		INSERT INTO master_record_workspaces (master_record_workspaces_id) VALUES ($1)
+		ON CONFLICT (master_record_workspaces_id) DO NOTHING
 	`
 
 // sqlSelectTenantSettings hydrates the wire shape for one workspace.
 const sqlSelectTenantSettings = `
-		SELECT master_record_workspaces_id_workspace,
+		SELECT master_record_workspaces_id,
 		       master_record_workspaces_name,
 		       master_record_workspaces_description,
 		       master_record_workspaces_id_user_owner,
@@ -30,13 +30,13 @@ const sqlSelectTenantSettings = `
 		       master_record_workspaces_updated_at,
 		       master_record_workspaces_archived_at
 		  FROM master_record_workspaces
-		 WHERE master_record_workspaces_id_workspace = $1
+		 WHERE master_record_workspaces_id = $1
 	`
 
 // sqlUpdateTenantTemplate is the sparse-UPDATE shell. First %s holds
 // the comma-separated `col = $N` SET clause; %d holds the $N for the
-// WHERE master_record_workspaces_id_workspace bind.
-const sqlUpdateTenantTemplate = `UPDATE master_record_workspaces SET %s WHERE master_record_workspaces_id_workspace = $%d`
+// WHERE master_record_workspaces_id bind.
+const sqlUpdateTenantTemplate = `UPDATE master_record_workspaces SET %s WHERE master_record_workspaces_id = $%d`
 
 // ── inheritance_wiring.go ─────────────────────────────────────────────────────
 

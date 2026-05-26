@@ -92,7 +92,7 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 		// mig 249 — removed from teardown.
 		stmts := []string{
 			`DELETE FROM users_roles_workspaces             WHERE users_roles_workspaces_id_subscription = $1`,
-			`DELETE FROM master_record_workspaces                  WHERE subscription_id = $1`,
+			`DELETE FROM master_record_workspaces                  WHERE master_record_workspaces_id_subscription = $1`,
 			`DELETE FROM users_roles_permissions            WHERE users_roles_permissions_id_role IN (SELECT users_roles_id FROM users_roles WHERE users_roles_id_subscription = $1)`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
 			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
@@ -167,9 +167,9 @@ func seedWorkspace(t *testing.T, pool *pgxpool.Pool, subID, createdBy uuid.UUID,
 	t.Helper()
 	var id uuid.UUID
 	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO master_record_workspaces (subscription_id, name, slug, created_by)
+		INSERT INTO master_record_workspaces (master_record_workspaces_id_subscription, master_record_workspaces_name, master_record_workspaces_slug, master_record_workspaces_id_user_created_by)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id
+		RETURNING master_record_workspaces_id
 	`, subID, name, slug, createdBy).Scan(&id); err != nil {
 		t.Fatalf("seed workspace: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestList_ReturnsLiveWorkspaces(t *testing.T) {
 	live := seedWorkspace(t, pool, subA, actor.ID, "Live", "live-"+uuid.NewString()[:6])
 	archived := seedWorkspace(t, pool, subA, actor.ID, "Archived", "arc-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE master_record_workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_archived_at = NOW(), master_record_workspaces_id_user_archived_by = $1 WHERE master_record_workspaces_id = $2`,
 		actor.ID, archived,
 	); err != nil {
 		t.Fatalf("archive seed: %v", err)
@@ -373,7 +373,7 @@ func TestArchive_403ForNonGadmin(t *testing.T) {
 	// Sanity: the row is still live in the DB.
 	var archivedAt *string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text FROM master_record_workspaces WHERE id = $1`, wsID,
+		`SELECT master_record_workspaces_archived_at::text FROM master_record_workspaces WHERE master_record_workspaces_id = $1`, wsID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("verify still live: %v", err)
 	}
@@ -406,7 +406,7 @@ func TestArchive_200ForGadmin(t *testing.T) {
 	var archivedAt *string
 	var archivedBy *uuid.UUID
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text, archived_by FROM master_record_workspaces WHERE id = $1`,
+		`SELECT master_record_workspaces_archived_at::text, master_record_workspaces_id_user_archived_by FROM master_record_workspaces WHERE master_record_workspaces_id = $1`,
 		target,
 	).Scan(&archivedAt, &archivedBy); err != nil {
 		t.Fatalf("verify archived: %v", err)
@@ -444,7 +444,7 @@ func TestPatch_RenamesWorkspace(t *testing.T) {
 
 	var got string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT name FROM master_record_workspaces WHERE id = $1`, wsID,
+		`SELECT master_record_workspaces_name FROM master_record_workspaces WHERE master_record_workspaces_id = $1`, wsID,
 	).Scan(&got); err != nil {
 		t.Fatalf("verify rename: %v", err)
 	}
@@ -469,7 +469,7 @@ func TestRestore_403ForNonGadmin(t *testing.T) {
 
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Limbo", "limbo-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE master_record_workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_archived_at = NOW(), master_record_workspaces_id_user_archived_by = $1 WHERE master_record_workspaces_id = $2`,
 		gadmin.ID, wsID,
 	); err != nil {
 		t.Fatalf("seed archive: %v", err)
@@ -484,7 +484,7 @@ func TestRestore_403ForNonGadmin(t *testing.T) {
 	// Sanity: still archived.
 	var archivedAt *string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text FROM master_record_workspaces WHERE id = $1`, wsID,
+		`SELECT master_record_workspaces_archived_at::text FROM master_record_workspaces WHERE master_record_workspaces_id = $1`, wsID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("verify still archived: %v", err)
 	}
@@ -503,7 +503,7 @@ func TestRestore_200ForGadmin(t *testing.T) {
 	gadmin := mkUser(t, pool, subID, roletypes.RoleGAdmin)
 	wsID := seedWorkspace(t, pool, subID, gadmin.ID, "Returnee", "ret-"+uuid.NewString()[:6])
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE master_record_workspaces SET archived_at = NOW(), archived_by = $1 WHERE id = $2`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_archived_at = NOW(), master_record_workspaces_id_user_archived_by = $1 WHERE master_record_workspaces_id = $2`,
 		gadmin.ID, wsID,
 	); err != nil {
 		t.Fatalf("seed archive: %v", err)
@@ -517,7 +517,7 @@ func TestRestore_200ForGadmin(t *testing.T) {
 
 	var archivedAt *string
 	if err := pool.QueryRow(context.Background(),
-		`SELECT archived_at::text FROM master_record_workspaces WHERE id = $1`, wsID,
+		`SELECT master_record_workspaces_archived_at::text FROM master_record_workspaces WHERE master_record_workspaces_id = $1`, wsID,
 	).Scan(&archivedAt); err != nil {
 		t.Fatalf("verify restored: %v", err)
 	}
@@ -561,7 +561,7 @@ func TestDelete_403ForNonGadmin(t *testing.T) {
 	// Sanity: row still present.
 	var n int
 	if err := pool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM master_record_workspaces WHERE id = $1`, wsID,
+		`SELECT COUNT(*) FROM master_record_workspaces WHERE master_record_workspaces_id = $1`, wsID,
 	).Scan(&n); err != nil {
 		t.Fatalf("verify still present: %v", err)
 	}
@@ -617,7 +617,7 @@ func TestDelete_501WhenNoOrphans(t *testing.T) {
 	// Sanity: workspace was NOT deleted (501 = not implemented yet).
 	var n int
 	if err := pool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM master_record_workspaces WHERE id = $1`, wsID,
+		`SELECT COUNT(*) FROM master_record_workspaces WHERE master_record_workspaces_id = $1`, wsID,
 	).Scan(&n); err != nil {
 		t.Fatalf("verify still present: %v", err)
 	}

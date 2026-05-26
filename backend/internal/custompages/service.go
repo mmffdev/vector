@@ -84,10 +84,10 @@ func New(pool *pgxpool.Pool) *Service { return &Service{Pool: pool} }
 // ordered by label. Used by the catalogue merge — no views needed there.
 func (s *Service) ListPagesOnly(ctx context.Context, userID, subscriptionID uuid.UUID) ([]CustomPage, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, label, icon
+		SELECT users_custom_pages_id, users_custom_pages_label, users_custom_pages_icon
 		FROM users_custom_pages
-		WHERE user_id = $1 AND subscription_id = $2
-		ORDER BY label`, userID, subscriptionID)
+		WHERE users_custom_pages_id_user = $1 AND users_custom_pages_id_subscription = $2
+		ORDER BY users_custom_pages_label`, userID, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,9 +112,9 @@ func (s *Service) Get(ctx context.Context, userID, subscriptionID, pageID uuid.U
 	var p CustomPage
 	var id uuid.UUID
 	err := s.Pool.QueryRow(ctx, `
-		SELECT id, label, icon
+		SELECT users_custom_pages_id, users_custom_pages_label, users_custom_pages_icon
 		FROM users_custom_pages
-		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
+		WHERE users_custom_pages_id = $1 AND users_custom_pages_id_user = $2 AND users_custom_pages_id_subscription = $3`,
 		pageID, userID, subscriptionID).Scan(&id, &p.Label, &p.Icon)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -134,10 +134,10 @@ func (s *Service) Get(ctx context.Context, userID, subscriptionID, pageID uuid.U
 
 func (s *Service) listViews(ctx context.Context, pageID uuid.UUID) ([]CustomView, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT id, label, kind::text, position, config
+		SELECT users_custom_page_views_id, users_custom_page_views_label, users_custom_page_views_kind::text, users_custom_page_views_position, users_custom_page_views_config
 		FROM users_custom_page_views
-		WHERE page_id = $1
-		ORDER BY position`, pageID)
+		WHERE users_custom_page_views_id_page = $1
+		ORDER BY users_custom_page_views_position`, pageID)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (s *Service) Create(ctx context.Context, userID, subscriptionID uuid.UUID, 
 	var count int
 	if err := tx.QueryRow(ctx, `
 		SELECT COUNT(*) FROM users_custom_pages
-		WHERE user_id = $1 AND subscription_id = $2`, userID, subscriptionID).Scan(&count); err != nil {
+		WHERE users_custom_pages_id_user = $1 AND users_custom_pages_id_subscription = $2`, userID, subscriptionID).Scan(&count); err != nil {
 		return nil, err
 	}
 	if count >= MaxPagesPerUser {
@@ -194,11 +194,11 @@ func (s *Service) Create(ctx context.Context, userID, subscriptionID uuid.UUID, 
 
 	pageID := uuid.New()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO users_custom_pages (id, user_id, subscription_id, label, icon)
+		INSERT INTO users_custom_pages (users_custom_pages_id, users_custom_pages_id_user, users_custom_pages_id_subscription, users_custom_pages_label, users_custom_pages_icon)
 		VALUES ($1, $2, $3, $4, $5)`,
 		pageID, userID, subscriptionID, label, icon)
 	if err != nil {
-		if isUniqueViolation(err, "user_custom_pages_label_unique") {
+		if isUniqueViolation(err, "users_custom_pages_id_user_id_subscription_label_unique") {
 			return nil, ErrDuplicateLabel
 		}
 		return nil, err
@@ -206,7 +206,7 @@ func (s *Service) Create(ctx context.Context, userID, subscriptionID uuid.UUID, 
 
 	viewID := uuid.New()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO users_custom_page_views (id, page_id, label, kind, position, config)
+		INSERT INTO users_custom_page_views (users_custom_page_views_id, users_custom_page_views_id_page, users_custom_page_views_label, users_custom_page_views_kind, users_custom_page_views_position, users_custom_page_views_config)
 		VALUES ($1, $2, $3, $4::custom_view_kind, 0, '{}'::jsonb)`,
 		viewID, pageID, DefaultViewLabel, string(DefaultViewKind))
 	if err != nil {
@@ -256,12 +256,12 @@ func (s *Service) Patch(ctx context.Context, userID, subscriptionID, pageID uuid
 
 	tag, err := s.Pool.Exec(ctx, `
 		UPDATE users_custom_pages
-		SET label = COALESCE($4, label),
-		    icon  = COALESCE($5, icon)
-		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
+		SET users_custom_pages_label = COALESCE($4, users_custom_pages_label),
+		    users_custom_pages_icon  = COALESCE($5, users_custom_pages_icon)
+		WHERE users_custom_pages_id = $1 AND users_custom_pages_id_user = $2 AND users_custom_pages_id_subscription = $3`,
 		pageID, userID, subscriptionID, in.Label, in.Icon)
 	if err != nil {
-		if isUniqueViolation(err, "user_custom_pages_label_unique") {
+		if isUniqueViolation(err, "users_custom_pages_id_user_id_subscription_label_unique") {
 			return nil, ErrDuplicateLabel
 		}
 		return nil, err
@@ -279,7 +279,7 @@ func (s *Service) Patch(ctx context.Context, userID, subscriptionID, pageID uuid
 func (s *Service) Delete(ctx context.Context, userID, subscriptionID, pageID uuid.UUID) error {
 	tag, err := s.Pool.Exec(ctx, `
 		DELETE FROM users_custom_pages
-		WHERE id = $1 AND user_id = $2 AND subscription_id = $3`,
+		WHERE users_custom_pages_id = $1 AND users_custom_pages_id_user = $2 AND users_custom_pages_id_subscription = $3`,
 		pageID, userID, subscriptionID)
 	if err != nil {
 		return err

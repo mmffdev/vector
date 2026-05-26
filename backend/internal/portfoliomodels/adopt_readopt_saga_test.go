@@ -76,10 +76,10 @@ func TestAdoptSaga_ReadoptionPreservesParentInvariant(t *testing.T) {
 	// target row, not the singular `workspace` table.
 	var workspaceID uuid.UUID
 	if err := vec.QueryRow(ctx, `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY id
+		SELECT master_record_workspaces_id FROM master_record_workspaces
+		 WHERE master_record_workspaces_id_subscription = $1
+		   AND master_record_workspaces_archived_at IS NULL
+		 ORDER BY master_record_workspaces_id
 		 LIMIT 1`,
 		user.SubscriptionID,
 	).Scan(&workspaceID); err != nil {

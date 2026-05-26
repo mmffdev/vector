@@ -9,11 +9,11 @@ package searchworker
 // FOR UPDATE SKIP LOCKED. attempts gate is parameterised so callers
 // control max-attempts policy from Go.
 const sqlClaimNextOutboxRow = `
-		SELECT id, artefact_id
+		SELECT artefacts_search_outbox_id, artefacts_search_outbox_id_artefact
 		FROM artefacts_search_outbox
-		WHERE claimed_at IS NULL
-		  AND attempts < $1
-		ORDER BY enqueued_at
+		WHERE artefacts_search_outbox_claimed_at IS NULL
+		  AND artefacts_search_outbox_attempts < $1
+		ORDER BY artefacts_search_outbox_enqueued_at
 		LIMIT 1
 		FOR UPDATE SKIP LOCKED
 	`
@@ -21,12 +21,12 @@ const sqlClaimNextOutboxRow = `
 // sqlMarkOutboxClaimed stamps claimed_at = NOW() on the claimed row
 // inside the claim tx.
 const sqlMarkOutboxClaimed = `
-		UPDATE artefacts_search_outbox SET claimed_at = NOW()
-		WHERE id = $1
+		UPDATE artefacts_search_outbox SET artefacts_search_outbox_claimed_at = NOW()
+		WHERE artefacts_search_outbox_id = $1
 	`
 
 // sqlDeleteOutboxRow removes the outbox row on successful processing.
-const sqlDeleteOutboxRow = `DELETE FROM artefacts_search_outbox WHERE id = $1`
+const sqlDeleteOutboxRow = `DELETE FROM artefacts_search_outbox WHERE artefacts_search_outbox_id = $1`
 
 // sqlSelectArtefactTitleAndDescription fetches the content fields used
 // to compute TSVECTOR + embedding for one live artefact.
@@ -53,8 +53,8 @@ const sqlUpdateArtefactSearchAndEmbedding = `
 // clears claimed_at so the row becomes eligible for retry.
 const sqlRecordOutboxFailure = `
 		UPDATE artefacts_search_outbox
-		SET attempts   = attempts + 1,
-		    last_error = $2,
-		    claimed_at = NULL
-		WHERE id = $1
+		SET artefacts_search_outbox_attempts   = artefacts_search_outbox_attempts + 1,
+		    artefacts_search_outbox_last_error = $2,
+		    artefacts_search_outbox_claimed_at = NULL
+		WHERE artefacts_search_outbox_id = $1
 	`

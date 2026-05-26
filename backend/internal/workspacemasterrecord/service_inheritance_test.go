@@ -112,7 +112,7 @@ func makeFixture(t *testing.T, pool *pgxpool.Pool) testFixture {
 	// defaults. Tests assert behaviour from the public Service.Get only,
 	// so they're robust to either schema state.
 	if _, err := pool.Exec(ctx,
-		`INSERT INTO master_record_workspaces (master_record_workspaces_id_workspace)
+		`INSERT INTO master_record_workspaces (master_record_workspaces_id)
 			VALUES ($1) ON CONFLICT DO NOTHING`,
 		wsID,
 	); err != nil {
@@ -124,7 +124,7 @@ func makeFixture(t *testing.T, pool *pgxpool.Pool) testFixture {
 	}
 
 	cleanup := func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM master_record_workspaces WHERE master_record_workspaces_id_workspace = $1`, wsID)
+		_, _ = pool.Exec(ctx, `DELETE FROM master_record_workspaces WHERE master_record_workspaces_id = $1`, wsID)
 		_, _ = pool.Exec(ctx, `DELETE FROM master_record_tenants WHERE master_record_tenants_id_subscription = $1`, subID)
 	}
 	return testFixture{pool: pool, subscriptionID: subID, workspaceID: wsID, cleanup: cleanup}
@@ -217,7 +217,7 @@ func TestGet_WorkspaceOverridePresent_SourceIsWorkspace(t *testing.T) {
 	// Set an explicit workspace-level override on timezone.
 	const override = "Europe/Paris"
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = $1 WHERE master_record_workspaces_id_workspace = $2`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = $1 WHERE master_record_workspaces_id = $2`,
 		override, fx.workspaceID,
 	); err != nil {
 		t.Fatalf("seed override: %v", err)
@@ -257,7 +257,7 @@ func TestGet_WorkspaceNullTenantPresent_SourceIsTenant(t *testing.T) {
 		t.Fatalf("seed tenant value: %v", err)
 	}
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id_workspace = $1`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id = $1`,
 		fx.workspaceID,
 	); err != nil {
 		t.Fatalf("null workspace value (mig 069 should permit this): %v", err)
@@ -293,7 +293,7 @@ func TestGet_BothNull_SourceIsSystemDefault(t *testing.T) {
 		t.Fatalf("null tenant value: %v", err)
 	}
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id_workspace = $1`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id = $1`,
 		fx.workspaceID,
 	); err != nil {
 		t.Fatalf("null workspace value: %v", err)
@@ -380,7 +380,7 @@ func TestPatch_ExplicitNullClearsOverride(t *testing.T) {
 		t.Fatalf("seed tenant: %v", err)
 	}
 	if _, err := pool.Exec(ctx,
-		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = $1 WHERE master_record_workspaces_id_workspace = $2`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = $1 WHERE master_record_workspaces_id = $2`,
 		wsOverride, fx.workspaceID,
 	); err != nil {
 		t.Fatalf("seed override: %v", err)
@@ -420,7 +420,7 @@ func TestPatch_ExplicitValueSetsOverride(t *testing.T) {
 
 	// Start with workspace inheriting (column NULL).
 	if _, err := pool.Exec(ctx,
-		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id_workspace = $1`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id = $1`,
 		fx.workspaceID,
 	); err != nil {
 		t.Fatalf("null workspace value: %v", err)
@@ -464,7 +464,7 @@ func TestPatch_UpdatedAt_AdvancesOnValueChange(t *testing.T) {
 		t.Helper()
 		var ts time.Time
 		if err := pool.QueryRow(ctx,
-			`SELECT master_record_workspaces_updated_at FROM master_record_workspaces WHERE master_record_workspaces_id_workspace = $1`,
+			`SELECT master_record_workspaces_updated_at FROM master_record_workspaces WHERE master_record_workspaces_id = $1`,
 			fx.workspaceID,
 		).Scan(&ts); err != nil {
 			t.Fatalf("read updated_at: %v", err)
@@ -519,7 +519,7 @@ func TestGet_CrossSubscriptionIsolation(t *testing.T) {
 	// Workspaces A + B both inherit (NULL).
 	for _, ws := range []uuid.UUID{fxA.workspaceID, fxB.workspaceID} {
 		if _, err := pool.Exec(ctx,
-			`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id_workspace = $1`,
+			`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id = $1`,
 			ws,
 		); err != nil {
 			t.Fatalf("null workspace value: %v", err)
@@ -576,7 +576,7 @@ func TestGet_TenantArchived_FallsToSystemDefault(t *testing.T) {
 		t.Fatalf("seed archived tenant: %v", err)
 	}
 	if _, err := pool.Exec(ctx,
-		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id_workspace = $1`,
+		`UPDATE master_record_workspaces SET master_record_workspaces_timezone = NULL WHERE master_record_workspaces_id = $1`,
 		fx.workspaceID,
 	); err != nil {
 		t.Fatalf("null workspace value: %v", err)

@@ -40,7 +40,7 @@ func main() {
 	defer vaPool.Close()
 
 	rows, err := vectorPool.Query(ctx,
-		`SELECT id, subscription_id, name FROM master_record_workspaces WHERE archived_at IS NULL ORDER BY created_at`,
+		`SELECT master_record_workspaces_id, master_record_workspaces_id_subscription, master_record_workspaces_name FROM master_record_workspaces WHERE master_record_workspaces_archived_at IS NULL ORDER BY master_record_workspaces_created_at`,
 	)
 	if err != nil {
 		log.Fatal(err)

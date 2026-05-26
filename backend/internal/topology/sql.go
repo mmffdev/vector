@@ -193,29 +193,29 @@ const sqlSelectTenantRootIDWorkspaceClampedTemplate = `
 // workspace for a subscription. Used as the fallback when no ?ws=
 // query param is provided.
 const sqlSelectFirstLiveWorkspaceID = `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY created_at ASC
+		SELECT master_record_workspaces_id FROM master_record_workspaces
+		 WHERE master_record_workspaces_id_subscription = $1
+		   AND master_record_workspaces_archived_at IS NULL
+		 ORDER BY master_record_workspaces_created_at ASC
 		 LIMIT 1
 	`
 
 // sqlSelectWorkspaceIDBySlug resolves a workspace by (subscription, slug).
 const sqlSelectWorkspaceIDBySlug = `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND slug = $2
-		   AND archived_at IS NULL
+		SELECT master_record_workspaces_id FROM master_record_workspaces
+		 WHERE master_record_workspaces_id_subscription = $1
+		   AND master_record_workspaces_slug            = $2
+		   AND master_record_workspaces_archived_at IS NULL
 		 LIMIT 1
 	`
 
 // sqlSelectWorkspaceIDByIDAndSubscription resolves a workspace by
 // (id, subscription) — the UUID branch of ResolveRef.
 const sqlSelectWorkspaceIDByIDAndSubscription = `
-			SELECT id FROM master_record_workspaces
-			 WHERE id              = $1
-			   AND subscription_id = $2
-			   AND archived_at IS NULL
+			SELECT master_record_workspaces_id FROM master_record_workspaces
+			 WHERE master_record_workspaces_id              = $1
+			   AND master_record_workspaces_id_subscription = $2
+			   AND master_record_workspaces_archived_at IS NULL
 			 LIMIT 1
 		`
 

@@ -120,15 +120,15 @@ func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID,
 	t.Helper()
 	u = &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
-		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, rw.workspace_id
+		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, rw.users_roles_workspaces_id_workspace
 		  FROM users_roles_workspaces rw
-		  JOIN users u ON u.id = rw.user_id
-		  JOIN master_record_workspaces w ON w.id = rw.workspace_id
-		 WHERE rw.revoked_at IS NULL
+		  JOIN users u ON u.id = rw.users_roles_workspaces_id_user
+		  JOIN master_record_workspaces w ON w.master_record_workspaces_id = rw.users_roles_workspaces_id_workspace
+		 WHERE rw.users_roles_workspaces_revoked_at IS NULL
 		   AND u.is_active = TRUE
 		   AND u.role = 'user'
-		   AND w.archived_at IS NULL
-		   AND w.subscription_id = u.subscription_id
+		   AND w.master_record_workspaces_archived_at IS NULL
+		   AND w.master_record_workspaces_id_subscription = u.subscription_id
 		 LIMIT 1`,
 	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &workspaceID)
 	if err != nil {
@@ -160,9 +160,9 @@ func pickWorkspaceInTenant(t *testing.T, pool *pgxpool.Pool, tenant uuid.UUID) u
 	t.Helper()
 	var id uuid.UUID
 	err := pool.QueryRow(context.Background(), `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1 AND archived_at IS NULL
-		 ORDER BY created_at LIMIT 1`, tenant,
+		SELECT master_record_workspaces_id FROM master_record_workspaces
+		 WHERE master_record_workspaces_id_subscription = $1 AND master_record_workspaces_archived_at IS NULL
+		 ORDER BY master_record_workspaces_created_at LIMIT 1`, tenant,
 	).Scan(&id)
 	if err != nil {
 		t.Skipf("no live workspace in tenant: %v", err)

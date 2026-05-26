@@ -9,7 +9,7 @@ package fields
 
 // sqlSelectWorkspaceTenant returns the subscription_id for a workspace.
 // pgx.ErrNoRows → ErrWorkspaceNotFound at the caller.
-const sqlSelectWorkspaceTenant = `SELECT subscription_id FROM master_record_workspaces WHERE id = $1`
+const sqlSelectWorkspaceTenant = `SELECT master_record_workspaces_id_subscription FROM master_record_workspaces WHERE master_record_workspaces_id = $1`
 
 // sqlExistsActiveWorkspaceMembership probes whether a user holds any
 // live role grant on a workspace. Used by AssertCallerMayRead for

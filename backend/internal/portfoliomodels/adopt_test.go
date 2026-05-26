@@ -48,9 +48,9 @@ func TestOrchestrator_HappyPath(t *testing.T) {
 
 	var workspaceID uuid.UUID
 	if err := vec.QueryRow(ctx, `
-		SELECT id FROM master_record_workspaces
-		 WHERE subscription_id = $1 AND archived_at IS NULL
-		 ORDER BY id LIMIT 1`,
+		SELECT master_record_workspaces_id FROM master_record_workspaces
+		 WHERE master_record_workspaces_id_subscription = $1 AND master_record_workspaces_archived_at IS NULL
+		 ORDER BY master_record_workspaces_id LIMIT 1`,
 		user.SubscriptionID,
 	).Scan(&workspaceID); err != nil {
 		t.Skipf("no live workspace for padmin subscription: %v", err)

@@ -89,15 +89,15 @@ const sqlTenantRootNode = `
 // later. Column-prefix convention (PLA naming spec §2.3): every
 // column on users_roles_workspaces carries the table-name prefix.
 const sqlFirstLiveWorkspace = `
-	SELECT mw.id
+	SELECT mw.master_record_workspaces_id
 	  FROM master_record_workspaces mw
 	  JOIN users_roles_workspaces urw
-	    ON urw.users_roles_workspaces_id_workspace = mw.id
+	    ON urw.users_roles_workspaces_id_workspace = mw.master_record_workspaces_id
 	   AND urw.users_roles_workspaces_id_user = $2
 	   AND urw.users_roles_workspaces_revoked_at IS NULL
-	 WHERE mw.subscription_id = $1
-	   AND mw.archived_at IS NULL
-	 ORDER BY mw.created_at ASC
+	 WHERE mw.master_record_workspaces_id_subscription = $1
+	   AND mw.master_record_workspaces_archived_at IS NULL
+	 ORDER BY mw.master_record_workspaces_created_at ASC
 	 LIMIT 1
 `
 

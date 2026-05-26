@@ -451,7 +451,7 @@ func (s *Service) ListBySubscription(ctx context.Context, subscriptionID uuid.UU
 
 	archivedClause := ""
 	if !includeArchived {
-		archivedClause = ` AND archived_at IS NULL`
+		archivedClause = ` AND master_record_workspaces_archived_at IS NULL`
 	}
 	q := fmt.Sprintf(sqlListWorkspacesTemplate, archivedClause)
 

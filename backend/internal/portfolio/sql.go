@@ -10,7 +10,7 @@ package portfolio
 
 // sqlSelectWorkspaceSubscriptionID returns the workspace's owning
 // subscription so callers can refuse cross-tenant reads.
-const sqlSelectWorkspaceSubscriptionID = `SELECT subscription_id FROM master_record_workspaces WHERE id = $1`
+const sqlSelectWorkspaceSubscriptionID = `SELECT master_record_workspaces_id_subscription FROM master_record_workspaces WHERE master_record_workspaces_id = $1`
 
 // sqlExistsActiveWorkspaceMembership probes whether the user holds
 // any active grant on the workspace. Column names match migration 188

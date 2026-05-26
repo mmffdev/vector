@@ -442,9 +442,9 @@ const sqlSelectDefaultInitialFlowState = `
 	`
 
 const sqlSelectFirstLiveWorkspaceForSubscription = `
-		SELECT id FROM master_record_workspaces
-		WHERE subscription_id = $1 AND archived_at IS NULL
-		ORDER BY created_at ASC LIMIT 1
+		SELECT master_record_workspaces_id FROM master_record_workspaces
+		WHERE master_record_workspaces_id_subscription = $1 AND master_record_workspaces_archived_at IS NULL
+		ORDER BY master_record_workspaces_created_at ASC LIMIT 1
 	`
 
 const sqlSelectNextArtefactPosition = `

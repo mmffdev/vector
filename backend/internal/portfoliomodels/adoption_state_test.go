@@ -117,9 +117,9 @@ func TestGetAdoptionState_VAPoolNil(t *testing.T) {
 	// the test collapses into NoWorkspace coverage.
 	var ws uuid.UUID
 	err := pool.QueryRow(context.Background(),
-		`SELECT id FROM master_record_workspaces
-		  WHERE subscription_id = $1 AND archived_at IS NULL
-		  ORDER BY id LIMIT 1`,
+		`SELECT master_record_workspaces_id FROM master_record_workspaces
+		   WHERE master_record_workspaces_id_subscription = $1 AND master_record_workspaces_archived_at IS NULL
+		   ORDER BY master_record_workspaces_id LIMIT 1`,
 		user.SubscriptionID,
 	).Scan(&ws)
 	if err != nil {
@@ -162,9 +162,9 @@ func TestGetAdoptionState_NotStarted(t *testing.T) {
 	// Resolve the caller's workspace — same convention the handler uses.
 	var ws uuid.UUID
 	if err := vec.QueryRow(ctx,
-		`SELECT id FROM master_record_workspaces
-		  WHERE subscription_id = $1 AND archived_at IS NULL
-		  ORDER BY id LIMIT 1`,
+		`SELECT master_record_workspaces_id FROM master_record_workspaces
+		   WHERE master_record_workspaces_id_subscription = $1 AND master_record_workspaces_archived_at IS NULL
+		   ORDER BY master_record_workspaces_id LIMIT 1`,
 		user.SubscriptionID,
 	).Scan(&ws); err != nil {
 		t.Skipf("no live workspace for padmin's subscription: %v", err)
@@ -258,9 +258,9 @@ func TestGetAdoptionState_InProgress(t *testing.T) {
 
 	var ws uuid.UUID
 	if err := vec.QueryRow(ctx,
-		`SELECT id FROM master_record_workspaces
-		  WHERE subscription_id = $1 AND archived_at IS NULL
-		  ORDER BY id LIMIT 1`,
+		`SELECT master_record_workspaces_id FROM master_record_workspaces
+		   WHERE master_record_workspaces_id_subscription = $1 AND master_record_workspaces_archived_at IS NULL
+		   ORDER BY master_record_workspaces_id LIMIT 1`,
 		user.SubscriptionID,
 	).Scan(&ws); err != nil {
 		t.Skipf("no live workspace for padmin's subscription: %v", err)
@@ -336,9 +336,9 @@ func TestGetAdoptionState_Adopted(t *testing.T) {
 
 	var ws uuid.UUID
 	if err := vec.QueryRow(ctx,
-		`SELECT id FROM master_record_workspaces
-		  WHERE subscription_id = $1 AND archived_at IS NULL
-		  ORDER BY id LIMIT 1`,
+		`SELECT master_record_workspaces_id FROM master_record_workspaces
+		   WHERE master_record_workspaces_id_subscription = $1 AND master_record_workspaces_archived_at IS NULL
+		   ORDER BY master_record_workspaces_id LIMIT 1`,
 		user.SubscriptionID,
 	).Scan(&ws); err != nil {
 		t.Skipf("no live workspace for padmin's subscription: %v", err)

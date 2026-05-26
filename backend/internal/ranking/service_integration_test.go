@@ -146,10 +146,10 @@ func pickFixtures(t *testing.T, pool *pgxpool.Pool) (subID, wsID, typeID uuid.UU
 	t.Helper()
 	// workspace gives us both subscription_id and workspace_id in one query.
 	err := pool.QueryRow(context.Background(),
-		`SELECT w.subscription_id, w.id, at.id
+		`SELECT w.master_record_workspaces_id_subscription, w.master_record_workspaces_id, at.id
 		 FROM master_record_workspaces w
-		 JOIN artefacts_types at ON at.subscription_id = w.subscription_id
-		 WHERE w.archived_at IS NULL AND at.archived_at IS NULL
+		 JOIN artefacts_types at ON at.subscription_id = w.master_record_workspaces_id_subscription
+		 WHERE w.master_record_workspaces_archived_at IS NULL AND at.archived_at IS NULL
 		 LIMIT 1`,
 	).Scan(&subID, &wsID, &typeID)
 	if err != nil {

@@ -140,11 +140,11 @@ func TestWorkspaceLayers_OK_Gadmin(t *testing.T) {
 	// Pick a real workspace from mmff_vector. Skip if none exists in dev.
 	var wsID, subID uuid.UUID
 	err := vec.QueryRow(ctx, `
-		SELECT id, subscription_id
-		  FROM master_record_workspaces
-		 WHERE archived_at IS NULL
-		 ORDER BY created_at
-		 LIMIT 1`,
+		SELECT master_record_workspaces_id, master_record_workspaces_id_subscription
+		   FROM master_record_workspaces
+		  WHERE master_record_workspaces_archived_at IS NULL
+		  ORDER BY master_record_workspaces_created_at
+		  LIMIT 1`,
 	).Scan(&wsID, &subID)
 	if err != nil {
 		t.Skipf("no workspace available in dev: %v", err)
@@ -256,11 +256,11 @@ func TestWorkspaceLayers_Forbidden_NonMember(t *testing.T) {
 
 	var wsID, subID uuid.UUID
 	err := vec.QueryRow(ctx, `
-		SELECT id, subscription_id
-		  FROM master_record_workspaces
-		 WHERE archived_at IS NULL
-		 ORDER BY created_at
-		 LIMIT 1`,
+		SELECT master_record_workspaces_id, master_record_workspaces_id_subscription
+		   FROM master_record_workspaces
+		  WHERE master_record_workspaces_archived_at IS NULL
+		  ORDER BY master_record_workspaces_created_at
+		  LIMIT 1`,
 	).Scan(&wsID, &subID)
 	if err != nil {
 		t.Skipf("no workspace available in dev: %v", err)
@@ -303,11 +303,11 @@ func TestWorkspaceLayers_NotFound_CrossTenant(t *testing.T) {
 
 	var wsID, subID uuid.UUID
 	err := vec.QueryRow(ctx, `
-		SELECT id, subscription_id
-		  FROM master_record_workspaces
-		 WHERE archived_at IS NULL
-		 ORDER BY created_at
-		 LIMIT 1`,
+		SELECT master_record_workspaces_id, master_record_workspaces_id_subscription
+		   FROM master_record_workspaces
+		  WHERE master_record_workspaces_archived_at IS NULL
+		  ORDER BY master_record_workspaces_created_at
+		  LIMIT 1`,
 	).Scan(&wsID, &subID)
 	if err != nil {
 		t.Skipf("no workspace available in dev: %v", err)

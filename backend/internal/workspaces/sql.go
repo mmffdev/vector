@@ -8,10 +8,24 @@ package workspaces
 // ── commands.go: workspace CRUD ────────────────────────────────────────────
 
 const sqlInsertWorkspace = `
-		INSERT INTO master_record_workspaces (subscription_id, name, slug, description, created_by)
+		INSERT INTO master_record_workspaces (
+			master_record_workspaces_id_subscription,
+			master_record_workspaces_name,
+			master_record_workspaces_slug,
+			master_record_workspaces_description,
+			master_record_workspaces_id_user_created_by
+		)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, subscription_id, name, slug, description,
-		          created_by, created_at, updated_at, archived_at, archived_by
+		RETURNING master_record_workspaces_id,
+		          master_record_workspaces_id_subscription,
+		          master_record_workspaces_name,
+		          master_record_workspaces_slug,
+		          master_record_workspaces_description,
+		          master_record_workspaces_id_user_created_by,
+		          master_record_workspaces_created_at,
+		          master_record_workspaces_updated_at,
+		          master_record_workspaces_archived_at,
+		          master_record_workspaces_id_user_archived_by
 	`
 
 // sqlInsertWorkspaceCreatorAdminGrant seeds the creator-as-admin
@@ -27,7 +41,7 @@ const sqlInsertWorkspaceCreatorAdminGrant = `
 		VALUES ($1, $2, $3, 'admin', $3)
 	`
 
-const sqlRenameWorkspace = `UPDATE master_record_workspaces SET name = $1, updated_at = NOW() WHERE id = $2`
+const sqlRenameWorkspace = `UPDATE master_record_workspaces SET master_record_workspaces_name = $1, master_record_workspaces_updated_at = NOW() WHERE master_record_workspaces_id = $2`
 
 // Note: the matching topology-root rename used to live here as
 // sqlRenameTopologyRootNode. Moved to topology/sql.go +
@@ -38,17 +52,17 @@ const sqlRenameWorkspace = `UPDATE master_record_workspaces SET name = $1, updat
 const sqlCountLiveSiblingsExcluding = `
 		SELECT COUNT(*)
 		  FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND id <> $2
-		   AND archived_at IS NULL
+		 WHERE master_record_workspaces_id_subscription = $1
+		   AND master_record_workspaces_id <> $2
+		   AND master_record_workspaces_archived_at IS NULL
 	`
 
 const sqlArchiveWorkspace = `
 		UPDATE master_record_workspaces
-		   SET archived_at = NOW(),
-		       archived_by = $1,
-		       updated_at  = NOW()
-		 WHERE id = $2
+		   SET master_record_workspaces_archived_at         = NOW(),
+		       master_record_workspaces_id_user_archived_by = $1,
+		       master_record_workspaces_updated_at          = NOW()
+		 WHERE master_record_workspaces_id = $2
 	`
 
 // Note: the matching topology archive/restore used to live here as
@@ -60,44 +74,69 @@ const sqlArchiveWorkspace = `
 const sqlExistsLiveSlugCollision = `
 		SELECT EXISTS(
 		    SELECT 1 FROM master_record_workspaces
-		     WHERE subscription_id = $1
-		       AND slug = $2
-		       AND archived_at IS NULL
+		     WHERE master_record_workspaces_id_subscription = $1
+		       AND master_record_workspaces_slug            = $2
+		       AND master_record_workspaces_archived_at IS NULL
 		)
 	`
 
 const sqlRestoreWorkspace = `
 		UPDATE master_record_workspaces
-		   SET archived_at = NULL,
-		       archived_by = NULL,
-		       updated_at  = NOW()
-		 WHERE id = $1
+		   SET master_record_workspaces_archived_at         = NULL,
+		       master_record_workspaces_id_user_archived_by = NULL,
+		       master_record_workspaces_updated_at          = NOW()
+		 WHERE master_record_workspaces_id = $1
 	`
 
 const sqlSelectWorkspaceByIDInTenant = `
-		SELECT id, subscription_id, name, slug, description,
-		       created_by, created_at, updated_at, archived_at, archived_by
+		SELECT master_record_workspaces_id,
+		       master_record_workspaces_id_subscription,
+		       master_record_workspaces_name,
+		       master_record_workspaces_slug,
+		       master_record_workspaces_description,
+		       master_record_workspaces_id_user_created_by,
+		       master_record_workspaces_created_at,
+		       master_record_workspaces_updated_at,
+		       master_record_workspaces_archived_at,
+		       master_record_workspaces_id_user_archived_by
 		  FROM master_record_workspaces
-		 WHERE id = $1 AND subscription_id = $2
+		 WHERE master_record_workspaces_id = $1 AND master_record_workspaces_id_subscription = $2
 	`
 
 // sqlListWorkspacesTemplate is the dynamic list query. The %s holds
-// the optional `AND archived_at IS NULL` clause (or empty string).
+// the optional `AND master_record_workspaces_archived_at IS NULL`
+// clause (or empty string).
 const sqlListWorkspacesTemplate = `
-		SELECT id, subscription_id, name, slug, description,
-		       created_by, created_at, updated_at, archived_at, archived_by
+		SELECT master_record_workspaces_id,
+		       master_record_workspaces_id_subscription,
+		       master_record_workspaces_name,
+		       master_record_workspaces_slug,
+		       master_record_workspaces_description,
+		       master_record_workspaces_id_user_created_by,
+		       master_record_workspaces_created_at,
+		       master_record_workspaces_updated_at,
+		       master_record_workspaces_archived_at,
+		       master_record_workspaces_id_user_archived_by
 		  FROM master_record_workspaces
-		 WHERE subscription_id = $1%s
-		 ORDER BY created_at ASC
+		 WHERE master_record_workspaces_id_subscription = $1%s
+		 ORDER BY master_record_workspaces_created_at ASC
 	`
 
 // sqlLoadWorkspaceForUpdate is the SELECT … FOR UPDATE helper used by
 // every write path. Tenant scope checked in Go after scan.
 const sqlLoadWorkspaceForUpdate = `
-		SELECT id, subscription_id, name, slug, description,
-		       created_by, created_at, updated_at, archived_at, archived_by
+		SELECT master_record_workspaces_id,
+		       master_record_workspaces_id_subscription,
+		       master_record_workspaces_name,
+		       master_record_workspaces_slug,
+		       master_record_workspaces_description,
+		       master_record_workspaces_id_user_created_by,
+		       master_record_workspaces_created_at,
+		       master_record_workspaces_updated_at,
+		       master_record_workspaces_archived_at,
+		       master_record_workspaces_id_user_archived_by
 		  FROM master_record_workspaces
-		 WHERE id = $1
+		 WHERE master_record_workspaces_id = $1
 		 FOR UPDATE
 	`
 

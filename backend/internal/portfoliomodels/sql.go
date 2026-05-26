@@ -18,7 +18,7 @@ package portfoliomodels
 
 // sqlSelectWorkspaceSubscriptionID returns the workspace's owning
 // subscription so callers can refuse cross-tenant reads.
-const sqlSelectWorkspaceSubscriptionID = `SELECT subscription_id FROM master_record_workspaces WHERE id = $1`
+const sqlSelectWorkspaceSubscriptionID = `SELECT master_record_workspaces_id_subscription FROM master_record_workspaces WHERE master_record_workspaces_id = $1`
 
 // sqlExistsActiveWorkspaceMembership probes whether the user holds any
 // live grant on the workspace.
@@ -70,11 +70,11 @@ const sqlPatchWorkspaceStrategyArtefactType = `
 // sqlSelectFirstLiveWorkspaceForSubscription returns the lowest-id live
 // workspace for a subscription. Mirrors the saga's resolveWorkspaceID.
 const sqlSelectFirstLiveWorkspaceForSubscription = `
-		SELECT id
+		SELECT master_record_workspaces_id
 		  FROM master_record_workspaces
-		 WHERE subscription_id = $1
-		   AND archived_at IS NULL
-		 ORDER BY id
+		 WHERE master_record_workspaces_id_subscription = $1
+		   AND master_record_workspaces_archived_at IS NULL
+		 ORDER BY master_record_workspaces_id
 		 LIMIT 1
 	`
 
@@ -577,7 +577,7 @@ const sqlDeleteMasterRecordPortfolioForWorkspace = `DELETE FROM master_record_po
 
 const sqlUpsertTestbedTenantRecord = `
 		INSERT INTO master_record_workspaces (
-			master_record_workspaces_id_workspace,
+			master_record_workspaces_id,
 			master_record_workspaces_name,
 			master_record_workspaces_description,
 			master_record_workspaces_id_user_owner,
@@ -596,7 +596,7 @@ const sqlUpsertTestbedTenantRecord = `
 			ARRAY['mon','tue','wed','thu','fri']::text[],
 			'mon', 'manual', FALSE, 'cookra@me.com'
 		)
-		ON CONFLICT (master_record_workspaces_id_workspace) DO UPDATE
+		ON CONFLICT (master_record_workspaces_id) DO UPDATE
 		   SET master_record_workspaces_name                     = EXCLUDED.master_record_workspaces_name,
 		       master_record_workspaces_description              = EXCLUDED.master_record_workspaces_description,
 		       master_record_workspaces_id_user_owner            = EXCLUDED.master_record_workspaces_id_user_owner,
@@ -692,16 +692,22 @@ const sqlSeedRisks = `
 const sqlDeleteRolesWorkspacesForSubscription = `
 		DELETE FROM users_roles_workspaces
 		 WHERE users_roles_workspaces_id_workspace IN (
-		     SELECT id FROM master_record_workspaces WHERE subscription_id = $1
+		     SELECT master_record_workspaces_id FROM master_record_workspaces WHERE master_record_workspaces_id_subscription = $1
 		 )
 	`
 
-const sqlDeleteAllWorkspacesForSubscription = `DELETE FROM master_record_workspaces WHERE subscription_id = $1`
+const sqlDeleteAllWorkspacesForSubscription = `DELETE FROM master_record_workspaces WHERE master_record_workspaces_id_subscription = $1`
 
 const sqlDevSeedWorkspace = `
-	INSERT INTO master_record_workspaces (subscription_id, name, slug, description, created_by)
+	INSERT INTO master_record_workspaces (
+		master_record_workspaces_id_subscription,
+		master_record_workspaces_name,
+		master_record_workspaces_slug,
+		master_record_workspaces_description,
+		master_record_workspaces_id_user_created_by
+	)
 	VALUES ($1, $2, $3, '', $4)
-	RETURNING id`
+	RETURNING master_record_workspaces_id`
 
 const sqlDevSeedWorkspaceCreatorGrant = `
 	INSERT INTO users_roles_workspaces (

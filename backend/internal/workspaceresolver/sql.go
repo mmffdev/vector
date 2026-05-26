@@ -44,15 +44,15 @@ const sqlWorkspaceForFocusNode = `
 // Predicate mirrors the tightened sentinel.sqlFirstLiveWorkspace so a
 // single source of truth governs "which workspaces can this user see".
 const sqlFirstGrantedWorkspace = `
-	SELECT mw.id
+	SELECT mw.master_record_workspaces_id
 	  FROM master_record_workspaces mw
 	  JOIN users_roles_workspaces urw
-	    ON urw.users_roles_workspaces_id_workspace = mw.id
+	    ON urw.users_roles_workspaces_id_workspace = mw.master_record_workspaces_id
 	   AND urw.users_roles_workspaces_id_user = $1
 	   AND urw.users_roles_workspaces_revoked_at IS NULL
-	 WHERE mw.subscription_id = $2
-	   AND mw.archived_at IS NULL
-	 ORDER BY mw.created_at ASC
+	 WHERE mw.master_record_workspaces_id_subscription = $2
+	   AND mw.master_record_workspaces_archived_at IS NULL
+	 ORDER BY mw.master_record_workspaces_created_at ASC
 	 LIMIT 1
 `
 

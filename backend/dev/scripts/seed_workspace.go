@@ -104,9 +104,16 @@ func main() {
 	workspaceID := uuid.New()
 	var insertedName string
 	if err := vectorPool.QueryRow(ctx, `
-		INSERT INTO master_record_workspaces (id, subscription_id, name, slug, description, created_by)
+		INSERT INTO master_record_workspaces (
+			master_record_workspaces_id,
+			master_record_workspaces_id_subscription,
+			master_record_workspaces_name,
+			master_record_workspaces_slug,
+			master_record_workspaces_description,
+			master_record_workspaces_id_user_created_by
+		)
 		VALUES ($1, $2, $3, $4, '', $5)
-		RETURNING name`,
+		RETURNING master_record_workspaces_name`,
 		workspaceID, subscriptionID, name, slug, createdBy,
 	).Scan(&insertedName); err != nil {
 		fatalf("insert workspace: %v", err)

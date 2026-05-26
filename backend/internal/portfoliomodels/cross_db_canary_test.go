@@ -123,7 +123,7 @@ func TestCrossDBCanary_WorkspaceReferences(t *testing.T) {
 	defer va.Close()
 
 	// Step 1: load the authoritative workspace id set from mmff_vector.
-	rows, err := vec.Query(ctx, `SELECT id FROM master_record_workspaces`)
+	rows, err := vec.Query(ctx, `SELECT master_record_workspaces_id FROM master_record_workspaces`)
 	if err != nil {
 		t.Fatalf("load master_record_workspaces from mmff_vector: %v", err)
 	}
