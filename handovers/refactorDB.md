@@ -2,8 +2,9 @@
 
 **Created:** 2026-05-26
 **Status:** Approach pivot. Ready to execute via the IN-PLACE ALTER strategy (NOT wipe-and-reseed).
-**Live HEAD:** `3ec7885e` (post-rewind, build green, live DBs untouched)
-**Pre-rewind backup:** `20260526_025726_3ec7885e_dev_*.sql` on remote `vector-dev-pg` (auto-snapshotted by pre-push hook)
+**Live HEAD when handover landed:** `4f35d20d` — the commit that added this doc. Parent is `3ec7885e` (the post-rewind baseline; the only code-bearing commit). Run `git log --oneline -5` to confirm — if you see commits between `4f35d20d` and HEAD you didn't write, READ them before proceeding (someone else worked on this).
+**Build status when handover landed:** `go build ./...` GREEN. Live DBs untouched.
+**Pre-rewind backups on remote `vector-dev-pg`:** `20260526_025726_3ec7885e_dev_*.sql` (rewind point) + `20260526_031015_4f35d20d_dev_*.sql` (handover commit). Either restores live DB state if needed.
 
 ---
 
@@ -278,13 +279,18 @@ Path on remote: standard backup-on-push location.
 
 ---
 
-## Why this session took 8 hours
+## Anti-patterns to avoid (the 8-hour lesson from the previous attempt)
 
-For the next session to learn from:
+Don't repeat any of these:
 
-1. **3-letter prefix detour cost ~2 hours.** I (Claude this session) didn't read `c_c_naming_conventions.md` §2.3 before proposing a rule, so I invented a 3-letter-abbreviation variant when the established full-table-name convention already existed. Discovered the existing rule mid-flight, had to revert.
-2. **Wave 2D pg_dump synthesis cost ~3 hours.** The agent built 164 new migration files from `pg_dump --schema-only` of the snapshots — a different shape than the ALTER TABLE in-place pattern that §2.8 had already established. Worked structurally but missed the 4 defects above; would have needed continued patching.
-3. **Trusting agent summaries cost ~1 hour of debugging on top.** Agent said "verified by spot-check" — they hadn't. Dry-run replay caught the issues but only because I (eventually) ran it.
-4. **Approach pivot cost ~1 hour at the end** when reading §2.8 revealed the in-place ALTER pattern was already documented and partly shipped.
+1. **Don't propose a column-prefix rule without reading `docs/c_c_naming_conventions.md` §2.3 first.** The previous attempt invented a 3-letter-abbreviation variant (`users.usr_id`, `subscriptions.sub_*`, etc.), built a 76-entry registry, then discovered the established full-table-name convention already in tree. ~2 hours wasted on the detour + revert. The full-name rule is mechanical, zero-collision, and matches existing committed migrations (186–190 + 063–066).
 
-**The right approach was always:** read the existing convention doc, find the partial work, finish it the same way. 3-4 hours start to finish.
+2. **Don't synthesise migrations from `pg_dump --schema-only`.** It works structurally but loses semantic context (shared `set_updated_at` becomes table-hardcoded, sequences disappear from `bigserial` columns, polymorphic dispatch functions get dropped without their callers being repointed). The previous attempt produced 164 collapse files with 4 latent structural defects. ~3 hours wasted before dry-run replay caught the issues. Use the existing `ALTER TABLE RENAME COLUMN` pattern (migration 186) instead — it edits live schema in place, no semantic loss.
+
+3. **Don't trust an agent's "verified by spot-check" claim.** The previous Wave 2D agent claimed verification; opening 3 files found 4 structural defects (`set_updated_at` hardcoded, `dispatch_polymorphic_parent` orphan reference, 4 bare-column refs in `fn_users_roles_pages_cascade_nav_prefs`, 2 missing sequence definitions). **Always open files between waves and check before dispatching the next agent.**
+
+4. **Don't chain agents without verification gates.** The previous attempt chained Wave 2D → 2E without inspecting 2D's output. 2E built ~900 column rewrites on top of an unverified foundation; both had to be reworked.
+
+5. **Don't trust the `## §2.8 — STATUS: COLUMN-PREFIX SWEEP COMPLETE` claim in the naming doc.** It's overstated — only ~50% of tables were swept in the 2026-05-14 work. Read live-DB column shapes via `information_schema.columns` (the SQL is in this handover), not the doc's status line.
+
+**The right approach is always:** read the existing convention doc first, find the partial work, finish it the same way. Estimated ~3-4 hours for the remaining 27 tables if briefed correctly into one or two subagents that follow the migration 186 template.
