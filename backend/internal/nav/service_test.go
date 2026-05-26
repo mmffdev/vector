@@ -93,8 +93,8 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (subscriptionID, userID, roleI
 	}
 
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
-		VALUES ($1, $2, $3, 'user', $4) RETURNING id`,
+		INSERT INTO users (users_id_subscription, users_email, users_password_hash, users_role, users_id_role)
+		VALUES ($1, $2, $3, 'user', $4) RETURNING users_id`,
 		subscriptionID, "nav-test-"+suffix+"@example.com",
 		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd",
 		roleID,
@@ -105,7 +105,7 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (subscriptionID, userID, roleI
 	cleanup = func() {
 		// ON DELETE CASCADE on users.subscription_id is RESTRICT, so we delete
 		// user first, then tenant. users_nav_prefs cascades from users.
-		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
+		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE users_id = $1`, userID); err != nil {
 			t.Logf("cleanup user: %v", err)
 		}
 		if _, err := pool.Exec(ctx, `DELETE FROM subscriptions WHERE subscriptions_id = $1`, subscriptionID); err != nil {
@@ -354,7 +354,7 @@ func TestReplacePrefs_RejectsItemForbiddenForRole(t *testing.T) {
 	}
 	// Point the test user at the isolated role so ReplacePrefs sees a
 	// role with no page grants at all.
-	if _, err := pool.Exec(ctx, `UPDATE users SET role_id = $1 WHERE id = $2`, isolatedRoleID, userID); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE users SET users_id_role = $1 WHERE users_id = $2`, isolatedRoleID, userID); err != nil {
 		t.Fatalf("repoint user role: %v", err)
 	}
 

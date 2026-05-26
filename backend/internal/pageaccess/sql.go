@@ -24,9 +24,9 @@ const sqlSelectAccessVersion = `
 const sqlSelectUserAccessSet = `
 		SELECT p.pages_key_enum
 		  FROM users u
-		  JOIN users_roles_pages rp ON rp.users_roles_pages_id_role = u.role_id
+		  JOIN users_roles_pages rp ON rp.users_roles_pages_id_role = u.users_id_role
 		  JOIN pages p              ON p.pages_id = rp.users_roles_pages_id_page
-		 WHERE u.id                    = $1
+		 WHERE u.users_id              = $1
 		   AND p.pages_id_user_creator IS NULL
 		   AND p.pages_id_subscription IS NULL
 	`

@@ -88,7 +88,7 @@ func doJSONAs(t *testing.T, r http.Handler, method, path string, body any, u *ro
 func loadGadminUser(t *testing.T, pool *pgxpool.Pool) *roletypes.User {
 	t.Helper()
 	var id uuid.UUID
-	if err := pool.QueryRow(context.Background(), `SELECT id FROM users LIMIT 1`).Scan(&id); err != nil {
+	if err := pool.QueryRow(context.Background(), `SELECT users_id FROM users LIMIT 1`).Scan(&id); err != nil {
 		t.Skipf("no users in dev DB to attribute edits: %v", err)
 	}
 	return &roletypes.User{ID: id}

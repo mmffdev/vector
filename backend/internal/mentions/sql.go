@@ -67,19 +67,19 @@ const sqlMarkRead = `
 // Tenant isolation: users.subscription_id = $1 is non-negotiable.
 const sqlSearchMentionablesTenant = `
 		SELECT
-			id,
-			email,
-			COALESCE(display_name, CONCAT_WS(' ', first_name, last_name), email) AS display_name,
-			first_name,
-			last_name
+			users_id,
+			users_email,
+			COALESCE(users_display_name, CONCAT_WS(' ', users_first_name, users_last_name), users_email) AS display_name,
+			users_first_name,
+			users_last_name
 		FROM users
-		WHERE subscription_id = $1
-		  AND is_active = TRUE
+		WHERE users_id_subscription = $1
+		  AND users_is_active = TRUE
 		  AND (
-			email ILIKE $2
-			OR COALESCE(first_name, '') ILIKE $2
-			OR COALESCE(last_name, '') ILIKE $2
-			OR COALESCE(display_name, '') ILIKE $2
+			users_email ILIKE $2
+			OR COALESCE(users_first_name, '') ILIKE $2
+			OR COALESCE(users_last_name, '') ILIKE $2
+			OR COALESCE(users_display_name, '') ILIKE $2
 		  )
 		ORDER BY display_name ASC
 		LIMIT $3
@@ -90,23 +90,23 @@ const sqlSearchMentionablesTenant = `
 // When the caller belongs to no team, this returns zero rows.
 const sqlSearchMentionablesTeam = `
 		SELECT DISTINCT
-			u.id,
-			u.email,
-			COALESCE(u.display_name, CONCAT_WS(' ', u.first_name, u.last_name), u.email) AS display_name,
-			u.first_name,
-			u.last_name
+			u.users_id,
+			u.users_email,
+			COALESCE(u.users_display_name, CONCAT_WS(' ', u.users_first_name, u.users_last_name), u.users_email) AS display_name,
+			u.users_first_name,
+			u.users_last_name
 		FROM users u
-		JOIN users_teams_members peer ON peer.user_id = u.id
-		WHERE u.subscription_id = $1
-		  AND u.is_active = TRUE
+		JOIN users_teams_members peer ON peer.user_id = u.users_id
+		WHERE u.users_id_subscription = $1
+		  AND u.users_is_active = TRUE
 		  AND peer.team_id IN (
 			SELECT team_id FROM users_teams_members WHERE user_id = $4
 		  )
 		  AND (
-			u.email ILIKE $2
-			OR COALESCE(u.first_name, '') ILIKE $2
-			OR COALESCE(u.last_name, '') ILIKE $2
-			OR COALESCE(u.display_name, '') ILIKE $2
+			u.users_email ILIKE $2
+			OR COALESCE(u.users_first_name, '') ILIKE $2
+			OR COALESCE(u.users_last_name, '') ILIKE $2
+			OR COALESCE(u.users_display_name, '') ILIKE $2
 		  )
 		ORDER BY display_name ASC
 		LIMIT $3

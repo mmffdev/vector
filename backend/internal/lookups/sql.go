@@ -7,11 +7,11 @@ package lookups
 // Order: display_name ASC so the dropdown lists alphabetically.
 const sqlListUsersInScope = `
 		SELECT
-			id::text,
-			COALESCE(NULLIF(TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')), ''), email) AS display_name,
-			profile_image_url AS avatar_url
+			users_id::text,
+			COALESCE(NULLIF(TRIM(COALESCE(users_first_name,'') || ' ' || COALESCE(users_last_name,'')), ''), users_email) AS display_name,
+			users_profile_image_url AS avatar_url
 		FROM users
-		WHERE subscription_id = $1
-		  AND is_active = TRUE
+		WHERE users_id_subscription = $1
+		  AND users_is_active = TRUE
 		ORDER BY display_name ASC
 	`

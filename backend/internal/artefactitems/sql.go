@@ -790,11 +790,11 @@ const sqlDeleteFieldValue = `DELETE FROM artefacts_fields_values WHERE artefacts
 // ── decorateOwners (mmff_vector) ───────────────────────────────────────────
 
 const sqlSelectActiveUserDisplayNamesByIDs = `
-		SELECT id::text,
-		       COALESCE(NULLIF(TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')), ''), email)
+		SELECT users_id::text,
+		       COALESCE(NULLIF(TRIM(COALESCE(users_first_name,'') || ' ' || COALESCE(users_last_name,'')), ''), users_email)
 		FROM users
-		WHERE id::text = ANY($1)
-		  AND is_active = true
+		WHERE users_id::text = ANY($1)
+		  AND users_is_active = true
 	`
 
 // sqlArtefactWorkspaceAndTypeName — single round-trip lookup driving

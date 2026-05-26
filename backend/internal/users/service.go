@@ -100,7 +100,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, actorRole roletype
 		return err
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "users_email_tenant_unique") {
+		if strings.Contains(err.Error(), "users_email_id_subscription_unique") {
 			return nil, "", ErrDuplicateEmail
 		}
 		return nil, "", err
@@ -225,7 +225,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		if legacyRole != string(roletypes.RoleUser) && legacyRole != string(roletypes.RolePAdmin) && legacyRole != string(roletypes.RoleGAdmin) {
 			legacyRole = string(roletypes.RoleUser)
 		}
-		sets = append(sets, "role = $"+itoa(i))
+		sets = append(sets, "users_role = $"+itoa(i))
 		args = append(args, legacyRole)
 		i++
 		sets = append(sets, fmt.Sprintf(sqlUpdateUserRoleIDFragmentTemplate, "$"+itoa(i)))
@@ -233,22 +233,22 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		i++
 	}
 	if in.IsActive != nil {
-		sets = append(sets, "is_active = $"+itoa(i))
+		sets = append(sets, "users_is_active = $"+itoa(i))
 		args = append(args, *in.IsActive)
 		i++
 	}
 	if in.FirstName != nil {
-		sets = append(sets, "first_name = $"+itoa(i))
+		sets = append(sets, "users_first_name = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.FirstName)))
 		i++
 	}
 	if in.LastName != nil {
-		sets = append(sets, "last_name = $"+itoa(i))
+		sets = append(sets, "users_last_name = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.LastName)))
 		i++
 	}
 	if in.Department != nil {
-		sets = append(sets, "department = $"+itoa(i))
+		sets = append(sets, "users_department = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.Department)))
 		i++
 	}
@@ -257,12 +257,12 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	// nilIfEmpty(strings.TrimSpace(...)) so an empty payload clears
 	// the column rather than storing whitespace.
 	if in.MiddleName != nil {
-		sets = append(sets, "middle_name = $"+itoa(i))
+		sets = append(sets, "users_middle_name = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.MiddleName)))
 		i++
 	}
 	if in.DisplayName != nil {
-		sets = append(sets, "display_name = $"+itoa(i))
+		sets = append(sets, "users_display_name = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.DisplayName)))
 		i++
 	}
@@ -274,7 +274,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		if v != "" && !e164Re.MatchString(v) {
 			return ErrInvalidPhone
 		}
-		sets = append(sets, "phone_work = $"+itoa(i))
+		sets = append(sets, "users_phone_work = $"+itoa(i))
 		args = append(args, nilIfEmpty(v))
 		i++
 	}
@@ -283,32 +283,32 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 		if v != "" && !e164Re.MatchString(v) {
 			return ErrInvalidPhone
 		}
-		sets = append(sets, "phone_mobile = $"+itoa(i))
+		sets = append(sets, "users_phone_mobile = $"+itoa(i))
 		args = append(args, nilIfEmpty(v))
 		i++
 	}
 	if in.Timezone != nil {
-		sets = append(sets, "timezone = $"+itoa(i))
+		sets = append(sets, "users_timezone = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.Timezone)))
 		i++
 	}
 	if in.DateFormat != nil {
-		sets = append(sets, "date_format = $"+itoa(i))
+		sets = append(sets, "users_date_format = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.DateFormat)))
 		i++
 	}
 	if in.DatetimeFormat != nil {
-		sets = append(sets, "datetime_format = $"+itoa(i))
+		sets = append(sets, "users_datetime_format = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.DatetimeFormat)))
 		i++
 	}
 	if in.EmailNotificationsEnabled != nil {
-		sets = append(sets, "email_notifications_enabled = $"+itoa(i))
+		sets = append(sets, "users_email_notifications_enabled = $"+itoa(i))
 		args = append(args, *in.EmailNotificationsEnabled)
 		i++
 	}
 	if in.PasswordResetRequired != nil {
-		sets = append(sets, "password_reset_required = $"+itoa(i))
+		sets = append(sets, "users_password_reset_required = $"+itoa(i))
 		args = append(args, *in.PasswordResetRequired)
 		i++
 	}
@@ -317,17 +317,17 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 	// FK constraint not added yet (see plan doc — promoted by owning
 	// story). Until then the caller is responsible for value validity.
 	if in.CostCentreID != nil {
-		sets = append(sets, "cost_centre_id = $"+itoa(i))
+		sets = append(sets, "users_id_cost_centre = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.CostCentreID)))
 		i++
 	}
 	if in.OfficeLocationID != nil {
-		sets = append(sets, "office_location_id = $"+itoa(i))
+		sets = append(sets, "users_id_office_location = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.OfficeLocationID)))
 		i++
 	}
 	if in.ProfileImageURL != nil {
-		sets = append(sets, "profile_image_url = $"+itoa(i))
+		sets = append(sets, "users_profile_image_url = $"+itoa(i))
 		args = append(args, nilIfEmpty(strings.TrimSpace(*in.ProfileImageURL)))
 		i++
 	}

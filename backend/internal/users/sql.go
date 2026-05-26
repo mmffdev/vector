@@ -24,11 +24,11 @@ package users
 // emailed link. Returns the hydrated row fields needed for the
 // audit log + API response.
 const sqlInsertUser = `
-		INSERT INTO users (subscription_id, email, password_hash, role, role_id, force_password_change)
+		INSERT INTO users (users_id_subscription, users_email, users_password_hash, users_role, users_id_role, users_force_password_change)
 		VALUES ($1, $2, $3, $4,
 			(SELECT users_roles_id FROM users_roles WHERE users_roles_is_system = TRUE AND users_roles_code = $5),
 			TRUE)
-		RETURNING id, subscription_id, email, role, is_active, auth_method, force_password_change, created_at, updated_at
+		RETURNING users_id, users_id_subscription, users_email, users_role, users_is_active, users_auth_method, users_force_password_change, users_created_at, users_updated_at
 	`
 
 // sqlInsertPasswordReset opens a users_password_resets row. Shared by
@@ -56,13 +56,13 @@ const sqlInsertPasswordReset = `
 // field; the handler clears PII for unprivileged callers before
 // serialising (see filterAdminFieldsForRole in handler.go).
 const sqlListUsersBySubscription = `
-		SELECT id, subscription_id, email, role, role_id, is_active, first_name, last_name, department,
-		       middle_name, display_name, phone_work, phone_mobile, timezone, date_format,
-		       datetime_format, email_notifications_enabled, password_reset_required,
-		       cost_centre_id, office_location_id, profile_image_url,
-		       last_login, auth_method, ldap_dn, force_password_change, password_changed_at,
-		       created_at, updated_at
-		FROM users WHERE subscription_id = $1 ORDER BY created_at DESC
+		SELECT users_id, users_id_subscription, users_email, users_role, users_id_role, users_is_active, users_first_name, users_last_name, users_department,
+		       users_middle_name, users_display_name, users_phone_work, users_phone_mobile, users_timezone, users_date_format,
+		       users_datetime_format, users_email_notifications_enabled, users_password_reset_required,
+		       users_id_cost_centre, users_id_office_location, users_profile_image_url,
+		       users_last_login, users_auth_method, users_ldap_dn, users_force_password_change, users_password_changed_at,
+		       users_created_at, users_updated_at
+		FROM users WHERE users_id_subscription = $1 ORDER BY users_created_at DESC
 	`
 
 // ── Update (target lookup + sparse UPDATE + session revoke) ────────────────
@@ -70,21 +70,21 @@ const sqlListUsersBySubscription = `
 // sqlSelectUserTenantAndRole is the role-ceiling preflight read for
 // Update — the actor's session carries the role they may NOT exceed.
 // Returns only the two columns needed to enforce ErrRoleCeiling.
-const sqlSelectUserTenantAndRole = `SELECT subscription_id, role FROM users WHERE id = $1`
+const sqlSelectUserTenantAndRole = `SELECT users_id_subscription, users_role FROM users WHERE users_id = $1`
 
 // sqlUpdateUserTemplate is the sparse-update shell used by Update.
 // First %s holds the comma-separated `col = $N` SET clause built from
 // the supplied non-nil UpdateInput fields; second %s holds the `$M`
 // placeholder for the WHERE id bind. Callers do fmt.Sprintf to combine.
-const sqlUpdateUserTemplate = `UPDATE users SET %s WHERE id = %s`
+const sqlUpdateUserTemplate = `UPDATE users SET %s WHERE users_id = %s`
 
 // sqlUpdateUserRoleIDFragmentTemplate is the role_id assignment fragment
 // spliced into sqlUpdateUserTemplate's SET clause when a role change is
 // requested. The role enum column is set in parallel via a separate
-// fragment ("role = $N"). One %s holds the `$N` bind placeholder for
+// fragment ("users_role = $N"). One %s holds the `$N` bind placeholder for
 // the role code lookup. PLA-0007 G4 retires this subquery once the
-// users.role enum column is dropped.
-const sqlUpdateUserRoleIDFragmentTemplate = `role_id = (SELECT users_roles_id FROM users_roles WHERE users_roles_is_system = TRUE AND users_roles_code = %s)`
+// users.users_role enum column is dropped.
+const sqlUpdateUserRoleIDFragmentTemplate = `users_id_role = (SELECT users_roles_id FROM users_roles WHERE users_roles_is_system = TRUE AND users_roles_code = %s)`
 
 // sqlRevokeActiveUserSessions revokes a user's live (non-already-revoked)
 // users_sessions. Used inside the Update tx when role changes so a downgrade
@@ -97,12 +97,12 @@ const sqlRevokeActiveUserSessions = `UPDATE users_sessions SET users_sessions_re
 // preflight read shared by Delete and IssueResetLink. Returns tenant
 // (for the cross-tenant 404), role (for the ceiling check), and email
 // (for the audit/email payload).
-const sqlSelectUserTenantRoleEmail = `SELECT subscription_id, role, email FROM users WHERE id = $1`
+const sqlSelectUserTenantRoleEmail = `SELECT users_id_subscription, users_role, users_email FROM users WHERE users_id = $1`
 
 // sqlDeleteUser hard-removes a user row by id. The preflight read
 // above is the gate; the role-ceiling + self-delete checks happen in
 // Go, not SQL.
-const sqlDeleteUser = `DELETE FROM users WHERE id = $1`
+const sqlDeleteUser = `DELETE FROM users WHERE users_id = $1`
 
 // ── FindByID ───────────────────────────────────────────────────────────────
 
@@ -110,25 +110,25 @@ const sqlDeleteUser = `DELETE FROM users WHERE id = $1`
 // gated on tenant — cross-tenant existence is hidden behind the
 // implicit ErrNotFound from pgx.ErrNoRows.
 const sqlSelectUserByIDInTenant = `
-		SELECT id, subscription_id, email, role, is_active, created_at, updated_at
-		FROM users WHERE id = $1 AND subscription_id = $2
+		SELECT users_id, users_id_subscription, users_email, users_role, users_is_active, users_created_at, users_updated_at
+		FROM users WHERE users_id = $1 AND users_id_subscription = $2
 	`
 
 // ── prefs.go (theme pack) ──────────────────────────────────────────────────
 
 // sqlSelectUserThemePack reads the user's selected theme pack id.
 // NULL fallback handled in Go (GetThemePack returns "default").
-const sqlSelectUserThemePack = `SELECT theme_pack FROM users WHERE id = $1`
+const sqlSelectUserThemePack = `SELECT users_theme_pack FROM users WHERE users_id = $1`
 
 // sqlUpdateUserThemePack persists the theme-pack selection. updated_at
 // is bumped for cache-bust on the read side.
-const sqlUpdateUserThemePack = `UPDATE users SET theme_pack = $1, updated_at = NOW() WHERE id = $2`
+const sqlUpdateUserThemePack = `UPDATE users SET users_theme_pack = $1, users_updated_at = NOW() WHERE users_id = $2`
 
 // sqlSelectUserActiveScope reads the user's last-selected scope node ID.
-const sqlSelectUserActiveScope = `SELECT active_scope_node_id FROM users WHERE id = $1`
+const sqlSelectUserActiveScope = `SELECT users_id_active_scope_node FROM users WHERE users_id = $1`
 
 // sqlUpdateUserActiveScope persists the active scope node ID. NULL clears it.
-const sqlUpdateUserActiveScope = `UPDATE users SET active_scope_node_id = $1, updated_at = NOW() WHERE id = $2`
+const sqlUpdateUserActiveScope = `UPDATE users SET users_id_active_scope_node = $1, users_updated_at = NOW() WHERE users_id = $2`
 
 // sqlUpdateUserHomeLocationFollowMode persists the Pinned/Follow toggle
 // from the Home Location section of /user/account-settings (migration
@@ -136,7 +136,7 @@ const sqlUpdateUserActiveScope = `UPDATE users SET active_scope_node_id = $1, up
 // /_site/sentinel/focus so scope-rail clicks mirror into the home
 // location column; when FALSE (default), scope-rail clicks stay
 // session-only. $1 = bool, $2 = userID.
-const sqlUpdateUserHomeLocationFollowMode = `UPDATE users SET home_location_follow_mode = $1, updated_at = NOW() WHERE id = $2`
+const sqlUpdateUserHomeLocationFollowMode = `UPDATE users SET users_home_location_follow_mode = $1, users_updated_at = NOW() WHERE users_id = $2`
 
 // sqlUserHasGrantOnNode confirms the caller holds at least one active grant on
 // the target topology node. Used to gate SetActiveScope — a user must not be
@@ -151,7 +151,7 @@ const sqlUserHasGrantOnNode = `
 
 // ── Per-user namespaced preferences (mig 208) ──────────────────────────────
 //
-// users.preferences is a JSONB column keyed by string namespace
+// users.users_preferences is a JSONB column keyed by string namespace
 // (e.g. "workitems.filters"). Reads return the value at the key
 // (or null when absent). Writes overwrite the key — the caller
 // owns the value shape; backend doesn't interpret it. See
@@ -160,28 +160,28 @@ const sqlUserHasGrantOnNode = `
 // sqlSelectUserPreference returns the JSONB value at the namespace
 // (or NULL when the key isn't set). Uses jsonb -> operator (not ->>)
 // so the caller gets back the raw JSON, not a stringified copy.
-const sqlSelectUserPreference = `SELECT preferences -> $2 FROM users WHERE id = $1`
+const sqlSelectUserPreference = `SELECT users_preferences -> $2 FROM users WHERE users_id = $1`
 
 // sqlUpsertUserPreference writes the namespace key with the given
 // JSON value, leaving every other key intact. jsonb_set with
 // create_missing=true is the standard upsert-key pattern.
 const sqlUpsertUserPreference = `
 	UPDATE users
-	   SET preferences = jsonb_set(preferences, ARRAY[$2]::text[], $3::jsonb, true),
-	       updated_at = NOW()
-	 WHERE id = $1`
+	   SET users_preferences = jsonb_set(users_preferences, ARRAY[$2]::text[], $3::jsonb, true),
+	       users_updated_at = NOW()
+	 WHERE users_id = $1`
 
 // sqlDeleteUserPreference clears a single namespace key (- operator
 // removes by key). Idempotent — no error when the key wasn't set.
 const sqlDeleteUserPreference = `
 	UPDATE users
-	   SET preferences = preferences - $2,
-	       updated_at = NOW()
-	 WHERE id = $1`
+	   SET users_preferences = users_preferences - $2,
+	       users_updated_at = NOW()
+	 WHERE users_id = $1`
 
 // ── handler.go (post-reset email lookup) ───────────────────────────────────
 
 // sqlSelectUserEmailByID is the lean email-only lookup after
 // IssueResetLink so the gadmin response payload can echo the target
 // email without a second service call.
-const sqlSelectUserEmailByID = `SELECT email FROM users WHERE id = $1`
+const sqlSelectUserEmailByID = `SELECT users_email FROM users WHERE users_id = $1`

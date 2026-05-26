@@ -65,10 +65,10 @@ const sqlMarkOutboxFailed = `
 // SqlSelectUserEmail looks up an active user's email by ID. Used by
 // the email dispatcher to resolve the recipient address.
 const SqlSelectUserEmail = `
-	SELECT email
+	SELECT users_email
 	FROM users
-	WHERE id = $1
-	  AND is_active = TRUE
+	WHERE users_id = $1
+	  AND users_is_active = TRUE
 `
 
 // SqlInsertUserNotificationFromEvent writes one row to the in-app

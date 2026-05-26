@@ -83,11 +83,11 @@ func main() {
 	// Resolve gadmin user for created_by.
 	var createdBy uuid.UUID
 	if err := vectorPool.QueryRow(ctx,
-		`SELECT id FROM users WHERE email = 'gadmin@mmffdev.com' AND subscription_id = $1`, subscriptionID,
+		`SELECT users_id FROM users WHERE users_email = 'gadmin@mmffdev.com' AND users_id_subscription = $1`, subscriptionID,
 	).Scan(&createdBy); err != nil {
 		// Fall back to any gadmin in this subscription.
 		if err2 := vectorPool.QueryRow(ctx,
-			`SELECT id FROM users WHERE subscription_id = $1 AND role = 'gadmin' ORDER BY created_at LIMIT 1`, subscriptionID,
+			`SELECT users_id FROM users WHERE users_id_subscription = $1 AND users_role = 'gadmin' ORDER BY users_created_at LIMIT 1`, subscriptionID,
 		).Scan(&createdBy); err2 != nil {
 			fatalf("no gadmin user found for subscription %s: %v", subscriptionID, err2)
 		}

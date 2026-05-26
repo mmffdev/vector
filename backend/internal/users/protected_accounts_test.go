@@ -111,11 +111,11 @@ func TestProtectedAccountsPreserved(t *testing.T) {
 				gotRoleCode     string
 			)
 			err := pool.QueryRow(ctx, `
-				SELECT u.email, u.password_hash, u.is_active, u.role_id, r.users_roles_code
+				SELECT u.users_email, u.users_password_hash, u.users_is_active, u.users_id_role, r.users_roles_code
 				FROM users u
-				JOIN users_roles r ON r.users_roles_id = u.role_id
-				WHERE u.email = $1
-				  AND u.subscription_id = $2
+				JOIN users_roles r ON r.users_roles_id = u.users_id_role
+				WHERE u.users_email = $1
+				  AND u.users_id_subscription = $2
 			`, want.email, subID).Scan(
 				&gotEmail, &gotPasswordHash, &gotIsActive, &gotRoleID, &gotRoleCode,
 			)

@@ -429,11 +429,11 @@ func testVectorPoolPadmin(t *testing.T) (*pgxpool.Pool, *roletypes.User) {
 
 	var u roletypes.User
 	err = pool.QueryRow(context.Background(), `
-		SELECT id, subscription_id, email, role, is_active
+		SELECT users_id, users_id_subscription, users_email, users_role, users_is_active
 		  FROM users
-		 WHERE is_active = TRUE
-		   AND role = 'padmin'
-		 ORDER BY created_at
+		 WHERE users_is_active = TRUE
+		   AND users_role = 'padmin'
+		 ORDER BY users_created_at
 		 LIMIT 1`,
 	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive)
 	if err != nil {

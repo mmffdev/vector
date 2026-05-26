@@ -60,8 +60,8 @@ func TestPermissionGrid_invalidatesCacheOnAssign(t *testing.T) {
 	suffix := uuid.NewString()[:8]
 	var victimID uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
-		VALUES ($1, $2, $3, 'user', $4) RETURNING id`,
+		INSERT INTO users (users_id_subscription, users_email, users_password_hash, users_role, users_id_role)
+		VALUES ($1, $2, $3, 'user', $4) RETURNING users_id`,
 		subID, "victim-"+suffix+"@example.com",
 		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd",
 		roleID,

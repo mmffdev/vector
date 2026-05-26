@@ -486,7 +486,7 @@ func TestCreateWorkItem_StoresRow(t *testing.T) {
 	// Resolve a user from mmff_vector for owner/created_by.
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user for sub %s in mmff_vector: %v", sub, err)
 	}
@@ -615,7 +615,7 @@ func TestCreateWorkItem_TopologyNodeID_persisted(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user for sub %s: %v", sub, err)
 	}
@@ -751,7 +751,7 @@ func TestPatchWorkItem_UpdatesTitle(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}
@@ -793,7 +793,7 @@ func TestPatchWorkItem_DueDate_SetAndClear(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}
@@ -857,7 +857,7 @@ func TestArchiveWorkItem_SoftDeletes(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}
@@ -973,7 +973,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}

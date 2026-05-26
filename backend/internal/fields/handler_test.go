@@ -120,15 +120,15 @@ func pickWorkspaceUser(t *testing.T, pool *pgxpool.Pool) (workspaceID uuid.UUID,
 	t.Helper()
 	u = &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
-		SELECT u.id, u.subscription_id, u.email, u.role, u.is_active, rw.users_roles_workspaces_id_workspace
+		SELECT u.users_id, u.users_id_subscription, u.users_email, u.users_role, u.users_is_active, rw.users_roles_workspaces_id_workspace
 		  FROM users_roles_workspaces rw
-		  JOIN users u ON u.id = rw.users_roles_workspaces_id_user
+		  JOIN users u ON u.users_id = rw.users_roles_workspaces_id_user
 		  JOIN master_record_workspaces w ON w.master_record_workspaces_id = rw.users_roles_workspaces_id_workspace
 		 WHERE rw.users_roles_workspaces_revoked_at IS NULL
-		   AND u.is_active = TRUE
-		   AND u.role = 'user'
+		   AND u.users_is_active = TRUE
+		   AND u.users_role = 'user'
 		   AND w.master_record_workspaces_archived_at IS NULL
-		   AND w.master_record_workspaces_id_subscription = u.subscription_id
+		   AND w.master_record_workspaces_id_subscription = u.users_id_subscription
 		 LIMIT 1`,
 	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive, &workspaceID)
 	if err != nil {
@@ -142,10 +142,10 @@ func pickGadmin(t *testing.T, pool *pgxpool.Pool) *roletypes.User {
 	t.Helper()
 	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
-		SELECT id, subscription_id, email, role, is_active
+		SELECT users_id, users_id_subscription, users_email, users_role, users_is_active
 		  FROM users
-		 WHERE role = 'gadmin' AND is_active = TRUE
-		 ORDER BY created_at
+		 WHERE users_role = 'gadmin' AND users_is_active = TRUE
+		 ORDER BY users_created_at
 		 LIMIT 1`,
 	).Scan(&u.ID, &u.SubscriptionID, &u.Email, &u.Role, &u.IsActive)
 	if err != nil {

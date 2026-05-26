@@ -74,8 +74,8 @@ func mkTenant(t *testing.T, pool *pgxpool.Pool, label string) (uuid.UUID, func()
 			// product, portfolio, workspace, company_roadmap dropped in mig 249 — removed.
 			`DELETE FROM users_roles_permissions            WHERE users_roles_permissions_id_role IN (SELECT users_roles_id FROM users_roles WHERE users_roles_id_subscription = $1)`,
 			`DELETE FROM subscriptions_sequence      WHERE subscriptions_sequence_id_subscription = $1`,
-			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT id FROM users WHERE subscription_id = $1)`,
-			`DELETE FROM users                       WHERE subscription_id = $1`,
+			`DELETE FROM users_password_resets             WHERE users_password_resets_id_user IN (SELECT users_id FROM users WHERE users_id_subscription = $1)`,
+			`DELETE FROM users                       WHERE users_id_subscription = $1`,
 			`DELETE FROM users_roles                       WHERE users_roles_id_subscription = $1`,
 			`DELETE FROM subscriptions               WHERE subscriptions_id = $1`,
 		}
@@ -127,9 +127,9 @@ func mkUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role roletypes.Ro
 	roleID := resolveGrpRoleID(t, pool, role)
 	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
-		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
+		INSERT INTO users (users_id_subscription, users_email, users_password_hash, users_role, users_id_role)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, subscription_id, email, role, is_active, force_password_change`,
+		RETURNING users_id, users_id_subscription, users_email, users_role, users_is_active, users_force_password_change`,
 		subID, "u-"+suffix+"@example.com",
 		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd",
 		string(role), roleID,
@@ -343,7 +343,7 @@ func TestAssignPermissions_403onSelfElevation(t *testing.T) {
 	).Scan(&emptyRoleID); err != nil {
 		t.Fatalf("insert empty role: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET role_id = $1 WHERE id = $2`, emptyRoleID, actor.ID); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE users SET users_id_role = $1 WHERE users_id = $2`, emptyRoleID, actor.ID); err != nil {
 		t.Fatalf("repoint actor role: %v", err)
 	}
 

@@ -370,7 +370,7 @@ func TestUpdateHelp_RichContentRoundTrip(t *testing.T) {
 	// Use a real editor user (the FK accepts NULL, but we want a non-nil
 	// id to prove updated_by_user_id is set).
 	var editorID uuid.UUID
-	if err := pool.QueryRow(ctx, `SELECT id FROM users LIMIT 1`).Scan(&editorID); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT users_id FROM users LIMIT 1`).Scan(&editorID); err != nil {
 		t.Skipf("no users in dev DB to attribute the edit: %v", err)
 	}
 
@@ -482,7 +482,7 @@ func TestSeedLibraryDefault_PreservesEditsAcrossReregister(t *testing.T) {
 
 	// Simulate a gadmin edit.
 	var editorID uuid.UUID
-	if err := pool.QueryRow(ctx, `SELECT id FROM users LIMIT 1`).Scan(&editorID); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT users_id FROM users LIMIT 1`).Scan(&editorID); err != nil {
 		t.Skipf("no users in dev DB: %v", err)
 	}
 	editedTitle := "Edited by gadmin"

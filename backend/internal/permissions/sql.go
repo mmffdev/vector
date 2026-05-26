@@ -27,10 +27,7 @@ const sqlListPermissionCodes = `SELECT users_permissions_code FROM users_permiss
 // Used by PermissionsFor before joining through users_roles_permissions.
 // (Same SQL as users.sqlSelectUserRoleID, but this package owns its
 // own catalogue file — packages do not reach across to share consts.)
-//
-// users.role_id is NOT yet column-prefixed — the users table itself is
-// deferred under TD-NAME-001 (frontend wire-shape consumers).
-const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
+const sqlSelectUserRoleID = `SELECT users_id_role FROM users WHERE users_id = $1`
 
 // sqlSelectPermissionCodesForRole returns the effective permission
 // codes for a role by joining users_roles_permissions to users_permissions. The

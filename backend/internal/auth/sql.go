@@ -19,7 +19,7 @@ package auth
 
 // sqlSelectUserRoleID resolves a user's role_id. The auth payload
 // renderer joins this against `users_roles` via sqlSelectRoleByID.
-const sqlSelectUserRoleID = `SELECT role_id FROM users WHERE id = $1`
+const sqlSelectUserRoleID = `SELECT users_id_role FROM users WHERE users_id = $1`
 
 // sqlSelectRoleByID hydrates the RolePayload wire shape (code, label,
 // rank, system/external flags) returned to the frontend on every auth
@@ -41,52 +41,52 @@ const sqlSelectRoleByID = `
 // Used by Login + RequestPasswordReset. Includes MFA columns added in
 // 003_mfa_scaffold.sql.
 const sqlSelectUserByEmail = `
-		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
-		       default_focus_node_id, home_location_follow_mode,
-		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until,
-		       mfa_enrolled, mfa_secret, mfa_recovery_codes,
-		       created_at, updated_at
-		FROM users WHERE email = $1
+		SELECT users_id, users_id_subscription, users_email, users_password_hash, users_role, users_id_role, users_is_active, users_last_login,
+		       users_id_default_focus_node, users_home_location_follow_mode,
+		       users_auth_method, users_ldap_dn, users_force_password_change, users_password_changed_at,
+		       users_failed_login_count, users_locked_until,
+		       users_mfa_enrolled, users_mfa_secret, users_mfa_recovery_codes,
+		       users_created_at, users_updated_at
+		FROM users WHERE users_email = $1
 	`
 
 // sqlSelectUserByID returns the full user row for a given UUID. Used
 // by Refresh / ConfirmPasswordReset / ChangePassword post-token-validation.
 // Includes MFA columns added in 003_mfa_scaffold.sql.
 const sqlSelectUserByID = `
-		SELECT id, subscription_id, email, password_hash, role, role_id, is_active, last_login,
-		       default_focus_node_id, home_location_follow_mode,
-		       auth_method, ldap_dn, force_password_change, password_changed_at,
-		       failed_login_count, locked_until,
-		       mfa_enrolled, mfa_secret, mfa_recovery_codes,
-		       created_at, updated_at
-		FROM users WHERE id = $1
+		SELECT users_id, users_id_subscription, users_email, users_password_hash, users_role, users_id_role, users_is_active, users_last_login,
+		       users_id_default_focus_node, users_home_location_follow_mode,
+		       users_auth_method, users_ldap_dn, users_force_password_change, users_password_changed_at,
+		       users_failed_login_count, users_locked_until,
+		       users_mfa_enrolled, users_mfa_secret, users_mfa_recovery_codes,
+		       users_created_at, users_updated_at
+		FROM users WHERE users_id = $1
 	`
 
 // sqlSelectUserBySessionID returns the same user columns as
 // sqlSelectUserByID plus the session revoked + rotated_at signals so
 // RequireAuth (B16.8.11 step 3) can per-request reject revoked or
 // idle-expired sessions in a single roundtrip (no extra DB hit beyond
-// what middleware already pays). Joins on users.id = users_sessions_id_user
+// what middleware already pays). Joins on users.users_id = users_sessions_id_user
 // AND filters by users_sessions_id = $2 so the row corresponds to THIS
 // specific session, not any session the user holds. Returns zero rows
 // when the sid is unknown, the session belongs to a different user, or
 // the user row has been deleted — caller treats that as 401 (the same
 // shape an expired access token already produces).
 const sqlSelectUserBySessionID = `
-		SELECT u.id, u.subscription_id, u.email, u.password_hash, u.role, u.role_id, u.is_active, u.last_login,
-		       u.default_focus_node_id, u.home_location_follow_mode,
-		       u.auth_method, u.ldap_dn, u.force_password_change, u.password_changed_at,
-		       u.failed_login_count, u.locked_until,
-		       u.mfa_enrolled, u.mfa_secret, u.mfa_recovery_codes,
-		       u.created_at, u.updated_at,
+		SELECT u.users_id, u.users_id_subscription, u.users_email, u.users_password_hash, u.users_role, u.users_id_role, u.users_is_active, u.users_last_login,
+		       u.users_id_default_focus_node, u.users_home_location_follow_mode,
+		       u.users_auth_method, u.users_ldap_dn, u.users_force_password_change, u.users_password_changed_at,
+		       u.users_failed_login_count, u.users_locked_until,
+		       u.users_mfa_enrolled, u.users_mfa_secret, u.users_mfa_recovery_codes,
+		       u.users_created_at, u.users_updated_at,
 		       s.users_sessions_revoked,
 		       COALESCE(s.users_sessions_rotated_at, s.users_sessions_created_at) AS last_activity_at
 		FROM users u
 		JOIN users_sessions s
-		  ON s.users_sessions_id_user = u.id
+		  ON s.users_sessions_id_user = u.users_id
 		 AND s.users_sessions_id      = $2
-		WHERE u.id = $1
+		WHERE u.users_id = $1
 	`
 
 // sqlSelectServiceUserForSubscription returns the highest-tier active
@@ -102,17 +102,17 @@ const sqlSelectUserBySessionID = `
 // Sentinel for "no usable user on this subscription" is pgx.ErrNoRows;
 // caller (apikeys.Middleware) maps that to 401 with a clear message.
 const sqlSelectServiceUserForSubscription = `
-		SELECT u.id, u.subscription_id, u.email, u.password_hash, u.role, u.role_id, u.is_active, u.last_login,
-		       u.default_focus_node_id, u.home_location_follow_mode,
-		       u.auth_method, u.ldap_dn, u.force_password_change, u.password_changed_at,
-		       u.failed_login_count, u.locked_until,
-		       u.mfa_enrolled, u.mfa_secret, u.mfa_recovery_codes,
-		       u.created_at, u.updated_at
+		SELECT u.users_id, u.users_id_subscription, u.users_email, u.users_password_hash, u.users_role, u.users_id_role, u.users_is_active, u.users_last_login,
+		       u.users_id_default_focus_node, u.users_home_location_follow_mode,
+		       u.users_auth_method, u.users_ldap_dn, u.users_force_password_change, u.users_password_changed_at,
+		       u.users_failed_login_count, u.users_locked_until,
+		       u.users_mfa_enrolled, u.users_mfa_secret, u.users_mfa_recovery_codes,
+		       u.users_created_at, u.users_updated_at
 		FROM users u
-		JOIN users_roles ur ON ur.users_roles_id = u.role_id
-		WHERE u.subscription_id = $1
-		  AND u.is_active = TRUE
-		ORDER BY ur.users_roles_rank ASC, u.created_at ASC
+		JOIN users_roles ur ON ur.users_roles_id = u.users_id_role
+		WHERE u.users_id_subscription = $1
+		  AND u.users_is_active = TRUE
+		ORDER BY ur.users_roles_rank ASC, u.users_created_at ASC
 		LIMIT 1
 	`
 
@@ -121,8 +121,8 @@ const sqlSelectServiceUserForSubscription = `
 // sqlClearLockoutAndStampLogin resets failed_login_count + locked_until
 // and stamps last_login=NOW() after a successful credential check.
 const sqlClearLockoutAndStampLogin = `
-		UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login = NOW()
-		WHERE id = $1
+		UPDATE users SET users_failed_login_count = 0, users_locked_until = NULL, users_last_login = NOW()
+		WHERE users_id = $1
 	`
 
 // sqlInsertSession opens a new refresh-token session row. token_hash is
@@ -169,12 +169,12 @@ const sqlInsertSession = `
 // sqlBumpFailedLoginAndLock raises failed_login_count to $1 AND stamps
 // locked_until=$2 — used when the failure crosses LOCKOUT_THRESHOLD.
 const sqlBumpFailedLoginAndLock = `
-		UPDATE users SET failed_login_count = $1, locked_until = $2 WHERE id = $3
+		UPDATE users SET users_failed_login_count = $1, users_locked_until = $2 WHERE users_id = $3
 	`
 
 // sqlBumpFailedLogin raises failed_login_count without locking (sub-
 // threshold failure path).
-const sqlBumpFailedLogin = `UPDATE users SET failed_login_count = $1 WHERE id = $2`
+const sqlBumpFailedLogin = `UPDATE users SET users_failed_login_count = $1 WHERE users_id = $2`
 
 // ── refresh-token rotation (Refresh, refreshFromSuccessor) ──────────────────
 
@@ -270,8 +270,8 @@ const sqlRevokeSessionByHashReturningUser = `
 // stamps password_changed_at=NOW(), and clears force_password_change.
 // Used by ChangePassword (current → new path).
 const sqlUpdatePasswordHashAndClearForceFlag = `
-		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW()
-		WHERE id = $2
+		UPDATE users SET users_password_hash = $1, users_force_password_change = FALSE, users_password_changed_at = NOW()
+		WHERE users_id = $2
 	`
 
 // ── password reset (RequestPasswordReset, ConfirmPasswordReset) ─────────────
@@ -304,9 +304,9 @@ const sqlSelectPasswordResetByHash = `
 // clears failed_login_count + locked_until — the "I forgot my password"
 // path implicitly resolves a lockout.
 const sqlUpdatePasswordHashAndClearLockout = `
-		UPDATE users SET password_hash = $1, force_password_change = FALSE, password_changed_at = NOW(),
-		                 failed_login_count = 0, locked_until = NULL
-		WHERE id = $2
+		UPDATE users SET users_password_hash = $1, users_force_password_change = FALSE, users_password_changed_at = NOW(),
+		                 users_failed_login_count = 0, users_locked_until = NULL
+		WHERE users_id = $2
 	`
 
 // sqlMarkPasswordResetUsed stamps used_at=NOW() so the reset token
@@ -370,14 +370,14 @@ const sqlAssertWorkspaceMemberLive = `
 // codes during enrollment (before confirm). mfa_enrolled stays FALSE until
 // sqlConfirmMFAEnrollment.
 const sqlStoreMFASecretAndRecoveries = `
-		UPDATE users SET mfa_secret = $1, mfa_recovery_codes = $2 WHERE id = $3
+		UPDATE users SET users_mfa_secret = $1, users_mfa_recovery_codes = $2 WHERE users_id = $3
 	`
 
 // sqlStoreMFASecret writes the TOTP secret during enrollment (before
 // the user has confirmed with a live code). mfa_enrolled stays FALSE
 // until sqlConfirmMFAEnrollment.
 const sqlStoreMFASecret = `
-		UPDATE users SET mfa_secret = $1 WHERE id = $2
+		UPDATE users SET users_mfa_secret = $1 WHERE users_id = $2
 	`
 
 // sqlConfirmMFAEnrollment flips mfa_enrolled=TRUE, stamps
@@ -385,28 +385,28 @@ const sqlStoreMFASecret = `
 // Called by MFAConfirm after the user proves a valid TOTP code.
 const sqlConfirmMFAEnrollment = `
 		UPDATE users
-		   SET mfa_enrolled       = TRUE,
-		       mfa_enrolled_at    = NOW(),
-		       mfa_recovery_codes = $1
-		 WHERE id = $2
+		   SET users_mfa_enrolled       = TRUE,
+		       users_mfa_enrolled_at    = NOW(),
+		       users_mfa_recovery_codes = $1
+		 WHERE users_id = $2
 	`
 
 // sqlUpdateMFARecoveryCodes rewrites the recovery-codes array after a
 // code has been consumed (UseRecoveryCode replaces the full array with
 // the spent slot zeroed out).
 const sqlUpdateMFARecoveryCodes = `
-		UPDATE users SET mfa_recovery_codes = $1 WHERE id = $2
+		UPDATE users SET users_mfa_recovery_codes = $1 WHERE users_id = $2
 	`
 
 // sqlDisableMFA clears all four MFA columns, returning the user to the
 // unenrolled state. Called by MFADisable after password re-verification.
 const sqlDisableMFA = `
 		UPDATE users
-		   SET mfa_enrolled       = FALSE,
-		       mfa_secret         = NULL,
-		       mfa_enrolled_at    = NULL,
-		       mfa_recovery_codes = NULL
-		 WHERE id = $1
+		   SET users_mfa_enrolled       = FALSE,
+		       users_mfa_secret         = NULL,
+		       users_mfa_enrolled_at    = NULL,
+		       users_mfa_recovery_codes = NULL
+		 WHERE users_id = $1
 	`
 
 // ── B16.8.10 active sessions UI ─────────────────────────────────────────────

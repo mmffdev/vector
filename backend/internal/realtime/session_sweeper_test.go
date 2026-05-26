@@ -107,7 +107,7 @@ func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Po
 	userID := uuid.New()
 	email := fmt.Sprintf("ws-sweep-%s@test.local", userID.String()[:8])
 	_, err = pool.Exec(ctx, `
-		INSERT INTO users (id, subscription_id, email, password_hash, role, role_id, is_active, auth_method, force_password_change)
+		INSERT INTO users (users_id, users_id_subscription, users_email, users_password_hash, users_role, users_id_role, users_is_active, users_auth_method, users_force_password_change)
 		VALUES ($1, $2, $3, '$argon2id$v=19$m=65536,t=3,p=2$dGVzdA$dGVzdA', 'user', $4, TRUE, 'local', FALSE)
 	`, userID, subID, email, roleID)
 	if err != nil {
@@ -130,7 +130,7 @@ func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Po
 		RETURNING users_sessions_id
 	`, userID, fmt.Sprintf("test-hash-%s", userID.String()), boundJKT).Scan(&sessionID)
 	if err != nil {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE users_id = $1`, userID)
 		t.Fatalf("INSERT users_sessions: %v", err)
 	}
 
@@ -138,7 +138,7 @@ func fabricateUserAndSession(t *testing.T, ctx context.Context, pool *pgxpool.Po
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_, _ = pool.Exec(ctx, `DELETE FROM users_sessions WHERE users_sessions_id = $1`, sessionID)
-		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
+		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE users_id = $1`, userID)
 	}
 	return userID, sessionID, cleanup
 }

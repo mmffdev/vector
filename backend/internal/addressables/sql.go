@@ -49,12 +49,12 @@ const sqlAdminListHelp = `
 		    h.pages_help_seeded_from,
 		    (h.pages_help_seeded_from = 'library' AND h.pages_help_id_user_updater IS NULL) AS is_library_default,
 		    h.pages_help_updated_at,
-		    u.email,
+		    u.users_email,
 		    a.pages_addressables_helpable
 		  FROM pages_help h
 		  JOIN pages_addressables a
 		    ON a.pages_addressables_id = h.pages_help_id_pages_addressable
-		  LEFT JOIN users u ON u.id = h.pages_help_id_user_updater
+		  LEFT JOIN users u ON u.users_id = h.pages_help_id_user_updater
 		 WHERE h.pages_help_soft_archived = FALSE
 		   AND a.pages_addressables_soft_archived = FALSE
 		 ORDER BY a.pages_addressables_page_route,

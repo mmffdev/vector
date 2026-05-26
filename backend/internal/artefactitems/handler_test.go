@@ -278,7 +278,7 @@ func TestHandler_List_WithDB(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(context.Background(),
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}
@@ -318,7 +318,7 @@ func TestHandler_Create_ThenGet(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}
@@ -380,7 +380,7 @@ func TestHandler_Archive_Returns204(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}
@@ -426,7 +426,7 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 
 	var ownerID uuid.UUID
 	if err := mp.QueryRow(ctx,
-		`SELECT id FROM users WHERE subscription_id=$1 AND is_active=true LIMIT 1`, sub,
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
 	).Scan(&ownerID); err != nil {
 		t.Skipf("no active user: %v", err)
 	}

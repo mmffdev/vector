@@ -121,12 +121,12 @@ const sqlExistsActiveWorkspaceRole = `
 
 // sqlUserDefaultFocus returns the user's persisted default focus node.
 // $1 = userID. NULL result → no default set, fall through to tenant
-// root. Added by S06 migration (users.default_focus_node_id).
+// root. Added by S06 migration (users.users_id_default_focus_node).
 const sqlUserDefaultFocus = `
-	SELECT default_focus_node_id
+	SELECT users_id_default_focus_node
 	  FROM users
-	 WHERE id = $1
-	   AND is_active = TRUE
+	 WHERE users_id = $1
+	   AND users_is_active = TRUE
 `
 
 // sqlUpdateUserDefaultFocus persists the user's home/default focus
@@ -135,10 +135,10 @@ const sqlUserDefaultFocus = `
 // sqlUserDefaultFocus — the read side has shipped since S06.
 const sqlUpdateUserDefaultFocus = `
 	UPDATE users
-	   SET default_focus_node_id = $1,
-	       updated_at = NOW()
-	 WHERE id = $2
-	   AND is_active = TRUE
+	   SET users_id_default_focus_node = $1,
+	       users_updated_at = NOW()
+	 WHERE users_id = $2
+	   AND users_is_active = TRUE
 `
 
 // sqlUserHasGrantOnNodeOrAncestor walks UP from $1 (nodeID) through

@@ -90,9 +90,9 @@ func mkUserWithRoleID(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID, role ro
 	roleID := resolveGrpRoleID(t, pool, role)
 	u := &roletypes.User{}
 	err := pool.QueryRow(context.Background(), `
-		INSERT INTO users (subscription_id, email, password_hash, role, role_id)
+		INSERT INTO users (users_id_subscription, users_email, users_password_hash, users_role, users_id_role)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, subscription_id, email, role, is_active, force_password_change`,
+		RETURNING users_id, users_id_subscription, users_email, users_role, users_is_active, users_force_password_change`,
 		subID, "u-"+suffix+"@example.com",
 		"$2a$04$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcd",
 		string(role), roleID,

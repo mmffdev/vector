@@ -429,19 +429,19 @@ const sqlSelectProfileOwnerAndSubscription = `
 // subscription via sqlSelectProfileOwnerAndSubscription.
 const sqlUpdateUserActiveProfile = `
 		UPDATE users
-		   SET active_nav_profile_id = $1
-		 WHERE id = $2
+		   SET users_id_active_nav_profile = $1
+		 WHERE users_id = $2
 	`
 
-// sqlSelectActiveProfileScoped returns users.active_nav_profile_id ONLY
+// sqlSelectActiveProfileScoped returns users.users_id_active_nav_profile ONLY
 // when the active profile is owned by this user under this
 // subscription. Otherwise the row scan misses and the caller falls
 // back to Default.
 const sqlSelectActiveProfileScoped = `
 		SELECT p.users_nav_profiles_id
 		  FROM users u
-		  JOIN users_nav_profiles p ON p.users_nav_profiles_id = u.active_nav_profile_id
-		 WHERE u.id = $1
+		  JOIN users_nav_profiles p ON p.users_nav_profiles_id = u.users_id_active_nav_profile
+		 WHERE u.users_id = $1
 		   AND p.users_nav_profiles_id_user = $1
 		   AND p.users_nav_profiles_id_subscription = $2
 	`
@@ -477,7 +477,7 @@ const sqlSelectActiveOrDefaultProfile = `
 		SELECT
 		    (SELECT users_nav_profiles_id FROM users_nav_profiles
 		      WHERE users_nav_profiles_id_user = $1 AND users_nav_profiles_id_subscription = $2 AND users_nav_profiles_id =
-		            (SELECT active_nav_profile_id FROM users WHERE id = $1)) AS active_id,
+		            (SELECT users_id_active_nav_profile FROM users WHERE users_id = $1)) AS active_id,
 		    (SELECT users_nav_profiles_id FROM users_nav_profiles
 		      WHERE users_nav_profiles_id_user = $1 AND users_nav_profiles_id_subscription = $2 AND users_nav_profiles_is_default = TRUE) AS default_id
 	`
