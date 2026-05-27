@@ -11410,6 +11410,23 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `3b41db77` (2026-05-27): test(notif-v2-s05): relay_test.go + sweeper_test.go — integration tests PASS
 > Commit `68fddc55` (2026-05-27): merge: Wave 2 S05 — relay + outbox drain + stuck-claim sweeper
 > Commit `ecf38e82` (2026-05-27): chore(td): TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER
+> Commit `158aec2a` (2026-05-27): feat(notif-v2): domain types — Event, Priority, FanoutMode, Channel, EventType
+> Commit `f2769e98` (2026-05-27): feat(notif-v2): domain — DeliveryInput, DeliveryReceipt, DeliveryStatus
+> Commit `9d79b51f` (2026-05-27): test(notif-v2): domain — EventType parser + Event.Validate
+> Commit `ac3d1daf` (2026-05-27): feat(notif-v2): Producer interface
+> Commit `2ed6dbab` (2026-05-27): feat(notif-v2): dbProducer — Postgres impl of Producer
+> Commit `c376c996` (2026-05-27): test(notif-v2): dbProducer integration — Enqueue + Idempotency + Validation + Tx rollback
+> Commit `26e9d4a5` (2026-05-27): chore(lint): add lint:no-direct-outbox-write
+> Commit `ada34a4a` (2026-05-27): merge: Wave 2 S02 — domain types + Producer interface + dbProducer
+> Commit `43cd767c` (2026-05-27): feat(notif-v2): broadcast.Resolver — inverse-Sentinel impl
+> Commit `b10a1a82` (2026-05-27): test(notif-v2): broadcast.Resolver integration tests
+> Commit `311c3d40` (2026-05-27): feat(notif-v2): broadcast.Auth — CheckPlatformAuth/TopologyAuth/TenantAuth
+> Commit `c3f627d8` (2026-05-27): feat(notif-v2): broadcast.Service — auth→resolve→atomic write
+> Commit `160f1554` (2026-05-27): merge: Wave 2 S03 — broadcast.Service + inverse-Sentinel Resolver + Auth
+> Commit `31b0127d` (2026-05-27): feat(notif-v2): S08 interpolate.go + tests — {{ data.X }} substitution (19 cases pass)
+> Commit `8644014c` (2026-05-27): feat(notif-v2): S08 service.go — DB-backed template lookup, CRUD, version selection, locale fallback
+> Commit `501c867a` (2026-05-27): feat(notif-v2): seed templates for mention + 5 artefact events (12 rows, mig 131)
+> Commit `4af460b5` (2026-05-27): merge: Wave 2 S08 — DB-backed templates + interpolation + 12 seed rows
 
 ---
 
