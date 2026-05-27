@@ -73,6 +73,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/artefactpriorities"
 	"github.com/mmffdev/vector-backend/internal/costcentres"
 	"github.com/mmffdev/vector-backend/internal/artefacttypes"
+	"github.com/mmffdev/vector-backend/internal/flowboard"
 	"github.com/mmffdev/vector-backend/internal/transport"
 	"github.com/mmffdev/vector-backend/internal/workspaces"
 	"github.com/mmffdev/vector-backend/internal/workspaceresolver"
@@ -569,6 +570,15 @@ func main() {
 
 	// Wire topology seeder so every new workspace gets a root topology node.
 	workspacesSvc.WithTopologySeeder(orgDesignSvc)
+
+	// FlowBoard (FB1.2.1 / spec: docs/superpowers/specs/2026-05-27-flowboard-design.md).
+	// Owns topology_nodes_members, topology_nodes_wip_limits, and
+	// users_flowboard_prefs — all three live in vector_artefacts, so the
+	// service takes vaPool. Endpoints return 501 until FB1.2.2/2.3/2.4
+	// fill them in; the router stub is wired now so main.go compile stays
+	// green throughout the implementing stories.
+	flowboardSvc := flowboard.NewService(vaPool)
+	flowboardH := flowboard.NewHandler(flowboardSvc)
 
 	// PLA-0043 — attach the topology resolver to the v2 work/portfolio
 	// services so ?scope=<id> on /work-items can resolve to "this node
@@ -1860,6 +1870,23 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 		tenantSettingsH.Mount(r)
+	})
+
+	// ---- /flowboard + /topology/{id}/members (FB1.2.1 + FB1.4.1 fix) ----
+	// FlowBoard routes: WIP limits, card prefs, and node-members read.
+	// All routes sit behind RequireAuth + RequireFreshPassword + sentinelMW;
+	// the sentinel middleware seeds WorkspaceID onto request context so the
+	// flowboard handlers can compare against the node's workspace and gate
+	// 403 on cross-scope reads. Without sentinelMW, every handler trips
+	// the `clamp.WorkspaceID == uuid.Nil` guard and returns 403.
+	// Per-route permission middleware (member-only WIP write gate) lives
+	// inside handler.go in FB1.2.2 / FB1.2.4.
+	r.Group(func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(sentinelMW)
+		r.Use(httprate.LimitByIP(120, time.Minute))
+		flowboardH.Mount(r)
 	})
 
 	} // end mountSiteRoutes

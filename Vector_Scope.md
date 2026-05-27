@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-26 — B18.9 REVISED: column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL TABLE NAME (`users.users_id`, `subscriptions.subscriptions_tier`, `master_record_workspaces.master_record_workspaces_id`). Mechanical, zero-collision, no registry needed. Matches the existing RF1.4.4 convention already partly applied across 9 migrations on 2026-05-14 (245→0 findings) plus the `lint:column-prefix-convention` lint already in tree. Registry doc `docs/c_c_column_prefix_registry.md` deleted. The 3-letter-abbreviation detour was a 2026-05-25 mistake corrected same-week. Earlier — B18.9 added: 3-letter column-prefix HARD RULE (rolled back). Earlier — B18.8 added: dev-action "Wipe & Reseed Vector substrate" button (one-click rebuild of mmff_vector + vector_artefacts from canonical seed, scoped to vector DBs only — mmff_dev + mmff_library untouched). Picked up after wipe-and-reseed plan completes. Earlier — PLA064 v4 doc refresh: orphan count 508 → 1,263 corrected post-cron-bug-fix (commit 57ed1958); cohort framing updated to match CUT1.5.0 remediation plan. Earlier — CUT1.5.0 added — orphan triage + remediation; the CUT1.0.2 cron's first run found 508 orphans across 14 columns (corrected to 1,263 post-bug-fix); CUT1.5.0 blocks CUT1.5.1; PLA064 v3 posted. Earlier — CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
-**Doc version:** 2.63 (B18.9 REVISED — column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL table-name prefix; registry doc deleted; matches existing RF1.4.4 convention. Earlier: 2.62 — B18.9 3-letter version (rolled back); 2.61 — B18.8 dev wipe-and-reseed action button; 2.60 — PLA064 v4 doc refresh; 2.59 — CUT1.2.1 + CUT1.2.2 merge-plan DDLs; 2.58 — CUT1.5.0 added; 2.57 — CUT1.5.1 corrected 8→50.)
+**Last updated:** 2026-05-27 — NEW FB1 top-level theme: FlowBoard — standalone Kanban component for `/value-flow` (PLA066). 15 stories across 4 phases (schema · backend · frontend · integration); 3 new migrations (132 `topology_nodes_members`, 133 `topology_nodes_wip_limits`, 134 `users_flowboard_prefs`); new `backend/internal/flowboard/` package with 5 endpoints; new `app/components/FlowBoard/` family mirroring ObjectTreeV2's sidecar+loader pattern (`p_wizard_flowboard_workitems.json`); samanthaAPI-addressable. Team ≡ topology node (Rally project-IS-team); WIP hangs off the node keyed by `flow_state_id` (no `flow_boards` table). Spec at `docs/superpowers/specs/2026-05-27-flowboard-design.md`. All 15 `P2 🔵 IN FLIGHT`. Earlier — B18.9 REVISED: column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL TABLE NAME (`users.users_id`, `subscriptions.subscriptions_tier`, `master_record_workspaces.master_record_workspaces_id`). Mechanical, zero-collision, no registry needed. Matches the existing RF1.4.4 convention already partly applied across 9 migrations on 2026-05-14 (245→0 findings) plus the `lint:column-prefix-convention` lint already in tree. Registry doc `docs/c_c_column_prefix_registry.md` deleted. The 3-letter-abbreviation detour was a 2026-05-25 mistake corrected same-week. Earlier — B18.9 added: 3-letter column-prefix HARD RULE (rolled back). Earlier — B18.8 added: dev-action "Wipe & Reseed Vector substrate" button (one-click rebuild of mmff_vector + vector_artefacts from canonical seed, scoped to vector DBs only — mmff_dev + mmff_library untouched). Picked up after wipe-and-reseed plan completes. Earlier — PLA064 v4 doc refresh: orphan count 508 → 1,263 corrected post-cron-bug-fix (commit 57ed1958); cohort framing updated to match CUT1.5.0 remediation plan. Earlier — CUT1.5.0 added — orphan triage + remediation; the CUT1.0.2 cron's first run found 508 orphans across 14 columns (corrected to 1,263 post-bug-fix); CUT1.5.0 blocks CUT1.5.1; PLA064 v3 posted. Earlier — CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
+**Doc version:** 2.64 (NEW FB1 — FlowBoard PLA066, 15 stories, 3 migrations, 1 new backend package, 1 new frontend component family. Earlier: 2.63 — B18.9 REVISED — column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL table-name prefix; registry doc deleted; matches existing RF1.4.4 convention. Earlier: 2.62 — B18.9 3-letter version (rolled back); 2.61 — B18.8 dev wipe-and-reseed action button; 2.60 — PLA064 v4 doc refresh; 2.59 — CUT1.2.1 + CUT1.2.2 merge-plan DDLs; 2.58 — CUT1.5.0 added; 2.57 — CUT1.5.1 corrected 8→50.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -77,6 +77,14 @@
 **OBJ — ObjectTreeV2 / Filter Chips** *(grid scope-clamp parity for the chip surface)*
 
 - [OBJ1. ObjectTreeV2 Filter-Chip Scope Facets (PLA057)](#obj1-objecttreev2-filter-chip-scope-facets-pla057)
+
+**NV — Notifications v2** *(orchestrated PLA rebuild — 16-story Master+Validator+Worker wave model)*
+
+- [NV1. Notifications v2 — PLA build (orchestrated)](#nv1-notifications-v2--pla-build-orchestrated) 🔵 IN FLIGHT
+
+**FB — Flow Visualisation** *(Kanban + flow boards built on the artefacts substrate)*
+
+- [FB1. FlowBoard — standalone Kanban component for /value-flow (PLA066)](#fb1-flowboard--standalone-kanban-component-for-value-flow-pla066) 🔵 IN FLIGHT
 
 **Parked — solo-dev mode** *(WIP-cap overflow; verbatim, awaiting unpark)*
 
@@ -325,6 +333,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 
 > Commit `45507864` (2026-05-25): chore(snapshots): refresh api caller-map + dead-apis after bookmark removal
 - **RF2.5.1** Delete **14 deprecated public Service methods**. **Cross-package cutover FIRST**: `backend/internal/featuretests/f1_workspace_clamp_test.go` L400 (`ListWorkItems`) and L448 (`GetWorkItemInWorkspace`) routed through `Service.Read` before any delete. Verify: `grep '^func (s \*Service) [A-Z]' service.go | wc -l == 12` (4 setters + 8 ops). Private impls (`getWorkItemImpl`, etc.) remain. `rules/evaluator.go` comment-only refs to `artefactitems.Service.Update` refreshed to `Service.Mutate`. **Repurpose Story 11 lint as a guard** — forbids any caller anywhere, not just deprecated. `go build ./...` green; full test suite green. `[P2]` 🔵 IN FLIGHT
@@ -350,6 +359,8 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 ### RF2.6 Phase 6 — Document the win + open follow-up TD
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
@@ -358,6 +369,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
@@ -456,6 +468,10 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
@@ -1117,6 +1133,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1366,6 +1386,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1685,6 +1706,19 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -2064,6 +2098,10 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5b5d88d8` (2026-05-26): feat(p3): Pillar 3 step 2 — drop 16 fdw_* foreign tables + fdw_mmff_vector server [pillar-3-step-2] [RF3.2]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -2155,6 +2193,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2284,6 +2331,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -2382,6 +2438,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2487,6 +2552,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2657,6 +2731,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -2956,6 +3039,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3171,6 +3263,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -3246,6 +3347,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -3558,6 +3668,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3625,6 +3744,15 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `1cf6489d` (2026-05-27): chore(flowboard): bootstrap orchestration handovers [PLA066]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -4151,6 +4279,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `541391ad` (2026-05-24): docs(sentinel): sync 5 PLA062 docs to current code state
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -4192,7 +4321,11 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `f0ed21a4` (2026-05-25): feat(db): replicate auth/identity cluster schema into vector_artefacts [CUT1.3.1]
 > Commit `45507864` (2026-05-25): chore(snapshots): refresh api caller-map + dead-apis after bookmark removal
 > Commit `5b5d88d8` (2026-05-26): feat(p3): Pillar 3 step 2 — drop 16 fdw_* foreign tables + fdw_mmff_vector server [pillar-3-step-2] [RF3.2]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
   >
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
   > **Routes:**
 > Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 > Commit `87b68942` (2026-05-25): docs(td): register TD-AUTH-JWT-WORKSPACE-CLAIM-REFRESH as resolved
@@ -4207,6 +4340,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > - `POST   /artefacts` — create (was `POST /work-items`, `POST /portfolio-items`)
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
@@ -4538,6 +4673,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `93ba728b` (2026-05-26): fix(auth): dpop_jti_cache SQL — bare-column straggler [RF3.1.1]
 > Commit `41bd3d60` (2026-05-26): feat(p3): DROP DATABASE mmff_vector — refactor complete [pillar-3-step-3-final] [RF-COMPLETE]
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B5.14** Permissions page UX: confirm `/user-management/permissions` matrix is the sole authoring surface for `users_roles_pages` — banner copy + remove tier-tier UI hints from related screens (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
@@ -4585,6 +4722,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -4818,6 +4956,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
 > Commit `8f5735ae` (2026-05-26): feat(p2): Pillar 2 — full DB merge mmff_vector → vector_artefacts [pillar-2] [RF2.0]
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
   > Rally-validated seed mechanism (R054 §N2): one workspace-level enum `{none, viewer, editor}` (default `none`). When a user is created inside a workspace, the user-creation path issues a grant at this level on the workspace root node so the user is never in a permission vacuum. Adds a column to `master_record_tenant` (the tenant-settings substrate, see B6.1) plus a hook in the user-create service. Distinct from grant-inheritance: this is a per-user seed at creation time, not a live cascade.
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
@@ -4962,6 +5103,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -5129,6 +5271,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -5361,6 +5506,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5751,6 +5897,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -6110,6 +6257,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -6291,6 +6440,9 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -6392,6 +6544,9 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -6416,6 +6571,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
 > Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -6534,6 +6690,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -6778,6 +6935,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
@@ -7128,6 +7289,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -7332,6 +7495,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -7417,6 +7581,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bfd96136` (2026-05-26): feat(p3): Pillar 3 step 1 — repoint backend pool→vaPool [pillar-3-step-1] [RF3.1]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -7554,6 +7719,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -7726,6 +7895,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -7923,6 +8094,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -8024,6 +8196,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bfd96136` (2026-05-26): feat(p3): Pillar 3 step 1 — repoint backend pool→vaPool [pillar-3-step-1] [RF3.1]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -8235,6 +8408,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -8412,6 +8586,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -8553,6 +8728,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -8659,6 +8835,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -8806,6 +8983,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -8910,6 +9088,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -9156,6 +9335,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -9410,6 +9592,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -9578,6 +9766,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -9755,6 +9946,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -9896,6 +10089,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -10105,6 +10299,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -10150,6 +10348,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `5b5d88d8` (2026-05-26): feat(p3): Pillar 3 step 2 — drop 16 fdw_* foreign tables + fdw_mmff_vector server [pillar-3-step-2] [RF3.2]
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -10277,6 +10477,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -10780,6 +10984,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 
 **Phase 1 — Backend**
 
@@ -10823,6 +11028,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
@@ -10930,6 +11136,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 
 **Phase 2 — Frontend**
 
@@ -11106,6 +11313,9 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 ---
 
@@ -11370,6 +11580,191 @@ Update `docs/c_c_db_routing.md` + `.claude/CLAUDE.md` to reflect the two-DB worl
   - AC: `TD-CUTOVER-MONITORING` opened in `docs/c_tech_debt.md` — 1-month post-cutover audit Sentry/dev_reports for "table not found" stragglers; severity S2.
   - AC: `TD-CUTOVER-CRON-PRODUCTION` closed (cron mooted).
   - AC: `TD-CUTOVER-RLS-DEFERRAL` opened — row-level security and partitioning explicitly deferred; trigger = first multi-tenant scale event.
+
+---
+
+## NV1. Notifications v2 — PLA build (orchestrated) 🔵 IN FLIGHT
+
+Orchestrated rebuild of the notifications stack via the Master + Global Validator + Worker model. Spec lives at `docs/superpowers/specs/2026-05-26-notifications-v2-design.md`. Master dispatches per-story workers on isolated branches (`feature/notifications-v2/sNN-<slug>`); Global Validator gates each PASS and commits into the integration branch `feature/notifications-v2`. 16 stories across 6 waves: schema → producer → broadcast/broker → relay/pipeline/rules/templates → dispatchers → handler/UI → pending/digest → producers → parity/cutover/cleanup. Validator handover at `handovers/notifications-v2-validator.md` carries the per-story checklist, branch model, and pre-existing-dirty-files contract. `[P1]` 🔵 IN FLIGHT
+
+> Commit `038d937e` (2026-05-27): docs(notif-v2): spec for notifications v2 PLA
+> Commit `e6a32d8f` (2026-05-27): chore(notif-v2): init validator handover
+> Commit `923f4db0` (2026-05-27): feat(notif-v2): mig 120 — notifications_events_v2
+> Commit `b9be250f` (2026-05-27): feat(notif-v2): mig 121 — notifications_event_recipients
+> Commit `eab3b267` (2026-05-27): feat(notif-v2): mig 122 — notifications_outbox_v2
+> Commit `9caf22ce` (2026-05-27): feat(notif-v2): mig 123 — notifications_delivery_attempts
+> Commit `254304f5` (2026-05-27): feat(notif-v2): mig 124 — users_notifications_settings
+> Commit `85598f67` (2026-05-27): feat(notif-v2): mig 125 — users_notifications_prefs_v2
+> Commit `bc98292a` (2026-05-27): feat(notif-v2): mig 126 — prefs tier + system defaults
+> Commit `56531069` (2026-05-27): feat(notif-v2): mig 127 — notifications_templates
+> Commit `772411c0` (2026-05-27): feat(notif-v2): mig 128 — notifications_rules_v2
+> Commit `dd211159` (2026-05-27): feat(notif-v2): mig 129 — notifications_users_inbox_v2
+> Commit `0d27defa` (2026-05-27): feat(notif-v2): mig 130 — notifications_platform_channels + seed
+> Commit `3b373efb` (2026-05-27): feat(notif-v2): broker topology constants
+> Commit `90d309bd` (2026-05-27): feat(notif-v2): Broker interface + Envelope + Handler
+> Commit `3802ae8e` (2026-05-27): feat(notif-v2): NoopBroker fallback
+> Commit `44293908` (2026-05-27): feat(notif-v2): RabbitBroker — declare exchange + 6 queues + bind
+> Commit `183c4e4f` (2026-05-27): test(notif-v2): broker round-trip + noop + topology unit tests
+> Commit `57f07b2e` (2026-05-27): chore(lint): add lint:no-v1-broker-imports
+> Commit `0da337b6` (2026-05-27): test(notif-v2): split broker tests by build tag
+> Commit `de23ac83` (2026-05-27): chore(notif-v2): validator handover — Wave 1 closed
+> Commit `3aa329c0` (2026-05-27): docs(notif-v2): Wave 2 plans (S02, S03, S05, S07, S08)
+> Commit `590007c9` (2026-05-27): chore(notif-v2): validator handover — Wave 2 plans approved
+> Commit `e4c1de23` (2026-05-27): feat(notif-v2-s05): claim.go — SKIP LOCKED batch claim for notifications_outbox_v2
+> Commit `319ba827` (2026-05-27): feat(notif-v2-s05): relay.go — outbox drain loop with LISTEN/NOTIFY wakeup
+> Commit `add03436` (2026-05-27): feat(notif-v2-s05): sweeper.go — stuck-claim recovery for crash-after-claim
+> Commit `3b41db77` (2026-05-27): test(notif-v2-s05): relay_test.go + sweeper_test.go — integration tests PASS
+> Commit `68fddc55` (2026-05-27): merge: Wave 2 S05 — relay + outbox drain + stuck-claim sweeper
+> Commit `ecf38e82` (2026-05-27): chore(td): TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER
+> Commit `158aec2a` (2026-05-27): feat(notif-v2): domain types — Event, Priority, FanoutMode, Channel, EventType
+> Commit `f2769e98` (2026-05-27): feat(notif-v2): domain — DeliveryInput, DeliveryReceipt, DeliveryStatus
+> Commit `9d79b51f` (2026-05-27): test(notif-v2): domain — EventType parser + Event.Validate
+> Commit `ac3d1daf` (2026-05-27): feat(notif-v2): Producer interface
+> Commit `2ed6dbab` (2026-05-27): feat(notif-v2): dbProducer — Postgres impl of Producer
+> Commit `c376c996` (2026-05-27): test(notif-v2): dbProducer integration — Enqueue + Idempotency + Validation + Tx rollback
+> Commit `26e9d4a5` (2026-05-27): chore(lint): add lint:no-direct-outbox-write
+> Commit `ada34a4a` (2026-05-27): merge: Wave 2 S02 — domain types + Producer interface + dbProducer
+> Commit `43cd767c` (2026-05-27): feat(notif-v2): broadcast.Resolver — inverse-Sentinel impl
+> Commit `b10a1a82` (2026-05-27): test(notif-v2): broadcast.Resolver integration tests
+> Commit `311c3d40` (2026-05-27): feat(notif-v2): broadcast.Auth — CheckPlatformAuth/TopologyAuth/TenantAuth
+> Commit `c3f627d8` (2026-05-27): feat(notif-v2): broadcast.Service — auth→resolve→atomic write
+> Commit `160f1554` (2026-05-27): merge: Wave 2 S03 — broadcast.Service + inverse-Sentinel Resolver + Auth
+> Commit `31b0127d` (2026-05-27): feat(notif-v2): S08 interpolate.go + tests — {{ data.X }} substitution (19 cases pass)
+> Commit `8644014c` (2026-05-27): feat(notif-v2): S08 service.go — DB-backed template lookup, CRUD, version selection, locale fallback
+> Commit `501c867a` (2026-05-27): feat(notif-v2): seed templates for mention + 5 artefact events (12 rows, mig 131)
+> Commit `4af460b5` (2026-05-27): merge: Wave 2 S08 — DB-backed templates + interpolation + 12 seed rows
+> Commit `2da32062` (2026-05-27): chore(notif-v2): validator handover — Wave 2 S02/S03/S08 closed; S07 REJECTED
+> Commit `4bd778a4` (2026-05-27): chore(notif-v2): master orchestrator handover doc
+> Commit `117c4125` (2026-05-27): chore(notif-v2): validator handover — post-Wave-2 housekeeping turn
+> Commit `e32972bf` (2026-05-27): feat(notif-v2): S07 types + jsonpath + 8 operators — v2/rules foundation
+> Commit `ad942fef` (2026-05-27): feat(notif-v2): S07 evaluator — pgEvaluator.MatchEvent + AND/OR engine
+> Commit `48eca637` (2026-05-27): feat(notif-v2): S07 service — CRUD over notifications_rules_v2
+> Commit `7eaf531d` (2026-05-27): chore(lint): lint:no-stub-evaluator — guard v2 evaluator real implementation
+> Commit `a9fa7d73` (2026-05-27): merge: Wave 2 S07 — rules engine (real matchConditions)
+> Commit `358042aa` (2026-05-27): chore(notif-v2): master handover — Wave 2 closed, ready for Wave 3 next session
+> Commit `8452dd25` (2026-05-27): chore(notif-v2): validator handover — session close, Wave 2 fully closed
+
+---
+
+## FB1. FlowBoard — standalone Kanban component for /value-flow (PLA066) 🔵 IN FLIGHT
+
+Standalone Kanban board whose columns are the **custom flow_states of the selected artefact type**, whose cards are the live artefacts at the current sentinel scope, and whose drag-to-move triggers the existing flow-state PATCH (which already runs the rollup recalc for parents). The board is a view, not a system of record — same emergent-from-artefacts principle as ObjectTreeV2. The only persisted state is **policy** (per-team WIP limits) and **preference** (per-user card field selection). Team ≡ topology node (Rally's project-IS-team pattern); WIP hangs off the node keyed by `flow_state_id` (no `flow_boards` table). Component family mirrors ObjectTreeV2 (`p_FlowBoard.tsx` + `loader.ts` + `configs/p_wizard_flowboard_workitems.json` sidecar) so samanthaAPI can drive it later. Drag-and-drop hard-blocks invalid transitions from `flow_transitions` at the UI; the server validates the PATCH (defence-in-depth per the server-is-the-gate HARD RULE). Three small tables (132 members, 133 wip-limits, 134 user-prefs) + one new `backend/internal/flowboard/` package + the component family is the entire v1 surface. Spec at [`docs/superpowers/specs/2026-05-27-flowboard-design.md`](docs/superpowers/specs/2026-05-27-flowboard-design.md); plan body in [PLA066 on /dev/reporting](http://localhost:5101/dev/reporting). `[P2]` 🔵 IN FLIGHT
+
+**Phase 1 — Schema**
+
+- **FB1.1.1 [P2] 🔵 IN FLIGHT** — Migration 132: `topology_nodes_members` table. Team-membership foundation; one row per (user, topology_node).
+  - AC: `db/vector_artefacts/schema/132_topology_nodes_members.sql` applies clean against vector_artefacts; `schema_migrations` row 132 exists.
+  - AC: Table has PK `topology_nodes_members_id BIGSERIAL`, FKs to `topology_nodes` + `users` with `ON DELETE CASCADE`, `topology_nodes_members_role TEXT DEFAULT 'member'`, `topology_nodes_members_workspace_id BIGINT NOT NULL` (denorm for sentinel clamp), audit timestamps.
+  - AC: UNIQUE constraint on (`node_id`, `user_id`); indexes on each FK column.
+  - AC: Every column carries the full `topology_nodes_members_` prefix; `npm run lint:column-prefix` green.
+  - AC: DOWN migration drops the table; round-trip verified.
+  - Plan: PLA066
+- **FB1.1.2 [P2] 🔵 IN FLIGHT** — Migration 133: `topology_nodes_wip_limits` table. Per-node-per-flow-state WIP cap; NULL = unlimited.
+  - AC: `db/vector_artefacts/schema/133_topology_nodes_wip_limits.sql` applies clean; `schema_migrations` row 133 exists.
+  - AC: Table has PK `topology_nodes_wip_limits_id`, FKs to `topology_nodes` + `flow_states` (both `ON DELETE CASCADE`), `topology_nodes_wip_limits_limit INT` (nullable), denorm workspace_id, `updated_at` + `updated_by` audit columns.
+  - AC: UNIQUE constraint on (`node_id`, `flow_state_id`); index on `node_id`.
+  - AC: Every column carries the full `topology_nodes_wip_limits_` prefix; `npm run lint:column-prefix` green.
+  - AC: DOWN migration drops the table; round-trip verified.
+  - Plan: PLA066
+- **FB1.1.3 [P2] 🔵 IN FLIGHT** — Migration 134: `users_flowboard_prefs` table. Per-user card-field selection; absence = use sidecar default.
+  - AC: `db/vector_artefacts/schema/134_users_flowboard_prefs.sql` applies clean; `schema_migrations` row 134 exists.
+  - AC: Table has PK `users_flowboard_prefs_id`, FKs to `users` + `artefact_types` (both CASCADE), `users_flowboard_prefs_card_fields JSONB NOT NULL`, denorm workspace_id, `updated_at`.
+  - AC: UNIQUE constraint on (`user_id`, `artefact_type_id`).
+  - AC: Every column carries the full `users_flowboard_prefs_` prefix; `npm run lint:column-prefix` green.
+  - AC: DOWN migration drops the table; round-trip verified.
+  - Plan: PLA066
+
+**Phase 2 — Backend**
+
+- **FB1.2.1 [P2] 🔵 IN FLIGHT** — Scaffold `backend/internal/flowboard/` package. Empty handler.go + service.go + sql.go trio mounted in main.go but with no endpoints yet (compile-only).
+  - AC: `backend/internal/flowboard/` exists with `handler.go`, `service.go`, `sql.go`, `handler_test.go`, `service_test.go`.
+  - AC: `backend/cmd/server/main.go` calls `flowboard.NewService(vaPool, …)` and mounts a router stub at `/_site/flowboard/`.
+  - AC: `go build ./…` green; `go vet ./…` green.
+  - AC: Layer discipline: `handler.go` contains no SQL, `sql.go` contains only SQL constants, `service.go` contains no `http.` imports.
+  - Plan: PLA066
+- **FB1.2.2 [P2] 🔵 IN FLIGHT** — WIP endpoints (GET + PUT) with membership gate. Read all WIP rows for a board; UPSERT a single row; permission gated on `topology_nodes_members`.
+  - AC: `GET /_site/flowboard/wip?node_id=&artefact_type_id=` returns 200 with array of WIP rows (each carries flow_state name + state id + limit); sentinel-clamped — out-of-scope returns 403, not 404.
+  - AC: `PUT /_site/flowboard/wip` UPSERTs on (`node_id`, `flow_state_id`); returns 200 with resulting row; caller without a `topology_nodes_members` row for the node returns 403.
+  - AC: `updated_by` set to caller user id, `updated_at` set to `now()` on every write.
+  - AC: Empty `limit` in the PUT body persists as SQL `NULL` (unlimited semantics preserved).
+  - AC: `handler_test.go` covers member-allowed + non-member-403 + cross-scope-403 + UPSERT-idempotent.
+  - Plan: PLA066
+- **FB1.2.3 [P2] 🔵 IN FLIGHT** — Card-prefs endpoints (GET + PUT) with JSONB allowlist. Per-user card-field preferences read/write; validates against a known field-key allowlist.
+  - AC: `GET /_site/flowboard/prefs?artefact_type_id=` returns 200 with caller's row, or 404 if no row exists (frontend falls back to sidecar default).
+  - AC: `PUT /_site/flowboard/prefs` UPSERTs the caller's row on (`user_id`, `artefact_type_id`); body validates against allowlist `["id","title","assignee","points","priority","status","created_at","updated_at"]`; junk keys return 422.
+  - AC: Caller can only write their own row (`caller_user_id` wins, body `user_id` ignored).
+  - AC: `handler_test.go` covers default-shape PUT, junk-key 422, foreign-user write blocked.
+  - Plan: PLA066
+- **FB1.2.4 [P2] 🔵 IN FLIGHT** — Topology node members endpoint. Read membership of a node; used by the frontend permission gate.
+  - AC: `GET /_site/topology/{id}/members` returns 200 with array of `{user_id, role, created_at}` for the node; sentinel-clamped.
+  - AC: Caller out of sentinel scope returns 403.
+  - AC: `handler_test.go` covers in-scope success + out-of-scope 403.
+  - Plan: PLA066
+
+**Phase 3 — Frontend**
+
+- **FB1.3.1 [P2] 🔵 IN FLIGHT** — Scaffold `app/components/FlowBoard/` tree + sidecar JSON. Empty component family mirroring ObjectTreeV2 + the first sidecar config.
+  - AC: Directory tree exists per spec §4: `p_FlowBoard.tsx`, `loader.ts`, `registry.ts`, `configs/p_wizard_flowboard_workitems.json`, `hooks/`, `columns/`, `card/`, `settings/`, `__tests__/`.
+  - AC: Sidecar JSON has all keys from spec §5: `name`, `title`, `description`, `panel.{tone,radius,padding,title,show_panel_chrome}`, `artefact_type_scope`, `exclude_prefixes`, `default_artefact_type_prefix`, `type_switcher.{show,label}`, `card.{default_fields,renderer}`, `columns.{show_wip,wip_format,overage_tone}`, `transitions.mode`, `empty.{title,body}`.
+  - AC: `loader.ts` validates the sidecar shape (TypeScript interface + runtime guard); applies `configOverride`; returns a frozen object; mirrors `ObjectTreeV2/loader.ts` patterns.
+  - AC: `npm run build` green; `npm run lint` green; no `any` in the public types.
+  - AC: `loader.test.ts` covers valid shape + missing required key + bad type for each key.
+  - Plan: PLA066
+- **FB1.3.2 [P2] 🔵 IN FLIGHT** — `useFlowBoardData` hook + sentinel-clamped data wiring. Composes three queries (flow_states + artefacts + WIP rows) into the column/card structure.
+  - AC: Hook returns `{ columns: Array<{flowState, wipLimit, cards}>, isLoading, error }`.
+  - AC: Artefact query is sentinel-clamped server-side; client-side also filters `artefact_type_id` and excludes `prefix === 'EP'`.
+  - AC: Columns ordered by `flow_states.sort` (existing column on mig 004).
+  - AC: WIP rows joined client-side onto the matching column by `flow_state_id`; missing row → `wipLimit = null`.
+  - AC: Vitest covers: empty board, one card per state, over-limit state, unlimited state mixed with limited.
+  - Plan: PLA066
+- **FB1.3.3 [P2] 🔵 IN FLIGHT** — `BoardColumnHeader` rendering + over-WIP states. Renders the header per spec §7.3 (5 states: under, at, over, unlimited, empty).
+  - AC: Header renders `Doing (3/10)` when under limit.
+  - AC: Header renders `Doing (10/10)` at limit, no badge, no red.
+  - AC: Header renders `Doing (11/10)` with a `+1` overage badge AND a red column-state class when over.
+  - AC: Header renders `Doing (11)` (no slash, no badge) when WIP row is NULL.
+  - AC: Header renders `Doing (0)` or `Doing (0/10)` cleanly when empty.
+  - AC: `BoardColumnHeader.test.tsx` covers all five states by snapshot.
+  - Plan: PLA066
+- **FB1.3.4 [P2] 🔵 IN FLIGHT** — `@dnd-kit` drag with hard-blocked invalid transitions. Cards drag between columns; invalid targets are dimmed and non-droppable.
+  - AC: `useFlowStateTransitions(artefactTypeId)` hook returns `isAllowed(from, to)` backed by `flow_transitions` for this type.
+  - AC: During drag, columns where `isAllowed(activeState, columnState) === false` get a `disabled` dnd-kit droppable + a dimmed visual state via a CSS class.
+  - AC: Drop on a disallowed column is physically impossible (dnd-kit rejects).
+  - AC: Drop on an allowed column fires `PATCH /v1/api/artefacts/{id}` with `{flow_states_id: <new>}`; optimistic UI update first; on 4xx revert + toast.
+  - AC: `transitions.test.ts` covers `isAllowed` against a fixture set (3 states, 4 transitions, expected allow/deny matrix).
+  - Plan: PLA066
+- **FB1.3.5 [P2] 🔵 IN FLIGHT** — `BoardCard` + `CardFieldRenderer`. Draggable card; field set comes from user prefs (with sidecar default fallback).
+  - AC: Card renders the field set returned by `users_flowboard_prefs` for (current user, current artefact type); falls back to `config.card.default_fields` when the API returns 404.
+  - AC: Field renderers for the five default fields (`id`, `title`, `assignee`, `points`, `priority`) are pure functions of the artefact row.
+  - AC: Card is draggable via `useDraggable`; visually picks up a drag-overlay via dnd-kit's standard pattern.
+  - AC: Click on the card opens the existing artefact detail flyout (reuse `ObjectTreeDetailFlyout` mount path); no new flyout written.
+  - Plan: PLA066
+- **FB1.3.6 [P2] 🔵 IN FLIGHT** — `WipSettingsModal` (gear icon) + membership gate. Gear-icon top-right opens a modal listing every column with a numeric input; non-members don't see the gear.
+  - AC: Gear icon appears top-right of the board ONLY when the caller has a row in `topology_nodes_members` for the current node (read via `GET /_site/topology/{id}/members` + caller comparison).
+  - AC: Modal lists every column for the current artefact type; each row has a numeric input (blank = unlimited).
+  - AC: Save writes one row per change via `PUT /_site/flowboard/wip` (UPSERT semantics).
+  - AC: On Save, the modal closes and the column headers re-render with new counts.
+  - AC: `permissions.test.ts` covers gear visible for member + gear hidden for non-member.
+  - Plan: PLA066
+- **FB1.3.7 [P2] 🔵 IN FLIGHT** — `p_FlowBoard.tsx` top-level + addressable surface registration. Hybrid uncontrolled/controlled component; registered with samanthaAPI's addressable surface.
+  - AC: Props contract per spec §6: `{ config, topologyNodeId?, artefactTypeId?, onArtefactTypeChange?, configOverride? }`.
+  - AC: When `artefactTypeId` prop is supplied + `onArtefactTypeChange` callback exists, component is controlled (parent owns the dropdown value). When omitted, component owns internal state.
+  - AC: `topologyNodeId` defaults to `useSentinel().current_node_id` when omitted.
+  - AC: `configOverride` shallow-merges over the sidecar before render (samanthaAPI surface).
+  - AC: Component registers `samantha._viewport.app._kind.panel.flow_board_workitems` (slot name from sidecar `name`) via the existing `registry.ts` pattern.
+  - Plan: PLA066
+
+**Phase 4 — Integration**
+
+- **FB1.4.1 [P2] 🔵 IN FLIGHT** — Mount on `/value-flow` page + integration smoke. Page becomes a thin host for FlowBoard with the first sidecar; manual + automated smoke confirms it works end-to-end.
+  - AC: `app/(user)/value-flow/page.tsx` rewritten to a thin host: imports `workItemsBoardJson`, renders `<FlowBoard config={workItemsBoardJson} />` inside the existing `<PageContent>` + `<PageHeading>` + `<PageDescription>` shell.
+  - AC: Seed data: 1 row in `topology_nodes_members` for dev user, 3 rows in `topology_nodes_wip_limits` (Backlog=10, Doing=3, Done=NULL).
+  - AC: Manual smoke: navigate to `/value-flow`; columns render from Story flow states; counts correct; `+N` overage badge shows when seed exceeds limit; epics absent; switching the type dropdown to Defects redraws the columns.
+  - AC: Drag-smoke: drag a card Backlog → Doing; PATCH fires; parent artefact's state rolls up via existing recalc; disallowed drop dims target.
+  - AC: WIP-edit-smoke: open gear modal, change Doing to 5, save, header re-renders.
+  - AC: `npm run test` + `go test ./…` all green.
+  - AC: `<update> -c FlowBoard` inserts a Dev → Components article with TOC entry.
+  - AC: Three TD entries opened in `docs/c_tech_debt.md`: `TD-FLOWBOARD-EXIT-RULES` (S2), `TD-FLOWBOARD-CARD-PREFS-UI` (S3), `TD-FLOWBOARD-WIP-AUDIT` (S2).
+  - Plan: PLA066
 
 ---
 

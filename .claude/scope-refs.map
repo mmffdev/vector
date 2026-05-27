@@ -327,3 +327,18 @@ CUT1.6.2	docs HARD-RULE revision c_c_db_routing CLAUDE.md NEVER-ASSUME-A-DATABAS
 CUT1.5.0	orphan triage remediation cohort artefacts_types artefact_priorities audit_logs settings sidecars dev-tenant cleanup SET-NULL hard-delete SOC2 SY-ORPHAN dry-run merge_plan
 B18.8	wipe reseed dev action vector substrate button substrate one-click rebuild mmff_vector vector_artefacts canonical seed pipeline padmin confirm token endpoint substrate apikeys middleware backend_env dev pre-flight row counts SY003 regenerate
 B18.9	column prefix full table name mmff_vector vector_artefacts users_id users_email subscriptions_tier master_record_workspaces_id lint column-prefix ratchet allowlist CI HARD RULE wipe reseed migration RF1.4.4 convention mechanical
+FB1.1.1	migration topology_nodes_members team membership foundation node user CASCADE workspace_id sentinel clamp BIGSERIAL UNIQUE audit timestamps lint column-prefix
+FB1.1.2	migration topology_nodes_wip_limits WIP cap flow_states unlimited NULL CASCADE node updated_at updated_by audit UNIQUE column-prefix
+FB1.1.3	migration users_flowboard_prefs card-field selection user artefact_types JSONB sidecar default UNIQUE workspace_id column-prefix
+FB1.2.1	scaffold backend internal flowboard package handler service sql trio vaPool router stub /_site/flowboard layer discipline
+FB1.2.2	WIP endpoints GET PUT membership gate node_id artefact_type_id UPSERT sentinel-clamped 403 non-member updated_by NULL unlimited handler_test
+FB1.2.3	card-prefs endpoints JSONB allowlist user prefs UPSERT 404 fallback sidecar 422 junk-keys foreign-user blocked handler_test
+FB1.2.4	topology node members endpoint GET permission gate sentinel-clamped 403 handler_test
+FB1.3.1	scaffold FlowBoard component tree sidecar JSON p_FlowBoard loader registry configs p_wizard_flowboard_workitems hooks columns card settings ObjectTreeV2 frozen configOverride
+FB1.3.2	useFlowBoardData hook sentinel-clamped data wiring flow_states artefacts WIP rows columns cards epic exclusion prefix Vitest
+FB1.3.3	BoardColumnHeader rendering over-WIP states under limit overage badge red column-state unlimited empty snapshot
+FB1.3.4	@dnd-kit drag hard-blocked invalid transitions useFlowStateTransitions isAllowed flow_transitions disabled droppable dimmed optimistic PATCH revert toast
+FB1.3.5	BoardCard CardFieldRenderer draggable user prefs fallback default fields id title assignee points priority useDraggable ObjectTreeDetailFlyout
+FB1.3.6	WipSettingsModal gear icon membership gate topology_nodes_members modal numeric input UPSERT re-render permissions test
+FB1.3.7	p_FlowBoard top-level addressable surface registration hybrid uncontrolled controlled props config topologyNodeId artefactTypeId onArtefactTypeChange configOverride samantha._viewport.app._kind.panel.flow_board_workitems registry
+FB1.4.1	mount value-flow page integration smoke thin host workItemsBoardJson FlowBoard PageContent PageHeading PageDescription seed Backlog Doing Done overage gear update component TD-FLOWBOARD-EXIT-RULES TD-FLOWBOARD-CARD-PREFS-UI TD-FLOWBOARD-WIP-AUDIT

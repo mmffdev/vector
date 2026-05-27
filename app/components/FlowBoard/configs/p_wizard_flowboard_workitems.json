@@ -1,0 +1,35 @@
+{
+  "name": "flow_board_workitems",
+  "title": "Work item flow",
+  "description": "Drag work items across flow states. Counts and WIP shown per column.",
+  "panel": {
+    "tone": "neutral",
+    "radius": "lg",
+    "padding": "md",
+    "title": "Flow board",
+    "show_panel_chrome": true
+  },
+  "artefact_type_scope": "work",
+  "exclude_prefixes": ["EP"],
+  "default_artefact_type_prefix": "US",
+  "type_switcher": {
+    "show": true,
+    "label": "Artefact type"
+  },
+  "card": {
+    "default_fields": ["id", "title", "assignee", "points", "priority"],
+    "renderer": "standard"
+  },
+  "columns": {
+    "show_wip": true,
+    "wip_format": "ratio_with_overage",
+    "overage_tone": "danger"
+  },
+  "transitions": {
+    "mode": "strict"
+  },
+  "empty": {
+    "title": "No work items here yet",
+    "body": "Cards will appear as work items are created at this scope."
+  }
+}

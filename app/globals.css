@@ -12,6 +12,23 @@
   --accent-border: rgba(26, 26, 26, 0.20);
   /* Canonical colour for all tree connectors (T / elbow SVG paths) */
   --tree-connector: var(--border);
+
+  /* ── Semantic aliases used by FlowBoard + shared components ────────────
+     These fill the gap between the legacy bridge tokens above and the
+     canonical primitives in primitives.css. They map to the nearest
+     primitive with sensible light-mode defaults as fallbacks, so the
+     FlowBoard modal and gear button render correctly without a theme pack.
+     Defined here (not primitives.css) because they are derivations, not
+     first-class design decisions — pay down when a theme overhaul lands.
+     TD-FB-CSS-TOKENS resolved 2026-05-27. */
+  --text-primary:      var(--ink,       #1A1A1A);
+  --text-secondary:    var(--ink-muted, #5C5C5C);
+  --surface-hover:     color-mix(in srgb, var(--ink, #1A1A1A) 6%, transparent);
+  --surface-secondary: var(--surface-sunken, #EDEAE4);
+  --surface-input:     var(--surface,   #FFFFFF);
+  --border-default:    var(--border,    #E5E1DA);
+  --border-subtle:     var(--border,    #E5E1DA);
+  --accent-primary:    var(--accent,    #1A1A1A);
 }
 
 /* Dark theme lives in app/styles/primitives.css */
@@ -17873,4 +17890,381 @@ tr.is-editing {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
+}
+
+/* ── FlowBoard — Kanban column header ─────────────────────────────── */
+/* §7.3 of docs/superpowers/specs/2026-05-27-flowboard-design.md
+   5 states: under / at / over / unlimited / empty.
+   Token surface: --status-danger / --status-danger-bg (matches .pill--danger). */
+
+.flow-board__ColumnHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 6px);
+  padding: var(--space-2, 6px) var(--space-3, 8px);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--ink);
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* Over-limit modifier — red tint on the entire header row */
+.flow-board__ColumnHeader-over {
+  color: var(--status-danger);
+  background: var(--status-danger-bg);
+}
+
+.flow-board__ColumnHeader_title {
+  flex: 0 0 auto;
+}
+
+.flow-board__ColumnHeader_countLabel {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* +N overage badge — pill style, danger tone, always visible when over */
+.flow-board__ColumnHeader_badge-overage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px var(--space-2, 6px);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  border: 1px solid var(--status-danger);
+}
+
+/* ───────────────────────── BoardColumn (FB1.3.4) ─────────────────────────── */
+/* Column container used by BoardColumn.tsx.
+   4 classes: base + -disabled (invalid drop target, dimmed) +
+   -over (valid drop target active) + _body (card list wrapper).
+   Token surface: --surface-1/2, --border-subtle, --accent, --radius-md, --space-* */
+
+.flow-board__Column {
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  max-width: 320px;
+  background: var(--surface-1, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3, 8px);
+  gap: var(--space-2, 6px);
+  transition: opacity 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+/* Invalid drop target during drag — dimmed, no pointer events on contents */
+.flow-board__Column-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  border-color: var(--border-subtle);
+  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+}
+
+/* Valid drop target with a card hovering — highlighted border + subtle bg tint */
+.flow-board__Column-over {
+  border-color: var(--accent);
+  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+}
+
+/* Inner card-list wrapper — flex column; min-height keeps empty columns droppable */
+.flow-board__Column_body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 6px);
+  min-height: 80px;
+  overflow-y: auto;
+}
+
+/* ───────────────────────── BoardCard (FB1.3.5) ───────────────────────────── */
+/* Draggable card used by BoardCard.tsx + field renderers from CardFieldRenderer.tsx.
+   Classes:
+     .flow-board__Card              — base card surface (grab cursor)
+     .flow-board__Card-dragging     — card being dragged (grabbing cursor, lifted shadow)
+     .flow-board__Card_field        — base field row
+     .flow-board__Card_field-id     — ID badge (monospace, small)
+     .flow-board__Card_field-title  — title (bolder weight)
+     .flow-board__Card_field-assignee / -points / -priority — inherit _field base
+   Token surface: --surface-1/2, --border-subtle, --radius-md, --space-2/3, --text-muted */
+
+.flow-board__Card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 6px);
+  padding: var(--space-3, 8px);
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: grab;
+  transition: box-shadow 120ms ease, opacity 120ms ease;
+  user-select: none;
+}
+
+/* Visual lift when the card is being dragged */
+.flow-board__Card-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+/* Base field row — flex, small text, muted colour */
+.flow-board__Card_field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 6px);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-muted, var(--ink));
+  line-height: 1.4;
+}
+
+/* ID badge — monospace, extra-small so it reads as metadata, not content */
+.flow-board__Card_field-id {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-muted, var(--ink-muted));
+  letter-spacing: 0.02em;
+}
+
+/* Title — primary content; bolder than base field */
+.flow-board__Card_field-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Assignee, points, priority — inherit base _field styles; no additional overrides needed */
+.flow-board__Card_field-assignee {
+}
+
+.flow-board__Card_field-points {
+}
+
+.flow-board__Card_field-priority {
+}
+
+/* ── FlowBoard WIP Settings — FB1.3.6 ────────────────────────────────────────
+ *
+ *  .flow-board__GearButton          — gear icon button (top-right of board)
+ *  .flow-board__WipModal            — backdrop overlay modifier
+ *  .flow-board__WipModal_dialog     — centred card (composes .modal)
+ *  .flow-board__WipModal_header     — title row
+ *  .flow-board__WipModal_closeBtn   — X close button
+ *  .flow-board__WipModal_body       — scrollable list area
+ *  .flow-board__WipModal_empty      — empty-state message
+ *  .flow-board__WipModal_list       — column list (unstyled)
+ *  .flow-board__WipModal_row        — one column entry (flex row)
+ *  .flow-board__WipModal_label      — column name label
+ *  .flow-board__WipModal_input      — numeric input
+ *  .flow-board__WipModal_footer     — Save + Cancel button row
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.flow-board__GearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.flow-board__GearButton:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.flow-board__GearButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Backdrop: composes from .modal-backdrop; WipModal adds no extra rules
+   beyond the base catalog class. The selector here exists so the JSX
+   class round-trip check passes cleanly. */
+.flow-board__WipModal {
+  /* inherits .modal-backdrop positioning/dimming */
+}
+
+.flow-board__WipModal_dialog {
+  /* inherits .modal sizing/card surface */
+  min-width: 22rem;
+  max-width: 32rem;
+  width: 100%;
+}
+
+.flow-board__WipModal_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.flow-board__WipModal_closeBtn {
+  flex-shrink: 0;
+}
+
+.flow-board__WipModal_body {
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.flow-board__WipModal_empty {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.flow-board__WipModal_list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.flow-board__WipModal_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.flow-board__WipModal_label {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-board__WipModal_input {
+  width: 5.5rem;
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-input, var(--surface-secondary));
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  text-align: right;
+  appearance: textfield;
+}
+
+.flow-board__WipModal_input:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+  border-color: var(--accent-primary);
+}
+
+.flow-board__WipModal_input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.flow-board__WipModal_footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ── FlowBoard top-level — FB1.3.7 ──────────────────────────────────────────
+ *
+ *  .flow-board__Root      — outer wrapper; houses the optional type-switcher
+ *                           toolbar above the board (or empty-type placeholder).
+ *  .flow-board            — the board surface itself (root of DndContext render).
+ *                           data-samantha-slot is placed here for the addressable
+ *                           surface registration (spec §9).
+ *  .flow-board__Toolbar   — flex row: type-switcher label + select + gear button.
+ *                           Rendered at the top of .flow-board__Root (when
+ *                           type_switcher.show === true) AND inside the board
+ *                           root (for the gear button only on inner toolbar).
+ *  .flow-board__TypeLabel — label element for the type-switcher select.
+ *  .flow-board__TypeSelect — native <select> for artefact-type switching.
+ *  .flow-board__Columns   — horizontal flex row of BoardColumn elements;
+ *                           overflows horizontally when column count is high.
+ *  .flow-board__Loading   — placeholder shown while useFlowBoardData is loading
+ *                           or before the type catalogue seeds the active type.
+ *  .flow-board__Error     — shown when useFlowBoardData resolves with an error.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.flow-board__Root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+}
+
+.flow-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+}
+
+.flow-board__Toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.flow-board__TypeLabel {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #6b7280);
+  white-space: nowrap;
+}
+
+.flow-board__TypeSelect {
+  font-size: var(--text-sm, 0.875rem);
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-1, #fff);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+}
+
+.flow-board__TypeSelect:focus-visible {
+  outline: 2px solid var(--focus-ring, #3b82f6);
+  outline-offset: 2px;
+}
+
+.flow-board__Columns {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-4, 1rem);
+  overflow-x: auto;
+  align-items: flex-start;
+  padding-bottom: var(--space-2, 0.5rem);
+}
+
+.flow-board__Loading {
+  padding: var(--space-4, 1rem);
+  color: var(--text-secondary, #6b7280);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.flow-board__Error {
+  padding: var(--space-4, 1rem);
+  color: var(--color-danger, #dc2626);
+  font-size: var(--text-sm, 0.875rem);
 }

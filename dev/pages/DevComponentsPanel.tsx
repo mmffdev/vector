@@ -84,6 +84,16 @@ const COMPONENTS: TocEntry[] = [
       { id: "object-tree-v2-backlog",       label: "Backlog (logical order)" },
     ],
   },
+  {
+    slug: "flow-board",
+    label: "FlowBoard",
+    h2s: [
+      { id: "flow-board-synopsis",      label: "Synopsis" },
+      { id: "flow-board-architecture",  label: "Architecture & file map" },
+      { id: "flow-board-wire-contract", label: "Wire contract" },
+      { id: "flow-board-backlog",       label: "Backlog" },
+    ],
+  },
 ];
 
 /* ─── Two-level collapsible TOC ─────────────────────────────────────── */
@@ -2210,6 +2220,167 @@ users_notification_rules                                -- mig 236+237
                 row (<code>channel='push'</code>), the dispatcher, and a device-registration
                 endpoint. Largest single item — should probably wait until at least items 1–6 are
                 stable.
+              </li>
+            </ol>
+          </section>
+        </article>
+
+        {/* ══════════════════════════════════════════════════════
+            FLOWBOARD
+        ══════════════════════════════════════════════════════ */}
+        <article style={{ marginTop: "var(--space-6)" }}>
+          <h1 className="dui-doc__h1" id="flow-board">FlowBoard</h1>
+          <p className="dui-doc__lead">
+            <code>app/components/FlowBoard/p_FlowBoard.tsx</code> — Kanban board whose columns
+            are the custom flow states of a selected artefact type, cards are live artefacts at
+            the sentinel scope, and card movement fires the existing flow-state PATCH.
+            WIP limits per column, gear-icon modal to edit them, drag-and-drop with hard-blocked
+            transition enforcement, and per-user card-field prefs (read path only in v1).
+          </p>
+
+          {/* ── Synopsis ── */}
+          <section id="flow-board-synopsis">
+            <h2 className="dui-doc__h2">Synopsis</h2>
+            <p className="dui-doc__p">
+              FlowBoard is a sidecar-driven Kanban component. The sidecar JSON
+              (<code>configs/p_wizard_flowboard_workitems.json</code>) declares the artefact type
+              scope, excluded prefixes, default type, type-switcher label, card field set, WIP display
+              format, and transition strictness mode. The component is fully uncontrolled when mounted
+              with only <code>config</code> — it resolves the active topology node from
+              <code>useSentinel().sentinel_focus_node</code> and manages the type-switcher selection
+              internally.
+            </p>
+            <p className="dui-doc__p">
+              Card movement is optimistic: the card shifts to the target column immediately on drop,
+              then a PATCH fires against <code>/_site/artefacts/:id/flow-state</code>. If the
+              PATCH fails the optimistic move reverts and a toast surfaces the error. The backend
+              recalculates parent state roll-ups; a refetch is triggered after a successful PATCH to
+              pick up the recalculated data.
+            </p>
+            <p className="dui-doc__p">
+              WIP limits live in <code>topology_nodes_wip_limits</code> (mig 133). The gear icon
+              opens <code>WipSettingsModal</code> — membership-gated via <code>useNodeMembership</code>.
+              Card clicks open <code>ObjectTreeDetailFlyout</code> with a
+              <code>FlowBoardFlyoutBody</code> adapter that bridges onto <code>ArtefactInlineForm</code>.
+            </p>
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Minimal mount (uncontrolled)</div>
+              <pre className="dui-doc__code">{`import { FlowBoard } from "@/app/components/FlowBoard/p_FlowBoard";
+import workItemsBoardJson from "@/app/components/FlowBoard/configs/p_wizard_flowboard_workitems.json";
+import type { FlowBoardConfig } from "@/app/components/FlowBoard/loader";
+
+<FlowBoard config={workItemsBoardJson as unknown as FlowBoardConfig} />`}</pre>
+            </div>
+            <div className="dui-cat__section">
+              <div className="dui-cat__demo-label">Controlled mount (parent owns type)</div>
+              <pre className="dui-doc__code">{`<FlowBoard
+  config={workItemsBoardJson as unknown as FlowBoardConfig}
+  topologyNodeId={myNodeId}
+  artefactTypeId={activeTypeId}
+  onArtefactTypeChange={setActiveTypeId}
+/>`}</pre>
+            </div>
+          </section>
+
+          {/* ── Architecture & file map ── */}
+          <section id="flow-board-architecture">
+            <h2 className="dui-doc__h2">Architecture &amp; file map</h2>
+            <p className="dui-doc__p">
+              The component is split into two React components to enable clean refetch without
+              modifying hook signatures. Incrementing <code>boardKey</code> remounts
+              <code>FlowBoardBoard</code>, which re-runs <code>useFlowBoardData</code>.
+            </p>
+            <pre className="dui-doc__code">{`app/components/FlowBoard/
+  p_FlowBoard.tsx          — FlowBoard (outer) + FlowBoardBoard (inner) + FlowBoardFlyoutBody adapter
+  loader.ts                — FlowBoardConfig type + loadFlowBoardConfig validator
+  registry.ts              — getFlowBoardSlotName (addressable slot name from config.name)
+  configs/
+    p_wizard_flowboard_workitems.json  — "work" scope sidecar (the v1 ship sidecar)
+  hooks/
+    useFlowBoardData.ts    — columns + cards + WIP limits from backend
+    useFlowBoardDnd.ts     — @dnd-kit drag start/end; activeCard + activeStateId
+    useFlowStateTransitions.ts  — hard-blocked transitions; isAllowed(fromId, toId)
+    usePatchArtefactFlowState.ts — PATCH /_site/artefacts/:id/flow-state
+    useNodeMembership.ts   — GET /_site/topology/:id/members; isMember gate
+  card/
+    BoardCard.tsx          — draggable card; CardFieldRenderer drives field slots
+    CardFieldRenderer.tsx  — renders id/title/assignee/points/priority field slots
+  columns/
+    BoardColumn.tsx        — droppable column + WIP-gate dimming on disallowed drops
+    BoardColumnHeader.tsx  — column header with WIP ratio + +N overage badge
+  settings/
+    WipGearButton.tsx      — gear icon; membership-gated (useNodeMembership)
+    WipSettingsModal.tsx   — modal to edit per-column WIP limits; PUT on save
+  __tests__/
+    BoardCard.test.tsx, BoardColumnHeader.test.tsx, WipSettingsModal.test.tsx,
+    p_FlowBoard.test.tsx, permissions.test.tsx, transitions.test.ts,
+    useFlowBoardData.test.ts, loader.test.ts  (70 tests)`}</pre>
+            <p className="dui-doc__p">
+              DB substrate: <code>topology_nodes_members</code> (mig 132),
+              <code>topology_nodes_wip_limits</code> (mig 133),
+              <code>users_flowboard_prefs</code> (mig 134). Seeded in mig 135
+              (Insurance node, user@ + padmin@, 3 WIP rows).
+            </p>
+          </section>
+
+          {/* ── Wire contract ── */}
+          <section id="flow-board-wire-contract">
+            <h2 className="dui-doc__h2">Wire contract</h2>
+            <pre className="dui-doc__code">{`// FlowBoardProps (p_FlowBoard.tsx)
+interface FlowBoardProps {
+  config:                FlowBoardConfig;          // required — validated sidecar
+  topologyNodeId?:       string;                   // defaults to sentinel_focus_node
+  artefactTypeId?:       string;                   // controlled mode — parent owns
+  onArtefactTypeChange?: (id: string) => void;     // controlled mode — required with artefactTypeId
+  configOverride?:       Partial<FlowBoardConfig>; // shallow-merged over config
+}
+
+// Addressable slot (data-samantha-slot):
+//   samantha._viewport.app._kind.panel.flow_board_{config.name}
+// e.g. for workitems sidecar:
+//   samantha._viewport.app._kind.panel.flow_board_flow_board_workitems
+
+// Backend endpoints consumed:
+//   GET  /_site/flow-states?artefact_type_id=:id          — columns
+//   GET  /_site/artefacts?artefact_type_id=:id&topology_node_id=:id — cards
+//   GET  /_site/topology/:id/wip-limits                   — WIP rows
+//   PUT  /_site/topology/:id/wip-limits                   — WIP save (modal)
+//   GET  /_site/topology/:id/members                      — membership gate
+//   PATCH /_site/artefacts/:id/flow-state                 — card move
+//   GET  /_site/artefacts/card-prefs?artefact_type_id=:id — per-user field prefs (read)
+//   PUT  /_site/artefacts/card-prefs                      — per-user field prefs (write, no UI yet)`}</pre>
+          </section>
+
+          {/* ── Backlog ── */}
+          <section id="flow-board-backlog">
+            <h2 className="dui-doc__h2">Backlog</h2>
+            <ol className="dui-doc__list dui-doc__list--ordered">
+              <li>
+                <strong>Exit-rule predicates (TD-FLOWBOARD-EXIT-RULES, S2).</strong> The
+                <code>flows_transitions.exit_rules</code> JSONB column exists but is not evaluated
+                during drag. The board dims hard-blocked transitions (no transition row) but does
+                not gate on JSON predicates (e.g. &quot;must have story_points set to leave
+                Doing&quot;). Requires a frontend evaluator in <code>useFlowStateTransitions</code>
+                + a backend re-validation in the PATCH handler.
+              </li>
+              <li>
+                <strong>Card-field prefs editor UI (TD-FLOWBOARD-CARD-PREFS-UI, S3).</strong>{" "}
+                The <code>GET/PUT /_site/artefacts/card-prefs</code> endpoints exist (FB1.2.3)
+                and per-user prefs are persisted in <code>users_flowboard_prefs</code>, but no
+                UI lets the user select which fields appear on their cards. The v1 board uses the
+                sidecar&apos;s <code>card.default_fields</code> for all users.
+              </li>
+              <li>
+                <strong>WIP change history (TD-FLOWBOARD-WIP-AUDIT, S2).</strong> WIP edits
+                overwrite the row in-place — no history table. SOC 2 / defence / finance audits
+                cannot reconstruct "who changed Doing from 3 to 5 on date X". Needs a
+                <code>topology_nodes_wip_limits_history</code> trigger + endpoint.
+              </li>
+              <li>
+                <strong>Multi-node board.</strong> v1 renders one node&apos;s columns. A
+                swimlane view across sibling nodes (e.g. all teams in an insurance pillar)
+                would reuse <code>useFlowBoardData</code> once per node and lay them out as
+                swimlanes in a single DndContext.
               </li>
             </ol>
           </section>
