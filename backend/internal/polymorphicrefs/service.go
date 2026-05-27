@@ -129,16 +129,8 @@ func (s *Service) InsertEntityStakeholder(ctx context.Context, tx pgx.Tx, kind E
 // return ErrUnknownEntityKind. The method is kept to avoid breaking
 // callers at compile time; callers should be updated to remove entity
 // bookmark operations (TD-CUT1.1.1-BOOKMARK-SURFACE).
-func (s *Service) InsertPageEntityRef(ctx context.Context, tx pgx.Tx, pageID uuid.UUID, kind EntityKind, entityID, callerSubscription uuid.UUID) error {
-	{
-		return ErrUnknownEntityKind
-	}
-	if _, err := s.LoadParent(ctx, tx, kind, entityID, callerSubscription); err != nil {
-		return err
-	}
-	_, err := tx.Exec(ctx, sqlInsertPageEntityRef,
-		pageID, string(kind), entityID)
-	return err
+func (s *Service) InsertPageEntityRef(_ context.Context, _ pgx.Tx, _ uuid.UUID, _ EntityKind, _, _ uuid.UUID) error {
+	return ErrUnknownEntityKind
 }
 
 // CleanupChildren deletes every polymorphic child row pointing at
