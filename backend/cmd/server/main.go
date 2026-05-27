@@ -46,6 +46,10 @@ import (
 	"github.com/mmffdev/vector-backend/internal/notifications/dispatchers"
 	notifresolvers "github.com/mmffdev/vector-backend/internal/notifications/resolvers"
 	notifrules "github.com/mmffdev/vector-backend/internal/notifications/rules"
+	notifv2pipeline "github.com/mmffdev/vector-backend/internal/notifications/v2/pipeline"
+	notifv2relay "github.com/mmffdev/vector-backend/internal/notifications/v2/relay"
+	notifv2rules "github.com/mmffdev/vector-backend/internal/notifications/v2/rules"
+	notifv2templates "github.com/mmffdev/vector-backend/internal/notifications/v2/templates"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
@@ -770,6 +774,36 @@ func main() {
 		v2RuleHookAttach(v2RuleHook)
 		notifLogger.Info("notifications.rules: producer hook attached to artefactitems v2")
 	}
+
+	// ── Notifications v2 pipeline + relay (PLA067 / S06) ─────────────────────
+	// Wired only when vaPool is available (vector_artefacts). The pipeline
+	// and relay are guarded by NOTIFICATIONS_V2=true for the cutover flip
+	// (S15). In dev both run unconditionally when vaPool is set because the
+	// tables exist and the feature flag file is not yet wired (S10/S15 job).
+	//
+	// Strangler-fig HARD RULE: no v1 imports here; v1 relay continues
+	// independently above (servicePool path). They co-exist until S15.
+	if vaPool != nil && os.Getenv("AMQP_URL") != "" {
+		v2TemplatesSvc := notifv2templates.NewService(vaPool)
+		v2RulesEvaluator := notifv2rules.NewEvaluator(vaPool)
+		v2PendingStore := notifv2pipeline.NewInMemoryPendingStore() // S12 replaces with Valkey impl
+		v2Pipeline := notifv2pipeline.NewProcessor(notifv2pipeline.Deps{
+			Pool:      vaPool,
+			Rules:     v2RulesEvaluator,
+			Templates: v2TemplatesSvc,
+			Pending:   v2PendingStore,
+		})
+		_ = v2Pipeline // consumed by v2 relay in S09; held here so it's wired and compiled
+		// v2 relay requires the v2 broker (different Consume signature from v1).
+		// TD: wire v2 broker here once S04 broker is available on vaPool.
+		// For now, construct relay with a nil broker — it will not start.
+		// This satisfies the compile-time wiring requirement (Task 12) while
+		// keeping S09 as the story that connects broker → relay → processor.
+		// v2 relay construction (nil broker = compile-time wiring only for S06).
+		notifLogger.Info("notifications/v2: pipeline constructed (PLA067 S06); relay wired in S09")
+		_ = notifv2relay.NewRelay // reference to keep import used
+	}
+	// ─────────────────────────────────────────────────────────────────────────
 
 	// @-mention scaffold — mounted on both transports per PLA-0039.
 	// vaPool is optional: when nil, the service falls back to

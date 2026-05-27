@@ -434,7 +434,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(container_last_seen{job=\"cadvisor\",name!=\"\",name!~\"vector-dev-netdata.*\"})",
+          "expr": "count(container_last_seen{job=\"cadvisor\",name!=\"\"})",
           "legendFormat": "containers",
           "range": true,
           "refId": "A"
@@ -1280,7 +1280,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "topk(12, sum by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",name!=\"\",name!~\"vector-dev-netdata.*\"}[$__rate_interval])) * 100)",
+          "expr": "topk(12, sum by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",name!=\"\"}[$__rate_interval])) * 100)",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -1357,7 +1357,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "topk(12, container_memory_working_set_bytes{job=\"cadvisor\",name!=\"\",name!~\"vector-dev-netdata.*\"})",
+          "expr": "topk(12, container_memory_working_set_bytes{job=\"cadvisor\",name!=\"\"})",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -1435,7 +1435,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "topk(12, sum by (name) (rate(container_network_receive_bytes_total{job=\"cadvisor\",name!=\"\",name!~\"vector-dev-netdata.*\"}[$__rate_interval])))",
+          "expr": "topk(12, sum by (name) (rate(container_network_receive_bytes_total{job=\"cadvisor\",name!=\"\"}[$__rate_interval])))",
           "legendFormat": "rx {{name}}",
           "range": true,
           "refId": "A"
@@ -1446,7 +1446,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "topk(12, sum by (name) (rate(container_network_transmit_bytes_total{job=\"cadvisor\",name!=\"\",name!~\"vector-dev-netdata.*\"}[$__rate_interval])))",
+          "expr": "topk(12, sum by (name) (rate(container_network_transmit_bytes_total{job=\"cadvisor\",name!=\"\"}[$__rate_interval])))",
           "legendFormat": "tx {{name}}",
           "range": true,
           "refId": "B"
