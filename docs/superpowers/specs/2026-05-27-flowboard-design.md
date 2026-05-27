@@ -33,6 +33,8 @@ The board is a **view**, not a system of record. Like ObjectTreeV2, it builds fr
 
 Three new tables. Migrations: next NNN starts at **132** (last applied = 131).
 
+> **2026-05-27 correction.** The SQL snippets below show `BIGINT`/`BIGSERIAL` for illustrative purposes, but the **live `vector_artefacts` schema uses `UUID` for every PK and FK** (`topology_nodes.topology_nodes_id`, `users.users_id`, `artefact_types`/`artefacts_types.id` — all UUID). Implementation MUST use `UUID PRIMARY KEY DEFAULT gen_random_uuid()` and `UUID NOT NULL` for FKs to match the live schema and avoid FK type mismatches. Also note: the artefact-types table was renamed `artefact_types → artefacts_types` in mig 062 (RF1.4.2 plural sweep); references in §3.3 and §8 should use `artefacts_types`.
+
 ### 3.1 `topology_nodes_members` (mig 132)
 
 The foundation: who is a member of this node ("team"). Used by permission gates.
