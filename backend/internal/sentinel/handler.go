@@ -14,6 +14,7 @@ package sentinel
 // live DB.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -24,15 +25,95 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 )
 
-// Handler wraps the Resolver to expose the few mutations the frontend
-// issues against per-user Sentinel preferences.
-type Handler struct {
-	R Resolver
+// BootUserPayload is the user-portion of the /sentinel/boot wire shape.
+// Mirrors app/sentinel/types.ts:SentinelUser exactly — every field name +
+// JSON tag is part of the contract the SentinelProvider reads.
+type BootUserPayload struct {
+	ID                     uuid.UUID  `json:"id"`
+	Email                  string     `json:"email"`
+	TenantID               uuid.UUID  `json:"tenant_id"`
+	Role                   string     `json:"role"`
+	RoleID                 uuid.UUID  `json:"role_id"`
+	Permissions            []string   `json:"permissions"`
+	DefaultFocusNodeID     *uuid.UUID `json:"default_focus_node_id"`
+	HomeLocationFollowMode bool       `json:"home_location_follow_mode"`
+	WorkspaceID            uuid.UUID  `json:"workspace_id"`
+	MFAEnrolled            bool       `json:"mfa_enrolled,omitempty"`
+	ForcePasswordChange    bool       `json:"force_password_change,omitempty"`
 }
 
-// NewHandler constructs a Handler bound to the given Resolver.
+// BootTenant matches app/sentinel/types.ts:SentinelTenant. Name is left
+// empty for now — matches the historical bridge synthesis (path 2) the
+// frontend has been receiving and rendering correctly.
+type BootTenant struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// BootGrant is the wire shape for one entry in `grants[]`. JSON tags
+// match topology.MyGrant + app/sentinel/types.ts:SentinelGrant exactly
+// so this struct is interchangeable with both — the boot composer just
+// re-exports topology rows via this type to avoid an inter-package import.
+type BootGrant struct {
+	GrantID       uuid.UUID  `json:"grant_id"`
+	NodeID        uuid.UUID  `json:"node_id"`
+	WorkspaceID   uuid.UUID  `json:"workspace_id"`
+	ParentID      *uuid.UUID `json:"parent_id"`
+	Name          string     `json:"name"`
+	LabelOverride *string    `json:"label_override"`
+	Colour        *string    `json:"colour"`
+	Icon          *string    `json:"icon"`
+	Role          any        `json:"role"`
+	GrantedAt     any        `json:"granted_at"`
+	Position      int        `json:"position"`
+}
+
+// BootPayload is the response body for GET /sentinel/boot. Mirrors the
+// SentinelBootPayload wire contract in app/sentinel/types.ts.
+type BootPayload struct {
+	User        BootUserPayload `json:"user"`
+	Tenant      BootTenant      `json:"tenant"`
+	Grants      []BootGrant     `json:"grants"`
+	TenantRoot  string          `json:"tenant_root"`
+}
+
+// LoadRoleAndPermsFn returns (roleCode, roleID, permissions) for the user.
+// Injected by the composition root (main.go) to avoid a sentinel→auth
+// import cycle. Matches the shape of auth.Service.LoadRoleAndPermissions
+// flattened to the three fields the boot payload needs.
+type LoadRoleAndPermsFn func(ctx context.Context, userID uuid.UUID) (roleCode string, roleID uuid.UUID, permissions []string)
+
+// ListGrantsFn returns the caller's grants as []BootGrant. Injected by
+// the composition root to avoid a sentinel→topology import cycle. The
+// adapter in main.go calls topology.Service.ListMyGrants and copies the
+// rows into BootGrant (identical JSON tags — straight field copy).
+type ListGrantsFn func(ctx context.Context, subscriptionID, userID, actorRoleID uuid.UUID) ([]BootGrant, error)
+
+// Handler wraps the Resolver to expose the few mutations the frontend
+// issues against per-user Sentinel preferences.
+//
+// LoadRolePerms + ListGrants are optional — only required if /sentinel/boot
+// is mounted. PutFocus does not use them. Nil-safety lets older callers
+// keep using NewHandler(resolver) without breaking; the Boot handler
+// short-circuits to 500 if either dependency is missing.
+type Handler struct {
+	R             Resolver
+	LoadRolePerms LoadRoleAndPermsFn
+	ListGrants    ListGrantsFn
+}
+
+// NewHandler constructs a Handler bound to the given Resolver. Boot
+// support (LoadRolePerms + ListGrants) is added via WithBootDeps.
 func NewHandler(r Resolver) *Handler {
 	return &Handler{R: r}
+}
+
+// WithBootDeps returns h with the boot-composition dependencies attached.
+// Callers that don't mount /sentinel/boot can skip this entirely.
+func (h *Handler) WithBootDeps(loadRolePerms LoadRoleAndPermsFn, listGrants ListGrantsFn) *Handler {
+	h.LoadRolePerms = loadRolePerms
+	h.ListGrants = listGrants
+	return h
 }
 
 // putFocusReq is the wire shape for PUT /sentinel/focus.
@@ -125,4 +206,91 @@ func (h *Handler) PutFocus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Boot composes the SentinelProvider boot payload from the authenticated
+// user's role+permissions and topology grants. Replaces the historical
+// frontend bridge that fetched /auth/me + /topology/grants/me separately
+// — saves one round-trip and a 404 probe on every page load.
+//
+// Wire:
+//
+//	GET /_site/sentinel/boot
+//	200: { user, tenant, grants, tenant_root }
+//	401: unauthenticated
+//	500: dependency missing or DB error
+//
+// tenant_root is derived from the grants slice — the topmost grant
+// (no parent_id) wins; falls back to the first grant's node_id; empty
+// string if the user has no grants. Mirrors the frontend bridge's
+// algorithm exactly so the cutover is a no-op for the provider.
+func (h *Handler) Boot(w http.ResponseWriter, r *http.Request) {
+	actor := auth.UserFromCtx(r.Context())
+	if actor == nil {
+		writeProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"authentication required")
+		return
+	}
+	if h.LoadRolePerms == nil || h.ListGrants == nil {
+		log.Print("sentinel.Boot: handler not configured with boot deps (WithBootDeps)")
+		writeProblem(w, r, http.StatusInternalServerError, "internal",
+			"boot composition not wired")
+		return
+	}
+
+	roleCode, roleID, perms := h.LoadRolePerms(r.Context(), actor.ID)
+	grants, err := h.ListGrants(r.Context(), actor.SubscriptionID, actor.ID, actor.RoleID)
+	if err != nil {
+		log.Printf("sentinel.Boot ListGrants: %v", err)
+		writeProblem(w, r, http.StatusInternalServerError, "internal",
+			"grant lookup failed")
+		return
+	}
+	// Defensive: nil → empty slice so the JSON encodes `[]` not `null`.
+	// SentinelProvider's grant walker tolerates both but `[]` matches
+	// the bridge synthesis path's behaviour exactly.
+	if grants == nil {
+		grants = []BootGrant{}
+	}
+
+	// Derive tenant_root from the grants — topmost grant (no parent_id)
+	// wins; fall back to the first grant's node; empty string if no
+	// grants. Same algorithm as the frontend bridge (path 2).
+	var tenantRoot string
+	for _, g := range grants {
+		if g.ParentID == nil {
+			tenantRoot = g.NodeID.String()
+			break
+		}
+	}
+	if tenantRoot == "" && len(grants) > 0 {
+		tenantRoot = grants[0].NodeID.String()
+	}
+
+	// Build user payload — fields mirror SentinelUser exactly.
+	user := BootUserPayload{
+		ID:                     actor.ID,
+		Email:                  actor.Email,
+		TenantID:               actor.SubscriptionID,
+		Role:                   roleCode,
+		RoleID:                 roleID,
+		Permissions:            perms,
+		DefaultFocusNodeID:     actor.DefaultFocusNodeID,
+		HomeLocationFollowMode: actor.HomeLocationFollowMode,
+		WorkspaceID:            actor.WorkspaceID,
+		MFAEnrolled:            actor.MFAEnrolled,
+		ForcePasswordChange:    actor.ForcePasswordChange,
+	}
+
+	payload := BootPayload{
+		User:       user,
+		Tenant:     BootTenant{ID: actor.SubscriptionID},
+		Grants:     grants,
+		TenantRoot: tenantRoot,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		log.Printf("sentinel.Boot encode: %v", err)
+	}
 }

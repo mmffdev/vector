@@ -1244,20 +1244,64 @@ func main() {
 	// future tightening (e.g. scoping writes to the actor's current
 	// workspace) and so any future scope_up/down preference writes
 	// inherit the same gate.
-	sentinelH := sentinel.NewHandler(sentinelResolver)
+	// /sentinel/boot composes user + grants + tenant_root into the
+	// single payload SentinelProvider needs on mount. Without this
+	// mount the frontend bridged via /auth/me + /topology/grants/me,
+	// paying a wasted 404 probe on every page load. Injecting the
+	// two service calls via closure keeps the sentinel package free
+	// of auth/topology imports (avoids cycles).
+	sentinelLoadRolePerms := func(ctx context.Context, userID uuid.UUID) (string, uuid.UUID, []string) {
+		rp, perms := authSvc.LoadRoleAndPermissions(ctx, userID)
+		return rp.Code, rp.ID, perms
+	}
+	sentinelListGrants := func(ctx context.Context, subID, userID, actorRoleID uuid.UUID) ([]sentinel.BootGrant, error) {
+		rows, err := orgDesignSvc.ListMyGrants(ctx, subID, userID, actorRoleID)
+		if err != nil {
+			return nil, err
+		}
+		// Field-for-field copy — identical JSON tags. Role + GrantedAt
+		// come through as the topology types (Role enum, time.Time) and
+		// land in BootGrant's `any` slots, where encoding/json writes
+		// them with the same shape the chrome scope-rail consumes
+		// today via /topology/grants/me.
+		out := make([]sentinel.BootGrant, len(rows))
+		for i, g := range rows {
+			out[i] = sentinel.BootGrant{
+				GrantID:       g.GrantID,
+				NodeID:        g.NodeID,
+				WorkspaceID:   g.WorkspaceID,
+				ParentID:      g.ParentID,
+				Name:          g.Name,
+				LabelOverride: g.LabelOverride,
+				Colour:        g.Colour,
+				Icon:          g.Icon,
+				Role:          g.Role,
+				GrantedAt:     g.GrantedAt,
+				Position:      g.Position,
+			}
+		}
+		return out, nil
+	}
+	sentinelH := sentinel.NewHandler(sentinelResolver).
+		WithBootDeps(sentinelLoadRolePerms, sentinelListGrants)
 	r.Route("/sentinel", func(r chi.Router) {
 		// NB: NotFound MUST be registered BEFORE the .With(...) chain
 		// because chi runs the group's middleware stack on prefix-match
-		// alone — so an unknown sub-route like /sentinel/boot would
-		// otherwise hit RequireAuth and 401 instead of 404. The
-		// frontend's fetchBoot() probes /sentinel/boot first and falls
-		// back to a /auth/me + /topology/grants/me bridge on 404; a
-		// 401 here was triggering the SentinelProvider 401 hook and
-		// looping into a hard logout. The explicit NotFound short-
-		// circuits chi's middleware chain for unmatched sub-routes.
+		// alone — so any sub-route NOT explicitly mounted below would
+		// otherwise hit RequireAuth and 401 instead of 404. This was
+		// originally a workaround for the (then-unmounted) /boot probe;
+		// /boot is mounted as a real GET below, so the NotFound now
+		// only catches truly unknown sub-paths (defence-in-depth so a
+		// future probe doesn't accidentally trigger the 401 hook).
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 		})
+		r.With(
+			authSvc.RequireAuth,
+			authSvc.RequireFreshPassword,
+			httprate.LimitByIP(120, time.Minute),
+			sentinelMW,
+		).Get("/boot", sentinelH.Boot)
 		r.With(
 			authSvc.RequireAuth,
 			authSvc.RequireFreshPassword,
