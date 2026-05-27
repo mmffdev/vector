@@ -1,0 +1,10 @@
+areas:
+  - id: sentinel
+    label: Sentinel
+    tables:
+      - users
+      - users_roles
+  - id: topology
+    label: Topology
+    tables:
+      - topology_nodes
