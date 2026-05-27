@@ -16,14 +16,24 @@
 - 2026-05-27 — Spec written (`docs/superpowers/specs/2026-05-27-flowboard-design.md`).
 - 2026-05-27 — Plan PLA066 POSTed to `dev_reports` (`type=plan`).
 - 2026-05-27 — 15 stories added to `Vector_Scope.md` under new FB1 theme; doc version 2.63 → 2.64.
-- 2026-05-27 — 15 entries appended to `.claude/scope-refs.map` for commit-note hook resolution.
+- 2026-05-27 — 15 entries appended to `.claude/scope-refs.map`.
 - 2026-05-27 — Pre-flight commit `5742f1bc` on `feature/notifications-v2`.
 - 2026-05-27 — Integration branch `feature/flowboard` created off `5742f1bc`.
 - 2026-05-27 — Master + validator handovers initialised.
+- 2026-05-27 — Spec UUID-correction patch landed (`f98bc796`) — live `vector_artefacts` schema is UUID throughout, not BIGINT as the original spec illustrated. Also pinned: `artefact_types → artefacts_types` (mig 062) and `flow_states → flows_states` (mig 061).
+- 2026-05-27 — **Phase 1 (Schema) closed — 3/3 migrations applied to `vector_artefacts` and merged.**
+  - **FB1.1.1** mig 132 `topology_nodes_members` — merged `df6d412c`. PASS first cycle.
+  - **FB1.1.2** mig 133 `topology_nodes_wip_limits` — merged `cc4abf58`. 1 REJECT-fix cycle (stripped `INSERT INTO schema_migrations (version)` and DOWN `DELETE` — live table is keyed by `filename TEXT PK`, not `version`).
+  - **FB1.1.3** mig 134 `users_flowboard_prefs` — merged `bd417a86`. 2 REJECT-fix cycles (1: inline DOWN comment block; 2: BIGSERIAL/BIGINT → UUID).
+- 2026-05-27 — **Patterns learned in Phase 1 (pinned in validator handover § Self-assessment):**
+  - `schema_migrations` is keyed by `filename TEXT PK` + `applied_at TIMESTAMPTZ`. UP files must NOT contain any `INSERT INTO schema_migrations` — validator backfills externally after apply.
+  - Bulk migrator (`go run ./cmd/migrate`) reports 39 phantom pending migrations from a post-refactor substrate-vs-ledger drift. **Unusable.** Apply each new migration via direct `psql -f` + manual ledger backfill.
+  - libpq: `/opt/homebrew/Cellar/libpq/18.3/bin/psql`; conn: `PGPASSWORD=$(grep '^DB_PASSWORD=' backend/.env.dev | cut -d= -f2) ... user=mmff_dev` (not `postgres`).
+  - Workers MUST verify live schema before writing migrations — spec is corrected but worker output sometimes predates corrections. Future briefs cite live-schema-first.
 
 ## What is IN PROGRESS
 
-- None yet. Orchestration loop hasn't dispatched its first worker.
+- **Phase 2 (Backend)** — FB1.2.1 scaffold worker complete at `2db247ff`; Opus validator dispatched and gating now.
 
 ## What is NEXT
 
