@@ -464,6 +464,63 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /admin/dev/erd:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/erd
+      operationId: getAdminDevErd
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: erdH.Get
+        file: backend/internal/erd/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - admin
+      summary: POST /admin/dev/erd
+      operationId: postAdminDevErd
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: erdH.Snapshot
+        file: backend/internal/erd/handler.go
+      responses:
+        '201':
+          description: 201 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /admin/dev/master-reset:
     post:
       tags:

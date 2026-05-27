@@ -34,6 +34,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/devreports"
+	"github.com/mmffdev/vector-backend/internal/erd"
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
 	"github.com/mmffdev/vector-backend/internal/fields"
 	"github.com/mmffdev/vector-backend/internal/flows"
@@ -614,6 +615,13 @@ func main() {
 	// pass servicePool to keep the existing wiring shape intact until
 	// Pillar 3 step 3 collapses to a single pool argument.
 	devResetH = portfoliomodels.NewDevResetHandler(servicePool, vaPool, orgDesignSvc)
+
+	// /dev/erd — live + snapshot ERD page (PLA-ERD).
+	// vaPool = vector_artefacts (vaPool), libPools.RO = mmff_library.
+	// Group taxonomy: dev/audits/erd_groups.yaml (separate from system_areas.yaml
+	// which the codegraph audit uses for code-path tagging — different schema).
+	erdSvc := erd.NewService(vaPool, libPools.RO, "dev/audits/erd_groups.yaml")
+	erdH := erd.NewHandler(erdSvc, "dev/audits")
 
 	// Tenant settings (master_record_workspaces — renamed from
 	// master_record_tenants by migration 067 on 2026-05-15). Reads /
@@ -1403,6 +1411,8 @@ func main() {
 				r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
 				r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
 				r.Get("/dev/api-audit", devResetH.ApiAudit)
+				r.Get("/dev/erd", erdH.Get)
+				r.Post("/dev/erd", erdH.Snapshot)
 				r.Get("/dev/codegraph", devResetH.Codegraph)
 				r.Get("/dev/source", devResetH.Source)
 				// Inline closure (not `devReportsH.Mount` as the second arg)
