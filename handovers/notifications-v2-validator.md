@@ -55,7 +55,7 @@ Leave these alone — they belong to a separate ongoing work item:
 ## PROGRESS
 
 - Wave 1: ✅ CLOSED — S01 + S04 merged into `feature/notifications-v2` (merges `fa0b78e1`, `801928f8`); scope backfill `11502250`
-- Wave 2: pending — Master to set up worktree isolation before dispatch
+- Wave 2: 🟡 PLANS APPROVED — five worker briefs committed (`3aa329c0`, 2026-05-27); awaiting Master worktree-isolated dispatch
 - Wave 3: pending
 - Wave 4: pending
 - Wave 5: pending
@@ -66,13 +66,13 @@ Leave these alone — they belong to a separate ongoing work item:
 | # | Story | Branch | Status | Validator verdict | SHA |
 |---|---|---|---|---|---|
 | S01 | Schema migrations (11 tables — mig 120..130, indexes, CHECK, seed `notifications_platform_channels`) | `notif-v2-s01` (new, clean) | recovered + validated | **PASS** | tip `0d27defa` |
-| S02 | Domain types + Producer interface + dbproducer | feature/notifications-v2/s02-producer | not started | — | — |
-| S03 | Inverse-Sentinel Resolver + broadcast.Service | feature/notifications-v2/s03-broadcast | not started | — | — |
+| S02 | Domain types + Producer interface + dbproducer | `notif-v2-s02` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
+| S03 | Inverse-Sentinel Resolver + broadcast.Service | `notif-v2-s03` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
 | S04 | RabbitMQ broker wrapper + exchange/queue declarations | `notif-v2-s04` (new, clean) | recovered + validated | **PASS — fixup needed** (test build-tag) | tip `57f07b2e` |
-| S05 | Relay + outbox drain + stuck-claim sweeper | feature/notifications-v2/s05-relay | not started | — | — |
+| S05 | Relay + outbox drain + stuck-claim sweeper | `notif-v2-s05` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
 | S06 | Pipeline: enrich → filter → router | feature/notifications-v2/s06-pipeline | not started | — | — |
-| S07 | Rules engine — real matchConditions | feature/notifications-v2/s07-rules | not started | — | — |
-| S08 | Templates: DB-backed lookup + interpolation + seed templates | feature/notifications-v2/s08-templates | not started | — | — |
+| S07 | Rules engine — real matchConditions | `notif-v2-s07` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
+| S08 | Templates: DB-backed lookup + interpolation + seed templates | `notif-v2-s08` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
 | S09 | Dispatchers: interface + in_app + sse + email (real) + audit writer | feature/notifications-v2/s09-dispatchers | not started | — | — |
 | S10 | Handler (read side) + sentinel clamps + frontend rewire | feature/notifications-v2/s10-handler | not started | — | — |
 | S11 | Broadcast handlers + admin UIs + preview-count | feature/notifications-v2/s11-broadcast-ui | not started | — | — |
@@ -203,16 +203,31 @@ Linter discipline (Amendment 1) — track new rules introduced by each story so 
 | Lint rule | Introduced by | Status | Notes |
 |---|---|---|---|
 | `lint:no-v1-broker-imports` | S04 | **landed** (`57f07b2e`) | Strangler-fig — v2 broker code must not import `backend/internal/notifications/broker`. Grep script + ledger entry + npm-script wiring. Lint PASS on `notif-v2-s04`. |
+| `lint:no-direct-outbox-write` | S02 (planned) | planned (`3aa329c0`) | External producers must use `producer.Producer.Enqueue/EnqueueTx`; raw INSERTs into `notifications_events_v2`/`notifications_outbox_v2`/`notifications_event_recipients` outside `backend/internal/notifications/v2/` fail this lint. Grep script. |
+| `lint:no-stub-evaluator` | S07 (planned) | planned (`3aa329c0`) | Rules evaluator must not contain v1 stub markers (`return true, nil // stub`). Grep against `backend/internal/notifications/v2/rules/evaluator.go`. |
 | (sentinel clamp v2 scan-list) | S10 | planned | Add `backend/internal/notifications/v2/` to `backend/internal/lintchecks/sentinel_clamp_test.go` scan list. Spec §Testing Layer 5. Not a new lint, but a scope extension of existing. |
 | `lint:column-prefix` scope sweep | S01 | **resolved (no extension needed)** | Existing `lint:column-prefix-convention` is table-list-free — auto-picked up the 11 new v2 tables with zero violations. PENDING LINTS row closed. |
 
 ## RECENT ACTIVITY (last 5 actions, newest first)
 
+6. 2026-05-27 — **Wave 2 plans approved + committed (`3aa329c0`)** on `feature/notifications-v2`. Five docs reviewed against the 9-item plan-doc checklist: S02 domain+producer (5pt), S03 broadcast service (8pt), S05 relay+sweeper (5pt), S07 rules engine (8pt), S08 templates+seeds (5pt). All PASS — every plan cites correct spec sections (Architecture / Interfaces / End-to-end / Data model / Locked decisions), uses flat `notif-v2-sNN` branch naming per Wave 1 lesson, has explicit `git branch --show-current` worktree-confirm in Task 1, bite-sized tasks with full code/SQL blocks, no placeholders, DoD checklist + Risks table. Cross-story imports documented (S03/S05/S07/S08 → S02 domain; S05 → S04 broker). Two new lint rules surfaced (`lint:no-direct-outbox-write` in S02, `lint:no-stub-evaluator` in S07). Pre-existing dirty four stashed for the commit and restored after via `git checkout --ours` on the Vector_Scope.md conflict (stash contents were hook noise — discarded). Plans commit `3aa329c0`; handover commit follows; scope-entry commit follows.
 5. 2026-05-27 — **Wave 1 recovery complete.** Cut clean branches `notif-v2-s01` (11 commits, tip `0d27defa`) and `notif-v2-s04` (6 commits, tip `57f07b2e`) off `feature/notifications-v2` (`9c2d0026`). Split contaminated `4233a7da` into one mig-120 commit on S01 and one broker.go commit on S04. Extracted mig 128 from contaminated `750855df` (Vector_Scope.md hunks discarded). Scratch branches `s01-schema` + `s04-broker` preserved as audit evidence. S01 PASS; S04 PASS-with-followup (test build-tag split needed). Async scope hook handled via temporary `.disabled` rename for the duration of the cherry-picks. Dirty four restored unchanged.
 4. 2026-05-27 — Master directive: branch naming convention updated for Wave 2 onward — `notif-v2-sNN-<slug>` (no slash, no parent prefix). Workers MUST run in isolated worktrees.
 3. 2026-05-27 — Wave 1 plans reviewed + committed (`65f2bfb9`) on `feature/notifications-v2`. Three docs: `docs/superpowers/plans/2026-05-26-notifications-v2-index.md`, `…-s01-schema.md`, `…-s04-broker.md`. Pre-existing dirty four preserved.
 2. 2026-05-27 — Master directive: TWO amendments added (Amendment 1 linter discipline; Amendment 2 scope-entry-per-story).
 1. 2026-05-27T00:20:03Z — Validator init complete. Spec committed to main (`038d937e`). Cut `feature/notifications-v2` from spec commit.
+
+## WAVE 2 PLANS — APPROVED 2026-05-27 (commit `3aa329c0`)
+
+| Story | Plan path | Estimate | Notes |
+|---|---|---|---|
+| S02 | `docs/superpowers/plans/2026-05-26-notifications-v2-s02-domain-producer.md` | 5 | Imports nothing else; foundational. Introduces `lint:no-direct-outbox-write`. Minor flag: spec interface says `Enqueue → (string, error)` but plan uses `(uuid.UUID, error)` — uuid is correct given the PK column type; acceptable normalisation. |
+| S03 | `docs/superpowers/plans/2026-05-26-notifications-v2-s03-broadcast.md` | 8 | Imports S02 domain. Decision #13 enforced (resolver lives in v2/broadcast/, NOT in sentinel package). No new lint (DB CHECK constraints enforce the invariants). |
+| S05 | `docs/superpowers/plans/2026-05-26-notifications-v2-s05-relay.md` | 5 | Imports S04 broker + S02 domain. Builds skeleton only; outbox empty until S06 pipeline lands. Mock broker for tests. No new lint. |
+| S07 | `docs/superpowers/plans/2026-05-26-notifications-v2-s07-rules.md` | 8 | Imports S02 domain. 8 operators, AND/OR logical ops, dot-path jsonpath resolver. Introduces `lint:no-stub-evaluator`. |
+| S08 | `docs/superpowers/plans/2026-05-26-notifications-v2-s08-templates.md` | 5 | Imports S02 domain. Adds mig 131 (12 seed templates — 6 event_types × 2 channels). No new lint (existing column-prefix lint covers the migration). |
+
+Worker briefs are paired to one branch each — `notif-v2-s02`, `notif-v2-s03`, `notif-v2-s05`, `notif-v2-s07`, `notif-v2-s08` — to be cut by Master in isolated worktrees off `feature/notifications-v2` tip (`801928f8` post-Wave-1).
 
 ## NOTES FOR FUTURE-YOU
 
