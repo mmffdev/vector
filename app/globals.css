@@ -17963,3 +17963,68 @@ tr.is-editing {
   min-height: 80px;
   overflow-y: auto;
 }
+
+/* ───────────────────────── BoardCard (FB1.3.5) ───────────────────────────── */
+/* Draggable card used by BoardCard.tsx + field renderers from CardFieldRenderer.tsx.
+   Classes:
+     .flow-board__Card              — base card surface (grab cursor)
+     .flow-board__Card-dragging     — card being dragged (grabbing cursor, lifted shadow)
+     .flow-board__Card_field        — base field row
+     .flow-board__Card_field-id     — ID badge (monospace, small)
+     .flow-board__Card_field-title  — title (bolder weight)
+     .flow-board__Card_field-assignee / -points / -priority — inherit _field base
+   Token surface: --surface-1/2, --border-subtle, --radius-md, --space-2/3, --text-muted */
+
+.flow-board__Card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 6px);
+  padding: var(--space-3, 8px);
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: grab;
+  transition: box-shadow 120ms ease, opacity 120ms ease;
+  user-select: none;
+}
+
+/* Visual lift when the card is being dragged */
+.flow-board__Card-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+/* Base field row — flex, small text, muted colour */
+.flow-board__Card_field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 6px);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-muted, var(--ink));
+  line-height: 1.4;
+}
+
+/* ID badge — monospace, extra-small so it reads as metadata, not content */
+.flow-board__Card_field-id {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-muted, var(--ink-muted));
+  letter-spacing: 0.02em;
+}
+
+/* Title — primary content; bolder than base field */
+.flow-board__Card_field-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Assignee, points, priority — inherit base _field styles; no additional overrides needed */
+.flow-board__Card_field-assignee {
+}
+
+.flow-board__Card_field-points {
+}
+
+.flow-board__Card_field-priority {
+}
