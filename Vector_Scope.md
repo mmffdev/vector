@@ -11401,6 +11401,9 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `183c4e4f` (2026-05-27): test(notif-v2): broker round-trip + noop + topology unit tests
 > Commit `57f07b2e` (2026-05-27): chore(lint): add lint:no-v1-broker-imports
 > Commit `0da337b6` (2026-05-27): test(notif-v2): split broker tests by build tag
+> Commit `de23ac83` (2026-05-27): chore(notif-v2): validator handover — Wave 1 closed
+> Commit `3aa329c0` (2026-05-27): docs(notif-v2): Wave 2 plans (S02, S03, S05, S07, S08)
+> Commit `590007c9` (2026-05-27): chore(notif-v2): validator handover — Wave 2 plans approved
 
 ---
 
