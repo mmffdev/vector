@@ -125,7 +125,12 @@ If any step fails → REJECT the offending story, do NOT apply downstream migrat
 
 ## § Current story
 
-FB1.1.3 — Migration 134 `users_flowboard_prefs`. **REJECTED** at `c4068701` for FK type mismatch (BIGSERIAL/BIGINT vs live UUID schema); awaiting fresh worker on same branch `fb1-1-3-mig-134-user-prefs` with the surgical fix.
+**Phase 1 complete (3/3).** Awaiting Phase 2 dispatch (FB1.2.1 scaffold flowboard package).
+
+Phase 1 migrations applied + ledger-backfilled against `vector_artefacts`:
+- `132_topology_nodes_members.sql` — squash `df6d412c`
+- `133_topology_nodes_wip_limits.sql` — squash `cc4abf58`
+- `134_users_flowboard_prefs.sql` — squash `bd417a86`
 
 ## § Self-assessment
 
@@ -147,9 +152,13 @@ Validator was spawned fresh, will be re-spawned on every dispatch (no SendMessag
 
 **Context budget after FB1.1.3 REJECT:** ~30%. Re-spawned fresh. Read 2 handovers + spec §3.3 + scope §FB1 + worker diff (2 mig files) + lint (green) + 4 live DB introspections (confirmed `users.users_id` and `artefacts_types.artefacts_types_id` are UUID, not BIGINT) + attempted apply (failed with FK type mismatch — transaction rolled back, no DB damage). Worker used `BIGSERIAL`/`BIGINT` despite the spec correction in `f98bc796` that flagged UUID as canonical. Brief written; ready for fix worker. Working tree clean (Vector_Scope.md auto-attribution noise from worker commits stashed before switching back to `feature/flowboard`).
 
+**Context budget after FB1.1.3 re-validation PASS (2026-05-27, post-type-fix `0745d8d5`):** ~40%. Same validator context across all three Phase 1 stories. Read worker fix diff (4 substitutions BIGSERIAL/BIGINT → uuid; net `+4/-4` over the prior reject branch) + grep-confirmed 0 hits for `BIGSERIAL`/`BIGINT` in either file + ran lint:column-prefix-convention (green) + verified the artefacts_types FK target name is the post-rename plural (`artefacts_types(artefacts_types_id)`) against the live DB + applied UP via direct psql (BEGIN/CREATE TABLE/CREATE INDEX×2/COMMIT) + backfilled ledger row + `\d users_flowboard_prefs` confirms full shape (uuid PK + gen_random_uuid() default + 2 uuid FKs CASCADE + JSONB NOT NULL + workspace_id denorm + updated_at default now() + UNIQUE on (user_id, artefact_type_id) + workspace_idx) + stashed Vector_Scope.md scope-hook noise before checkout + squash-merged with index-stat clean (only the 2 migration files) + recorded merge SHA `bd417a86`. **Phase 1 closeout achieved.** Hand-back to master for Phase 2 dispatch.
+
 ## § Active rejection
 
-### REJECT — FB1.1.3 — 2026-05-27T03:17Z
+(none — FB1.1.3 REJECTs both resolved by `0745d8d5` and re-validated; merged as `bd417a86`. The historical REJECT brief is retained below for audit trail; the next worker dispatch starts with a clean slate.)
+
+### REJECT — FB1.1.3 — 2026-05-27T03:17Z (RESOLVED 2026-05-27 — kept for audit trail)
 
 **Branch:** `fb1-1-3-mig-134-user-prefs`
 **Worker last SHA:** `c4068701` (pre-emptive fix-worker strip of inline `-- ---- DOWN ----` comment block on top of original `d7d3e1eb`)
@@ -313,3 +322,4 @@ Live `vector_artefacts` schema uses UUID for every PK/FK; spec showed BIGINT. Pl
 | 2 | FB1.1.2 | fb1-1-2-mig-133-wip-limits | REJECT | — | 2026-05-27 | Worker SHA `459efbb1`. Table definition + columns + FKs + UNIQUE + indexes + column-prefix lint ALL PASS. Apply failed because UP file line 51 has `INSERT INTO schema_migrations (version) VALUES (133)` and the live table has no `version` column (only `filename TEXT PK` + `applied_at`); transaction rolled back, no DB damage. DOWN file has the same defect at line 14. Brief in §Active rejection asks worker to delete those two lines + inline DOWN-comment block; preserve everything else. |
 | 3 | FB1.1.2 | fb1-1-2-mig-133-wip-limits | PASS | cc4abf58 | 2026-05-27 | **After REJECT + fix cycle.** Fix-worker SHA `22e3d00f` made the recommended surgical edit (removed the two `schema_migrations` row writes — INSERT in UP, DELETE in DOWN — nothing else). Re-validated: grep confirms zero `schema_migrations` text in either file; three-dot diff shows only the 2 migration files; column-prefix lint green; UP applied cleanly to vector_artefacts via direct psql (BEGIN → CREATE TABLE → CREATE INDEX → COMMIT); schema_migrations row 133 backfilled externally; `\d topology_nodes_wip_limits` confirms UUID PK + FKs to topology_nodes/flows_states (ON DELETE CASCADE) + FK to users (nullable updated_by) + UNIQUE on (node_id, flow_state_id) + ix on node_id + 7 fully-prefixed columns. All 5 AC PASS. Structural content was correct from the start; only the schema_migrations row writes needed removal. |
 | 4 | FB1.1.3 | fb1-1-3-mig-134-user-prefs | REJECT | — | 2026-05-27T03:17Z | Worker SHA `c4068701` (fix-worker on top of `d7d3e1eb`). Column names + prefixes + lint + UP/DOWN structural shape + UNIQUE index + workspace index all PASS. Apply failed at FK creation: `users_flowboard_prefs_user_id BIGINT` cannot FK to `users.users_id uuid`. Live `vector_artefacts` schema is UUID throughout (verified `users.users_id` + `artefacts_types.artefacts_types_id` via information_schema); spec correction in `f98bc796` already flagged this universally. Fix is 4 type substitutions — see §Active rejection for the canonical CREATE TABLE block. Transaction rolled back cleanly, no DB damage. Validator working tree clean; ready for fix-worker on same branch. |
+| 5 | FB1.1.3 | fb1-1-3-mig-134-user-prefs | PASS | bd417a86 | 2026-05-27 | **After two REJECT-fix cycles.** Type-fix-worker SHA `0745d8d5` made the recommended 4-substitution edit (`BIGSERIAL` → `uuid PRIMARY KEY DEFAULT gen_random_uuid()` on PK; `BIGINT` → `uuid` on user_id, artefact_type_id, workspace_id). Re-validated: `grep -in 'BIGSERIAL\|BIGINT'` returns 0 hits on both files; three-dot diff shows only the 2 migration files; column-prefix lint green; UP applied cleanly to vector_artefacts via direct psql (BEGIN → CREATE TABLE → CREATE INDEX×2 → COMMIT); schema_migrations row 134 backfilled externally; `\d users_flowboard_prefs` confirms uuid PK with `gen_random_uuid()` default + 2 uuid FKs CASCADE (users + artefacts_types — post-rename plural verified) + JSONB card_fields NOT NULL + workspace_id denorm + updated_at default now() + UNIQUE on (user_id, artefact_type_id) + workspace_idx. All 5 AC PASS. **Phase 1 complete (3/3).** Awaiting Phase 2 dispatch. |
