@@ -125,18 +125,34 @@ If any step fails → REJECT the offending story, do NOT apply downstream migrat
 
 ## § Current story
 
-(none — awaiting first dispatch from master)
+**FB1.1.1** — Mig 132 `topology_nodes_members`. Worker complete on branch `fb1-1-1-mig-132-members` at SHA `732d2cac`. Awaiting validator gate.
 
 ## § Self-assessment
 
-Fresh validator. Context budget: full. Last reset: 2026-05-27 initialisation.
+Validator was spawned fresh, will be re-spawned on every dispatch (no SendMessage tool available — agents are one-shot per dispatch). This handover file is the **continuity contract** across spawns. Every fresh validator reads this file + the spec + Vector_Scope.md and resumes.
 
 ## § Active rejection
 
 (none)
 
+## § Branch model (post-recovery 2026-05-27)
+
+Workers cannot create `feature/flowboard/<slug>` branches because `feature/flowboard` exists as a branch ref (git refuses nested paths under an existing ref). Per-story branch names are **flat**:
+- `fb1-1-1-mig-132-members`
+- `fb1-1-2-mig-133-wip-limits`
+- `fb1-1-3-mig-134-user-prefs`
+- `fb1-N-N-<slug>` going forward.
+
+Integration branch is still `feature/flowboard`.
+
+**Diff command for validator:** use **three-dot** form `git diff feature/flowboard...<story-branch>` (not two-dot) so the diff is merge-base relative. Two-dot will include changes that happened on `feature/flowboard` after the worker forked, which is noise.
+
+## § Spec correction landed in `f98bc796`
+
+Live `vector_artefacts` schema uses UUID for every PK/FK; spec showed BIGINT. Plus `artefact_types→artefacts_types` (mig 062) and `flow_states→flows_states` (mig 061). Workers correctly used UUID and live table names. Verify the migrations use UUID + the post-rename table names; if they don't, REJECT.
+
 ## § Verdict ledger
 
 | # | story | branch | verdict | merge SHA | timestamp | notes |
 |---|---|---|---|---|---|---|
-| (none yet) |
+| (none yet — FB1.1.1 in flight) |
