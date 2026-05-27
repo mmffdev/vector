@@ -41,6 +41,7 @@
  *                        archive, listPermissions, assignPermissions, revokePermissions
  *   errors             — report
  *   libraryReleases    — list, count, ack
+ *   flowBoard          — listWip, upsertWip, getCardPrefs, upsertCardPrefs
  *   addressables       — buildReconcile, register, snapshot, getPageHelp, adminListPageHelp,
  *                        adminPutPageHelp, adminDeletePageHelp, adminUpdateHelpable
  */
@@ -1403,5 +1404,66 @@ export const notificationRules = {
   schemaFields: (type: string, workspaceId: string, target: string) =>
     apiSite<{ fields: RuleFieldEntry[] }>(
       `/notifications/rule-schema?type=${encodeURIComponent(type)}&workspace_id=${encodeURIComponent(workspaceId)}&target=${encodeURIComponent(target)}`,
+    ),
+};
+
+// Pages: app/components/FlowBoard/hooks/useFlowBoardData.ts
+// ─── Flow board  (/flowboard) ────────────────────────────────────────────────
+// Backend: backend/internal/flowboard/handler.go (FB1.2.2)
+
+/** Wire shape returned by GET /_site/flowboard/wip */
+export interface FlowBoardWipRow {
+  flow_state_id: string;
+  flow_state_name: string;
+  /** null = unlimited (no cap). */
+  limit: number | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export const flowBoard = {
+  /**
+   * GET /_site/flowboard/wip?node_id={topologyNodeId}&artefact_type_id={artefactTypeId}
+   * Returns WIP-limit rows for the given topology node + artefact type.
+   * Sentinel-clamped server-side; missing clamp → 403.
+   */
+  listWip: (topologyNodeId: ID, artefactTypeId: ID) =>
+    apiSite<FlowBoardWipRow[]>(
+      `/flowboard/wip?node_id=${encodeURIComponent(topologyNodeId)}&artefact_type_id=${encodeURIComponent(artefactTypeId)}`
+    ),
+
+  /**
+   * PUT /_site/flowboard/wip
+   * Upsert a WIP limit for a single (node, flow_state) pair.
+   * limit === null clears the cap (unlimited semantics per spec §3.2).
+   */
+  upsertWip: (body: {
+    node_id: ID;
+    flow_state_id: ID;
+    limit: number | null;
+  }) =>
+    apiSite<FlowBoardWipRow>("/flowboard/wip", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  /**
+   * GET /_site/flowboard/prefs?artefact_type_id={id}
+   * Returns the calling user's card-field preferences for the given artefact
+   * type. 404 when no prefs saved → caller falls back to sidecar defaults.
+   */
+  getCardPrefs: (artefactTypeId: ID) =>
+    apiSite<{ artefact_type_id: ID; card_fields: string[]; updated_at: string }>(
+      `/flowboard/prefs?artefact_type_id=${encodeURIComponent(artefactTypeId)}`
+    ),
+
+  /**
+   * PUT /_site/flowboard/prefs
+   * Upsert the calling user's card-field preferences for one artefact type.
+   */
+  upsertCardPrefs: (body: { artefact_type_id: ID; card_fields: string[] }) =>
+    apiSite<{ artefact_type_id: ID; card_fields: string[]; updated_at: string }>(
+      "/flowboard/prefs",
+      { method: "PUT", body: JSON.stringify(body) }
     ),
 };
