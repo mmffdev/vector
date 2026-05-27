@@ -1,0 +1,24 @@
+areas:
+  - id: sentinel
+    label: Sentinel
+    tables:
+      - users
+      - users_roles
+      - users_permissions
+      - users_roles_permissions
+  - id: topology
+    label: Topology
+    tables:
+      - topology_nodes
+  - id: artefacts
+    label: Artefacts
+    tables:
+      - artefacts
+      - artefact_types
+      - artefact_type_fields
+      - artefact_field_values
+      - artefacts_search_outbox
+      - artefact_number_sequence
+      - artefact_workspace_fields
+      - artefact_adoption_state
+      - artefact_priorities
