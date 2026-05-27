@@ -4,7 +4,7 @@
 
 **Goal:** Replace `backend/internal/notifications/` with a v2 stack architected for the defence/finance buyer profile — full audit trail, sentinel-clamped handlers, multi-scope broadcasts, critical-bypass with platform kill switch, three-tier prefs resolution, real RabbitMQ test path. Strangler-fig: v2 ships alongside v1, gated by `NOTIFICATIONS_V2` flag, cut over after 30-day parity soak.
 
-**Architecture:** New package `backend/internal/notifications/v2/` with eleven sub-packages (domain, producer, broadcast, broker, relay, pipeline, rules, templates, dispatchers, audit, prefs, handler, parity). Eleven new tables in `vector_artefacts` (all `_v2` suffix permanent, column-prefix HARD RULE compliant). One new infra dep (Redis for debounce/digest ZSET). RabbitMQ topic exchange `notifications`, routing key `<domain>.<action>.<channel>`.
+**Architecture:** New package `backend/internal/notifications/v2/` with eleven sub-packages (domain, producer, broadcast, broker, relay, pipeline, rules, templates, dispatchers, audit, prefs, handler, parity). Eleven new tables in `vector_artefacts` (all `_v2` suffix permanent, column-prefix HARD RULE compliant). One new infra dep (Valkey for debounce/digest ZSET). RabbitMQ topic exchange `notifications`, routing key `<domain>.<action>.<channel>`.
 
 **Tech Stack:** Go 1.23, pgx/v5, chi router, amqp091-go, go-redis/v9, Next.js 14 (frontend), existing `realtime.Hub` for SSE. No new TS deps.
 
@@ -60,13 +60,13 @@ The Master stops at every wave boundary for user sign-off before kicking the nex
 | **S03** | Inverse-Sentinel `Resolver` + `broadcast.Service` | TBD | 8 | 2 |
 | **S04** | RabbitMQ broker wrapper + exchange/queue declarations | [s04-broker](./2026-05-26-notifications-v2-s04-broker.md) | 3 | 1 |
 | **S05** | Relay + outbox drain + stuck-claim sweeper | TBD | 5 | 2 |
-| **S06** | Pipeline: enrich → filter → router | TBD | 13 | 3 |
+| **S06** | Pipeline: enrich → filter → router | [s06-pipeline](./2026-05-27-notifications-v2-s06-pipeline.md) | 13 | 3 |
 | **S07** | Rules engine — real `matchConditions` | TBD | 8 | 2 |
 | **S08** | Templates: DB-backed lookup + interpolation + seed templates | TBD | 5 | 2 |
 | **S09** | Dispatchers: interface + in_app + sse + email (real) + audit writer | TBD | 8 | 4 |
 | **S10** | Handler (read side) + sentinel clamps + frontend rewire | TBD | 8 | 5 |
 | **S11** | Broadcast handlers + admin UIs + preview-count | TBD | 13 | 5 |
-| **S12** | PendingStore (Redis) + debounce + digest cron + Redis in dev swarm | TBD | 13 | 4 |
+| **S12** | PendingStore (Valkey) + debounce + digest cron + Valkey in dev swarm | TBD | 13 | 4 |
 | **S13** | Producers: mention rewire + 5 artefact lifecycle producers | TBD | 8 | 6 |
 | **S14** | Parity harness + dev page | TBD | 5 | 6 |
 | **S15** | Cutover smoke + flip flag + 30-day soak (manual) | TBD | 3 | 6 |

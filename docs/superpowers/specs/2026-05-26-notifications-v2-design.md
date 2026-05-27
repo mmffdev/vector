@@ -48,7 +48,7 @@ v2 closes those gaps while keeping v1 running side-by-side until parity is prove
 | 4 | Audit table: flat, one row per delivery attempt, append-only, immutable | Highest signal for billing disputes + non-repudiation; suppression reasons logged |
 | 5 | Quiet hours: per-user single window, critical bypasses | Matches the priority table; simple UI |
 | 6 | Pref resolution: user → subscription_tier → system | Enterprise tier can default to stricter compliance kinds |
-| 7 | Debounce/digest: Redis sorted set (new infra dep) | Sub-ms ops, room to reuse for rate-limit/session-cache later |
+| 7 | Debounce/digest: Valkey sorted set (BSD-3 Redis fork — new infra dep) | Sub-ms ops, room to reuse for rate-limit/session-cache later. Valkey is chosen over Redis after the March 2024 Redis Inc. SGPL/RSAL licence change — procurement-clean for the defence/finance buyer profile. Wire-protocol + command-compatible with Redis 7.2; the `go-redis` client works against it unchanged. |
 | 8 | v1 producers: mentions + artefact lifecycle (5 events) | Frontend already routes these context_kinds; bell lights up for real work |
 | 9 | Strangler-fig over big-bang refactor | Reversible, story-level verifiable, no audit-shape flux during cutover |
 | 10 | `_v2` suffix permanent on new tables | Column-prefix rule satisfied mechanically; no rename pass after cutover |
@@ -96,7 +96,7 @@ backend/internal/notifications/v2/
 │   ├── filter.go                        # Prefs + rules + sentinel + quiet hours + platform kill
 │   ├── router.go                        # Channel decisions → outbox / PendingStore
 │   ├── pending.go                       # PendingStore interface
-│   └── pending_redis.go                 # Redis ZSET impl
+│   └── pending_valkey.go                # Valkey ZSET impl (Redis-protocol-compatible; go-redis client)
 ├── rules/
 │   ├── service.go                       # Rule CRUD
 │   ├── evaluator.go                     # Real matchConditions (replaces v1 stub)
@@ -449,7 +449,7 @@ type PendingStore interface {
 }
 ```
 
-Redis ZSET impl ships in v1. Postgres impl could be added behind the interface later if Redis becomes a problem.
+Valkey ZSET impl ships in v1 (BSD-3 Redis fork — Redis-protocol-compatible, `go-redis` client works unchanged). Postgres impl could be added behind the interface later if Valkey becomes a problem.
 
 ---
 
@@ -514,7 +514,7 @@ During dual-write, `v2/parity/` compares v1 and v2 outputs per event_key. Writes
 
 ### Layer 4 — Synthetic load (manual)
 
-Burst (1k direct in 10s), broadcast fan-out (1k users), mixed, Redis-down + critical. Pass criteria: no stuck rows, all attempt rows accounted for, p99 < 5s.
+Burst (1k direct in 10s), broadcast fan-out (1k users), mixed, Valkey-down + critical. Pass criteria: no stuck rows, all attempt rows accounted for, p99 < 5s.
 
 ### Layer 5 — Sentinel clamp lint
 
@@ -531,7 +531,7 @@ Checklist before flipping `NOTIFICATIONS_V2=true`:
 - Stuck-claim sweeper running 48h+ with zero alerts
 - Critical-bypass path exercised in dev
 - Platform kill switch toggled live + verified suppression
-- Redis failure injection: fallback verified
+- Valkey failure injection: fallback verified
 - Sentinel clamp passes
 - v1 dispatchers wrapped in feature-flag (no-op when V2 on)
 - Audit query returns full history for one event
@@ -557,7 +557,7 @@ Sixteen stories. Foundation-first. Strangler-fig with feature flag.
 | S09 | Dispatchers: interface + in_app + sse + email (real) + audit writer | Backend | 8 |
 | S10 | Handler (read side) + sentinel clamps + frontend rewire | Backend + frontend | 8 |
 | S11 | Broadcast handlers + admin UIs + preview-count | Backend + frontend | 13 |
-| S12 | PendingStore (Redis) + debounce + digest cron + Redis infra | Backend + infra | 13 |
+| S12 | PendingStore (Valkey) + debounce + digest cron + Valkey infra | Backend + infra | 13 |
 | S13 | Producers: mention rewire + 5 artefact lifecycle producers | Backend | 8 |
 | S14 | Parity harness + dev page | Backend + frontend | 5 |
 | S15 | Cutover smoke + flip flag + 30-day soak | Ops | 3 |
@@ -578,7 +578,7 @@ S01 → S05 → S06 → S09 → S10 → S13 → S14 → S15.
 5. S06 (pipeline; biggest single story; pulls together S07 + S08).
 6. S09 (dispatchers + audit; needs S06).
 7. S10 (handler + frontend; needs S09).
-8. S12 (Redis + debounce + digest; parallelisable with S10/S11).
+8. S12 (Valkey + debounce + digest; parallelisable with S10/S11).
 9. S11 (broadcast UIs; needs S03 + S09).
 10. S13 (producers; needs everything else).
 11. S14 (parity).
@@ -592,8 +592,8 @@ S01 → S05 → S06 → S09 → S10 → S13 → S14 → S15.
 | Risk | Mitigation |
 |---|---|
 | S06 (pipeline) grows beyond 13 points during implementation | Decompose mid-flight into S06a/S06b rather than letting it become a 3-week monster |
-| Redis becomes single point of failure | PendingStore is an interface; Postgres impl can be added later. Critical events fall back to immediate scheduling if Redis is down (with TD-grade warning logged) |
-| Parity harness misses a divergence | Layer 7 manual checklist catches what the harness can't (Redis down + critical, sentinel clamp lint, audit completeness queries) |
+| Valkey becomes single point of failure | PendingStore is an interface; Postgres impl can be added later. Critical events fall back to immediate scheduling if Valkey is down (with TD-grade warning logged) |
+| Parity harness misses a divergence | Layer 7 manual checklist catches what the harness can't (Valkey down + critical, sentinel clamp lint, audit completeness queries) |
 | Email channel sends to real customer from dev | Three-layer defence: dev-scoped key, dev sending domain (`dev.<root>`), recipient allow-list enforced in `dispatchers/email.go` when `BACKEND_ENV=dev` |
 | pAdmin broadcasts to nodes they don't own | `broadcast/auth.go` calls `sentinel.GrantOnNode` before resolver runs; rejected at handler boundary |
 | Workspace user added after broadcast resolved | Snapshot at fire-time is the locked decision; new users do NOT retroactively receive |
