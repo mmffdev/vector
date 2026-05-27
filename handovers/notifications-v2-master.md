@@ -1,11 +1,19 @@
 # Notifications v2 — Master Orchestrator Handover
 
-**Last updated:** 2026-05-27 ~03:10
+**Last updated:** 2026-05-27 ~03:30
 **Owner:** Master agent (orchestrator role) for the Notifications v2 PLA
 **Companion:** validator handover at `handovers/notifications-v2-validator.md`
 **Spec:** `docs/superpowers/specs/2026-05-26-notifications-v2-design.md`
 **Master plan index:** `docs/superpowers/plans/2026-05-26-notifications-v2-index.md`
-**Integration branch:** `feature/notifications-v2` at `2da32062` (58 commits ahead of main)
+**Integration branch:** `feature/notifications-v2` at `cdb9cc78` (68 commits ahead of main)
+
+## WAVE 2 — CLOSED ✓
+
+All 5 stories merged: S02 `ada34a4a`, S03 `160f1554`, S05 `68fddc55`, S07 `a9fa7d73` (re-dispatched after initial rejection for strangler-fig violation), S08 `4af460b5`. S07 re-dispatch came in clean — 62 tests PASS, all 4 prior failure modes verified non-repeated.
+
+**Two carryover blockers for next session (deferred from previous validator turn — environment lacked DB access):**
+1. **SY003 regen** — substrate changed in Wave 1+2 (12 tables, 12 seed rows, new SQL touchpoints, multiple new lints). HARD RULE in CLAUDE.md mandates regen. Run `<report> -sy "current state of the Vector databases — complete table inventory grouped by role, with row counts, cross-DB soft refs against mmff_library, dead-weight candidates, and every SQL touchpoint in the codebase. Sourced from live pg_stat_user_tables + information_schema introspection."` Master skill, run before Wave 3 dispatch.
+2. **schema_migrations tracker backfill (093..131)** — pre-existing drift (not PLA-introduced). Validator confirmed tracker table shape is `(filename TEXT PK, applied_at TIMESTAMPTZ)`. Find filenames with `ls db/vector_artefacts/schema/ | sort -n | awk -F_ '$1>=93 && $1<=131'` then INSERT each with current timestamp.
 
 ---
 
@@ -54,7 +62,7 @@ The Validator agent (long-lived Opus, persistent handover) owns ALL git operatio
 | S04 | RabbitMQ broker (v2) | ✅ MERGED | `801928f8` |
 | S05 | Relay + outbox drain + sweeper | ✅ MERGED | `68fddc55` |
 | S06 | Pipeline (enrich→filter→router) | 🔵 NEXT — Wave 3, 13pt | — |
-| S07 | Rules engine | 🟡 RE-DISPATCHED (worker `aaf403870e11eace8` running at handover write time) | — |
+| S07 | Rules engine | ✅ MERGED (re-dispatch after strangler-fig rejection) | `a9fa7d73` |
 | S08 | Templates DB-backed + seeds | ✅ MERGED | `4af460b5` |
 | S09 | Dispatchers + audit writer | 🔴 Wave 4 | — |
 | S10 | Handler + sentinel clamps + frontend | 🔴 Wave 5 | — |
@@ -65,25 +73,23 @@ The Validator agent (long-lived Opus, persistent handover) owns ALL git operatio
 | S15 | Cutover smoke + 30d soak | 🔴 Wave 6 | — |
 | S16 | v1 deletion | 🔴 Wave 6 | — |
 
-**Wave 1 closed.** Wave 2: 4 of 5 closed, S07 re-dispatch in flight.
+**Wave 1 closed. Wave 2 closed.** Next: Wave 3 (S06 pipeline, 13pt sequential).
 
-**Roughly 30% complete** (5 / 16 stories merged; ~31 points of ~109 Fibonacci total).
+**Roughly 40% complete** (7 / 16 stories merged: S01 + S02 + S03 + S04 + S05 + S07 + S08; ~39 points of ~104 Fibonacci total).
 
 ## OPEN BLOCKERS / IMMEDIATE TASKS FOR NEXT SESSION
 
-1. **S07 re-dispatch worker still running** (`aaf403870e11eace8`, Sonnet, background, isolated worktree). When notified of completion: route to validator. Brief in this thread's prior turns; specifically v2-path only, no v1 mutation, no plan-doc mutation. Validator should specifically verify the previous failure modes (v1 path, mig 128 mutation, plan-doc mutation) are NOT repeated.
+1. **SY003 regeneration** — HARD RULE in CLAUDE.md requires SY003 regen after any substrate change. Wave 1+2 added 12 tables + 12 seed rows + multiple new SQL touchpoints in v2 Go code + new lints. Run: `<report> -sy "current state of the Vector databases — complete table inventory grouped by role, with row counts, cross-DB soft refs against mmff_library, dead-weight candidates, and every SQL touchpoint in the codebase. Sourced from live pg_stat_user_tables + information_schema introspection."` Master-level skill. Do this BEFORE Wave 3 dispatch.
 
-2. **SY003 regeneration** — HARD RULE in CLAUDE.md requires SY003 regen after any substrate change. Wave 1+2 added 12 tables + 12 seed rows + multiple new SQL touchpoints in v2 Go code. Run: `<report> -sy "current state of the Vector databases ... including new notif-v2 tables ..."`. Do this BEFORE Wave 3 starts to ensure substrate inventory is current.
+2. **Migration tracker backfill (093..131)** — `schema_migrations` says last applied = 092, but live DB has 131 applied. Pre-existing drift (not introduced by this PLA). Tracker schema is `(filename TEXT PK, applied_at TIMESTAMPTZ)`. Backfill via psql: `INSERT INTO schema_migrations (filename, applied_at) SELECT filename, now() FROM unnest(ARRAY[<list-from-ls>]) ...` or scripted. Do BEFORE any future migration tool re-attempts these.
 
-3. **Migration tracker backfill** — `schema_migrations` row says last applied = 092, but live DB has 130+ applied. Pre-existing drift (not introduced by this PLA). Small task: insert tracker rows for 093-131. Document mechanism in `backend/migrate`. Do BEFORE any future migration tool re-attempts these.
+3. **Wave 3 plan (S06 pipeline) needs writing** — biggest single story (13pt). Pulls together S02 (domain), S03 (broadcast scope), S05 (relay drains what pipeline writes), S07 (rules — pipeline.filter calls Evaluator.MatchEvent), S08 (templates — pipeline.router renders before outbox write). Spec section "End-to-end flow" steps 3a/3b/3c is canonical. Files: `pipeline.go`, `enrich.go`, `filter.go`, `router.go`, `pending.go` (interface — Redis impl ships in S12), `pipeline_test.go`. Sentinel clamp on recipient is filter.go's job. Quiet hours + platform-channels kill switch are filter-stage. Critical-priority bypass encoded in filter.go + audit row carries `bypass_reason='critical_priority'`.
 
-4. **Wave 3 plan (S06 pipeline) needs writing** — this is the biggest story (13pt). It pulls together S02 (domain), S03 (broadcast scope), S05 (relay calls into it), S07 (rules), S08 (templates). Plan should reference all upstream packages. Spec section "End-to-end flow" steps 3a/3b/3c covers the implementation shape.
+4. **Wave 2 close report to user** — user is off; resume report goes in the first response of next session. Include: 7/16 stories merged, both Wave 2 carryovers (SY003 + tracker), Wave 3 status (plan TBD, then dispatch).
 
-5. **Wave 2 close report to user** has NOT been delivered yet — user is off. When next session starts, give a Wave 2 close report once S07 re-dispatch lands (or report S07 status if it's still running / failed again).
+5. **S04 test-tag split** — now RESOLVED (validator updated handover; ignore prior note).
 
-6. **S04 test-tag split** is in the validator's OPEN BLOCKERS but already landed (commit `0da337b6` merged via `801928f8`). Update validator handover to reflect.
-
-7. **`<scope> -r` unmatched commits** — validator's own meta-commits (handover updates) keep getting flagged. Per standing exemption: this is expected; review at PLA close, do not chase per-commit.
+6. **`<scope> -r` unmatched commits from validator handover-update commits** — standing exemption per Master decision (these are intrinsic to scope-tracking). Review at PLA close, do not chase per-commit.
 
 ## CONTEXT DISCIPLINE FOR NEXT SESSION
 
