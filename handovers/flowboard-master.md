@@ -43,14 +43,16 @@
   - **FB1.3.5** `BoardCard` + `CardFieldRenderer` — merged `21c3560b`. PASS first cycle.
   - **FB1.3.6** `WipSettingsModal` + `WipGearButton` + `useNodeMembership` — merged `7417c902`. PASS first cycle.
   - **FB1.3.7** `p_FlowBoard.tsx` top-level + addressable surface — merged `43afd1ad`. 1 REJECT+fix cycle (slot-helper doubled prefix from un-exercised FB1.3.1 helper).
+- 2026-05-27 — **Phase 4 (Integration) closed — FB1.4.1 cherry-picked to `feature/flowboard` as `d644f101`. WAVE 14/14 COMPLETE.**
+  - **FB1.4.1** Mount on `/value-flow` + seed mig 135 + flyout adapter + 8 CSS tokens + 3 TDs — cherry-picked `d644f101` (worker SHA `82b3d316`). PASS first cycle. Cherry-pick (not squash-merge) used to skip the unrelated dev-erd commit `baf865b4` that had landed on `fb1-4-1-integration` between the wave-close base and the FB1.4.1 commit. Pre-commit `git diff --cached --stat` showed exactly 7 files (page.tsx, p_FlowBoard.tsx, globals.css, mig 135 UP/DOWN, c_tech_debt.md, DevComponentsPanel.tsx) — no ERD bundling. **Dev DB state:** mig 135 applied to `vector_artefacts`; 2 members seeded on Insurance node `ae2d4ff5-4c8d-4839-af89-7769067476ae` (user@ `583b8276-092f-4645-8e79-367fdcb5c4b6` + padmin@ `6cabe266-b2f4-43f9-879c-06020c789a0b`); 3 WIP rows live (Backlog=10, Doing=3, Completed=NULL). State-name divergence (AC said "Done") correctly resolved — Story flow has no Done state; Completed is the canonical done-kind. **Bonus closure:** worker resolved **TD-FB-CSS-TOKENS** by defining all 8 tokens in globals.css legacy-bridge block (the 7 spec'd + `--border-subtle`) as `var()` cascades with sensible light-mode hex fallbacks. Flyout adapter `FlowBoardFlyoutBody` inline in p_FlowBoard.tsx (~30 LoC) — bridges `DetailFlyoutBodyProps.rowId` → `ArtefactInlineForm {artefactId, resourceUrl: "/work-items", scope: "work"}`. Dev → Components article added inline to `DevComponentsPanel.tsx` (existing pattern for that panel; not a separate .md) with all 4 sections (Synopsis · Architecture · Wire · Backlog) + TOC slug `flow-board`. 3 TD entries opened: TD-FLOWBOARD-EXIT-RULES (S2), TD-FLOWBOARD-CARD-PREFS-UI (S3), TD-FLOWBOARD-WIP-AUDIT (S2). All gates green: 70 vitest pass; tsc clean; go build + go test flowboard exit 0; `lint:column-prefix-convention` exit 0; `/value-flow` returns HTTP 200.
 
 ## What is IN PROGRESS
 
-- **None — wave closed; FB1.4.1 is user-owned.**
+- **None — wave 14/14 complete.**
 
 ## What is NEXT
 
-**FB1.4.1 (user).** Manual mount on `app/(user)/value-flow/page.tsx`, wire `ObjectTreeDetailFlyout` Body adapter for flyout-open from card clicks, visual smoke against dev, optional resolution of **TD-FB-CSS-TOKENS** to remove the un-defined token fallbacks in the WIP modal.
+**FB1.4.1 visual smoke in browser is the only remaining manual step.** User authenticates, navigates to `/value-flow`, exercises drag (card across columns) + WIP-modal (gear icon → numeric input → save) + type-switcher (dropdown change re-renders columns). Wave can be marked DONE in `Vector_Scope.md` § FB1 when smoke confirms.
 
 Original dependency-ordered plan retained below for audit trail (Phases 1-3 all done).
 
@@ -229,3 +231,18 @@ When resuming this wave (or the FB1.4.1 page-mount):
 3. Read `docs/superpowers/specs/2026-05-27-flowboard-design.md` — spec.
 4. For FB1.4.1: dispatch manually as the human-in-the-loop user — mount on `app/(user)/value-flow/page.tsx`, wire `ObjectTreeDetailFlyout` Body adapter (DetailFlyoutBodyProps → ArtefactInlineForm adapter is the >50 LoC sub-component deferred by FB1.3.7), seed `topology_nodes_members` + `topology_nodes_wip_limits` rows per Vector_Scope.md § FB1.4.1 AC, manual visual smoke, then `<update> -c FlowBoard` for the Dev → Components article.
 5. Optional pre-work for FB1.4.1: resolve TD-FB-CSS-TOKENS so the modal renders at the design-ethos bar before manual smoke.
+
+### Wave close — 2026-05-27
+
+**WAVE 14/14 COMPLETE.** The user authorised FB1.4.1 inclusion in the worker/validator scope (no longer user-only) and the cherry-pick `d644f101` lands on `feature/flowboard`. Wave closes at 14/14, not 13/14. Final wave state:
+
+- **Cherry-pick used (not squash-merge)** because `fb1-4-1-integration` branch carried unrelated dev-erd commit `baf865b4` in front of the FB1.4.1 worker commit `82b3d316`. `git cherry-pick 82b3d316` produced clean 7-file commit `d644f101` (page.tsx, p_FlowBoard.tsx, globals.css, mig 135 UP/DOWN, c_tech_debt.md, DevComponentsPanel.tsx). Pre-commit `git diff --cached --stat` HARD RULE verified.
+- **Dev DB seeded:** mig 135 applied to `vector_artefacts`; ledger row `135_flowboard_seed_members.sql` at `2026-05-27 20:11:40`.
+- **Two seeded user UUIDs (verified live):** `583b8276-092f-4645-8e79-367fdcb5c4b6` (user@mmffdev.com) + `6cabe266-b2f4-43f9-879c-06020c789a0b` (padmin@mmffdev.com).
+- **Chosen topology node UUID:** `ae2d4ff5-4c8d-4839-af89-7769067476ae` (Insurance node — 63 artefacts in dev, workspace `a4df2e21-8d9a-452b-b4f9-eded455381c8`).
+- **3 WIP rows live** on the Insurance node (Backlog=10, Doing=3, Completed=NULL — Completed is the canonical done-kind in the Story flow; there is no state named "Done").
+- **TD-FB-CSS-TOKENS resolved as a bonus** — 8 CSS tokens defined in globals.css (the 7 spec'd + `--border-subtle`) as `var()` cascades with light-mode hex fallbacks.
+- **3 new TDs opened:** TD-FLOWBOARD-EXIT-RULES (S2), TD-FLOWBOARD-CARD-PREFS-UI (S3), TD-FLOWBOARD-WIP-AUDIT (S2).
+- **Only manual step left:** visual smoke in the browser (drag, WIP modal, type-switcher redraw, flyout-open via card click). Tests + dev server prove the page compiles and routes (HTTP 200).
+
+Final `feature/flowboard` HEAD: `d644f101` (FB1.4.1 cherry-pick) on top of `2db11075` (FB1.3.7 close).
