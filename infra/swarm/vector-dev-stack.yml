@@ -89,16 +89,93 @@ services:
     deploy:
       replicas: 1
 
+  # --- Valkey (Redis-protocol-compatible cache) ----------------------------
+  # BSD-3 Linux Foundation fork of Redis 7.2 — chosen over Redis after the
+  # March 2024 SGPL/RSAL licence change. Used by Notifications v2 PendingStore
+  # (S12) for debounce/digest ZSETs. Room to reuse for rate-limit +
+  # session-cache later per PLA067 §Approach. Netdata is retired from the dev
+  # stack; Valkey owns 6379 and stays password-protected because the port is
+  # published through Swarm.
+  valkey:
+    image: valkey/valkey:8-alpine
+    command:
+      - sh
+      - -c
+      - exec valkey-server --dir /data --appendonly yes --appendfsync everysec --save 60 1 --requirepass "$$(cat /run/secrets/valkey_password)"
+    volumes:
+      - valkeydata:/data
+    secrets:
+      - source: valkey_password
+        target: valkey_password
+        uid: "0"
+        gid: "0"
+        mode: 0444
+    ports:
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: ingress
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a \"$$(cat /run/secrets/valkey_password)\" ping | grep -q PONG"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      replicas: 1
+
+  # --- Valkey UI (Redis Commander) -----------------------------------------
+  # Browser-only dev UI for inspecting Valkey keys. It is read-only and
+  # HTTP-auth protected; auth uses the same Docker secret as Valkey so no UI
+  # password lives in this repo.
+  valkey_ui:
+    image: rediscommander/redis-commander:latest
+    entrypoint:
+      - sh
+      - -c
+      - >
+        exec /redis-commander/docker/entrypoint.sh
+        --http-auth-username vector
+        --http-auth-password "$$(cat /run/secrets/valkey_password)"
+        --redis-host valkey
+        --redis-port 6379
+        --redis-password "$$(cat /run/secrets/valkey_password)"
+        --redis-label "Vector Valkey"
+        --read-only
+        --nosave
+        --no-log-data
+        --use-scan
+    secrets:
+      - source: valkey_password
+        target: valkey_password
+        uid: "0"
+        gid: "0"
+        mode: 0444
+    ports:
+      - target: 8081
+        published: 3003
+        protocol: tcp
+        mode: ingress
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:8081/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      replicas: 1
+
 # --- Volumes ---------------------------------------------------------------
-# pgdata is the persistent Postgres data dir. NEVER delete this volume; it is
-# the source of truth for every dev DB (mmff_vector, vector_artefacts,
-# mmff_library). Take a backup via <backupsql> before any volume-touching op.
+# pgdata is the persistent Postgres data dir. NEVER delete this volume.
+# valkeydata is Valkey's append-only/persistence volume. Take a backup via
+# <backupsql> before any Postgres volume-touching op.
 volumes:
   pgdata:
+  valkeydata:
 
 # --- Secrets ---------------------------------------------------------------
-# The postgres_password secret is managed out-of-band (pre-dates this stack
-# file) and is marked `external: true`. To rotate:
+# Secrets are managed out-of-band and marked `external: true`.
+# To rotate postgres_password:
 #   echo -n "<newpassword>" | docker secret create postgres_password_v2 -
 #   <update this file to reference postgres_password_v2>
 #   docker stack deploy -c vector-dev-stack.yml vector-dev
@@ -106,4 +183,6 @@ volumes:
 # Then rotate the password in backend/.env.dev and restart the backend.
 secrets:
   postgres_password:
+    external: true
+  valkey_password:
     external: true
