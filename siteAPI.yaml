@@ -3402,13 +3402,47 @@ paths:
       x-handler:
         symbol: flowboardH.listWipLimits
         file: backend/internal/flowboard/handler.go
+      parameters:
+      - name: artefact_type_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: node_id
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: 200 — success response
           content:
             application/json:
               schema:
-                type: object
+                type: array
+                items:
+                  type: object
+                  properties:
+                    flow_state_id:
+                      type: string
+                      format: uuid
+                    flow_state_name:
+                      type: string
+                    limit:
+                      type: integer
+                      format: int32
+                    updated_at:
+                      type: string
+                      format: date-time
+                    updated_by:
+                      type: string
+                      format: uuid
+                  required:
+                  - flow_state_id
+                  - flow_state_name
+                  - updated_at
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthorized'
     put:
@@ -3430,6 +3464,25 @@ paths:
       x-handler:
         symbol: flowboardH.upsertWipLimits
         file: backend/internal/flowboard/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                node_id:
+                  type: string
+                  format: uuid
+                flow_state_id:
+                  type: string
+                  format: uuid
+                limit:
+                  type: integer
+                  format: int32
+              required:
+              - node_id
+              - flow_state_id
       responses:
         '200':
           description: 200 — success response
@@ -3437,6 +3490,25 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  flow_state_id:
+                    type: string
+                    format: uuid
+                  flow_state_name:
+                    type: string
+                  limit:
+                    type: integer
+                    format: int32
+                  updated_at:
+                    type: string
+                    format: date-time
+                  updated_by:
+                    type: string
+                    format: uuid
+                required:
+                - flow_state_id
+                - flow_state_name
+                - updated_at
         '401':
           $ref: '#/components/responses/Unauthorized'
   /flows:

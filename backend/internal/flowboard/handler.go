@@ -15,19 +15,31 @@
 package flowboard
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+
+	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 )
 
 // Handler is the chi-mountable HTTP surface for the flowboard package.
-// It holds a reference to Service and delegates all business logic there.
+// It holds a reference to serviceIface and delegates all business logic there.
+// The svc field is the narrow interface so tests can inject a stub without
+// a real database (same pattern as workspacemasterrecord).
 type Handler struct {
-	svc *Service
+	svc serviceIface
 }
 
-// NewHandler wires the handler to a Service.
+// NewHandler wires the handler to a concrete *Service. main.go uses this.
 func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
+
+// newHandlerWithIface is a test-only constructor that accepts the narrow
+// interface, enabling stub injection without a live DB.
+func newHandlerWithIface(svc serviceIface) *Handler { return &Handler{svc: svc} }
 
 // Mount registers all flowboard routes onto the provided router.
 // The caller (main.go) is responsible for wrapping r in RequireAuth,
@@ -58,16 +70,132 @@ func (h *Handler) Mount(r chi.Router) {
 	})
 }
 
-// listWipLimits returns WIP-limit rows for a board.
-// TODO(FB1.2.2): implement in story FB1.2.2
-func (h *Handler) listWipLimits(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
+// listWipLimits handles GET /_site/flowboard/wip
+//
+// Query params:
+//   - node_id        (uuid, required) — topology node whose WIP limits to return
+//   - artefact_type_id (uuid, optional) — reserved for future per-type limits;
+//     parsed + validated here but not yet used in the DB query
+//
+// Sentinel-clamped: workspace_id is read from the sentinel Clamp. A request
+// without a valid Clamp returns 403 (not 401 — the auth middleware already
+// ran; a missing clamp means the route is misconfigured or the token is
+// structurally invalid).
+//
+// Workspace-scope gate: the node's owning workspace is fetched via
+// NodeWorkspaceID before the main query runs. If the node does not exist OR
+// its workspace does not match the sentinel WorkspaceID, the handler returns
+// 403. Both cases collapse to the same status code — no existence leak
+// (security argument: a cross-scope caller must not be able to infer whether
+// a node exists in another workspace by observing 404 vs 403).
+func (h *Handler) listWipLimits(w http.ResponseWriter, r *http.Request) {
+	clamp := sentinel.FromCtx(r.Context())
+	if clamp.WorkspaceID == uuid.Nil {
+		httperr.Write(w, r, http.StatusForbidden, "workspace clamp required")
+		return
+	}
+
+	nodeIDStr := r.URL.Query().Get("node_id")
+	nodeID, err := uuid.Parse(nodeIDStr)
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "node_id must be a valid UUID")
+		return
+	}
+
+	// artefact_type_id is validated but not yet forwarded to the DB query
+	// (reserved for per-type WIP limits in a future story).
+	if atStr := r.URL.Query().Get("artefact_type_id"); atStr != "" {
+		if _, err := uuid.Parse(atStr); err != nil {
+			httperr.Write(w, r, http.StatusBadRequest, "artefact_type_id must be a valid UUID")
+			return
+		}
+	}
+
+	// Workspace-scope gate: fetch the node's owning workspace and compare
+	// against the sentinel clamp. Missing node and cross-scope mismatch both
+	// return 403 (no existence leak).
+	nodeWS, err := h.svc.NodeWorkspaceID(r.Context(), nodeID)
+	if errors.Is(err, ErrNodeNotFound) || (err == nil && nodeWS != clamp.WorkspaceID) {
+		httperr.Write(w, r, http.StatusForbidden, "forbidden")
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, "failed to verify node workspace")
+		return
+	}
+
+	rows, err := h.svc.ListWipLimits(r.Context(), nodeID, clamp.WorkspaceID)
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, "failed to list WIP limits")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, rows)
 }
 
-// upsertWipLimits upserts the WIP limit for one (node, flow_state) pair.
-// TODO(FB1.2.2): implement in story FB1.2.2
-func (h *Handler) upsertWipLimits(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
+// upsertWipLimitsRequest is the JSON body accepted by PUT /_site/flowboard/wip.
+// Limit is a pointer so the JSON value null (or omitting the field) maps to
+// nil → SQL NULL → unlimited semantics (spec §3.2 / AC).
+type upsertWipLimitsRequest struct {
+	NodeID      uuid.UUID `json:"node_id"`
+	FlowStateID uuid.UUID `json:"flow_state_id"`
+	Limit       *int      `json:"limit"`
+}
+
+// upsertWipLimits handles PUT /_site/flowboard/wip
+//
+// Permission gate: caller must have a row in topology_nodes_members for the
+// target node. Service returns ErrNotMember when not; handler returns 403.
+//
+// Sentinel-clamped: workspace_id is read from the sentinel Clamp. Missing
+// Clamp → 403.
+func (h *Handler) upsertWipLimits(w http.ResponseWriter, r *http.Request) {
+	clamp := sentinel.FromCtx(r.Context())
+	if clamp.WorkspaceID == uuid.Nil {
+		httperr.Write(w, r, http.StatusForbidden, "workspace clamp required")
+		return
+	}
+
+	var req upsertWipLimitsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.NodeID == uuid.Nil {
+		httperr.Write(w, r, http.StatusBadRequest, "node_id is required")
+		return
+	}
+	if req.FlowStateID == uuid.Nil {
+		httperr.Write(w, r, http.StatusBadRequest, "flow_state_id is required")
+		return
+	}
+
+	row, err := h.svc.UpsertWipLimit(
+		r.Context(),
+		req.NodeID,
+		req.FlowStateID,
+		clamp.UserID,
+		clamp.WorkspaceID,
+		req.Limit,
+	)
+	if err != nil {
+		if errors.Is(err, ErrNotMember) {
+			httperr.Write(w, r, http.StatusForbidden, "caller is not a member of this topology node")
+			return
+		}
+		httperr.Write(w, r, http.StatusInternalServerError, "failed to upsert WIP limit")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, row)
+}
+
+// writeJSON serialises v as JSON with the given status code.
+// Content-Type is always application/json.
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 // getCardPrefs returns the current user's card-field preferences for a type.
