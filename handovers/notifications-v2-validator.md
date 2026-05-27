@@ -55,7 +55,7 @@ Leave these alone — they belong to a separate ongoing work item:
 ## PROGRESS
 
 - Wave 1: ✅ CLOSED — S01 + S04 merged into `feature/notifications-v2` (merges `fa0b78e1`, `801928f8`); scope backfill `11502250`
-- Wave 2: 🟡 IN FLIGHT — S05 closed (merge `68fddc55`); 4 workers still running (S02, S03, S07, S08)
+- Wave 2: 🟡 4 of 5 closed — S05 (merge `68fddc55`), S02 (merge `ada34a4a`), S03 (merge `160f1554`), S08 (merge `4af460b5`); S07 REJECTED — strangler-fig violation, awaits Master re-dispatch
 - Wave 3: pending
 - Wave 4: pending
 - Wave 5: pending
@@ -66,13 +66,13 @@ Leave these alone — they belong to a separate ongoing work item:
 | # | Story | Branch | Status | Validator verdict | SHA |
 |---|---|---|---|---|---|
 | S01 | Schema migrations (11 tables — mig 120..130, indexes, CHECK, seed `notifications_platform_channels`) | `notif-v2-s01` (new, clean) | recovered + validated | **PASS** | tip `0d27defa` |
-| S02 | Domain types + Producer interface + dbproducer | `notif-v2-s02` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
-| S03 | Inverse-Sentinel Resolver + broadcast.Service | `notif-v2-s03` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
+| S02 | Domain types + Producer interface + dbproducer | `notif-v2-s02` (clean cherry-pick from worktree-agent-a0051b623d70bc856) | merged via `--no-ff` | **PASS** | merge `ada34a4a` |
+| S03 | Inverse-Sentinel Resolver + broadcast.Service | `notif-v2-s03` (clean cherry-pick from worktree-agent-a18c615ab495ce904; 422b95aa skipped — S02 duplicate) | merged via `--no-ff` | **PASS** | merge `160f1554` |
 | S04 | RabbitMQ broker wrapper + exchange/queue declarations | `notif-v2-s04` (new, clean) | recovered + validated | **PASS — fixup needed** (test build-tag) | tip `57f07b2e` |
 | S05 | Relay + outbox drain + stuck-claim sweeper | `notif-v2-s05` (clean recovery) | merged via `--no-ff` | **PASS** | merge `68fddc55` |
 | S06 | Pipeline: enrich → filter → router | feature/notifications-v2/s06-pipeline | not started | — | — |
-| S07 | Rules engine — real matchConditions | `notif-v2-s07` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
-| S08 | Templates: DB-backed lookup + interpolation + seed templates | `notif-v2-s08` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
+| S07 | Rules engine — real matchConditions | `worktree-agent-a78a25cf9f0949aa0` (audit only — NOT cherry-picked) | strangler-fig violation; awaits Master re-dispatch | **REJECT** | worker SHA `63c58c5b` (not merged) |
+| S08 | Templates: DB-backed lookup + interpolation + seed templates | `notif-v2-s08` (clean cherry-pick from worktree-agent-a71c41e246990a31d) | merged via `--no-ff` | **PASS** (Channel-as-string accepted; TD-NOTIF-V2-TEMPLATES-CHANNEL-TYPING logged) | merge `4af460b5` |
 | S09 | Dispatchers: interface + in_app + sse + email (real) + audit writer | feature/notifications-v2/s09-dispatchers | not started | — | — |
 | S10 | Handler (read side) + sentinel clamps + frontend rewire | feature/notifications-v2/s10-handler | not started | — | — |
 | S11 | Broadcast handlers + admin UIs + preview-count | feature/notifications-v2/s11-broadcast-ui | not started | — | — |
@@ -240,8 +240,120 @@ Linter discipline (Amendment 1) — track new rules introduced by each story so 
 
 Per the standing prohibition this turn ("NO hook renaming this turn"), `scope-commit-note.sh` was NOT disabled. The async hook fired during the TD commit (`ecf38e82`) and stamped the TD SHA into 6 unrelated scope sections in working-tree Vector_Scope.md — discarded by restoring Vector_Scope.md to HEAD and re-applying only the intentional NV1 entry. Per Wave 1 precedent the discard was correct (hook noise, not legitimate scope hygiene).
 
+## WAVE 2 — S02 / S03 / S08 CLOSED + S07 REJECTED (2026-05-27)
+
+### Migration baseline check (pre-flight)
+
+S08 worker's brief said the dev DB "only has migrations through 92" and offered this as the reason its integration tests were skipping. Verified directly:
+
+```
+SELECT filename FROM schema_migrations ORDER BY 1 DESC LIMIT 5;
+→ 092_grant_padmin_insurance_siblings.sql    2026-05-24
+→ 091_timebox_scope_propagation.sql          2026-05-21
+→ ... etc
+```
+
+But also:
+
+```
+SELECT tablename FROM pg_tables WHERE schemaname='public'
+  AND (tablename LIKE 'notifications_%_v2' OR tablename IN ('notifications_event_recipients','notifications_users_inbox_v2','notifications_platform_channels','notifications_templates'));
+→ notifications_event_recipients, notifications_events_v2, notifications_outbox_v2,
+  notifications_platform_channels, notifications_rules_v2, notifications_templates,
+  notifications_users_inbox_v2  (7 tables — full S01 set, plus seed data in
+  notifications_platform_channels = 6 rows)
+```
+
+**Conclusion:** S01 schema is physically applied; the `schema_migrations` tracker just isn't updated for migs 120..130 (S01's recovery cherry-picks didn't write tracker rows). S08's worker was reading `schema_migrations` and interpreting absence as "schema not present" — incorrect. S05 was right. The tests skip in some path that polls `schema_migrations` but pass when run with `-tags=integration` against the live schema. **Tracker drift between filesystem migrations and `schema_migrations` table is a pre-existing condition for migs 120..130 — not introduced by S08 — and ought to be backfilled at Wave 6 close (or sooner if any subsequent migration applier balks).**
+
+### Per-story validation results
+
+**S02 — `notif-v2-s02` — PASS — merged via `--no-ff` at `ada34a4a`**
+
+- Worker worktree: `.claude/worktrees/agent-a0051b623d70bc856`. Branch `worktree-agent-a0051b623d70bc856` (auto-named by runner). Worker did a forward merge of `feature/notifications-v2` into the worktree at `2d0c8309` (same shape as S05), so the cherry-pick of the 7 real S02 commits onto a clean recovery branch off `feature/notifications-v2` was conflict-free.
+- Files added: `backend/internal/notifications/v2/domain/event.go` (205L), `domain/delivery.go` (55L), `domain/event_test.go` (222L), `producer/producer.go` (38L), `producer/dbproducer.go` (224L), `producer/dbproducer_test.go` (331L), `dev/scripts/lint_no_direct_outbox_write.sh` (38L), `docs/c_c_lint_rules.md` (+1 row).
+- **Spec adherence:** Priority/FanoutMode/Channel constants match mig 120 CHECK constraints exactly. Event.Validate() mirrors all 6 CHECKs (priority enum, fanout enum, direct-requires-recipient, platform-no-subscription, topology-requires-node, system-no-user-sender). EventType parses `<domain>.<action>` per locked decision #3. dbProducer INSERTs use full `notifications_events_v2_*` column prefixes; idempotency lookup uses `IS NOT DISTINCT FROM` for platform-event NULL semantics; unique-violation race recovery present.
+- **Spec deviation accepted:** Producer.Enqueue returns `(uuid.UUID, error)` — spec text said `(string, error)` but uuid.UUID matches the PK column type and is idiomatic Go. Plan doc already flagged this as draft text; accepted per the Master's earlier approval of the plan.
+- **Column-prefix HARD RULE:** `python3 dev/scripts/lint_column_prefix_convention.py` → "OK — no violations".
+- **Sentinel clamp:** N/A — S02 has no handlers (Producer is a Go-side surface called by other backend services within their own tx context).
+- **Tests:** 14 domain unit + 7 producer integration — all PASS against live `vector_artefacts` dev DB. `go test ./internal/notifications/v2/domain/...` (0.326s) + `go test -tags=integration ./internal/notifications/v2/producer/...` (2.483s).
+- **Lints:** `lint:no-direct-outbox-write` (new, S02-introduced) PASS — carve-out for `/notifications/v2/` honoured. `lint:column-prefix-convention` PASS. `lint:no-v1-broker-imports` PASS. No v1 imports anywhere in v2/domain or v2/producer.
+- **Linter coverage added:** `lint:no-direct-outbox-write` (new). Grep-based scanner. Ledger entry landed in `docs/c_c_lint_rules.md` (1-line row). Wired only as a standalone script (not in CI yet — that's separate work; the script is invokable and PASSes). PENDING LINTS row 2 now closed.
+- **Security:** parameterised SQL throughout. No secrets touched. Event.Data marshalled to canonical JSON. Validation fail-fast prevents bad input from reaching the DB.
+- **Scalability:** UNIQUE (subscription_id, event_key) index from S01 mig 120 supports the idempotency lookup (single index scan, B-tree).
+- **No hacks-as-fixes:** clean.
+
+**S03 — `notif-v2-s03` — PASS — merged via `--no-ff` at `160f1554`**
+
+- Worker worktree: `.claude/worktrees/agent-a18c615ab495ce904`. Branch `worktree-agent-a18c615ab495ce904`. Worker's first commit `422b95aa` was a domain-package STUB that duplicates what S02 ships — **SKIPPED** in the cherry-pick. The remaining 4 commits applied conflict-free onto S02's merged tip.
+- Files added: `backend/internal/notifications/v2/broadcast/resolver.go` (240L) + `resolver_test.go` (453L), `broadcast/auth.go` + `auth_test.go` (349L total), `broadcast/service.go` + `service_test.go` (893L total).
+- **Spec adherence:** Resolver lives in `v2/broadcast/`, not `sentinel/` — Decision #13 COMPLIED. Four resolver methods (UsersForTopologyNode w/ subtree CTE, UsersForWorkspace, UsersForSubscription, UsersForPlatform) all sorted ascending for deterministic INSERT ordering. CheckPlatformAuth (gadmin only), CheckTopologyAuth (pAdmin+ AND GrantOnNode), CheckTenantAuth (subscription admin OR gadmin), CheckWorkspaceAuth (reuses CheckTopologyAuth with workspaceRootNodeID — S11 handler is the documented caller that supplies that). Service.Broadcast: auth → resolve → BEGIN tx → INSERT event + N recipient rows → set resolved_at → COMMIT — recipient snapshot at fire-time per Decision #12.
+- **Column-prefix HARD RULE:** every Service SQL uses `notifications_events_v2_*` + `notifications_event_recipients_*` prefixes. `lint:column-prefix-convention` PASS.
+- **Sentinel clamp:** N/A — S03 has no handlers (Service is an in-process API called by S11's future handlers, which WILL clamp at the wire boundary).
+- **Tests:** 10 unit (auth + service stubs) + 17 integration (resolver against live DB) — all PASS. `go test ./internal/notifications/v2/broadcast/...` (0.331s unit) + `go test -tags=integration ./internal/notifications/v2/broadcast/...` (12.119s with throwaway fixture creation per test).
+- **Lints:** `lint:column-prefix-convention` PASS. `lint:no-v1-broker-imports` PASS. `lint:no-direct-outbox-write` PASS (v2/broadcast/ correctly inside the carve-out; broadcasts write 1-event-N-recipients atomically, distinct from Producer's 1-event-1-recipient direct path — Producer cannot service broadcast because the recipient-fan-out is by definition not 1).
+- **Linter coverage added:** none — DB CHECK constraints from mig 120 (direct-requires-recipient, platform-no-subscription, topology-requires-node) carry the invariants. No new architectural rule introduced. PENDING LINTS unchanged.
+- **Security:** parameterised SQL. ErrNotAuthorized typed sentinel error; auth check is fail-closed (default → no, explicit grant required). HARD RULE compliance — server-side gate first.
+- **Scalability:** subtree resolver uses a recursive CTE with subscription guard (cannot leak across tenants — pinned by `TestCrossTenantIsolation`). Workspace resolver joins through `users_roles_workspaces` (already indexed). Single transaction per broadcast.
+- **S11 dependency carried forward:** `CheckWorkspaceAuth` accepts `workspaceRootNodeID` and reuses `CheckTopologyAuth`. The S11 handler must derive the workspace's root topology node from `master_record_workspaces` (or from `topology_nodes` with `kind=workspace`) and pass that ID. Documented in `auth.go` doc-comment; will need a code reference when S11 lands.
+
+**S08 — `notif-v2-s08` — PASS — merged via `--no-ff` at `4af460b5`**
+
+- Worker worktree: `.claude/worktrees/agent-a71c41e246990a31d`. Branch `worktree-agent-a71c41e246990a31d`. Worker cut from `main` (`1c81202e`) — same pattern as S05. Cherry-pick of all 3 commits onto S03's merged tip was conflict-free.
+- Files added: `backend/internal/notifications/v2/templates/interpolate.go` + `interpolate_test.go` (238L), `templates/service.go` + `service_test.go` (668L), `db/vector_artefacts/schema/131_notif_v2_seed_templates.sql` (277L).
+- **Spec adherence:** Render finds best (event_type, channel, locale, version DESC) row from mig 127's `notifications_templates`; falls back to en-GB; returns `ErrTemplateMissing` if no en-GB row either. `{{ data.X }}` placeholder substitution with dot-path resolver against the event's `Data` map; whitespace-flexible (`{{X}}` vs `{{ X }}` both work); fast-path bypass when no `{{` present.
+- **Column-prefix HARD RULE:** mig 131 INSERTs all 12 rows with full `notifications_templates_*` column names. `lint:column-prefix-convention` PASS.
+- **Channel typing deviation accepted (Option A):** worker used `Channel string` on `Template`, `ListFilter`, and Render/lookup/Upsert signatures instead of `domain.Channel`. Worker was cut from main pre-S02 merge so domain.Channel wasn't importable. String values (`"in_app"`, `"email"`) match domain.Channel constants byte-for-byte; wire contract correct. Logged as **TD-NOTIF-V2-TEMPLATES-CHANNEL-TYPING (S3)** in `docs/c_tech_debt.md`. Pay-down trigger: S06 pipeline lands (it will be the first big consumer of Render) OR any time a dev touches templates/service.go.
+- **Tests:** 19 interpolate unit + integration suite — all PASS. `go test ./internal/notifications/v2/templates/...` (0.311s) + `go test -tags=integration` (2.473s). Mig 131 applied to dev DB out-of-band by Validator via `psql -f db/vector_artefacts/schema/131_notif_v2_seed_templates.sql`; tracker row inserted (`INSERT INTO schema_migrations (filename, applied_at) VALUES ('131_notif_v2_seed_templates.sql', now())`). Seed verified: 12 rows present, 6 event_types × 2 channels (mention.created, artefact.{assigned, blocked, flow_state_changed, owner_changed}, library.release_published) × {in_app, email}.
+- **Lints:** all 3 lints PASS.
+- **Linter coverage added:** none — existing `lint:column-prefix-convention` covered the new migration.
+- **Security:** parameterised SQL. No secrets in seed file. Locale validator enforces RFC 5646 shape (en-GB style). Interpolation does not eval — purely string substitution; no code-injection surface.
+- **Scalability:** unique index on (event_type, channel, locale, version) supports the lookup. Render is single query + in-memory string ops; no N+1.
+
+**S07 — `worktree-agent-a78a25cf9f0949aa0` — REJECT — NOT merged**
+
+The S07 worker mis-targeted the work in two compounding ways:
+
+1. **Strangler-fig HARD RULE violation:** worker wrote evaluator/types/sql/service into the V1 PATH (`backend/internal/notifications/rules/`) instead of the V2 PATH (`backend/internal/notifications/v2/rules/`). The plan doc (`docs/superpowers/plans/2026-05-26-notifications-v2-s07-rules.md`) explicitly specified `backend/internal/notifications/v2/rules/`. The worker's commit `63c58c5b` modifies live v1 files (`backend/internal/notifications/rules/evaluator.go` etc.) that are still in service.
+
+2. **DESTRUCTIVE rewrite of S01's mig 128:** the worker also REPLACED `db/vector_artefacts/schema/128_notif_v2_rules.sql` with a different schema. S01's mig 128 created the V2 table `notifications_rules_v2` (full schema, 15 columns with full prefixes, CHECK constraints, 3 indexes). The worker's mig 128 DROPS that and substitutes an `ALTER TABLE users_notification_rules ADD COLUMN ... logical_op text DEFAULT 'AND'` against the V1 table. If applied to dev DB it would wipe S01's `notifications_rules_v2` table AND break S03 (which depends on it indirectly via spec linkage) plus the eventual S06 pipeline filter step which is supposed to read `notifications_rules_v2`. The worker was cut from `main` (pre-S01) — same dispatch pattern as S05/S08 — but unlike them, it didn't forward-merge S01's mig 128 verbatim; it OVERWROTE it.
+
+**Why this can't be ported by Validator:**
+- The v1 schema (`users_notification_rules`) and v2 schema (`notifications_rules_v2`) have completely different column-prefix shapes (`users_notification_rules_*` vs `notifications_rules_v2_*`). Every SQL string in the worker's `sql.go` would need rewriting.
+- The v1 evaluator works on `ArtefactChangedEvent` (a v1 struct); v2 needs to work on S02's `domain.Event` with `Data map[string]any` and a generic dot-path resolver per spec §S07. The worker's evaluator extension threads `LogicalOp` through v1's existing match-on-Artefact fields — it does NOT implement the 8 operators × generic jsonpath resolver that the v2 spec calls for.
+- The lint test `backend/internal/lintchecks/no_stub_evaluator_test.go` (the only file that's correctly placed) scans the v1 evaluator file path — would need re-pointing to v2.
+- Porting requires ~2h of careful design work + judgment calls about v2 design (jsonpath operator semantics, how `Event.Data` flows from producer → relay → filter → rules eval).
+
+Per the task brief: "If porting requires >30 min of work or any judgment call about v2 design that wasn't in the plan → REJECT and ask Master."
+
+**Decision: REJECT.** Worker SHA `63c58c5b` stays on `worktree-agent-a78a25cf9f0949aa0` as audit evidence. Worktree at `.claude/worktrees/agent-a78a25cf9f0949aa0` NOT deleted. The work is NOT merged into `feature/notifications-v2`. Master must re-dispatch S07 with a stricter brief that:
+  - Pins the v2 path as `backend/internal/notifications/v2/rules/` (not v1).
+  - Pins that mig 128 is ALREADY APPLIED (S01) and S07 must NOT touch it; any S07-side schema work is a NEW mig (e.g. mig 132 if a GIN index is wanted).
+  - Pins the evaluator surface as operating on `domain.Event` (from S02) — pass the event in, return rules that match, no `ArtefactChangedEvent` typing.
+  - Pins the 8 operators (eq, ne, in, not_in, gt, gte, lt, lte) + AND/OR + dot-path resolver per spec §S07.
+  - Pins the lint script `backend/internal/lintchecks/no_stub_evaluator_test.go` to scan `backend/internal/notifications/v2/rules/evaluator.go`.
+
+### Audit retention (Wave 2)
+
+All preserved (per HARD RULE; no destructive ops):
+- `worktree-agent-a0051b623d70bc856` (S02 worker) + worktree `.claude/worktrees/agent-a0051b623d70bc856`
+- `worktree-agent-a18c615ab495ce904` (S03 worker) + worktree `.claude/worktrees/agent-a18c615ab495ce904`
+- `worktree-agent-a71c41e246990a31d` (S08 worker) + worktree `.claude/worktrees/agent-a71c41e246990a31d`
+- `worktree-agent-a78a25cf9f0949aa0` (S07 worker — REJECTED) + worktree `.claude/worktrees/agent-a78a25cf9f0949aa0`
+- Clean recovery branches: `notif-v2-s02`, `notif-v2-s03`, `notif-v2-s08`
+- (No `notif-v2-s07` recovery branch — S07 was rejected before cherry-pick)
+
+### Hook handling note (Wave 2 triage)
+
+Per the standing prohibition this turn ("NO hook renaming this turn"), `scope-commit-note.sh` was NOT disabled. Working-tree dirty files multiplied through the cherry-pick / merge cycle (`backend/cmd/server/main.go`, `app/components/ObjectTreeV2/p_ObjectTree.tsx`, and several `backend/internal/artefactitems/*.go` files appeared modified mid-turn — all belonging to the user's parallel duplicate-cutover work item, not v2). Stashed sequentially with descriptive `-m` labels before each commit (`validator-wave2-dirty-four`, `validator-wave2-dirty-extra`, `validator-wave2-dirty-main-go`). Vector_Scope.md NV1 entries added cleanly in one commit (`7a7d3ea9`) covering all 14 entries (7 S02 source SHAs + 4 S03 + 3 S08 + 4 merge SHAs — wait, that's 18 — corrected: 7 S02 + 4 S03 + 3 S08 + 3 merge = 17, plus also note that 422b95aa was correctly NOT added to NV1 since it was skipped from cherry-pick).
+
+### Migration tracker drift (pre-existing condition, not a Wave 2 deliverable)
+
+Dev DB `schema_migrations` table's last recorded row is `092_grant_padmin_insurance_siblings.sql` (2026-05-24). Files on disk through 131 are physically applied to schema (`pg_tables` confirms all S01 + S08 tables + columns are present + indexed + populated), but migs 120..131 were applied during the Wave 1 recovery via direct cherry-pick — the recovery flow didn't write `schema_migrations` tracker rows. Validator inserted the tracker row for mig 131 today (`INSERT INTO schema_migrations (filename, applied_at) VALUES ('131_notif_v2_seed_templates.sql', now())`). Migs 120..130 tracker backfill is deferred — should be a small Master-driven task before any future migration tool tries to "catch up" by re-running them.
+
 ## RECENT ACTIVITY (last 5 actions, newest first)
 
+8. 2026-05-27 — **Wave 2 S02 / S03 / S08 closed; S07 REJECTED.** S02 (`ada34a4a`): 7 commits cherry-picked clean from `worktree-agent-a0051b623d70bc856` onto S05-tip; 14 unit + 7 integration tests PASS; `lint:no-direct-outbox-write` landed. S03 (`160f1554`): 4 of 5 worker commits cherry-picked clean from `worktree-agent-a18c615ab495ce904` (skipped `422b95aa` S02 duplicate stub); 10 unit + 17 integration tests PASS; broadcast.Resolver + Auth + Service all on the inverse-Sentinel side per Decision #13. S08 (`4af460b5`): 3 commits cherry-picked clean from `worktree-agent-a71c41e246990a31d`; 19 unit tests PASS; mig 131 applied to dev DB (12 seed templates inserted); Channel-as-string deviation accepted via Option A, TD-NOTIF-V2-TEMPLATES-CHANNEL-TYPING (S3) logged. S07 REJECTED: `worktree-agent-a78a25cf9f0949aa0` (`63c58c5b`) wrote to V1 PATH instead of V2 PATH AND destructively rewrote S01's mig 128 — REJECT + Master re-dispatch with stricter brief. Migration baseline confirmed: S01 schema physically applied (7 v2 tables present) but tracker drift exists (last `schema_migrations` row is 092) — pre-existing condition; mig 131 backfilled. Wave 2 scope entries + TD entry committed at `7a7d3ea9`. Pre-existing dirty surface grew to ~10 working-tree-modified files during the turn (all unrelated work item: artefactitems duplicate-cutover + ObjectTreeV2 changes); stashed sequentially before each commit; index always inspected pre-commit per HARD RULE.
 7. 2026-05-27 — **Wave 2 S05 closed.** Worker `agent-af17c9700182957d8` landed 5 commits (1 prerequisite-bringing, 4 real S05). Investigation of `21e8a068` confirmed worker was cut from main tip not feature/notifications-v2 tip — broker package + 3 migs forward-ported byte-identically. Cherry-picked 4 real commits onto clean `notif-v2-s05`, conflict-free. Merged `--no-ff` at `68fddc55`. Tests re-run by Validator: 4/4 PASS. Scope entries `c2912c42`. TD entry `TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER` at `ecf38e82` (S3, pay-down when 5s wakeup latency becomes user-observable). TD scope entry `8f7e8e28`. Handover update follows. Audit retained: worker worktree + worker branch + recovery branch all preserved.
 6. 2026-05-27 — **Wave 2 plans approved + committed (`3aa329c0`)** on `feature/notifications-v2`. Five docs reviewed against the 9-item plan-doc checklist: S02 domain+producer (5pt), S03 broadcast service (8pt), S05 relay+sweeper (5pt), S07 rules engine (8pt), S08 templates+seeds (5pt). All PASS — every plan cites correct spec sections (Architecture / Interfaces / End-to-end / Data model / Locked decisions), uses flat `notif-v2-sNN` branch naming per Wave 1 lesson, has explicit `git branch --show-current` worktree-confirm in Task 1, bite-sized tasks with full code/SQL blocks, no placeholders, DoD checklist + Risks table. Cross-story imports documented (S03/S05/S07/S08 → S02 domain; S05 → S04 broker). Two new lint rules surfaced (`lint:no-direct-outbox-write` in S02, `lint:no-stub-evaluator` in S07). Pre-existing dirty four stashed for the commit and restored after via `git checkout --ours` on the Vector_Scope.md conflict (stash contents were hook noise — discarded). Plans commit `3aa329c0`; handover commit follows; scope-entry commit follows.
 5. 2026-05-27 — **Wave 1 recovery complete.** Cut clean branches `notif-v2-s01` (11 commits, tip `0d27defa`) and `notif-v2-s04` (6 commits, tip `57f07b2e`) off `feature/notifications-v2` (`9c2d0026`). Split contaminated `4233a7da` into one mig-120 commit on S01 and one broker.go commit on S04. Extracted mig 128 from contaminated `750855df` (Vector_Scope.md hunks discarded). Scratch branches `s01-schema` + `s04-broker` preserved as audit evidence. S01 PASS; S04 PASS-with-followup (test build-tag split needed). Async scope hook handled via temporary `.disabled` rename for the duration of the cherry-picks. Dirty four restored unchanged.
