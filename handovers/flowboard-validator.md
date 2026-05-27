@@ -125,7 +125,7 @@ If any step fails → REJECT the offending story, do NOT apply downstream migrat
 
 ## § Current story
 
-REJECTED FB1.1.2 — awaiting respawn of worker on `fb1-1-2-mig-133-wip-limits` with rejection brief below.
+idle — awaiting next dispatch (FB1.1.3)
 
 ## § Self-assessment
 
@@ -134,6 +134,8 @@ Validator was spawned fresh, will be re-spawned on every dispatch (no SendMessag
 **Context budget after FB1.1.1 verdict:** ~30%. Read AC + spec + worker diff + ran lint + applied migration + verified + squashed. No oversized files reviewed.
 
 **Context budget after FB1.1.2 REJECT:** ~35%. Read AC + spec + worker diff + ran lint (green) + attempted apply (failed at the `INSERT INTO schema_migrations (version)` line — column doesn't exist, transaction rolled back, no DB damage). Clean working tree restored. Wrote rejection brief.
+
+**Context budget after FB1.1.2 re-validation PASS (2026-05-27, post-fix `22e3d00f`):** ~45%. Re-spawned fresh. Read AC + spec correction + worker fix diff (only 2 lines removed: one INSERT in UP, one DELETE in DOWN) + grep-confirmed both files now have zero `schema_migrations` text + ran lint (green) + applied UP via direct psql (BEGIN/CREATE TABLE/CREATE INDEX/COMMIT) + backfilled ledger row + `\d topology_nodes_wip_limits` confirms shape + squash-merged to `feature/flowboard` (staged stat showed only the 2 migration files — HARD RULE clean). Vector_Scope.md auto-attribution noise from the commit-note hook was stashed before checkout to keep merge surface narrow.
 
 **Operational note for next validator:** The bulk migrator (`go run ./cmd/migrate -dry-run -db vector_artefacts -env .env.dev`) reports 39 pre-existing pending migrations (093–130) on top of any new file. This is **substrate-vs-runner-record drift** from the post-refactor reseed — the substrate is fully present (you can see `topology_nodes_id`, `users_id` as UUID in psql) but the `schema_migrations` table only records the pre-refactor 089–092 rows. **Do NOT run the bulk migrator** — it would attempt to re-apply 093–130 against an already-migrated DB and explode. Instead: apply each new migration file directly via `psql -f`, then backfill the `schema_migrations` row with `INSERT INTO schema_migrations (filename, applied_at) VALUES ('NNN_slug.sql', now()) ON CONFLICT DO NOTHING`. Both steps are inside the existing migration's `BEGIN/COMMIT` envelope plus a separate one-line INSERT — clean, isolated, no risk to neighbouring migrations.
 
@@ -145,7 +147,9 @@ Validator was spawned fresh, will be re-spawned on every dispatch (no SendMessag
 
 ## § Active rejection
 
-### REJECT — FB1.1.2 — 2026-05-27
+(none — FB1.1.2 REJECT resolved by `22e3d00f` and re-validated PASS; merge SHA `cc4abf58`)
+
+### REJECT — FB1.1.2 — 2026-05-27 (RESOLVED 2026-05-27 — kept for audit trail)
 
 **Branch:** `fb1-1-2-mig-133-wip-limits`
 **Worker last SHA:** `459efbb1` (post-cherry-pick; original worker SHA was `0f599c88`, content identical)
@@ -223,3 +227,4 @@ Live `vector_artefacts` schema uses UUID for every PK/FK; spec showed BIGINT. Pl
 |---|---|---|---|---|---|---|
 | 1 | FB1.1.1 | fb1-1-1-mig-132-members | PASS | df6d412c | 2026-05-27 | mig 132 applied directly via psql against vector_artefacts; schema_migrations row backfilled (`132_topology_nodes_members.sql`); `\d topology_nodes_members` confirms UUID PK + FKs ON DELETE CASCADE + UNIQUE (node_id, user_id) + 2 ix indexes + 6 fully-prefixed columns; `npm run lint:column-prefix-convention` green; DOWN file static-verified (BEGIN/DROP INDEX×2/DROP TABLE/COMMIT). All 5 AC PASS. |
 | 2 | FB1.1.2 | fb1-1-2-mig-133-wip-limits | REJECT | — | 2026-05-27 | Worker SHA `459efbb1`. Table definition + columns + FKs + UNIQUE + indexes + column-prefix lint ALL PASS. Apply failed because UP file line 51 has `INSERT INTO schema_migrations (version) VALUES (133)` and the live table has no `version` column (only `filename TEXT PK` + `applied_at`); transaction rolled back, no DB damage. DOWN file has the same defect at line 14. Brief in §Active rejection asks worker to delete those two lines + inline DOWN-comment block; preserve everything else. |
+| 3 | FB1.1.2 | fb1-1-2-mig-133-wip-limits | PASS | cc4abf58 | 2026-05-27 | **After REJECT + fix cycle.** Fix-worker SHA `22e3d00f` made the recommended surgical edit (removed the two `schema_migrations` row writes — INSERT in UP, DELETE in DOWN — nothing else). Re-validated: grep confirms zero `schema_migrations` text in either file; three-dot diff shows only the 2 migration files; column-prefix lint green; UP applied cleanly to vector_artefacts via direct psql (BEGIN → CREATE TABLE → CREATE INDEX → COMMIT); schema_migrations row 133 backfilled externally; `\d topology_nodes_wip_limits` confirms UUID PK + FKs to topology_nodes/flows_states (ON DELETE CASCADE) + FK to users (nullable updated_by) + UNIQUE on (node_id, flow_state_id) + ix on node_id + 7 fully-prefixed columns. All 5 AC PASS. Structural content was correct from the start; only the schema_migrations row writes needed removal. |
