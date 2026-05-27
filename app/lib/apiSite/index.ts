@@ -41,7 +41,8 @@
  *                        archive, listPermissions, assignPermissions, revokePermissions
  *   errors             — report
  *   libraryReleases    — list, count, ack
- *   flowBoard          — listWip, upsertWip, getCardPrefs, upsertCardPrefs
+ *   flowBoard          — listWip, upsertWip, getCardPrefs, upsertCardPrefs, putWip
+ *   topologyMembers    — listNodeMembers
  *   addressables       — buildReconcile, register, snapshot, getPageHelp, adminListPageHelp,
  *                        adminPutPageHelp, adminDeletePageHelp, adminUpdateHelpable
  */
@@ -1465,5 +1466,49 @@ export const flowBoard = {
     apiSite<{ artefact_type_id: ID; card_fields: string[]; updated_at: string }>(
       "/flowboard/prefs",
       { method: "PUT", body: JSON.stringify(body) }
+    ),
+
+  /**
+   * PUT /_site/flowboard/wip (alias used by WipSettingsModal — same endpoint
+   * as upsertWip but named to match the story spec's AC wording).
+   * Upserts a WIP limit for a single (node, flow_state) pair.
+   * 403 when caller is not in topology_nodes_members for the node.
+   */
+  putWip: (body: {
+    nodeId: ID;
+    flowStateId: ID;
+    limit: number | null;
+  }) =>
+    apiSite<FlowBoardWipRow>("/flowboard/wip", {
+      method: "PUT",
+      body: JSON.stringify({
+        node_id: body.nodeId,
+        flow_state_id: body.flowStateId,
+        limit: body.limit,
+      }),
+    }),
+};
+
+// Pages: app/components/FlowBoard/hooks/useNodeMembership.ts
+// ─── Topology members  (/topology/{nodeId}/members) ──────────────────────────
+// FB1.2.4 — returns member rows for a topology node. Sentinel-clamped.
+
+/** Wire shape for a single member row returned by GET /_site/topology/{id}/members */
+export interface TopologyNodeMember {
+  user_id: ID;
+  role: string;
+  created_at: ISODate;
+}
+
+export const topologyMembers = {
+  /**
+   * GET /_site/topology/{nodeId}/members
+   * Returns the list of users who have an explicit row in
+   * topology_nodes_members for the given node.
+   * Sentinel-clamped — 403 when caller has no access to the node.
+   */
+  listNodeMembers: (nodeId: ID) =>
+    apiSite<TopologyNodeMember[]>(
+      `/topology/${encodeURIComponent(nodeId)}/members`
     ),
 };

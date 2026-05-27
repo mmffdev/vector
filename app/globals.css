@@ -18028,3 +18028,143 @@ tr.is-editing {
 
 .flow-board__Card_field-priority {
 }
+
+/* ── FlowBoard WIP Settings — FB1.3.6 ────────────────────────────────────────
+ *
+ *  .flow-board__GearButton          — gear icon button (top-right of board)
+ *  .flow-board__WipModal            — backdrop overlay modifier
+ *  .flow-board__WipModal_dialog     — centred card (composes .modal)
+ *  .flow-board__WipModal_header     — title row
+ *  .flow-board__WipModal_closeBtn   — X close button
+ *  .flow-board__WipModal_body       — scrollable list area
+ *  .flow-board__WipModal_empty      — empty-state message
+ *  .flow-board__WipModal_list       — column list (unstyled)
+ *  .flow-board__WipModal_row        — one column entry (flex row)
+ *  .flow-board__WipModal_label      — column name label
+ *  .flow-board__WipModal_input      — numeric input
+ *  .flow-board__WipModal_footer     — Save + Cancel button row
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.flow-board__GearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.flow-board__GearButton:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.flow-board__GearButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Backdrop: composes from .modal-backdrop; WipModal adds no extra rules
+   beyond the base catalog class. The selector here exists so the JSX
+   class round-trip check passes cleanly. */
+.flow-board__WipModal {
+  /* inherits .modal-backdrop positioning/dimming */
+}
+
+.flow-board__WipModal_dialog {
+  /* inherits .modal sizing/card surface */
+  min-width: 22rem;
+  max-width: 32rem;
+  width: 100%;
+}
+
+.flow-board__WipModal_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.flow-board__WipModal_closeBtn {
+  flex-shrink: 0;
+}
+
+.flow-board__WipModal_body {
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.flow-board__WipModal_empty {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.flow-board__WipModal_list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.flow-board__WipModal_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.flow-board__WipModal_label {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-board__WipModal_input {
+  width: 5.5rem;
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-input, var(--surface-secondary));
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  text-align: right;
+  appearance: textfield;
+}
+
+.flow-board__WipModal_input:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+  border-color: var(--accent-primary);
+}
+
+.flow-board__WipModal_input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.flow-board__WipModal_footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
