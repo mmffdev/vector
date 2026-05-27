@@ -11430,6 +11430,11 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `2da32062` (2026-05-27): chore(notif-v2): validator handover — Wave 2 S02/S03/S08 closed; S07 REJECTED
 > Commit `4bd778a4` (2026-05-27): chore(notif-v2): master orchestrator handover doc
 > Commit `117c4125` (2026-05-27): chore(notif-v2): validator handover — post-Wave-2 housekeeping turn
+> Commit `e32972bf` (2026-05-27): feat(notif-v2): S07 types + jsonpath + 8 operators — v2/rules foundation
+> Commit `ad942fef` (2026-05-27): feat(notif-v2): S07 evaluator — pgEvaluator.MatchEvent + AND/OR engine
+> Commit `48eca637` (2026-05-27): feat(notif-v2): S07 service — CRUD over notifications_rules_v2
+> Commit `7eaf531d` (2026-05-27): chore(lint): lint:no-stub-evaluator — guard v2 evaluator real implementation
+> Commit `a9fa7d73` (2026-05-27): merge: Wave 2 S07 — rules engine (real matchConditions)
 
 ---
 
