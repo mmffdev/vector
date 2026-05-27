@@ -1,11 +1,13 @@
 # Notifications v2 — Master Orchestrator Handover
 
-**Last updated:** 2026-05-27 ~03:30
+**Last updated:** 2026-05-27 — Wave 3 dispatched. PLA067 filed, S06 worker brief committed (`c93360fe`), Valkey substrate landed on swarm (`cc738dc5`); spec pivoted Redis → Valkey throughout. S06 worker running (Sonnet, isolated worktree, background).
 **Owner:** Master agent (orchestrator role) for the Notifications v2 PLA
 **Companion:** validator handover at `handovers/notifications-v2-validator.md`
 **Spec:** `docs/superpowers/specs/2026-05-26-notifications-v2-design.md`
 **Master plan index:** `docs/superpowers/plans/2026-05-26-notifications-v2-index.md`
-**Integration branch:** `feature/notifications-v2` at `cdb9cc78` (68 commits ahead of main)
+**S06 worker brief:** `docs/superpowers/plans/2026-05-27-notifications-v2-s06-pipeline.md`
+**S06 plan (narrative):** PLA067 on /dev/reporting → Plan tab
+**Integration branch:** `feature/notifications-v2` at `c93360fe` (70+ commits ahead of main; +2 since Wave 2 close — `cc738dc5` Valkey infra + `c93360fe` S06 brief)
 
 ## WAVE 2 — CLOSED ✓
 
@@ -61,19 +63,19 @@ The Validator agent (long-lived Opus, persistent handover) owns ALL git operatio
 | S03 | Broadcast + inverse-Sentinel Resolver | ✅ MERGED | `160f1554` |
 | S04 | RabbitMQ broker (v2) | ✅ MERGED | `801928f8` |
 | S05 | Relay + outbox drain + sweeper | ✅ MERGED | `68fddc55` |
-| S06 | Pipeline (enrich→filter→router) | 🔵 NEXT — Wave 3, 13pt | — |
+| S06 | Pipeline (enrich→filter→router) | 🟡 IN FLIGHT — Wave 3, 13pt — worker dispatched 2026-05-27 (Sonnet, worktree, background); brief `docs/superpowers/plans/2026-05-27-notifications-v2-s06-pipeline.md`; PLA067 | — |
 | S07 | Rules engine | ✅ MERGED (re-dispatch after strangler-fig rejection) | `a9fa7d73` |
 | S08 | Templates DB-backed + seeds | ✅ MERGED | `4af460b5` |
 | S09 | Dispatchers + audit writer | 🔴 Wave 4 | — |
 | S10 | Handler + sentinel clamps + frontend | 🔴 Wave 5 | — |
 | S11 | Broadcast handlers + admin UIs | 🔴 Wave 5 | — |
-| S12 | PendingStore Redis + debounce + digest | 🔴 Wave 4 | — |
+| S12 | PendingStore **Valkey** + debounce + digest | 🔴 Wave 4 | — |
 | S13 | Producers (mention rewire + 5 artefact) | 🔴 Wave 6 | — |
 | S14 | Parity harness + dev page | 🔴 Wave 6 | — |
 | S15 | Cutover smoke + 30d soak | 🔴 Wave 6 | — |
 | S16 | v1 deletion | 🔴 Wave 6 | — |
 
-**Wave 1 closed. Wave 2 closed.** Next: Wave 3 (S06 pipeline, 13pt sequential).
+**Wave 1 closed. Wave 2 closed. Wave 3 in flight (S06 worker dispatched 2026-05-27).** Wave 4 next (S09 dispatchers + S12 Valkey PendingStore; parallel-safe).
 
 **Roughly 40% complete** (7 / 16 stories merged: S01 + S02 + S03 + S04 + S05 + S07 + S08; ~39 points of ~104 Fibonacci total).
 
@@ -83,7 +85,7 @@ The Validator agent (long-lived Opus, persistent handover) owns ALL git operatio
 
 2. **Migration tracker backfill (093..131)** — `schema_migrations` says last applied = 092, but live DB has 131 applied. Pre-existing drift (not introduced by this PLA). Tracker schema is `(filename TEXT PK, applied_at TIMESTAMPTZ)`. Backfill via psql: `INSERT INTO schema_migrations (filename, applied_at) SELECT filename, now() FROM unnest(ARRAY[<list-from-ls>]) ...` or scripted. Do BEFORE any future migration tool re-attempts these.
 
-3. **Wave 3 plan (S06 pipeline) needs writing** — biggest single story (13pt). Pulls together S02 (domain), S03 (broadcast scope), S05 (relay drains what pipeline writes), S07 (rules — pipeline.filter calls Evaluator.MatchEvent), S08 (templates — pipeline.router renders before outbox write). Spec section "End-to-end flow" steps 3a/3b/3c is canonical. Files: `pipeline.go`, `enrich.go`, `filter.go`, `router.go`, `pending.go` (interface — Redis impl ships in S12), `pipeline_test.go`. Sentinel clamp on recipient is filter.go's job. Quiet hours + platform-channels kill switch are filter-stage. Critical-priority bypass encoded in filter.go + audit row carries `bypass_reason='critical_priority'`.
+3. ~~**Wave 3 plan (S06 pipeline) needs writing**~~ — **RESOLVED 2026-05-27.** PLA067 filed on /dev/reporting Plan tab; worker brief committed at `docs/superpowers/plans/2026-05-27-notifications-v2-s06-pipeline.md` (commit `c93360fe`). S06 worker dispatched 2026-05-27 (Sonnet, isolated worktree, background, sequential — single 13pt story). Substrate pivoted from Redis to **Valkey** (BSD-3 Linux Foundation Redis-protocol-compatible fork) for procurement-cleanliness; Valkey live on swarm at `localhost:6379` with read-only Redis Commander UI on `:3003` (commit `cc738dc5`, TD-SEC-REDIS-DEPENDENCY substrate-side updated). S06 ships `pending.go` interface + `InMemoryPendingStore` only; **S12** ships `pending_valkey.go`. Await `STATUS: READY FOR VALIDATION` from worker before routing to Validator.
 
 4. **Wave 2 close report to user** — user is off; resume report goes in the first response of next session. Include: 7/16 stories merged, both Wave 2 carryovers (SY003 + tracker), Wave 3 status (plan TBD, then dispatch).
 
