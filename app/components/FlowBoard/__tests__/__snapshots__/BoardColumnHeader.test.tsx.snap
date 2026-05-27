@@ -1,0 +1,134 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`BoardColumnHeader (FB1.3.3) > renders 'Doing (0)' cleanly when empty and unlimited 1`] = `
+<div>
+  <div
+    class="flow-board__ColumnHeader"
+  >
+    <span
+      class="flow-board__ColumnHeader_title"
+    >
+      Doing
+    </span>
+    <span
+      class="flow-board__ColumnHeader_countLabel"
+    >
+      (
+      0
+      )
+    </span>
+  </div>
+</div>
+`;
+
+exports[`BoardColumnHeader (FB1.3.3) > renders 'Doing (0/10)' cleanly when empty and limited 1`] = `
+<div>
+  <div
+    class="flow-board__ColumnHeader"
+  >
+    <span
+      class="flow-board__ColumnHeader_title"
+    >
+      Doing
+    </span>
+    <span
+      class="flow-board__ColumnHeader_countLabel"
+    >
+      (
+      0/10
+      )
+    </span>
+  </div>
+</div>
+`;
+
+exports[`BoardColumnHeader (FB1.3.3) > renders 'Doing (3/10)' when under limit 1`] = `
+<div>
+  <div
+    class="flow-board__ColumnHeader"
+  >
+    <span
+      class="flow-board__ColumnHeader_title"
+    >
+      Doing
+    </span>
+    <span
+      class="flow-board__ColumnHeader_countLabel"
+    >
+      (
+      3/10
+      )
+    </span>
+  </div>
+</div>
+`;
+
+exports[`BoardColumnHeader (FB1.3.3) > renders 'Doing (10/10)' at limit with no badge and no red class 1`] = `
+<div>
+  <div
+    class="flow-board__ColumnHeader"
+  >
+    <span
+      class="flow-board__ColumnHeader_title"
+    >
+      Doing
+    </span>
+    <span
+      class="flow-board__ColumnHeader_countLabel"
+    >
+      (
+      10/10
+      )
+    </span>
+  </div>
+</div>
+`;
+
+exports[`BoardColumnHeader (FB1.3.3) > renders 'Doing (11)' with no slash and no badge when wipLimit is null 1`] = `
+<div>
+  <div
+    class="flow-board__ColumnHeader"
+  >
+    <span
+      class="flow-board__ColumnHeader_title"
+    >
+      Doing
+    </span>
+    <span
+      class="flow-board__ColumnHeader_countLabel"
+    >
+      (
+      11
+      )
+    </span>
+  </div>
+</div>
+`;
+
+exports[`BoardColumnHeader (FB1.3.3) > renders 'Doing (11/10)' with +1 badge and red class when over limit 1`] = `
+<div>
+  <div
+    class="flow-board__ColumnHeader flow-board__ColumnHeader-over"
+  >
+    <span
+      class="flow-board__ColumnHeader_title"
+    >
+      Doing
+    </span>
+    <span
+      class="flow-board__ColumnHeader_countLabel"
+    >
+      (
+      11/10
+      )
+    </span>
+    <span
+      aria-label="1 over WIP limit"
+      class="flow-board__ColumnHeader_badge-overage"
+    >
+      +
+      1
+    </span>
+  </div>
+</div>
+`;
