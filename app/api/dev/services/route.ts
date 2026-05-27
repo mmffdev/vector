@@ -11,7 +11,11 @@ type ServiceResult = {
   active?: boolean;
 };
 
-function tcpProbe(port: number, timeoutMs = 2000): Promise<{ ok: boolean; latencyMs: number }> {
+// 250ms — localhost TCP either connects in <1ms or won't connect at all.
+// 2s was wasting ~4s every 10s polling tick on the (usually-down) staging
+// + prod tunnels in dev. The probe's job is "is the port listening on
+// loopback", not "wait politely for a slow handshake".
+function tcpProbe(port: number, timeoutMs = 250): Promise<{ ok: boolean; latencyMs: number }> {
   return new Promise((resolve) => {
     const start = Date.now();
     const socket = new net.Socket();
@@ -25,7 +29,9 @@ function tcpProbe(port: number, timeoutMs = 2000): Promise<{ ok: boolean; latenc
   });
 }
 
-async function httpProbe(url: string, timeoutMs = 3000): Promise<{ ok: boolean; latencyMs: number; body?: unknown }> {
+// 1s — localhost HTTP either responds promptly or has crashed. 3s was an
+// arbitrary "be patient" budget that bought nothing useful at loopback.
+async function httpProbe(url: string, timeoutMs = 1000): Promise<{ ok: boolean; latencyMs: number; body?: unknown }> {
   const start = Date.now();
   try {
     const res = await fetch(url, {
