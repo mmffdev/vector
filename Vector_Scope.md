@@ -11427,6 +11427,9 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `8644014c` (2026-05-27): feat(notif-v2): S08 service.go — DB-backed template lookup, CRUD, version selection, locale fallback
 > Commit `501c867a` (2026-05-27): feat(notif-v2): seed templates for mention + 5 artefact events (12 rows, mig 131)
 > Commit `4af460b5` (2026-05-27): merge: Wave 2 S08 — DB-backed templates + interpolation + 12 seed rows
+> Commit `2da32062` (2026-05-27): chore(notif-v2): validator handover — Wave 2 S02/S03/S08 closed; S07 REJECTED
+> Commit `4bd778a4` (2026-05-27): chore(notif-v2): master orchestrator handover doc
+> Commit `117c4125` (2026-05-27): chore(notif-v2): validator handover — post-Wave-2 housekeeping turn
 
 ---
 
