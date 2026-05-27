@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-26 — B18.9 REVISED: column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL TABLE NAME (`users.users_id`, `subscriptions.subscriptions_tier`, `master_record_workspaces.master_record_workspaces_id`). Mechanical, zero-collision, no registry needed. Matches the existing RF1.4.4 convention already partly applied across 9 migrations on 2026-05-14 (245→0 findings) plus the `lint:column-prefix-convention` lint already in tree. Registry doc `docs/c_c_column_prefix_registry.md` deleted. The 3-letter-abbreviation detour was a 2026-05-25 mistake corrected same-week. Earlier — B18.9 added: 3-letter column-prefix HARD RULE (rolled back). Earlier — B18.8 added: dev-action "Wipe & Reseed Vector substrate" button (one-click rebuild of mmff_vector + vector_artefacts from canonical seed, scoped to vector DBs only — mmff_dev + mmff_library untouched). Picked up after wipe-and-reseed plan completes. Earlier — PLA064 v4 doc refresh: orphan count 508 → 1,263 corrected post-cron-bug-fix (commit 57ed1958); cohort framing updated to match CUT1.5.0 remediation plan. Earlier — CUT1.5.0 added — orphan triage + remediation; the CUT1.0.2 cron's first run found 508 orphans across 14 columns (corrected to 1,263 post-bug-fix); CUT1.5.0 blocks CUT1.5.1; PLA064 v3 posted. Earlier — CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
-**Doc version:** 2.63 (B18.9 REVISED — column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL table-name prefix; registry doc deleted; matches existing RF1.4.4 convention. Earlier: 2.62 — B18.9 3-letter version (rolled back); 2.61 — B18.8 dev wipe-and-reseed action button; 2.60 — PLA064 v4 doc refresh; 2.59 — CUT1.2.1 + CUT1.2.2 merge-plan DDLs; 2.58 — CUT1.5.0 added; 2.57 — CUT1.5.1 corrected 8→50.)
+**Last updated:** 2026-05-27 — NEW FB1 top-level theme: FlowBoard — standalone Kanban component for `/value-flow` (PLA066). 15 stories across 4 phases (schema · backend · frontend · integration); 3 new migrations (132 `topology_nodes_members`, 133 `topology_nodes_wip_limits`, 134 `users_flowboard_prefs`); new `backend/internal/flowboard/` package with 5 endpoints; new `app/components/FlowBoard/` family mirroring ObjectTreeV2's sidecar+loader pattern (`p_wizard_flowboard_workitems.json`); samanthaAPI-addressable. Team ≡ topology node (Rally project-IS-team); WIP hangs off the node keyed by `flow_state_id` (no `flow_boards` table). Spec at `docs/superpowers/specs/2026-05-27-flowboard-design.md`. All 15 `P2 🔵 IN FLIGHT`. Earlier — B18.9 REVISED: column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL TABLE NAME (`users.users_id`, `subscriptions.subscriptions_tier`, `master_record_workspaces.master_record_workspaces_id`). Mechanical, zero-collision, no registry needed. Matches the existing RF1.4.4 convention already partly applied across 9 migrations on 2026-05-14 (245→0 findings) plus the `lint:column-prefix-convention` lint already in tree. Registry doc `docs/c_c_column_prefix_registry.md` deleted. The 3-letter-abbreviation detour was a 2026-05-25 mistake corrected same-week. Earlier — B18.9 added: 3-letter column-prefix HARD RULE (rolled back). Earlier — B18.8 added: dev-action "Wipe & Reseed Vector substrate" button (one-click rebuild of mmff_vector + vector_artefacts from canonical seed, scoped to vector DBs only — mmff_dev + mmff_library untouched). Picked up after wipe-and-reseed plan completes. Earlier — PLA064 v4 doc refresh: orphan count 508 → 1,263 corrected post-cron-bug-fix (commit 57ed1958); cohort framing updated to match CUT1.5.0 remediation plan. Earlier — CUT1.5.0 added — orphan triage + remediation; the CUT1.0.2 cron's first run found 508 orphans across 14 columns (corrected to 1,263 post-bug-fix); CUT1.5.0 blocks CUT1.5.1; PLA064 v3 posted. Earlier — CUT1.0.2 + CUT1.5.1 AC counts corrected 8→50 after SY003 v2 regen; PLA064 v2 posted with matching corrections. Earlier — CUT1 added — 14-story mmff_vector → vector_artefacts cutover from PLA064. Earlier — PLA061 Phase 2 landed — 6 deferred candidates scoped under F2.5–F2.10 (no marker, awaiting trigger) + 2 promoted to 🔵 IN FLIGHT under B16.16 (helmet + @next-safe CSP) and B16.17 (isomorphic-dompurify) on the defence-finance procurement narrative. Earlier — PLA061 Phase 1 quick wins scoped — new F2 top-level (4 stories: react-scan, Million, culori+APCA, stack-picks doc) + B16.14/B16.15 perimeter rate-limit pair. All 6 🔵 IN FLIGHT. Origin: Next.js Ecosystem Library Adoption — Shortlist, /dev/reporting Plan tab. Earlier — New RF2 top-level theme added — Service Depth (PLA-0058), 13 stories across 7 phases, all grilled to 95% confidence via parallel Opus sub-agents — deep-module refactor of `backend/internal/artefactitems` (1929 LoC, 17 ops → 8 ops + 4 setters, 0 pass-through pairs, 0 hasWorkspace branches). Behaviour-preserving; pattern doc + RF2.0.1 stop-gate; cross-package callers in featuretests handled in Phase 5. Earlier — PLA056 revised: Phase 2/3 dependency softened, VIZ1.3.4a permission sub-story added between VIZ1.3.4 and VIZ1.3.5, VIZ1.3.6 AC sharpened from decide-localStorage-vs-DB to design-users_visualiser_groups-table — see PLA056 Change Log on /dev/reporting. Earlier — New OBJ1 top-level theme added — ObjectTreeV2 Filter-Chip Scope Facets, 8 stories across 4 phases (TD · backend · frontend · doc), per PLA057 on /dev/reporting. Closes the 2026-05-23 chip-vs-grid UUID mismatch where 27 Tasks were visible but the Task chip returned empty. Earlier — New VIZ1 top-level theme added — Vector Relationship Explorer, 14 stories across 3 phases (stabilise · deepen · data-feed swap), per PLA056 on /dev/reporting. Earlier — 2026-05-19 late night — B5.11–B5.16 scoped: permissions-collapse (PLA-0053) — drop `pages_tags.min_auth_level` tier gate, leave `users_roles_pages` as the sole catalogue gate; permissions page becomes the single authoring surface. Decomposed into migration / backend / frontend / UX / audit / TD-retirement. Origin: 2026-05-19 nav-rail incident where granting Team Member access to dev pages didn't surface the bucket because the tag-tier gate fired first. Earlier late night — B1.9 scoped: unified `/artefacts` REST API parked for later cycle. Single CRUD surface with intent verbs (reprioritise/reparent/restore/move) replaces the split `/work-items` + `/portfolio-items` clamp wiring. Decomposed into 9 sub-stories, last closes the `item_type` kill per the legacy-enum audit. Night session — B20.5.K + B20.5.L Scalar IDE dev-key auth: `DEV_API_KEY` in env + `apikeys.Middleware` dual-mounted on `/_site` with synthetic-user shim via `auth.Service.FindServiceUserForSubscription`. Full 268-endpoint surface now reachable from Scalar with one bearer token. Late-evening — B20.5.J Mount(r) resolution + route-orphan lint. B20.5.I extractor hardening pushed needs-curation 25 → 1. Earlier evening — B20.5.H chokepoint enforcement. B20.5.G handler-shape extractor. Afternoon — B20.5.A–.F: spec round-trip, parser tests, middleware-chain fix.)
+**Doc version:** 2.64 (NEW FB1 — FlowBoard PLA066, 15 stories, 3 migrations, 1 new backend package, 1 new frontend component family. Earlier: 2.63 — B18.9 REVISED — column-prefix HARD RULE rolled back from 3-letter abbreviation to FULL table-name prefix; registry doc deleted; matches existing RF1.4.4 convention. Earlier: 2.62 — B18.9 3-letter version (rolled back); 2.61 — B18.8 dev wipe-and-reseed action button; 2.60 — PLA064 v4 doc refresh; 2.59 — CUT1.2.1 + CUT1.2.2 merge-plan DDLs; 2.58 — CUT1.5.0 added; 2.57 — CUT1.5.1 corrected 8→50.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -81,6 +81,10 @@
 **NV — Notifications v2** *(orchestrated PLA rebuild — 16-story Master+Validator+Worker wave model)*
 
 - [NV1. Notifications v2 — PLA build (orchestrated)](#nv1-notifications-v2--pla-build-orchestrated) 🔵 IN FLIGHT
+
+**FB — Flow Visualisation** *(Kanban + flow boards built on the artefacts substrate)*
+
+- [FB1. FlowBoard — standalone Kanban component for /value-flow (PLA066)](#fb1-flowboard--standalone-kanban-component-for-value-flow-pla066) 🔵 IN FLIGHT
 
 **Parked — solo-dev mode** *(WIP-cap overflow; verbatim, awaiting unpark)*
 
@@ -11437,6 +11441,128 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `a9fa7d73` (2026-05-27): merge: Wave 2 S07 — rules engine (real matchConditions)
 > Commit `358042aa` (2026-05-27): chore(notif-v2): master handover — Wave 2 closed, ready for Wave 3 next session
 > Commit `8452dd25` (2026-05-27): chore(notif-v2): validator handover — session close, Wave 2 fully closed
+
+---
+
+## FB1. FlowBoard — standalone Kanban component for /value-flow (PLA066) 🔵 IN FLIGHT
+
+Standalone Kanban board whose columns are the **custom flow_states of the selected artefact type**, whose cards are the live artefacts at the current sentinel scope, and whose drag-to-move triggers the existing flow-state PATCH (which already runs the rollup recalc for parents). The board is a view, not a system of record — same emergent-from-artefacts principle as ObjectTreeV2. The only persisted state is **policy** (per-team WIP limits) and **preference** (per-user card field selection). Team ≡ topology node (Rally's project-IS-team pattern); WIP hangs off the node keyed by `flow_state_id` (no `flow_boards` table). Component family mirrors ObjectTreeV2 (`p_FlowBoard.tsx` + `loader.ts` + `configs/p_wizard_flowboard_workitems.json` sidecar) so samanthaAPI can drive it later. Drag-and-drop hard-blocks invalid transitions from `flow_transitions` at the UI; the server validates the PATCH (defence-in-depth per the server-is-the-gate HARD RULE). Three small tables (132 members, 133 wip-limits, 134 user-prefs) + one new `backend/internal/flowboard/` package + the component family is the entire v1 surface. Spec at [`docs/superpowers/specs/2026-05-27-flowboard-design.md`](docs/superpowers/specs/2026-05-27-flowboard-design.md); plan body in [PLA066 on /dev/reporting](http://localhost:5101/dev/reporting). `[P2]` 🔵 IN FLIGHT
+
+**Phase 1 — Schema**
+
+- **FB1.1.1 [P2] 🔵 IN FLIGHT** — Migration 132: `topology_nodes_members` table. Team-membership foundation; one row per (user, topology_node).
+  - AC: `db/vector_artefacts/schema/132_topology_nodes_members.sql` applies clean against vector_artefacts; `schema_migrations` row 132 exists.
+  - AC: Table has PK `topology_nodes_members_id BIGSERIAL`, FKs to `topology_nodes` + `users` with `ON DELETE CASCADE`, `topology_nodes_members_role TEXT DEFAULT 'member'`, `topology_nodes_members_workspace_id BIGINT NOT NULL` (denorm for sentinel clamp), audit timestamps.
+  - AC: UNIQUE constraint on (`node_id`, `user_id`); indexes on each FK column.
+  - AC: Every column carries the full `topology_nodes_members_` prefix; `npm run lint:column-prefix` green.
+  - AC: DOWN migration drops the table; round-trip verified.
+  - Plan: PLA066
+- **FB1.1.2 [P2] 🔵 IN FLIGHT** — Migration 133: `topology_nodes_wip_limits` table. Per-node-per-flow-state WIP cap; NULL = unlimited.
+  - AC: `db/vector_artefacts/schema/133_topology_nodes_wip_limits.sql` applies clean; `schema_migrations` row 133 exists.
+  - AC: Table has PK `topology_nodes_wip_limits_id`, FKs to `topology_nodes` + `flow_states` (both `ON DELETE CASCADE`), `topology_nodes_wip_limits_limit INT` (nullable), denorm workspace_id, `updated_at` + `updated_by` audit columns.
+  - AC: UNIQUE constraint on (`node_id`, `flow_state_id`); index on `node_id`.
+  - AC: Every column carries the full `topology_nodes_wip_limits_` prefix; `npm run lint:column-prefix` green.
+  - AC: DOWN migration drops the table; round-trip verified.
+  - Plan: PLA066
+- **FB1.1.3 [P2] 🔵 IN FLIGHT** — Migration 134: `users_flowboard_prefs` table. Per-user card-field selection; absence = use sidecar default.
+  - AC: `db/vector_artefacts/schema/134_users_flowboard_prefs.sql` applies clean; `schema_migrations` row 134 exists.
+  - AC: Table has PK `users_flowboard_prefs_id`, FKs to `users` + `artefact_types` (both CASCADE), `users_flowboard_prefs_card_fields JSONB NOT NULL`, denorm workspace_id, `updated_at`.
+  - AC: UNIQUE constraint on (`user_id`, `artefact_type_id`).
+  - AC: Every column carries the full `users_flowboard_prefs_` prefix; `npm run lint:column-prefix` green.
+  - AC: DOWN migration drops the table; round-trip verified.
+  - Plan: PLA066
+
+**Phase 2 — Backend**
+
+- **FB1.2.1 [P2] 🔵 IN FLIGHT** — Scaffold `backend/internal/flowboard/` package. Empty handler.go + service.go + sql.go trio mounted in main.go but with no endpoints yet (compile-only).
+  - AC: `backend/internal/flowboard/` exists with `handler.go`, `service.go`, `sql.go`, `handler_test.go`, `service_test.go`.
+  - AC: `backend/cmd/server/main.go` calls `flowboard.NewService(vaPool, …)` and mounts a router stub at `/_site/flowboard/`.
+  - AC: `go build ./…` green; `go vet ./…` green.
+  - AC: Layer discipline: `handler.go` contains no SQL, `sql.go` contains only SQL constants, `service.go` contains no `http.` imports.
+  - Plan: PLA066
+- **FB1.2.2 [P2] 🔵 IN FLIGHT** — WIP endpoints (GET + PUT) with membership gate. Read all WIP rows for a board; UPSERT a single row; permission gated on `topology_nodes_members`.
+  - AC: `GET /_site/flowboard/wip?node_id=&artefact_type_id=` returns 200 with array of WIP rows (each carries flow_state name + state id + limit); sentinel-clamped — out-of-scope returns 403, not 404.
+  - AC: `PUT /_site/flowboard/wip` UPSERTs on (`node_id`, `flow_state_id`); returns 200 with resulting row; caller without a `topology_nodes_members` row for the node returns 403.
+  - AC: `updated_by` set to caller user id, `updated_at` set to `now()` on every write.
+  - AC: Empty `limit` in the PUT body persists as SQL `NULL` (unlimited semantics preserved).
+  - AC: `handler_test.go` covers member-allowed + non-member-403 + cross-scope-403 + UPSERT-idempotent.
+  - Plan: PLA066
+- **FB1.2.3 [P2] 🔵 IN FLIGHT** — Card-prefs endpoints (GET + PUT) with JSONB allowlist. Per-user card-field preferences read/write; validates against a known field-key allowlist.
+  - AC: `GET /_site/flowboard/prefs?artefact_type_id=` returns 200 with caller's row, or 404 if no row exists (frontend falls back to sidecar default).
+  - AC: `PUT /_site/flowboard/prefs` UPSERTs the caller's row on (`user_id`, `artefact_type_id`); body validates against allowlist `["id","title","assignee","points","priority","status","created_at","updated_at"]`; junk keys return 422.
+  - AC: Caller can only write their own row (`caller_user_id` wins, body `user_id` ignored).
+  - AC: `handler_test.go` covers default-shape PUT, junk-key 422, foreign-user write blocked.
+  - Plan: PLA066
+- **FB1.2.4 [P2] 🔵 IN FLIGHT** — Topology node members endpoint. Read membership of a node; used by the frontend permission gate.
+  - AC: `GET /_site/topology/{id}/members` returns 200 with array of `{user_id, role, created_at}` for the node; sentinel-clamped.
+  - AC: Caller out of sentinel scope returns 403.
+  - AC: `handler_test.go` covers in-scope success + out-of-scope 403.
+  - Plan: PLA066
+
+**Phase 3 — Frontend**
+
+- **FB1.3.1 [P2] 🔵 IN FLIGHT** — Scaffold `app/components/FlowBoard/` tree + sidecar JSON. Empty component family mirroring ObjectTreeV2 + the first sidecar config.
+  - AC: Directory tree exists per spec §4: `p_FlowBoard.tsx`, `loader.ts`, `registry.ts`, `configs/p_wizard_flowboard_workitems.json`, `hooks/`, `columns/`, `card/`, `settings/`, `__tests__/`.
+  - AC: Sidecar JSON has all keys from spec §5: `name`, `title`, `description`, `panel.{tone,radius,padding,title,show_panel_chrome}`, `artefact_type_scope`, `exclude_prefixes`, `default_artefact_type_prefix`, `type_switcher.{show,label}`, `card.{default_fields,renderer}`, `columns.{show_wip,wip_format,overage_tone}`, `transitions.mode`, `empty.{title,body}`.
+  - AC: `loader.ts` validates the sidecar shape (TypeScript interface + runtime guard); applies `configOverride`; returns a frozen object; mirrors `ObjectTreeV2/loader.ts` patterns.
+  - AC: `npm run build` green; `npm run lint` green; no `any` in the public types.
+  - AC: `loader.test.ts` covers valid shape + missing required key + bad type for each key.
+  - Plan: PLA066
+- **FB1.3.2 [P2] 🔵 IN FLIGHT** — `useFlowBoardData` hook + sentinel-clamped data wiring. Composes three queries (flow_states + artefacts + WIP rows) into the column/card structure.
+  - AC: Hook returns `{ columns: Array<{flowState, wipLimit, cards}>, isLoading, error }`.
+  - AC: Artefact query is sentinel-clamped server-side; client-side also filters `artefact_type_id` and excludes `prefix === 'EP'`.
+  - AC: Columns ordered by `flow_states.sort` (existing column on mig 004).
+  - AC: WIP rows joined client-side onto the matching column by `flow_state_id`; missing row → `wipLimit = null`.
+  - AC: Vitest covers: empty board, one card per state, over-limit state, unlimited state mixed with limited.
+  - Plan: PLA066
+- **FB1.3.3 [P2] 🔵 IN FLIGHT** — `BoardColumnHeader` rendering + over-WIP states. Renders the header per spec §7.3 (5 states: under, at, over, unlimited, empty).
+  - AC: Header renders `Doing (3/10)` when under limit.
+  - AC: Header renders `Doing (10/10)` at limit, no badge, no red.
+  - AC: Header renders `Doing (11/10)` with a `+1` overage badge AND a red column-state class when over.
+  - AC: Header renders `Doing (11)` (no slash, no badge) when WIP row is NULL.
+  - AC: Header renders `Doing (0)` or `Doing (0/10)` cleanly when empty.
+  - AC: `BoardColumnHeader.test.tsx` covers all five states by snapshot.
+  - Plan: PLA066
+- **FB1.3.4 [P2] 🔵 IN FLIGHT** — `@dnd-kit` drag with hard-blocked invalid transitions. Cards drag between columns; invalid targets are dimmed and non-droppable.
+  - AC: `useFlowStateTransitions(artefactTypeId)` hook returns `isAllowed(from, to)` backed by `flow_transitions` for this type.
+  - AC: During drag, columns where `isAllowed(activeState, columnState) === false` get a `disabled` dnd-kit droppable + a dimmed visual state via a CSS class.
+  - AC: Drop on a disallowed column is physically impossible (dnd-kit rejects).
+  - AC: Drop on an allowed column fires `PATCH /v1/api/artefacts/{id}` with `{flow_states_id: <new>}`; optimistic UI update first; on 4xx revert + toast.
+  - AC: `transitions.test.ts` covers `isAllowed` against a fixture set (3 states, 4 transitions, expected allow/deny matrix).
+  - Plan: PLA066
+- **FB1.3.5 [P2] 🔵 IN FLIGHT** — `BoardCard` + `CardFieldRenderer`. Draggable card; field set comes from user prefs (with sidecar default fallback).
+  - AC: Card renders the field set returned by `users_flowboard_prefs` for (current user, current artefact type); falls back to `config.card.default_fields` when the API returns 404.
+  - AC: Field renderers for the five default fields (`id`, `title`, `assignee`, `points`, `priority`) are pure functions of the artefact row.
+  - AC: Card is draggable via `useDraggable`; visually picks up a drag-overlay via dnd-kit's standard pattern.
+  - AC: Click on the card opens the existing artefact detail flyout (reuse `ObjectTreeDetailFlyout` mount path); no new flyout written.
+  - Plan: PLA066
+- **FB1.3.6 [P2] 🔵 IN FLIGHT** — `WipSettingsModal` (gear icon) + membership gate. Gear-icon top-right opens a modal listing every column with a numeric input; non-members don't see the gear.
+  - AC: Gear icon appears top-right of the board ONLY when the caller has a row in `topology_nodes_members` for the current node (read via `GET /_site/topology/{id}/members` + caller comparison).
+  - AC: Modal lists every column for the current artefact type; each row has a numeric input (blank = unlimited).
+  - AC: Save writes one row per change via `PUT /_site/flowboard/wip` (UPSERT semantics).
+  - AC: On Save, the modal closes and the column headers re-render with new counts.
+  - AC: `permissions.test.ts` covers gear visible for member + gear hidden for non-member.
+  - Plan: PLA066
+- **FB1.3.7 [P2] 🔵 IN FLIGHT** — `p_FlowBoard.tsx` top-level + addressable surface registration. Hybrid uncontrolled/controlled component; registered with samanthaAPI's addressable surface.
+  - AC: Props contract per spec §6: `{ config, topologyNodeId?, artefactTypeId?, onArtefactTypeChange?, configOverride? }`.
+  - AC: When `artefactTypeId` prop is supplied + `onArtefactTypeChange` callback exists, component is controlled (parent owns the dropdown value). When omitted, component owns internal state.
+  - AC: `topologyNodeId` defaults to `useSentinel().current_node_id` when omitted.
+  - AC: `configOverride` shallow-merges over the sidecar before render (samanthaAPI surface).
+  - AC: Component registers `samantha._viewport.app._kind.panel.flow_board_workitems` (slot name from sidecar `name`) via the existing `registry.ts` pattern.
+  - Plan: PLA066
+
+**Phase 4 — Integration**
+
+- **FB1.4.1 [P2] 🔵 IN FLIGHT** — Mount on `/value-flow` page + integration smoke. Page becomes a thin host for FlowBoard with the first sidecar; manual + automated smoke confirms it works end-to-end.
+  - AC: `app/(user)/value-flow/page.tsx` rewritten to a thin host: imports `workItemsBoardJson`, renders `<FlowBoard config={workItemsBoardJson} />` inside the existing `<PageContent>` + `<PageHeading>` + `<PageDescription>` shell.
+  - AC: Seed data: 1 row in `topology_nodes_members` for dev user, 3 rows in `topology_nodes_wip_limits` (Backlog=10, Doing=3, Done=NULL).
+  - AC: Manual smoke: navigate to `/value-flow`; columns render from Story flow states; counts correct; `+N` overage badge shows when seed exceeds limit; epics absent; switching the type dropdown to Defects redraws the columns.
+  - AC: Drag-smoke: drag a card Backlog → Doing; PATCH fires; parent artefact's state rolls up via existing recalc; disallowed drop dims target.
+  - AC: WIP-edit-smoke: open gear modal, change Doing to 5, save, header re-renders.
+  - AC: `npm run test` + `go test ./…` all green.
+  - AC: `<update> -c FlowBoard` inserts a Dev → Components article with TOC entry.
+  - AC: Three TD entries opened in `docs/c_tech_debt.md`: `TD-FLOWBOARD-EXIT-RULES` (S2), `TD-FLOWBOARD-CARD-PREFS-UI` (S3), `TD-FLOWBOARD-WIP-AUDIT` (S2).
+  - Plan: PLA066
 
 ---
 
