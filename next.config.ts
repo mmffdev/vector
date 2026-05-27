@@ -17,7 +17,22 @@ const securityHeaders = [
 ];
 
 const config: NextConfig = {
-  reactStrictMode: true,
+  // StrictMode deliberately double-mounts every component in dev so
+  // effect bugs (subscriptions without cleanup, missed AbortController,
+  // mutable refs without reset) surface in a deterministic way. Vector
+  // runs dev as its single deployment surface — there is no separate
+  // production where the double-mount would harmlessly disappear, so
+  // every dev-only 2× fetch is a real cost paid by a real user. The
+  // single-user / solo-dev posture (USER.md) means effect-bug regressions
+  // would be caught by the developer first, not surfaced by StrictMode
+  // for the first time in front of a stranger. Net: disabling here is
+  // the level-playing-field choice — same request volume as eventual
+  // staging/prod would see.
+  //
+  // Re-enable IF: a staging/prod surface lands and we want to use
+  // StrictMode as the dev-only effect-bug net before requests fan out
+  // across more network surface.
+  reactStrictMode: false,
   devIndicators: false,
   turbopack: {
     root: __dirname,
