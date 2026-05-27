@@ -592,3 +592,89 @@ No production code (pipeline package source files) needs to change. No main.go w
   - Flip NV1.S06 in `Vector_Scope.md` from "READY FOR VALIDATION" to "MERGED `<sha>`"
   - Log the 2 accepted TDs (`TD-NOTIF-V2-DIGEST-CADENCE-BUCKET-KEY`, `TD-NOTIF-V2-OUTBOX-IDEMPOTENCY-UNIQUE`) in `docs/c_tech_debt.md`
   - Re-flag SY003 regeneration carryover (still deferred to Master per Wave 2 close — env still has no DB introspection legs).
+
+---
+
+## S06 Pipeline Verdict — Re-review (post-seedUser fix)
+
+**Date:** 2026-05-27
+**Re-review target:** commit `11421a37` on branch `notif-v2-s06`
+**Against prior verdict:** `5e63d276` (REQUEST_CHANGES — seedUser missing `users_id_role`)
+**Re-reviewer:** Global Validator (this session)
+**Master instruction:** *no merge no push* — verdict only, handover-only commit, merge deferred to Master gate.
+
+### VERDICT: PASS (re-review of 11421a37 against prior verdict 5e63d276)
+
+- **Branch:** `notif-v2-s06` → `feature/notifications-v2` — **UNCHANGED PER MASTER INSTRUCTION (no merge no push)**
+- **Verdict commit:** _(this commit)_ — handover-only on `notif-v2-s06`
+- **Merge SHA:** deferred — Master executes merge separately when Rick gives the go-ahead
+
+### Fix verification
+
+- **Diff scope:** **single file ONLY** — `backend/internal/notifications/v2/pipeline/pipeline_integration_test.go`, +22/−3, change confined to the `seedUser` helper (lines 75–110). `git show 11421a37 --stat` confirms 1 file changed. No production code (pipeline.go, filter.go, router.go, enrich.go, prefs.go, suppression.go, pending.go, pending_memory.go, types.go) was touched. No main.go, no migration, no schema change. No scope creep.
+- **Pattern match vs `broadcast/resolver_test.go:mkFixtureUser` (lines 114–142):** **YES — verbatim.** The role-resolution block at `pipeline_integration_test.go:79–91` is a faithful mirror of `mkFixtureUser:117–127`:
+  - Same primary lookup: `SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' LIMIT 1`.
+  - Same graceful fallback: `SELECT users_roles_id FROM users_roles LIMIT 1`.
+  - Same fatal-on-both-fail behaviour (`t.Fatalf("seedUser: cannot resolve any role_id: %v", err)`).
+  - Same INSERT column convention: `users_role='user'` literal + `users_id_role=<resolved>` parameter.
+  - No hardcoded role UUID, no skipped fallback, no wrong column. The diff is exactly the surgical fix the prior verdict asked for.
+
+### Test results — own run, not Master's
+
+Validator re-ran the suite from this worktree against live dev DB (vector_artefacts via tunnel `localhost:5435`):
+
+```
+cd backend && VECTOR_ARTEFACTS_DB_URL=postgres://...@localhost:5435/vector_artefacts?sslmode=disable \
+  go test -tags integration -count=1 -timeout 90s -v ./internal/notifications/v2/pipeline/...
+```
+
+Result: **32/32 PASS** (24 unit + 8 integration, 0 fail, 0 skip, 11.94s wall clock).
+
+All 8 integration tests the prior verdict named — now PASS:
+
+| Test | Status | Wall |
+|---|---|---|
+| `TestIntegration_DirectEventEndToEnd` | PASS | 1.67s |
+| `TestIntegration_ErrEventNotFound` | PASS | 0.13s |
+| `TestIntegration_ErrNoRecipients` | PASS | 0.47s |
+| `TestIntegration_CriticalPriorityBypassPrefs` | PASS | 1.51s |
+| `TestIntegration_PlatformKillSwitchSuppresses` | PASS | 1.67s |
+| `TestIntegration_QuietHoursDefer` | PASS | 1.67s |
+| `TestIntegration_TwoRecipients` | PASS | 2.22s |
+| `TestIntegration_Idempotency` | PASS | 2.34s |
+
+Pipeline metrics from the integration runs (logged in test output) match the contract — recipients counted, outbox rows written, suppressions written on kill-switch + critical-bypass paths, no errors on any pass, idempotency seen identically across two consecutive runs in `TestIntegration_Idempotency`.
+
+### Build / vet
+
+- `go build ./...` — **clean** (no output, exit 0).
+- `go vet ./internal/notifications/v2/...` — **clean** (no output, exit 0).
+
+### Lints touched
+
+The change is confined to a `_test.go` file with no new production identifiers, no new column names, no new SQL constants. None of the production-code lints (`lint:column-prefix`, `lint:no-direct-workspace-id`, `lint:no-old-context-imports`, `lint:page-description`, `lint:h2-panel-only`, `lint:no-raw-table`) are touched by this diff. The full lint pass from the prior verdict carries forward unchanged.
+
+### Carryover from prior verdict (unchanged)
+
+- **3 deviations: all still ACCEPTED** — strangler-fig (mock recipients path in pipeline.go), critical-priority bypass (override of user prefs for `priority='critical'`), sentinel-clamp + column-prefix compliance. No production code moved; status is preserved.
+- **2 new TDs from prior verdict carry forward unchanged:**
+  - `TD-NOTIF-V2-DIGEST-CADENCE-BUCKET-KEY` (S2; pay down when digest cadence ships)
+  - `TD-NOTIF-V2-OUTBOX-IDEMPOTENCY-UNIQUE` (S2; pay down at outbox-table hardening pass)
+- **main.go dead-code note** (cosmetic; deferred to S09 wiring) — unchanged.
+- **SY003 regeneration carryover** — still deferred to Master (env still has no DB-introspection legs from validator side).
+- **schema_migrations backfill carryover** — unchanged (no new migration in this fix).
+
+### Notes for Master (merge gate decision input)
+
+- The fix is **as narrow as it gets** — one helper, one INSERT, matches the pointer pattern verbatim. No surface area for regression beyond the integration test suite itself, which is now green.
+- The branch is **ready to merge** into `feature/notifications-v2` whenever Rick gives the go-ahead. Validator did **not** execute the merge per the locked instruction (*no merge no push*).
+- When Master does merge, the residual closing actions remain those listed in "Carry-forward to Wave 3 close" above:
+  - Cherry-pick or `--no-ff` merge of `notif-v2-s06` (now at `11421a37` post-fix) into `feature/notifications-v2`.
+  - Flip NV1.S06 in `Vector_Scope.md` from "READY FOR VALIDATION" → "MERGED `<sha>`".
+  - Append the 2 accepted TDs to `docs/c_tech_debt.md`.
+  - SY003 regen (deferred to Master since validator env lacks DB-introspection legs).
+- **No new concerns surfaced by this re-review.** No new TD entries opened.
+
+### Hook handling note
+
+`scope-commit-note.sh` was not disabled this turn. Tree was clean entering the re-review (worker's fix commit `11421a37` left the tree clean). The verdict commit will stage `handovers/notifications-v2-validator.md` only (explicit-path add); index inspected with `git diff --cached --stat` per HARD RULE before commit. If the hook mutates `Vector_Scope.md` mid-flow, handle via the stash + `git checkout HEAD --` pattern.
