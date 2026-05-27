@@ -44,9 +44,17 @@ Leave these alone — they belong to a separate ongoing work item:
 - `backend/migrate` (modified)
 - `backend/db/` (untracked)
 
+## WAVE 1 CLOSED — 2026-05-27
+
+- **S01** merged into `feature/notifications-v2` via `--no-ff` (merge SHA `801928f8`'s parent line includes `fa0b78e1`) — 11 schema migrations (mig 120–130) on `vector_artefacts`. Recovered branch `notif-v2-s01` still on disk; scratch branch `s01-schema` (27ad5cf4) retained as audit evidence.
+- **S04** merged into `feature/notifications-v2` via `--no-ff` (merge SHA `801928f8`) — RabbitMQ broker wrapper + NoopBroker fallback + topology constants + broker tests + `lint:no-v1-broker-imports` + build-tag test split (commit `0da337b6`). Recovered branch `notif-v2-s04` still on disk; scratch branch `s04-broker` (9c2d0026) retained as audit evidence.
+- **Scope backfill** committed `11502250` — 18 entries appended to NV1 in a single bookkeeping commit (S01's 11 first ascending by migration number, then S04's 7 in commit order).
+- **Pre-existing dirty four** preserved unchanged: api-snapshots/caller-map.json, backend/migrate, backend/db/ still unstaged. Vector_Scope.md returned to clean post-commit (the stashed contamination was pure hook noise referencing pre-recovery SHAs — discarded on stash-pop conflict resolution; legitimate NV1 edits are absorbed in commit `11502250`).
+- **Note for Wave 2:** worktree isolation required per Master decision. Workers must operate in isolated `git worktree` directories — not shared CWD against the integration branch — to prevent recurrence of the parallel-worker collision that contaminated Wave 1.
+
 ## PROGRESS
 
-- Wave 1: workers ran S01 + S04 in shared tree → collision; recovery cherry-picked clean branches `notif-v2-s01` (11 commits) + `notif-v2-s04` (6 commits); S01 PASS, S04 PASS-with-followup (unit tests gated behind integration build-tag — split needed before merge)
+- Wave 1: ✅ CLOSED — S01 + S04 merged into `feature/notifications-v2` (merges `fa0b78e1`, `801928f8`); scope backfill `11502250`
 - Wave 2: pending — Master to set up worktree isolation before dispatch
 - Wave 3: pending
 - Wave 4: pending
