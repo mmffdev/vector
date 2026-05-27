@@ -1872,14 +1872,19 @@ func main() {
 		tenantSettingsH.Mount(r)
 	})
 
-	// ---- /flowboard + /topology/{id}/members (FB1.2.1) ----
+	// ---- /flowboard + /topology/{id}/members (FB1.2.1 + FB1.4.1 fix) ----
 	// FlowBoard routes: WIP limits, card prefs, and node-members read.
-	// All routes sit behind RequireAuth + RequireFreshPassword; per-route
-	// permission middleware (member-only WIP write gate) will be added
-	// inside handler.go in FB1.2.2 / FB1.2.4 without touching main.go.
+	// All routes sit behind RequireAuth + RequireFreshPassword + sentinelMW;
+	// the sentinel middleware seeds WorkspaceID onto request context so the
+	// flowboard handlers can compare against the node's workspace and gate
+	// 403 on cross-scope reads. Without sentinelMW, every handler trips
+	// the `clamp.WorkspaceID == uuid.Nil` guard and returns 403.
+	// Per-route permission middleware (member-only WIP write gate) lives
+	// inside handler.go in FB1.2.2 / FB1.2.4.
 	r.Group(func(r chi.Router) {
 		r.Use(authSvc.RequireAuth)
 		r.Use(authSvc.RequireFreshPassword)
+		r.Use(sentinelMW)
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		flowboardH.Mount(r)
 	})
