@@ -75,6 +75,23 @@ func seedSubscription(t *testing.T, pool *pgxpool.Pool) uuid.UUID {
 // seedUser inserts a minimal users row linked to sub and returns its ID.
 func seedUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID) uuid.UUID {
 	t.Helper()
+
+	// Resolve a users_roles_id — users.users_id_role is NOT NULL on the live
+	// schema, so seed inserts must carry one. Pattern lifted from
+	// broadcast/resolver_test.go:mkFixtureUser. Try grp_team_member first
+	// (always present post-seed); fall back to any role for environments
+	// where the seed catalogue differs.
+	var roleID uuid.UUID
+	if err := pool.QueryRow(context.Background(),
+		`SELECT users_roles_id FROM users_roles WHERE users_roles_code = 'grp_team_member' LIMIT 1`,
+	).Scan(&roleID); err != nil {
+		if err := pool.QueryRow(context.Background(),
+			`SELECT users_roles_id FROM users_roles LIMIT 1`,
+		).Scan(&roleID); err != nil {
+			t.Fatalf("seedUser: cannot resolve any role_id: %v", err)
+		}
+	}
+
 	id := uuid.New()
 	email := "pipeline-test-" + id.String()[:8] + "@test.invalid"
 	_, err := pool.Exec(context.Background(), `
@@ -83,9 +100,11 @@ func seedUser(t *testing.T, pool *pgxpool.Pool, subID uuid.UUID) uuid.UUID {
 			users_id_subscription,
 			users_email,
 			users_password_hash,
-			users_is_active
-		) VALUES ($1, $2, $3, 'x', true)
-	`, id, subID, email)
+			users_is_active,
+			users_role,
+			users_id_role
+		) VALUES ($1, $2, $3, 'x', true, 'user', $4)
+	`, id, subID, email, roleID)
 	if err != nil {
 		t.Fatalf("seedUser: %v", err)
 	}
