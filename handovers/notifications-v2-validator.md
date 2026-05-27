@@ -55,7 +55,7 @@ Leave these alone — they belong to a separate ongoing work item:
 ## PROGRESS
 
 - Wave 1: ✅ CLOSED — S01 + S04 merged into `feature/notifications-v2` (merges `fa0b78e1`, `801928f8`); scope backfill `11502250`
-- Wave 2: 🟡 PLANS APPROVED — five worker briefs committed (`3aa329c0`, 2026-05-27); awaiting Master worktree-isolated dispatch
+- Wave 2: 🟡 IN FLIGHT — S05 closed (merge `68fddc55`); 4 workers still running (S02, S03, S07, S08)
 - Wave 3: pending
 - Wave 4: pending
 - Wave 5: pending
@@ -69,7 +69,7 @@ Leave these alone — they belong to a separate ongoing work item:
 | S02 | Domain types + Producer interface + dbproducer | `notif-v2-s02` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
 | S03 | Inverse-Sentinel Resolver + broadcast.Service | `notif-v2-s03` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
 | S04 | RabbitMQ broker wrapper + exchange/queue declarations | `notif-v2-s04` (new, clean) | recovered + validated | **PASS — fixup needed** (test build-tag) | tip `57f07b2e` |
-| S05 | Relay + outbox drain + stuck-claim sweeper | `notif-v2-s05` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
+| S05 | Relay + outbox drain + stuck-claim sweeper | `notif-v2-s05` (clean recovery) | merged via `--no-ff` | **PASS** | merge `68fddc55` |
 | S06 | Pipeline: enrich → filter → router | feature/notifications-v2/s06-pipeline | not started | — | — |
 | S07 | Rules engine — real matchConditions | `notif-v2-s07` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
 | S08 | Templates: DB-backed lookup + interpolation + seed templates | `notif-v2-s08` (flat naming) | plan approved, ready for dispatch | — | plan `3aa329c0` |
@@ -208,8 +208,41 @@ Linter discipline (Amendment 1) — track new rules introduced by each story so 
 | (sentinel clamp v2 scan-list) | S10 | planned | Add `backend/internal/notifications/v2/` to `backend/internal/lintchecks/sentinel_clamp_test.go` scan list. Spec §Testing Layer 5. Not a new lint, but a scope extension of existing. |
 | `lint:column-prefix` scope sweep | S01 | **resolved (no extension needed)** | Existing `lint:column-prefix-convention` is table-list-free — auto-picked up the 11 new v2 tables with zero violations. PENDING LINTS row closed. |
 
+## WAVE 2 — S05 CLOSED (2026-05-27)
+
+### Per-story validation results
+
+**S05 — `notif-v2-s05` — PASS — merged via `--no-ff` at `68fddc55`**
+
+- Worker worktree: `.claude/worktrees/agent-af17c9700182957d8`. Branch `worktree-agent-af17c9700182957d8` (auto-named by runner — NOT the planned `notif-v2-s05`).
+- Worker landed 5 commits, of which 1 was prerequisite-bringing and 4 were the real S05 deliverables.
+- **21e8a068 investigation: ACCEPT.** Worker was cut from `main` tip (`1c81202e`), NOT from `feature/notifications-v2` tip (`801928f8`). Merge-base is `1c81202e`. To compile + integration-test in isolation the worker forward-ported the broker package (6 files: broker.go, noop.go, rabbit.go, topology.go, broker_test.go, broker_integration_test.go) + 3 schema migrations (120 events_v2, 121 event_recipients, 122 outbox_v2) from feature/notifications-v2. All 9 files are byte-identical to feature/notifications-v2 — `git diff feature/notifications-v2 worktree-agent-af17c9700182957d8 -- <file>` returns empty for every one. Cherry-pick of the 4 real S05 commits onto a clean `notif-v2-s05` branch was conflict-free, confirming the prerequisite bring-forward effectively replicated what was already on target.
+- **Branch rename:** auto-generated `worktree-agent-af17c9700182957d8` left intact for audit. Clean recovery branch `notif-v2-s05` cut off `feature/notifications-v2` (tip `c2912c42` at cherry-pick time), carries the 4 clean S05 commits (`e4c1de23` claim.go, `319ba827` relay.go, `add03436` sweeper.go, `3b41db77` tests).
+- **Spec adherence:** claim.go has SKIP LOCKED batch claim with partial-index-matching WHERE (`claimed_at IS NULL AND delivered_at IS NULL AND scheduled_for <= now() AND attempts < 100 ORDER BY created_at`). relay.go has drain loop (begin tx → claim → commit → publish → markDelivered/markFailed per row), LISTEN goroutine wired to `notifications_outbox_v2_inserted` (tick-only in practice — see TD below), routing key `<domain>.<action>.<channel>` via splitEventType + broker.RoutingKey. sweeper.go resets stale claims (>5min) on 60s tick, appends `[stuck-claim-recovered]` to last_error, excludes parked rows (`attempts < 100`).
+- **Column-prefix HARD RULE:** every column reference in claim.go/relay.go/sweeper.go is `notifications_outbox_v2_*` / `notifications_events_v2_*` / `notifications_event_recipients_*` per spec. `python3 dev/scripts/lint_column_prefix_convention.py` → "OK — no violations".
+- **Sentinel clamp:** N/A. Relay + sweeper are server-side machinery — they read across all tenants/users (the SKIP LOCKED query has no clamp; the relay is process-level not request-level). Per-request clamps will land on the read-side handlers in S10.
+- **Tests:** 4/4 PASS against live `vector_artefacts` dev DB. Re-run by Validator with env sourced from `backend/.env.dev`: `TestRelayDrainOnce_success` (0.60s), `TestRelayDrainOnce_publishFails` (0.57s), `TestSweeperRunOnce_stale` (0.52s — log shows `recovered stuck claims count=1`), `TestSweeperRunOnce_fresh` (0.52s — log shows `claimed_at preserved`). Mock broker used per spec Decision #17 carve-out for tests that don't exercise the broker round-trip (broker layer is already tested under S04).
+- **Lints:** `lint:column-prefix-convention` PASS. `lint:no-v1-broker-imports` PASS — `grep -rn "internal/notifications/broker" backend/internal/notifications/v2/relay/` returns zero hits. Build + vet clean.
+- **Linter coverage added:** none — S05 introduces no new architectural rule. The existing `lint:no-v1-broker-imports` (added in S04) already catches strangler-fig violations in the relay package since relay imports broker. PENDING LINTS table updated: row 3 `lint:no-stub-evaluator` still S07, row 1 `lint:no-direct-outbox-write` still S02.
+- **Security:** parameterised SQL throughout (`$1`/`$2` placeholders, never string concat); no secrets touched (AMQP creds live in broker.go, not relay's concern); deliveryPayload JSON marshal is canonical, no user-data interpolation.
+- **Scalability:** partial index honoured via WHERE clause; SKIP LOCKED prevents contention between multiple relay instances; batch size 50 (configurable); drain loop exits on partial batch.
+- **No hacks-as-fixes:** clean. The "tick-only LISTEN/NOTIFY" condition is honestly documented in code comments (`relay.go:24-30` const `listenChannel` carries the TD note) AND captured as a TD register entry (`TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER`, S3) rather than swept under the rug.
+- **Vector_Scope.md per-story entries:** appended 5 lines under NV1 in commit `c2912c42` (4 source commits + 1 merge SHA).
+- **TD register entry:** `TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER` (S3) added in commit `ecf38e82`. Trigger: v2 ships to staging and 5s wakeup latency becomes user-observable. Pay-down: one migration adding pg_notify trigger on INSERT; relay already binds LISTEN. Scope entry for the TD itself: commit `8f7e8e28`.
+
+### Audit retention
+
+- Worker worktree: `.claude/worktrees/agent-af17c9700182957d8` — NOT deleted.
+- Worker branch: `worktree-agent-af17c9700182957d8` — NOT deleted.
+- Clean recovery branch: `notif-v2-s05` — NOT deleted.
+
+### Hook handling note
+
+Per the standing prohibition this turn ("NO hook renaming this turn"), `scope-commit-note.sh` was NOT disabled. The async hook fired during the TD commit (`ecf38e82`) and stamped the TD SHA into 6 unrelated scope sections in working-tree Vector_Scope.md — discarded by restoring Vector_Scope.md to HEAD and re-applying only the intentional NV1 entry. Per Wave 1 precedent the discard was correct (hook noise, not legitimate scope hygiene).
+
 ## RECENT ACTIVITY (last 5 actions, newest first)
 
+7. 2026-05-27 — **Wave 2 S05 closed.** Worker `agent-af17c9700182957d8` landed 5 commits (1 prerequisite-bringing, 4 real S05). Investigation of `21e8a068` confirmed worker was cut from main tip not feature/notifications-v2 tip — broker package + 3 migs forward-ported byte-identically. Cherry-picked 4 real commits onto clean `notif-v2-s05`, conflict-free. Merged `--no-ff` at `68fddc55`. Tests re-run by Validator: 4/4 PASS. Scope entries `c2912c42`. TD entry `TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER` at `ecf38e82` (S3, pay-down when 5s wakeup latency becomes user-observable). TD scope entry `8f7e8e28`. Handover update follows. Audit retained: worker worktree + worker branch + recovery branch all preserved.
 6. 2026-05-27 — **Wave 2 plans approved + committed (`3aa329c0`)** on `feature/notifications-v2`. Five docs reviewed against the 9-item plan-doc checklist: S02 domain+producer (5pt), S03 broadcast service (8pt), S05 relay+sweeper (5pt), S07 rules engine (8pt), S08 templates+seeds (5pt). All PASS — every plan cites correct spec sections (Architecture / Interfaces / End-to-end / Data model / Locked decisions), uses flat `notif-v2-sNN` branch naming per Wave 1 lesson, has explicit `git branch --show-current` worktree-confirm in Task 1, bite-sized tasks with full code/SQL blocks, no placeholders, DoD checklist + Risks table. Cross-story imports documented (S03/S05/S07/S08 → S02 domain; S05 → S04 broker). Two new lint rules surfaced (`lint:no-direct-outbox-write` in S02, `lint:no-stub-evaluator` in S07). Pre-existing dirty four stashed for the commit and restored after via `git checkout --ours` on the Vector_Scope.md conflict (stash contents were hook noise — discarded). Plans commit `3aa329c0`; handover commit follows; scope-entry commit follows.
 5. 2026-05-27 — **Wave 1 recovery complete.** Cut clean branches `notif-v2-s01` (11 commits, tip `0d27defa`) and `notif-v2-s04` (6 commits, tip `57f07b2e`) off `feature/notifications-v2` (`9c2d0026`). Split contaminated `4233a7da` into one mig-120 commit on S01 and one broker.go commit on S04. Extracted mig 128 from contaminated `750855df` (Vector_Scope.md hunks discarded). Scratch branches `s01-schema` + `s04-broker` preserved as audit evidence. S01 PASS; S04 PASS-with-followup (test build-tag split needed). Async scope hook handled via temporary `.disabled` rename for the duration of the cherry-picks. Dirty four restored unchanged.
 4. 2026-05-27 — Master directive: branch naming convention updated for Wave 2 onward — `notif-v2-sNN-<slug>` (no slash, no parent prefix). Workers MUST run in isolated worktrees.
