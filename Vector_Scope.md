@@ -11404,6 +11404,11 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `de23ac83` (2026-05-27): chore(notif-v2): validator handover — Wave 1 closed
 > Commit `3aa329c0` (2026-05-27): docs(notif-v2): Wave 2 plans (S02, S03, S05, S07, S08)
 > Commit `590007c9` (2026-05-27): chore(notif-v2): validator handover — Wave 2 plans approved
+> Commit `e4c1de23` (2026-05-27): feat(notif-v2-s05): claim.go — SKIP LOCKED batch claim for notifications_outbox_v2
+> Commit `319ba827` (2026-05-27): feat(notif-v2-s05): relay.go — outbox drain loop with LISTEN/NOTIFY wakeup
+> Commit `add03436` (2026-05-27): feat(notif-v2-s05): sweeper.go — stuck-claim recovery for crash-after-claim
+> Commit `3b41db77` (2026-05-27): test(notif-v2-s05): relay_test.go + sweeper_test.go — integration tests PASS
+> Commit `68fddc55` (2026-05-27): merge: Wave 2 S05 — relay + outbox drain + stuck-claim sweeper
 
 ---
 
