@@ -9125,7 +9125,24 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                type: array
+                items:
+                  type: object
+                  properties:
+                    user_id:
+                      type: string
+                      format: uuid
+                    role:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                  required:
+                  - user_id
+                  - role
+                  - created_at
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /user/tab-order/{pageId}:

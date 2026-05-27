@@ -126,7 +126,10 @@ const (
 		WHERE topology_nodes_id = $1`
 
 	// sqlSelectNodeMembers — FB1.2.4 (GET /_site/topology/{id}/members).
-	// Lists topology_nodes_members rows for a given node_id, sentinel-clamped
-	// by workspace_id.
-	sqlSelectNodeMembers = ``
+	// Lists topology_nodes_members rows for a given node_id, ordered by
+	// created_at ASC. The workspace gate is enforced upstream (handler calls
+	// NodeWorkspaceID before this query runs) — no workspace clamp here.
+	//
+	// Parameters: $1 = node_id (uuid)
+	sqlSelectNodeMembers = `SELECT topology_nodes_members_user_id, topology_nodes_members_role, topology_nodes_members_created_at FROM topology_nodes_members WHERE topology_nodes_members_node_id = $1 ORDER BY topology_nodes_members_created_at ASC`
 )

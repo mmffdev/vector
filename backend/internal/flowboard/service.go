@@ -79,6 +79,14 @@ type CardPrefsDTO struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// NodeMemberDTO is the wire shape returned by GET /_site/topology/{id}/members.
+// Each entry describes one member of the topology node.
+type NodeMemberDTO struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // serviceIface is the narrow contract the Handler needs from the service
 // layer. The concrete *Service satisfies it; tests can inject a stub.
 type serviceIface interface {
@@ -87,6 +95,7 @@ type serviceIface interface {
 	UpsertWipLimit(ctx context.Context, nodeID, flowStateID, callerUserID, workspaceID uuid.UUID, limit *int) (WipLimitDTO, error)
 	GetCardPrefs(ctx context.Context, callerUserID, artefactTypeID uuid.UUID) (CardPrefsDTO, error)
 	UpsertCardPrefs(ctx context.Context, callerUserID, artefactTypeID, workspaceID uuid.UUID, fields []string) (CardPrefsDTO, error)
+	ListNodeMembers(ctx context.Context, nodeID uuid.UUID) ([]NodeMemberDTO, error)
 }
 
 // Service provides business logic for FlowBoard operations.
@@ -271,4 +280,34 @@ func (s *Service) UpsertCardPrefs(
 		return CardPrefsDTO{}, err
 	}
 	return dto, nil
+}
+
+// ListNodeMembers returns the membership rows for a given topology node,
+// ordered by created_at ASC. The workspace-scope gate is enforced by the
+// handler (via NodeWorkspaceID) before this method is called, so no
+// workspace clamp is applied in the SQL query.
+//
+// Returns an empty (non-nil) slice when the node has no members.
+func (s *Service) ListNodeMembers(ctx context.Context, nodeID uuid.UUID) ([]NodeMemberDTO, error) {
+	if s.pool == nil {
+		return []NodeMemberDTO{}, nil
+	}
+	rows, err := s.pool.Query(ctx, sqlSelectNodeMembers, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]NodeMemberDTO, 0)
+	for rows.Next() {
+		var dto NodeMemberDTO
+		if err := rows.Scan(&dto.UserID, &dto.Role, &dto.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, dto)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/mmffdev/vector-backend/internal/sentinel"
@@ -50,6 +51,10 @@ type fakeService struct {
 	store fakeStore
 	// cardPrefsStore is the in-memory card-prefs row table.
 	cardPrefsStore fakeCardPrefsStore
+	// membersForNode maps nodeID → ordered slice of NodeMemberDTO for FB1.2.4.
+	membersForNode map[uuid.UUID][]NodeMemberDTO
+	// listNodeMembersCalled tracks whether ListNodeMembers was invoked.
+	listNodeMembersCalled bool
 }
 
 func newFakeService() *fakeService {
@@ -58,6 +63,7 @@ func newFakeService() *fakeService {
 		workspaceForNode: make(map[uuid.UUID]uuid.UUID),
 		store:            make(fakeStore),
 		cardPrefsStore:   make(fakeCardPrefsStore),
+		membersForNode:   make(map[uuid.UUID][]NodeMemberDTO),
 	}
 }
 
@@ -154,6 +160,13 @@ func (f *fakeService) UpsertCardPrefs(_ context.Context, callerUserID, artefactT
 	}
 	f.cardPrefsStore[[2]uuid.UUID{callerUserID, artefactTypeID}] = dto
 	return dto, nil
+}
+
+// ListNodeMembers returns the seeded member slice for the given node.
+// Records invocation so tests can assert the gate fires before this call.
+func (f *fakeService) ListNodeMembers(_ context.Context, nodeID uuid.UUID) ([]NodeMemberDTO, error) {
+	f.listNodeMembersCalled = true
+	return f.membersForNode[nodeID], nil
 }
 
 // ---------------------------------------------------------------------------
@@ -586,5 +599,108 @@ func TestGetCardPrefs_NotFound404(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Helper: call GET /_site/topology/{id}/members directly on the handler.
+// Sets chi route context so chi.URLParam(r, "id") resolves correctly.
+// ---------------------------------------------------------------------------
+
+func doGETNodeMembers(t *testing.T, h *Handler, ctx context.Context, nodeID uuid.UUID) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/_site/topology/"+nodeID.String()+"/members/", nil)
+	req = req.WithContext(ctx)
+	// Inject chi route param so chi.URLParam(r, "id") returns the nodeID string.
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", nodeID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rec := httptest.NewRecorder()
+	h.listNodeMembers(rec, req)
+	return rec
+}
+
+// ---------------------------------------------------------------------------
+// FB1.2.4 AC tests — node members endpoint (2 scenarios)
+// ---------------------------------------------------------------------------
+
+// TestListNodeMembers_InScope200 — caller's sentinel workspace matches the
+// node's workspace. GET must return 200 with an array of 2 member entries,
+// each carrying {user_id, role, created_at}.
+func TestListNodeMembers_InScope200(t *testing.T) {
+	workspaceID := uuid.New()
+	callerUserID := uuid.New()
+	nodeID := uuid.New()
+
+	member1ID := uuid.New()
+	member2ID := uuid.New()
+	now := time.Now().UTC()
+
+	svc := newFakeService()
+	svc.setNodeWorkspace(nodeID, workspaceID)
+	svc.membersForNode[nodeID] = []NodeMemberDTO{
+		{UserID: member1ID, Role: "lead", CreatedAt: now.Add(-time.Hour)},
+		{UserID: member2ID, Role: "member", CreatedAt: now},
+	}
+
+	h := newHandlerWithIface(svc)
+	ctx := clampCtx(workspaceID, callerUserID)
+
+	rec := doGETNodeMembers(t, h, ctx, nodeID)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	var members []NodeMemberDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &members); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(members) != 2 {
+		t.Fatalf("expected 2 members, got %d", len(members))
+	}
+	if members[0].UserID != member1ID {
+		t.Errorf("members[0].user_id: want %s, got %s", member1ID, members[0].UserID)
+	}
+	if members[0].Role != "lead" {
+		t.Errorf("members[0].role: want lead, got %s", members[0].Role)
+	}
+	if members[1].UserID != member2ID {
+		t.Errorf("members[1].user_id: want %s, got %s", member2ID, members[1].UserID)
+	}
+	if members[1].Role != "member" {
+		t.Errorf("members[1].role: want member, got %s", members[1].Role)
+	}
+}
+
+// TestListNodeMembers_CrossScope403 — caller's sentinel workspace_id does not
+// match the node's owning workspace. GET must return 403 (no existence leak).
+// ListNodeMembers must NOT be called on the fake (gate fires first).
+func TestListNodeMembers_CrossScope403(t *testing.T) {
+	nodeWorkspaceID := uuid.New()   // workspace that owns the node
+	callerWorkspaceID := uuid.New() // different workspace — cross-scope caller
+	callerUserID := uuid.New()
+	nodeID := uuid.New()
+
+	svc := newFakeService()
+	svc.setNodeWorkspace(nodeID, nodeWorkspaceID)
+	// Seed some members so that if ListNodeMembers were called it would return data.
+	svc.membersForNode[nodeID] = []NodeMemberDTO{
+		{UserID: uuid.New(), Role: "lead", CreatedAt: time.Now().UTC()},
+	}
+
+	h := newHandlerWithIface(svc)
+	ctx := clampCtx(callerWorkspaceID, callerUserID) // cross-scope clamp
+
+	rec := doGETNodeMembers(t, h, ctx, nodeID)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for cross-scope caller, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	// ListNodeMembers must NOT have been invoked — the workspace gate must have
+	// rejected the request before reaching the members query.
+	if svc.listNodeMembersCalled {
+		t.Error("ListNodeMembers must not be called when workspace gate rejects the request")
 	}
 }

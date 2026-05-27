@@ -294,9 +294,47 @@ func (h *Handler) upsertCardPrefs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto)
 }
 
-// listNodeMembers lists members of a topology node (used by the WIP-edit
-// permission gate: only members may write WIP limits).
-// TODO(FB1.2.4): implement in story FB1.2.4
-func (h *Handler) listNodeMembers(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
+// listNodeMembers handles GET /_site/topology/{id}/members
+//
+// Returns the membership list for the given topology node. Each entry
+// carries {user_id, role, created_at} ordered by created_at ASC.
+//
+// Sentinel-clamped: workspace_id is read from the sentinel Clamp. A
+// request without a valid Clamp (WorkspaceID == Nil) returns 403.
+//
+// Workspace-scope gate: the node's owning workspace is fetched via
+// NodeWorkspaceID. If the node does not exist OR its workspace does not
+// match the sentinel WorkspaceID, handler returns 403 (no existence leak).
+func (h *Handler) listNodeMembers(w http.ResponseWriter, r *http.Request) {
+	clamp := sentinel.FromCtx(r.Context())
+	if clamp.WorkspaceID == uuid.Nil {
+		httperr.Write(w, r, http.StatusForbidden, "workspace clamp required")
+		return
+	}
+
+	nodeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "id must be a valid UUID")
+		return
+	}
+
+	// Workspace-scope gate: missing node and cross-scope mismatch both return
+	// 403 (no existence leak — same pattern as listWipLimits).
+	nodeWS, err := h.svc.NodeWorkspaceID(r.Context(), nodeID)
+	if errors.Is(err, ErrNodeNotFound) || (err == nil && nodeWS != clamp.WorkspaceID) {
+		httperr.Write(w, r, http.StatusForbidden, "forbidden")
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, "failed to verify node workspace")
+		return
+	}
+
+	members, err := h.svc.ListNodeMembers(r.Context(), nodeID)
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, "failed to list node members")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, members)
 }
