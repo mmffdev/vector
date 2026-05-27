@@ -125,7 +125,7 @@ If any step fails → REJECT the offending story, do NOT apply downstream migrat
 
 ## § Current story
 
-**idle — awaiting FB1.2.2 dispatch (WIP endpoints).** Phase 2 opened. FB1.2.1 scaffold merged as `ff9a6613`.
+**awaiting fix worker for FB1.2.2 (WIP endpoints — AC 1 cross-scope semantics).** GET listWipLimits returns 200+empty on cross-scope; AC requires 403. See § Active rejection.
 
 Phase 1 migrations (applied + ledger-backfilled against `vector_artefacts`):
 - `132_topology_nodes_members.sql` — squash `df6d412c`
@@ -157,11 +157,101 @@ Validator was spawned fresh, will be re-spawned on every dispatch (no SendMessag
 
 **Context budget after FB1.1.3 re-validation PASS (2026-05-27, post-type-fix `0745d8d5`):** ~40%. Same validator context across all three Phase 1 stories. Read worker fix diff (4 substitutions BIGSERIAL/BIGINT → uuid; net `+4/-4` over the prior reject branch) + grep-confirmed 0 hits for `BIGSERIAL`/`BIGINT` in either file + ran lint:column-prefix-convention (green) + verified the artefacts_types FK target name is the post-rename plural (`artefacts_types(artefacts_types_id)`) against the live DB + applied UP via direct psql (BEGIN/CREATE TABLE/CREATE INDEX×2/COMMIT) + backfilled ledger row + `\d users_flowboard_prefs` confirms full shape (uuid PK + gen_random_uuid() default + 2 uuid FKs CASCADE + JSONB NOT NULL + workspace_id denorm + updated_at default now() + UNIQUE on (user_id, artefact_type_id) + workspace_idx) + stashed Vector_Scope.md scope-hook noise before checkout + squash-merged with index-stat clean (only the 2 migration files) + recorded merge SHA `bd417a86`. **Phase 1 closeout achieved.** Hand-back to master for Phase 2 dispatch.
 
+**Context budget after FB1.2.2 REJECT (2026-05-27, worker SHA `67763492`):** ~40%. Fresh spawn for FB1.2.2 (first endpoints story). Read both handovers + scope §FB1.2.2 (5 AC bullets verbatim) + spec §§3.1/3.2/7.4/8 + worker diff (6 files: 4 flowboard + 2 auto-regen siteAPI yamls). `go build ./...` exit 0; `go test ./internal/flowboard/...` exit 0 with all 6 tests passing (4 new AC scenarios + 2 scaffold smokes); `go vet ./...` shows only the two pre-existing warnings (polymorphicrefs unreachable, featuretests undefined) — unchanged by this branch. Layer-discipline greps all clean (handler SQL: 0; service net/http: 0; sql.go func/if/for/switch: 0 — only const block). AC 2 PASS (PUT membership gate via ErrNotMember → 403, evidence in handler.go:166-169 + service.go:127-134 + `TestUpsertWipLimit_NonMember403`). AC 3 PASS (`updated_by = $5`, `updated_at = now()` in sqlUpsertWipLimit; `TestUpsertWipLimit_MemberAllowed` asserts response UpdatedBy matches caller). AC 4 PASS (`Limit *int` → `limit` SQL NULL via pgx pointer mapping in service.go:147; type-level safety; `TestUpsertWipLimit_MemberAllowed` round-trips a non-nil int and the Idempotent test exercises overwrite). AC 5 PASS (all four named test funcs present and green). **AC 1 FAIL** — see § Active rejection. Worker self-flagged the divergence and offered a defensible security argument (200+empty leaks less than 403 against cross-workspace probing), but the AC text is verbatim and explicit: "out-of-scope returns 403, not 404." The validator cannot accept reinterpretation of a verbatim AC bullet on its own authority. Brief written with the minimal patch (sentinel-scope check at top of listWipLimits + matching GET cross-scope test). Master can choose to revise the AC text if it wants to keep the 200+empty behavior — but as written, the AC requires 403.
+
 **Context budget after FB1.2.1 PASS (2026-05-27, worker SHA `2db247ff`):** ~50%. Fresh spawn for Phase 2 opener. Read both handovers + scope §FB1.2.1 (4 AC bullets verbatim) + spec §4 (component anatomy) + spec §8 (5-endpoint backend surface, all `/_site/` per transport segregation, `/topology/{id}/members` owned by flowboard package). Three-dot diff = 8 files (5 new in `backend/internal/flowboard/` + `backend/cmd/server/main.go` + `siteAPI.yaml` + `api-reference/static/siteAPI.yaml` auto-regen from pre-commit hook). YAML regen contains exactly 3 path entries (/flowboard/prefs, /flowboard/wip, /topology/{id}/members) = 5 ops total — no spurious unrelated route churn. Layer-discipline greps all 0 hits (handler.go SQL: 0; service.go net/http: 0 — only pgxpool; sql.go func/if/for/switch: 0 — only `const` block with 5 named empty strings). `go build ./...` exit 0; `go test ./internal/flowboard/...` exit 0 (2 smoke tests pass — `TestNewHandler_NotNil`, `TestNewService_NotNil`); `go vet ./...` exit 1 — but the two warnings (`polymorphicrefs/service.go:136 unreachable code` + `featuretests vectorArtefactsPoolForF1 undefined`) are pre-existing on `feature/flowboard` baseline (verified by checking out baseline, re-running vet, getting the identical two warnings). Not introduced by FB1.2.1. All 4 AC bullets PASS. Main.go wiring confirmed: `flowboard.NewService(vaPool)` constructed after `orgDesignSvc` (line ~579), `flowboardH.Mount(r)` called inside `mountSiteRoutes` within a `RequireAuth + RequireFreshPassword + httprate.LimitByIP` group (line ~1882). Five handler methods all return `http.StatusNotImplemented` with `// TODO(FB1.2.N)` comments naming the implementing story. Worker self-report verified accurate end-to-end. Squash-merged with index-stat clean (8 files exactly as expected, no master-handover or scope-hook noise bundled — `handovers/flowboard-master.md` master edits + `Vector_Scope.md` scope-hook breadcrumbs both stashed pre-merge and re-popped post-commit). Merge SHA `ff9a6613`.
 
 ## § Active rejection
 
-(none — FB1.1.3 REJECTs both resolved by `0745d8d5` and re-validated; merged as `bd417a86`. The historical REJECT brief is retained below for audit trail; the next worker dispatch starts with a clean slate.)
+### REJECT — FB1.2.2 — 2026-05-27
+
+**Branch:** `fb1-2-2-wip-endpoints`
+**Worker last SHA:** `67763492` (recovery worker on top of an aborted original)
+
+**Failed AC bullets:**
+
+- AC: *"`GET /_site/flowboard/wip?node_id=&artefact_type_id=` returns 200 with array of WIP rows (each carries flow_state name + state id + limit); sentinel-clamped — **out-of-scope returns 403, not 404**."* — **FAIL**.
+
+  `backend/internal/flowboard/handler.go:85-118` (`listWipLimits`) only returns 403 when the sentinel clamp itself is missing (`clamp.WorkspaceID == uuid.Nil`). For a request where the clamp IS valid but `node_id` belongs to a different workspace, the implementation falls through to the SQL query whose `WHERE topology_nodes_wip_limits_workspace_id = $2` clause filters out cross-workspace rows — so the handler emits **200 with an empty array `[]`** (handler.go:121: `writeJSON(w, http.StatusOK, rows)` with `rows` initialised to `make([]WipLimitDTO, 0)` in service.go:81).
+
+  Verbatim handler comment (handler.go:79-86) confirms the intent: *"A node_id whose workspace differs from the sentinel WorkspaceID is invisible to this query — the WHERE clause in sqlSelectWipLimitsByNode enforces workspace_id = $2, so cross-workspace requests receive an empty array (200) rather than 403"*.
+
+  The AC text is verbatim and explicit. It does not say "may return 200 with empty" or "out-of-scope is invisible." It says **"out-of-scope returns 403, not 404"** — choosing 403 deliberately over 404. 200+empty is a third option the AC does not authorise. The verdict bar is strict per the validator contract: "every AC bullet must be verifiable from the diff or a passing test"; a passing test for `expected 403, got 200` cannot exist against this implementation.
+
+  Additionally, **AC 5 names four scenarios** (`member-allowed + non-member-403 + cross-scope-403 + UPSERT-idempotent`) but all four implemented tests exercise PUT only. There is **no GET test in `handler_test.go`** — neither a happy-path GET nor a cross-scope GET. The "cross-scope-403" scenario named in AC 5 is satisfiable as either GET or PUT; the worker chose PUT. Once GET cross-scope returns 403 (per the fix), a GET cross-scope test should be added so the AC 1 contract is pinned.
+
+  Note on the security argument: the worker's defensible position is that **200+empty actually leaks less existence information than 403** — a 403 confirms the node_id resolves to a node in some workspace, whereas 200+empty cannot be distinguished from "node exists in your scope but has no WIP rows yet." This is a real argument and the validator agrees it has merit. **However**, the AC text was written by master with full knowledge of these tradeoffs, and the verdict bar requires verbatim AC compliance. If master wants the 200+empty behavior, master must revise the AC text in `Vector_Scope.md` § FB1.2.2 first, then redispatch — the validator cannot reinterpret a verbatim AC on its own authority. (Spec §8 says "Read is allowed for any user with `artefacts_read` at the node's scope" — that line could be read either way, but the scope-§FB1.2.2 AC text is the binding contract for this story.)
+
+**Passing AC bullets (preserve — do NOT redo):**
+
+- ✅ AC 2 (PUT membership gate): `service.go:127-134` queries `sqlCheckMembership`; pgx.ErrNoRows → ErrNotMember; handler.go:166-169 maps ErrNotMember → 403. `TestUpsertWipLimit_NonMember403` exercises this path and passes.
+- ✅ AC 3 (updated_by + updated_at on every write): `sqlUpsertWipLimit` (sql.go:39-66) sets both columns on INSERT (`now(), $5`) AND on UPDATE (`SET ... updated_at = now(), updated_by = EXCLUDED.updated_by`). `TestUpsertWipLimit_MemberAllowed` asserts the returned `UpdatedBy` matches the caller's UserID.
+- ✅ AC 4 (empty limit → SQL NULL): `Limit *int` in the request struct + `limit` parameter typed `*int` end-to-end + pgx pointer-NULL mapping in service.go:147. `TestUpsertWipLimit_Idempotent` round-trips a non-nil int through the store; the *int type discipline plus the JSON `null`/missing-field → nil mapping is sufficient evidence. (A test asserting `*int == nil` would be a nice-to-have but not required by the AC text.)
+- ✅ AC 5 (four named scenarios): all four test function names present and green — `TestUpsertWipLimit_MemberAllowed`, `_NonMember403`, `_CrossScope403`, `_Idempotent`. Cross-scope-403 currently covers PUT; once AC 1 fix lands, add a parallel GET cross-scope test.
+- ✅ Layer discipline: handler.go contains zero SQL strings; service.go has no `"net/http"` import; sql.go has only a `const` block, no functions/conditionals/loops. All three layer-discipline greps return 0 hits.
+- ✅ Build + tests + vet: `go build ./...` exit 0; `go test ./internal/flowboard/...` exit 0 (6/6 tests pass — 4 AC scenarios + `TestNewHandler_NotNil` + `TestNewService_NotNil`); `go vet ./...` exit 1 with only the two pre-existing baseline warnings (polymorphicrefs unreachable + featuretests vectorArtefactsPoolForF1 undefined) — unchanged by this branch.
+- ✅ Three-dot diff scope: 6 files exactly as expected (4 flowboard + 2 auto-regen siteAPI yamls). No NV1.S06 noise bundled into the commit (recovery worker correctly left scope files / notif-v2 spec changes in the working tree, unstaged).
+- ✅ siteAPI.yaml regen: parameter shapes + response schemas (200 with array of `{flow_state_id, flow_state_name, limit, updated_at, updated_by}`) match the handler/DTO. No unrelated route churn.
+- ✅ Commit subject contains `[FB1.2.2]` ref-tag.
+- ✅ DTO shape correctness: `WipLimitDTO` includes `flow_state_id`, `flow_state_name`, `limit` per AC 1; plus `updated_at` + `updated_by` audit fields per AC 3. Matches the joined SQL (sql.go:23-34) which `JOIN flows_states ... ORDER BY flows_states_sort_order`.
+- ✅ Test infrastructure: pre-existing `serviceIface` + `newHandlerWithIface` from the FB1.2.1 scaffold enable fake-service injection — no surprise refactor introduced by this story.
+
+**Other gate failures:** None. No HARD-RULE violations. No layer-discipline breakage. No bundled unrelated files. Build + lint + vet all clean.
+
+**Recommended fix (single concrete change to handler.go + one new test):**
+
+1. **handler.go `listWipLimits`** — add an explicit sentinel-scope check on `node_id` BEFORE the SQL query. Specifically: extend `serviceIface` with a `NodeWorkspaceID(ctx, nodeID) (uuid.UUID, error)` method that returns the owning workspace_id of a topology node (with `pgx.ErrNoRows` → a new sentinel error `ErrNodeNotFound` or simply propagated). In `listWipLimits`, after parsing `nodeID` and before calling `ListWipLimits`:
+
+   ```go
+   nodeWS, err := h.svc.NodeWorkspaceID(r.Context(), nodeID)
+   if errors.Is(err, ErrNodeNotFound) {
+       // Node does not exist — return 403, not 404 (per AC: do not leak existence).
+       httperr.Write(w, r, http.StatusForbidden, "forbidden")
+       return
+   }
+   if err != nil {
+       httperr.Write(w, r, http.StatusInternalServerError, "failed to resolve node workspace")
+       return
+   }
+   if nodeWS != clamp.WorkspaceID {
+       httperr.Write(w, r, http.StatusForbidden, "forbidden")
+       return
+   }
+   ```
+
+   This satisfies the AC verbatim: out-of-scope returns 403, not 404. Both cases (node doesn't exist AND node belongs to other workspace) collapse to the same 403 response so existence-leakage stays contained.
+
+2. **service.go** — add `NodeWorkspaceID` method. SQL: `SELECT topology_nodes_workspace_id FROM topology_nodes WHERE topology_nodes_id = $1`. New sentinel error `ErrNodeNotFound` exported alongside `ErrNotMember`. Update `serviceIface` to include the method.
+
+3. **sql.go** — add `sqlSelectNodeWorkspace` constant.
+
+4. **handler_test.go** — add two GET tests:
+   - `TestListWipLimits_InScope200` — fake service returns nodeWS == callerWS; expect 200 + array.
+   - `TestListWipLimits_CrossScope403` — fake service returns nodeWS ≠ callerWS; expect 403.
+
+   The fake service's `NodeWorkspaceID` mirrors `setNodeWorkspace`/`workspaceForNode` plumbing already present.
+
+5. **Update the handler.go doc comment block** at line 79-86 to reflect the new behavior (out-of-scope returns 403 per AC) — drop the "200 with empty array" explanation, replace with the AC-citation.
+
+6. **Commit on the same branch** `fb1-2-2-wip-endpoints` with subject `fix(flowboard): GET listWipLimits returns 403 on cross-scope per AC 1 [FB1.2.2]`. Re-push, report new SHA to master.
+
+**Do not change:**
+
+- The four passing PUT tests — all green, preserve as-is.
+- The membership-gate logic in `service.go.UpsertWipLimit` (lines 127-134) — correct.
+- The `sqlUpsertWipLimit` SQL — correct: ON CONFLICT ON CONSTRAINT name `topology_nodes_wip_limits_node_state_uq` matches mig 133 exactly.
+- The `WipLimitDTO` shape, `Limit *int` typing, JSON tags — all correct.
+- The siteAPI.yaml auto-regen — leave the pre-commit hook to regenerate it cleanly on the next commit.
+- The `Mount` route table — five routes correctly registered; only listWipLimits' internals change.
+- main.go wiring — untouched, no need to change.
+
+**Worker prompt seed:**
+
+> Re-open `backend/internal/flowboard/handler.go` `listWipLimits`. The current implementation returns 200 with an empty array when `node_id` belongs to a different workspace than the sentinel clamp. The AC for FB1.2.2 says verbatim: "out-of-scope returns 403, not 404." Add an explicit sentinel-scope check on the node before the SQL query: (1) add a `NodeWorkspaceID(ctx, nodeID) (uuid.UUID, error)` method to `Service` + `serviceIface` with sentinel error `ErrNodeNotFound`, backed by a new `sqlSelectNodeWorkspace` constant (`SELECT topology_nodes_workspace_id FROM topology_nodes WHERE topology_nodes_id = $1`); (2) in `listWipLimits`, call it after parsing nodeID — both `ErrNodeNotFound` and `nodeWS != clamp.WorkspaceID` collapse to 403 (so existence is not leaked); (3) update the handler.go doc comment to match the new behavior; (4) add `TestListWipLimits_InScope200` and `TestListWipLimits_CrossScope403` to `handler_test.go` (extend the fake service with `NodeWorkspaceID` using the existing `workspaceForNode` map). Do NOT touch the PUT path, the membership gate, the WipLimitDTO shape, or the SQL constants for UPSERT. Run `go build ./...` + `go test ./internal/flowboard/...` locally; both must pass. Commit on the same branch `fb1-2-2-wip-endpoints` with subject `fix(flowboard): GET listWipLimits returns 403 on cross-scope per AC 1 [FB1.2.2]`. Report the new SHA to master.
+
+(Historical REJECT briefs from Phase 1 retained below for audit trail.)
+---
+
 
 ### REJECT — FB1.1.3 — 2026-05-27T03:17Z (RESOLVED 2026-05-27 — kept for audit trail)
 
@@ -329,3 +419,4 @@ Live `vector_artefacts` schema uses UUID for every PK/FK; spec showed BIGINT. Pl
 | 4 | FB1.1.3 | fb1-1-3-mig-134-user-prefs | REJECT | — | 2026-05-27T03:17Z | Worker SHA `c4068701` (fix-worker on top of `d7d3e1eb`). Column names + prefixes + lint + UP/DOWN structural shape + UNIQUE index + workspace index all PASS. Apply failed at FK creation: `users_flowboard_prefs_user_id BIGINT` cannot FK to `users.users_id uuid`. Live `vector_artefacts` schema is UUID throughout (verified `users.users_id` + `artefacts_types.artefacts_types_id` via information_schema); spec correction in `f98bc796` already flagged this universally. Fix is 4 type substitutions — see §Active rejection for the canonical CREATE TABLE block. Transaction rolled back cleanly, no DB damage. Validator working tree clean; ready for fix-worker on same branch. |
 | 5 | FB1.1.3 | fb1-1-3-mig-134-user-prefs | PASS | bd417a86 | 2026-05-27 | **After two REJECT-fix cycles.** Type-fix-worker SHA `0745d8d5` made the recommended 4-substitution edit (`BIGSERIAL` → `uuid PRIMARY KEY DEFAULT gen_random_uuid()` on PK; `BIGINT` → `uuid` on user_id, artefact_type_id, workspace_id). Re-validated: `grep -in 'BIGSERIAL\|BIGINT'` returns 0 hits on both files; three-dot diff shows only the 2 migration files; column-prefix lint green; UP applied cleanly to vector_artefacts via direct psql (BEGIN → CREATE TABLE → CREATE INDEX×2 → COMMIT); schema_migrations row 134 backfilled externally; `\d users_flowboard_prefs` confirms uuid PK with `gen_random_uuid()` default + 2 uuid FKs CASCADE (users + artefacts_types — post-rename plural verified) + JSONB card_fields NOT NULL + workspace_id denorm + updated_at default now() + UNIQUE on (user_id, artefact_type_id) + workspace_idx. All 5 AC PASS. **Phase 1 complete (3/3).** Awaiting Phase 2 dispatch. |
 | 6 | FB1.2.1 | fb1-2-1-scaffold-pkg | PASS | ff9a6613 | 2026-05-27 | **Phase 2 opener — scaffold; 5 endpoints stubbed at 501, layer discipline clean, smoke tests green, 2 pre-existing go vet warnings unchanged.** Worker SHA `2db247ff`. Three-dot diff = 8 files (5 new `backend/internal/flowboard/` + `backend/cmd/server/main.go` + 2 auto-regen `siteAPI.yaml`). All 4 AC PASS: (1) all 5 package files present; (2) main.go imports flowboard pkg, constructs `flowboard.NewService(vaPool)` + `flowboard.NewHandler(...)` after `orgDesignSvc`, calls `flowboardH.Mount(r)` inside `mountSiteRoutes` within RequireAuth + RequireFreshPassword + httprate group; (3) `go build ./...` exit 0 + `go test ./internal/flowboard/...` exit 0 (2 smoke tests pass), `go vet ./...` exit 1 with two warnings (`polymorphicrefs/service.go:136 unreachable code` + `featuretests vectorArtefactsPoolForF1 undefined`) — verified pre-existing on `feature/flowboard` baseline, not introduced by this story; (4) layer-discipline greps all 0 hits (handler SQL grep 0 / service net/http grep 0 / sql.go func-if-for-switch grep 0). 5 routes registered (`/flowboard/{wip,prefs}` GET+PUT, `/topology/{id}/members` GET); each handler method returns `http.StatusNotImplemented` with `// TODO(FB1.2.N)` comment referencing the implementing story. siteAPI.yaml regen added exactly 3 path entries matching the new routes — no unrelated route churn. Index-stat clean at merge (8 files only; master-handover edits + scope-hook breadcrumbs stashed pre-merge, re-popped post-commit). |
+| 7 | FB1.2.2 | fb1-2-2-wip-endpoints | REJECT | — | 2026-05-27 | Worker SHA `67763492` (recovery worker). PUT path is correct end-to-end: membership-gate via ErrNotMember → 403 (AC 2), updated_by/updated_at on every write (AC 3), `Limit *int` → SQL NULL pointer mapping (AC 4), all 4 named PUT tests green (AC 5 — `MemberAllowed`, `NonMember403`, `CrossScope403`, `Idempotent`). Layer discipline clean (handler SQL grep 0 / service http grep 0 / sql.go logic grep 0); build + go test + go vet all green (vet warnings pre-existing baseline). siteAPI.yaml regen sane (request/response schemas, 6 files in three-dot diff exactly as expected). **AC 1 FAIL**: `listWipLimits` returns 200+empty array on cross-scope `node_id` (worker self-flagged this with a defensible "less existence leak than 403" security argument, documented in handler.go:79-86). The AC text is verbatim: *"sentinel-clamped — out-of-scope returns 403, not 404"*. The validator cannot reinterpret a verbatim AC on its own authority. Brief in §Active rejection asks for a minimal fix: add `NodeWorkspaceID` method to service + serviceIface, gate `listWipLimits` on `nodeWS == clamp.WorkspaceID` before the SQL query (both `ErrNodeNotFound` and mismatch collapse to 403), plus 2 GET tests (`InScope200` + `CrossScope403`). PUT path and all 4 existing tests preserved untouched. |
