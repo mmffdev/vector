@@ -347,14 +347,23 @@ describe("FlowBoard — FB1.3.7", () => {
     );
   });
 
-  // ── Additional: loading state renders loading placeholder ─────────────────
+  // ── Additional: loading state renders progressive skeleton column rail ────
+  // Post-FB1.4.1 UX upgrade — the board no longer blanks behind a "Loading…"
+  // string. The shell (toolbar + column area) renders immediately and the
+  // column area shows 3 shimmer columns until real data arrives.
 
-  it("renders loading placeholder while useFlowBoardData is loading", () => {
+  it("renders skeleton column rail while useFlowBoardData is loading and has no columns yet", () => {
     vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: true, error: null, refetch: vi.fn() });
 
-    render(<FlowBoard config={makeConfig()} />);
+    const { container } = render(<FlowBoard config={makeConfig()} />);
 
-    expect(screen.getByText(/loading board/i)).toBeTruthy();
+    // 3 skeleton columns
+    const skeletonCols = container.querySelectorAll(".flow-board__Column-skeleton");
+    expect(skeletonCols.length).toBe(3);
+
+    // Toolbar (containing the gear button) renders too — the shell is up
+    // and the user can open WIP settings while the board itself loads.
+    expect(container.querySelector(".flow-board__Toolbar")).toBeTruthy();
   });
 
   // ── Additional: error state renders error placeholder ────────────────────

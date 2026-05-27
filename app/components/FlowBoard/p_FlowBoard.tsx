@@ -214,17 +214,13 @@ function FlowBoardBoard({
     setFlyoutOpenId((prev) => (prev === artefactId ? null : artefactId));
   };
 
-  if (isLoading) {
-    return <div className="flow-board__Loading">Loading board…</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="flow-board__Error">
-        Failed to load board. {error.message}
-      </div>
-    );
-  }
+  // Progressive render: the shell (toolbar + column rail) renders immediately
+  // even when data is still arriving. We show a skeleton column rail while
+  // `columns` is empty AND we're loading; we keep the real columns visible
+  // during re-fetches (so a drag-induced refetch doesn't blank the board).
+  // Errors replace only the columns area, not the whole shell — the toolbar
+  // (incl. gear button) stays clickable so the user can recover.
+  const showSkeleton = isLoading && visibleColumns.length === 0;
 
   return (
     <div className="flow-board" data-samantha-slot={slotName}>
@@ -241,23 +237,57 @@ function FlowBoardBoard({
         onDragEnd={onDragEnd}
       >
         <div className="flow-board__Columns">
-          {visibleColumns.map((col) => (
-            <BoardColumn
-              key={col.flowState.id}
-              column={col}
-              activeStateId={activeStateId}
-              isAllowed={isAllowed}
-            >
-              {col.cards.map((card) => (
-                <BoardCard
-                  key={card.id}
-                  artefact={card}
-                  fields={resolvedConfig.card.default_fields}
-                  onClick={handleCardClick}
-                />
+          {showSkeleton ? (
+            // 3 placeholder columns — the eventual column count is unknown
+            // until flow_states arrives; 3 is the most common case and the
+            // shimmer telegraphs activity without committing to a specific
+            // shape. Replaced atomically once the real columns land.
+            <>
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={`skel-${i}`}
+                  className="flow-board__Column flow-board__Column-skeleton"
+                  aria-hidden="true"
+                >
+                  <div
+                    className="skeleton flow-board__Skeleton_header"
+                    style={{ ["--skeleton-delay" as string]: `${i * 80}ms` }}
+                  />
+                  <div className="flow-board__Column_body">
+                    {[0, 1, 2].map((j) => (
+                      <div
+                        key={`skel-${i}-${j}`}
+                        className="skeleton flow-board__Skeleton_card"
+                        style={{ ["--skeleton-delay" as string]: `${i * 80 + j * 120}ms` }}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
-            </BoardColumn>
-          ))}
+            </>
+          ) : error ? (
+            <div className="flow-board__Error" role="alert">
+              Failed to load board. {error.message}
+            </div>
+          ) : (
+            visibleColumns.map((col) => (
+              <BoardColumn
+                key={col.flowState.id}
+                column={col}
+                activeStateId={activeStateId}
+                isAllowed={isAllowed}
+              >
+                {col.cards.map((card) => (
+                  <BoardCard
+                    key={card.id}
+                    artefact={card}
+                    fields={resolvedConfig.card.default_fields}
+                    onClick={handleCardClick}
+                  />
+                ))}
+              </BoardColumn>
+            ))
+          )}
         </div>
 
         <DragOverlay>

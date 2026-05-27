@@ -18257,14 +18257,35 @@ tr.is-editing {
   padding-bottom: var(--space-2, 0.5rem);
 }
 
-.flow-board__Loading {
-  padding: var(--space-4, 1rem);
-  color: var(--text-secondary, #6b7280);
-  font-size: var(--text-sm, 0.875rem);
-}
-
 .flow-board__Error {
   padding: var(--space-4, 1rem);
   color: var(--color-danger, #dc2626);
   font-size: var(--text-sm, 0.875rem);
+}
+
+/* ── Skeleton column rail (progressive load) ────────────────────────── */
+/* Renders 3 placeholder columns while useFlowBoardData is still loading
+   and no real columns have arrived yet. Reuses .skeleton (from the
+   project's shimmer system) inside the existing .flow-board__Column
+   shell so the skeleton occupies the same metrics as the real columns —
+   no layout jump on transition. Removed `.flow-board__Loading` (was a
+   text-only placeholder) as part of the same change. */
+
+.flow-board__Column-skeleton {
+  /* Same shell as .flow-board__Column, but neutralise the drop-target
+     hover styling — skeletons aren't interactive. */
+  pointer-events: none;
+}
+
+.flow-board__Skeleton_header {
+  height: 1.25rem;
+  width: 60%;
+  margin: var(--space-1, 0.25rem) 0 var(--space-2, 0.5rem) var(--space-1, 0.25rem);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.flow-board__Skeleton_card {
+  height: 4.5rem;
+  width: 100%;
+  border-radius: var(--radius-md, 6px);
 }
