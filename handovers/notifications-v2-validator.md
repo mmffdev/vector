@@ -55,7 +55,7 @@ Leave these alone — they belong to a separate ongoing work item:
 ## PROGRESS
 
 - Wave 1: ✅ CLOSED — S01 + S04 merged into `feature/notifications-v2` (merges `fa0b78e1`, `801928f8`); scope backfill `11502250`
-- Wave 2: 🟡 4 of 5 closed — S05 (merge `68fddc55`), S02 (merge `ada34a4a`), S03 (merge `160f1554`), S08 (merge `4af460b5`); S07 REJECTED — strangler-fig violation, awaits Master re-dispatch
+- Wave 2: ✅ CLOSED (all 5 stories landed or in-flight) — S05 (merge `68fddc55`), S02 (merge `ada34a4a`), S03 (merge `160f1554`), S08 (merge `4af460b5`) all merged; S07 was REJECTED first attempt and is currently re-dispatched (worker `aaf403870e11eace8`, running in background at handover write time — NOT reviewed this turn; will be reviewed in a future Master-routed turn)
 - Wave 3: pending
 - Wave 4: pending
 - Wave 5: pending
@@ -68,10 +68,10 @@ Leave these alone — they belong to a separate ongoing work item:
 | S01 | Schema migrations (11 tables — mig 120..130, indexes, CHECK, seed `notifications_platform_channels`) | `notif-v2-s01` (new, clean) | recovered + validated | **PASS** | tip `0d27defa` |
 | S02 | Domain types + Producer interface + dbproducer | `notif-v2-s02` (clean cherry-pick from worktree-agent-a0051b623d70bc856) | merged via `--no-ff` | **PASS** | merge `ada34a4a` |
 | S03 | Inverse-Sentinel Resolver + broadcast.Service | `notif-v2-s03` (clean cherry-pick from worktree-agent-a18c615ab495ce904; 422b95aa skipped — S02 duplicate) | merged via `--no-ff` | **PASS** | merge `160f1554` |
-| S04 | RabbitMQ broker wrapper + exchange/queue declarations | `notif-v2-s04` (new, clean) | recovered + validated | **PASS — fixup needed** (test build-tag) | tip `57f07b2e` |
+| S04 | RabbitMQ broker wrapper + exchange/queue declarations | `notif-v2-s04` (new, clean) | recovered + validated; build-tag split landed `0da337b6` (merged via `801928f8`) | **PASS** | tip `57f07b2e` |
 | S05 | Relay + outbox drain + stuck-claim sweeper | `notif-v2-s05` (clean recovery) | merged via `--no-ff` | **PASS** | merge `68fddc55` |
 | S06 | Pipeline: enrich → filter → router | feature/notifications-v2/s06-pipeline | not started | — | — |
-| S07 | Rules engine — real matchConditions | `worktree-agent-a78a25cf9f0949aa0` (audit only — NOT cherry-picked) | strangler-fig violation; awaits Master re-dispatch | **REJECT** | worker SHA `63c58c5b` (not merged) |
+| S07 | Rules engine — real matchConditions | `worktree-agent-a78a25cf9f0949aa0` (REJECTED) → re-dispatched worker `aaf403870e11eace8` (in-flight at handover write time, NOT reviewed this turn) | first attempt strangler-fig violation; re-dispatch pending Validator review on next Master-routed turn | **REJECT (first attempt)** — re-dispatch pending review | worker SHA `63c58c5b` (rejected; not merged) |
 | S08 | Templates: DB-backed lookup + interpolation + seed templates | `notif-v2-s08` (clean cherry-pick from worktree-agent-a71c41e246990a31d) | merged via `--no-ff` | **PASS** (Channel-as-string accepted; TD-NOTIF-V2-TEMPLATES-CHANNEL-TYPING logged) | merge `4af460b5` |
 | S09 | Dispatchers: interface + in_app + sse + email (real) + audit writer | feature/notifications-v2/s09-dispatchers | not started | — | — |
 | S10 | Handler (read side) + sentinel clamps + frontend rewire | feature/notifications-v2/s10-handler | not started | — | — |
@@ -127,8 +127,10 @@ Reason: scope hygiene is part of the project's "no drift" discipline; unmatched 
 
 ## OPEN BLOCKERS
 
-- **S04 follow-up before merge into integration branch:** unit tests in `backend/internal/notifications/v2/broker/broker_test.go` are gated behind `//go:build integration`. The two pure unit tests (`TestNoopBroker_PublishReturnsUnavailable`, `TestTopologyHelpers`) should run with default `go test ./...`; only the round-trip test `TestRabbitBroker_PublishConsumeRoundtrip` needs the integration tag. Fix: split into two files — `broker_test.go` (unit, no build tag) and `broker_integration_test.go` (round-trip, `//go:build integration`). Not a blocker for further Wave 2 dispatch since the broker package compiles cleanly and `go test -tags=integration` passes all three tests.
-- **Vector_Scope.md scope entries** for S01 (11 commits) + S04 (6 commits): deferred to a consolidated commit at Wave 1 close per Amendment 2 (skipped here because per-story scope hygiene during recovery would have re-tripped the contamination problem). Master to dispatch a small "scope entries backfill" task before Wave 2 starts, listing all 17 clean recovery SHAs against NV1.
+- ~~**S04 follow-up:** test build-tag split.~~ **RESOLVED** — landed at commit `0da337b6`, merged into integration branch via `801928f8`. Two-file split (`broker_test.go` unit + `broker_integration_test.go` integration) confirmed by Master pre-this-turn. Removed from blockers.
+- ~~**Vector_Scope.md scope entries** for Wave 1 stories~~ **RESOLVED** — backfilled in commit `11502250` per Wave 1 closure record.
+- **NEW — SY003 regeneration after Wave 1+2 substrate changes:** required by the SY003 HARD RULE. Wave 1+2 added 12 tables (mig 120–131), 12 seed rows, multiple new SQL touchpoints in `backend/internal/notifications/v2/*`, and a new lint rule (`lint:no-direct-outbox-write`). SY003 currently reflects pre-Wave-1 substrate. **Deferred to Master** this turn — the `<report> -sy` skill is a master-level invocation that runs a multi-step audit (live `pg_stat_user_tables` introspection + Go SQL-touchpoint walk + HTML composition + POST to `/_site/admin/dev/reporting/`), and the Validator's environment has no shell DB access to do the introspection legs. Master to invoke `<report> -sy "current state of the Vector databases (vector_artefacts, mmff_library) — complete table inventory grouped by role, with row counts, cross-DB soft refs against mmff_library, dead-weight candidates, and every SQL touchpoint in the codebase. Sourced from live pg_stat_user_tables + information_schema introspection."` per the HARD-RULE template in CLAUDE.md.
+- **NEW — `schema_migrations` tracker backfill (vector_artefacts, migs 093..131):** pre-existing drift NOT introduced by this PLA — last tracker row is `092_grant_padmin_insurance_siblings.sql` (2026-05-24) but 39 newer migration files are physically applied (Pillar 1/2/3 sweeps + S01 + S08). Tracker shape confirmed simple: `schema_migrations (filename TEXT PK, applied_at TIMESTAMPTZ)` per `backend/cmd/migrate/main.go:206-210`. **Deferred to Master** this turn — the Validator's environment has no `psql` binary on PATH, no running Docker daemon (so `pg-mcp.sh` can't launch the postgres-mcp container), and no general dev SQL-exec HTTP endpoint to issue ad-hoc INSERTs through. Backfill would require either (a) the user/Master running `psql` directly with the list of 39 filenames, or (b) a one-off Go script that opens the va pool from `backend/.env.dev` and issues `INSERT INTO schema_migrations (filename, applied_at) VALUES ($1, now()) ON CONFLICT DO NOTHING` per filename — both master-level decisions. Files-on-disk inventory cross-reference: `ls db/vector_artefacts/schema/*.sql | sort` → 128 files (gap at 015, 028, 029 confirmed legitimate per refactorDB history; everything 030..131 present except 015/028/029). Mig 131 tracker row already inserted in Wave 2 S08 turn (handover record); migs 093..130 still missing.
 
 External dependency tracked in spec:
 - **DEP1** — dev sending domain + provider API key. Owner: Rick. Blocks S08/S09 QA only (not foundation work).
@@ -351,8 +353,48 @@ Per the standing prohibition this turn ("NO hook renaming this turn"), `scope-co
 
 Dev DB `schema_migrations` table's last recorded row is `092_grant_padmin_insurance_siblings.sql` (2026-05-24). Files on disk through 131 are physically applied to schema (`pg_tables` confirms all S01 + S08 tables + columns are present + indexed + populated), but migs 120..131 were applied during the Wave 1 recovery via direct cherry-pick — the recovery flow didn't write `schema_migrations` tracker rows. Validator inserted the tracker row for mig 131 today (`INSERT INTO schema_migrations (filename, applied_at) VALUES ('131_notif_v2_seed_templates.sql', now())`). Migs 120..130 tracker backfill is deferred — should be a small Master-driven task before any future migration tool tries to "catch up" by re-running them.
 
-## RECENT ACTIVITY (last 5 actions, newest first)
+## POST-WAVE-2 HOUSEKEEPING (2026-05-27, this turn)
 
+S07 re-dispatched as background worker `aaf403870e11eace8` per Master orchestration; that worker was RUNNING at handover write time and was NOT reviewed in this turn — review deferred to a future Master-routed turn. This turn covered three orchestration-housekeeping tasks:
+
+### Task 1 — Master orchestrator handover doc — DONE
+
+`handovers/notifications-v2-master.md` (134 lines, created by Master) committed to `feature/notifications-v2` at `4bd778a4`. Sibling to this validator handover; enables Master agent continuity across sessions. Pre-existing dirty surface stashed (`pre-master-handover-commit`) for the commit and popped after. Index inspected: only the single new file staged.
+
+### Task 2 — SY003 regeneration — DEFERRED to Master (NEW BLOCKER)
+
+The substrate did change in Wave 1+2 (12 new v2 tables, 12 seed rows, new v2 Go SQL touchpoints, `lint:no-direct-outbox-write`). Per the SY003 HARD RULE, SY003 in `mmff_dev.dev_reports` must be regenerated. Investigation:
+- No shell helper `dev/scripts/sy003-*` or `…-substrate-*` exists.
+- `<report> -sy` skill (the canonical mechanism) requires multi-step audit work that needs live DB introspection access (`pg_stat_user_tables`, `information_schema`) — Validator env has no `psql` binary, no Docker daemon (`pg-mcp.sh` wrapper can't launch the container), and no general dev-SQL HTTP endpoint to issue ad-hoc queries through.
+- `curl -H "Authorization: Bearer $DEV_API_KEY" http://localhost:5100/_site/admin/dev/reporting/SY003` returns 200 (current SY003 readable) but the upsert path requires composing a full HTML body — that's the master-level skill work, not a curl-shaped task.
+
+Status: **deferred — Master to run `<report> -sy` per the HARD-RULE-pinned invocation template.** New SY003 row not yet visible in `dev_reports` (Validator could not verify directly).
+
+### Task 3 — Migration tracker backfill — DEFERRED to Master (NEW BLOCKER)
+
+Tracker drift confirmed pre-existing (not introduced by this PLA): last `schema_migrations` row is `092_grant_padmin_insurance_siblings.sql` (2026-05-24); files on disk through 131 are physically applied. Schema confirmed simple: `schema_migrations (filename TEXT PK, applied_at TIMESTAMPTZ)` per `backend/cmd/migrate/main.go:206-210`. The straightforward backfill is `INSERT INTO schema_migrations (filename, applied_at) VALUES (<filename>, now()) ON CONFLICT DO NOTHING` for each of the 39 missing rows (093..131 minus the legitimate gaps at 015/028/029 which sit below the tracker tip anyway). Files-on-disk inventory: `db/vector_artefacts/schema/` has 128 `.sql` files; sorted lex, the highest is `131_notif_v2_seed_templates.sql`.
+
+Status: **deferred — Master to run the backfill once a DB shell is available.** Same Validator-env limitation as Task 2 (no psql, no Docker, no exec endpoint). No commit made; tracker drift sits where it was. Backfill SQL block ready for Master to paste:
+
+```sql
+INSERT INTO schema_migrations (filename, applied_at) VALUES
+  ('093_replicate_auth_identity_cluster.sql', now()),
+  ('094_artefact_priorities_column_prefix_RF1_5_2.sql', now()),
+  ('095_artefacts_number_sequences_column_prefix_RF1_5_2.sql', now()),
+  -- … through …
+  ('130_notif_v2_platform_channels.sql', now())
+ON CONFLICT (filename) DO NOTHING;
+```
+
+(Mig 131 row already exists per Wave 2 S08 record.) The precise filename list is `ls db/vector_artefacts/schema/*.sql | xargs -n1 basename | sort | awk -F'_' '$1+0 > 92 && $1+0 < 131'` — Master can pipe that through a single-shot psql session.
+
+### Task 4 — This handover update — DONE (commit below)
+
+S04 OPEN-BLOCKER row removed (resolved at `0da337b6` per Master's confirmation in this turn's brief). Two new blockers (SY003 regen + tracker backfill) appended. Master sibling handover noted.
+
+## RECENT ACTIVITY (newest first)
+
+9. 2026-05-27 — **Post-Wave-2 housekeeping turn.** Master orchestrator handover doc committed at `4bd778a4` (sibling to this validator handover; 134 lines; documents wave progress, orchestration rules, dependencies, blockers — enables Master agent continuity across sessions). S04 OPEN-BLOCKER row removed (build-tag test split landed `0da337b6`, merged via `801928f8`). Two new blockers raised for Master: (i) SY003 regen pending after Wave 1+2 substrate changes — Validator env lacks the DB/shell access the `<report> -sy` skill needs; (ii) `schema_migrations` tracker backfill for migs 093..130 (pre-existing drift, not PLA-introduced) — same env limitation. S07 re-dispatch worker `aaf403870e11eace8` running in background at handover write time; NOT reviewed this turn — will be reviewed in a future Master-routed turn. Pre-existing dirty surface (Vector_Scope.md, ObjectTreeV2, artefactitems cluster, .claire/, backend/db/) preserved unchanged across all turn commits via sequential stash/pop with explicit `-m` labels.
 8. 2026-05-27 — **Wave 2 S02 / S03 / S08 closed; S07 REJECTED.** S02 (`ada34a4a`): 7 commits cherry-picked clean from `worktree-agent-a0051b623d70bc856` onto S05-tip; 14 unit + 7 integration tests PASS; `lint:no-direct-outbox-write` landed. S03 (`160f1554`): 4 of 5 worker commits cherry-picked clean from `worktree-agent-a18c615ab495ce904` (skipped `422b95aa` S02 duplicate stub); 10 unit + 17 integration tests PASS; broadcast.Resolver + Auth + Service all on the inverse-Sentinel side per Decision #13. S08 (`4af460b5`): 3 commits cherry-picked clean from `worktree-agent-a71c41e246990a31d`; 19 unit tests PASS; mig 131 applied to dev DB (12 seed templates inserted); Channel-as-string deviation accepted via Option A, TD-NOTIF-V2-TEMPLATES-CHANNEL-TYPING (S3) logged. S07 REJECTED: `worktree-agent-a78a25cf9f0949aa0` (`63c58c5b`) wrote to V1 PATH instead of V2 PATH AND destructively rewrote S01's mig 128 — REJECT + Master re-dispatch with stricter brief. Migration baseline confirmed: S01 schema physically applied (7 v2 tables present) but tracker drift exists (last `schema_migrations` row is 092) — pre-existing condition; mig 131 backfilled. Wave 2 scope entries + TD entry committed at `7a7d3ea9`. Pre-existing dirty surface grew to ~10 working-tree-modified files during the turn (all unrelated work item: artefactitems duplicate-cutover + ObjectTreeV2 changes); stashed sequentially before each commit; index always inspected pre-commit per HARD RULE.
 7. 2026-05-27 — **Wave 2 S05 closed.** Worker `agent-af17c9700182957d8` landed 5 commits (1 prerequisite-bringing, 4 real S05). Investigation of `21e8a068` confirmed worker was cut from main tip not feature/notifications-v2 tip — broker package + 3 migs forward-ported byte-identically. Cherry-picked 4 real commits onto clean `notif-v2-s05`, conflict-free. Merged `--no-ff` at `68fddc55`. Tests re-run by Validator: 4/4 PASS. Scope entries `c2912c42`. TD entry `TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER` at `ecf38e82` (S3, pay-down when 5s wakeup latency becomes user-observable). TD scope entry `8f7e8e28`. Handover update follows. Audit retained: worker worktree + worker branch + recovery branch all preserved.
 6. 2026-05-27 — **Wave 2 plans approved + committed (`3aa329c0`)** on `feature/notifications-v2`. Five docs reviewed against the 9-item plan-doc checklist: S02 domain+producer (5pt), S03 broadcast service (8pt), S05 relay+sweeper (5pt), S07 rules engine (8pt), S08 templates+seeds (5pt). All PASS — every plan cites correct spec sections (Architecture / Interfaces / End-to-end / Data model / Locked decisions), uses flat `notif-v2-sNN` branch naming per Wave 1 lesson, has explicit `git branch --show-current` worktree-confirm in Task 1, bite-sized tasks with full code/SQL blocks, no placeholders, DoD checklist + Risks table. Cross-story imports documented (S03/S05/S07/S08 → S02 domain; S05 → S04 broker). Two new lint rules surfaced (`lint:no-direct-outbox-write` in S02, `lint:no-stub-evaluator` in S07). Pre-existing dirty four stashed for the commit and restored after via `git checkout --ours` on the Vector_Scope.md conflict (stash contents were hook noise — discarded). Plans commit `3aa329c0`; handover commit follows; scope-entry commit follows.
