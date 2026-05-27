@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,6 +33,9 @@ func TestNewHandler_NotNil(t *testing.T) {
 // Each test builds its own fakeService with explicit setup.
 type fakeStore map[[2]uuid.UUID]WipLimitDTO
 
+// fakeCardPrefsStore holds (userID, artefactTypeID) → CardPrefsDTO.
+type fakeCardPrefsStore map[[2]uuid.UUID]CardPrefsDTO
+
 // fakeService is the test double for serviceIface.
 // memberIDs lists every (nodeID, userID) pair considered a member.
 // workspaceForNode maps nodeID → owning workspaceID (for cross-scope checks).
@@ -42,8 +46,10 @@ type fakeService struct {
 	// If the caller's workspaceID ≠ workspaceForNode[nodeID], it's treated
 	// as ErrNotMember (cross-scope: no member rows will match).
 	workspaceForNode map[uuid.UUID]uuid.UUID
-	// store is the in-memory row table.
+	// store is the in-memory WIP-limit row table.
 	store fakeStore
+	// cardPrefsStore is the in-memory card-prefs row table.
+	cardPrefsStore fakeCardPrefsStore
 }
 
 func newFakeService() *fakeService {
@@ -51,6 +57,7 @@ func newFakeService() *fakeService {
 		memberPairs:      make(map[[2]uuid.UUID]bool),
 		workspaceForNode: make(map[uuid.UUID]uuid.UUID),
 		store:            make(fakeStore),
+		cardPrefsStore:   make(fakeCardPrefsStore),
 	}
 }
 
@@ -117,6 +124,35 @@ func (f *fakeService) UpsertWipLimit(
 		UpdatedBy:   &callerUserID,
 	}
 	f.store[[2]uuid.UUID{nodeID, flowStateID}] = dto
+	return dto, nil
+}
+
+// GetCardPrefs returns ErrCardPrefsNotFound when no row is registered,
+// otherwise returns the stored CardPrefsDTO.
+func (f *fakeService) GetCardPrefs(_ context.Context, callerUserID, artefactTypeID uuid.UUID) (CardPrefsDTO, error) {
+	key := [2]uuid.UUID{callerUserID, artefactTypeID}
+	dto, ok := f.cardPrefsStore[key]
+	if !ok {
+		return CardPrefsDTO{}, ErrCardPrefsNotFound
+	}
+	return dto, nil
+}
+
+// UpsertCardPrefs validates against allowedCardFields then writes to cardPrefsStore.
+// callerUserID (not any body field) is the map key — enforcing "caller wins".
+func (f *fakeService) UpsertCardPrefs(_ context.Context, callerUserID, artefactTypeID, _ uuid.UUID, fields []string) (CardPrefsDTO, error) {
+	for _, field := range fields {
+		if _, ok := allowedCardFields[field]; !ok {
+			return CardPrefsDTO{}, fmt.Errorf("%w: %q", ErrInvalidCardField, field)
+		}
+	}
+	now := time.Now().UTC()
+	dto := CardPrefsDTO{
+		ArtefactTypeID: artefactTypeID,
+		CardFields:     fields,
+		UpdatedAt:      now,
+	}
+	f.cardPrefsStore[[2]uuid.UUID{callerUserID, artefactTypeID}] = dto
 	return dto, nil
 }
 
@@ -392,5 +428,163 @@ func TestUpsertWipLimit_Idempotent(t *testing.T) {
 	}
 	if got.Limit == nil || *got.Limit != limit2 {
 		t.Errorf("response limit: want %d, got %v", limit2, got.Limit)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Helpers: card-prefs PUT + GET directly on the handler.
+// ---------------------------------------------------------------------------
+
+func doPUTCardPrefs(t *testing.T, h *Handler, ctx context.Context, body upsertCardPrefsRequest) *httptest.ResponseRecorder {
+	t.Helper()
+	b, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal card-prefs request: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPut, "/_site/flowboard/prefs", bytes.NewReader(b))
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+	h.upsertCardPrefs(rec, req)
+	return rec
+}
+
+func doGETCardPrefs(t *testing.T, h *Handler, ctx context.Context, artefactTypeID uuid.UUID) *httptest.ResponseRecorder {
+	t.Helper()
+	url := fmt.Sprintf("/_site/flowboard/prefs?artefact_type_id=%s", artefactTypeID)
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+	h.getCardPrefs(rec, req)
+	return rec
+}
+
+// ---------------------------------------------------------------------------
+// FB1.2.3 AC tests — card-prefs endpoints
+// ---------------------------------------------------------------------------
+
+// TestUpsertCardPrefs_DefaultShape — PUT with the default field set returns 200
+// and the fake store records the row keyed by the sentinel user_id.
+func TestUpsertCardPrefs_DefaultShape(t *testing.T) {
+	workspaceID := uuid.New()
+	userID := uuid.New()
+	artefactTypeID := uuid.New()
+	defaultFields := []string{"id", "title", "assignee", "points", "priority"}
+
+	svc := newFakeService()
+	h := newHandlerWithIface(svc)
+	ctx := clampCtx(workspaceID, userID)
+
+	rec := doPUTCardPrefs(t, h, ctx, upsertCardPrefsRequest{
+		ArtefactTypeID: artefactTypeID,
+		CardFields:     defaultFields,
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp CardPrefsDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.ArtefactTypeID != artefactTypeID {
+		t.Errorf("artefact_type_id: want %s, got %s", artefactTypeID, resp.ArtefactTypeID)
+	}
+	if len(resp.CardFields) != len(defaultFields) {
+		t.Errorf("card_fields length: want %d, got %d", len(defaultFields), len(resp.CardFields))
+	}
+
+	// Confirm the fake store recorded the row.
+	stored, ok := svc.cardPrefsStore[[2]uuid.UUID{userID, artefactTypeID}]
+	if !ok {
+		t.Fatal("expected row in cardPrefsStore not found")
+	}
+	if len(stored.CardFields) != len(defaultFields) {
+		t.Errorf("stored card_fields length: want %d, got %d", len(defaultFields), len(stored.CardFields))
+	}
+}
+
+// TestUpsertCardPrefs_JunkKey422 — PUT with an invalid field key returns 422
+// and the error body identifies the rejected field.
+func TestUpsertCardPrefs_JunkKey422(t *testing.T) {
+	workspaceID := uuid.New()
+	userID := uuid.New()
+	artefactTypeID := uuid.New()
+
+	svc := newFakeService()
+	h := newHandlerWithIface(svc)
+	ctx := clampCtx(workspaceID, userID)
+
+	rec := doPUTCardPrefs(t, h, ctx, upsertCardPrefsRequest{
+		ArtefactTypeID: artefactTypeID,
+		CardFields:     []string{"id", "made_up_field"},
+	})
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	// Error body must mention the rejected field.
+	body := rec.Body.String()
+	if body == "" {
+		t.Fatal("expected non-empty error body for 422")
+	}
+	// The service embeds the bad key in the error message.
+	var errBody map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
+		t.Fatalf("decode 422 body: %v", err)
+	}
+	if errBody["error"] == "" {
+		t.Error("expected non-empty 'error' field in 422 response body")
+	}
+}
+
+// TestUpsertCardPrefs_ForeignUserBlocked — PUT body carries a user_id belonging
+// to a different user. The sentinel callerUserID must win: the store row must
+// be keyed by the sentinel user_id, not the body's user_id.
+func TestUpsertCardPrefs_ForeignUserBlocked(t *testing.T) {
+	workspaceID := uuid.New()
+	sentinelUserID := uuid.New() // the authenticated caller
+	bodyUserID := uuid.New()     // attacker-supplied user_id in the body — must be ignored
+	artefactTypeID := uuid.New()
+
+	svc := newFakeService()
+	h := newHandlerWithIface(svc)
+	ctx := clampCtx(workspaceID, sentinelUserID)
+
+	rec := doPUTCardPrefs(t, h, ctx, upsertCardPrefsRequest{
+		UserID:         &bodyUserID, // body claims a different user
+		ArtefactTypeID: artefactTypeID,
+		CardFields:     []string{"id", "title"},
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	// Row must be keyed by sentinelUserID, not bodyUserID.
+	if _, ok := svc.cardPrefsStore[[2]uuid.UUID{sentinelUserID, artefactTypeID}]; !ok {
+		t.Error("expected row keyed by sentinel user_id not found in store")
+	}
+	if _, ok := svc.cardPrefsStore[[2]uuid.UUID{bodyUserID, artefactTypeID}]; ok {
+		t.Error("row keyed by body user_id must NOT exist in store — sentinel user_id must win")
+	}
+}
+
+// TestGetCardPrefs_NotFound404 — GET for an artefact_type_id that has no row
+// for the caller. Handler must return 404.
+func TestGetCardPrefs_NotFound404(t *testing.T) {
+	workspaceID := uuid.New()
+	userID := uuid.New()
+	artefactTypeID := uuid.New() // no prefs seeded for this type
+
+	svc := newFakeService()
+	h := newHandlerWithIface(svc)
+	ctx := clampCtx(workspaceID, userID)
+
+	rec := doGETCardPrefs(t, h, ctx, artefactTypeID)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d; body: %s", rec.Code, rec.Body.String())
 	}
 }

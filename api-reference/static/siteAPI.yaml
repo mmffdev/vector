@@ -3345,6 +3345,12 @@ paths:
       x-handler:
         symbol: flowboardH.getCardPrefs
         file: backend/internal/flowboard/handler.go
+      parameters:
+      - name: artefact_type_id
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: 200 — success response
@@ -3352,6 +3358,21 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  artefact_type_id:
+                    type: string
+                    format: uuid
+                  card_fields:
+                    type: array
+                    items:
+                      type: string
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - artefact_type_id
+                - card_fields
+                - updated_at
         '401':
           $ref: '#/components/responses/Unauthorized'
     put:
@@ -3373,6 +3394,26 @@ paths:
       x-handler:
         symbol: flowboardH.upsertCardPrefs
         file: backend/internal/flowboard/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                artefact_type_id:
+                  type: string
+                  format: uuid
+                card_fields:
+                  type: array
+                  items:
+                    type: string
+              required:
+              - artefact_type_id
+              - card_fields
       responses:
         '200':
           description: 200 — success response
@@ -3380,6 +3421,21 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  artefact_type_id:
+                    type: string
+                    format: uuid
+                  card_fields:
+                    type: array
+                    items:
+                      type: string
+                  updated_at:
+                    type: string
+                    format: date-time
+                required:
+                - artefact_type_id
+                - card_fields
+                - updated_at
         '401':
           $ref: '#/components/responses/Unauthorized'
   /flowboard/wip:

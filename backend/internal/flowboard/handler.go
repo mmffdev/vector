@@ -198,16 +198,100 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// getCardPrefs returns the current user's card-field preferences for a type.
-// TODO(FB1.2.3): implement in story FB1.2.3
-func (h *Handler) getCardPrefs(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
+// getCardPrefs handles GET /_site/flowboard/prefs?artefact_type_id=<uuid>
+//
+// Returns the calling user's card-field preferences for the given artefact
+// type. When no row exists the handler returns 404 so the frontend falls back
+// to the sidecar default field list (spec §3.3 / AC).
+//
+// Sentinel-clamped: callerUserID is always read from the sentinel Clamp —
+// never from the query string. A missing Clamp (WorkspaceID == Nil) returns 403.
+func (h *Handler) getCardPrefs(w http.ResponseWriter, r *http.Request) {
+	clamp := sentinel.FromCtx(r.Context())
+	if clamp.UserID == uuid.Nil {
+		httperr.Write(w, r, http.StatusForbidden, "auth clamp required")
+		return
+	}
+
+	atStr := r.URL.Query().Get("artefact_type_id")
+	artefactTypeID, err := uuid.Parse(atStr)
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "artefact_type_id must be a valid UUID")
+		return
+	}
+
+	dto, err := h.svc.GetCardPrefs(r.Context(), clamp.UserID, artefactTypeID)
+	if err != nil {
+		if errors.Is(err, ErrCardPrefsNotFound) {
+			httperr.Write(w, r, http.StatusNotFound, "no card prefs found for this artefact type")
+			return
+		}
+		httperr.Write(w, r, http.StatusInternalServerError, "failed to get card prefs")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto)
 }
 
-// upsertCardPrefs updates the current user's card-field preferences.
-// TODO(FB1.2.3): implement in story FB1.2.3
-func (h *Handler) upsertCardPrefs(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
+// upsertCardPrefsRequest is the JSON body accepted by PUT /_site/flowboard/prefs.
+// UserID is accepted in the body but IGNORED — the sentinel CallerUserID always
+// wins (AC: "caller can only write their own row").
+// ArtefactTypeID identifies which artefact type's prefs to write.
+// CardFields is the ordered list of field keys to persist.
+type upsertCardPrefsRequest struct {
+	UserID         *uuid.UUID `json:"user_id"`         // ignored — sentinel wins
+	ArtefactTypeID uuid.UUID  `json:"artefact_type_id"`
+	CardFields     []string   `json:"card_fields"`
+}
+
+// upsertCardPrefs handles PUT /_site/flowboard/prefs
+//
+// UPSERTs the calling user's card-field preferences for a given artefact type.
+// Body user_id is silently ignored — the sentinel CallerUserID is always used
+// (AC: "caller can only write their own row").
+//
+// Invalid field keys in card_fields return 422 with a JSON error body
+// identifying the offending key (AC: "junk keys return 422").
+//
+// Sentinel-clamped: callerUserID + workspaceID are both read from the Clamp.
+// A missing Clamp (WorkspaceID == Nil) returns 403.
+func (h *Handler) upsertCardPrefs(w http.ResponseWriter, r *http.Request) {
+	clamp := sentinel.FromCtx(r.Context())
+	if clamp.WorkspaceID == uuid.Nil {
+		httperr.Write(w, r, http.StatusForbidden, "workspace clamp required")
+		return
+	}
+
+	var req upsertCardPrefsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.ArtefactTypeID == uuid.Nil {
+		httperr.Write(w, r, http.StatusBadRequest, "artefact_type_id is required")
+		return
+	}
+
+	// callerUserID is always the sentinel user — body user_id is ignored.
+	dto, err := h.svc.UpsertCardPrefs(
+		r.Context(),
+		clamp.UserID,
+		req.ArtefactTypeID,
+		clamp.WorkspaceID,
+		req.CardFields,
+	)
+	if err != nil {
+		if errors.Is(err, ErrInvalidCardField) {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+		httperr.Write(w, r, http.StatusInternalServerError, "failed to upsert card prefs")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto)
 }
 
 // listNodeMembers lists members of a topology node (used by the WIP-edit

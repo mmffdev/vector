@@ -79,13 +79,41 @@ const (
 	// sqlSelectCardPrefs — FB1.2.3 (GET /_site/flowboard/prefs).
 	// Returns the users_flowboard_prefs row for (user_id, artefact_type_id).
 	// When no row exists the handler returns the sidecar default fields list.
-	sqlSelectCardPrefs = ``
+	//
+	// Parameters: $1 = user_id (uuid), $2 = artefact_type_id (uuid)
+	sqlSelectCardPrefs = `
+		SELECT
+			users_flowboard_prefs_card_fields,
+			users_flowboard_prefs_updated_at
+		FROM users_flowboard_prefs
+		WHERE users_flowboard_prefs_user_id          = $1
+		  AND users_flowboard_prefs_artefact_type_id = $2`
 
 	// sqlUpsertCardPrefs — FB1.2.3 (PUT /_site/flowboard/prefs).
 	// UPSERT on (users_flowboard_prefs_user_id,
 	// users_flowboard_prefs_artefact_type_id); writes the card_fields JSONB
 	// column and bumps users_flowboard_prefs_updated_at.
-	sqlUpsertCardPrefs = ``
+	//
+	// Parameters:
+	//   $1 = user_id (uuid)
+	//   $2 = artefact_type_id (uuid)
+	//   $3 = card_fields (JSONB — []string marshalled by pgx)
+	//   $4 = workspace_id (uuid)
+	sqlUpsertCardPrefs = `
+		INSERT INTO users_flowboard_prefs (
+			users_flowboard_prefs_user_id,
+			users_flowboard_prefs_artefact_type_id,
+			users_flowboard_prefs_card_fields,
+			users_flowboard_prefs_workspace_id,
+			users_flowboard_prefs_updated_at
+		) VALUES ($1, $2, $3, $4, now())
+		ON CONFLICT (users_flowboard_prefs_user_id, users_flowboard_prefs_artefact_type_id)
+		DO UPDATE SET
+			users_flowboard_prefs_card_fields  = EXCLUDED.users_flowboard_prefs_card_fields,
+			users_flowboard_prefs_updated_at   = now()
+		RETURNING
+			users_flowboard_prefs_card_fields,
+			users_flowboard_prefs_updated_at`
 
 	// sqlSelectNodeWorkspace — FB1.2.2 (GET workspace-scope gate).
 	// Returns the workspace that owns the given topology node.

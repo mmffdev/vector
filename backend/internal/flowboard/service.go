@@ -18,6 +18,7 @@ package flowboard
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,29 @@ var ErrNotMember = errors.New("flowboard: caller is not a member of this topolog
 // cross-scope) to avoid leaking whether a node exists to an unauthorised caller.
 var ErrNodeNotFound = errors.New("flowboard: topology node not found")
 
+// ErrCardPrefsNotFound is returned by GetCardPrefs when no row exists for
+// the given (user_id, artefact_type_id) pair. Handlers map this to 404
+// so the frontend knows to fall back to the sidecar default field list.
+var ErrCardPrefsNotFound = errors.New("flowboard: card prefs not found for caller/type")
+
+// ErrInvalidCardField is returned by UpsertCardPrefs when the caller
+// includes a field key that is not in allowedCardFields. Handlers map
+// this to HTTP 422 with a message identifying the offending key.
+var ErrInvalidCardField = errors.New("flowboard: card_fields contains a field not in the allowlist")
+
+// allowedCardFields is the O(1) lookup set for valid card field keys.
+// Any PUT body referencing a key outside this set is rejected with 422.
+var allowedCardFields = map[string]struct{}{
+	"id":         {},
+	"title":      {},
+	"assignee":   {},
+	"points":     {},
+	"priority":   {},
+	"status":     {},
+	"created_at": {},
+	"updated_at": {},
+}
+
 // WipLimitDTO is the wire shape returned by GET and PUT WIP-limit endpoints.
 // Limit is a pointer so JSON null represents "no limit" (Rally-convention:
 // blank/null = unlimited). UpdatedBy is the UUID of the last writer.
@@ -46,12 +70,23 @@ type WipLimitDTO struct {
 	UpdatedBy     *uuid.UUID `json:"updated_by"`
 }
 
+// CardPrefsDTO is the wire shape returned by GET and PUT card-prefs endpoints.
+// ArtefactTypeID identifies the artefact type whose card layout is described.
+// CardFields is the ordered list of field keys shown on FlowBoard cards.
+type CardPrefsDTO struct {
+	ArtefactTypeID uuid.UUID `json:"artefact_type_id"`
+	CardFields     []string  `json:"card_fields"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 // serviceIface is the narrow contract the Handler needs from the service
 // layer. The concrete *Service satisfies it; tests can inject a stub.
 type serviceIface interface {
 	NodeWorkspaceID(ctx context.Context, nodeID uuid.UUID) (uuid.UUID, error)
 	ListWipLimits(ctx context.Context, nodeID, workspaceID uuid.UUID) ([]WipLimitDTO, error)
 	UpsertWipLimit(ctx context.Context, nodeID, flowStateID, callerUserID, workspaceID uuid.UUID, limit *int) (WipLimitDTO, error)
+	GetCardPrefs(ctx context.Context, callerUserID, artefactTypeID uuid.UUID) (CardPrefsDTO, error)
+	UpsertCardPrefs(ctx context.Context, callerUserID, artefactTypeID, workspaceID uuid.UUID, fields []string) (CardPrefsDTO, error)
 }
 
 // Service provides business logic for FlowBoard operations.
@@ -171,5 +206,69 @@ func (s *Service) UpsertWipLimit(
 		return WipLimitDTO{}, err
 	}
 	dto.UpdatedBy = updatedBy
+	return dto, nil
+}
+
+// GetCardPrefs returns the card-field preferences for the given (caller, artefactType)
+// pair. Returns ErrCardPrefsNotFound when no row exists — callers map this to
+// HTTP 404 so the frontend falls back to the sidecar default field list.
+func (s *Service) GetCardPrefs(ctx context.Context, callerUserID, artefactTypeID uuid.UUID) (CardPrefsDTO, error) {
+	if s.pool == nil {
+		return CardPrefsDTO{}, errors.New("flowboard: no database pool")
+	}
+
+	var dto CardPrefsDTO
+	dto.ArtefactTypeID = artefactTypeID
+	err := s.pool.QueryRow(ctx, sqlSelectCardPrefs, callerUserID, artefactTypeID).Scan(
+		&dto.CardFields,
+		&dto.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return CardPrefsDTO{}, ErrCardPrefsNotFound
+	}
+	if err != nil {
+		return CardPrefsDTO{}, err
+	}
+	return dto, nil
+}
+
+// UpsertCardPrefs writes or updates the card-field preferences for the given
+// (caller, artefactType) pair. It validates every field key against
+// allowedCardFields and returns ErrInvalidCardField on the first mismatch.
+// The invalid field name is embedded in the error message so the handler
+// can surface it to the caller as a 422 with a descriptive body.
+//
+// callerUserID is always the sentinel user — body user_id is never forwarded here
+// (the handler enforces this invariant before calling this method).
+func (s *Service) UpsertCardPrefs(
+	ctx context.Context,
+	callerUserID, artefactTypeID, workspaceID uuid.UUID,
+	fields []string,
+) (CardPrefsDTO, error) {
+	if s.pool == nil {
+		return CardPrefsDTO{}, errors.New("flowboard: no database pool")
+	}
+
+	// Allowlist validation — reject on first unknown key.
+	for _, f := range fields {
+		if _, ok := allowedCardFields[f]; !ok {
+			return CardPrefsDTO{}, fmt.Errorf("%w: %q", ErrInvalidCardField, f)
+		}
+	}
+
+	var dto CardPrefsDTO
+	dto.ArtefactTypeID = artefactTypeID
+	err := s.pool.QueryRow(ctx, sqlUpsertCardPrefs,
+		callerUserID,
+		artefactTypeID,
+		fields,
+		workspaceID,
+	).Scan(
+		&dto.CardFields,
+		&dto.UpdatedAt,
+	)
+	if err != nil {
+		return CardPrefsDTO{}, err
+	}
 	return dto, nil
 }
