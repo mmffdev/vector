@@ -11409,6 +11409,7 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `add03436` (2026-05-27): feat(notif-v2-s05): sweeper.go — stuck-claim recovery for crash-after-claim
 > Commit `3b41db77` (2026-05-27): test(notif-v2-s05): relay_test.go + sweeper_test.go — integration tests PASS
 > Commit `68fddc55` (2026-05-27): merge: Wave 2 S05 — relay + outbox drain + stuck-claim sweeper
+> Commit `ecf38e82` (2026-05-27): chore(td): TD-NOTIF-V2-OUTBOX-NOTIFY-TRIGGER
 
 ---
 
