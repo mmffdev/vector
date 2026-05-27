@@ -63,7 +63,7 @@ The Validator agent (long-lived Opus, persistent handover) owns ALL git operatio
 | S03 | Broadcast + inverse-Sentinel Resolver | ✅ MERGED | `160f1554` |
 | S04 | RabbitMQ broker (v2) | ✅ MERGED | `801928f8` |
 | S05 | Relay + outbox drain + sweeper | ✅ MERGED | `68fddc55` |
-| S06 | Pipeline (enrich→filter→router) | 🟡 IN FLIGHT — Wave 3, 13pt — worker dispatched 2026-05-27 (Sonnet, worktree, background); brief `docs/superpowers/plans/2026-05-27-notifications-v2-s06-pipeline.md`; PLA067 | — |
+| S06 | Pipeline (enrich→filter→router) | ✅ MERGED — 13pt, PLA067, validator PASS at `e93fb5dc` | `7683049e` |
 | S07 | Rules engine | ✅ MERGED (re-dispatch after strangler-fig rejection) | `a9fa7d73` |
 | S08 | Templates DB-backed + seeds | ✅ MERGED | `4af460b5` |
 | S09 | Dispatchers + audit writer | 🔴 Wave 4 | — |
@@ -75,9 +75,9 @@ The Validator agent (long-lived Opus, persistent handover) owns ALL git operatio
 | S15 | Cutover smoke + 30d soak | 🔴 Wave 6 | — |
 | S16 | v1 deletion | 🔴 Wave 6 | — |
 
-**Wave 1 closed. Wave 2 closed. Wave 3 in flight (S06 worker dispatched 2026-05-27).** Wave 4 next (S09 dispatchers + S12 Valkey PendingStore; parallel-safe).
+**Wave 1 closed. Wave 2 closed. Wave 3 closed (S06 merged at `7683049e` on 2026-05-27).** Wave 4 next (S09 dispatchers + S12 Valkey PendingStore; parallel-safe).
 
-**Roughly 40% complete** (7 / 16 stories merged: S01 + S02 + S03 + S04 + S05 + S07 + S08; ~39 points of ~104 Fibonacci total).
+**Roughly 50% complete** (8 / 16 stories merged: S01 + S02 + S03 + S04 + S05 + S06 + S07 + S08; ~52 points of ~104 Fibonacci total).
 
 ## OPEN BLOCKERS / IMMEDIATE TASKS FOR NEXT SESSION
 
