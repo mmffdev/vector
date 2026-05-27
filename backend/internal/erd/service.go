@@ -8,6 +8,7 @@ package erd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -15,16 +16,17 @@ import (
 )
 
 type Service struct {
-	va  *pgxpool.Pool // vector_artefacts
-	lib *pgxpool.Pool // mmff_library (read-only)
+	va        *pgxpool.Pool // vector_artefacts
+	lib       *pgxpool.Pool // mmff_library (read-only)
+	areasPath string        // path to dev/audits/erd_groups.yaml
 
 	mu       sync.Mutex
 	cached   *Response
 	cachedAt time.Time
 }
 
-func NewService(va, lib *pgxpool.Pool) *Service {
-	return &Service{va: va, lib: lib}
+func NewService(va, lib *pgxpool.Pool, areasPath string) *Service {
+	return &Service{va: va, lib: lib, areasPath: areasPath}
 }
 
 const cacheTTL = 60 * time.Second
@@ -44,19 +46,64 @@ func (s *Service) Build(ctx context.Context, force bool) (*Response, error) {
 		return nil, errors.New("erd: pools not configured")
 	}
 
-	resp := &Response{GeneratedAt: time.Now().UTC()}
-	resp.Groups = []Group{}
-	resp.Nodes = []Node{}
-	resp.Edges = []Edge{}
-	resp.Databases = []DatabaseSum{
-		{Name: "vector_artefacts"},
-		{Name: "mmff_library"},
+	groups, err := loadGroupsFromPath(s.areasPath)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &Response{
+		GeneratedAt: time.Now().UTC(),
+		Groups:      groups.List(),
+		Nodes:       []Node{},
+		Edges:       []Edge{},
+		Databases:   []DatabaseSum{},
+	}
+
+	for _, ds := range []struct {
+		label string
+		pool  *pgxpool.Pool
+	}{
+		{"vector_artefacts", s.va},
+		{"mmff_library", s.lib},
+	} {
+		counts, err := fetchRowCounts(ctx, ds.pool)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", ds.label, err)
+		}
+		cols, err := fetchColumns(ctx, ds.pool)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", ds.label, err)
+		}
+		fks, err := fetchHardFKs(ctx, ds.pool, ds.label)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", ds.label, err)
+		}
+
+		var tableNames []string
+		for t := range counts {
+			tableNames = append(tableNames, t)
+		}
+		for _, t := range tableNames {
+			resp.Nodes = append(resp.Nodes, Node{
+				ID:       ds.label + "." + t,
+				Database: ds.label,
+				Table:    t,
+				Group:    groups.GroupFor(t),
+				RowCount: counts[t],
+				Columns:  cols[t],
+			})
+		}
+		resp.Edges = append(resp.Edges, fks...)
+		resp.Databases = append(resp.Databases, DatabaseSum{
+			Name:       ds.label,
+			TableCount: len(tableNames),
+			FKCount:    len(fks),
+		})
 	}
 
 	s.mu.Lock()
 	s.cached = resp
 	s.cachedAt = time.Now()
 	s.mu.Unlock()
-
 	return resp, nil
 }
