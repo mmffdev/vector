@@ -23,6 +23,17 @@ type Service struct {
 	mu       sync.Mutex
 	cached   *Response
 	cachedAt time.Time
+	softRefs []Edge
+}
+
+// SetSoftRefs replaces the cached set of cross-DB soft-reference edges
+// that Build will append after the hard FKs. Called by the handler at
+// construction time once SY003 has been parsed; safe to call again to
+// refresh.
+func (s *Service) SetSoftRefs(refs []Edge) {
+	s.mu.Lock()
+	s.softRefs = refs
+	s.mu.Unlock()
 }
 
 func NewService(va, lib *pgxpool.Pool, areasPath string) *Service {
@@ -100,6 +111,11 @@ func (s *Service) Build(ctx context.Context, force bool) (*Response, error) {
 			FKCount:    len(fks),
 		})
 	}
+
+	s.mu.Lock()
+	soft := s.softRefs
+	s.mu.Unlock()
+	resp.Edges = append(resp.Edges, soft...)
 
 	s.mu.Lock()
 	s.cached = resp
