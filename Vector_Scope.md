@@ -78,6 +78,10 @@
 
 - [OBJ1. ObjectTreeV2 Filter-Chip Scope Facets (PLA057)](#obj1-objecttreev2-filter-chip-scope-facets-pla057)
 
+**NV — Notifications v2** *(orchestrated PLA rebuild — 16-story Master+Validator+Worker wave model)*
+
+- [NV1. Notifications v2 — PLA build (orchestrated)](#nv1-notifications-v2--pla-build-orchestrated) 🔵 IN FLIGHT
+
 **Parked — solo-dev mode** *(WIP-cap overflow; verbatim, awaiting unpark)*
 
 - [FE-POR-0003. Topology Scope Clamp on Artefact Reads (PLA-0043)](#fe-por-0003-topology-scope-clamp-on-artefact-reads-pla-0043) — parked 2026-05-17
@@ -11370,6 +11374,15 @@ Update `docs/c_c_db_routing.md` + `.claude/CLAUDE.md` to reflect the two-DB worl
   - AC: `TD-CUTOVER-MONITORING` opened in `docs/c_tech_debt.md` — 1-month post-cutover audit Sentry/dev_reports for "table not found" stragglers; severity S2.
   - AC: `TD-CUTOVER-CRON-PRODUCTION` closed (cron mooted).
   - AC: `TD-CUTOVER-RLS-DEFERRAL` opened — row-level security and partitioning explicitly deferred; trigger = first multi-tenant scale event.
+
+---
+
+## NV1. Notifications v2 — PLA build (orchestrated) 🔵 IN FLIGHT
+
+Orchestrated rebuild of the notifications stack via the Master + Global Validator + Worker model. Spec lives at `docs/superpowers/specs/2026-05-26-notifications-v2-design.md`. Master dispatches per-story workers on isolated branches (`feature/notifications-v2/sNN-<slug>`); Global Validator gates each PASS and commits into the integration branch `feature/notifications-v2`. 16 stories across 6 waves: schema → producer → broadcast/broker → relay/pipeline/rules/templates → dispatchers → handler/UI → pending/digest → producers → parity/cutover/cleanup. Validator handover at `handovers/notifications-v2-validator.md` carries the per-story checklist, branch model, and pre-existing-dirty-files contract. `[P1]` 🔵 IN FLIGHT
+
+> Commit `038d937e` (2026-05-27): docs(notif-v2): spec for notifications v2 PLA
+> Commit `e6a32d8f` (2026-05-27): chore(notif-v2): init validator handover
 
 ---
 

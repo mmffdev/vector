@@ -83,10 +83,39 @@ For every story you review, work through this checklist. Record PASS/FAIL per it
 - [ ] Sentinel clamp — every handler touching tenant data calls `sentinel.FromCtx`
 - [ ] Tests exist and pass — `go test ./backend/internal/notifications/v2/...` green
 - [ ] Lints pass — at minimum `lint:column-prefix`, `lint:no-direct-workspace-id`, `lint:no-old-context-imports`, the sentinel clamp test
+- [ ] **Linter coverage updated for this story** (see § Amendment 1) — any new architectural rule the story introduces has a corresponding lint rule defined, ledger entry added in `docs/c_c_lint_rules.md`, and the rule wired into CI / pre-commit. PASS verdict must explicitly name the rule added (or "none needed" + one-line rationale).
+- [ ] **Vector_Scope.md entry appended** (see § Amendment 2) — story has a one-line entry under NV1 in `Vector_Scope.md` staged in the SAME commit as the story's code.
 - [ ] Security — no secrets in code, no auth bypass, no SQL injection, validates inputs at boundaries
 - [ ] Scalability — no N+1 queries on hot paths, indexes match access patterns, no unbounded scans
 - [ ] No hacks-as-fixes — per the HARD RULE
 - [ ] Tech-debt entries logged in docs/c_tech_debt.md for any deferred work
+
+## AMENDMENT 1 — LINTER DISCIPLINE (added 2026-05-27, Master directive)
+
+**Linter coverage must be kept current as we go.** For every story:
+
+- Any new architectural rule the story introduces (e.g. "no direct INSERT into `notifications_outbox_v2`", "every Event must have `event_key`", "every dispatcher must implement the `Dispatcher` interface") gets a corresponding lint rule defined and wired into the existing `lint:*` family BEFORE the story passes.
+- New lint rules live under `dev/scripts/lint_*.sh` / `dev/scripts/lint_*.py` (frontend/cross-cutting) or `backend/internal/lintchecks/` (Go) per project convention — see `docs/c_c_lint_rules.md` for the canonical catalog and shape.
+- The lint ledger in `docs/c_c_lint_rules.md` gets a new row naming the rule + when it fires + its registry path (if any).
+- The rule MUST actually be wired into CI (`.github/workflows/...`) or the equivalent local pre-commit hook (`dev/scripts/pre-push.sh`) — not just defined.
+- The Validator PASS verdict explicitly lists which lint rule was added for this story (or "none needed" with a one-line rationale).
+
+Reason: linter drift is a major source of regression in this codebase per CLAUDE.md history. We do not let it lag behind feature work.
+
+## AMENDMENT 2 — SCOPE TRACKER ENTRY PER STORY (added 2026-05-27, Master directive)
+
+The `<scope>` skill flags any commit whose subject doesn't match a scope item in `Vector_Scope.md`. The earlier `chore(notif-v2): init validator handover` commit (`e6a32d8f`) tripped this and was flagged as unmatched.
+
+**Before committing a story's work**:
+
+- Append a `Vector_Scope.md` entry for it under the **NV1. Notifications v2 — PLA build (orchestrated)** section (added 2026-05-27 in the backfill commit).
+- One-line format: `> Commit \`<sha>\` (YYYY-MM-DD): <commit subject>`. Match the surrounding style in the file — quote-block lines, paste verbatim.
+- Stage `Vector_Scope.md` alongside the story's code in the SAME commit. The commit then has its matching scope entry and the skill won't flag it.
+- The scope skill's source of truth is `Vector_Scope.md`. If unsure where to put an entry, the lower in-flight section (NV1) is right; entries flip to "completed" when the wave closes.
+
+**Special case — backfill commit (one-time, already done 2026-05-27):** the spec commit on main (`038d937e`) and the handover commit on feature branch (`e6a32d8f`) were added to NV1 in a single bookkeeping commit alongside this amendment. Future per-story commits do their own scope-entry inline; no further bookkeeping commits needed.
+
+Reason: scope hygiene is part of the project's "no drift" discipline; unmatched commits accumulate as audit debt.
 
 ## OPEN BLOCKERS
 
@@ -97,6 +126,7 @@ External dependency tracked in spec:
 
 ## RECENT ACTIVITY (last 5 actions, newest first)
 
+2. 2026-05-27 — Master directive: TWO amendments added (Amendment 1 linter discipline; Amendment 2 scope-entry-per-story). Per-story checklist extended with both items. NV1 section added to `Vector_Scope.md` (TOC + body); spec + handover commits backfilled under NV1. Committed on `feature/notifications-v2`.
 1. 2026-05-27T00:20:03Z — Validator init complete. Spec committed to main (`038d937e`). Cut `feature/notifications-v2` from spec commit. Handover initialized. Ready for Wave 1 dispatch.
 
 ## NOTES FOR FUTURE-YOU
