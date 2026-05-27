@@ -46,7 +46,7 @@ Leave these alone — they belong to a separate ongoing work item:
 
 ## PROGRESS
 
-- Wave 1: pending
+- Wave 1: plans approved + committed; awaiting Master to dispatch workers for S01 + S04
 - Wave 2: pending
 - Wave 3: pending
 - Wave 4: pending
@@ -124,8 +124,19 @@ Reason: scope hygiene is part of the project's "no drift" discipline; unmatched 
 External dependency tracked in spec:
 - **DEP1** — dev sending domain + provider API key. Owner: Rick. Blocks S08/S09 QA only (not foundation work).
 
+## PENDING LINTS (to be implemented by worker stories)
+
+Linter discipline (Amendment 1) — track new rules introduced by each story so the Validator can verify they land before PASS.
+
+| Lint rule | Introduced by | Status | Notes |
+|---|---|---|---|
+| `lint:no-v1-broker-imports` | S04 | planned | Strangler-fig — v2 broker code must not import `backend/internal/notifications/broker`. Grep script + ledger entry + wire into CI. Defined in S04 Task 7. |
+| (sentinel clamp v2 scan-list) | S10 | planned | Add `backend/internal/notifications/v2/` to `backend/internal/lintchecks/sentinel_clamp_test.go` scan list. Spec §Testing Layer 5. Not a new lint, but a scope extension of existing. |
+| `lint:column-prefix` scope sweep | S01 | passive — existing rule | Validator must confirm the existing rule picks up the eleven new v2 tables automatically; if it has a hardcoded table list, S01 Task 13.3 extends it. |
+
 ## RECENT ACTIVITY (last 5 actions, newest first)
 
+3. 2026-05-27 — Wave 1 plans reviewed + committed (`65f2bfb9`) on `feature/notifications-v2`. Three docs: `docs/superpowers/plans/2026-05-26-notifications-v2-index.md`, `…-s01-schema.md`, `…-s04-broker.md`. Checklist PASS on spec adherence, bite-sized tasks, no placeholders in instruction text, worker-ready commands + paths, HARD RULES referenced, DoD + Risks sections present. Pre-existing dirty four (Vector_Scope.md, api-snapshots/caller-map.json, backend/migrate, backend/db/) preserved untouched. Ready for Master to dispatch S01 + S04 workers.
 2. 2026-05-27 — Master directive: TWO amendments added (Amendment 1 linter discipline; Amendment 2 scope-entry-per-story). Per-story checklist extended with both items. NV1 section added to `Vector_Scope.md` (TOC + body); spec + handover commits backfilled under NV1. Committed on `feature/notifications-v2`.
 1. 2026-05-27T00:20:03Z — Validator init complete. Spec committed to main (`038d937e`). Cut `feature/notifications-v2` from spec commit. Handover initialized. Ready for Wave 1 dispatch.
 
