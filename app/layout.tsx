@@ -11,7 +11,6 @@ import { ArtefactTypeCatalogueProvider } from "@/app/contexts/ArtefactTypeCatalo
 import { ArtefactPriorityCatalogueProvider } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 import { SentinelProvider } from "@/app/sentinel";
 import { Toaster } from "@/app/components/Toaster";
-import DevStatusFloat from "@/app/components/DevStatusFloat";
 import AddressDevtool from "@/app/components/AddressDevtool";
 import AddressAnchorResolver from "@/app/components/AddressAnchorResolver";
 
@@ -83,7 +82,6 @@ export default async function RootLayout({
             </SentinelProvider>
           </AuthProvider>
         </DevTabProvider>
-        <DevStatusFloat />
       </body>
     </html>
   );

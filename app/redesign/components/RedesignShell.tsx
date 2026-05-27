@@ -7,6 +7,7 @@ import IconRail from "./nav_primary_rail_1";
 import SectionFlyout, { ScopeFlyout2 } from "./nav_primary_rail_2";
 import AccountFlyout from "./AccountFlyout";
 import RedesignTopBar from "./RedesignTopBar";
+import StatusBarBottom from "./StatusBarBottom";
 import DebugPanel from "./DebugPanel";
 // QRCodeTrigger import removed 2026-05-24 when the global trigger
 // was hidden. Re-add the import + uncomment the JSX below to unhide.
@@ -39,6 +40,9 @@ function ShellBody({ children }: { children: React.ReactNode }) {
           <QRCodeTrigger />
         </div> */}
       </main>
+      <footer className="rd-shell__statusbar" role="contentinfo" aria-label="Status bar">
+        <StatusBarBottom />
+      </footer>
       {/* Live notification toast stack — top-right overlay, lives
           above all other shell chrome. Self-renders nothing when
           there are no toasts; safe to mount unconditionally. */}
