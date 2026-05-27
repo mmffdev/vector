@@ -11435,6 +11435,8 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 > Commit `48eca637` (2026-05-27): feat(notif-v2): S07 service — CRUD over notifications_rules_v2
 > Commit `7eaf531d` (2026-05-27): chore(lint): lint:no-stub-evaluator — guard v2 evaluator real implementation
 > Commit `a9fa7d73` (2026-05-27): merge: Wave 2 S07 — rules engine (real matchConditions)
+> Commit `358042aa` (2026-05-27): chore(notif-v2): master handover — Wave 2 closed, ready for Wave 3 next session
+> Commit `8452dd25` (2026-05-27): chore(notif-v2): validator handover — session close, Wave 2 fully closed
 
 ---
 
