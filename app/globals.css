@@ -17921,3 +17921,45 @@ tr.is-editing {
   color: var(--status-danger);
   border: 1px solid var(--status-danger);
 }
+
+/* ───────────────────────── BoardColumn (FB1.3.4) ─────────────────────────── */
+/* Column container used by BoardColumn.tsx.
+   4 classes: base + -disabled (invalid drop target, dimmed) +
+   -over (valid drop target active) + _body (card list wrapper).
+   Token surface: --surface-1/2, --border-subtle, --accent, --radius-md, --space-* */
+
+.flow-board__Column {
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  max-width: 320px;
+  background: var(--surface-1, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3, 8px);
+  gap: var(--space-2, 6px);
+  transition: opacity 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+/* Invalid drop target during drag — dimmed, no pointer events on contents */
+.flow-board__Column-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  border-color: var(--border-subtle);
+  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+}
+
+/* Valid drop target with a card hovering — highlighted border + subtle bg tint */
+.flow-board__Column-over {
+  border-color: var(--accent);
+  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+}
+
+/* Inner card-list wrapper — flex column; min-height keeps empty columns droppable */
+.flow-board__Column_body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 6px);
+  min-height: 80px;
+  overflow-y: auto;
+}
