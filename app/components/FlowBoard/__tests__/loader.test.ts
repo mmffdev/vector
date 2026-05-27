@@ -8,6 +8,7 @@
 
 import { describe, it, expect } from "vitest";
 import { loadFlowBoardConfig, type FlowBoardConfig } from "@/app/components/FlowBoard/loader";
+import { getFlowBoardSlotName } from "@/app/components/FlowBoard/registry";
 import canonicalJson from "@/app/components/FlowBoard/configs/p_wizard_flowboard_workitems.json";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -137,5 +138,24 @@ describe("loadFlowBoardConfig", () => {
     expect(() => loadFlowBoardConfig("string")).toThrow(/plain object/i);
     expect(() => loadFlowBoardConfig(42)).toThrow(/plain object/i);
     expect(() => loadFlowBoardConfig([])).toThrow(/plain object/i);
+  });
+});
+
+// ── Registry: getFlowBoardSlotName contract ───────────────────────────────────
+// FB1.3.7 — pins the slot-name helper so a future refactor cannot reintroduce
+// the doubled-prefix bug (samantha…panel.flow_board_flow_board_workitems).
+
+describe("getFlowBoardSlotName", () => {
+  it("returns the address-prefixed slot for a sidecar name (single prefix, no doubling)", () => {
+    expect(getFlowBoardSlotName("flow_board_workitems")).toBe(
+      "samantha._viewport.app._kind.panel.flow_board_workitems",
+    );
+  });
+
+  it("does not prepend flow_board_ to the name — caller supplies the full suffix", () => {
+    // Confirm no doubling: if a future change erroneously re-adds flow_board_ inside
+    // the helper, this assertion would catch it.
+    const slot = getFlowBoardSlotName("flow_board_workitems");
+    expect(slot).not.toContain("flow_board_flow_board_");
   });
 });

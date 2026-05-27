@@ -18168,3 +18168,86 @@ tr.is-editing {
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border-subtle);
 }
+
+/* ── FlowBoard top-level — FB1.3.7 ──────────────────────────────────────────
+ *
+ *  .flow-board__Root      — outer wrapper; houses the optional type-switcher
+ *                           toolbar above the board (or empty-type placeholder).
+ *  .flow-board            — the board surface itself (root of DndContext render).
+ *                           data-samantha-slot is placed here for the addressable
+ *                           surface registration (spec §9).
+ *  .flow-board__Toolbar   — flex row: type-switcher label + select + gear button.
+ *                           Rendered at the top of .flow-board__Root (when
+ *                           type_switcher.show === true) AND inside the board
+ *                           root (for the gear button only on inner toolbar).
+ *  .flow-board__TypeLabel — label element for the type-switcher select.
+ *  .flow-board__TypeSelect — native <select> for artefact-type switching.
+ *  .flow-board__Columns   — horizontal flex row of BoardColumn elements;
+ *                           overflows horizontally when column count is high.
+ *  .flow-board__Loading   — placeholder shown while useFlowBoardData is loading
+ *                           or before the type catalogue seeds the active type.
+ *  .flow-board__Error     — shown when useFlowBoardData resolves with an error.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.flow-board__Root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+}
+
+.flow-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  width: 100%;
+}
+
+.flow-board__Toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.flow-board__TypeLabel {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-secondary, #6b7280);
+  white-space: nowrap;
+}
+
+.flow-board__TypeSelect {
+  font-size: var(--text-sm, 0.875rem);
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-1, #fff);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+}
+
+.flow-board__TypeSelect:focus-visible {
+  outline: 2px solid var(--focus-ring, #3b82f6);
+  outline-offset: 2px;
+}
+
+.flow-board__Columns {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-4, 1rem);
+  overflow-x: auto;
+  align-items: flex-start;
+  padding-bottom: var(--space-2, 0.5rem);
+}
+
+.flow-board__Loading {
+  padding: var(--space-4, 1rem);
+  color: var(--text-secondary, #6b7280);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.flow-board__Error {
+  padding: var(--space-4, 1rem);
+  color: var(--color-danger, #dc2626);
+  font-size: var(--text-sm, 0.875rem);
+}

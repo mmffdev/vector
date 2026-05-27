@@ -14,17 +14,18 @@
 /**
  * Build the addressable slot name for a FlowBoard instance.
  *
+ * The sidecar's `name` field IS the full slot suffix by convention
+ * (e.g. "flow_board_workitems"). This helper only prepends the global
+ * `samantha._viewport.app._kind.panel.` address namespace — it never
+ * adds a `flow_board_` prefix of its own.
+ *
  * @param name - The sidecar config `name` field (e.g. "flow_board_workitems").
  * @returns The fully-qualified samanthaAPI slot string.
  *
  * @example
  *   getFlowBoardSlotName("flow_board_workitems")
- *   // → "samantha._viewport.app._kind.panel.flow_board_flow_board_workitems"
- *   //
- *   // Or, when the caller already strips the "flow_board_" prefix:
- *   getFlowBoardSlotName("workitems")
  *   // → "samantha._viewport.app._kind.panel.flow_board_workitems"
  */
 export function getFlowBoardSlotName(name: string): string {
-  return `samantha._viewport.app._kind.panel.flow_board_${name}`;
+  return `samantha._viewport.app._kind.panel.${name}`;
 }
