@@ -125,7 +125,7 @@ If any step fails → REJECT the offending story, do NOT apply downstream migrat
 
 ## § Current story
 
-idle — awaiting next dispatch (FB1.1.3)
+FB1.1.3 — Migration 134 `users_flowboard_prefs`. **REJECTED** at `c4068701` for FK type mismatch (BIGSERIAL/BIGINT vs live UUID schema); awaiting fresh worker on same branch `fb1-1-3-mig-134-user-prefs` with the surgical fix.
 
 ## § Self-assessment
 
@@ -145,9 +145,93 @@ Validator was spawned fresh, will be re-spawned on every dispatch (no SendMessag
 
 **psql connection:** validator has no shell `psql` on `$PATH`. Use `/opt/homebrew/Cellar/libpq/18.3/bin/psql`. Connection string: `PGPASSWORD=$(grep '^DB_PASSWORD=' backend/.env.dev | cut -d= -f2) /opt/homebrew/Cellar/libpq/18.3/bin/psql "host=localhost port=5435 dbname=vector_artefacts user=mmff_dev"`. DB user is `mmff_dev`, NOT `postgres`.
 
+**Context budget after FB1.1.3 REJECT:** ~30%. Re-spawned fresh. Read 2 handovers + spec §3.3 + scope §FB1 + worker diff (2 mig files) + lint (green) + 4 live DB introspections (confirmed `users.users_id` and `artefacts_types.artefacts_types_id` are UUID, not BIGINT) + attempted apply (failed with FK type mismatch — transaction rolled back, no DB damage). Worker used `BIGSERIAL`/`BIGINT` despite the spec correction in `f98bc796` that flagged UUID as canonical. Brief written; ready for fix worker. Working tree clean (Vector_Scope.md auto-attribution noise from worker commits stashed before switching back to `feature/flowboard`).
+
 ## § Active rejection
 
-(none — FB1.1.2 REJECT resolved by `22e3d00f` and re-validated PASS; merge SHA `cc4abf58`)
+### REJECT — FB1.1.3 — 2026-05-27T03:17Z
+
+**Branch:** `fb1-1-3-mig-134-user-prefs`
+**Worker last SHA:** `c4068701` (pre-emptive fix-worker strip of inline `-- ---- DOWN ----` comment block on top of original `d7d3e1eb`)
+
+**Failed AC bullets:**
+
+- AC: *"`db/vector_artefacts/schema/134_users_flowboard_prefs.sql` applies clean; `schema_migrations` row 134 exists."* — **FAIL**. Migration aborts on apply against live `vector_artefacts`:
+
+  ```
+  BEGIN
+  psql:db/vector_artefacts/schema/134_users_flowboard_prefs.sql:31: ERROR:
+    foreign key constraint "users_flowboard_prefs_users_flowboard_prefs_user_id_fkey"
+    cannot be implemented
+  DETAIL: Key columns "users_flowboard_prefs_user_id" and "users_id" are of
+    incompatible types: bigint and uuid.
+  ```
+
+  The UP file declares `BIGSERIAL` PK and `BIGINT` FKs but `users.users_id` and `artefacts_types.artefacts_types_id` are both `uuid` in the live schema (verified via `information_schema.columns` against the dev tunnel). Whole transaction rolled back; no table created. No DB damage.
+
+- AC: *"Table has PK `users_flowboard_prefs_id`, FKs to `users` + `artefact_types` (both CASCADE), `users_flowboard_prefs_card_fields JSONB NOT NULL`, denorm workspace_id, `updated_at`."* — **FAIL (type half)**. Column names + ON DELETE CASCADE + JSONB NOT NULL + denorm workspace_id + updated_at default — all correct. BUT the PK is `BIGSERIAL` and the three integer columns (`user_id` FK, `artefact_type_id` FK, `workspace_id` denorm) are `BIGINT`. Per the spec correction in `f98bc796` and the merged mig 132 precedent, the PK MUST be `uuid PRIMARY KEY DEFAULT gen_random_uuid()` and all three remaining integer columns MUST be `uuid`.
+
+  Reference (already-merged mig 132 shape, `df6d412c`):
+
+  ```sql
+  topology_nodes_members_id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  topology_nodes_members_node_id      uuid NOT NULL REFERENCES topology_nodes(topology_nodes_id) ON DELETE CASCADE,
+  topology_nodes_members_user_id      uuid NOT NULL REFERENCES users(users_id) ON DELETE CASCADE,
+  topology_nodes_members_workspace_id uuid NOT NULL,
+  ```
+
+**Passing AC bullets (preserve — do NOT redo):**
+
+- ✅ UNIQUE constraint on (`user_id`, `artefact_type_id`). Implemented as `CREATE UNIQUE INDEX users_flowboard_prefs_user_type_uidx ON users_flowboard_prefs (users_flowboard_prefs_user_id, users_flowboard_prefs_artefact_type_id);`.
+- ✅ Every column carries the full `users_flowboard_prefs_` prefix; `npm run lint:column-prefix-convention` exits 0 cleanly.
+- ✅ DOWN migration structure correct (BEGIN → DROP INDEX × 2 → DROP TABLE IF EXISTS → COMMIT). DOWN does not need any change.
+- ✅ Fix-worker's pre-emptive strip of the inline `-- ---- DOWN ----` comment block in the UP file (commit `c4068701`) is correct — keep that fix.
+- ✅ Only 2 files touched in the three-dot diff (UP + DOWN). No collateral.
+- ✅ `grep -n schema_migrations` on both files: 0 hits. No INSERT, no DELETE, no comment reference. Fix-worker's earlier sweep is correct.
+- ✅ UP shape matches canonical 132/133: BEGIN → CREATE TABLE → CREATE INDEX × 2 → COMMIT. Only the type declarations inside CREATE TABLE are wrong.
+- ✅ Commit subject contains `[FB1.1.3]` ref-tag.
+
+**Other gate failures:** None beyond the type mismatch. No layer-discipline check applicable (no Go touched). No HARD RULE violations. No bundled unrelated files.
+
+**Recommended fix (single concrete change, ~4 character substitutions):**
+
+In `db/vector_artefacts/schema/134_users_flowboard_prefs.sql`, replace the CREATE TABLE block (lines 22-31) with:
+
+```sql
+CREATE TABLE users_flowboard_prefs (
+    users_flowboard_prefs_id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    users_flowboard_prefs_user_id          uuid        NOT NULL
+        REFERENCES users(users_id) ON DELETE CASCADE,
+    users_flowboard_prefs_artefact_type_id uuid        NOT NULL
+        REFERENCES artefacts_types(artefacts_types_id) ON DELETE CASCADE,
+    users_flowboard_prefs_card_fields      JSONB       NOT NULL,
+    users_flowboard_prefs_workspace_id     uuid        NOT NULL,
+    users_flowboard_prefs_updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Four type substitutions only:
+1. `BIGSERIAL` → `uuid        PRIMARY KEY DEFAULT gen_random_uuid()` on PK column.
+2. `BIGINT` → `uuid` on `users_flowboard_prefs_user_id`.
+3. `BIGINT` → `uuid` on `users_flowboard_prefs_artefact_type_id`.
+4. `BIGINT` → `uuid` on `users_flowboard_prefs_workspace_id`.
+
+Everything else — column names, NOT NULLs, ON DELETE CASCADE refs, JSONB, TIMESTAMPTZ default, both indexes, BEGIN/COMMIT envelope, the entire DOWN file, the header comment block — stays untouched.
+
+**Do not change:**
+
+- DOWN file: zero edits. It's correct as-is.
+- Indexes (UNIQUE + workspace_idx): zero edits. Correct.
+- Column names + `users_flowboard_prefs_` prefix: zero edits. Lint-clean.
+- File header comment block: zero edits.
+- BEGIN/COMMIT envelope: zero edits.
+- The fix-worker's earlier strip of the inline DOWN comment block (commit `c4068701`): keep it.
+
+**Worker prompt seed:**
+
+> Re-open `db/vector_artefacts/schema/134_users_flowboard_prefs.sql`. The CREATE TABLE on lines 22-31 uses `BIGSERIAL` PK + `BIGINT` FKs, but the live `vector_artefacts` schema has UUID PKs on `users.users_id` and `artefacts_types.artefacts_types_id` — the migration aborts on apply with a FK type-mismatch error. Replace `BIGSERIAL` on the PK with `uuid PRIMARY KEY DEFAULT gen_random_uuid()` and replace each `BIGINT` (3 of them — `users_flowboard_prefs_user_id`, `users_flowboard_prefs_artefact_type_id`, `users_flowboard_prefs_workspace_id`) with `uuid`. Match the already-merged mig 132 exactly (see `db/vector_artefacts/schema/132_topology_nodes_members.sql`). DO NOT touch the DOWN file, indexes, comments, or anything else. Commit on the same branch `fb1-1-3-mig-134-user-prefs` with subject `fix(flowboard): mig 134 — UUID types for PK and FKs to match live schema [FB1.1.3]`, push, and report the new SHA to master.
+
+(Audit trail of resolved FB1.1.2 REJECT below.)
 
 ### REJECT — FB1.1.2 — 2026-05-27 (RESOLVED 2026-05-27 — kept for audit trail)
 
@@ -228,3 +312,4 @@ Live `vector_artefacts` schema uses UUID for every PK/FK; spec showed BIGINT. Pl
 | 1 | FB1.1.1 | fb1-1-1-mig-132-members | PASS | df6d412c | 2026-05-27 | mig 132 applied directly via psql against vector_artefacts; schema_migrations row backfilled (`132_topology_nodes_members.sql`); `\d topology_nodes_members` confirms UUID PK + FKs ON DELETE CASCADE + UNIQUE (node_id, user_id) + 2 ix indexes + 6 fully-prefixed columns; `npm run lint:column-prefix-convention` green; DOWN file static-verified (BEGIN/DROP INDEX×2/DROP TABLE/COMMIT). All 5 AC PASS. |
 | 2 | FB1.1.2 | fb1-1-2-mig-133-wip-limits | REJECT | — | 2026-05-27 | Worker SHA `459efbb1`. Table definition + columns + FKs + UNIQUE + indexes + column-prefix lint ALL PASS. Apply failed because UP file line 51 has `INSERT INTO schema_migrations (version) VALUES (133)` and the live table has no `version` column (only `filename TEXT PK` + `applied_at`); transaction rolled back, no DB damage. DOWN file has the same defect at line 14. Brief in §Active rejection asks worker to delete those two lines + inline DOWN-comment block; preserve everything else. |
 | 3 | FB1.1.2 | fb1-1-2-mig-133-wip-limits | PASS | cc4abf58 | 2026-05-27 | **After REJECT + fix cycle.** Fix-worker SHA `22e3d00f` made the recommended surgical edit (removed the two `schema_migrations` row writes — INSERT in UP, DELETE in DOWN — nothing else). Re-validated: grep confirms zero `schema_migrations` text in either file; three-dot diff shows only the 2 migration files; column-prefix lint green; UP applied cleanly to vector_artefacts via direct psql (BEGIN → CREATE TABLE → CREATE INDEX → COMMIT); schema_migrations row 133 backfilled externally; `\d topology_nodes_wip_limits` confirms UUID PK + FKs to topology_nodes/flows_states (ON DELETE CASCADE) + FK to users (nullable updated_by) + UNIQUE on (node_id, flow_state_id) + ix on node_id + 7 fully-prefixed columns. All 5 AC PASS. Structural content was correct from the start; only the schema_migrations row writes needed removal. |
+| 4 | FB1.1.3 | fb1-1-3-mig-134-user-prefs | REJECT | — | 2026-05-27T03:17Z | Worker SHA `c4068701` (fix-worker on top of `d7d3e1eb`). Column names + prefixes + lint + UP/DOWN structural shape + UNIQUE index + workspace index all PASS. Apply failed at FK creation: `users_flowboard_prefs_user_id BIGINT` cannot FK to `users.users_id uuid`. Live `vector_artefacts` schema is UUID throughout (verified `users.users_id` + `artefacts_types.artefacts_types_id` via information_schema); spec correction in `f98bc796` already flagged this universally. Fix is 4 type substitutions — see §Active rejection for the canonical CREATE TABLE block. Transaction rolled back cleanly, no DB damage. Validator working tree clean; ready for fix-worker on same branch. |
