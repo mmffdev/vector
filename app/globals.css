@@ -12,6 +12,23 @@
   --accent-border: rgba(26, 26, 26, 0.20);
   /* Canonical colour for all tree connectors (T / elbow SVG paths) */
   --tree-connector: var(--border);
+
+  /* ── Semantic aliases used by FlowBoard + shared components ────────────
+     These fill the gap between the legacy bridge tokens above and the
+     canonical primitives in primitives.css. They map to the nearest
+     primitive with sensible light-mode defaults as fallbacks, so the
+     FlowBoard modal and gear button render correctly without a theme pack.
+     Defined here (not primitives.css) because they are derivations, not
+     first-class design decisions — pay down when a theme overhaul lands.
+     TD-FB-CSS-TOKENS resolved 2026-05-27. */
+  --text-primary:      var(--ink,       #1A1A1A);
+  --text-secondary:    var(--ink-muted, #5C5C5C);
+  --surface-hover:     color-mix(in srgb, var(--ink, #1A1A1A) 6%, transparent);
+  --surface-secondary: var(--surface-sunken, #EDEAE4);
+  --surface-input:     var(--surface,   #FFFFFF);
+  --border-default:    var(--border,    #E5E1DA);
+  --border-subtle:     var(--border,    #E5E1DA);
+  --accent-primary:    var(--accent,    #1A1A1A);
 }
 
 /* Dark theme lives in app/styles/primitives.css */

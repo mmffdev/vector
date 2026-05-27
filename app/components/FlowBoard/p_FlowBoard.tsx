@@ -46,6 +46,28 @@ import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueCo
 import { useSentinel } from "@/app/sentinel";
 import { notify } from "@/app/lib/toast";
 import type { ArtefactCard, FlowBoardColumn } from "@/app/components/FlowBoard/hooks/useFlowBoardData";
+import { ObjectTreeDetailFlyout } from "@/app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout";
+import type { DetailFlyoutBodyProps } from "@/app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout";
+import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
+
+// ── FlowBoard flyout body adapter ─────────────────────────────────────────────
+//
+// Bridges DetailFlyoutBodyProps (rowId, onClose, onSaved) onto
+// ArtefactInlineForm's prop shape (artefactId, resourceUrl, scope, onClose, onSaved).
+// Scope is "work" because FlowBoard only surfaces work-scoped artefact types.
+// resourceUrl mirrors the work-items grid.
+
+function FlowBoardFlyoutBody({ rowId, onClose, onSaved }: DetailFlyoutBodyProps) {
+  return (
+    <ArtefactInlineForm
+      artefactId={rowId}
+      resourceUrl="/work-items"
+      scope="work"
+      onClose={onClose}
+      onSaved={onSaved}
+    />
+  );
+}
 
 // ── Props contract (spec §6) ──────────────────────────────────────────────────
 
@@ -119,10 +141,8 @@ function FlowBoardBoard({
   // WIP modal state
   const [isWipModalOpen, setIsWipModalOpen] = useState(false);
 
-  // Flyout state (TODO FB1.4.1: wire ObjectTreeDetailFlyout + adapter body)
-  // The _flyoutOpenId variable is read in handleCardClick's comment block and
-  // is intentionally kept as the composition slot for FB1.4.1 wiring.
-  const [_flyoutOpenId, setFlyoutOpenId] = useState<string | null>(null);
+  // Flyout state — open artefact id or null when closed.
+  const [flyoutOpenId, setFlyoutOpenId] = useState<string | null>(null);
 
   // Build optimistic column view when a drag is in progress
   const visibleColumns = useMemo((): FlowBoardColumn[] => {
@@ -185,15 +205,10 @@ function FlowBoardBoard({
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  // Card click handler (TODO FB1.4.1: mount ObjectTreeDetailFlyout + adapter body)
+  // Card click handler — opens ObjectTreeDetailFlyout for the clicked artefact.
   const handleCardClick = (artefactId: string): void => {
-    // TODO(FB1.4.1): wire ObjectTreeDetailFlyout.
-    // ObjectTreeDetailFlyout renders inline (not a modal/drawer), and requires
-    // a Body adapter component that bridges DetailFlyoutBodyProps (rowId) onto
-    // ArtefactInlineForm's prop shape (artefactId, resourceUrl, scope).
-    // That adapter is deferred to FB1.4.1 to keep this story focused on the
-    // board composition. Interim: store the id so the slot is reserved.
-    setFlyoutOpenId(artefactId);
+    // Toggle: clicking the same card again closes the flyout.
+    setFlyoutOpenId((prev) => (prev === artefactId ? null : artefactId));
   };
 
   if (isLoading) {
@@ -269,6 +284,14 @@ function FlowBoardBoard({
           }))}
         />
       )}
+
+      {/* Flyout — inline below the board columns; always mounted so
+          ArtefactInlineForm preserves its lifecycle across open/close. */}
+      <ObjectTreeDetailFlyout
+        openId={flyoutOpenId}
+        Body={FlowBoardFlyoutBody}
+        onClose={() => setFlyoutOpenId(null)}
+      />
     </div>
   );
 }
