@@ -11383,6 +11383,24 @@ Orchestrated rebuild of the notifications stack via the Master + Global Validato
 
 > Commit `038d937e` (2026-05-27): docs(notif-v2): spec for notifications v2 PLA
 > Commit `e6a32d8f` (2026-05-27): chore(notif-v2): init validator handover
+> Commit `923f4db0` (2026-05-27): feat(notif-v2): mig 120 — notifications_events_v2
+> Commit `b9be250f` (2026-05-27): feat(notif-v2): mig 121 — notifications_event_recipients
+> Commit `eab3b267` (2026-05-27): feat(notif-v2): mig 122 — notifications_outbox_v2
+> Commit `9caf22ce` (2026-05-27): feat(notif-v2): mig 123 — notifications_delivery_attempts
+> Commit `254304f5` (2026-05-27): feat(notif-v2): mig 124 — users_notifications_settings
+> Commit `85598f67` (2026-05-27): feat(notif-v2): mig 125 — users_notifications_prefs_v2
+> Commit `bc98292a` (2026-05-27): feat(notif-v2): mig 126 — prefs tier + system defaults
+> Commit `56531069` (2026-05-27): feat(notif-v2): mig 127 — notifications_templates
+> Commit `772411c0` (2026-05-27): feat(notif-v2): mig 128 — notifications_rules_v2
+> Commit `dd211159` (2026-05-27): feat(notif-v2): mig 129 — notifications_users_inbox_v2
+> Commit `0d27defa` (2026-05-27): feat(notif-v2): mig 130 — notifications_platform_channels + seed
+> Commit `3b373efb` (2026-05-27): feat(notif-v2): broker topology constants
+> Commit `90d309bd` (2026-05-27): feat(notif-v2): Broker interface + Envelope + Handler
+> Commit `3802ae8e` (2026-05-27): feat(notif-v2): NoopBroker fallback
+> Commit `44293908` (2026-05-27): feat(notif-v2): RabbitBroker — declare exchange + 6 queues + bind
+> Commit `183c4e4f` (2026-05-27): test(notif-v2): broker round-trip + noop + topology unit tests
+> Commit `57f07b2e` (2026-05-27): chore(lint): add lint:no-v1-broker-imports
+> Commit `0da337b6` (2026-05-27): test(notif-v2): split broker tests by build tag
 
 ---
 
