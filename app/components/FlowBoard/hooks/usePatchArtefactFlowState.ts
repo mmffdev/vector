@@ -6,7 +6,11 @@
 // single artefact. Exposes the raw async call; optimistic update + revert
 // lives in the parent component (p_FlowBoard, FB1.3.7) which owns board state.
 //
-// Wire path: PATCH /_site/work-items/{id}  body: { flow_states_id: <uuid> }
+// Wire path: PATCH /_site/work-items/{id}  body: { flow_state_id: <uuid> }
+// (Singular `flow_state_id` — matches backend PatchWorkItemInput.FlowStateID
+// JSON tag in backend/internal/artefactitems/types.go. The plural
+// `flow_states_id` used elsewhere on the flowboard surface is a different
+// column on a different table; do not confuse the two.)
 //
 // The patch call re-uses the existing `workItems.patch(id, data)` function
 // from `app/lib/apiSite/index.ts` — no new endpoint added. The backend
@@ -35,5 +39,5 @@ export async function patchArtefactFlowState(
   artefactId: string,
   newFlowStateId: string,
 ): Promise<void> {
-  await workItems.patch(artefactId, { flow_states_id: newFlowStateId });
+  await workItems.patch(artefactId, { flow_state_id: newFlowStateId });
 }

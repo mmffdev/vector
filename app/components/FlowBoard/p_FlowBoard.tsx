@@ -112,7 +112,6 @@ interface FlowBoardBoardProps {
   resolvedConfig: Readonly<FlowBoardConfig>;
   topologyNodeId: string;
   activeTypeId: string;
-  onRefetchRequest: () => void;
   slotName: string;
 }
 
@@ -120,11 +119,13 @@ function FlowBoardBoard({
   resolvedConfig,
   topologyNodeId,
   activeTypeId,
-  onRefetchRequest,
   slotName,
 }: FlowBoardBoardProps): React.ReactElement {
-  // Data hooks
-  const { columns, isLoading, error } = useFlowBoardData({
+  // Data hooks. refetch() is exposed by useFlowBoardData (added post-FB1.4.1
+  // so we re-fetch in place without unmounting the board — replaces the
+  // FB1.3.7 boardKey-remount pattern that flashed the whole surface on
+  // every successful drop).
+  const { columns, isLoading, error, refetch } = useFlowBoardData({
     topologyNodeId,
     artefactTypeId: activeTypeId,
   });
@@ -184,10 +185,12 @@ function FlowBoardBoard({
     });
     try {
       await patchArtefactFlowState(card.id, newStateId);
-      // Server accepted — clear optimistic and trigger a clean refetch
-      // for the rollup-recalc'd state from the backend.
+      // Server accepted — clear optimistic and refetch in place for the
+      // rollup-recalc'd state from the backend. refetch() does NOT
+      // unmount the board (no flash); the boardKey-remount fallback is
+      // kept for the type-switcher case where a fresh subtree IS desired.
       setOptimisticMove(null);
-      onRefetchRequest();
+      refetch();
     } catch (err: unknown) {
       // Revert optimistic update and surface the error as a toast
       setOptimisticMove(null);
@@ -272,7 +275,7 @@ function FlowBoardBoard({
           isOpen={isWipModalOpen}
           onClose={() => setIsWipModalOpen(false)}
           onSaved={() => {
-            onRefetchRequest();
+            refetch();
             setIsWipModalOpen(false);
           }}
           topologyNodeId={topologyNodeId}
@@ -382,9 +385,11 @@ export function FlowBoard({
   ]);
 
   // boardKey — incrementing this re-mounts FlowBoardBoard, triggering a fresh
-  // useFlowBoardData call (clean refetch without modifying the hook's interface).
-  const [boardKey, setBoardKey] = useState(0);
-  const handleRefetch = (): void => setBoardKey((k) => k + 1);
+  // useFlowBoardData call (full remount). Now only used implicitly on
+  // type-switcher change (the `key` includes activeTypeId, so swapping
+  // type unmounts + remounts naturally — boardKey itself is reserved
+  // as an escape hatch for future "force everything fresh" cases).
+  const [boardKey] = useState(0);
 
   // Addressable slot name from registry
   const slotName = getFlowBoardSlotName(resolvedConfig.name);
@@ -418,7 +423,6 @@ export function FlowBoard({
           resolvedConfig={resolvedConfig}
           topologyNodeId={topologyNodeId}
           activeTypeId={activeTypeId}
-          onRefetchRequest={handleRefetch}
           slotName={slotName}
         />
       ) : (

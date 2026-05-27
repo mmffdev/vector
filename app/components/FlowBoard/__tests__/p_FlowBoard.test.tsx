@@ -222,6 +222,7 @@ describe("FlowBoard — FB1.3.7", () => {
       columns: mockFlowBoardData.columns,
       isLoading: false,
       error: null,
+      refetch: vi.fn(),
     });
   });
 
@@ -229,7 +230,7 @@ describe("FlowBoard — FB1.3.7", () => {
 
   it("renders columns from useFlowBoardData", () => {
     const cols = makeColumns();
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: cols, isLoading: false, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: cols, isLoading: false, error: null, refetch: vi.fn() });
 
     render(<FlowBoard config={makeConfig()} />);
 
@@ -243,7 +244,7 @@ describe("FlowBoard — FB1.3.7", () => {
 
   it("forwards topologyNodeId prop to useFlowBoardData", () => {
     const propNodeId = "explicit-node-abc";
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null, refetch: vi.fn() });
 
     render(<FlowBoard config={makeConfig()} topologyNodeId={propNodeId} />);
 
@@ -256,7 +257,7 @@ describe("FlowBoard — FB1.3.7", () => {
   // ── AC: falls back to sentinel_focus_node when topologyNodeId omitted ──────
 
   it("falls back to sentinel_focus_node when topologyNodeId is omitted", () => {
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null, refetch: vi.fn() });
 
     render(<FlowBoard config={makeConfig()} />);
 
@@ -268,7 +269,7 @@ describe("FlowBoard — FB1.3.7", () => {
   // ── AC: uncontrolled when artefactTypeId prop omitted ─────────────────────
 
   it("is uncontrolled when artefactTypeId prop is omitted — seeds from catalogue default", () => {
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null, refetch: vi.fn() });
 
     render(<FlowBoard config={makeConfig()} />);
 
@@ -284,7 +285,7 @@ describe("FlowBoard — FB1.3.7", () => {
 
   it("is controlled when artefactTypeId + onArtefactTypeChange are supplied", () => {
     const onArtefactTypeChange = vi.fn();
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null, refetch: vi.fn() });
 
     render(
       <FlowBoard
@@ -312,7 +313,7 @@ describe("FlowBoard — FB1.3.7", () => {
     const override: Partial<import("../loader").FlowBoardConfig> = {
       title: "Overridden Title",
     };
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null, refetch: vi.fn() });
 
     // Render with override — no crash and slot name still comes from original name
     const { container } = render(
@@ -330,7 +331,7 @@ describe("FlowBoard — FB1.3.7", () => {
 
   it("registers the addressable slot via data-samantha-slot on the board root", () => {
     const cols = makeColumns();
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: cols, isLoading: false, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: cols, isLoading: false, error: null, refetch: vi.fn() });
 
     const { container } = render(<FlowBoard config={makeConfig()} />);
 
@@ -349,7 +350,7 @@ describe("FlowBoard — FB1.3.7", () => {
   // ── Additional: loading state renders loading placeholder ─────────────────
 
   it("renders loading placeholder while useFlowBoardData is loading", () => {
-    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: true, error: null });
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: true, error: null, refetch: vi.fn() });
 
     render(<FlowBoard config={makeConfig()} />);
 
@@ -363,6 +364,7 @@ describe("FlowBoard — FB1.3.7", () => {
       columns: [],
       isLoading: false,
       error: new Error("Network timeout"),
+      refetch: vi.fn(),
     });
 
     render(<FlowBoard config={makeConfig()} />);

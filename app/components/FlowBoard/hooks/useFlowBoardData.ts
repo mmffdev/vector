@@ -59,6 +59,14 @@ export interface UseFlowBoardDataResult {
   columns: FlowBoardColumn[];
   isLoading: boolean;
   error: Error | null;
+  /**
+   * Re-fetch the three composed queries in place. Triggered by parent on
+   * a successful drag-PATCH so the rollup-recalc'd state is reflected
+   * without unmounting the board. Returns a Promise that resolves after
+   * the new data lands so callers can chain (rare — fire-and-forget is
+   * the common path).
+   */
+  refetch: () => void;
 }
 
 // ── Wire shapes returned by the backend (opaque until typed here) ─────────────
@@ -112,6 +120,11 @@ export function useFlowBoardData({
   const [columns, setColumns] = useState<FlowBoardColumn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // refetchTick — bumping this re-runs the fetch effect in place without
+  // unmounting the board. Parent calls refetch() after a successful drop
+  // PATCH so the rollup-recalc'd parent state lands without a visible
+  // unmount/remount flash.
+  const [refetchTick, setRefetchTick] = useState(0);
 
   // Track the latest fetch generation so stale responses are dropped.
   const genRef = useRef(0);
@@ -215,6 +228,7 @@ export function useFlowBoardData({
     topologyNodeId,
     artefactTypeId,
     sentinel.sentinel_loading,
+    refetchTick,
   ]);
 
   useEffect(() => {
@@ -228,5 +242,12 @@ export function useFlowBoardData({
   // While sentinel is still booting, stay in loading state.
   const effectiveLoading = isLoading || sentinel.sentinel_loading;
 
-  return { columns, isLoading: effectiveLoading, error };
+  // refetch — bumping refetchTick re-runs the effect in place. Cheap and
+  // unmount-free; replaces the FB1.3.7 boardKey-remount pattern that
+  // caused a visible full-board flash on every successful drag.
+  const refetch = useCallback(() => {
+    setRefetchTick((t) => t + 1);
+  }, []);
+
+  return { columns, isLoading: effectiveLoading, error, refetch };
 }
