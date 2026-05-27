@@ -34,6 +34,11 @@ export interface FlowBoardFlowState {
   name: string;
   /** sort key from the backend (`flow_position` wire field) */
   sort: number;
+  /** Custom flow-state colour (`flow_states.colour` on the backend). Drives
+   *  the 5px coloured stripe at the top of the column. null/undefined when
+   *  the state has no custom colour set — the column falls back to a
+   *  neutral border token. */
+  colour: string | null;
 }
 
 export interface ArtefactCard {
@@ -206,6 +211,7 @@ export function useFlowBoardData({
           id: state.id,
           name: state.name,
           sort: state.flow_position,
+          colour: state.colour ?? null,
         },
         wipLimit: wipByStateId.has(state.id)
           ? (wipByStateId.get(state.id) ?? null)

@@ -17948,14 +17948,33 @@ tr.is-editing {
 .flow-board__Column {
   display: flex;
   flex-direction: column;
-  min-width: 280px;
-  max-width: 320px;
+  /* Rally-style sizing — every column grows equally from a 0 base to
+     share whatever spare width the rail has, never shrinking below
+     --col-min-width. When cumulative min-widths exceed the rail, the
+     parent's overflow-x:auto kicks in and the rail scrolls. The
+     max-width caps the stretch in the case of a 1- or 2-column board
+     so a single column doesn't claim 1200px of horizontal real estate.
+     The min-width is sourced from --col-min-width on the parent so the
+     sidecar can tune the floor without touching CSS. */
+  flex: 1 1 0;
+  min-width: var(--col-min-width, 280px);
+  max-width: 420px;
   background: var(--surface-1, transparent);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-3, 8px);
   gap: var(--space-2, 6px);
   transition: opacity 120ms ease, border-color 120ms ease, background 120ms ease;
+  /* 5px coloured stripe along the top edge — sourced from the flow state's
+     custom colour via the --flow-state-colour custom property set inline
+     on the column element. Falls back to --border-subtle when the state
+     has no custom colour. Implemented as box-shadow inset so it doesn't
+     compete with the column's main border-radius (border-top would
+     square off the top corners). */
+  box-shadow: inset 0 5px 0 0 var(--flow-state-colour, var(--border-subtle));
+  /* Push the header content down a touch so the stripe doesn't crowd
+     the title row. */
+  padding-top: calc(var(--space-3, 8px) + 5px);
 }
 
 /* Invalid drop target during drag — dimmed, no pointer events on contents */
@@ -18218,6 +18237,10 @@ tr.is-editing {
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
   width: 100%;
+  /* No background / padding / radius here — the outer <Panel> wrapper
+     owns the white surface, padding, border, and radius via the shared
+     panel chrome (.panel + .panel__body). The inner .flow-board is just
+     the structural flex column inside the panel body. */
 }
 
 .flow-board__Toolbar {
@@ -18249,11 +18272,24 @@ tr.is-editing {
 }
 
 .flow-board__Columns {
+  /* Sizing strategy (Rally-style):
+       - Each column has a MINIMUM width (--col-min-width, default 280px).
+       - Columns stretch equally to share any spare width when the panel
+         is wider than count × min-width — board fills edge-to-edge.
+       - When count × min-width exceeds the panel, columns stay at their
+         minimum and the rail scrolls horizontally.
+     Implementation: flex row with `flex: 1 1 0` on each column so they
+     grow from a 0 base to share spare width, plus `min-width: --col-min-width`
+     so they refuse to shrink below the floor. The `overflow-x: auto` on
+     this container provides the scrollbar once the cumulative min-width
+     exceeds the container. */
+  --col-min-width: 280px;
+  --col-gap: var(--space-4, 1rem);
   display: flex;
   flex-direction: row;
-  gap: var(--space-4, 1rem);
+  gap: var(--col-gap);
   overflow-x: auto;
-  align-items: flex-start;
+  align-items: stretch;
   padding-bottom: var(--space-2, 0.5rem);
 }
 
@@ -18261,6 +18297,18 @@ tr.is-editing {
   padding: var(--space-4, 1rem);
   color: var(--color-danger, #dc2626);
   font-size: var(--text-sm, 0.875rem);
+}
+
+/* Gear wrap inside ActionBar — pushes the gear to the rightmost edge of
+   the filter chip row by claiming margin-left:auto. ActionBar's own
+   tree_accordion-dense__filterbar-spacer sits AFTER the filterChips slot,
+   so without this rule the gear would float in the middle of the chip
+   cluster. With margin-left:auto, the gear glues itself to the spacer's
+   left edge — chip cluster on the left, gear on the right. */
+.flow-board__GearWrap {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ── Skeleton column rail (progressive load) ────────────────────────── */

@@ -79,6 +79,13 @@ export function BoardColumn({
   if (isDisabled) classNames.push("flow-board__Column-disabled");
   if (isOver) classNames.push("flow-board__Column-over");
 
+  // The flow_states.colour drives a 5px coloured stripe at the top of
+  // the column (via .flow-board__Column::before — see globals.css). We
+  // pipe it through a CSS custom property so the stripe is a pure
+  // colour token, no per-column inline style on a visible element.
+  // Falls back to a neutral token when the state has no custom colour.
+  const stripeColour = column.flowState.colour ?? "var(--border-subtle)";
+
   return (
     <div
       ref={setNodeRef}
@@ -86,6 +93,7 @@ export function BoardColumn({
       data-flow-state-id={column.flowState.id}
       aria-label={column.flowState.name}
       aria-disabled={isDisabled}
+      style={{ ["--flow-state-colour" as string]: stripeColour }}
     >
       <BoardColumnHeader
         title={column.flowState.name}

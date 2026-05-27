@@ -31,9 +31,20 @@
 
 import React, { useMemo, useState } from "react";
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
+import { MdTune, MdFlag, MdOutlinePerson } from "react-icons/md";
+import Panel from "@/app/components/Panel";
+import { DenseGridHeader } from "@/app/components/ObjectTreeV2/kinds/DenseGridHeader";
+import { ActionBar } from "@/app/components/ObjectTreeV2/kinds/ActionBar";
+import NavigationPie from "@/app/components/NavigationPie";
+import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 import type { FlowBoardConfig } from "@/app/components/FlowBoard/loader";
 import { loadFlowBoardConfig } from "@/app/components/FlowBoard/loader";
-import { getFlowBoardSlotName } from "@/app/components/FlowBoard/registry";
+// getFlowBoardSlotName is no longer used directly — <Panel name=…> registers
+// the addressable at samantha._viewport.app._kind.panel.<name> via
+// useRegisterAddressable, replacing the legacy data-samantha-slot attribute
+// (which AddressAnchorResolver never read; it watches data-address instead).
+// Helper kept in registry.ts for any caller that still wants to compute the
+// slot string for diagnostics/tests.
 import { useFlowBoardData } from "@/app/components/FlowBoard/hooks/useFlowBoardData";
 import { useFlowStateTransitions } from "@/app/components/FlowBoard/hooks/useFlowStateTransitions";
 import { useFlowBoardDnd } from "@/app/components/FlowBoard/hooks/useFlowBoardDnd";
@@ -108,18 +119,40 @@ export interface FlowBoardProps {
 
 // ── Inner board component (keyed on boardKey for clean refetch) ───────────────
 
+interface FlowBoardFilters {
+  /** Lower-cased title substring; empty = no search. */
+  search: string;
+  /** Set of priority NAMES (case-sensitive, matches the wire shape on
+   *  ArtefactCard.priority). Empty set = show all. */
+  priorityNames: Set<string>;
+  /** Set of owner user ids. Empty set = show all. */
+  ownerIds: Set<string>;
+}
+
 interface FlowBoardBoardProps {
   resolvedConfig: Readonly<FlowBoardConfig>;
   topologyNodeId: string;
   activeTypeId: string;
-  slotName: string;
+  /** Client-side filter bundle driven by the outer ActionBar chips. The
+   *  inner board applies these over its already-fetched cards (no extra
+   *  network calls — search/priority/owner all sit in the card payload).
+   *  When all filters are inert the column data passes through untouched. */
+  filters: FlowBoardFilters;
+  /** WIP-modal open/close lives at the outer FlowBoard scope so the gear
+   *  button in the ActionBar can drive it. The inner board still renders
+   *  the modal here because the modal needs `columns` + `refetch` from
+   *  useFlowBoardData. */
+  isWipModalOpen: boolean;
+  onWipModalClose: () => void;
 }
 
 function FlowBoardBoard({
   resolvedConfig,
   topologyNodeId,
   activeTypeId,
-  slotName,
+  filters,
+  isWipModalOpen,
+  onWipModalClose,
 }: FlowBoardBoardProps): React.ReactElement {
   // Data hooks. refetch() is exposed by useFlowBoardData (added post-FB1.4.1
   // so we re-fetch in place without unmounting the board — replaces the
@@ -139,16 +172,44 @@ function FlowBoardBoard({
     toStateId: string;
   } | null>(null);
 
-  // WIP modal state
-  const [isWipModalOpen, setIsWipModalOpen] = useState(false);
-
   // Flyout state — open artefact id or null when closed.
   const [flyoutOpenId, setFlyoutOpenId] = useState<string | null>(null);
 
-  // Build optimistic column view when a drag is in progress
+  // ── Column derivation pipeline ──────────────────────────────────────────
+  // Two passes: (1) apply client-side filter chips → filteredColumns;
+  //             (2) overlay the optimistic drag move on top → visibleColumns.
+  // Splitting the passes keeps each step's responsibility crisp and means
+  // the drag overlay still works against the filtered card set (a dragged
+  // card stays visible even if it would otherwise have been filtered out
+  // mid-drag — UX win, no stranded ghosts).
+
+  const filteredColumns = useMemo((): FlowBoardColumn[] => {
+    const hasSearch = filters.search.length > 0;
+    const hasPriority = filters.priorityNames.size > 0;
+    const hasOwner = filters.ownerIds.size > 0;
+    if (!hasSearch && !hasPriority && !hasOwner) return columns;
+    return columns.map((col) => ({
+      ...col,
+      cards: col.cards.filter((c) => {
+        if (hasSearch && !c.title.toLowerCase().includes(filters.search))
+          return false;
+        if (
+          hasPriority &&
+          !(c.priority && filters.priorityNames.has(c.priority))
+        )
+          return false;
+        if (hasOwner && !(c.assignee && filters.ownerIds.has(c.assignee)))
+          return false;
+        return true;
+      }),
+    }));
+  }, [columns, filters]);
+
+  // Build optimistic column view when a drag is in progress (applied
+  // OVER filteredColumns so search/priority/owner survive the drag).
   const visibleColumns = useMemo((): FlowBoardColumn[] => {
-    if (!optimisticMove) return columns;
-    return columns.map((col) => {
+    if (!optimisticMove) return filteredColumns;
+    return filteredColumns.map((col) => {
       if (col.flowState.id === optimisticMove.fromStateId) {
         return {
           ...col,
@@ -156,7 +217,7 @@ function FlowBoardBoard({
         };
       }
       if (col.flowState.id === optimisticMove.toStateId) {
-        const movingCard = columns
+        const movingCard = filteredColumns
           .flatMap((c) => c.cards)
           .find((c) => c.id === optimisticMove.cardId);
         if (!movingCard) return col;
@@ -168,7 +229,7 @@ function FlowBoardBoard({
       }
       return col;
     });
-  }, [columns, optimisticMove]);
+  }, [filteredColumns, optimisticMove]);
 
   // Flat card list for dnd lookup
   const allCards = useMemo(
@@ -223,20 +284,27 @@ function FlowBoardBoard({
   const showSkeleton = isLoading && visibleColumns.length === 0;
 
   return (
-    <div className="flow-board" data-samantha-slot={slotName}>
-      <div className="flow-board__Toolbar">
-        <WipGearButton
-          topologyNodeId={topologyNodeId}
-          onClick={() => setIsWipModalOpen(true)}
-        />
-      </div>
+    <div className="flow-board">
+      {/* Gear button moved into the outer <ActionBar> chrome — the inner
+          toolbar block is gone. Modal still lives here because it needs
+          columns + refetch from useFlowBoardData; open/close state is
+          driven by the outer wrapper via `isWipModalOpen` prop. */}
 
       <DndContext
         sensors={sensors}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="flow-board__Columns">
+        <div
+          className="flow-board__Columns"
+          style={{
+            // Sidecar-controlled minimum column width (Rally-style).
+            // Columns grow to share spare width, but never shrink below
+            // this floor; once cumulative min-widths exceed the panel
+            // the rail scrolls. Default 280px when the sidecar omits it.
+            ["--col-min-width" as string]: `${resolvedConfig.columns.column_min_width}px`,
+          }}
+        >
           {showSkeleton ? (
             // 3 placeholder columns — the eventual column count is unknown
             // until flow_states arrives; 3 is the most common case and the
@@ -303,10 +371,10 @@ function FlowBoardBoard({
       {isWipModalOpen && (
         <WipSettingsModal
           isOpen={isWipModalOpen}
-          onClose={() => setIsWipModalOpen(false)}
+          onClose={onWipModalClose}
           onSaved={() => {
             refetch();
-            setIsWipModalOpen(false);
+            onWipModalClose();
           }}
           topologyNodeId={topologyNodeId}
           artefactTypeId={activeTypeId}
@@ -421,31 +489,169 @@ export function FlowBoard({
   // as an escape hatch for future "force everything fresh" cases).
   const [boardKey] = useState(0);
 
-  // Addressable slot name from registry
-  const slotName = getFlowBoardSlotName(resolvedConfig.name);
+  // Active type metadata for the DenseGridHeader badge + subtitle. When the
+  // catalogue hasn't loaded yet OR the active id isn't in the filtered set
+  // (rare race), both fall back to undefined and DenseGridHeader gracefully
+  // omits the row. The sidecar's top-level `description` field provides the
+  // sunken-band description line; it doesn't depend on the active type.
+  const activeType = useMemo(
+    () => switcherTypes.find((t) => t.id === activeTypeId),
+    [switcherTypes, activeTypeId],
+  );
+  const headerBadge = activeType?.prefix;
+  const headerSubtitle = activeType?.name;
 
+  // ── ActionBar filter state ──────────────────────────────────────────────
+  //
+  // All three filters apply CLIENT-SIDE over useFlowBoardData's columns —
+  // backend already filters cards to the active artefact type, and the
+  // remaining facets (title contains, priority, owner) work over fields
+  // that already arrive in the card payload. No new backend calls.
+  //
+  // In-memory only for now (no per-page persistence). Persistence via
+  // the work-items useWorkItemsFilters(prefKey) pattern is a follow-up.
+
+  // Search input (filters cards by title substring, case-insensitive).
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Priority filter — UUIDs of priorities to KEEP (empty = show all).
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+
+  // Owner filter — user ids to KEEP (empty = show all). "Mine" toggle
+  // pushes the current user id; clicking the chip again clears it.
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+
+  // Priority catalogue for the pie options. The hook is workspace-scoped
+  // via sentinel inside the provider; no second fetch.
+  const { priorities: priorityCatalogue } = useArtefactPriorityCatalogue();
+
+  // Bundle the filter state into a single object the inner board consumes.
+  // Reference identity stable when nothing changed — useMemo so the inner
+  // board's downstream memoisation isn't invalidated on every render.
+  const filters = useMemo(
+    () => ({
+      search: searchQuery.trim().toLowerCase(),
+      priorityNames: new Set(
+        priorityCatalogue
+          .filter((p) => priorityFilter.includes(p.id))
+          .map((p) => p.name),
+      ),
+      ownerIds: new Set(ownerFilter),
+    }),
+    [searchQuery, priorityFilter, priorityCatalogue, ownerFilter],
+  );
+
+  // Pie option arrays.
+  const typeOptions = useMemo(
+    () => switcherTypes.map((t) => ({ value: t.id, label: t.name })),
+    [switcherTypes],
+  );
+  const priorityOptions = useMemo(
+    () =>
+      priorityCatalogue.map((p) => ({
+        value: p.id,
+        label: p.name,
+        color: p.colour ?? undefined,
+      })),
+    [priorityCatalogue],
+  );
+
+  // Owner pie — derived from the cards we already loaded would be ideal,
+  // but the outer FlowBoard doesn't have the card list (FlowBoardBoard
+  // owns useFlowBoardData). For now expose a single "Mine" affordance
+  // matching the work-items pattern. A full owner pie is a follow-up
+  // once the card list is hoisted (or a separate /users-in-scope fetch
+  // lands here).
+  const meId = sentinel.sentinel_user?.id ?? null;
+  const ownerIsMe = ownerFilter.length > 0 && ownerFilter[0] === meId;
+
+  // WIP-modal open/close hoisted from the inner board so the gear
+  // button in the ActionBar can drive it. The modal itself stays
+  // inside FlowBoardBoard where it has columns + refetch in scope.
+  const [isWipModalOpen, setIsWipModalOpen] = useState(false);
+
+  // Chrome split:
+  //   <Panel>             outer white card + title bar + help icon + addressable
+  //   <DenseGridHeader>   sunken badge + subtitle + description band
+  //   <ActionBar>         filter chips (Type / Priority / Mine) + search + gear
+  //   <FlowBoardBoard>    the board itself; receives `filters` to apply client-side
+  //
+  // Mirrors the ObjectTreeV2 Risk-register chrome so FlowBoard reads as a
+  // first-class panel, not a bare canvas.
   return (
-    <div className="flow-board__Root">
-      {resolvedConfig.type_switcher.show && (
-        <div className="flow-board__Toolbar">
-          <label className="flow-board__TypeLabel" htmlFor="flow-board-type-switcher">
-            {resolvedConfig.type_switcher.label}
-          </label>
-          <select
-            id="flow-board-type-switcher"
-            className="flow-board__TypeSelect"
-            value={activeTypeId}
-            onChange={(e) => setActiveTypeId(e.target.value)}
-            aria-label={resolvedConfig.type_switcher.label}
-          >
-            {switcherTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+    <Panel name={resolvedConfig.name} title={resolvedConfig.panel.title}>
+      <DenseGridHeader
+        badge={headerBadge}
+        subtitle={headerSubtitle}
+        description={resolvedConfig.description}
+      />
+
+      <ActionBar
+        ariaLabel="Flow board actions"
+        search={{
+          placeholder: "Search cards…",
+          value: searchQuery,
+          onChange: setSearchQuery,
+        }}
+        filterChips={
+          <>
+            {resolvedConfig.type_switcher.show && (
+              <NavigationPie
+                label={resolvedConfig.type_switcher.label}
+                icon={<MdTune size={14} />}
+                options={typeOptions}
+                // Single-select shim: the pie is multi-select by default;
+                // we project activeTypeId into a one-element array, and on
+                // change we take the most-recent click (the value the user
+                // toggled IN, ignoring any toggled-out tail). Clicking the
+                // currently-active type clears it — that empties the
+                // board until the user picks again, matching expected
+                // single-select semantics.
+                selected={activeTypeId ? [activeTypeId] : []}
+                onChange={(next) => {
+                  const newlySelected = next.find((id) => id !== activeTypeId);
+                  setActiveTypeId(newlySelected ?? "");
+                }}
+              />
+            )}
+            <NavigationPie
+              label="Priority"
+              icon={<MdFlag size={14} />}
+              options={priorityOptions}
+              selected={priorityFilter}
+              onChange={setPriorityFilter}
+            />
+            <button
+              type="button"
+              className={
+                "navigation-pie__Chip" +
+                (ownerIsMe ? " navigation-pie__Chip-active" : "")
+              }
+              onClick={() =>
+                setOwnerFilter(ownerIsMe ? [] : meId ? [meId] : [])
+              }
+              disabled={!meId}
+              aria-pressed={ownerIsMe}
+            >
+              <span className="navigation-pie__Chip_icon">
+                <MdOutlinePerson size={14} />
+              </span>
+              <span className="navigation-pie__Chip_label">
+                {ownerIsMe ? "Mine" : "Owner"}
+              </span>
+            </button>
+            {/* Gear lives at the right edge of the action bar. Membership
+                gating is internal to WipGearButton — non-members see
+                nothing rendered, so the chip just disappears for them. */}
+            <span className="flow-board__GearWrap">
+              <WipGearButton
+                topologyNodeId={topologyNodeId}
+                onClick={() => setIsWipModalOpen(true)}
+              />
+            </span>
+          </>
+        }
+      />
 
       {activeTypeId ? (
         <FlowBoardBoard
@@ -453,12 +659,14 @@ export function FlowBoard({
           resolvedConfig={resolvedConfig}
           topologyNodeId={topologyNodeId}
           activeTypeId={activeTypeId}
-          slotName={slotName}
+          filters={filters}
+          isWipModalOpen={isWipModalOpen}
+          onWipModalClose={() => setIsWipModalOpen(false)}
         />
       ) : (
         <div className="flow-board__Loading">Loading types…</div>
       )}
-    </div>
+    </Panel>
   );
 }
 

@@ -23,7 +23,8 @@
   "columns": {
     "show_wip": true,
     "wip_format": "ratio_with_overage",
-    "overage_tone": "danger"
+    "overage_tone": "danger",
+    "column_min_width": 280
   },
   "transitions": {
     "mode": "strict"

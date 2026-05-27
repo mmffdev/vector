@@ -127,6 +127,99 @@ vi.mock("../hooks/useNodeMembership", () => ({
   useNodeMembership: vi.fn(() => ({ isMember: true, isLoading: false, error: null })),
 }));
 
+// Mock Panel — render-children passthrough that exposes the `name` and
+// `title` props as data-attributes so we can assert addressable wiring
+// without spinning up DomRegistry + Samantha SDK. Matches the pattern
+// used by app/(user)/risk/__tests__/page.test.tsx and the work-items /
+// portfolio-items sentinel tests.
+vi.mock("@/app/components/Panel", () => ({
+  __esModule: true,
+  default: ({ children, name, title }: { children?: React.ReactNode; name?: string; title?: React.ReactNode }) => (
+    <section data-testid="panel" data-panel-name={name} data-panel-title={typeof title === "string" ? title : ""}>
+      {title ? <h2>{title}</h2> : null}
+      {children}
+    </section>
+  ),
+}));
+
+// Mock DenseGridHeader — render-children passthrough that exposes the
+// three slots as data-attributes so the addressable-slot test can
+// assert badge + subtitle + description without pulling ObjectTreeV2.
+vi.mock("@/app/components/ObjectTreeV2/kinds/DenseGridHeader", () => ({
+  DenseGridHeader: ({ badge, subtitle, description }: { badge?: React.ReactNode; subtitle?: React.ReactNode; description?: React.ReactNode }) => (
+    <header
+      data-testid="dense-grid-header"
+      data-badge={typeof badge === "string" ? badge : ""}
+      data-subtitle={typeof subtitle === "string" ? subtitle : ""}
+      data-description={typeof description === "string" ? description : ""}
+    />
+  ),
+}));
+
+// Mock ActionBar — passthrough that renders the search input + filterChips
+// inline so chip tests don't have to dig through the real implementation.
+vi.mock("@/app/components/ObjectTreeV2/kinds/ActionBar", () => ({
+  ActionBar: ({ search, filterChips, ariaLabel }: { search?: { placeholder: string; value: string; onChange: (v: string) => void }; filterChips?: React.ReactNode; ariaLabel: string }) => (
+    <div data-testid="actionbar" role="toolbar" aria-label={ariaLabel}>
+      {search && (
+        <input
+          data-testid="actionbar-search"
+          type="search"
+          placeholder={search.placeholder}
+          value={search.value}
+          onChange={(e) => search.onChange(e.target.value)}
+          aria-label={search.placeholder}
+        />
+      )}
+      {filterChips}
+    </div>
+  ),
+}));
+
+// Mock NavigationPie — exposes the option list as buttons so tests can
+// fire clicks against specific values without driving the real
+// pie-overlay interaction. Multi-select semantics preserved: clicking
+// an option toggles it in `selected` and fires onChange with the new
+// array. Tests for FlowBoard's single-select Type chip can then assert
+// the outer onChange logic correctly collapses to one id.
+vi.mock("@/app/components/NavigationPie", () => ({
+  __esModule: true,
+  default: ({ label, options, selected, onChange }: { label: string; options: ReadonlyArray<{ value: string; label: string }>; selected: string[]; onChange: (next: string[]) => void }) => (
+    <div data-testid={`pie-${label.toLowerCase()}`} data-pie-selected={selected.join(",")}>
+      <span>{label}</span>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          role="option"
+          aria-selected={selected.includes(opt.value)}
+          data-pie-option={opt.value}
+          onClick={() => {
+            const next = selected.includes(opt.value)
+              ? selected.filter((v) => v !== opt.value)
+              : [...selected, opt.value];
+            onChange(next);
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  ),
+}));
+
+// Mock priority catalogue — small fixture so the Priority pie has options.
+vi.mock("@/app/contexts/ArtefactPriorityCatalogueContext", () => ({
+  useArtefactPriorityCatalogue: vi.fn(() => ({
+    priorities: [
+      { id: "pri-crit", name: "Critical", slot: "pri_critical", sort_order: 1, colour: "#dc2626", workspace_id: "ws-1", archived_at: null, created_at: "2026-01-01", updated_at: "2026-01-01" },
+      { id: "pri-med", name: "Medium", slot: "pri_medium", sort_order: 2, colour: null, workspace_id: "ws-1", archived_at: null, created_at: "2026-01-01", updated_at: "2026-01-01" },
+    ],
+    loading: false,
+    error: null,
+  })),
+}));
+
 // Mock useSentinel — expose sentinel_focus_node + sentinel_user
 const mockSentinelFocusNode = "sentinel-node-123";
 vi.mock("@/app/sentinel", () => ({
@@ -185,6 +278,7 @@ function makeConfig(overrides: Record<string, unknown> = {}): import("../loader"
       show_wip: true,
       wip_format: "ratio_with_overage" as const,
       overage_tone: "danger" as const,
+      column_min_width: 280,
     },
     transitions: { mode: "strict" as const },
     empty: { title: "No items", body: "Nothing here" },
@@ -195,9 +289,9 @@ function makeConfig(overrides: Record<string, unknown> = {}): import("../loader"
 /** 3 column stubs for tests that need columns */
 function makeColumns(): import("../hooks/useFlowBoardData").FlowBoardColumn[] {
   return [
-    { flowState: { id: "fs-1", name: "Backlog", sort: 1 }, wipLimit: null, cards: [] },
-    { flowState: { id: "fs-2", name: "In Progress", sort: 2 }, wipLimit: 5, cards: [] },
-    { flowState: { id: "fs-3", name: "Done", sort: 3 }, wipLimit: null, cards: [] },
+    { flowState: { id: "fs-1", name: "Backlog", sort: 1, colour: null }, wipLimit: null, cards: [] },
+    { flowState: { id: "fs-2", name: "In Progress", sort: 2, colour: "#3b82f6" }, wipLimit: 5, cards: [] },
+    { flowState: { id: "fs-3", name: "Done", sort: 3, colour: null }, wipLimit: null, cards: [] },
   ];
 }
 
@@ -287,7 +381,7 @@ describe("FlowBoard — FB1.3.7", () => {
     const onArtefactTypeChange = vi.fn();
     vi.mocked(useFlowBoardData).mockReturnValue({ columns: [], isLoading: false, error: null, refetch: vi.fn() });
 
-    render(
+    const { container } = render(
       <FlowBoard
         config={makeConfig()}
         artefactTypeId="type-task"
@@ -300,10 +394,15 @@ describe("FlowBoard — FB1.3.7", () => {
     const lastCall = calls[calls.length - 1]?.[0];
     expect(lastCall?.artefactTypeId).toBe("type-task");
 
-    // Changing the select fires onArtefactTypeChange (not internal state)
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "type-us" } });
-    // onArtefactTypeChange fires on select change — parent owns the value
+    // Click the Type pie's "User Story" option — fires onArtefactTypeChange
+    // (the controlled-mode setter), not internal state. The mocked
+    // NavigationPie emits one button per option keyed by option value;
+    // there's only ONE button for type-us in the whole tree (priority pie
+    // uses different option values), so we can select by data attribute
+    // alone without disambiguating by pie.
+    const usOption = container.querySelector('[data-pie-option="type-us"]');
+    expect(usOption).toBeTruthy();
+    fireEvent.click(usOption!);
     expect(onArtefactTypeChange).toHaveBeenCalledWith("type-us");
   });
 
@@ -327,24 +426,46 @@ describe("FlowBoard — FB1.3.7", () => {
     expect(container).toBeTruthy();
   });
 
-  // ── AC: addressable slot registered via data-samantha-slot ────────────────
+  // ── AC: addressable wired via <Panel name=…> ──────────────────────────────
+  // Was previously a dead data-samantha-slot attribute on the board root —
+  // AddressAnchorResolver actually watches data-address, not the legacy
+  // attribute, so registration was non-functional. The outer <Panel>
+  // wrapper's useRegisterAddressable now owns the substrate registration
+  // at samantha._viewport.app._kind.panel.<name>. This test asserts the
+  // wiring contract (Panel rendered with the correct name + title) — the
+  // substrate behaviour is covered by Panel's own tests.
 
-  it("registers the addressable slot via data-samantha-slot on the board root", () => {
+  it("wires the addressable via <Panel name=… title=…> with the sidecar's name + panel.title", () => {
     const cols = makeColumns();
     vi.mocked(useFlowBoardData).mockReturnValue({ columns: cols, isLoading: false, error: null, refetch: vi.fn() });
 
     const { container } = render(<FlowBoard config={makeConfig()} />);
 
-    // Slot name from getFlowBoardSlotName("flow_board_workitems")
-    // → "samantha._viewport.app._kind.panel.flow_board_workitems"
-    // The sidecar name IS the full suffix; helper only prepends the address namespace.
-    const slotEl = container.querySelector(
-      "[data-samantha-slot]",
-    );
-    expect(slotEl).toBeTruthy();
-    expect(slotEl?.getAttribute("data-samantha-slot")).toBe(
-      "samantha._viewport.app._kind.panel.flow_board_workitems",
-    );
+    const panelEl = container.querySelector('[data-testid="panel"]');
+    expect(panelEl).toBeTruthy();
+    expect(panelEl?.getAttribute("data-panel-name")).toBe("flow_board_workitems");
+    expect(panelEl?.getAttribute("data-panel-title")).toBe("Flow board");
+  });
+
+  // ── AC: DenseGridHeader fills the sunken band from sidecar + active type ──
+  // The badge comes from the active artefact type's prefix (changes when the
+  // type switcher fires); subtitle from the active type's name; description
+  // from the sidecar's top-level description field.
+
+  it("renders DenseGridHeader with active-type badge + subtitle + sidecar description", () => {
+    const cols = makeColumns();
+    vi.mocked(useFlowBoardData).mockReturnValue({ columns: cols, isLoading: false, error: null, refetch: vi.fn() });
+
+    const { container } = render(<FlowBoard config={makeConfig()} />);
+
+    const headerEl = container.querySelector('[data-testid="dense-grid-header"]');
+    expect(headerEl).toBeTruthy();
+    // The default artefact type per the test sidecar fixture is the first
+    // non-EP type in the mocked catalogue → US (User Story).
+    expect(headerEl?.getAttribute("data-badge")).toBe("US");
+    expect(headerEl?.getAttribute("data-subtitle")).toBe("User Story");
+    // makeConfig() should preserve the sidecar's top-level description.
+    expect(headerEl?.getAttribute("data-description")).toBeTruthy();
   });
 
   // ── Additional: loading state renders progressive skeleton column rail ────
@@ -361,9 +482,12 @@ describe("FlowBoard — FB1.3.7", () => {
     const skeletonCols = container.querySelectorAll(".flow-board__Column-skeleton");
     expect(skeletonCols.length).toBe(3);
 
-    // Toolbar (containing the gear button) renders too — the shell is up
-    // and the user can open WIP settings while the board itself loads.
-    expect(container.querySelector(".flow-board__Toolbar")).toBeTruthy();
+    // The ActionBar chrome (containing the gear, search, and filter chips)
+    // renders too — the shell is up and the user can open WIP settings,
+    // search, or change filters while the board itself loads. Replaces
+    // the previous .flow-board__Toolbar assertion (the inner toolbar was
+    // removed when the gear moved up into ActionBar).
+    expect(container.querySelector('[data-testid="actionbar"]')).toBeTruthy();
   });
 
   // ── Additional: error state renders error placeholder ────────────────────

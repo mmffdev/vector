@@ -54,6 +54,11 @@ export interface FlowBoardConfig {
     wip_format: "ratio_with_overage";
     /** Badge tone applied when a column exceeds its WIP limit. */
     overage_tone: "danger" | "warning";
+    /** Minimum width per column in px — Rally-style. Columns grow
+     *  equally to share spare width when the panel is wider than
+     *  count × min-width; otherwise the rail scrolls horizontally and
+     *  columns stay pinned to this minimum. Default 280. */
+    column_min_width: number;
   };
   transitions: {
     /** v1: "strict" — board only allows transitions that are in flow_transitions. */
@@ -188,10 +193,23 @@ function validateFlowBoardConfig(raw: Record<string, unknown>): FlowBoardConfig 
 
   // columns
   const colsRaw = requireObject(raw, "columns", "root");
+  const minWidthRaw = (colsRaw as Record<string, unknown>).column_min_width;
+  // Optional with default 280px. Validate only when provided so the
+  // sidecar can omit it for the common case.
+  let columnMinWidth = 280;
+  if (minWidthRaw !== undefined) {
+    if (typeof minWidthRaw !== "number" || !Number.isFinite(minWidthRaw) || minWidthRaw < 100) {
+      throw new Error(
+        "columns.column_min_width must be a number ≥ 100 when provided",
+      );
+    }
+    columnMinWidth = Math.floor(minWidthRaw);
+  }
   const columns: FlowBoardConfig["columns"] = {
     show_wip: requireBoolean(colsRaw, "show_wip", "columns"),
     wip_format: requireEnum(colsRaw, "wip_format", "columns", ["ratio_with_overage"]),
     overage_tone: requireEnum(colsRaw, "overage_tone", "columns", ["danger", "warning"]),
+    column_min_width: columnMinWidth,
   };
 
   // transitions
