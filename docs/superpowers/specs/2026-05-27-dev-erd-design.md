@@ -65,7 +65,7 @@ than being hidden.
 │  Mounted at:                                                    │
 │    GET  /_site/admin/dev/erd       → live JSON                 │
 │    POST /_site/admin/dev/erd       → live JSON + write file    │
-│  Auth:  requireDevAPIKey middleware                             │
+│  Auth:  auth.RequirePermission(PortfolioList) — dev router      │
 └─────────────────────────────┬──────────────────────────────────┘
                               │
                 ┌─────────────┴──────────────┐
@@ -81,7 +81,10 @@ than being hidden.
 
 ### `GET /_site/admin/dev/erd`
 
-Auth: `DEV_API_KEY` header (dev-only).
+Auth: in-browser via the existing dev-router perm-gate —
+`auth.RequirePermission(permResolver, permissions.PortfolioList)` — the same gate
+guarding `/dev/api-audit`, `/dev/codegraph`, etc. Curl/Scalar access uses the
+seeded `DEV_API_KEY` Bearer token, which the perm middleware accepts equivalently.
 
 Response (200):
 
@@ -316,7 +319,7 @@ siteAPI.yaml                           # mirror
   `testdata/erd_response.golden.json` (regenerated on intentional schema change).
 - **Integration** — `POST /_site/admin/dev/erd`: writes `dev/audits/erd.json`, file
   matches GET payload, atomic write verified.
-- **Auth gate** — request without `DEV_API_KEY` → 401.
+- **Auth gate** — request lacking `PortfolioList` permission → 401/403 (mirrors `/dev/api-audit` behaviour).
 - **Cache** — second GET within 60s doesn't re-hit pg; after expiry refreshes.
 
 ### Frontend (Vitest)
@@ -324,7 +327,7 @@ siteAPI.yaml                           # mirror
 - Three-column shell renders against a fixture JSON; jsdom skips Cytoscape mount.
 - Filter toggles call the canvas wrapper with correct display flags (wrapper is mocked).
 - Inspector renders PK/FK badges from a fixture node.
-- Snapshot button POSTs with dev-key header; toast on success.
+- Snapshot button POSTs (browser session-cookie auth, same as other dev pages); toast on success.
 
 ### Smoke (manual `<verify>`)
 

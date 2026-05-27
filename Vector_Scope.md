@@ -456,6 +456,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
@@ -1117,6 +1118,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1685,6 +1687,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1957,6 +1960,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `45507864` (2026-05-25): chore(snapshots): refresh api caller-map + dead-apis after bookmark removal
 > Commit `5b5d88d8` (2026-05-26): feat(p3): Pillar 3 step 2 — drop 16 fdw_* foreign tables + fdw_mmff_vector server [pillar-3-step-2] [RF3.2]
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 - **FLOW1.5.2** Backend Reset service — `loadResetData` + `pickSuccessor` walk-back helper + `PreviewReset` (diff only) + `ApplyReset` (single-tx rebind→archive→update→insert→rewrite-edges); routes `POST /_site/flows/reset/{preview,apply}` `[P1]`
 > Commit `cf03ad2` (2026-05-10): feat(FLOW1.5): backend reset preview/apply with walk-back rebind [FLOW1.5.2]
 > Commit `5782d23` (2026-05-12): refactor: rename customisation route to vector-admin; nest api-manager beneath it
@@ -2956,6 +2960,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3390,6 +3395,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `8f5735ae` (2026-05-26): feat(p2): Pillar 2 — full DB merge mmff_vector → vector_artefacts [pillar-2] [RF2.0]
 > Commit `bfd96136` (2026-05-26): feat(p3): Pillar 3 step 1 — repoint backend pool→vaPool [pillar-3-step-1] [RF3.1]
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -4585,6 +4591,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -4670,6 +4677,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `8f5735ae` (2026-05-26): feat(p2): Pillar 2 — full DB merge mmff_vector → vector_artefacts [pillar-2] [RF2.0]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -5129,6 +5137,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -6291,6 +6300,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -6392,6 +6402,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -9156,6 +9167,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -9755,6 +9767,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -11106,6 +11119,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
 
 ---
 
