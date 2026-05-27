@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Panel from "@/app/components/Panel";
 import DevErdCanvas from "./DevErdCanvas";
 import DevErdFilterRail from "./DevErdFilterRail";
@@ -29,6 +29,7 @@ export default function DevErdPanel() {
   const [filters, setFilters] = useState<Filters | null>(null);
   const [selected, setSelected] = useState<ErdNode | ErdEdge | null>(null);
   const [snapshotting, setSnapshotting] = useState(false);
+  const fitRef = useRef<(() => void) | null>(null);
 
   const reload = useCallback(async () => {
     const res = await fetch("/_site/admin/dev/erd", { credentials: "include" });
@@ -64,9 +65,14 @@ export default function DevErdPanel() {
       <div className="dui-erd-shell">
         <DevErdFilterRail data={data} filters={filters} setFilters={setFilters} />
         <div className="dui-erd-shell__main">
-          <DevErdCanvas data={data} filters={filters} onSelect={setSelected} />
+          <DevErdCanvas
+            data={data}
+            filters={filters}
+            onSelect={setSelected}
+            registerFit={(fn) => { fitRef.current = fn; }}
+          />
           <div className="dui-erd-shell__toolbar" role="toolbar">
-            <button type="button">Fit</button>
+            <button type="button" onClick={() => fitRef.current?.()}>Fit</button>
             <button type="button" onClick={() => void reload()}>Reload</button>
             <button type="button" onClick={() => void snapshot()} disabled={snapshotting}>
               {snapshotting ? "Snapshotting…" : "Snapshot"}

@@ -7,17 +7,18 @@ type Props = {
   data: ErdResponse | null;
   filters: Filters | null;
   onSelect: (selected: ErdNode | ErdEdge) => void;
+  registerFit?: (fn: () => void) => void;
 };
 
-type CyDestroyable = { destroy: () => void };
+type CyControllable = { destroy: () => void; fit: () => void };
 
-export default function DevErdCanvas({ data, filters, onSelect }: Props) {
+export default function DevErdCanvas({ data, filters, onSelect, registerFit }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!data || !filters || !hostRef.current) return;
     let disposed = false;
-    let cy: CyDestroyable | null = null;
+    let cy: CyControllable | null = null;
 
     (async () => {
       const cytoscape = (await import("cytoscape")).default;
@@ -54,6 +55,7 @@ export default function DevErdCanvas({ data, filters, onSelect }: Props) {
         ],
       });
       cy = built;
+      registerFit?.(() => built.fit());
 
       built.on("tap", "node", (evt) => {
         if (disposed) return;
@@ -71,7 +73,7 @@ export default function DevErdCanvas({ data, filters, onSelect }: Props) {
       disposed = true;
       cy?.destroy();
     };
-  }, [data, filters, onSelect]);
+  }, [data, filters, onSelect, registerFit]);
 
   return <div ref={hostRef} className="dui-erd-canvas" aria-label="ERD canvas" />;
 }
