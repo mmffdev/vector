@@ -1,0 +1,17 @@
+/* ── Dev ERD page — three-column shell ──────────────────────────── */
+.dui-erd-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr 320px;
+  gap: 12px;
+  height: calc(100vh - 160px);
+}
+.dui-erd-shell__main { display: flex; flex-direction: column; min-width: 0; }
+.dui-erd-shell__toolbar { display: flex; gap: 8px; padding: 8px 0; }
+.dui-erd-shell__stamp { margin-left: auto; opacity: 0.7; font-size: 12px; }
+.dui-erd-rail { overflow: auto; padding: 8px; border-right: 1px solid var(--color-border, #333); }
+.dui-erd-rail h3 { margin: 12px 0 4px; font-size: 12px; opacity: 0.7; text-transform: uppercase; }
+.dui-erd-rail label { display: flex; gap: 6px; padding: 2px 0; font-size: 13px; }
+.dui-erd-canvas { flex: 1; min-height: 0; background: var(--color-bg-elev, #111); border: 1px solid var(--color-border, #333); }
+.dui-erd-inspector { overflow: auto; padding: 8px; border-left: 1px solid var(--color-border, #333); font-size: 13px; }
+.dui-erd-inspector h3 { margin: 0 0 6px; }
+.dui-erd-inspector ul { padding-left: 16px; }

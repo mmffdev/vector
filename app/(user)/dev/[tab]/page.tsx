@@ -23,6 +23,7 @@ import DevComponentsPanel from "@dev/pages/DevComponentsPanel";
 import DevSecurityAuditsPanel from "@dev/pages/DevSecurityAuditsPanel";
 import DevCodePanel from "@dev/pages/DevCodePanel";
 import DevVisualiserPanel from "@dev/pages/DevVisualiserPanel";
+import DevErdPanel from "@dev/pages/DevErdPanel";
 import UiAppIconbrowser from "@dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index";
 
 const TAB_TITLES: Record<string, string> = {
@@ -45,6 +46,7 @@ const TAB_TITLES: Record<string, string> = {
   "security-audits":  "Security Audits",
   "code":             "Code",
   "visualiser":       "Visualiser",
+  "erd":              "ERD",
 };
 
 export default function DevTabPage() {
@@ -79,6 +81,7 @@ export default function DevTabPage() {
         {tab === "security-audits" && <DevSecurityAuditsPanel />}
         {tab === "code"            && <DevCodePanel />}
         {tab === "visualiser"      && <DevVisualiserPanel />}
+        {tab === "erd"             && <DevErdPanel />}
         {tab === "icons"           && (
           <div className="dui-icons-host">
             <UiAppIconbrowser />
