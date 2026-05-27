@@ -360,6 +360,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 ### RF2.6 Phase 6 — Document the win + open follow-up TD
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
@@ -1135,6 +1136,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1715,6 +1717,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -2197,6 +2201,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2334,6 +2339,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -2440,6 +2446,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2553,6 +2560,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2731,6 +2739,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -3038,6 +3047,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3261,6 +3271,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -3344,6 +3355,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -3664,6 +3676,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3739,6 +3752,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -4660,6 +4674,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `41bd3d60` (2026-05-26): feat(p3): DROP DATABASE mmff_vector — refactor complete [pillar-3-step-3-final] [RF-COMPLETE]
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B5.14** Permissions page UX: confirm `/user-management/permissions` matrix is the sole authoring surface for `users_roles_pages` — banner copy + remove tier-tier UI hints from related screens (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
@@ -4707,6 +4722,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -6242,6 +6258,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -6425,6 +6442,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -6553,6 +6571,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `b4d879df` (2026-05-25): feat(prefix): 3-letter table-prefix HARD RULE + registry [B18.8] [B18.9]
 > Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -6919,6 +6938,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
@@ -9317,6 +9337,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d334d427` (2026-05-26): docs(handover): PLA063 / DEP1 artefact dependencies plan
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -9576,6 +9597,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -9746,6 +9768,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -10066,6 +10089,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -11291,6 +11315,7 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 
 ---
 

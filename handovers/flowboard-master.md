@@ -30,12 +30,29 @@
   - Bulk migrator (`go run ./cmd/migrate`) reports 39 phantom pending migrations from a post-refactor substrate-vs-ledger drift. **Unusable.** Apply each new migration via direct `psql -f` + manual ledger backfill.
   - libpq: `/opt/homebrew/Cellar/libpq/18.3/bin/psql`; conn: `PGPASSWORD=$(grep '^DB_PASSWORD=' backend/.env.dev | cut -d= -f2) ... user=mmff_dev` (not `postgres`).
   - Workers MUST verify live schema before writing migrations — spec is corrected but worker output sometimes predates corrections. Future briefs cite live-schema-first.
+- 2026-05-27 — **Phase 2 (Backend) closed — 4/4 endpoints landed + merged on `feature/flowboard`.**
+  - **FB1.2.1** scaffold `backend/internal/flowboard/` package + main.go mount — merged `ff9a6613`. PASS first cycle.
+  - **FB1.2.2** WIP endpoints (GET list + PUT upsert) with membership + workspace-scope gating — merged `71d23566`. 1 REJECT+fix cycle (cross-scope 200+empty → 403 gate added).
+  - **FB1.2.3** Card-prefs endpoints (GET + PUT) with JSONB 8-key allowlist — merged `391d6e6d`. 1 REJECT+fix cycle (`ON CONFLICT ON CONSTRAINT <idx>` → `ON CONFLICT (cols)` for bare-index arbiter).
+  - **FB1.2.4** Topology node members (GET `/_site/topology/{id}/members`) — merged `c863407b`. PASS first cycle.
+- 2026-05-27 — **Phase 3 (Frontend) closed — 7/7 stories landed + merged on `feature/flowboard`.**
+  - **FB1.3.1** scaffold component tree + sidecar JSON — merged `47f242da`. PASS first cycle.
+  - **FB1.3.2** `useFlowBoardData` hook composing flow_states + artefacts + WIP into columns — merged `2914448b`. PASS first cycle.
+  - **FB1.3.3** `BoardColumnHeader` (5 WIP states, overage badge) — merged `4f1288a5`. PASS first cycle.
+  - **FB1.3.4** `@dnd-kit` drag + hard-blocked transitions hook — merged `52da1686`. 1 REJECT+fix cycle (CSS gap: `flow-board__Column` class referenced without matching CSS rule).
+  - **FB1.3.5** `BoardCard` + `CardFieldRenderer` — merged `21c3560b`. PASS first cycle.
+  - **FB1.3.6** `WipSettingsModal` + `WipGearButton` + `useNodeMembership` — merged `7417c902`. PASS first cycle.
+  - **FB1.3.7** `p_FlowBoard.tsx` top-level + addressable surface — merged `43afd1ad`. 1 REJECT+fix cycle (slot-helper doubled prefix from un-exercised FB1.3.1 helper).
 
 ## What is IN PROGRESS
 
-- **Phase 2 (Backend)** — FB1.2.1 scaffold worker complete at `2db247ff`; Opus validator dispatched and gating now.
+- **None — wave closed; FB1.4.1 is user-owned.**
 
 ## What is NEXT
+
+**FB1.4.1 (user).** Manual mount on `app/(user)/value-flow/page.tsx`, wire `ObjectTreeDetailFlyout` Body adapter for flyout-open from card clicks, visual smoke against dev, optional resolution of **TD-FB-CSS-TOKENS** to remove the un-defined token fallbacks in the WIP modal.
+
+Original dependency-ordered plan retained below for audit trail (Phases 1-3 all done).
 
 In strict dependency order. Workers may run in parallel within a phase **only if** the validator confirms no shared file conflicts.
 
@@ -153,3 +170,62 @@ Updated by the validator on every PASS/REJECT. Newest entry on top.
 |----------|-------------------------------------|--------|-----------------------|-------|
 | (none yet — orchestration loop not dispatched)                                          |
 ```
+
+---
+
+## Closing handover
+
+**Wave 13/14 closed 2026-05-27.** Phase 1 (schema, 3/3) + Phase 2 (backend, 4/4) + Phase 3 (frontend, 7/7) all landed and squash-merged on `feature/flowboard`. **FB1.4.1 (page mount + integration smoke) is user-owned** and was explicitly excluded from worker/validator scope.
+
+### Final commit list — `feature/flowboard` (all squash merges, newest at top)
+
+| Story    | Merge SHA   | Notes |
+|----------|-------------|-------|
+| FB1.3.7  | `43afd1ad`  | p_FlowBoard.tsx top-level + addressable surface; 1 REJECT+fix (slot-helper doubled prefix). |
+| FB1.3.6  | `7417c902`  | WipSettingsModal + WipGearButton + useNodeMembership; PASS first cycle. |
+| FB1.3.5  | `21c3560b`  | BoardCard + CardFieldRenderer; PASS first cycle. |
+| FB1.3.4  | `52da1686`  | @dnd-kit drag + hard-blocked transitions; 1 REJECT+fix (CSS gap). |
+| FB1.3.3  | `4f1288a5`  | BoardColumnHeader (5 WIP states + overage badge); PASS first cycle. |
+| FB1.3.2  | `2914448b`  | useFlowBoardData hook (flow_states + artefacts + WIP); PASS first cycle. |
+| FB1.3.1  | `47f242da`  | Frontend tree scaffold + first sidecar JSON; PASS first cycle. |
+| FB1.2.4  | `c863407b`  | Topology node members endpoint; PASS first cycle. |
+| FB1.2.3  | `391d6e6d`  | Card-prefs endpoints (GET + PUT) with JSONB allowlist; 1 REJECT+fix (ON CONFLICT arbiter form). |
+| FB1.2.2  | `71d23566`  | WIP endpoints (GET + PUT) with membership gate; 1 REJECT+fix (cross-scope 403 gate). |
+| FB1.2.1  | `ff9a6613`  | Backend package scaffold + main.go mount; PASS first cycle. |
+| FB1.1.3  | `bd417a86`  | mig 134 `users_flowboard_prefs`; 2 REJECT+fix cycles (DOWN comment block, BIGSERIAL/BIGINT → UUID). |
+| FB1.1.2  | `cc4abf58`  | mig 133 `topology_nodes_wip_limits`; 1 REJECT+fix (stripped `INSERT INTO schema_migrations`). |
+| FB1.1.1  | `df6d412c`  | mig 132 `topology_nodes_members`; PASS first cycle. |
+
+### Test count
+
+**70 unit tests across the FlowBoard package** (8 files):
+- 15 loader (13 from FB1.3.1 + 2 contract from FB1.3.7 fix-worker)
+- 9 useFlowBoardData
+- 6 BoardColumnHeader (snapshot tests)
+- 13 BoardCard
+- 4 permissions (gear visibility gating)
+- 9 p_FlowBoard
+- 7 WipSettingsModal
+- 7 transitions (hard-blocked transitions matrix)
+
+Backend tests: all in `backend/internal/flowboard/` exit 0; `go vet` shows only the pre-existing baseline warnings (polymorphicrefs / featuretests) unchanged by this wave.
+
+### Open TD entries (3)
+
+- **TD-FLOWBOARD-EXIT-RULES** (S2) — spec-noted v1 deferral; exit-rule semantics for `flow_transitions` (e.g. "must have non-empty `flow_states_id` before leaving Doing").
+- **TD-FB-GEAR-ICON** (S3) — unicode ⚙ placeholder used in `WipGearButton`; replace with icon component when icon library is wired.
+- **TD-FB-CSS-TOKENS** (S2) — 7 undefined CSS tokens referenced in the WIP modal block of `app/globals.css` (`--text-primary`, `--text-secondary`, `--surface-hover`, `--surface-secondary`, `--surface-input`, `--border-default`, `--accent-primary`). Resolve to empty CSS values at runtime; modal still functions but loses visual polish. Define in design-system primitives.
+
+### Branch state
+
+`feature/flowboard` is **local-only — never pushed** per master's "no merge no push" + FB1.4.1 user-owned constraint. Branch is based off `feature/notifications-v2` commit `5742f1bc`. 14 squash merges + interleaved validator-verdict / handover-update commits make up the branch history.
+
+### Next-session bootstrap
+
+When resuming this wave (or the FB1.4.1 page-mount):
+
+1. Read this file (`handovers/flowboard-master.md`) first — final state of the wave.
+2. Read `handovers/flowboard-validator.md` — verdict ledger + lessons.
+3. Read `docs/superpowers/specs/2026-05-27-flowboard-design.md` — spec.
+4. For FB1.4.1: dispatch manually as the human-in-the-loop user — mount on `app/(user)/value-flow/page.tsx`, wire `ObjectTreeDetailFlyout` Body adapter (DetailFlyoutBodyProps → ArtefactInlineForm adapter is the >50 LoC sub-component deferred by FB1.3.7), seed `topology_nodes_members` + `topology_nodes_wip_limits` rows per Vector_Scope.md § FB1.4.1 AC, manual visual smoke, then `<update> -c FlowBoard` for the Dev → Components article.
+5. Optional pre-work for FB1.4.1: resolve TD-FB-CSS-TOKENS so the modal renders at the design-ethos bar before manual smoke.
