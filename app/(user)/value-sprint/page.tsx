@@ -35,6 +35,9 @@ import { notify } from "@/app/lib/toast";
 const PANEL_DROP_COLS   = ["parent", "due", "priority"] as const;
 const BACKLOG_DROP_COLS = ["parent", "due", "priority", "sprint"] as const;
 
+const SAVED_VIEW_TARGET_PANEL   = "objecttree:value_sprint_panel";
+const SAVED_VIEW_TARGET_BACKLOG = "objecttree:value_sprint_backlog";
+
 export default function ValueSprint() {
   const { full } = usePageTitle();
 
@@ -561,6 +564,7 @@ export default function ValueSprint() {
                 dropColumnKeys={PANEL_DROP_COLS}
                 refetchRef={panelRefetchRef}
                 bulkLeadingButtons={panelBulkLeadingButtons}
+                savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET_PANEL }}
               />
             </div>
           )}
@@ -593,6 +597,7 @@ export default function ValueSprint() {
               dropColumnKeys={BACKLOG_DROP_COLS}
               refetchRef={backlogRefetchRef}
               bulkLeadingButtons={bulkLeadingButtons}
+              savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET_BACKLOG }}
             />
           )}
         </div>
