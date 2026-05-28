@@ -2645,8 +2645,8 @@ func (i *permCacheInvalidator) InvalidatePermCacheForUser(ctx context.Context, u
 // savedViewsWSAdminAdapter satisfies savedviews.WorkspaceAdminChecker
 // by delegating to the permissions resolver. We use WorkspaceArchive as
 // a proxy for "workspace admin" — it's the most restrictive workspace
-// permission and is gadmin/padmin-only by default. Future work: define
-// a dedicated `workspace.share_views` permission code (TD entry).
+// permission and is gadmin/padmin-only by default. Pay-down tracked at
+// TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE in docs/c_tech_debt.md.
 type savedViewsWSAdminAdapter struct {
 	resolver *permissions.Resolver
 }

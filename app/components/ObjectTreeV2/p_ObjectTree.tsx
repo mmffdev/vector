@@ -354,6 +354,9 @@ export default function ObjectTree({
         currentNodeID: activeScopeNodeId,
         currentWorkspaceID: sentinel_user.workspace_id,
         canShareToNode: !!activeScopeNodeId,
+        // Proxy: workspace.archive stands in for "can share to workspace
+        // scope" until a dedicated workspace.share_views code exists. See
+        // TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE in docs/c_tech_debt.md.
         canShareToWorkspace: sentinel_can("workspace.archive"),
       }
     : null;
