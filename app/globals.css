@@ -19145,17 +19145,115 @@ tr.is-editing {
   width: 140px;
 }
 
-.type-bindings-picker__RemoveBtn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--ink-muted);
-  border-radius: 4px;
+/* Picker remove button — size override on top of .action-btn .action-btn--danger.
+   The colour + border + hover behaviour are inherited from the action-btn
+   rules; only the tighter padding + font-size are particular to the picker
+   row. Kept as a single rule so the next reader sees both inputs at once. */
+.type-bindings-picker__RemoveBtn.action-btn {
   padding: 2px 8px;
   font-size: 11px;
-  cursor: pointer;
 }
 
-.type-bindings-picker__RemoveBtn:hover {
-  border-color: var(--danger, #c33);
-  color: var(--danger, #c33);
+/* =============================================================
+   Shared .action-btn family + .custom-field-flyout layout
+   ─────────────────────────────────────────────────────────────
+   Used by ActionBar buttons, per-row row-buttons, and any
+   inline flyout action button. Replaces the dark-slab inline-
+   styled buttons that pre-dated this. Variants:
+     --primary  → brand-accent fill
+     --danger   → border + ink shift to --danger on hover
+   ============================================================= */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 80ms ease;
+}
+.action-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.action-btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.action-btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.action-btn--danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Flyout — the inline edit/create surface that expands under a grid row
+   (CustomFieldsAdapter.renderRowFlyout + renderCreateFlyout). */
+.custom-field-flyout {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 20px;
+  margin: 12px 0;
+}
+.custom-field-flyout__Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.custom-field-flyout__Header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Two-column form inside the flyout. Form fields on the left, the type-
+   bindings picker on the right. Collapses to one column at narrow widths
+   so the picker doesn't get squeezed below readable density. */
+.custom-field-edit-form__Columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 24px;
+}
+@media (max-width: 1024px) {
+  .custom-field-edit-form__Columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Scope filter chip — the single filter the CustomFieldsAdapter renders
+   into the ActionBar's filter slot. Label-plus-select pill that visually
+   matches the .action-btn cluster sitting next to it. */
+.custom-fields-scope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 12px;
+}
+.custom-fields-scope-chip__Label {
+  color: var(--ink);
+  opacity: 0.7;
+}
+.custom-fields-scope-chip__Select {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
 }

@@ -1,0 +1,16 @@
+{
+  "_comment": "Custom fields catalogue admin grid. dataType='custom_fields' so the registry routes a separate config; resourceUrl points at the workspace fields endpoint. No createableTypeSlots — the adapter's create-action is a single 'Create Field' button.",
+  "dataType": "custom_fields",
+  "label": "Custom Fields",
+  "searchPlaceholder": "Search fields…",
+  "ariaLabel": "Custom fields catalogue grid",
+  "treeName": "customfields",
+  "resourceUrl": "/workspaces/{workspace_id}/fields",
+  "scope": "work",
+  "dndResourceType": "custom_field",
+  "dndEnabled": false,
+  "defaultSortKey": "label",
+  "defaultSortDir": "asc",
+  "paginationOptions": [25, 50, 100, 250],
+  "defaultPageSize": 50
+}

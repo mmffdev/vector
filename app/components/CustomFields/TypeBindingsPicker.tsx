@@ -128,7 +128,7 @@ export default function TypeBindingsPicker({ bindings, onChange, disabled }: Pro
                     </span>
                     <button
                       type="button"
-                      className="type-bindings-picker__RemoveBtn"
+                      className="action-btn action-btn--danger type-bindings-picker__RemoveBtn"
                       onClick={() => toggle(b.artefact_type_id)}
                       disabled={disabled}
                     >
