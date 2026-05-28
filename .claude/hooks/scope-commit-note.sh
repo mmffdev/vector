@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
 # PostToolUse hook — fires after a Bash git commit.
+#
+# DISABLED 2026-05-28 — user request. Two known bugs caused 10,527 commit
+# lines (82% of Vector_Scope.md) to accumulate:
+#   1. MAP_KEYWORDS path matched any commit-msg/file-path keyword against
+#      every ref in scope-refs.map — single commits cross-contaminated 10+
+#      unrelated refs (RF1, sentinel, CUT1, PLA-* injected under B15.3 etc.).
+#   2. No dedup at insert: same SHA could be appended multiple times to the
+#      same story body. Observed: commit 2e809075 inserted 3x in the same
+#      story across multiple themes.
+# Stripped commit-trail 2026-05-28 in same sanitisation pass that extracted
+# RF1 / B14 / B15 to Vector_Scope_Done.md. To re-enable, fix the dedup +
+# narrow MAP_KEYWORDS to explicit refs only, then remove this early exit.
+exit 0
+
+# --- ORIGINAL LOGIC BELOW — kept for reference, unreachable while exit 0 stands. ---
 # Maps the commit to scope item(s) in Vector_Scope.md and appends a note.
 #
 # Matching priority:
