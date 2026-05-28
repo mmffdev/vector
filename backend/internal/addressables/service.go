@@ -41,6 +41,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -439,24 +440,35 @@ type BulkRegisterResult struct {
 // only fails on an unrecoverable system error (rarely seen — the loop
 // is allocation-only). Order of results mirrors order of input.
 //
-// Perf intent: collapses ~8 sequential HTTP roundtrips on /value-sprint
-// mount (each ~150-300ms warm) into one ~250-400ms call. See handover
-// cycle 6 entry for measurement.
+// Items are processed CONCURRENTLY via goroutines (one per item) so
+// the bulk call's wall-clock matches the slowest single item, NOT the
+// sum. Each goroutine grabs its own pool connection through pgxpool
+// (server has the default 10-conn pool — 8-item bulk fits comfortably).
+// Without this, the loop is sequential and the bulk call regresses
+// vs the previous N-parallel HTTP shape. See handover cycle 6 entry
+// for the measurement that proved this.
 func (s *Service) RegisterFromRuntimeBulk(ctx context.Context, items []BulkRegisterItem) []BulkRegisterResult {
 	results := make([]BulkRegisterResult, len(items))
-	for i, item := range items {
-		addr, err := s.RegisterFromRuntime(ctx, item.PageRoute, item.ParentAddress, item.Slot, item.Kind, item.Name, item.Source, item.CustomAppID)
-		if err != nil {
-			results[i] = BulkRegisterResult{Index: i, Err: err}
-			continue
-		}
-		id, helpable, err := s.lookupRowByAddress(ctx, item.PageRoute, addr)
-		if err != nil {
-			results[i] = BulkRegisterResult{Index: i, Address: addr, Err: err}
-			continue
-		}
-		results[i] = BulkRegisterResult{Index: i, ID: id, Address: addr, Helpable: helpable}
+	var wg sync.WaitGroup
+	wg.Add(len(items))
+	for i := range items {
+		go func(i int) {
+			defer wg.Done()
+			item := items[i]
+			addr, err := s.RegisterFromRuntime(ctx, item.PageRoute, item.ParentAddress, item.Slot, item.Kind, item.Name, item.Source, item.CustomAppID)
+			if err != nil {
+				results[i] = BulkRegisterResult{Index: i, Err: err}
+				return
+			}
+			id, helpable, err := s.lookupRowByAddress(ctx, item.PageRoute, addr)
+			if err != nil {
+				results[i] = BulkRegisterResult{Index: i, Address: addr, Err: err}
+				return
+			}
+			results[i] = BulkRegisterResult{Index: i, ID: id, Address: addr, Helpable: helpable}
+		}(i)
 	}
+	wg.Wait()
 	return results
 }
 
