@@ -10042,6 +10042,15 @@ input[type="reset"] {
   vertical-align: middle;
   box-sizing: border-box;
 }
+/* Zero the 3px asymmetric bottom-padding that .tree_accordion-dense__row >
+   .tree_accordion-dense__cell applies grid-wide (see § 13954). Other cells
+   render text whose baseline benefits from the extra bottom space; the
+   row-button chip is a fixed-height inline-flex element and the 3px makes
+   it sit visibly low in the row. Selector mirrors the source rule's
+   specificity so this wins by being later in the cascade. */
+.tree_accordion-dense__row > .tree_accordion-dense__cell--row-buttons {
+  padding-bottom: 0;
+}
 .row-buttons__Container {
   display: inline-flex;
   align-items: center;
@@ -10050,6 +10059,16 @@ input[type="reset"] {
 }
 .row-buttons__Button {
   white-space: nowrap;
+}
+/* Row-button chips run 6px shorter than the ActionBar "Create New" chip
+   (26px vs 32px) so the grid row doesn't expand vertically just to hold
+   the action affordances. Font drops one step (12px) so the trimmed
+   chip still has comfortable text padding without re-clipping labels
+   like "Target Sprint". Scoped to .row-buttons__Button so the same
+   chip class up in the ActionBar keeps its native dimensions. */
+.row-buttons__Button.tree_accordion-dense__filterbar-chip {
+  height: 26px;
+  font-size: 12px;
 }
 
 /* ── Cog-menu column (per-row actions: edit, duplicate, move, split, delete) ── */
@@ -14141,7 +14160,7 @@ input[type="reset"] {
 
 /* Cells */
 .tree_accordion-dense__cell {
-  padding: 0 12px;
+  padding: 2px 0;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
   white-space: nowrap;

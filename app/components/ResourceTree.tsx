@@ -1129,10 +1129,13 @@ function ResourceTreeImpl<T>({
   const SELECTION_COL_WIDTH = 28;
   const DRAG_COL_WIDTH = 22;
   // Slice 4 / value-sprint — rowButtons column width is computed from the
-  // maximum count of buttons returned across visible roots (each button is
-  // ~92px including spacing). Cheap to compute; the cap keeps the column
-  // from growing unboundedly when a caller returns many actions.
-  const ROW_BUTTON_PX = 92;
+  // maximum count of buttons returned across visible roots (each chip is
+  // ~110px including spacing — fits 13-char labels like "Target Sprint"
+  // at 12px font + 12px horizontal chip padding without clipping the
+  // trailing letter; trimmed from 124 after the chip height/font dropped
+  // to 26px/12px). Cheap to compute; the cap keeps the column from
+  // growing unboundedly when a caller returns many actions.
+  const ROW_BUTTON_PX = 110;
   const ROW_BUTTONS_GAP_PX = 8;
   const ROW_BUTTONS_MAX_BUTTONS = 4;
   const COG_COL_WIDTH = 32;
@@ -1576,6 +1579,12 @@ function ResourceTreeImpl<T>({
               // Slice 4 / value-sprint — per-row inline action buttons.
               // Sits between the DnD handle and the Cog menu. Stops click
               // propagation so a button click never selects/opens the row.
+              // Chip style matches the ActionBar's "Create New" chip
+              // (.tree_accordion-dense__filterbar-chip) so the row's
+              // action affordances share the visual language of the
+              // grid-level action affordance one chrome row up — the
+              // accent-filled .btn--primary read like "submit" controls
+              // and competed for attention with the page's real CTAs.
               const btns = rowButtons!(item).slice(0, ROW_BUTTONS_MAX_BUTTONS);
               return (
                 <td
@@ -1583,26 +1592,20 @@ function ResourceTreeImpl<T>({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="row-buttons__Container">
-                    {btns.map((b) => {
-                      const variantClass =
-                        b.variant === "primary"
-                          ? "btn--primary"
-                          : b.variant === "secondary"
-                            ? "btn--secondary"
-                            : "btn--ghost";
-                      return (
-                        <button
-                          key={b.key}
-                          type="button"
-                          className={`btn btn--sm ${variantClass} row-buttons__Button`}
-                          onClick={b.onClick}
-                          aria-label={b.ariaLabel ?? b.label}
-                          disabled={b.disabled}
-                        >
+                    {btns.map((b) => (
+                      <button
+                        key={b.key}
+                        type="button"
+                        className="tree_accordion-dense__filterbar-chip row-buttons__Button"
+                        onClick={b.onClick}
+                        aria-label={b.ariaLabel ?? b.label}
+                        disabled={b.disabled}
+                      >
+                        <span className="tree_accordion-dense__filterbar-chip-label">
                           {b.label}
-                        </button>
-                      );
-                    })}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </td>
               );

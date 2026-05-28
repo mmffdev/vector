@@ -18,6 +18,10 @@ import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLo
 import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
 
+// Priority column is hidden on this surface for now — kept on the
+// builder so other grids (risk, portfolio) still render it.
+const WORK_ITEMS_DROP_COLS = ["priority"] as const;
+
 export default function WorkItemsPage() {
   const { full } = usePageTitle();
   // PLA062 S10: this page reads identity + tenant + scope from Sentinel.
@@ -166,6 +170,7 @@ export default function WorkItemsPage() {
         }}
         wizardConfig={wizardConfig}
         multiSelectEnabled
+        dropColumnKeys={WORK_ITEMS_DROP_COLS}
       />
     </>
     </PageContent>

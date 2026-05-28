@@ -175,6 +175,8 @@ export default function ObjectTree({
   multiSelectEnabled = false,
   onSelectionChange,
   rowButtons,
+  hideCogMenu = false,
+  dropColumnKeys,
   refetchRef,
   bulkLeadingButtons,
 }: {
@@ -215,6 +217,20 @@ export default function ObjectTree({
   // is owned by ResourceTree so a click never bubbles to row-select.
   // Opt-in: omit to keep the existing column layout.
   rowButtons?: (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[];
+  // Suppress the per-row cog menu column. Default is ON across the
+  // /work-items and /portfolio-items grids; value-sprint's two trees
+  // surface their actions via rowButtons + bulk leading buttons, so
+  // the cog is redundant chrome. Opt-OUT so all existing callers keep
+  // the cog without a code change.
+  hideCogMenu?: boolean;
+  // Drop named columns from the built column list before render.
+  // The full column set is required for any caller that doesn't pass
+  // this — leaner page-specific grids (value-sprint, where the row
+  // already carries inline action chips that eat ~244px of horizontal
+  // budget) can shed columns they don't need so the right-edge cells
+  // (sprint, due) stay on-screen instead of falling off the table's
+  // overflow:hidden clamp. Drops by `ColumnDef.key`.
+  dropColumnKeys?: ReadonlyArray<string>;
   // Slice 5 / value-sprint — imperative refetch handle. When the host
   // PATCHes a work item OUTSIDE the tree's own patch wrapper (e.g. the
   // value-sprint "Add to Sprint" row-button hits apiSite.workItems.patch
@@ -812,9 +828,25 @@ export default function ObjectTree({
       if (artefact.sprint_id) createBody.sprint_id = artefact.sprint_id;
       if (artefact.parent_id) createBody.parent_id = artefact.parent_id;
 
+      // Topology pin on the POST itself. apiSite.withForwardedMeg only
+      // auto-forwards ?meg= on GETs (api.ts:154), and a NULL-topology
+      // insert under an active sentinel subtree clamp causes the
+      // backend's post-commit GetWorkItem to reject the just-created
+      // row (service.go:555) — the artefact lands but Create returns
+      // 500 and the second-pass PATCH below never runs ⇒ zombie row.
+      // Mirror the +Add path: append ?meg= manually. Source's own node
+      // if it had one, else the caller's active scope.
+      const pinTo = artefact.topology_node_id ?? activeScopeNodeId;
+      const postPath = pinTo
+        ? `${resourceUrl.split("?")[0]}?meg=${encodeURIComponent(pinTo)}`
+        : resourceUrl.split("?")[0];
+
       let created: { id: string };
       try {
-        created = (await bundle.create(createBody)) as { id: string };
+        created = (await apiSite<{ id: string }>(postPath, {
+          method: "POST",
+          body: JSON.stringify(createBody),
+        })) as { id: string };
       } catch (e) {
         console.error("duplicate: create failed", e);
         return;
@@ -839,13 +871,6 @@ export default function ObjectTree({
       // the default initial state for the type (CreateWorkItem already
       // assigns is_initial=TRUE), so a "Done" source spawns a "Todo"
       // clone rather than dragging finished state into a fresh row.
-      // Topology pin — apiSite.withForwardedMeg only auto-forwards
-      // ?meg= on GETs (api.ts:154), so the POST /work-items above lands
-      // with NULL topology_node_id and the clone drops off-scope. PATCH
-      // it back: source's own node if it had one, else the caller's
-      // active scope node from ScopeContext.
-      const pinTo = artefact.topology_node_id ?? activeScopeNodeId;
-      if (pinTo) patchBody.topology_node_id = pinTo;
       if (Object.keys(patchBody).length > 0) {
         try {
           await bundle.patch(newId, patchBody);
@@ -1014,13 +1039,15 @@ export default function ObjectTree({
     [patchAndApply],
   );
 
-  const columns = useMemo(
-    () => buildWorkItemsColumns(flowStates, patchAndApply, colourMap, {
+  const columns = useMemo(() => {
+    const built = buildWorkItemsColumns(flowStates, patchAndApply, colourMap, {
       onTypeBadgeClick: openInlineForm,
       flowStatesByType,
-    }),
-    [flowStates, patchAndApply, colourMap, openInlineForm, flowStatesByType],
-  );
+    });
+    if (!dropColumnKeys?.length) return built;
+    const drop = new Set(dropColumnKeys);
+    return built.filter((c) => !drop.has(c.key));
+  }, [flowStates, patchAndApply, colourMap, openInlineForm, flowStatesByType, dropColumnKeys]);
 
   const handleSortChange = useCallback(
     (key: string | null, dir: "asc" | "desc") => {
@@ -1753,7 +1780,7 @@ export default function ObjectTree({
           },
         })}
         {...(rowButtons && { rowButtons })}
-        cogMenu={buildCogMenu}
+        {...(!hideCogMenu && { cogMenu: buildCogMenu })}
         selectedId={selectedId}
         onSelect={onSelect}
         pageIndex={pageIndex}

@@ -21,6 +21,20 @@ import { workItems } from "@/app/lib/apiSite";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 
+// Column drops for the value-sprint trees. The rowButtons column adds
+// ~244px of horizontal chrome (Add to Sprint + Target Sprint chips),
+// which pushes the right-edge columns past the table's overflow:hidden
+// clamp. Sprint planning doesn't need Parent (the panel tree already
+// shows hierarchy via indent), Due (sprint commitment is the date
+// here), or Priority (deferred from this surface).
+//
+// Backlog drops Sprint on top — rows there are by definition unassigned;
+// the column would only ever read "—". The page's whole task is to
+// assign them, so the Add-to-Sprint / Target-Sprint chips ARE the
+// affordance and the column is dead weight.
+const PANEL_DROP_COLS   = ["parent", "due", "priority"] as const;
+const BACKLOG_DROP_COLS = ["parent", "due", "priority", "sprint"] as const;
+
 export default function ValueSprint() {
   const { full } = usePageTitle();
 
@@ -543,6 +557,8 @@ export default function ValueSprint() {
                 multiSelectEnabled
                 onSelectionChange={setPanelSelectedIds}
                 rowButtons={panelRowButtons}
+                hideCogMenu
+                dropColumnKeys={PANEL_DROP_COLS}
                 refetchRef={panelRefetchRef}
                 bulkLeadingButtons={panelBulkLeadingButtons}
               />
@@ -573,6 +589,8 @@ export default function ValueSprint() {
               multiSelectEnabled
               onSelectionChange={setBacklogSelectedIds}
               rowButtons={backlogRowButtons}
+              hideCogMenu
+              dropColumnKeys={BACKLOG_DROP_COLS}
               refetchRef={backlogRefetchRef}
               bulkLeadingButtons={bulkLeadingButtons}
             />
