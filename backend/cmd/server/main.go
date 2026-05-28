@@ -53,6 +53,7 @@ import (
 	notifv2rules "github.com/mmffdev/vector-backend/internal/notifications/v2/rules"
 	notifv2templates "github.com/mmffdev/vector-backend/internal/notifications/v2/templates"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/savedviews"
 	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
 	"github.com/mmffdev/vector-backend/internal/sentinel"
@@ -697,6 +698,42 @@ func main() {
 	// fields slice after the auth gate succeeds (mirrors v2 work-items).
 	fieldsSvc := fields.NewService(servicePool, vaPool)
 	fieldsH := fields.NewHandler(fieldsSvc)
+
+	// savedviews — Rally-style saved view configurations. Sole writer for
+	// saved_views table in vector_artefacts. See
+	// docs/superpowers/specs/2026-05-28-saved-views-design.md.
+	savedViewsStore := savedviews.NewPostgresViewStore(vaPool)
+	savedViewsSvc := savedviews.NewService(
+		savedViewsStore,
+		&savedViewsWSAdminAdapter{resolver: permResolver},
+		nil, // audit hook wired in Task 19
+	)
+	savedViewsHandler := savedviews.NewHandler(
+		savedViewsSvc,
+		// Node-membership resolver — inlined SQL probe against
+		// topology_nodes_members. Lives here (not in topology service)
+		// because it's a tiny query specific to the savedviews list endpoint.
+		func(ctx interface{ Done() <-chan struct{} }, userID uuid.UUID) ([]uuid.UUID, error) {
+			realCtx, _ := ctx.(context.Context)
+			if realCtx == nil {
+				realCtx = context.Background()
+			}
+			rows, err := vaPool.Query(realCtx, `SELECT topology_nodes_members_node_id FROM topology_nodes_members WHERE topology_nodes_members_user_id = $1`, userID)
+			if err != nil {
+				return nil, err
+			}
+			defer rows.Close()
+			var out []uuid.UUID
+			for rows.Next() {
+				var id uuid.UUID
+				if err := rows.Scan(&id); err != nil {
+					return nil, err
+				}
+				out = append(out, id)
+			}
+			return out, rows.Err()
+		},
+	)
 
 	// PLA-0026 / Story 00499 (B10): workspace-scoped successor to the
 	// legacy GET /api/subscription/layers. Reads strategy artefacts_types
@@ -1840,6 +1877,14 @@ func main() {
 			r.With(readLimit17).Get("/summary", workItemsV2H.RisksSummary)
 		})
 	}
+
+	// /saved-views — Rally-style saved view configurations. See
+	// docs/superpowers/specs/2026-05-28-saved-views-design.md.
+	r.Route("/saved-views", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		savedViewsHandler.Mount(r)
+	})
 	if rankH != nil {
 		r.Route("/rank", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
@@ -2584,4 +2629,17 @@ func (i *permCacheInvalidator) InvalidatePermCacheForUser(ctx context.Context, u
 		return
 	}
 	_ = i.c.Del(ctx, auth.AuthCacheKeyPrefix+userID.String())
+}
+
+// savedViewsWSAdminAdapter satisfies savedviews.WorkspaceAdminChecker
+// by delegating to the permissions resolver. We use WorkspaceArchive as
+// a proxy for "workspace admin" — it's the most restrictive workspace
+// permission and is gadmin/padmin-only by default. Future work: define
+// a dedicated `workspace.share_views` permission code (TD entry).
+type savedViewsWSAdminAdapter struct {
+	resolver *permissions.Resolver
+}
+
+func (a *savedViewsWSAdminAdapter) HasWorkspaceAdmin(ctx context.Context, userID, _ uuid.UUID) (bool, error) {
+	return a.resolver.Has(ctx, userID, permissions.WorkspaceArchive)
 }
