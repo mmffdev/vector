@@ -21,6 +21,24 @@ export interface BulkActionBarProps {
   onSetOwner?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  // Slice 6 / value-sprint — extra leading buttons. These render FIRST
+  // (left of the existing Status/Priority/Owner trio) and are NOT gated
+  // by the work_items.* permission codes — they're host-decided actions
+  // (e.g. the value-sprint page's "Add to Sprint" / "Target Sprint"
+  // chrome). When the host passes a button with `onClick` undefined the
+  // button is rendered disabled (the host can choose to render an empty
+  // entry to keep the slot visible).
+  //
+  // Caller-owned ARIA + label so the bar stays domain-agnostic — it
+  // doesn't need to know about sprints, releases, or any future domain.
+  leadingButtons?: Array<{
+    key: string;
+    label: string;
+    onClick?: () => void;
+    ariaLabel?: string;
+    variant?: "primary" | "secondary" | "ghost";
+    disabled?: boolean;
+  }>;
 }
 
 export default function BulkActionBar({
@@ -31,6 +49,7 @@ export default function BulkActionBar({
   onSetOwner,
   onArchive,
   onDelete,
+  leadingButtons,
 }: BulkActionBarProps) {
   // Permission codes follow the canonical work_items.* convention.
   // The DB-side seed for these doesn't yet exist (only
@@ -58,6 +77,31 @@ export default function BulkActionBar({
     >
       <div className="toolbar__meta">{count} selected</div>
       <div className="toolbar__actions">
+        {/* Slice 6 / value-sprint — host-supplied bulk actions render
+            FIRST so domain-specific actions ("Add to Sprint", "Target
+            Sprint") read as the primary CTA, with the generic
+            Status/Priority/Owner trio sitting to their right. */}
+        {leadingButtons?.map((b) => {
+          const variantClass =
+            b.variant === "primary"
+              ? "btn--primary"
+              : b.variant === "ghost"
+                ? "btn--ghost"
+                : "btn--secondary";
+          return (
+            <button
+              key={b.key}
+              type="button"
+              className={`btn ${variantClass}`}
+              onClick={b.onClick}
+              aria-label={b.ariaLabel ?? b.label}
+              data-action={b.key}
+              disabled={b.disabled || !b.onClick}
+            >
+              {b.label}
+            </button>
+          );
+        })}
         {canStatus && (
           <button
             type="button"

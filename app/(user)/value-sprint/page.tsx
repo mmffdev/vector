@@ -70,11 +70,23 @@ export default function ValueSprint() {
 
   // Slice 5 — radial picker open state. We track BOTH the row id and the
   // anchor button element so the menu glues to the right button. Closing
-  // clears both.
-  const [targetMenu, setTargetMenu] = useState<{
-    rowId: string;
-    anchor: HTMLElement | null;
-  } | null>(null);
+  // clears both. The picker is reused by slice 6's BULK "Target Sprint"
+  // button — `rowId: null` signals "operate over the current selection".
+  const [targetMenu, setTargetMenu] = useState<
+    | { rowId: string | null; anchor: HTMLElement | null }
+    | null
+  >(null);
+  // Slice 6 — anchor ref for the bulk "Target Sprint" button in the
+  // BulkActionBar. We can't grab activeElement at click-time the way
+  // row buttons do (the bar's children are inside a host-owned subtree
+  // we can't bind a ref into); instead we look up the button by its
+  // data-action attribute once on click, which BulkActionBar stamps for
+  // every leading button.
+  const bulkBarRef = useRef<HTMLDivElement | null>(null);
+  // Track which selection set this batch is operating against so a
+  // racy click (selection changed mid-flight) doesn't quietly mutate
+  // newer-selected rows.
+  const bulkSelectionRef = useRef<Set<string>>(new Set());
 
   // ObjectTreeV2 sidecars — base config is the Work Items wizard, but
   // the value-sprint backlog is intentionally narrower: stories +
@@ -157,6 +169,38 @@ export default function ValueSprint() {
     void refetch();
   }, [refetch, activeNodeId, direction]);
 
+  // Slice 6 — bulk equivalent of assignToSprint. Iterates over the
+  // selected ids and fires PATCHes in parallel via Promise.all so the
+  // user doesn't wait n × RTT. Failures are surfaced individually as
+  // toasts; a partial-failure mode (some succeed, some don't) is
+  // honest about it rather than blocking the whole batch on the first
+  // error. The selection set is captured at call time so a racy
+  // selection change mid-flight doesn't widen the operation.
+  const assignManyToSprint = useCallback(
+    async (ids: string[], sprintId: string | null) => {
+      if (!ids.length) return;
+      const results = await Promise.allSettled(
+        ids.map((id) => workItems.patch(id, { sprint_id: sprintId ?? "" })),
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      await refetch();
+      if (failed === 0) {
+        notify.success(
+          sprintId
+            ? `Added ${ids.length} item${ids.length === 1 ? "" : "s"} to sprint.`
+            : `Removed ${ids.length} item${ids.length === 1 ? "" : "s"} from sprint.`,
+        );
+      } else if (failed === ids.length) {
+        notify.error(`Failed to update ${ids.length} item${ids.length === 1 ? "" : "s"}.`);
+      } else {
+        notify.error(
+          `Updated ${ids.length - failed} of ${ids.length} — ${failed} failed.`,
+        );
+      }
+    },
+    [refetch],
+  );
+
   // Slice 5 — per-row action buttons. "Add to Sprint" assigns the row
   // to the current next-sprint (disabled when none loaded). "Target
   // Sprint" opens the radial picker anchored to that button. The
@@ -205,6 +249,61 @@ export default function ValueSprint() {
     [nextSprint, upcomingSprints.length, assignToSprint],
   );
 
+  // Slice 6 — bulk action buttons surfaced on the BulkActionBar (left
+  // side). "Add to Sprint" runs assignManyToSprint with the current
+  // sprint id; "Target Sprint" opens the same radial picker as the
+  // per-row button, but with rowId: null so the onPick path knows to
+  // operate over the captured selection set rather than a single row.
+  // Both are disabled when their precondition isn't met (no current
+  // sprint / no upcoming sprints).
+  const bulkLeadingButtons = useMemo(() => {
+    if (backlogSelectedIds.size === 0) return undefined;
+    const currentSprintId = nextSprint?.timeboxes_sprints_id ?? null;
+    return [
+      {
+        key: "bulk-add-to-sprint",
+        label: `Add ${backlogSelectedIds.size} to Sprint`,
+        ariaLabel: currentSprintId
+          ? `Add ${backlogSelectedIds.size} selected item${backlogSelectedIds.size === 1 ? "" : "s"} to ${nextSprint?.timeboxes_sprints_name ?? "sprint"}`
+          : "No upcoming sprint to add to",
+        disabled: !currentSprintId,
+        onClick: currentSprintId
+          ? () => {
+              const ids = Array.from(backlogSelectedIds);
+              void assignManyToSprint(ids, currentSprintId);
+            }
+          : undefined,
+        variant: "primary" as const,
+      },
+      {
+        key: "bulk-target-sprint",
+        label: "Target Sprint",
+        ariaLabel: `Pick a target sprint for ${backlogSelectedIds.size} selected item${backlogSelectedIds.size === 1 ? "" : "s"}`,
+        disabled: upcomingSprints.length === 0,
+        onClick:
+          upcomingSprints.length === 0
+            ? undefined
+            : () => {
+                // Snapshot the selection at click time. The radial
+                // menu callback later reads bulkSelectionRef so a
+                // selection change between click and pick doesn't
+                // widen the batch.
+                bulkSelectionRef.current = new Set(backlogSelectedIds);
+                const btn = bulkBarRef.current?.querySelector(
+                  '[data-action="bulk-target-sprint"]',
+                ) as HTMLElement | null;
+                setTargetMenu({ rowId: null, anchor: btn });
+              },
+        variant: "secondary" as const,
+      },
+    ];
+  }, [
+    backlogSelectedIds,
+    nextSprint,
+    upcomingSprints.length,
+    assignManyToSprint,
+  ]);
+
   const subscriptionID = sentinel_tenant?.id ?? null;
   const sprintID = filters.sprint_id || null;
   const topic = subscriptionID
@@ -222,7 +321,7 @@ export default function ValueSprint() {
           title={full}
           subtitle={
             backlogSelectedIds.size > 0
-              ? `${backlogSelectedIds.size} selected — bulk-action chrome lands in slice 6.`
+              ? `${backlogSelectedIds.size} selected — use the bulk bar to add or target a sprint.`
               : "Plan the active sprint — drag items from the backlog into the sprint panel."
           }
         />
@@ -258,20 +357,28 @@ export default function ValueSprint() {
             Renders unconditionally; ObjectTree shows its own loader while the
             artefact-type catalogue resolves. Work Items keeps the types guard
             because its summary cells depend on the catalogue; we don't. */}
-        <ObjectTree
-          title="Backlog"
-          addressableName="value_sprint_backlog_tree_ll"
-          subtitleBadge="00"
-          subtitle="Workspace backlog"
-          description="All work items in scope. Drag rows onto the sprint above to commit them."
-          selectedId={selectedItem?.id ?? null}
-          onSelect={setSelectedItem}
-          wizardConfig={wizardConfig}
-          multiSelectEnabled
-          onSelectionChange={setBacklogSelectedIds}
-          rowButtons={backlogRowButtons}
-          refetchRef={backlogRefetchRef}
-        />
+        {/* Wrap the backlog ObjectTree in a ref'd div so the bulk
+            "Target Sprint" button click handler can locate itself via
+            [data-action="bulk-target-sprint"] for the radial menu's
+            anchor. The data-action attribute is stamped on every leading
+            button by BulkActionBar. */}
+        <div ref={bulkBarRef}>
+          <ObjectTree
+            title="Backlog"
+            addressableName="value_sprint_backlog_tree_ll"
+            subtitleBadge="00"
+            subtitle="Workspace backlog"
+            description="All work items in scope. Drag rows onto the sprint above to commit them."
+            selectedId={selectedItem?.id ?? null}
+            onSelect={setSelectedItem}
+            wizardConfig={wizardConfig}
+            multiSelectEnabled
+            onSelectionChange={setBacklogSelectedIds}
+            rowButtons={backlogRowButtons}
+            refetchRef={backlogRefetchRef}
+            bulkLeadingButtons={bulkLeadingButtons}
+          />
+        </div>
 
         {/* Slice 5 — radial picker. Open state is page-owned so the same
             instance services every row's "Target Sprint" button. We
@@ -287,7 +394,16 @@ export default function ValueSprint() {
           maxItems={8}
           ariaLabel="Pick a target sprint"
           onPick={(sprintId) => {
-            if (targetMenu) void assignToSprint(targetMenu.rowId, sprintId);
+            if (!targetMenu) return;
+            if (targetMenu.rowId === null) {
+              // Bulk mode — selection was snapshotted into
+              // bulkSelectionRef at click time so a racy reselection
+              // between open and pick doesn't widen the operation.
+              const ids = Array.from(bulkSelectionRef.current);
+              void assignManyToSprint(ids, sprintId);
+            } else {
+              void assignToSprint(targetMenu.rowId, sprintId);
+            }
           }}
           onClose={() => setTargetMenu(null)}
         />

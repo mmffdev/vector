@@ -61,7 +61,7 @@ import {
   workItemsCanReparent,
   workItemsGetCandidateIds,
 } from "@/app/components/ObjectTreeV2/configs/workItemsReparentRules";
-import BulkActionBar from "@/app/components/BulkActionBar";
+import BulkActionBar, { type BulkActionBarProps } from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
@@ -176,6 +176,7 @@ export default function ObjectTree({
   onSelectionChange,
   rowButtons,
   refetchRef,
+  bulkLeadingButtons,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
@@ -221,6 +222,12 @@ export default function ObjectTree({
   // the new sprint_id surfaces inline. Filling this ref is a one-time
   // op on mount; callers read .current() to fire a refetch.
   refetchRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  // Slice 6 / value-sprint — host-supplied leading buttons for the
+  // BulkActionBar. They render before the generic Status/Priority/Owner
+  // trio. The host receives the selectedIds Set (mirrored via
+  // onSelectionChange) and returns its own bulk-action callbacks; this
+  // surface stays domain-agnostic.
+  bulkLeadingButtons?: BulkActionBarProps["leadingButtons"];
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -1693,7 +1700,11 @@ export default function ObjectTree({
       {createFlyoutNode}
       {/* TODO(00456): wire bulk action handlers in WS3-D */}
       {multiSelectEnabled && (
-        <BulkActionBar selectedIds={selectedIds} onClear={clearSelection} />
+        <BulkActionBar
+          selectedIds={selectedIds}
+          onClear={clearSelection}
+          leadingButtons={bulkLeadingButtons}
+        />
       )}
       <ResourceTree<WorkItem>
         roots={windowRoots}
