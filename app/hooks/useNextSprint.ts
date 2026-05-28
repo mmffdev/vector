@@ -43,28 +43,47 @@ export interface SprintWireRow {
 }
 
 export interface UseNextSprintResult {
+  /** Picked "current" sprint per the selection rule above. */
   sprint: SprintWireRow | null;
+  /**
+   * Next-up-to-N candidate sprints (planned + future-or-today, plus any
+   * status=active) sorted ascending by start_date. Sliced to
+   * `upcomingLimit` (default 8). Used by the "Target Sprint" radial
+   * picker. Derived from the SAME fetch as `sprint` so the page makes
+   * one API call instead of two.
+   */
+  upcoming: SprintWireRow[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
 /**
- * Returns the next-up sprint for (workspaceId, optional orgNodeId).
- * Re-fires on either argument changing. Tolerates 4xx/5xx by surfacing
- * `error` — callers render a fallback state in that case.
+ * Returns the next-up sprint AND the next N upcoming sprints for
+ * (workspaceId, optional orgNodeId) — both derived from a single
+ * /timeboxes/sprints fetch. Re-fires on any argument changing.
+ * Tolerates 4xx/5xx by surfacing `error`.
+ *
+ * PERF (2026-05-28) — collapsed what used to be two hooks
+ * (useNextSprint + useUpcomingSprints) into one. Real-browser waterfall
+ * profiling on /value-sprint showed the same endpoint being hit twice
+ * with identical params; the two hooks shared no data even though their
+ * input sets were 100% overlapping.
  */
 export function useNextSprint(
   workspaceId: string | null,
   orgNodeId?: string | null,
+  upcomingLimit = 8,
 ): UseNextSprintResult {
   const [sprint, setSprint] = useState<SprintWireRow | null>(null);
+  const [upcoming, setUpcoming] = useState<SprintWireRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!workspaceId) {
       setSprint(null);
+      setUpcoming([]);
       setError(null);
       return;
     }
@@ -83,7 +102,9 @@ export function useNextSprint(
       // a true date >= when both sides are calendar dates with no zone.
       const todayIso = new Date().toISOString().slice(0, 10);
 
-      // Pass 1 — planned + future-or-today start date, sorted ascending.
+      // Pick "current sprint" — planned + future-or-today start date wins,
+      // sorted ascending; fall back to status=active if no planned future
+      // candidate; else null.
       const planned = items
         .filter(
           (s) =>
@@ -98,74 +119,14 @@ export function useNextSprint(
         );
       if (planned.length) {
         setSprint(planned[0]);
-        return;
+      } else {
+        const active = items.find((s) => s.timeboxes_sprints_status === "active");
+        setSprint(active ?? null);
       }
 
-      // Pass 2 — fall back to the active sprint, if any.
-      const active = items.find((s) => s.timeboxes_sprints_status === "active");
-      setSprint(active ?? null);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to load sprints";
-      setError(msg);
-      setSprint(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId, orgNodeId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  return { sprint, loading, error, refetch: load };
-}
-
-/**
- * useUpcomingSprints — returns the next-up-to-N planned sprints with
- * start_date >= today, sorted ascending by start_date. Used by the
- * "Target Sprint" radial pill menu on the value-sprint backlog: the
- * user picks one of the next 8 sprints to assign a work item to.
- *
- * Same workspace + topology clamp + tolerance as useNextSprint; differs
- * only in returning the list (sliced to `limit`) instead of picking one.
- */
-export interface UseUpcomingSprintsResult {
-  sprints: SprintWireRow[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useUpcomingSprints(
-  workspaceId: string | null,
-  orgNodeId?: string | null,
-  limit = 8,
-): UseUpcomingSprintsResult {
-  const [list, setList] = useState<SprintWireRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!workspaceId) {
-      setList([]);
-      setError(null);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ workspace_id: workspaceId });
-      if (orgNodeId) params.set("org_node_id", orgNodeId);
-      const data = await sprints.list(params.toString()) as unknown as {
-        items?: SprintWireRow[];
-        total?: number;
-      };
-      const items = data.items ?? [];
-      const todayIso = new Date().toISOString().slice(0, 10);
-
-      // Planned + future-or-today + active. Active included so a user
-      // mid-sprint can still target it explicitly from the menu.
-      const candidates = items
+      // Upcoming list — planned-future + active, sorted ascending, sliced.
+      // Active included so a user mid-sprint can still target it explicitly.
+      const upcomingList = items
         .filter((s) => {
           const st = s.timeboxes_sprints_status;
           if (st === "active") return true;
@@ -183,21 +144,21 @@ export function useUpcomingSprints(
             b.timeboxes_sprints_date_start ?? "",
           ),
         )
-        .slice(0, limit);
-
-      setList(candidates);
+        .slice(0, upcomingLimit);
+      setUpcoming(upcomingList);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to load sprints";
       setError(msg);
-      setList([]);
+      setSprint(null);
+      setUpcoming([]);
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, orgNodeId, limit]);
+  }, [workspaceId, orgNodeId, upcomingLimit]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  return { sprints: list, loading, error, refetch: load };
+  return { sprint, upcoming, loading, error, refetch: load };
 }

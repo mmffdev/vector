@@ -16,7 +16,7 @@ import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLo
 import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { useNextSprint, useUpcomingSprints } from "@/app/hooks/useNextSprint";
+import { useNextSprint } from "@/app/hooks/useNextSprint";
 import { workItems } from "@/app/lib/apiSite";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
@@ -49,17 +49,15 @@ export default function ValueSprint() {
   // child node of a propagated sprint, same as TimeboxObjectTree's
   // reload().
   const workspaceId = sentinel_user?.tenant_id ?? null;
-  const { sprint: nextSprint, refetch: refetchNextSprint } = useNextSprint(
-    workspaceId,
-    activeNodeId,
-  );
-  // Slice 5 — feeds the "Target Sprint" radial picker (up to 8 sprints
-  // sorted by start_date asc, including the active one if any).
-  const { sprints: upcomingSprints } = useUpcomingSprints(
-    workspaceId,
-    activeNodeId,
-    8,
-  );
+  // PERF (2026-05-28) — single hook returns both the picked next sprint
+  // AND the next-up-to-8 upcoming sprints (for the "Target Sprint"
+  // radial picker). Was two hooks firing /timeboxes/sprints twice with
+  // identical params; collapsed to one fetch.
+  const {
+    sprint: nextSprint,
+    upcoming: upcomingSprints,
+    refetch: refetchNextSprint,
+  } = useNextSprint(workspaceId, activeNodeId, 8);
 
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
