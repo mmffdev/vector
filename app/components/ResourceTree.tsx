@@ -171,6 +171,22 @@ export interface MenuItem {
   disabled?: boolean;
 }
 
+// Slice 4 / value-sprint — per-row inline action buttons. Sits in a
+// dedicated column between the DnD drag-handle and the Cog menu. Opt-in:
+// trees that don't pass `rowButtons` get an unchanged column layout. Each
+// returned button renders with `.btn .btn--ghost .btn--sm` styling so the
+// row chrome stays subtle; click invokes onClick(row).
+export interface RowButton {
+  key: string;
+  label: string;
+  onClick: () => void;
+  ariaLabel?: string;
+  disabled?: boolean;
+  // Visual variant — defaults to "ghost". "primary" used sparingly for the
+  // single most-likely action (e.g. "Add to Sprint" when a sprint is loaded).
+  variant?: "primary" | "secondary" | "ghost";
+}
+
 // Set 5 — Colour / tone hooks. Each entry is an override callback; defaults
 // resolve to no-op. Reserved for future tone packs (e.g. risk colour rules).
 export interface ToneOverrides<T> {
@@ -243,6 +259,12 @@ export interface ResourceTreeProps<T> {
 
   // ── Set 4: CogMenu (type-only this card) ──
   cogMenu?: (row: T) => MenuItem[];
+
+  // Slice 4 / value-sprint — per-row inline action buttons. Renders an
+  // additional column AFTER the DnD handle and BEFORE the Cog menu.
+  // Opt-in: omit to keep the existing column layout (Work Items,
+  // Portfolio, Risk, Scope all render identically when this is absent).
+  rowButtons?: (row: T) => RowButton[];
 
   // ── Set 5: Colour / tone (no-op default) ──
   tone?: ToneOverrides<T>;
@@ -827,6 +849,7 @@ function ResourceTreeImpl<T>({
   dnd,
   selection,
   cogMenu,
+  rowButtons,
   expandAllConcurrency = 6,
   // Tone (reserved; not consumed in v1 internals — column renderers handle it)
   // (patch / tone are accepted to keep the surface contract; column
@@ -1097,13 +1120,21 @@ function ResourceTreeImpl<T>({
   );
 
   // ── Column resize ────────────────────────────────────────────────────────
-  // Lead columns (selection checkbox + DnD drag handle + cog-menu) sit before
-  // the user columns so colgroup / thead / tbody share the same column count
-  // and the resize maths line up with the rendered DOM. Order is:
-  // selection → DnD → cog → user-columns; consumers can enable any subset.
+  // Lead columns (selection checkbox + DnD drag handle + per-row buttons +
+  // cog-menu) sit before the user columns so colgroup / thead / tbody share
+  // the same column count and the resize maths line up with the rendered
+  // DOM. Order is: stripe → selection → DnD → rowButtons → cog →
+  // user-columns; consumers can enable any subset.
   const TYPE_STRIPE_COL_WIDTH = 10;
   const SELECTION_COL_WIDTH = 28;
   const DRAG_COL_WIDTH = 22;
+  // Slice 4 / value-sprint — rowButtons column width is computed from the
+  // maximum count of buttons returned across visible roots (each button is
+  // ~92px including spacing). Cheap to compute; the cap keeps the column
+  // from growing unboundedly when a caller returns many actions.
+  const ROW_BUTTON_PX = 92;
+  const ROW_BUTTONS_GAP_PX = 8;
+  const ROW_BUTTONS_MAX_BUTTONS = 4;
   const COG_COL_WIDTH = 32;
   // Stripe sits FIRST when enabled — appears before every control so
   // the type colour reads cleanly as the row's leading edge.
@@ -1111,9 +1142,31 @@ function ResourceTreeImpl<T>({
   const stripeOffset = stripeEnabled ? 1 : 0;
   const selectionOffset = selection ? 1 : 0;
   const dndOffset = dnd ? 1 : 0;
+  // rowButtons sits between DnD and Cog — opt-in, only when prop supplied.
+  const rowButtonsEnabled = !!rowButtons;
+  const rowButtonsOffset = rowButtonsEnabled ? 1 : 0;
   const cogOffset = cogMenu ? 1 : 0;
-  const leadOffset = stripeOffset + selectionOffset + dndOffset + cogOffset;
+  const leadOffset = stripeOffset + selectionOffset + dndOffset + rowButtonsOffset + cogOffset;
   const primaryColIdx = leadOffset;
+
+  // Max button count across visible roots — drives rowButtons column width.
+  // We sample roots only (not expanded children) to keep this O(n) and to
+  // avoid re-measuring on every expand; an under-sized column just clips,
+  // which CSS handles via ellipsis (the column has min-width via flex).
+  const rowButtonsMaxCount = useMemo(() => {
+    if (!rowButtons) return 0;
+    let max = 0;
+    for (const r of roots) {
+      const n = rowButtons(r).length;
+      if (n > max) max = n;
+      if (max >= ROW_BUTTONS_MAX_BUTTONS) break;
+    }
+    return Math.min(max, ROW_BUTTONS_MAX_BUTTONS);
+  }, [roots, rowButtons]);
+  const ROW_BUTTONS_COL_WIDTH =
+    rowButtonsMaxCount === 0
+      ? 0
+      : rowButtonsMaxCount * ROW_BUTTON_PX + (rowButtonsMaxCount - 1) * ROW_BUTTONS_GAP_PX + 16;
 
   // ID column width tracks the deepest currently-visible row so tree-line
   // chrome never clips the tag text. Depends on expanded+childMap which are
@@ -1149,9 +1202,10 @@ function ResourceTreeImpl<T>({
     if (stripeEnabled) lead.push(TYPE_STRIPE_COL_WIDTH);
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
+    if (rowButtonsEnabled) lead.push(ROW_BUTTONS_COL_WIDTH);
     if (cogMenu) lead.push(COG_COL_WIDTH);
     return [...lead, ...userWidths];
-  }, [columns, dnd, selection, cogMenu, stripeEnabled, dynamicIdColWidth]);
+  }, [columns, dnd, selection, cogMenu, stripeEnabled, dynamicIdColWidth, rowButtonsEnabled, ROW_BUTTONS_COL_WIDTH]);
   const minWidthsArr = useMemo<number[]>(() => {
     const userMins = columns.map((c) => c.minWidth ?? 40);
     userMins[0] = dynamicIdColWidth;
@@ -1159,9 +1213,10 @@ function ResourceTreeImpl<T>({
     if (stripeEnabled) lead.push(TYPE_STRIPE_COL_WIDTH);
     if (selection) lead.push(SELECTION_COL_WIDTH);
     if (dnd) lead.push(DRAG_COL_WIDTH);
+    if (rowButtonsEnabled) lead.push(ROW_BUTTONS_COL_WIDTH);
     if (cogMenu) lead.push(COG_COL_WIDTH);
     return [...lead, ...userMins];
-  }, [columns, dnd, selection, cogMenu, stripeEnabled, dynamicIdColWidth]);
+  }, [columns, dnd, selection, cogMenu, stripeEnabled, dynamicIdColWidth, rowButtonsEnabled, ROW_BUTTONS_COL_WIDTH]);
 
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1517,6 +1572,41 @@ function ResourceTreeImpl<T>({
                 onClick={(e) => e.stopPropagation()}
               />
             )}
+            {rowButtonsEnabled && (() => {
+              // Slice 4 / value-sprint — per-row inline action buttons.
+              // Sits between the DnD handle and the Cog menu. Stops click
+              // propagation so a button click never selects/opens the row.
+              const btns = rowButtons!(item).slice(0, ROW_BUTTONS_MAX_BUTTONS);
+              return (
+                <td
+                  className="tree_accordion-dense__cell tree_accordion-dense__cell--row-buttons"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="row-buttons__Container">
+                    {btns.map((b) => {
+                      const variantClass =
+                        b.variant === "primary"
+                          ? "btn--primary"
+                          : b.variant === "secondary"
+                            ? "btn--secondary"
+                            : "btn--ghost";
+                      return (
+                        <button
+                          key={b.key}
+                          type="button"
+                          className={`btn btn--sm ${variantClass} row-buttons__Button`}
+                          onClick={b.onClick}
+                          aria-label={b.ariaLabel ?? b.label}
+                          disabled={b.disabled}
+                        >
+                          {b.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </td>
+              );
+            })()}
             {cogMenu && (
               <CogMenuCell
                 rowId={id}
@@ -1671,6 +1761,13 @@ function ResourceTreeImpl<T>({
                 <th
                   key="__drag"
                   className="tree_accordion-dense__th tree_accordion-dense__th--drag"
+                  aria-hidden="true"
+                />
+              )}
+              {rowButtonsEnabled && (
+                <th
+                  key="__row-buttons"
+                  className="tree_accordion-dense__th tree_accordion-dense__th--row-buttons"
                   aria-hidden="true"
                 />
               )}

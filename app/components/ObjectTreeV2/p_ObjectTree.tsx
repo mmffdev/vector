@@ -174,6 +174,7 @@ export default function ObjectTree({
   columnCatalogue,
   multiSelectEnabled = false,
   onSelectionChange,
+  rowButtons,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
@@ -205,6 +206,13 @@ export default function ObjectTree({
   // omits the prop and gets identical chrome to before.
   multiSelectEnabled?: boolean;
   onSelectionChange?: (selectedIds: Set<string>) => void;
+  // Slice 4 / value-sprint — per-row inline action buttons. Passed
+  // through to ResourceTree's rowButtons slot (column sits between the
+  // DnD handle and the Cog menu). Each returned button is rendered as
+  // `.btn .btn--sm <variant>` and click invokes onClick(); stopPropagation
+  // is owned by ResourceTree so a click never bubbles to row-select.
+  // Opt-in: omit to keep the existing column layout.
+  rowButtons?: (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[];
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -1708,6 +1716,7 @@ export default function ObjectTree({
             onSelectionChange: setSelectedIds,
           },
         })}
+        {...(rowButtons && { rowButtons })}
         cogMenu={buildCogMenu}
         selectedId={selectedId}
         onSelect={onSelect}

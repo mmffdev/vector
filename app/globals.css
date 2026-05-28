@@ -10027,6 +10027,31 @@ input[type="reset"] {
   );
 }
 
+/* ── Per-row inline action buttons (rowButtons slot in ResourceTree) ──
+   Sits between the DnD handle column and the Cog menu column. Width is
+   computed in the React component from the max button count across
+   visible roots (see ResourceTree.tsx ROW_BUTTONS_COL_WIDTH); CSS here
+   just lays the buttons out in a horizontal flex row with consistent
+   spacing. Each button composes from .btn .btn--sm .btn--ghost etc.,
+   no bespoke chrome — matches the project's button system. */
+.tree_accordion-dense__th--row-buttons,
+.tree_accordion-dense__cell--row-buttons {
+  padding-left: 4px;
+  padding-right: 4px;
+  text-align: center;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+.row-buttons__Container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+.row-buttons__Button {
+  white-space: nowrap;
+}
+
 /* ── Cog-menu column (per-row actions: edit, duplicate, move, split, delete) ── */
 .tree_accordion-dense__th--cog,
 .tree_accordion-dense__cell--cog {
