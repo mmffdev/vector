@@ -1,9 +1,11 @@
 ---
 name: search
-description: Fan-out targeted full-repo search. Spawns 4 parallel Haiku sub-agents across the four major buckets of the tree, each returning a compiled list of hits (file:line + 1-line context). Use when the user invokes `<search> <term>` and wants a fast, exhaustive sweep — every page, script, doc, config, asset — for a literal string or name. Case-insensitive by default.
+description: Fan-out targeted full-repo search for LITERAL STRINGS — CSS class names, doc text, config keys, magic strings, env vars, file paths. NOT for code symbols (functions, types, components, methods) — for those, use the `lsp-go` and `lsp-ts` MCP tools (definition / references / hover) which give typed answers in one call. Spawns 4 parallel Haiku sub-agents across the four major buckets of the tree. Case-insensitive by default.
 ---
 
 # `<search>` — Targeted fan-out repo search
+
+**Scope: literal strings only.** Code-symbol questions (where is X defined, every caller of X, what implements interface Y) go through the LSP MCP tools (`lsp-ts__definition`, `lsp-ts__references`, `lsp-go__definition`, `lsp-go__references`, `lsp-go__implementation`) — they're faster, semantically typed, and don't burn 4 Haiku sub-agent calls. See [`docs/c_c_lsp_mcp.md`](../../../docs/c_c_lsp_mcp.md) for the wiring.
 
 Spawns 4 parallel Haiku sub-agents across the repo, collates their hits, and returns one compiled list grouped by area. Fast because the four sub-agents run concurrently and each only sees its own bucket; cheap because Haiku.
 
@@ -123,6 +125,7 @@ Output the collated report directly. No follow-up question, no offer to read fil
 
 ## When NOT to use this skill
 
+- **Code symbols.** "Where is `useSentinel` defined" / "who calls `polymorphicrefs.Resolve`" / "what implements `topology.Service`" — use the LSP MCP tools (`lsp-ts__definition`, `lsp-ts__references`, `lsp-go__implementation`). One typed call beats a 4-Haiku fan-out that returns grep matches in comments and dead branches.
 - **Known target.** If the user names a specific file/symbol and you can `Read` or `Grep` it in one shot, do that instead.
 - **Semantic search.** "Where do we handle auth failures?" is a research question for the `Explore` agent, not a literal-string sweep.
 - **Code review / audit.** Use `code-reviewer` or `Plan` agents — they read whole files, not excerpts.

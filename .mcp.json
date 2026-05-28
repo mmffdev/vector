@@ -30,6 +30,21 @@
         "${CLAUDE_PROJECT_DIR}/.claude/bin/pg-mcp.sh",
         "library"
       ]
+    },
+    "lsp-go": {
+      "type": "stdio",
+      "command": "/opt/homebrew/bin/gopls",
+      "args": ["mcp"]
+    },
+    "lsp-ts": {
+      "type": "stdio",
+      "command": "/Users/rick/go/bin/mcp-language-server",
+      "args": [
+        "-workspace", "${CLAUDE_PROJECT_DIR}",
+        "-lsp", "typescript-language-server",
+        "--",
+        "--stdio"
+      ]
     }
   }
 }
