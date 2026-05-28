@@ -162,3 +162,68 @@ export async function archiveWorkspaceField(
     },
   );
 }
+
+// ── Type bindings (artefacts_types_fields) ──────────────────────────────
+//
+// Wrappers for the `/workspaces/{id}/fields/{field_id}/types` surface.
+// FieldTypeBinding mirrors the backend's `bindingOut` shape (one row in
+// the joined artefacts_types_fields × artefacts_types result).
+//
+// The GET wrapper returns just the `bindings` array — the field_id echo
+// is dropped because callers already know it.
+// PUT replaces the full binding set atomically (set semantics inside
+// one transaction). PATCH updates one (field_id, type_id) tuple.
+
+export interface FieldTypeBinding {
+  artefact_type_id: string;
+  artefact_type_name: string;
+  artefact_type_scope: "work" | "strategy";
+  position: number;
+  required: boolean;
+  default_value: string | null;
+}
+
+interface ListBindingsResponse {
+  field_id: string;
+  bindings: FieldTypeBinding[];
+}
+
+export async function getFieldTypeBindings(
+  workspaceId: string,
+  fieldId: string,
+): Promise<FieldTypeBinding[]> {
+  const res = await apiSite<ListBindingsResponse>(
+    `/workspaces/${encodeURIComponent(workspaceId)}/fields/${encodeURIComponent(fieldId)}/types`,
+  );
+  return res.bindings ?? [];
+}
+
+export async function replaceFieldTypeBindings(
+  workspaceId: string,
+  fieldId: string,
+  bindings: Array<Pick<FieldTypeBinding, "artefact_type_id" | "position" | "required" | "default_value">>,
+): Promise<FieldTypeBinding[]> {
+  const res = await apiSite<ListBindingsResponse>(
+    `/workspaces/${encodeURIComponent(workspaceId)}/fields/${encodeURIComponent(fieldId)}/types`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ bindings }),
+    },
+  );
+  return res.bindings ?? [];
+}
+
+export async function updateFieldTypeBinding(
+  workspaceId: string,
+  fieldId: string,
+  typeId: string,
+  patch: Partial<Pick<FieldTypeBinding, "position" | "required" | "default_value">>,
+): Promise<FieldTypeBinding> {
+  return await apiSite<FieldTypeBinding>(
+    `/workspaces/${encodeURIComponent(workspaceId)}/fields/${encodeURIComponent(fieldId)}/types/${encodeURIComponent(typeId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    },
+  );
+}
