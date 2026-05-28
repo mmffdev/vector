@@ -170,7 +170,7 @@ type Service struct {
 // SubtreeCacheInvalidator is the narrow interface the topology Service
 // uses to wipe Sentinel's subtree cache on any structure-changing
 // write. Implementation lives in main.go (a thin adapter over
-// cache.Client.DelPattern + sentinel.SubtreeCacheKeyPrefix) so this
+// cache.Client.DelPattern + sentinel.CacheKeyPrefixForTenant) so this
 // package doesn't import sentinel or cache directly — keeps the
 // dep graph one-way (sentinel imports cache; topology calls back via
 // this interface).
@@ -732,6 +732,12 @@ func (s *Service) GrantRole(
 	if err := tx.Commit(ctx); err != nil {
 		return uuid.Nil, err
 	}
+	// Grant changes affect the cached GrantOnNode answer for this
+	// (tenant, user, node) tuple. We invalidate at tenant granularity
+	// (same hook surface as structure writes) because it's the simpler
+	// contract — the blast radius is one tenant's sentinel cache, which
+	// repopulates on the next page request.
+	s.invalidateSubtreeCache(ctx, subscriptionID)
 	if s.notifier != nil {
 		s.notifier.NotifyGrant(userID, GrantNotification{
 			GrantID:       newID,
@@ -758,6 +764,9 @@ func (s *Service) RevokeRole(ctx context.Context, subscriptionID, grantID, revok
 	if tag.RowsAffected() == 0 {
 		return ErrGrantNotFound
 	}
+	// Same invalidation rationale as GrantRole — grant changes affect
+	// the cached GrantOnNode answer for this tenant.
+	s.invalidateSubtreeCache(ctx, subscriptionID)
 	return nil
 }
 

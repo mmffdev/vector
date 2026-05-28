@@ -947,7 +947,7 @@ func main() {
 	// RestoreNode/DuplicateSubtree/ArchiveWorkspaceTopology/
 	// RestoreWorkspaceTopology) wipes Sentinel's per-tenant subtree
 	// cache. The adapter is a thin shim over cache.Client.DelPattern +
-	// sentinel.SubtreeCacheKeyPrefix so topology doesn't import
+	// sentinel.CacheKeyPrefixForTenant so topology doesn't import
 	// sentinel or cache directly. orgDesignSvc was constructed earlier
 	// (line ~574); we attach the invalidator now that cacheClient
 	// exists. Safe to call after construction — builder semantics.
@@ -2489,8 +2489,9 @@ func translateTopologyErr(err error) error {
 
 // subtreeCacheInvalidator satisfies topology.SubtreeCacheInvalidator.
 // Wipes every cached sentinel subtree for a subscription via Valkey
-// pattern delete; sentinel.SubtreeCacheKeyPrefix(subID) returns the
-// `sentinel:subtree:{sub}:*` glob. Used by main.go to thread the
+// pattern delete; sentinel.CacheKeyPrefixForTenant(subID) returns the
+// `sentinel:*:{sub}:*` glob covering all three sentinel cache
+// namespaces (subtree, focusws, grantnode). Used by main.go to thread the
 // cache into the topology service without forcing topology to import
 // either sentinel or cache (clean one-way dep graph).
 //
@@ -2507,5 +2508,5 @@ func (i *subtreeCacheInvalidator) InvalidateSubscription(ctx context.Context, su
 	if i.c == nil {
 		return
 	}
-	_, _ = i.c.DelPattern(ctx, sentinel.SubtreeCacheKeyPrefix(subscriptionID))
+	_, _ = i.c.DelPattern(ctx, sentinel.CacheKeyPrefixForTenant(subscriptionID))
 }
