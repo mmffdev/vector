@@ -102,6 +102,12 @@ export default function ScopePage() {
 
   return (
     <PageContent>
+      {/* Blank ObjectTreeV2 — primitive render check above the page title. */}
+      <ObjectTreeV2
+        title="Blank ObjectTreeV2"
+        addressableName="scope_v2_blank_primitive"
+      />
+
       <PageHeading
         level={1}
         title={full}
@@ -153,9 +159,6 @@ export default function ScopePage() {
           key={mode}
           title={currentMode?.label ?? "Grid"}
           addressableName={`scope_v2_${mode}_grid`}
-          subtitleBadge="V2"
-          subtitle="Dense grid (V2 clone)"
-          description="ObjectTreeV2 baseline — identical to the production ObjectTree at this slice. Future slices generalise this shell."
           selectedId={selectedItem?.id ?? null}
           onSelect={setSelectedItem}
           wizardConfig={wizardConfig}

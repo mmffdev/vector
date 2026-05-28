@@ -663,6 +663,8 @@ export default function ValueSprint() {
                 onSelectionChange={setPanelSelectedIds}
                 rowButtons={panelRowButtons}
                 hideCogMenu
+                hideExpanders
+                urlPrefix="panel"
                 dropColumnKeys={PANEL_DROP_COLS}
                 refetchRef={panelRefetchRef}
                 bulkLeadingButtons={panelBulkLeadingButtons}
@@ -770,6 +772,7 @@ export default function ValueSprint() {
               onSelectionChange={setBacklogSelectedIds}
               rowButtons={backlogRowButtons}
               hideCogMenu
+              urlPrefix="backlog"
               dropColumnKeys={BACKLOG_DROP_COLS}
               refetchRef={backlogRefetchRef}
               bulkLeadingButtons={bulkLeadingButtons}

@@ -666,6 +666,10 @@ export function useWorkItemsFilters(
   prefKey: string,
   // Paired sort state — needed to preserve ?sort= when writing filter params.
   sortRef?: React.RefObject<{ key: SortKey | null; dir: SortDir }>,
+  // Optional per-grid URL prefix — multi-grid pages (e.g. /value-sprint
+  // with sprint-panel + backlog) pass distinct prefixes so chip writes
+  // on one tree don't trample the sibling. See shareableParams.ts.
+  urlPrefix?: string,
 ): {
   filters: WorkItemsFilters;
   hasAny: boolean;
@@ -689,7 +693,7 @@ export function useWorkItemsFilters(
   useEffect(() => {
     if (!seeded || urlSeededRef.current) return;
     urlSeededRef.current = true;
-    const { filters: urlFilters } = parseShareableParams(window.location.search);
+    const { filters: urlFilters } = parseShareableParams(window.location.search, urlPrefix);
     if (urlFilters) {
       const merged: WorkItemsFilters = {
         type:     urlFilters.type     ?? prefFilters.type,
@@ -709,7 +713,7 @@ export function useWorkItemsFilters(
       prefFilters.owner_id.length > 0;
     if (prefsHaveContent) {
       const sort = sortRef?.current ?? { key: null, dir: "asc" as SortDir };
-      const href = buildShareableHref(pathname, window.location.search, prefFilters, sort);
+      const href = buildShareableHref(pathname, window.location.search, prefFilters, sort, urlPrefix);
       router.replace(href, { scroll: false });
     }
   }, [seeded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -726,14 +730,14 @@ export function useWorkItemsFilters(
   const filters = useMemo<WorkItemsFilters>(() => {
     if (!seeded) return prefFilters;
     const search = searchParams?.toString() ?? "";
-    const { filters: urlFilters } = parseShareableParams(search ? `?${search}` : "");
+    const { filters: urlFilters } = parseShareableParams(search ? `?${search}` : "", urlPrefix);
     return {
       type:     urlFilters?.type     ?? [],
       status:   urlFilters?.status   ?? [],
       priority: urlFilters?.priority ?? [],
       owner_id: urlFilters?.owner_id ?? [],
     };
-  }, [searchParams, seeded, prefFilters]);
+  }, [searchParams, seeded, prefFilters, urlPrefix]);
 
   const hasAny =
     filters.type.length > 0 ||
@@ -744,10 +748,10 @@ export function useWorkItemsFilters(
   const writeUrl = useCallback(
     (next: WorkItemsFilters) => {
       const sort = sortRef?.current ?? { key: null, dir: "asc" as SortDir };
-      const href = buildShareableHref(pathname, window.location.search, next, sort);
+      const href = buildShareableHref(pathname, window.location.search, next, sort, urlPrefix);
       router.replace(href, { scroll: false });
     },
-    [router, pathname, sortRef],
+    [router, pathname, sortRef, urlPrefix],
   );
 
   const setFilter = useCallback(
@@ -787,6 +791,8 @@ const DEFAULT_SORT: SortPref = { key: null, dir: "asc" };
 export function useWorkItemsSort(
   prefKey: string,
   filtersRef?: React.RefObject<WorkItemsFilters>,
+  // Optional per-grid URL prefix — see useWorkItemsFilters.
+  urlPrefix?: string,
 ): {
   sortKey: SortKey | null;
   sortDir: SortDir;
@@ -811,7 +817,7 @@ export function useWorkItemsSort(
   useEffect(() => {
     if (!seeded || urlSeededRef.current) return;
     urlSeededRef.current = true;
-    const { sort: urlSort } = parseShareableParams(window.location.search);
+    const { sort: urlSort } = parseShareableParams(window.location.search, urlPrefix);
     if (!urlSort) return;
     setValue({ key: urlSort.key, dir: urlSort.dir });
   }, [seeded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -820,10 +826,10 @@ export function useWorkItemsSort(
     (key: SortKey | null, dir: SortDir) => {
       setValue({ key, dir });
       const filters = filtersRef?.current ?? EMPTY_FILTERS;
-      const href = buildShareableHref(pathname, window.location.search, filters, { key, dir });
+      const href = buildShareableHref(pathname, window.location.search, filters, { key, dir }, urlPrefix);
       router.replace(href, { scroll: false });
     },
-    [setValue, router, pathname, filtersRef],
+    [setValue, router, pathname, filtersRef, urlPrefix],
   );
 
   return { sortKey, sortDir, sortRef, setSort };
@@ -871,15 +877,21 @@ export interface WorkItemsFilterChipsProps {
    *  is a harmless degraded state on V1. Delete the `?` once V1 is gone. */
   typeOptions?: { value: string; label: string; color?: string }[];
   priorityOptions?: { value: string; label: string; color?: string }[];
+  /** Multi-grid pages namespace their URL filter params via a prefix —
+   *  see shareableParams.ts. The chip reads + writes the same prefixed
+   *  slot the grid does so they share state without colliding with a
+   *  sibling tree on the same route. */
+  urlPrefix?: string;
 }
 
 export function WorkItemsFilterChips({
   prefKey,
   typeOptions = [],
   priorityOptions = [],
+  urlPrefix,
 }: WorkItemsFilterChipsProps) {
   const { sentinel_user: user } = useSentinel();
-  const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters(prefKey);
+  const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters(prefKey, undefined, urlPrefix);
   const meId = user?.id ?? null;
   const ownerIsMe = filters.owner_id.length > 0 && filters.owner_id[0] === meId;
 

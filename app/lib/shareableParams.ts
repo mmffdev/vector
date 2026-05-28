@@ -33,6 +33,16 @@ import type { WorkItemsFilters, SortKey, SortDir } from "@/app/components/work-i
 export const SHAREABLE_PARAMS: Record<string, ReadonlySet<string>> = {
   "/work-items":       new Set(["type", "status", "priority", "owner", "sort", "meg"]),
   "/portfolio-items":  new Set(["type", "status", "priority", "owner", "sort", "meg"]),
+  // /value-sprint hosts TWO ObjectTree instances (sprint-panel + backlog)
+  // on one route. Each uses a urlPrefix so their filter URL params don't
+  // collide — writing the Type chip on the panel must not change the
+  // backlog's Type clamp. Convention: `<prefix>.<param>` for both filters
+  // and sort (see parseShareableParams + buildShareableHref overloads).
+  "/value-sprint": new Set([
+    "panel.type", "panel.status", "panel.priority", "panel.owner", "panel.sort",
+    "backlog.type", "backlog.status", "backlog.priority", "backlog.owner", "backlog.sort",
+    "meg",
+  ]),
 };
 
 /**
@@ -70,28 +80,44 @@ export function parseMegFromURL(search: string): string | null {
 
 // ─── Serialisation ───────────────────────────────────────────────────────────
 
-/** Parse inbound URL search string into filter + sort values. Returns nulls when params absent. */
-export function parseShareableParams(search: string): {
+/**
+ * Parse inbound URL search string into filter + sort values. Returns
+ * nulls when params absent.
+ *
+ * `urlPrefix` (optional) — when set, every param name is prefixed
+ * (`<prefix>.type`, `<prefix>.status`, etc.). Used by multi-grid pages
+ * like /value-sprint where two ObjectTrees share one URL and their
+ * filter params must not collide.
+ */
+export function parseShareableParams(search: string, urlPrefix?: string): {
   filters: Partial<WorkItemsFilters> | null;
   sort: { key: SortKey; dir: SortDir } | null;
 } {
   const p = new URLSearchParams(search);
+  const pfx = urlPrefix ? `${urlPrefix}.` : "";
+  const k = {
+    type: `${pfx}type`,
+    status: `${pfx}status`,
+    priority: `${pfx}priority`,
+    owner: `${pfx}owner`,
+    sort: `${pfx}sort`,
+  };
 
   const hasFilter =
-    p.has("type") || p.has("status") || p.has("priority") || p.has("owner");
+    p.has(k.type) || p.has(k.status) || p.has(k.priority) || p.has(k.owner);
 
   const filters: Partial<WorkItemsFilters> | null = hasFilter
     ? {
-        type:     p.has("type")     ? p.get("type")!.split(",").filter(Boolean)     : undefined,
-        status:   p.has("status")   ? p.get("status")!.split(",").filter(Boolean)   : undefined,
-        priority: p.has("priority") ? p.get("priority")!.split(",").filter(Boolean) : undefined,
-        owner_id: p.has("owner")    ? p.get("owner")!.split(",").filter(Boolean)    : undefined,
+        type:     p.has(k.type)     ? p.get(k.type)!.split(",").filter(Boolean)     : undefined,
+        status:   p.has(k.status)   ? p.get(k.status)!.split(",").filter(Boolean)   : undefined,
+        priority: p.has(k.priority) ? p.get(k.priority)!.split(",").filter(Boolean) : undefined,
+        owner_id: p.has(k.owner)    ? p.get(k.owner)!.split(",").filter(Boolean)    : undefined,
       }
     : null;
 
   let sort: { key: SortKey; dir: SortDir } | null = null;
-  if (p.has("sort")) {
-    const [rawKey, rawDir] = p.get("sort")!.split(":");
+  if (p.has(k.sort)) {
+    const [rawKey, rawDir] = p.get(k.sort)!.split(":");
     const VALID_SORT_KEYS: ReadonlySet<string> = new Set([
       "id", "title", "status", "priority", "points", "sprint", "due",
     ]);
@@ -103,39 +129,52 @@ export function parseShareableParams(search: string): {
   return { filters, sort };
 }
 
-/** Build a URLSearchParams from current filter + sort state. Returns null when all defaults. */
+/**
+ * Build a URLSearchParams from current filter + sort state. Returns
+ * null when all defaults. `urlPrefix` (optional) prefixes every param
+ * name (see parseShareableParams).
+ */
 export function buildShareableParams(
   filters: WorkItemsFilters,
   sort: { key: SortKey | null; dir: SortDir },
+  urlPrefix?: string,
 ): URLSearchParams | null {
   const p = new URLSearchParams();
+  const pfx = urlPrefix ? `${urlPrefix}.` : "";
 
-  if (filters.type.length > 0)     p.set("type",     filters.type.join(","));
-  if (filters.status.length > 0)   p.set("status",   filters.status.join(","));
-  if (filters.priority.length > 0) p.set("priority", filters.priority.join(","));
-  if (filters.owner_id.length > 0) p.set("owner",    filters.owner_id.join(","));
-  if (sort.key)                     p.set("sort",     `${sort.key}:${sort.dir}`);
+  if (filters.type.length > 0)     p.set(`${pfx}type`,     filters.type.join(","));
+  if (filters.status.length > 0)   p.set(`${pfx}status`,   filters.status.join(","));
+  if (filters.priority.length > 0) p.set(`${pfx}priority`, filters.priority.join(","));
+  if (filters.owner_id.length > 0) p.set(`${pfx}owner`,    filters.owner_id.join(","));
+  if (sort.key)                     p.set(`${pfx}sort`,     `${sort.key}:${sort.dir}`);
 
   return p.size > 0 ? p : null;
 }
 
-/** Build the new pathname+search string, preserving non-shareable params (like ?meg=). */
+/**
+ * Build the new pathname+search string, preserving non-shareable params
+ * (like ?meg=). `urlPrefix` (optional) — wipes only the prefixed slot
+ * before re-applying, so a sibling tree's prefixed params survive.
+ */
 export function buildShareableHref(
   pathname: string,
   currentSearch: string,
   filters: WorkItemsFilters,
   sort: { key: SortKey | null; dir: SortDir },
+  urlPrefix?: string,
 ): string {
   // Start from a copy of current search so ?meg= and other non-shareable
   // infrastructure params are preserved untouched.
   const existing = new URLSearchParams(currentSearch);
+  const pfx = urlPrefix ? `${urlPrefix}.` : "";
 
-  // Wipe only the shareable param names before re-applying.
+  // Wipe only the shareable param names in OUR slot before re-applying.
+  // A sibling tree's params (other urlPrefix) are untouched.
   for (const name of ["type", "status", "priority", "owner", "sort"]) {
-    existing.delete(name);
+    existing.delete(`${pfx}${name}`);
   }
 
-  const shareable = buildShareableParams(filters, sort);
+  const shareable = buildShareableParams(filters, sort, urlPrefix);
   if (shareable) {
     for (const [k, v] of shareable.entries()) {
       existing.set(k, v);
