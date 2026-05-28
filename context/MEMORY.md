@@ -27,6 +27,8 @@
 
 **Collaboration baseline** → [c_collaboration_baseline.md](memory/c_collaboration_baseline.md) — design conversation before code; foundation mode; buyer = defence + finance.
 
+**"Commit all workstreams" = group them ALL, no exceptions.** When Rick says "commit all", "commit all workstreams", or similar phrasing, the instruction is to group EVERY dirty file/workstream on disk into commits by logical workstream and commit them all in one go — never selectively ship only "my" work and leave the rest. Exception only if Rick explicitly names what to exclude. Reason: 2026-05-29 — Claude defaulted to inventorying and excluding "not mine" files; Rick clarified that "all" means all, always, unless he says otherwise. How to apply: stage by explicit path (per the never-`git add .` hard rule) but stage EVERYTHING, grouped by workstream; one commit per workstream with a message that names what each touches.
+
 **Workflow rules** → [c_workflow_rules.md](memory/c_workflow_rules.md) — red-green-refactor first; empirical blast radius; single-agent ownership per domain.
 
 **CSS conventions** → [c_css_conventions.md](memory/c_css_conventions.md) — button/table/naming standards; no inline styles except CSS vars.
