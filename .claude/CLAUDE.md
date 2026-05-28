@@ -109,6 +109,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **`<ResourceTree>` component (PLA-0021)** → [`docs/c_c_resource_tree.md`](../docs/c_c_resource_tree.md) — hierarchical-tree primitive + 5 prop sets.
 - **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — `.pill` family; semantic tones only.
 - **`<TimeboxManager>` surface** → [`docs/c_c_timebox_manager.md`](../docs/c_c_timebox_manager.md) — `timeboxes_sprints` / `timeboxes_releases` registry (post RF1.4.2).
+- **Saved Views substrate** → [`docs/superpowers/specs/2026-05-28-saved-views-design.md`](../docs/superpowers/specs/2026-05-28-saved-views-design.md) — Rally-pattern persisted view configs; one table `saved_views` with kind + scope discriminators serves multi-consumer (objecttree today, custom-pages tomorrow).
 - **Memory (canonical)** → [`context/MEMORY.md`](../context/MEMORY.md) + [`context/USER.md`](../context/USER.md) — frozen-snapshot loaded by SessionStart hook; old [.claude/memory/](memory/) is retired but `<index>`-searchable.
 - **Scope tracker (`<scope> -r|-a|-u`)** → [`.claude/skills/scope/SKILL.md`](skills/scope/SKILL.md) — `Vector_Scope.md` single source of truth.
 - **Pace report** → [`dev/scripts/pace.sh`](../dev/scripts/pace.sh) — commit-mix scoreboard + TD-register delta.
