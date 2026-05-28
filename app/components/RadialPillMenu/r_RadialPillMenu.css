@@ -1,0 +1,31 @@
+/* RadialPillMenu — pick-one popup with pills laid on a circle. Owned
+   by app/components/RadialPillMenu/p_RadialPillMenu.tsx; imported there
+   so Next.js bundles it with the component. Tokens come from
+   app/styles/primitives.css; pill chrome composes from .btn .btn--primary
+   in app/globals.css so the menu inherits the project's button system. */
+
+.radial-pill-menu__Backdrop {
+  position: fixed;
+  inset: 0;
+  /* Subtle dim so the active pill row dominates the eye; not opaque so
+     the user keeps spatial context (which row they were on). */
+  background: color-mix(in srgb, var(--ink-strong, #1a1a1a) 24%, transparent);
+  z-index: 9990;
+  /* Centring isn't done here — children are absolutely-positioned via
+     left/top from the React component's geometry calc. */
+}
+
+.radial-pill-menu__Pill {
+  position: absolute;
+  /* Centre the pill on the (x,y) coord that React writes inline. */
+  transform: translate(-50%, -50%);
+  /* Pill labels are typically short ("Sprint 12", "Bravo 04"); cap the
+     width so a long fallback label doesn't break the wheel geometry. */
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Bring the pills above the backdrop's dim — backdrop is z-index 9990
+     above, pills inherit a stacking context here without an explicit
+     z-index because they're later siblings in the same parent. */
+}
