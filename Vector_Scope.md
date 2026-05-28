@@ -334,6 +334,13 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 
 > Commit `45507864` (2026-05-25): chore(snapshots): refresh api caller-map + dead-apis after bookmark removal
 - **RF2.5.1** Delete **14 deprecated public Service methods**. **Cross-package cutover FIRST**: `backend/internal/featuretests/f1_workspace_clamp_test.go` L400 (`ListWorkItems`) and L448 (`GetWorkItemInWorkspace`) routed through `Service.Read` before any delete. Verify: `grep '^func (s \*Service) [A-Z]' service.go | wc -l == 12` (4 setters + 8 ops). Private impls (`getWorkItemImpl`, etc.) remain. `rules/evaluator.go` comment-only refs to `artefactitems.Service.Update` refreshed to `Service.Mutate`. **Repurpose Story 11 lint as a guard** — forbids any caller anywhere, not just deprecated. `go build ./...` green; full test suite green. `[P2]` 🔵 IN FLIGHT
@@ -361,6 +368,31 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 ### RF2.6 Phase 6 — Document the win + open follow-up TD
 > Commit `119b63e3` (2026-05-24): feat(sentinel): S26 phase 1 — SubtreeClause helper + artefactitems wiring [PLA062 S26]
 > Commit `1fcabf98` (2026-05-25): docs(cutover): correct CUT1.0.2 + CUT1.5.1 soft-FK count 8 → 50 [CUT1.0.2] [CUT1.5.1]
@@ -370,6 +402,8 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
 
 > Commit `3b570bf6` (2026-05-24): feat(sentinel): S26 phase 2 — Search subtree clamp + audit close [PLA062 S26]
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
@@ -384,6 +418,7 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
 - **RF2.6.1** Record BEFORE/AFTER metrics in pattern doc `## Results` section. **BEFORE** (captured from main): `service.go=1929 LoC`, `handler.go=1167 LoC`, 17 exported ops, 1 pass-through pair, 16 call sites, 2 `hasWorkspace` branches. **AFTER** (populated post-Story-12): target 12 public methods (8 ops + 4 setters), 0 pass-through pairs, 0 branches, `handler.go ≤1050 LoC`. File `TD-SVC-DEPTH-PATTERN` S3 row in `docs/c_tech_debt.md` with cap (pattern doc link) + pay-down trigger (service is next substantially touched OR method count crosses 15) + **ranked candidate next-services list**: `workspaces` (2794 LoC, 14 methods — **adopt**, strongest fit), `users` (2057 LoC, 13 methods — **adopt**, watch auth coupling), `timeboxsprints` (**excluded** per audit — "appropriately shallow"), `portfoliomodels` (9083 LoC, 7 methods — **defer** until method count grows), `polymorphicrefs` (4 methods — **exclude**, too small to benefit). Story 13 closes the loop; converts one-off refactor into a reusable pattern. `[P2]` 🔵 IN FLIGHT
 > Commit `3aeaa45b` (2026-05-23): feat(auth/logger): distinguish no-credential vs invalid-credential 401s
 > Commit `6fe3b94e` (2026-05-24): docs(sentinel): S01 — scaffold docs/Security/Sentinel/ tree [PLA062 S01]
@@ -473,6 +508,14 @@ Deep-module pass on `backend/internal/artefactitems` — the worst CRUD-shaped s
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
 
 > Commit `b1980d42` (2026-05-24): docs(sentinel): backfill S25 commit SHA — PLA062 closed end-to-end
 > Commit `4aa28281` (2026-05-24): fix(sentinel): /sentinel/boot 401→404 — chi NotFound before middleware chain
@@ -618,6 +661,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0574758e` (2026-05-24): docs(sentinel): S24 — documentation close-out + CLAUDE.md HARD RULE [PLA062 S24]
 > Commit `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]
 > Commit `541391ad` (2026-05-24): docs(sentinel): sync 5 PLA062 docs to current code state
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
 - ✅ **FLOW1.1.2** ~~Add `flow_states.is_pullable BOOLEAN NOT NULL DEFAULT FALSE` — opt-in per pill; default false so new pills are non-pullable until consciously marked~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `aede1dd` (2026-05-18): fix(login): shift welcome column up 100px
@@ -660,6 +710,13 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `93ba728b` (2026-05-26): fix(auth): dpop_jti_cache SQL — bare-column straggler [RF3.1.1]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
 - ✅ **FLOW1.1.3** ~~Migration `042_seed_kind_aligned_flow_pills.sql` — re-seed default flows with name/kind alignment (Ready → To Do rename in place); set `is_pullable=true` on To Do pill across all default flows; idempotent on re-run~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
@@ -717,6 +774,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `3a3f3801` (2026-05-25): docs(cutover): snapshot DBs + pool-swap handover for wipe-and-reseed
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
 - ✅ **FLOW1.1.4** ~~Fold DE-Default + US-Default corruption repair into 042 — delete junk pills (TEST PILL, Lego, fwerrt, etc.); reset canonical pills to seed values in place (preserves artefact FK refs)~~ `[P1]`
 > Commit `a2379df` (2026-05-10): feat(FLOW1): kind widening + is_pullable + repair DE/US flows [FLOW1.1.1] [FLOW1.1.2] [FLOW1.1.3] [FLOW1.1.4]
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
@@ -782,6 +841,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `28632636` (2026-05-25): fix(portfolio): repair sqlExistsActiveWorkspaceMembership column names
 > Commit `61cc7d34` (2026-05-25): scope(CUT1): add 14-story mmff_vector → vector_artefacts cutover theme [PLA064]
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
 - ✅ **FLOW1.1.5** ~~Backfill `is_pullable` on Defect QA flow + strategy-type default flows (BC/BE/PO/SO) — apply same convention (single pullable pill at the team-handoff point)~~ `[P2]`
 > 042 set is_pullable=TRUE on every default flow's pullable pill (10 total: each default's "To Do" + DE QA's "Open"); verified via post-migration check 2026-05-10.
 > Commit `a7ce180` (2026-05-10): feat(FLOW1.1): work-flow corrections + field library label dedupe [FLOW1.1.5]
@@ -1139,6 +1199,18 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
 
 > Commit `ff622cf` (2026-05-13): feat(PLA-0043): restructure admin URLs — /workspace-admin, /user-management, /vector-admin [FE-POR-0003.1]
 ### FLOW1.2 Backend — service surface
@@ -1389,6 +1461,14 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
 - ✅ **FLOW1.2.2** ~~Extend `PatchStateInput` + `CreateStateInput` to accept optional `is_pullable bool` — UPDATE/INSERT propagates the flag~~ `[P1]`
 > Commit `d3d47f4` (2026-05-10): feat(FLOW1.2): backlog kind + is_pullable wired through flows service [FLOW1.2.1] [FLOW1.2.2] [FLOW1.2.3]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1722,6 +1802,18 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
 
 > Commit `608808a` (2026-05-10): fix(auth): grace-window for refresh-token reuse from duplicate tabs and HMR
 > Commit `2a7a943` (2026-05-10): feat(tenant): app-wide TenantContext + per-type colour map
@@ -1806,6 +1898,8 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `93ba728b` (2026-05-26): fix(auth): dpop_jti_cache SQL — bare-column straggler [RF3.1.1]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
 - ✅ **FLOW1.3.2** ~~`is_pullable` toggle on each pill row in the flow-states settings page — PO sets per-pill, persists via `flowStatesApi.patchState`~~ `[P2]`
 > Commit `9b758ee` (2026-05-10): feat(FLOW1.3): backlog kind label + is_pullable toggle column [FLOW1.3.1] [FLOW1.3.2]
 > Commit `5cc5457` (2026-05-10): fix(dev-reset): remove dead mmff_vector.master_record_tenant write
@@ -1835,6 +1929,11 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `41bd3d60` (2026-05-26): feat(p3): DROP DATABASE mmff_vector — refactor complete [pillar-3-step-3-final] [RF-COMPLETE]
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - **FLOW1.3.3** Visual treatment: pullable pill carries a subtle "team can pull" indicator (icon, accent border) — distinct from any future PO-readiness badge `[P2]`
 > Commit `1ede082` (2026-05-10): feat(FLOW1.3): vertical 3-col flow-map grid + dedicated drop slots [FLOW1.3.3]
 > Commit `71aad61` (2026-05-11): refactor: reshape workspace-settings nav into L1/L2/L3 hierarchy
@@ -2013,6 +2112,7 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `9619300a` (2026-05-25): scope(CUT1.5.0): add orphan triage + remediation story [CUT1.5.0]
 > Commit `bb9db44b` (2026-05-25): plan(cutover): merge-plan DDLs for master_record_workspaces + subscriptions [CUT1.2.1] [CUT1.2.2]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
 - **FLOW1.5.3** Frontend Reset button on `TypeSection` heading + inline preview banner showing pill/transition deltas + artefact-rebind impact counts; user confirmation before Apply `[P1]`
 > Commit `1bf8f1c` (2026-05-10): feat(FLOW1.5): TypeSection Reset button + inline preview banner [FLOW1.5.3]
 > Commit `63c9331` (2026-05-10): fix(FLOW1.5): empty-slice ResetPreview so JSON emits [] not null [FLOW1.5.3]
@@ -2106,6 +2206,14 @@ Establishes the canonical 6-kind flow primitive plus an `is_pullable` flag on `f
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
 
 > Last checked: 2026-05-10
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -2206,6 +2314,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - ✅ **F1.1.2** ~~Migrate Story flow states to: Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done) — remove To Do, In Progress, Done, Cancelled~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2344,6 +2465,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - ✅ **F1.1.3** ~~Migrate Epic flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `d4a48bb` (2026-05-12): chore(PLA-0041): wire Flow States v2 secondary-nav tab on workspace-settings
@@ -2451,6 +2585,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - ✅ **F1.1.4** ~~Migrate Defect work-execution flow states to match Story (same 5-state set)~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2565,6 +2712,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - ✅ **F1.1.5** ~~Seed Defect QA/business flow: Submitted (todo), Open (todo), Fixed (in_progress), In Test (in_progress), Not Reproducible (done), Deferred (done) — new second flow on the Defect type~~ `[P1]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `3f74127` (2026-05-12): feat(flow-states-v2): orbit PoC for add/remove states
@@ -2744,6 +2904,22 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - ✅ **F1.1.6** ~~Seed flow states for BC, BE, PO, SO strategy types (flows exist, 0 states): Backlog (todo), Ready (todo), Doing (in_progress), Completed (done), Accepted (done)~~ `[P1]`
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
@@ -3053,6 +3229,23 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
 - ✅ **F1.1.7** ~~Add `accepted` kind to `flow_states` CHECK constraint — needed to distinguish Accepted from Completed in metrics; update existing Accepted seeds to use it~~ `[P2]`
 > Last checked: 2026-05-10 — F1.1.1–F1.1.7 covered by migration 041 + 042 (Story/Epic/Defect 5-state, Task 3-state, DE QA exists, BC/BE/PO/SO seeded, accepted in CHECK widened to 6 in 042). Note: FLOW1's seed-kind alignment renamed `Ready → To Do` and added `backlog` kind, superseding F1.1's `Ready (todo)` naming — current DB reflects FLOW1's model.
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -3106,6 +3299,13 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `1545997d` (2026-05-25): feat(value): add value-* nav bucket (4 pages) + migration 245
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
 
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
@@ -3277,6 +3477,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - ✅ **F1.2.2** ~~Register route in `mountSiteRoutes` with `RequireAuth` + `RequireFreshPassword`~~ `[P1]`
 > Commit `29dca0e` (2026-05-10): feat(F1): flow states Customisation tab — tertiary nav per artefact type, colour PATCH [F1.2.1] [F1.2.2] [F1.2.3]
 > Commit `b184f96` (2026-05-10): refactor(F1): flow states — single-page layout with PageAnchorNav TOC [F1.2.1] [F1.2.2]
@@ -3361,6 +3574,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 
 ### F1.3 Frontend — Customisation page flow states section
 
@@ -3506,6 +3732,8 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `8f5735ae` (2026-05-26): feat(p2): Pillar 2 — full DB merge mmff_vector → vector_artefacts [pillar-2] [RF2.0]
 > Commit `bfd96136` (2026-05-26): feat(p3): Pillar 3 step 1 — repoint backend pool→vaPool [pillar-3-step-1] [RF3.1]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - **F1.3.2** Add third-level tab nav to Customisation page: work-type tabs (Story, Epic, Task, Defect) + strategy-type tabs (SO, PO, BE, BC, FE) + Defect QA tab `[P2]`
 > Commit `42115b5` (2026-05-12): fix(dev-ui): TOC sticky positioning — align-self:start + overflow auto
 > Commit `4995027` (2026-05-12): fix(css): sticky TOC rail + section anchors clear L2+L3 nav stack
@@ -3683,6 +3911,22 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
 - **F1.3.3** Flow state colour picker per state row (same `ColourPicker` component) — PATCH calls `/_site/flow-states/{id}` `[P2]`
 > Commit `636cb10` (2026-05-12): refactor(css): vertical nav primitive unification + PageAnchorNav rewrite
 > Commit `4efd532` (2026-05-12): fix(dev): drop accidental /api prefix from page-help admin calls
@@ -3759,6 +4003,19 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - **F1.3.4** Frontend `flowStatesApi` — `listByType(artefactTypeId)` + `patch(stateId, {colour})` via `apiSite` `[P2]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
@@ -3781,6 +4038,10 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 > Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - **F1.3.5** Update `useWorkItemFlowStates` to pass state colours through to `FlowStatePillRow` for coloured pills in the tree `[P3]`
 > Commit `8ada5e5` (2026-05-11): refactor: nest Organisation & Work Items under Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -3846,6 +4107,7 @@ Workspace Settings > Customisation page — two sections. Section 1 (artefact ty
 > Commit `449668e0` (2026-05-25): chore: misc UI tweaks, dev-ui.css refresh, gitignore test-results, scope updates
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 
 > Commit `743b077` (2026-05-10): feat(roles): drop MVP single-admin workspace constraint
 > Commit `a1583c1` (2026-05-10): feat(FLOW1.5): flow_defaults snapshot tables for local Reset [FLOW1.5.1]
@@ -4286,6 +4548,13 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `60c39d8a` (2026-05-25): feat(dev): visualiser V2A/V3/V4 + codegraph enrichment + audit refresh
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
   > Plan `PLA-0038` (2026-05-09): Blocked-state — orthogonal stuck flag with provenance for work items
 > Commit `8603935` (2026-05-09): feat(PLA-0038 B1.8): blocked-state plan + webhooks page fixes
   > Blocked is its own state, **independent of flow state** — an item can be blocked at any point in its workflow. The fact a story is "stuck on dev" tells us nothing about why; the blocked record carries that context. Schema (work-item columns, all nullable except `is_blocked` boolean):
@@ -4330,6 +4599,16 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   >
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
   > **Routes:**
@@ -4348,6 +4627,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
   > - `POST   /artefacts` — create (was `POST /work-items`, `POST /portfolio-items`)
 > Commit `4b0f3ce` (2026-05-21): fix(notifications): bell badge live-updates on mark-read; cap → 100+
 > Commit `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23]
@@ -4649,6 +4932,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `8f5735ae` (2026-05-26): feat(p2): Pillar 2 — full DB merge mmff_vector → vector_artefacts [pillar-2] [RF2.0]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
   > Follow-on to B5.8. Consolidate scattered grant migrations (088 / 100 / 101 / 142 / …) into one declarative seed file `db/schema/seeds/role_capabilities.sql` containing the full role × permission matrix. Future grants edit this file; runner reapplies the diff. Removes the silent-noop migration trap and makes "give padmin what gadmin has" a one-line edit.
   >
 - **B5.10** Audit `useHasPermission()` codes against catalogue `[P2]`
@@ -4663,6 +4947,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
 - **B5.11** Migration: drop `pages_tags.pages_tags_min_auth_level` from the catalogue gate path (PLA-0053; column kept nullable for rollback). `pages_tags_is_admin_menu` is **kept** — still used by `UserAvatarMenu` to route avatar/notification buckets (separate concern from page-access gating). `[P2]`
 - **B5.12** Backend: remove `authLevelFor` / `TagsFor` tier filter / `CatalogFor` tier filter from `backend/internal/nav/registry.go`; `users_roles_pages` becomes the sole catalogue gate (PLA-0053) `[P2]`
 - **B5.13** Frontend: remove `deriveAuthLevel` + `userAuthLevel` filter from `app/redesign/ShellContext.tsx`; tag bucket appears iff it contains ≥1 page in `pages` array (PLA-0053) `[P2]`
@@ -4681,6 +4967,13 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - **B5.14** Permissions page UX: confirm `/user-management/permissions` matrix is the sole authoring surface for `users_roles_pages` — banner copy + remove tier-tier UI hints from related screens (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `0cb4a17` (2026-05-21): fix(dev/visualiser): standardise click-to-frame — square cards, uniform zoom
@@ -4730,6 +5023,15 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - **B5.15** Seed audit: `dev/scripts/audit_role_page_grants.sh` lists every role × page grant in `users_roles_pages` grouped by tag bucket — surfaces stray Team Member grants outside personal/planning/strategy/bookmarks before ship (PLA-0053) `[P2]`
 > Commit `2cf3238` (2026-05-20): feat(dev): search filter on Shortcuts panel
 > Commit `cc3c74a` (2026-05-21): feat(notifications): toast host, inbox page, mounted in shell
@@ -4816,6 +5118,11 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `8f5735ae` (2026-05-26): feat(p2): Pillar 2 — full DB merge mmff_vector → vector_artefacts [pillar-2] [RF2.0]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
 - **B5.16** Retire `TD-NAV-AUTH-TIER` from `docs/c_tech_debt.md` once B5.11–B5.15 land; add ADR note in `docs/c_c_roles_permissions.md` capturing the single-gate decision + SOC2 audit narrative (PLA-0053) `[P2]`
 > Commit `3c7b91d` (2026-05-10): chore: fix project path — `MMFFDev-Projects` → `MMFFDev - Projects` across hooks/scripts/docs
 > Commit `9a959ad` (2026-05-12): docs(PLA-0044,PLA-0045): unified topology walker plan + shared methods catalogue substrate [FE-POR-0003.9.1] [FE-POR-API-0006]
@@ -4919,6 +5226,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `75411271` (2026-05-26): chore(claude): prune dead skills/commands, slim SessionStart hooks
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
   > `npm run lint:permission-codes` — fails CI if any `useHasPermission("…")` argument or backend `RequirePermission("…")` call references a code not present in `permissions` catalogue. Catches the migration-142-style failure at build time.
   >
 
@@ -4967,6 +5275,19 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
   > Rally-validated seed mechanism (R054 §N2): one workspace-level enum `{none, viewer, editor}` (default `none`). When a user is created inside a workspace, the user-creation path issues a grant at this level on the workspace root node so the user is never in a permission vacuum. Adds a column to `master_record_tenant` (the tenant-settings substrate, see B6.1) plus a hook in the user-create service. Distinct from grant-inheritance: this is a per-user seed at creation time, not a live cascade.
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `82a17703` (2026-05-25): feat(db): mmff_dev mig 003 adds 'system' dev_reports type; va mig 092 padmin sibling grants
@@ -5112,6 +5433,18 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
   > Rally-validated cascade primitive (R054 §hierarchy): the **only** built-in parent→child propagation in Rally is a Yes/No field on the child-create form that defaults to No; when Yes, the parent's user-permission rows are copied to the new child as a single background operation, after which grants drift independently. Vector's grant-inherits-down (PLA-0043 §FE-POR-0003.3) already covers the runtime read clamp, so this entry covers the explicit-grant-row copy for cases where the admin wants discoverable per-node grants without relying on inheritance. Surface: a single checkbox on the topology-canvas "create child" dialog; if checked, `Service.CreateChildNode` enqueues `Service.CopyGrantsToNode(parentID, newChildID)` as a follow-up step.
 > Commit `e529fc1` (2026-05-13): fix(PLA-0043): fix _shared import paths in relocated admin route trees [FE-POR-0003.1]
 > Commit `2e3c142` (2026-05-14): refactor(PLA-0048 / RF1.2.1): rename package orgdesign → topology [RF1.2.1.rename]
@@ -5140,6 +5473,7 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `8f5735ae` (2026-05-26): feat(p2): Pillar 2 — full DB merge mmff_vector → vector_artefacts [pillar-2] [RF2.0]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
   >
 > Commit `c4ae079` (2026-05-13): chore(PLA-0023): drop roles_org_nodes — superseded by VA topology_role_grants [P4]
 > Commit `5b7fac9` (2026-05-15): chore(td): file TD-ROLE-001 + TD-TEST-002 — Phase 0 carry-overs [PLA-0049]
@@ -5283,6 +5617,18 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
   > Rally documentation gap (R054 §addendum-gaps): Broadcom's "Change an Existing Project to a Child Project" page describes the UI flow but is silent on what happens to the project's existing user-permission rows on move (preserved? replaced with new parent's? merged?). Vector must make an explicit decision before any node-move surface ships. Default proposal: **preserve** grants (move is a re-pointing of `parent_id`, grant rows reference `node_id` and are unaffected) with an optional "also copy parent's grants to this node" checkbox on the move dialog (re-uses B6.10's copy primitive). Decision needs design sign-off before stories file.
 > Commit `9c29056` (2026-05-13): feat(001_redesign): Layout 04 shell — icon rail + section flyout at /redesign
 > Commit `01347cf` (2026-05-13): feat(001_redesign): swap (user) layout to redesign shell — rail + flyout live site-wide
@@ -5340,6 +5686,8 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `b640094f` (2026-05-24): fix(sentinel): mount SentinelProvider at root + bridge fetchBoot to existing endpoints
 > Commit `9543e95c` (2026-05-25): chore(lint): exempt historical migrations from placeholder-table lint [CUT1.0.1]
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
   > Replace offset/limit on every public list endpoint with stable cursors (`next_cursor` token over `(sort_key, id)` tuple). Offset breaks under concurrent inserts; cursors are stable. Scope: `/work-items`, `/portfolio-items`, `/timeboxes/sprints`, `/work-items/relations`, `/webhooks` listing. Cursor is opaque base64 of the last-row sort tuple. Required before any tenant exceeds ~10k items in a list. B19.1.5 (graph 100k truncation) becomes a special case of this rule.
 - **B8.9** Sparse fieldsets — `?fields=id,title,status` on every list/get endpoint `[P3]`
 > Commit `e8046c4` (2026-05-13): fix(PLA-0043): restore dev gear icon in rail util tray [FE-POR-0003.1]
@@ -5356,6 +5704,10 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `2efdd113` (2026-05-25): feat(lint): add lint:no-singular-workspace-table ratchet [CUT1.0.1]
 > Commit `a7d04dca` (2026-05-25): feat(db): drop 6 placeholder/dead mmff_vector tables [CUT1.1.1]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
   > Lets integrators avoid hauling full DTOs over the wire on large lists. REST equivalent of GraphQL field selection. Implementation: comma-separated allow-list parsed in middleware, applied as a SELECT projection or post-marshal mask. Scope: every `GET` on `/samantha/v2`. TD-API-001 item 4 (GraphQL deferred) — sparse fieldsets are the chosen substitute.
 > Commit `10eea24` (2026-05-12): feat(theme-classic): restore historic Theme Maker at /theme-classic
 > Commit `e367266` (2026-05-15): docs: handover — table catalog restyle + permissions tree-lines session
@@ -5516,6 +5868,9 @@ Full lifecycle management for tasks, bugs, epics.
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
   > Extend B8.1 (`apikeys` package) so each `sam_live_*` key carries a permission set that is a subset of the issuing user's permissions (e.g. `read:items`, `write:items`, `admin:roles`). Currently keys are flat — any key has the full scope of its owner. Scope: schema migration adds `api_keys.scopes jsonb` column; auth middleware honours scope set on every request; key-issuance UI lets admin pick scopes at creation; revoke unchanged. Pre-req for n8n trigger nodes (B12.1) since those need narrow read-only keys.
 > Commit `1cb8b7d` (2026-05-11): refactor: tenant-aware subtitle on Vector Admin tab
 > Commit `c8ee38d` (2026-05-12): feat: L3 nav level + ActiveNavContext + <PageDescription> primitive
@@ -5749,6 +6104,7 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `7162622f` (2026-05-26): infra(monitoring): dev Grafana + Prometheus stack for server-health
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > `app/components/Badge.tsx` — semantic tone derivation (status + domain maps); pill CSS family; spec: `docs/c_c_badge.md`
 > Commit `0ffe20d` (2026-05-09): chore: refresh local IDE state and launcher log
 > Commit `6d568c0` (2026-05-12): docs(PLA-0044,PLA-0045): plan JSONs for /dev Plans tab + story-index bump to 00549 [FE-DEV-0025]
@@ -5907,6 +6263,15 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
 
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
 > Commit `5ccef56` (2026-05-18): feat(migration): users_reauth_nonces table for step-up reauth [B16.8.10]
@@ -6268,6 +6633,8 @@ Depends on: B9 (webhooks) + B8.1 (API keys).
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
   > Terminate `/samantha/v2` behind a dedicated gateway (Kong / Envoy / AWS API Gateway). Gateway owns: API-key auth, per-key rate limiting, OpenAPI request/response validation, deprecation headers, observability hooks. Service code stops handling unauthenticated/malformed requests. Pre-req: `api.vector.app` subdomain + Option B physical split (separate `chi.Mux` for public vs BFF inside the binary). Premature today — one Go binary suffices until external traffic exists; revisit when first integration partner signs or before Series B.
 > Commit `0ddc37c` (2026-05-21): feat(notifications): live SSE backbone + mention resolvers
 > Commit `eb2047ca` (2026-05-24): chore: bundle in-flight custom-fields components + test hygiene + snapshots
@@ -6453,6 +6820,17 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `98d1390d` (2026-05-27): chore(flowboard): validator verdict — FB1.2.1 PASS, Phase 2 scaffold landed [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
 - **B18.7.2** `docs/c_shared_methods.md` catalogue — table format with first row (PLA-0044 topology walker); CLAUDE.md pointer under Working practices. `[P3]`
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
 > Commit `0523eef` (2026-05-21): test(notifications): rules evaluator — matcher coverage, ~50 cases
@@ -6558,6 +6936,20 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
 - **B18.7.3** Lint allow-list — `dev/registries/shared_methods.json` exempts `app/lib/shared/**` from `lint:writer-boundary` + `lint:transport-segregation` cross-import bans; consumer globs `app/components/**` and `app/api/**/route.ts`. `[P3]`
 > Commit `8729c54` (2026-05-18): feat(ops): vector-dev swarm stack as infra-as-code + pg_stat_statements
 > Commit `5d492ba` (2026-05-21): docs: handover_rules.md — overnight strawman summary
@@ -6583,6 +6975,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
 > Commit `4201f6e5` (2026-05-26): feat(prefix): Pillar 1 wave 7 — artefacts prefix sweep [wave-7] [RF1.5.7]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - **B18.7.4** PostToolUse soft-reminder hook — `.claude/hooks/shared-methods-reminder.sh` fires on Write/Edit of new `app/api/**/route.ts` or `backend/internal/**/handler.go` (≥30 lines) emitting one-line catalogue nudge; quiet on non-handler files. `[P4]`
 > Commit `85447e4` (2026-05-18): docs(cookbook): side-instance + JWT-decode + login-smoke entries [B16.8.11]
 > Commit `66a7e32` (2026-05-18): docs(security): clarify 15-min access TTL is defense in depth [B16.8.9]
@@ -6702,6 +7096,9 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - **B18.7.5** Feedback memory — `.claude/memory/feedback_shared_methods_home.md` + MEMORY.md index line so the rule loads at every session start. `[P4]`
 > Commit `d32ebd9` (2026-05-18): test(realtime): failing WS-revoke integration + registry unit tests [B16.8.12]
 > Commit `47c2ca8` (2026-05-18): feat(realtime): WS session registry [B16.8.12]
@@ -6710,6 +7107,7 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `5ea1332` (2026-05-21): feat(skills): consolidate report producers under <report> umbrella
 > Commit `325c8ba0` (2026-05-25): feat(infra): nightly cross-DB orphan-audit cron [CUT1.0.2]
 > Commit `1c9bc5d7` (2026-05-25): refactor(nav): drop frontend entity-bookmark callers + SDK methods
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 
 > Commit `fdd08de` (2026-05-21): fix(auth): keep user logged in across backend restarts
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
@@ -6717,6 +7115,8 @@ Persistent home, naming convention, and discoverability surface for cross-runtim
 > Commit `d20a1a5e` (2026-05-24): feat(sentinel): S08 — GREEN frontend Sentinel provider [PLA062 S08]
 > Commit `0b281857` (2026-05-25): feat(nav): account-settings homepage dropdown + stale-prefs cascade (cap bump is a HACK, see TD)
 > Commit `75411271` (2026-05-26): chore(claude): prune dead skills/commands, slim SessionStart hooks
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
 ---
 > Commit `a3e9250` (2026-05-18): feat(auth): per-request session check via sid claim [B16.8.11]
 > Commit `5994665` (2026-05-18): feat(frontend): route session_revoked / idle_expired to hard-logout [B16.8.11]
@@ -6950,6 +7350,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
 - ✅ ~~**B20.4.8** Inline edit-row panel sections (IA — four sections: Account Information / Display Preferences / Settings / Administrative Fields). AC: section headers + bodies; field-to-section mapping per plan doc; PATCH accepts subset, field-by-field permission gate applied.~~ `[P2]`
   > Shipped 2026-05-19 in commit ec9dd48. UserEditPanel rewritten with EditPatch sparse-patch type, buildPatch() helper, friendlier E.164 error surfacing. `.users-edit-panel__section_header` CSS pack — typographic separator above each group, no `<h2>` (h2-panel-only lint forbids raw section headings outside `<Panel>`). Cost centre input still placeholder text here; replaced with `<select>` in B20.4.3.
 > Commit `9546bcd` (2026-05-21): feat(notifications): evaluator stub + tag column writes + tag-aware inbox
@@ -6982,6 +7391,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `cd0ba0e9` (2026-05-26): docs(scope): refactorDB scope log + sentinel doc + USER profile tidy
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
   > Shipped 2026-05-19 in commit 6530c13. Status pill replaced with read-only checkbox; toggle action stays in the inline edit-row panel staged behind "Confirm changes". Also added `<PageDescription>` since the file moved out of legacy `/user-management/page.tsx`.
 > Commit `eef8023d` (2026-05-23): chore: capture session drift + orphan reports + design ethos doc
   > Last checked: 2026-05-19
@@ -7302,6 +7717,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
   > Single sole-writer service for any `artefact_types` row, scope-discriminated. Phase 1 minimum to unblock portfolio page.
   >
 - **B21.1.1** Rename Go package `backend/internal/workitemsv2/` → `backend/internal/artefactitemsv2/` `[P1]`
@@ -7507,6 +7931,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
   > Includes `service.go`, `types.go`, `handler.go`, all `*_test.go`. Update package declaration. User decree: name MUST state what it does — *"artefactItemsv2 so it says what it does in the name"*.
   >
 - **B21.1.2** Update 8 import sites in `backend/cmd/server/main.go` `[P1]` `[ ]B21.1.1`
@@ -7593,6 +8025,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
   > Lines 55, 260, 266, 273, 277, 289, 292, 304. Constructor + route registration switches.
   >
 - **B21.1.3** Update doc-comment refs in adjacent packages `[P2]` `[ ]B21.1.1`
@@ -7734,6 +8167,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
   > `backend/internal/portfolio/master_record_service.go:105`, `backend/internal/fields/handler.go:65`, `backend/internal/fields/resolver.go:71`. Comment-only — no behaviour change.
   >
 - **B21.1.4** Add `Scope string` field to service constructor + propagate to all SELECT statements `[P1]` `[ ]B21.1.1`
@@ -7908,6 +8344,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
   > Replace 7 hardcoded `at.scope = 'work'` literals (`service.go` lines 137, 193, 266, 335, 363, 413, 473) with `at.scope = $N`. Constructor signature: `New(db, scope string)`. Two instances registered in `main.go`: `New(db, "work")` for `/work-items`, `New(db, "strategy")` for `/portfolio-items`.
   >
 - **B21.1.5** Parameterise `validItemTypes` allow-list per scope `[P1]` `[ ]B21.1.4`
@@ -8106,6 +8549,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
   > `types.go:333` currently `{epic, story, task, defect, portfolio item}` — work-only. Move to scope-keyed map: `validItemTypesByScope["work"]` and `validItemTypesByScope["strategy"]` (latter pulled from seed-data list of 51 strategy artefact types). Validation paths consult the right slice based on service's scope.
   >
 - **B21.1.6** Generalise `SummariseWorkItems` to scope-shaped summary `[P1]` `[ ]B21.1.4`
@@ -8208,6 +8659,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `d5e745a9` (2026-05-26): chore(refactorDB): final loose-ends — clean remaining mmff_vector references
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
   > Mirror existing `/work-items` route group. Reuse same handler — only the scope-bound service differs. Do NOT remove `/work-items` routes; both run side-by-side.
   >
 - **B21.1.8** Backend regression — existing `/work-items` contract unchanged `[P1]` `[ ]B21.1.7`
@@ -8420,6 +8872,15 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f89fe4ed` (2026-05-26): fix(sentinel): gadmin short-circuit in GrantOnNode — close synthetic-grant asymmetry
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
   > Run `backend/internal/artefactitemsv2/*_test.go` after rename. Add canary test: GET `/work-items?scope=work` returns identical payload to pre-rename. No new fields, no removed fields.
   >
 
@@ -8598,6 +9059,12 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > Replace hardcoded `useWorkItemsWindow` consumption in `p_ObjectTree.tsx` with config-driven `useArtefactItemsWindow(resourceUrl, scope)` reading from `p_wizard_*.json`.
   >
 - **B21.2.1** Rename hook file `app/hooks/useWorkItemsWindow.ts` → `app/hooks/useArtefactItemsWindow.ts` `[P1]`
@@ -8740,6 +9207,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
   > Function signature accepts `resourceUrl: string` and `scope: string` as required props. Internal fetch builds URL from these instead of hardcoding `/work-items`.
   >
 - **B21.2.2** Update `app/components/ObjectTree/p_ObjectTree.tsx:97` to pass `resourceUrl`/`scope` from config `[P1]` `[ ]B21.2.1`
@@ -8847,6 +9319,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
   > Read `wizardConfig.resourceUrl` and `wizardConfig.scope` (new optional fields on `ObjectTreeDataConfig<T>`). Default to legacy `/work-items` + `work` if absent for backward compat during cutover.
   >
 - **B21.2.3** Add `resourceUrl` + `scope` to wizard JSON files `[P1]` `[ ]B21.2.2`
@@ -8995,6 +9472,11 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > `p_wizard_workitems.json`: `{ "resourceUrl": "/work-items", "scope": "work" }`. `p_wizard_portfolio.json`: `{ "resourceUrl": "/portfolio-items", "scope": "strategy" }`.
   >
 - **B21.2.4** Extend `ObjectTreeDataConfig<T>` interface in `p_ObjectTree.tsx` `[P1]` `[ ]B21.2.3`
@@ -9100,6 +9582,10 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
   > Add optional `resourceUrl?: string` and `scope?: string`. `resolveWizardConfig` passes them through unchanged.
   >
 - **B21.2.5** Update remaining call-sites that import `useWorkItemsWindow` directly `[P2]` `[ ]B21.2.1`
@@ -9350,6 +9836,16 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
   > Cement the substrate so it can't regress.
   >
 - **B21.3.1** Backend integration test — `/portfolio-items` returns strategy artefacts only `[P1]` `[ ]B21.1.7`
@@ -9610,6 +10106,24 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > Seed two artefacts (one scope=`work`, one scope=`strategy`) in test DB. Assert `/work-items` returns the work one only; `/portfolio-items` returns the strategy one only. Catches scope-leak regressions.
   >
 - **B21.3.2** Frontend unit test — `p_ObjectTree` calls correct endpoint per config `[P2]` `[ ]B21.2.4`
@@ -9781,6 +10295,16 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
   > Mock `useArtefactItemsWindow`; render with `p_wizard_portfolio.json`; assert `resourceUrl` arg = `/portfolio-items`.
   >
 - **B21.3.3** Spec doc — `docs/c_c_wizard_sidecar.md` `[P2]`
@@ -9961,6 +10485,14 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
   > Document the sidecar pattern: schema for `p_wizard_*.json`, contract for `resolveWizardConfig`, what stays in JSON vs. what is injected by the page (closures/React nodes). Add CLAUDE.md index pointer.
   >
 - **B21.3.4** Lint rule `lint:scope-literals` `[P3]` `[ ]B21.1.4`
@@ -10103,6 +10635,9 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
   > Forbid hardcoded `'work'`/`'strategy'` string literals in `*.go` files outside `artefactitemsv2/` and seed-data files. Prevents new scope leaks. Ledger under `dev/registries/scope-literals-allowlist.txt`.
   >
 - **B21.3.5** Migration note — `docs/c_c_v1_v2_cutover.md` `[P2]` `[ ]B21.1.7`
@@ -10212,6 +10747,8 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `93ba728b` (2026-05-26): fix(auth): dpop_jti_cache SQL — bare-column straggler [RF3.1.1]
 > Commit `41bd3d60` (2026-05-26): feat(p3): DROP DATABASE mmff_vector — refactor complete [pillar-3-step-3-final] [RF-COMPLETE]
 > Commit `75411271` (2026-05-26): chore(claude): prune dead skills/commands, slim SessionStart hooks
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > Add pointer to `c_c_wizard_sidecar.md` under "Working practices" so future Claude sessions load the spec when touching `p_wizard_*.json`.
   >
 
@@ -10316,6 +10853,17 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > Currently `rankTopic("work_item", ...)` and `rankTopic("portfolio_item", ...)` are separate. Consider unifying as `rankTopic("artefact", scope, ...)` once realtime fan-out can dispatch by scope.
   >
 - **B21.4.2** Sidecar pattern adoption beyond `p_ObjectTree` `[P4]`
@@ -10363,6 +10911,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b5d88d8` (2026-05-26): feat(p3): Pillar 3 step 2 — drop 16 fdw_* foreign tables + fdw_mmff_vector server [pillar-3-step-2] [RF3.2]
 > Commit `d7d3e1eb` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs per-user card prefs table [FB1.1.3]
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > Apply `p_wizard_*.json` to other primitives: `<Table>`, `<DiagramCanvas>`, `<TimeboxManager>`. Per-primitive spec rolls up under B15 + B21.3.3.
   >
 - **B21.4.3** Storify additional 51 strategy artefact types in UI `[P3]`
@@ -10494,6 +11043,22 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `bd417a86` (2026-05-27): feat(flowboard): mig 134 — users_flowboard_prefs [FB1.1.3]
+> Commit `e9507123` (2026-05-28): feat(db): mig 136 — restore padmin's pre-fold custom pages + nav profiles + bookmarks
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `ce3714ec` (2026-05-28): feat(artefactitems): node-aware cascade resolver — clone-tier wins, template fallback [PLA068 FS.3.1]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
   > Once backend serves them, surface theme/objective/feature creation flows in portfolio page. Distinct from B21 — that just plumbs the data.
   >
 - **B21.4.4** Drop legacy `/v1/portfolio-items` routes `[P4]` `[ ]B21.3.5`
@@ -10571,6 +11136,7 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `5b5d88d8` (2026-05-26): feat(p3): Pillar 3 step 2 — drop 16 fdw_* foreign tables + fdw_mmff_vector server [pillar-3-step-2] [RF3.2]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
 > Commit `41bd3d60` (2026-05-26): feat(p3): DROP DATABASE mmff_vector — refactor complete [pillar-3-step-3-final] [RF-COMPLETE]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
   > After v2 contract is stable in production for 2+ release cycles. Per gradual-DB-sanitisation rule (memory).
   >
 - **B21.4.5** Per-scope flow-state validation `[P3]`
@@ -10607,6 +11173,13 @@ Manage per-role access to pages and features. Control what each role (user, padm
 > Commit `57ed1958` (2026-05-25): fix(cron): correct cross-DB orphan-audit undercount [CUT1.0.2]
 > Commit `bd1d7c52` (2026-05-26): feat(prefix): Pillar 1 wave 6a — users prefix sweep DB+SQL (JSON tags held for 6b) [wave-6a] [RF1.5.7]
 > Commit `839b4330` (2026-05-26): chore(p3): clear mmff_vector references before DROP [pillar-3-step-3-prep]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `a0281ff6` (2026-05-28): feat(flow-states): mig 140 — backfill template self-loop on existing rows [PLA068 FS.1.3]
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
   > `validItemTypesByScope` (B21.1.5) is one allow-list; flow-states may also need scope-keyed transitions if strategy artefacts have different lifecycle states. Audit `ListFlowStates` after B21.1.7 lands.
   >
 
@@ -10998,6 +11571,16 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `5742f1bc` (2026-05-27): docs(flowboard): PLA066 pre-flight — spec + scope + refs
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 
 **Phase 1 — Backend**
 
@@ -11042,6 +11625,14 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `ff9a6613` (2026-05-27): feat(flowboard): scaffold backend/internal/flowboard package + main.go mount [FB1.2.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `a4404c1a` (2026-05-28): feat(flows): ListByScope dual-tier read — node clones win, template fallback per-flow [PLA068 FS.2.1]
+> Commit `4540bb9d` (2026-05-28): feat(flows): CloneTemplateForNode — idempotent lazy clone with advisory lock [PLA068 FS.2.2]
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
 - **OBJ1.1.2** `/work-items/facets` + `/portfolio-items/facets` handlers. AC: both endpoints mounted under WorkspaceClampMiddleware; accept `?meg=`; emit `{artefact_type_ids, priority_ids}`. `[P2]`
 > Commit `a0f1a6db` (2026-05-23): refactor(contexts): break import cycles in AuthContext / Sentinel / ScopeContext + portfolio-model + work-items config [TD-DEPS-IMPORT-CYCLES]
 > Commit `07b5158b` (2026-05-24): feat(artefacts): cross-scope parent candidates + Resync + Parent column
@@ -11057,6 +11648,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `82d3aed1` (2026-05-24): fix(sentinel): mirror resolved focus into ?meg= URL + loading-gate account-settings
 > Commit `c52af181` (2026-05-25): fix(sentinel): re-stamp ?meg= on client nav + drop ghost localStorage fallback
 > Commit `199637ea` (2026-05-25): chore(sentinel): lock down ?meg=/scope-ls regression class with lint + e2e
+> Commit `84125322` (2026-05-28): feat(flowboard): column CRUD endpoints + cascade-target delete picker [PLA068 FS.2.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - **OBJ1.1.3** Backend facets table-tests. AC: workspace clamp, topology clamp, archived exclusion, 403 on unauthorised scope, 404 on unknown scope. `[P3]`
 > Commit `ed5eef00` (2026-05-23): feat(errors): standardize product-path errors to RFC 9457 problem+json [PLA060 B16.12]
 > Commit `26ebe8e4` (2026-05-23): feat(lint): SQL placement + http.Error ratchets + pay down both [PLA060 B16.13 + follow-ups]
@@ -11150,6 +11743,10 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
 > Commit `ed20c4da` (2026-05-27): fix(artefactitems): CanReadScope gate on PatchWorkItem + post-write read carve-out
 > Commit `0f599c88` (2026-05-27): feat(flowboard): mig 133 — topology_nodes_wip_limits WIP-cap table [FB1.1.2]
+> Commit `dca70853` (2026-05-28): feat(flow-states): mig 138 — add flows_states topology_node + template columns [PLA068 FS.1.1]
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `e1c9c21f` (2026-05-28): test(lintchecks): sentinel_clamp regex now covers flows_states [PLA068 FS.3.3]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 
 **Phase 2 — Frontend**
 
@@ -11193,6 +11790,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `75411271` (2026-05-26): chore(claude): prune dead skills/commands, slim SessionStart hooks
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
 - **OBJ1.2.2** ObjectTreeV2 wires facets hook to chips. AC: `p_ObjectTree.tsx` drops the temporary `windowRoots`-derivation block; chips populate from facets + workspace catalogue metadata (label + colour). `[P2]`
 > Commit `6ccbe837` (2026-05-23): feat(ui): Loader primitive + ObjectTreeV2 scope wiring + notifications
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
@@ -11221,6 +11820,8 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `1d072dfb` (2026-05-26): feat(sentinel): workspace-aware focus resolution + login workspace derivation
 > Commit `6d3b4caf` (2026-05-26): feat(sentinel-fe): mirror backend workspace-aware focus precedence
 > Commit `6a6a1e04` (2026-05-27): feat(topology): single sourced node picker via useScopedTopologyNodes
+> Commit `17dfc536` (2026-05-28): feat(flow-states): mig 139 — canonical re-seed of workspace-template flow_states [PLA068 FS.1.2]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
 - **OBJ1.2.3** `WorkItemsFilterChipsProps` tightened. AC: `typeOptions` + `priorityOptions` required (no `?`, no `= []` default) after V1 ObjectTree retirement. `[P3]`
 > Commit `c1bb6e67` (2026-05-23): chore(deps): remove 52 orphan files + 10 unused npm deps + add knip baseline
 > Commit `0a6908a8` (2026-05-24): feat(sentinel): S06 — migration 243 + DefaultFocus wired [PLA062 S06]
@@ -11330,6 +11931,15 @@ ObjectTreeV2 becomes sole owner of *which filter values are reachable* for its c
 > Commit `f98bc796` (2026-05-27): docs(flowboard): spec correction — UUID types + artefacts_types/flows_states plurals [PLA066]
 > Commit `43afd1ad` (2026-05-27): feat(flowboard): p_FlowBoard top-level — composes all FB blocks + addressable surface [FB1.3.7]
 > Commit `6894297e` (2026-05-27): docs(dev-erd): spec — live + snapshot ERD page at /dev/erd
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `2b0780bf` (2026-05-28): docs(tech-debt): TD-FS-PER-NODE-INITIAL — node clones cannot carry is_initial=TRUE [PLA068 FS.2.2]
+> Commit `577b0839` (2026-05-28): feat(artefactitems): BulkOps integrity guards + cross-node reparent resolver [PLA068 FS.3.2]
+> Commit `b659fa3f` (2026-05-28): feat(flowboard): TeamBoardSettingsPanel — Rally-style per-node settings modal [PLA068 FS.4.1]
+> Commit `d735e451` (2026-05-28): refactor(work-items): drop types-guard + switch to ArtefactTypeCatalogue context
+> Commit `1202fd6e` (2026-05-28): docs(outbox): canonical transactional outbox pattern + RES061 index links
+> Commit `57559b51` (2026-05-28): docs(db): file 2026-05-28 00:54 blind database-structure audit
 
 ---
 
