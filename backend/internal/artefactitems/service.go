@@ -218,46 +218,66 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	// above so the URL param can only narrow further, never widen.
 	// NULL topology_node_id rows are excluded when scope is active
 	// (un-assigned items are visible only in unscoped reads).
+	//
+	// PERF (2026-05-28) — fast path when ?meg= matches the Sentinel
+	// focus node. That's the common case (every page passes its
+	// current focus as ?meg=), and in that case the Sentinel middleware
+	// has ALREADY done the access check + subtree resolution and put
+	// the answer on the context. The SubtreeClause above already
+	// applied it. Re-doing CanReadScope (1 SQL) + DescendantNodeIDs
+	// (1 SQL recursive CTE) + ApplyClampToIDs (in-process intersect of
+	// two identical sets) is pure duplicate work — measured 80-150ms on
+	// a 116-row dev subscription. We short-circuit here so the hot path
+	// makes 0 extra SQL calls; the slow path (?meg= different from
+	// focus, e.g. legacy URLs or ?scope_dir=ascend) keeps the original
+	// re-resolution because the answer genuinely differs from the
+	// middleware's.
 	if filters.ScopeNodeID != nil {
-		if s.topology == nil {
-			return nil, 0, ErrInvalidInput
-		}
-		if filters.ActorUserID == nil || filters.ActorRoleID == uuid.Nil {
-			return nil, 0, ErrInvalidInput
-		}
-		scopeNodeID, parseErr := uuid.Parse(*filters.ScopeNodeID)
-		if parseErr != nil {
-			return nil, 0, ErrInvalidInput
-		}
-		actorUserID, parseErr := uuid.Parse(*filters.ActorUserID)
-		if parseErr != nil {
-			return nil, 0, ErrInvalidInput
-		}
-		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, filters.ActorRoleID)
-		if permErr != nil {
-			if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
-				return nil, 0, ErrScopeNodeNotFound
+		clamp := sentinel.FromCtx(ctx)
+		scopeMatchesFocus := clamp.FocusNodeID != uuid.Nil &&
+			*filters.ScopeNodeID == clamp.FocusNodeID.String() &&
+			filters.ScopeDirection != "ascend"
+		if !scopeMatchesFocus {
+			if s.topology == nil {
+				return nil, 0, ErrInvalidInput
 			}
-			return nil, 0, permErr
+			if filters.ActorUserID == nil || filters.ActorRoleID == uuid.Nil {
+				return nil, 0, ErrInvalidInput
+			}
+			scopeNodeID, parseErr := uuid.Parse(*filters.ScopeNodeID)
+			if parseErr != nil {
+				return nil, 0, ErrInvalidInput
+			}
+			actorUserID, parseErr := uuid.Parse(*filters.ActorUserID)
+			if parseErr != nil {
+				return nil, 0, ErrInvalidInput
+			}
+			ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, filters.ActorRoleID)
+			if permErr != nil {
+				if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
+					return nil, 0, ErrScopeNodeNotFound
+				}
+				return nil, 0, permErr
+			}
+			if !ok {
+				return nil, 0, ErrScopeForbidden
+			}
+			var ids []uuid.UUID
+			var resolveErr error
+			if filters.ScopeDirection == "ascend" {
+				ids, resolveErr = s.topology.AncestorNodeIDs(ctx, subscriptionID, scopeNodeID)
+			} else {
+				ids, resolveErr = s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
+			}
+			if resolveErr != nil {
+				return nil, 0, resolveErr
+			}
+			// Intersect with the Sentinel clamp (no-op when clamp absent).
+			ids = sentinel.ApplyClampToIDs(ctx, ids)
+			extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
+			args = append(args, ids)
+			n++
 		}
-		if !ok {
-			return nil, 0, ErrScopeForbidden
-		}
-		var ids []uuid.UUID
-		var resolveErr error
-		if filters.ScopeDirection == "ascend" {
-			ids, resolveErr = s.topology.AncestorNodeIDs(ctx, subscriptionID, scopeNodeID)
-		} else {
-			ids, resolveErr = s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
-		}
-		if resolveErr != nil {
-			return nil, 0, resolveErr
-		}
-		// Intersect with the Sentinel clamp (no-op when clamp absent).
-		ids = sentinel.ApplyClampToIDs(ctx, ids)
-		extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
-		args = append(args, ids)
-		n++
 	}
 
 	if filters.ParentID != nil {
