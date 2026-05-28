@@ -147,7 +147,18 @@ export default function ValueSprint() {
   //      so the backend `/work-items` handler clamps the LIST query
   //      with ANY($N::uuid[]) — same shape used by the user-facing
   //      type chip.
-  const { types } = useArtefactTypeCatalogue();
+  const { types, loading: catalogueLoading } = useArtefactTypeCatalogue();
+  // PERF (2026-05-28) — gate both ObjectTree mounts on the catalogue
+  // being resolved. Without this gate, the page mounts the backlog tree
+  // with `types=[]` (allowedIds resolves to empty, wizardConfig builds a
+  // URL with NO item_type clamp), fires a throwaway /work-items + prefs
+  // GET, then re-mounts a moment later when `types` populates — that
+  // second mount fires the GETs AGAIN with the proper clamp. Net: 3
+  // extra round-trips per page load (one throwaway list call + one
+  // duplicate prefs + one duplicate facets, all serial). The gate
+  // collapses both trees into a single correct mount once catalogue is
+  // ready.
+  const catalogueReady = !catalogueLoading && types.length > 0;
 
   // Slice 7 — factored sidecar resolver. Both the backlog tree and the
   // sprint-panel tree share the same base wizard (story + defect only)
@@ -523,7 +534,7 @@ export default function ValueSprint() {
               outer Panel owns the chrome; the tree owns the table.
               Mounted only when a sprint is loaded — see panelWizardConfig
               for the rationale. */}
-          {panelWizardConfig && (
+          {catalogueReady && panelWizardConfig && (
             <div ref={panelBulkBarRef}>
               <ObjectTree
                 selectedId={panelSelectedItem?.id ?? null}
@@ -549,21 +560,23 @@ export default function ValueSprint() {
             anchor. The data-action attribute is stamped on every leading
             button by BulkActionBar. */}
         <div ref={bulkBarRef}>
-          <ObjectTree
-            title="Backlog"
-            addressableName="value_sprint_backlog_tree_ll"
-            subtitleBadge="00"
-            subtitle="Workspace backlog"
-            description="All work items in scope. Drag rows onto the sprint above to commit them."
-            selectedId={selectedItem?.id ?? null}
-            onSelect={setSelectedItem}
-            wizardConfig={wizardConfig}
-            multiSelectEnabled
-            onSelectionChange={setBacklogSelectedIds}
-            rowButtons={backlogRowButtons}
-            refetchRef={backlogRefetchRef}
-            bulkLeadingButtons={bulkLeadingButtons}
-          />
+          {catalogueReady && (
+            <ObjectTree
+              title="Backlog"
+              addressableName="value_sprint_backlog_tree_ll"
+              subtitleBadge="00"
+              subtitle="Workspace backlog"
+              description="All work items in scope. Drag rows onto the sprint above to commit them."
+              selectedId={selectedItem?.id ?? null}
+              onSelect={setSelectedItem}
+              wizardConfig={wizardConfig}
+              multiSelectEnabled
+              onSelectionChange={setBacklogSelectedIds}
+              rowButtons={backlogRowButtons}
+              refetchRef={backlogRefetchRef}
+              bulkLeadingButtons={bulkLeadingButtons}
+            />
+          )}
         </div>
 
         {/* Slice 5 — radial picker. Open state is page-owned so the same
