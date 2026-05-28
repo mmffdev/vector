@@ -2,12 +2,15 @@ package sentinel
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/cache"
 	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
@@ -25,9 +28,19 @@ import (
 // The split mirrors how topology.Service / PoolWorkspaceLookup carve
 // up the same data today — sentinel duplicates the access path rather
 // than delegating to those types, per PLA062 Replace decision.
+//
+// PERF (2026-05-28) — ResolveSubtree's recursive topology CTE is the
+// largest single cost in the per-request middleware tax (~70-100ms on
+// a 116-node dev tree, more on production trees). The optional cache
+// client (set by SetCache from main.go) wraps that one call: the
+// answer is per-(tenant, focus, scope_up, scope_down) and changes only
+// when topology_nodes is mutated, so invalidation lives in
+// topology.Service's writers. When the cache is nil OR unavailable, we
+// fall back to the SQL path unchanged.
 type PoolResolver struct {
 	VAPool *pgxpool.Pool // vector_artefacts (topology_nodes)
 	MVPool *pgxpool.Pool // mmff_vector (workspaces, roles_workspaces, users)
+	cache  *cache.Client // optional; nil = SQL-only path
 }
 
 // NewPoolResolver constructs a PoolResolver. Both pools are required;
@@ -36,6 +49,69 @@ type PoolResolver struct {
 func NewPoolResolver(vaPool, mvPool *pgxpool.Pool) *PoolResolver {
 	return &PoolResolver{VAPool: vaPool, MVPool: mvPool}
 }
+
+// SetCache enables the Valkey cache layer for ResolveSubtree. Pass
+// nil to keep the SQL-only path. Safe to call once at startup; not
+// safe to call concurrently with Resolver method calls.
+func (r *PoolResolver) SetCache(c *cache.Client) {
+	r.cache = c
+}
+
+// subtreeCacheKey is the deterministic cache key for one (tenant,
+// focus, scope_up, scope_down) tuple. The tenant prefix lets the
+// topology invalidator scope its DELs with `sentinel:subtree:{tenant}:*`
+// — writes in tenant A don't bust tenant B's caches.
+func subtreeCacheKey(tenant, focus uuid.UUID, scopeUp, scopeDown bool) string {
+	var u, d byte
+	if scopeUp {
+		u = '1'
+	} else {
+		u = '0'
+	}
+	if scopeDown {
+		d = '1'
+	} else {
+		d = '0'
+	}
+	return fmt.Sprintf("sentinel:subtree:%s:%s:%c:%c", tenant, focus, u, d)
+}
+
+// encodeUUIDs / decodeUUIDs marshal []uuid.UUID for cache storage.
+// Binary encoding (16 bytes per UUID) is ~6× smaller than JSON and
+// avoids any text-parsing cost. A 4-byte length prefix lets us bail
+// fast on a corrupted entry.
+func encodeUUIDs(ids []uuid.UUID) []byte {
+	buf := make([]byte, 4+16*len(ids))
+	binary.BigEndian.PutUint32(buf[:4], uint32(len(ids)))
+	for i, id := range ids {
+		copy(buf[4+i*16:], id[:])
+	}
+	return buf
+}
+
+func decodeUUIDs(b []byte) ([]uuid.UUID, error) {
+	if len(b) < 4 {
+		return nil, fmt.Errorf("decodeUUIDs: payload too short (%d bytes)", len(b))
+	}
+	n := int(binary.BigEndian.Uint32(b[:4]))
+	if len(b) != 4+16*n {
+		return nil, fmt.Errorf("decodeUUIDs: length mismatch (header=%d, bytes=%d)", n, len(b)-4)
+	}
+	out := make([]uuid.UUID, n)
+	for i := 0; i < n; i++ {
+		copy(out[i][:], b[4+i*16:4+(i+1)*16])
+	}
+	return out, nil
+}
+
+// SubtreeCacheKeyPrefix is the prefix used by all subtree cache keys
+// for a tenant. Used by topology.Service's invalidation hook to wipe
+// every cached subtree for a tenant when topology_nodes is mutated.
+// Concrete shape: `sentinel:subtree:{tenant}:*`
+func SubtreeCacheKeyPrefix(tenant uuid.UUID) string {
+	return fmt.Sprintf("sentinel:subtree:%s:*", tenant)
+}
+
 
 // ResolveSubtree implements Resolver. Steps:
 //  1. Verify the focus node exists inside the tenant — if not,
@@ -59,6 +135,68 @@ func NewPoolResolver(vaPool, mvPool *pgxpool.Pool) *PoolResolver {
 //	    under the Replace decision since topology.Subtree /
 //	    DescendantNodeIDs are READ helpers, not middleware).
 func (r *PoolResolver) ResolveSubtree(
+	ctx context.Context,
+	tenant, focus uuid.UUID,
+	scopeUp, scopeDown bool,
+) ([]uuid.UUID, error) {
+	// Cache fast path. Try the cache; if available and hit, return.
+	// All other paths (cache nil, unavailable, miss, decode error) fall
+	// through to the SQL implementation. The cache layer's circuit
+	// breaker means `Get` returns ErrCacheUnavailable instantly when
+	// Valkey is down — no slow timeout to pay.
+	//
+	// Tenant-gate note: the SQL path's first step is a tenant-belongs
+	// check that returns ErrFocusNotInTenant for cross-tenant focus
+	// IDs. The cache key is per-(tenant, focus, …) so a cross-tenant
+	// focus would have its OWN key — a stale cache entry from a
+	// different tenant can't leak in. Still, on cache hit we trust the
+	// stored value because (a) the cache is populated only after the
+	// tenant gate passed on write-through, and (b) topology invalidation
+	// drops the whole tenant's prefix on any node change. Defence-in-
+	// depth: the consuming middleware doesn't trust ResolveSubtree's
+	// output unilaterally — handlers still do their per-grant clamp.
+	if r.cache != nil && r.cache.IsAvailable() {
+		key := subtreeCacheKey(tenant, focus, scopeUp, scopeDown)
+		b, err := r.cache.Get(ctx, key)
+		switch {
+		case err == nil:
+			ids, decodeErr := decodeUUIDs(b)
+			if decodeErr == nil {
+				return ids, nil
+			}
+			// Corrupted entry — log and fall through to SQL. The
+			// invalidator will replace it on next write-through.
+			log.Printf("sentinel.ResolveSubtree cache decode err key=%s: %v", key, decodeErr)
+		case errors.Is(err, cache.ErrMiss), errors.Is(err, cache.ErrCacheUnavailable):
+			// Expected miss or breaker-open — fall through silently.
+		default:
+			log.Printf("sentinel.ResolveSubtree cache get key=%s: %v", key, err)
+		}
+	}
+
+	// SQL path — same as pre-cache implementation.
+	out, err := r.resolveSubtreeFromDB(ctx, tenant, focus, scopeUp, scopeDown)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write-through. Failure is logged but not propagated — the read
+	// result is what matters; the next request will hit SQL again.
+	if r.cache != nil && r.cache.IsAvailable() {
+		key := subtreeCacheKey(tenant, focus, scopeUp, scopeDown)
+		if setErr := r.cache.Set(ctx, key, encodeUUIDs(out)); setErr != nil &&
+			!errors.Is(setErr, cache.ErrCacheUnavailable) {
+			log.Printf("sentinel.ResolveSubtree cache set key=%s: %v", key, setErr)
+		}
+	}
+
+	return out, nil
+}
+
+// resolveSubtreeFromDB runs the SQL-only path. Always called on cache
+// miss / unavailable, and always the source-of-truth for the cache
+// write-through above.
+func (r *PoolResolver) resolveSubtreeFromDB(
 	ctx context.Context,
 	tenant, focus uuid.UUID,
 	scopeUp, scopeDown bool,
