@@ -3,43 +3,28 @@
 // <ColumnPicker> — Slice 4.5 of the ObjectTree refactor
 // (docs/c_c_objecttree_refactor_plan.md).
 //
-// Dropdown in the action bar that lets the user toggle which columns
-// are visible on the grid. Built on top of:
+// Rally-style "Show Fields" dropdown in the action bar that lets the user
+// toggle which columns are visible on the grid. Draft/commit model:
+// checkbox changes stay local until Apply, Cancel reverts.
+//
+// Built on top of:
 //
 //   Slice 2.5 — the backend ?fields= contract + /columns endpoint
-//   Slice 4.6a — request coalescing (rapid checkbox toggles collapse
-//                to one outgoing refetch)
+//   Slice 4.6a — request coalescing (Apply triggers one refetch)
 //
-// Scope of THIS slice — minimum viable picker:
-//   ✓ Dropdown with grouped checkboxes
-//   ✓ Always-on keys (e.g. id) appear but are disabled
-//   ✓ defaultVisible: true picks the initial set
-//   ✓ Reset-to-defaults action
-//   ✓ visibleKeys state owned by the parent (V2's ObjectTree)
-//   ✓ localStorage persistence (per-treeName prefs key)
-//   ✓ Filters config.columns before passing to ResourceTree (visual
-//     hide/show, not just wire-only)
-//
-// Deferred (call out in comments where they bite):
+// Deferred:
 //   - Server-side prefs persistence (cross-device). Local-only today.
 //   - Cache-merge logic for back-fill of newly-added column data
-//     (today: the existing window refetch via useObjectTreeWindow
-//     handles it via the fieldsSlice dep). Optimal cache merge that
-//     preserves expanded sub-trees is a follow-up.
-//   - Custom-field columns from a per-workspace catalogue. Catalogue
-//     is static-per-build today; the column-catalogue endpoint already
-//     exists (Slice 2.5) so future work can hydrate from it.
+//     (handled by useObjectTreeWindow via the fieldsSlice dep).
+//   - Custom-field columns from a per-workspace catalogue. Catalogue is
+//     static-per-build today; Slice 2.5 endpoint already exists.
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { MdViewColumn, MdCheckBox, MdCheckBoxOutlineBlank } from "react-icons/md";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MdInfoOutline, MdSearch } from "react-icons/md";
+import { TbColumns3 } from "react-icons/tb";
 
 // ── Column catalogue types ──────────────────────────────────────────────────
 
-/**
- * One entry in the column catalogue — what the user can pick in the
- * picker dropdown. Shape mirrors the docs/examples JSON example for
- * forward-compat with the Slice 6+ JSON config migration.
- */
 export interface ColumnCatalogueEntry {
   /** Stable identifier — matches the ColumnDef.key on the rendered column. */
   key: string;
@@ -71,6 +56,16 @@ export interface ColumnCatalogue {
   columns: ColumnCatalogueEntry[];
   /** localStorage key suffix; final key is `objecttree-v2.columns.<prefsKey>`. */
   prefsKey: string;
+  /**
+   * Optional cap on the number of user-addable columns that can be
+   * visible at once. Excludes always-on columns. Surfaces as
+   * "(N columns max)" in the header.
+   */
+  maxColumns?: number;
+  /** Optional override for the trigger button label. Default: "Show Fields". */
+  triggerLabel?: string;
+  /** Optional override for the tooltip on the trigger. Default: "Show Columns". */
+  triggerTooltip?: string;
 }
 
 // ── Hook: visible-keys state with localStorage persistence ──────────────────
@@ -99,15 +94,6 @@ function writeStoredKeys(prefsKey: string, keys: string[]): void {
   }
 }
 
-/**
- * Hook that owns the picker's visible-keys state. Reads from
- * localStorage on mount (falls back to the catalogue's defaultVisible
- * set). Always-on (non-addable) columns are folded in unconditionally
- * so the picker can't accidentally exclude required columns.
- *
- * Returns the visible-keys Set + a setter (used by the picker) +
- * the corresponding wireKeys (used by useObjectTreeWindow's `fields`).
- */
 export function useColumnPickerState(catalogue: ColumnCatalogue) {
   const defaults = useMemo(() => {
     const out: string[] = [];
@@ -119,12 +105,9 @@ export function useColumnPickerState(catalogue: ColumnCatalogue) {
 
   const [visibleKeys, setVisibleKeysRaw] = useState<string[]>(defaults);
 
-  // Hydrate from localStorage after first paint (avoid hydration mismatch).
   useEffect(() => {
     const stored = readStoredKeys(catalogue.prefsKey);
     if (stored) {
-      // Validate against the current catalogue — drop stale keys,
-      // ensure always-on keys are present.
       const validKeys = new Set(catalogue.columns.map((c) => c.key));
       const alwaysOnKeys = catalogue.columns
         .filter((c) => !c.addable)
@@ -137,7 +120,6 @@ export function useColumnPickerState(catalogue: ColumnCatalogue) {
 
   const setVisibleKeys = useCallback(
     (next: string[]) => {
-      // Always-on keys can't be removed.
       const alwaysOnKeys = catalogue.columns
         .filter((c) => !c.addable)
         .map((c) => c.key);
@@ -152,7 +134,6 @@ export function useColumnPickerState(catalogue: ColumnCatalogue) {
     setVisibleKeys(defaults);
   }, [defaults, setVisibleKeys]);
 
-  // Map visible keys → wireKeys for the data hook's ?fields= param.
   const visibleWireKeys = useMemo(() => {
     const wireKeys: string[] = [];
     const byKey = new Map(catalogue.columns.map((c) => [c.key, c]));
@@ -176,11 +157,11 @@ export function useColumnPickerState(catalogue: ColumnCatalogue) {
 
 export interface ColumnPickerProps {
   catalogue: ColumnCatalogue;
-  /** Currently-visible keys. */
+  /** Currently-committed visible keys. */
   visibleKeys: string[];
-  /** Setter — fires when the user toggles checkboxes. */
+  /** Setter — fires on Apply, not per checkbox toggle. */
   onChange: (next: string[]) => void;
-  /** Optional reset-to-defaults callback (rendered as a footer link). */
+  /** Optional reset-to-defaults callback. */
   onResetToDefaults?: () => void;
 }
 
@@ -191,33 +172,86 @@ export function ColumnPicker({
   onResetToDefaults,
 }: ColumnPickerProps) {
   const [open, setOpen] = useState(false);
-  const visibleSet = useMemo(() => new Set(visibleKeys), [visibleKeys]);
+  // Draft state — what the user has toggled inside the open dropdown but
+  // not yet committed. Initialised from the committed visibleKeys every
+  // time the dropdown is opened, so Cancel-then-reopen is clean.
+  const [draftKeys, setDraftKeys] = useState<string[]>(visibleKeys);
+  const [search, setSearch] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Group columns by their `group` field.
+  const draftSet = useMemo(() => new Set(draftKeys), [draftKeys]);
+
+  // When opening, seed draft from committed state + clear search + focus
+  // the search input. When closing, drop draft + search.
+  useEffect(() => {
+    if (open) {
+      setDraftKeys(visibleKeys);
+      setSearch("");
+      const t = setTimeout(() => searchInputRef.current?.focus(), 0);
+      return () => clearTimeout(t);
+    }
+  }, [open, visibleKeys]);
+
+  // Count of user-addable (non-always-on) draft columns — the value the
+  // maxColumns cap actually gates.
+  const { addableSelectedCount, addableTotal } = useMemo(() => {
+    const addableKeys = new Set(
+      catalogue.columns.filter((c) => c.addable).map((c) => c.key),
+    );
+    let selected = 0;
+    for (const k of draftKeys) if (addableKeys.has(k)) selected++;
+    return { addableSelectedCount: selected, addableTotal: addableKeys.size };
+  }, [catalogue, draftKeys]);
+
+  const atCap =
+    typeof catalogue.maxColumns === "number" &&
+    addableSelectedCount >= catalogue.maxColumns;
+
+  // Group + filter by search.
   const grouped = useMemo(() => {
+    const q = search.trim().toLowerCase();
     const map = new Map<string, ColumnCatalogueEntry[]>();
     for (const col of catalogue.columns) {
+      if (q && !col.label.toLowerCase().includes(q)) continue;
       const g = col.group ?? "Other";
       const list = map.get(g) ?? [];
       list.push(col);
       map.set(g, list);
     }
     return Array.from(map.entries());
-  }, [catalogue]);
+  }, [catalogue, search]);
 
   const toggle = useCallback(
-    (key: string) => {
-      if (visibleSet.has(key)) {
-        onChange(visibleKeys.filter((k) => k !== key));
+    (key: string, entry: ColumnCatalogueEntry) => {
+      if (!entry.addable) return;
+      if (draftSet.has(key)) {
+        setDraftKeys((prev) => prev.filter((k) => k !== key));
       } else {
-        onChange([...visibleKeys, key]);
+        if (atCap) return;
+        setDraftKeys((prev) => [...prev, key]);
       }
     },
-    [visibleKeys, visibleSet, onChange],
+    [draftSet, atCap],
   );
 
-  // Close on outside-click. The shell-style listener pattern used by
-  // ObjectTreeDetailFlyout — pointerdown so we beat focus events.
+  const dirty = useMemo(() => {
+    if (draftKeys.length !== visibleKeys.length) return true;
+    const a = new Set(draftKeys);
+    for (const k of visibleKeys) if (!a.has(k)) return true;
+    return false;
+  }, [draftKeys, visibleKeys]);
+
+  const apply = useCallback(() => {
+    onChange(draftKeys);
+    setOpen(false);
+  }, [draftKeys, onChange]);
+
+  const cancel = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  // Close on outside-click (pointerdown, mirroring ObjectTreeDetailFlyout).
+  // Cancel-equivalent — drops draft via the open-effect on next open.
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -230,116 +264,170 @@ export function ColumnPicker({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
+  // Escape key cancels.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const triggerLabel = catalogue.triggerLabel ?? "Show Fields";
+  const triggerTooltip = catalogue.triggerTooltip ?? "Show Columns";
+  const headerCap =
+    typeof catalogue.maxColumns === "number"
+      ? `(${catalogue.maxColumns} columns max)`
+      : `(${addableSelectedCount} of ${addableTotal} selected)`;
+
   return (
-    <span data-objecttree-column-picker className="tree_accordion-dense__filterbar-chip" style={{ position: "relative" }}>
+    <span
+      data-objecttree-column-picker
+      className="column-picker__Wrap"
+    >
       <button
         type="button"
-        className="tree_accordion-dense__filterbar-chip"
+        className={`tree_accordion-dense__filterbar-chip column-picker__Trigger${
+          open ? " column-picker__Trigger--open" : ""
+        }`}
         onClick={() => setOpen((o) => !o)}
-        aria-label="Configure columns"
-        aria-haspopup="menu"
+        aria-label={triggerTooltip}
+        title={triggerTooltip}
+        aria-haspopup="dialog"
         aria-expanded={open}
       >
         <span className="tree_accordion-dense__filterbar-chip-icon">
-          <MdViewColumn size={14} />
+          <TbColumns3 size={14} />
         </span>
-        <span className="tree_accordion-dense__filterbar-chip-label">Columns</span>
+        <span className="tree_accordion-dense__filterbar-chip-label">
+          {triggerLabel}
+        </span>
       </button>
       {open && (
         <div
-          className="column-picker__panel"
-          role="menu"
-          aria-label="Columns"
-          style={{
-            position: "absolute",
-            top: "100%",
-            right: 0,
-            marginTop: 4,
-            minWidth: 220,
-            maxHeight: 360,
-            overflowY: "auto",
-            background: "var(--surface-elev)",
-            border: "1px solid var(--ink-faint)",
-            borderRadius: 6,
-            padding: 8,
-            zIndex: 30,
-          }}
+          className="column-picker__Panel"
+          role="dialog"
+          aria-label={triggerTooltip}
         >
-          {grouped.map(([group, cols]) => (
-            <div key={group} className="column-picker__group" style={{ marginBottom: 8 }}>
-              <div
-                className="column-picker__group-heading"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: 0.5,
-                  textTransform: "uppercase",
-                  color: "var(--ink-muted)",
-                  padding: "4px 6px",
-                }}
-              >
-                {group}
-              </div>
-              {cols.map((col) => {
-                const checked = visibleSet.has(col.key);
-                const disabled = !col.addable;
-                return (
-                  <button
-                    key={col.key}
-                    type="button"
-                    role="menuitemcheckbox"
-                    aria-checked={checked}
-                    disabled={disabled}
-                    onClick={() => toggle(col.key)}
-                    className="column-picker__row"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      width: "100%",
-                      padding: "6px 6px",
-                      border: "none",
-                      background: "transparent",
-                      cursor: disabled ? "not-allowed" : "pointer",
-                      opacity: disabled ? 0.55 : 1,
-                      textAlign: "left",
-                      fontSize: 13,
-                      color: "var(--ink)",
-                    }}
-                  >
-                    {checked ? (
-                      <MdCheckBox size={16} />
-                    ) : (
-                      <MdCheckBoxOutlineBlank size={16} />
-                    )}
-                    <span>{col.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-          {onResetToDefaults && (
+          <div className="column-picker__PanelHeader">
+            <span className="column-picker__PanelTitle">Show Columns</span>
             <button
               type="button"
-              onClick={onResetToDefaults}
-              className="column-picker__reset"
-              style={{
-                display: "block",
-                width: "100%",
-                marginTop: 4,
-                padding: "6px 8px",
-                background: "transparent",
-                border: "none",
-                borderTop: "1px solid var(--ink-faint)",
-                cursor: "pointer",
-                textAlign: "left",
-                fontSize: 12,
-                color: "var(--ink-muted)",
-              }}
+              className="column-picker__PanelClose"
+              onClick={cancel}
+              aria-label="Close"
             >
-              Reset to defaults
+              ×
             </button>
-          )}
+          </div>
+          <div className="column-picker__SearchRow">
+            <span className="column-picker__SearchIcon" aria-hidden="true">
+              <MdSearch size={16} />
+            </span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="column-picker__SearchInput"
+              placeholder="Search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search columns"
+            />
+          </div>
+          <div className="column-picker__SelectedHeader">
+            <span className="column-picker__SelectedLabel">SELECTED</span>
+            <span className="column-picker__SelectedCount">{headerCap}</span>
+            <span
+              className="column-picker__SelectedInfo"
+              aria-hidden="true"
+              title={
+                typeof catalogue.maxColumns === "number"
+                  ? `You can have up to ${catalogue.maxColumns} user-addable columns visible at once.`
+                  : `${addableSelectedCount} of ${addableTotal} addable columns visible.`
+              }
+            >
+              <MdInfoOutline size={13} />
+            </span>
+          </div>
+          <div className="column-picker__List">
+            {grouped.length === 0 && (
+              <div className="column-picker__Empty">No columns match.</div>
+            )}
+            {grouped.map(([group, cols]) => (
+              <div key={group} className="column-picker__Group">
+                {grouped.length > 1 && (
+                  <div className="column-picker__GroupHeading">{group}</div>
+                )}
+                {cols.map((col) => {
+                  const checked = draftSet.has(col.key);
+                  const disabled =
+                    !col.addable || (!checked && atCap);
+                  return (
+                    <button
+                      key={col.key}
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={checked}
+                      disabled={disabled}
+                      onClick={() => toggle(col.key, col)}
+                      className={`column-picker__Row${
+                        checked ? " column-picker__Row--checked" : ""
+                      }${disabled ? " column-picker__Row--disabled" : ""}`}
+                    >
+                      <span
+                        className={`column-picker__Check${
+                          checked ? " column-picker__Check--checked" : ""
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {checked ? "✓" : ""}
+                      </span>
+                      <span className="column-picker__RowLabel">{col.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div className="column-picker__Footer">
+            {onResetToDefaults && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Reset draft to catalogue defaults (without committing
+                  // until Apply). Always-on keys come in for free.
+                  const defaults: string[] = [];
+                  for (const c of catalogue.columns) {
+                    if (c.defaultVisible || !c.addable) defaults.push(c.key);
+                  }
+                  setDraftKeys(defaults);
+                }}
+                className="column-picker__Reset"
+              >
+                Reset to defaults
+              </button>
+            )}
+            <span className="column-picker__FooterSpacer" />
+            <button
+              type="button"
+              onClick={cancel}
+              className="column-picker__Cancel"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={!dirty}
+              className="column-picker__Apply"
+            >
+              Apply
+            </button>
+          </div>
         </div>
       )}
     </span>
