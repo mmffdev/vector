@@ -277,11 +277,87 @@ async function _fetch<T>(base: string, path: string, opts: ApiOpts): Promise<T> 
   return body as T;
 }
 
+// ─── In-flight GET coalescer (PERF cycle 5 — 2026-05-28) ────────────────────
+// Two independent ObjectTreeV2 mounts on /value-sprint (backlog + sprint-panel)
+// each fire the SAME prefs / flow-states / sprints GET in parallel because
+// neither knows about the other. Measured waterfall on warm SPA-nav showed
+// 3× redundant fires of /me/preferences/valuesprintbacklog.filters, 4× of
+// the planned variant, 2× of /work-items/flow-states?meg=, 2× of
+// /timeboxes/sprints?... — all identical URLs firing within the same ~10ms
+// window. The browser sees them as distinct requests; each pays the full
+// middleware + SQL roundtrip even though the response is identical.
+//
+// Fix: coalesce concurrent identical GETs onto the same Promise. The cache
+// lives ONLY while the first request is in-flight — settles (success or
+// fail) remove the entry immediately. There is NO TTL, NO post-resolve
+// cache, NO cross-instance sharing. So:
+//   - A later identical GET (after the first resolved) re-fetches as before
+//     — staleness is impossible.
+//   - Two parallel callers see the same wire response, but each gets a
+//     structured clone so mutating one doesn't poison the other.
+//   - Mutations (POST/PATCH/DELETE) and non-2xx-handling retries are NEVER
+//     coalesced — the eligibility check below is strict.
+//
+// Safety eligibility (all must hold):
+//   - method is GET (default)
+//   - no `body`, no AbortSignal (would change semantics if shared)
+//   - opts._retried is false (the silent-refresh retry must be its own flight
+//     so its 401-handling state machine isn't entangled with a concurrent caller)
+//   - no caller-supplied custom headers (the default Authorization + DPoP are
+//     fine; arbitrary headers could change the response shape, e.g. Accept).
+//
+// Key = method + ":" + base + ":" + path + ":" + (skipAuth ? "1" : "0").
+// Path includes any ?meg= forwarded by withForwardedMeg — but that's appended
+// inside _fetch, NOT here. We key on the path BEFORE forwarding because two
+// callers in the same render see the same window.location.search, so they'd
+// derive the same finalPath anyway. Keying earlier is simpler and the
+// equivalence holds.
+const _inFlightGets = new Map<string, Promise<unknown>>();
+
+function _isCoalesceable(opts: ApiOpts): boolean {
+  const method = (opts.method ?? "GET").toUpperCase();
+  if (method !== "GET") return false;
+  if (opts.body) return false;
+  if (opts.signal) return false;
+  if (opts._retried) return false;
+  // Allow undefined / null headers, or a plain object whose own keys are
+  // all uppercase canonical ones we set ourselves. Anything custom = bail.
+  if (opts.headers) {
+    // Headers instance, Record, or array — assume any custom set means bail.
+    return false;
+  }
+  return true;
+}
+
+function _cloneResult<T>(value: T): T {
+  // structuredClone is available in all modern browsers + Node 17+; the dev
+  // toolchain (Next.js 14 + Turbopack) ships against modern targets so this
+  // is safe. Falls back to JSON round-trip if structuredClone isn't present
+  // (e.g. an SSR pass on a pre-17 Node) — same semantic for plain JSON.
+  if (typeof structuredClone === "function") {
+    try { return structuredClone(value); } catch { /* fall through */ }
+  }
+  try { return JSON.parse(JSON.stringify(value)); } catch { return value; }
+}
+
 // For site/BFF routes mounted under /_site: auth, nav, me, roles, admin,
 // workspaces, errors, addressables, page-help, library/releases, custom-pages,
 // user/tab-order, cost-centres. Root-level transport infra (healthz, env,
 // status/pipeline, env/switch) goes through apiRoot() below. PLA-0039 / B22.2.
 export async function apiSite<T = unknown>(path: string, opts: ApiOpts = {}): Promise<T> {
+  if (_isCoalesceable(opts)) {
+    const key = "GET:" + API_SITE_BASE + ":" + path + ":" + (opts.skipAuth ? "1" : "0");
+    const existing = _inFlightGets.get(key);
+    if (existing) {
+      const shared = (await existing) as T;
+      return _cloneResult(shared);
+    }
+    const flight = _fetch<T>(API_SITE_BASE, path, opts).finally(() => {
+      _inFlightGets.delete(key);
+    });
+    _inFlightGets.set(key, flight as Promise<unknown>);
+    return flight;
+  }
   return _fetch<T>(API_SITE_BASE, path, opts);
 }
 
