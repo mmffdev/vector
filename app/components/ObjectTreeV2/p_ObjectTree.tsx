@@ -64,6 +64,7 @@ import {
 import BulkActionBar, { type BulkActionBarProps } from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
+import type { ObjectTreeAdapter } from "@/app/components/ObjectTreeV2/adapters/types";
 import { useWorkItemFlowStates } from "@/app/components/useWorkItemFlowStates";
 import { useFlowStatesByType } from "@/app/components/useFlowStatesByType";
 import {
@@ -162,7 +163,7 @@ export interface ObjectTreeDataConfig<T = any> {
   createableTypeIds?: string[];
 }
 
-export default function ObjectTree({
+export default function ObjectTree<T = WorkItem>({
   selectedId,
   onSelect,
   onPatched,
@@ -170,9 +171,13 @@ export default function ObjectTree({
   wizardConfig,
   title,
   addressableName,
-  subtitleBadge,
-  subtitle,
-  description,
+  // Sunken-header band defaults — primitive shows its identity chrome by
+  // default (V2 chip + title + description). Consumers can override any
+  // field individually, or hide the whole band with showHeader={false}.
+  showHeader = true,
+  subtitleBadge = "V2",
+  subtitle = "Dense grid (V2 clone)",
+  description = "ObjectTreeV2 baseline — identical to the production ObjectTree at this slice. Future slices generalise this shell.",
   columnCatalogue,
   multiSelectEnabled = false,
   onSelectionChange,
@@ -183,12 +188,24 @@ export default function ObjectTree({
   bulkLeadingButtons,
   actionBarLeading,
   savedViews,
+  hideExpanders,
+  urlPrefix,
+  // OTV2 row-type genericisation seam (2026-05-28 spec). When supplied,
+  // the component routes orchestration through the adapter's methods
+  // instead of the inline WorkItem helpers below. When omitted (default
+  // for the 5 existing production mounts), the inline WorkItem code path
+  // runs unchanged — zero behaviour drift for work-items / portfolio-items
+  // / risk / value-sprint. New non-WorkItem surfaces (custom-fields and
+  // future admin grids) pass an adapter and a matching <T>. Spec:
+  // docs/superpowers/specs/2026-05-28-objecttree-generic-rowtype-design.md
+  adapter,
 }: {
   selectedId: string | null;
-  onSelect: (item: WorkItem) => void;
+  onSelect: (item: T) => void;
   onPatched?: (body: Record<string, unknown>) => void;
   mode?: "work_items" | "portfolio_items";
-  wizardConfig?: ObjectTreeDataConfig<WorkItem>;
+  wizardConfig?: ObjectTreeDataConfig<T>;
+  adapter?: ObjectTreeAdapter<T>;
   // Saved Views — when supplied, ObjectTree mounts <SavedViewsControl>
   // beside the ActionBar so the user can pick / save / manage views for
   // this grid. `kind` discriminates objecttree vs page_layout; `target`
@@ -203,9 +220,11 @@ export default function ObjectTree({
   // Chrome props. ObjectTree renders its own outer <Panel> + sunken header;
   // pages no longer wrap with <Panel>. `title` + `addressableName` are
   // required for the new chrome; `subtitleBadge` / `subtitle` / `description`
-  // fill the sunken header band below the title.
+  // fill the sunken header band below the title. `showHeader` toggles the
+  // whole sunken band (default true).
   title?: string;
   addressableName?: string;
+  showHeader?: boolean;
   subtitleBadge?: React.ReactNode;
   // Slice 4.5 — column-picker catalogue. When supplied, V2 mounts the
   // <ColumnPicker> in the action bar, owns visibleKeys state, persists
@@ -231,7 +250,7 @@ export default function ObjectTree({
   // `.btn .btn--sm <variant>` and click invokes onClick(); stopPropagation
   // is owned by ResourceTree so a click never bubbles to row-select.
   // Opt-in: omit to keep the existing column layout.
-  rowButtons?: (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[];
+  rowButtons?: (row: T) => import("@/app/components/ResourceTree").RowButton[];
   // Suppress the per-row cog menu column. Default is ON across the
   // /work-items and /portfolio-items grids; value-sprint's two trees
   // surface their actions via rowButtons + bulk leading buttons, so
@@ -264,6 +283,17 @@ export default function ObjectTree({
   // (e.g. "Switch sprint") inline with the create chip rather than in a
   // separate panel-header row, while reusing the chip's visual language.
   actionBarLeading?: React.ReactNode;
+  // value-sprint sprint-panel — flatten the tree by reporting 0 children
+  // on every row, regardless of what the wire returned. Hides the
+  // chevron column entirely. Used where the host wants the panel to be
+  // a flat sprint-scoped list, not a hierarchy.
+  hideExpanders?: boolean;
+  // Multi-grid pages (e.g. /value-sprint with sprint-panel + backlog)
+  // need each grid's filter + sort URL state to live in a distinct
+  // slot. urlPrefix namespaces every shareable param this grid writes
+  // (e.g. ?panel.type= vs ?backlog.type=). Single-grid pages omit it
+  // and get the legacy ?type=… layout. See shareableParams.ts.
+  urlPrefix?: string;
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -285,8 +315,8 @@ export default function ObjectTree({
   const filtersRef = useRef<import("@/app/components/work-items-tree-config").WorkItemsFilters>(
     { type: [], status: [], priority: [], owner_id: [] }
   );
-  const { sortKey, sortDir, sortRef, setSort } = useWorkItemsSort(sortPrefKey, filtersRef);
-  const { filters } = useWorkItemsFilters(filtersPrefKey, sortRef);
+  const { sortKey, sortDir, sortRef, setSort } = useWorkItemsSort(sortPrefKey, filtersRef, urlPrefix);
+  const { filters } = useWorkItemsFilters(filtersPrefKey, sortRef, urlPrefix);
   // Keep filtersRef current so sort-side URL writes reflect latest filters.
   useEffect(() => { filtersRef.current = filters; }, [filters]);
 
@@ -295,6 +325,18 @@ export default function ObjectTree({
   // decide whether to render itself.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // OTV2 generic-rowtype seam: per-row + create flyouts driven by the
+  // adapter. `flyoutRowId` set → adapter.renderRowFlyout(row, ...) renders
+  // BELOW the grid. `createFlyoutOpen` true → adapter.renderCreateFlyout(...)
+  // renders ABOVE the grid. Both stay null/false on every non-adapter
+  // mount, so production WorkItem surfaces are untouched.
+  const [flyoutRowId, setFlyoutRowId] = useState<string | null>(null);
+  const [createFlyoutOpen, setCreateFlyoutOpen] = useState(false);
+  // Bump on flyout-driven save to force the windowed-fetch hook to refetch
+  // — same idiom as refetchRef but inline since the adapter's save is
+  // host-side, not a wire-level patch the tree already knows about.
+  const [adapterRefreshTick, setAdapterRefreshTick] = useState(0);
   // Slice 3 / value-sprint — mirror local selection up to the parent
   // when multiSelectEnabled is set, so the page can render bulk-action
   // chrome of its own (e.g. "Add selected to Sprint"). We pipe the
@@ -811,10 +853,26 @@ export default function ObjectTree({
   const { typeIds: facetTypeIds, priorityIds: facetPriorityIds } =
     useObjectTreeFacets(resourceUrl, activeScopeNodeId ?? null);
 
+  // Type wheel options. Source order:
+  //   1. wizardConfig.createableTypeIds (from sidecar createableTypeSlots)
+  //      — the grid's declared allow-list. ALWAYS shows the full set, even
+  //      when the current data doesn't contain rows of every type. Used
+  //      by /value-sprint so both grids (panel + backlog) show the same
+  //      three wedges (Story / Defect / Risk) regardless of which types
+  //      happen to be in the rendered window.
+  //   2. facetTypeIds (backend /facets endpoint) — types actually present
+  //      in the clamped result. Default for single-purpose grids
+  //      (/work-items, /portfolio-items) which don't declare an allow-list;
+  //      the wheel surfaces what's there + nothing else.
+  // Falling back to facetTypeIds when the allow-list is empty preserves
+  // existing behaviour for every caller that doesn't pass createableTypeSlots.
+  const allowListIds = wizardConfig?.createableTypeIds;
   const typeOptions = useMemo(() => {
     const byId = new Map(workspaceTypes.map((t) => [t.id, t]));
+    const sourceIds =
+      allowListIds && allowListIds.length > 0 ? allowListIds : facetTypeIds;
     const out: { value: string; label: string; color?: string }[] = [];
-    for (const id of facetTypeIds) {
+    for (const id of sourceIds) {
       const t = byId.get(id);
       out.push({
         value: id,
@@ -829,7 +887,7 @@ export default function ObjectTree({
       return ta.sort_order - tb.sort_order || ta.name.localeCompare(tb.name);
     });
     return out;
-  }, [facetTypeIds, workspaceTypes]);
+  }, [allowListIds, facetTypeIds, workspaceTypes]);
 
   const priorityOptions = useMemo(() => {
     const byId = new Map(workspacePriorities.map((p) => [p.id, p]));
@@ -1137,12 +1195,19 @@ export default function ObjectTree({
   // When wizardConfig.filterChips is missing OR doesn't already carry our
   // prefKey-bound chips, we provide them here so the page doesn't have to
   // know the prefKey namespace (TD-URL-FILTER-CHIPS).
+  //
+  // Cast: when T is the default WorkItem, this useMemo's ObjectTreeDataConfig<WorkItem>
+  // matches the wizardConfig?: ObjectTreeDataConfig<T> prop literally. For non-default
+  // T (custom-fields and future surfaces), the host wires the columns + filterChips
+  // through their adapter; this WorkItem-shaped fallback is never read because the
+  // adapter's buildColumns/useFiltersAndSort take over upstream. The cast bridges the
+  // type system without changing runtime behaviour.
   const config = useMemo<ObjectTreeDataConfig<WorkItem>>(() => {
     if (wizardConfig) {
       return {
-        ...wizardConfig,
+        ...(wizardConfig as unknown as ObjectTreeDataConfig<WorkItem>),
         columns,
-        filterChips: wizardConfig.filterChips ?? <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} />,
+        filterChips: wizardConfig.filterChips ?? <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} urlPrefix={urlPrefix} />,
       };
     }
     const isPortfolio = mode === "portfolio_items";
@@ -1159,7 +1224,7 @@ export default function ObjectTree({
       getParentId: (r) => r.parent_id,
       getChildrenCount: (r) => r.children_count,
       searchAccessor: (r) => `${r.title} vec-${r.key_num}`,
-      filterChips: <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} />,
+      filterChips: <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} urlPrefix={urlPrefix} />,
       paginationOptions: [25, 50, 100],
       defaultPageSize: 25,
       resourceUrl: isPortfolio ? "/portfolio-items" : "/work-items",
@@ -1173,13 +1238,16 @@ export default function ObjectTree({
   // level; future configs (sprints, releases) pass their own action
   // shape (mode: "single", or omit createAction entirely) without
   // touching the kind components.
-  const headerNode = (
+  // Sunken header — renders by default; consumers hide via showHeader={false}
+  // OR replace any field by passing subtitleBadge / subtitle / description.
+  // Defaults are applied at the destructure site above.
+  const headerNode = showHeader ? (
     <DenseGridHeader
       badge={subtitleBadge}
       subtitle={subtitle}
       description={description}
     />
-  );
+  ) : null;
 
   // Collapse the create-action to a single labelled button when the
   // grid's allow-list is exactly one type (e.g. /risk → "Risk"). Two
@@ -1795,10 +1863,55 @@ export default function ObjectTree({
     />
   );
 
+  // OTV2 generic-rowtype seam: the adapter (when present) owns its own
+  // create UX. We render its node ABOVE the WorkItem-specific create
+  // flyout so the two don't collide; in practice only one is wired per
+  // mount because the adapter route and the WorkItem route are mutually
+  // exclusive at the host. Same for the row flyout below the grid.
+  const adapterCreateActionNode = adapter?.buildCreateAction
+    ? adapter.buildCreateAction({
+        scope: (wizardConfig as { scope?: "work" | "strategy" } | undefined)?.scope,
+        onOpenCreateFlyout: () => setCreateFlyoutOpen(true),
+      }).node
+    : null;
+  const adapterCreateFlyoutNode = adapter?.renderCreateFlyout && createFlyoutOpen
+    ? adapter.renderCreateFlyout({
+        onClose: () => setCreateFlyoutOpen(false),
+        onCreated: () => {
+          setCreateFlyoutOpen(false);
+          setAdapterRefreshTick((n) => n + 1);
+        },
+      })
+    : null;
+  const adapterRowFlyoutNode = (() => {
+    if (!adapter?.renderRowFlyout || !flyoutRowId) return null;
+    const row = getRowByIdRef.current?.(flyoutRowId);
+    if (!row) return null;
+    return adapter.renderRowFlyout(row as T, {
+      onClose: () => setFlyoutRowId(null),
+      onSaved: () => {
+        setFlyoutRowId(null);
+        setAdapterRefreshTick((n) => n + 1);
+      },
+    });
+  })();
+  // adapterRefreshTick — host-controlled refetch signal. Plumbed to the
+  // existing refetchRef path so the windowed-fetch hook re-fires after a
+  // flyout save without needing to teach useObjectTreeWindow about the
+  // adapter directly.
+  useEffect(() => {
+    if (adapterRefreshTick === 0) return;
+    void refetchRef?.current?.();
+  }, [adapterRefreshTick, refetchRef]);
+
   const inner = (
     <>
       {headerNode}
+      {adapterCreateActionNode && (
+        <div className="objecttree__AdapterCreateAction">{adapterCreateActionNode}</div>
+      )}
       {actionBarNode}
+      {adapterCreateFlyoutNode}
       {createFlyoutNode}
       {/* TODO(00456): wire bulk action handlers in WS3-D */}
       {multiSelectEnabled && (
@@ -1813,7 +1926,7 @@ export default function ObjectTree({
         total={total}
         getId={(r) => r.id}
         getParentId={config.getParentId}
-        getChildrenCount={config.getChildrenCount}
+        getChildrenCount={hideExpanders ? () => 0 : config.getChildrenCount}
         fetchChildren={fetchChildren}
         patch={patchRemote}
         applyChildPatchRef={applyChildPatchRef}
@@ -1854,10 +1967,16 @@ export default function ObjectTree({
             onSelectionChange: setSelectedIds,
           },
         })}
-        {...(rowButtons && { rowButtons })}
+        {...(rowButtons && { rowButtons: rowButtons as (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[] })}
         {...(!hideCogMenu && { cogMenu: buildCogMenu })}
         selectedId={selectedId}
-        onSelect={onSelect}
+        onSelect={((row: WorkItem) => {
+          // When an adapter with renderRowFlyout is active, a row click
+          // opens the flyout below in addition to firing the host's
+          // onSelect. Default mounts (no adapter) just call onSelect.
+          if (adapter?.renderRowFlyout) setFlyoutRowId(row.id);
+          (onSelect as (row: WorkItem) => void)(row);
+        })}
         pageIndex={pageIndex}
         onPageIndexChange={setPageIndex}
         onPageSizeChange={setPageSize}
@@ -1871,9 +1990,12 @@ export default function ObjectTree({
         getRowClass={(row) =>
           row.id === openInlineFormId
             ? "tree_accordion-dense__row--form-open"
-            : undefined
+            : (adapter && flyoutRowId === row.id)
+              ? "objecttree__Row_adapter_flyout_open"
+              : undefined
         }
       />
+      {adapterRowFlyoutNode}
     </>
   );
 
