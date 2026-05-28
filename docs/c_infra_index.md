@@ -8,3 +8,4 @@ Lazy-load a child only when the task touches that subsystem.
 - **Deployment context** → [`c_deployment.md`](c_deployment.md) — what runs where (Docker/Postgres/Go/Next), single-instance topology.
 - **Backup on push** → [`c_backup-on-push.md`](c_backup-on-push.md) — auto-snapshot pre-push hook around `pg_dump`.
 - **Cross-DB orphan-audit cron (CUT1.0.2)** → [`c_c_cron_cross_db_orphan_audit.md`](c_c_cron_cross_db_orphan_audit.md) — nightly launchd job checking all 50 SY003 soft-FK columns; posts SY-ORPHAN-YYYYMMDD to Dev → Reporting.
+- **LSP MCP servers (code-nav)** → [`c_c_lsp_mcp.md`](c_c_lsp_mcp.md) — `lsp-go` (gopls v0.22.0, official MCP) + `lsp-ts` (isaacphi/mcp-language-server wrapping typescript-language-server); wired in `.mcp.json`; symbol-level nav for Claude Code.
