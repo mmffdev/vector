@@ -30,14 +30,48 @@ var (
 	ErrRoleCeiling = errors.New("role ceiling: cannot act on or assign a role above your own")
 )
 
+// PermCacheInvalidator is the narrow interface users.Service uses to
+// wipe a cached auth.LoadRoleAndPermissions response when a user's role
+// assignment changes. Per-user surgical DEL when the userID is known
+// (Update path), namespace-wide DEL when the change blast radius is the
+// whole tenant. Implementation in cmd/server/main.go.
+//
+// Implementations MUST be safe to call after every successful write;
+// failure is best-effort (1-hour safety TTL is the backstop).
+type PermCacheInvalidator interface {
+	InvalidatePermCacheForUser(ctx context.Context, userID uuid.UUID)
+}
+
 type Service struct {
 	Pool   *pgxpool.Pool
 	Audit  *audit.Logger
 	Mailer *email.Service
+
+	// permInvalidator wires the auth-cache invalidation hook. Optional;
+	// when nil, role-change writes skip publishing the DEL (the safety
+	// TTL backstops). Set via WithPermCacheInvalidator.
+	permInvalidator PermCacheInvalidator
 }
 
 func New(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
 	return &Service{Pool: pool, Audit: audit, Mailer: mailer}
+}
+
+// WithPermCacheInvalidator wires the cache invalidation adapter.
+// Optional builder method — chains off New().
+func (s *Service) WithPermCacheInvalidator(inv PermCacheInvalidator) *Service {
+	s.permInvalidator = inv
+	return s
+}
+
+// invalidatePermCacheForUser is the internal helper called after a role
+// change on the user being updated. Nil-safe — no-op when no invalidator
+// is wired.
+func (s *Service) invalidatePermCacheForUser(ctx context.Context, userID uuid.UUID) {
+	if s.permInvalidator == nil {
+		return
+	}
+	s.permInvalidator.InvalidatePermCacheForUser(ctx, userID)
 }
 
 type CreateInput struct {
@@ -362,6 +396,18 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, in UpdateInput, acto
 
 	if err := tx.Commit(ctx); err != nil {
 		return err
+	}
+
+	// SERVER-IS-GATE: when a user's role changes their cached
+	// LoadRoleAndPermissions payload (role code, role_id, permission
+	// list) is stale. Wipe the per-user cache key so the next request
+	// rebuilds from SQL — see auth.AuthCacheKeyPrefix. The session
+	// revoke above already forces a fresh login round-trip for the
+	// affected user, but the cache DEL is the defence-in-depth
+	// guarantee that no other request thread reads a stale payload
+	// before the user re-authenticates.
+	if roleChanged {
+		s.invalidatePermCacheForUser(ctx, id)
 	}
 
 	action := "user.updated"

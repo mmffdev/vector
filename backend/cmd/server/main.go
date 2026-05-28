@@ -942,18 +942,40 @@ func main() {
 	sentinelResolver.SetCache(cacheClient)
 	sentinelMW := sentinel.Middleware(sentinelResolver)
 
+	// Cycle 3 (2026-05-28) — cache the two /sentinel/boot sub-reads
+	// behind Valkey. LoadRoleAndPermissions (3 sequential queries) and
+	// ListMyGrants (1 query) dominate the warm boot cost per cycle 2's
+	// measurement. SetCache wires the read+write path; invalidation
+	// lives in the writer services and (for topology-shaped changes) in
+	// the existing subtreeCacheInvalidator adapter below, extended to
+	// wipe the two new namespaces alongside the sentinel-tier ones.
+	authSvc.SetCache(cacheClient)
+	if orgDesignSvc != nil {
+		orgDesignSvc.SetMyGrantsCache(cacheClient)
+	}
+
 	// Wire the cache invalidator into the topology service so any
 	// structure-changing write (CreateNode/MoveNode/ArchiveNode/
 	// RestoreNode/DuplicateSubtree/ArchiveWorkspaceTopology/
-	// RestoreWorkspaceTopology) wipes Sentinel's per-tenant subtree
-	// cache. The adapter is a thin shim over cache.Client.DelPattern +
-	// sentinel.CacheKeyPrefixForTenant so topology doesn't import
-	// sentinel or cache directly. orgDesignSvc was constructed earlier
-	// (line ~574); we attach the invalidator now that cacheClient
-	// exists. Safe to call after construction — builder semantics.
+	// RestoreWorkspaceTopology/GrantRole/RevokeRole) wipes Sentinel's
+	// per-tenant subtree cache AND the topology:mygrants cache. The
+	// adapter is a thin shim over cache.Client.DelPattern so topology
+	// doesn't import sentinel or cache directly. orgDesignSvc was
+	// constructed earlier (line ~574); we attach the invalidator now
+	// that cacheClient exists. Safe to call after construction —
+	// builder semantics.
 	if orgDesignSvc != nil {
 		orgDesignSvc.WithSubtreeCacheInvalidator(&subtreeCacheInvalidator{c: cacheClient})
 	}
+
+	// permCacheInvalidator wipes auth:roleperms:* on role/permission
+	// writes. Wired into roles.Service (AssignPermissions, RevokePermissions,
+	// Archive) and users.Service (Update when role changes). Same narrow
+	// adapter pattern as subtreeCacheInvalidator — keeps roles/users free
+	// of cache/sentinel imports.
+	permInv := &permCacheInvalidator{c: cacheClient}
+	rolesSvc.WithPermCacheInvalidator(permInv)
+	usersSvc.WithPermCacheInvalidator(permInv)
 
 	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
 	// Only available when vaPool is up (vector_artefacts has the search columns).
@@ -2488,12 +2510,22 @@ func translateTopologyErr(err error) error {
 }
 
 // subtreeCacheInvalidator satisfies topology.SubtreeCacheInvalidator.
-// Wipes every cached sentinel subtree for a subscription via Valkey
-// pattern delete; sentinel.CacheKeyPrefixForTenant(subID) returns the
-// `sentinel:*:{sub}:*` glob covering all three sentinel cache
-// namespaces (subtree, focusws, grantnode). Used by main.go to thread the
-// cache into the topology service without forcing topology to import
-// either sentinel or cache (clean one-way dep graph).
+// Wipes every cached sentinel subtree AND every cached topology grants
+// for a subscription via Valkey pattern delete:
+//   - sentinel.CacheKeyPrefixForTenant(subID) → `sentinel:*:{sub}:*`
+//     (subtree, focusws, grantnode cache namespaces)
+//   - topology.MyGrantsCacheKeyPrefixForTenant(subID) → `topology:mygrants:{sub}:*`
+//     (ListMyGrants per-(user, role) entries — added cycle 3 2026-05-28)
+//
+// Both prefixes are wiped on every structure-changing topology write
+// because (a) topology rows are joined into the grants result for
+// name/icon/parent_id, so a node move changes the grants payload, and
+// (b) GrantRole / RevokeRole obviously affect the grants list itself.
+// Tenant-scoped DEL keeps the blast radius to one tenant's caches.
+//
+// Used by main.go to thread the cache into the topology service without
+// forcing topology to import either sentinel or cache (clean one-way
+// dep graph).
 //
 // When the cache client is nil OR Valkey is down (breaker open), the
 // DEL is a no-op; the 1-hour safety TTL on cached entries means stale
@@ -2509,4 +2541,43 @@ func (i *subtreeCacheInvalidator) InvalidateSubscription(ctx context.Context, su
 		return
 	}
 	_, _ = i.c.DelPattern(ctx, sentinel.CacheKeyPrefixForTenant(subscriptionID))
+	_, _ = i.c.DelPattern(ctx, topology.MyGrantsCacheKeyPrefixForTenant(subscriptionID))
+}
+
+// permCacheInvalidator satisfies roles.PermCacheInvalidator and
+// users.PermCacheInvalidator. Wipes cached auth.LoadRoleAndPermissions
+// entries on every role-grid mutation (AssignPermissions /
+// RevokePermissions / Archive) and on every user role change (Update
+// with role swap).
+//
+// Granularity:
+//   - InvalidatePermCache: namespace-wide (`auth:roleperms:*`) — used
+//     when the write affects every user holding the mutated role.
+//     A per-role reverse index would let us be surgical, but the dev/
+//     prod scale doesn't justify the maintenance burden; repopulating
+//     active users on next request costs milliseconds per user.
+//   - InvalidatePermCacheForUser: per-user (`auth:roleperms:{user_id}`) —
+//     used when the write affects only the named user (role swap on a
+//     single user record). Surgical DEL — no other users churn.
+//
+// SERVER-IS-GATE compliance: this cache stores a derived authoritative
+// answer; the gate logic still runs on every request. The DEL closes
+// the stale-positive window between the write and the safety TTL —
+// without it, a revoked permission could leak for up to 1 hour.
+type permCacheInvalidator struct {
+	c *cache.Client
+}
+
+func (i *permCacheInvalidator) InvalidatePermCache(ctx context.Context) {
+	if i.c == nil {
+		return
+	}
+	_, _ = i.c.DelPattern(ctx, auth.AuthCacheKeyPrefix+"*")
+}
+
+func (i *permCacheInvalidator) InvalidatePermCacheForUser(ctx context.Context, userID uuid.UUID) {
+	if i.c == nil {
+		return
+	}
+	_ = i.c.Del(ctx, auth.AuthCacheKeyPrefix+userID.String())
 }

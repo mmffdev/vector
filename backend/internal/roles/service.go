@@ -97,15 +97,57 @@ type PermissionResolver interface {
 	PermissionCodesFor(ctx context.Context, userID uuid.UUID) ([]string, error)
 }
 
+// PermCacheInvalidator is the narrow interface roles.Service uses to
+// wipe cached auth.LoadRoleAndPermissions responses after a role grid
+// mutation. Implementation lives in cmd/server/main.go as a thin shim
+// over cache.Client.DelPattern(auth.AuthCacheKeyPrefix + "*"), keeping
+// this package free of any cache or auth import.
+//
+// Invalidation granularity is namespace-wide ("auth:roleperms:*"). A
+// per-role reverse index (role → []userID) would let us be surgical,
+// but the dev/prod scale doesn't justify the maintenance overhead —
+// repopulating a few hundred users on the next request costs milliseconds.
+//
+// Implementations MUST be safe to call after every successful write;
+// failure is best-effort (the 1-hour safety TTL on cached entries is
+// the backstop if a publish misses).
+type PermCacheInvalidator interface {
+	InvalidatePermCache(ctx context.Context)
+}
+
 type Service struct {
 	Pool        *pgxpool.Pool
 	Audit       *audit.Logger
 	Resolver    PermissionResolver
 	SystemRoles SystemRoleIDs
+
+	// permInvalidator wires the auth-cache invalidation hook. Optional —
+	// when nil, writers proceed without publishing invalidations (the
+	// 1-hour safety TTL on cached entries means stale answers evict
+	// themselves within the hour). Set via WithPermCacheInvalidator.
+	permInvalidator PermCacheInvalidator
 }
 
 func New(pool *pgxpool.Pool, a *audit.Logger) *Service {
 	return &Service{Pool: pool, Audit: a}
+}
+
+// WithPermCacheInvalidator wires the cache invalidation adapter.
+// Optional builder method — chains off New(). When unset, role/permission
+// writes do not publish invalidations.
+func (s *Service) WithPermCacheInvalidator(inv PermCacheInvalidator) *Service {
+	s.permInvalidator = inv
+	return s
+}
+
+// invalidatePermCache is the internal helper called after every
+// role-grid mutation (AssignPermissions, RevokePermissions, Archive).
+// Nil-safe — no-op when no invalidator is wired.
+func (s *Service) invalidatePermCache(ctx context.Context) {
+	if s.permInvalidator == nil {
+		return
+	}
+	s.permInvalidator.InvalidatePermCache(ctx)
 }
 
 // LoadSystemRoles resolves the seven grp_* system role UUIDs from the
@@ -379,6 +421,12 @@ func (s *Service) Archive(ctx context.Context, id uuid.UUID, actorTenant, actor 
 		return err
 	}
 
+	// Archive can affect cached LoadRoleAndPermissions answers for any
+	// user holding this role (their stored role payload is now stale —
+	// the role exists but is archived; UI affordances key off this).
+	// Wipe the namespace; repopulate on next request.
+	s.invalidatePermCache(ctx)
+
 	rid := id.String()
 	s.Audit.Log(ctx, audit.Entry{
 		UserID: &actor, Action: "role.archived",
@@ -432,6 +480,15 @@ func (s *Service) AssignPermissions(
 		return err
 	}
 
+	// SERVER-IS-GATE: every user holding this role now has a different
+	// effective permission set. Wipe the auth.LoadRoleAndPermissions
+	// cache namespace so the next request rebuilds from SQL. The
+	// authoritative permission check runs server-side on every request
+	// regardless of cache state; this DEL closes the stale-positive
+	// window from grant time to TTL-eviction (which would otherwise be
+	// up to 1 hour per the safety TTL on the cache layer).
+	s.invalidatePermCache(ctx)
+
 	rid := roleID.String()
 	s.Audit.Log(ctx, audit.Entry{
 		UserID: &actor, Action: "role.permissions_granted",
@@ -464,6 +521,15 @@ func (s *Service) RevokePermissions(
 	if err != nil {
 		return err
 	}
+
+	// SERVER-IS-GATE: a revoke is the security-critical case. Wipe the
+	// auth cache namespace so a downgraded user's next request rebuilds
+	// permissions from SQL and cannot ride a cached YES past the
+	// revocation. The 1-hour safety TTL would otherwise leak a stale
+	// permission for the full TTL window — unacceptable for a
+	// defence/finance product. The authoritative gate still runs server-
+	// side on every request; this DEL is the timeliness guarantee.
+	s.invalidatePermCache(ctx)
 
 	rid := roleID.String()
 	s.Audit.Log(ctx, audit.Entry{
