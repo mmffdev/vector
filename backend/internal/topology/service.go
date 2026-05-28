@@ -30,14 +30,17 @@ package topology
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mmffdev/vector-backend/internal/cache"
 	"github.com/mmffdev/vector-backend/internal/roles"
 )
 
@@ -165,6 +168,39 @@ type Service struct {
 	vaPool      *pgxpool.Pool
 	notifier    GrantNotifier
 	invalidator SubtreeCacheInvalidator
+
+	// myGrantsCache wraps ListMyGrants's per-(tenant, user, actorRole)
+	// result in Valkey. Set by SetMyGrantsCache; nil-safe (falls back to
+	// SQL when unset or breaker open). Invalidation: every existing
+	// invalidateSubtreeCache callsite ALSO wipes topology:mygrants:{tenant}:*
+	// because grant rows and the topology rows they join through both live
+	// in tables this Service owns — any structure or grant write
+	// invalidates both shapes. See cmd/server/main.go::subtreeCacheInvalidator
+	// for the adapter that DELs both prefixes.
+	myGrantsCache *cache.Client
+}
+
+// SetMyGrantsCache wires the Valkey cache for ListMyGrants /
+// listMyGrantsGadmin. Nil-safe: pass nil to keep the SQL-only path.
+// Safe to call once at startup; not safe concurrently with ListMyGrants.
+func (s *Service) SetMyGrantsCache(c *cache.Client) {
+	s.myGrantsCache = c
+}
+
+// MyGrantsCacheKeyPrefixForTenant returns the glob pattern that matches
+// every cached ListMyGrants entry scoped to a tenant. Used by the
+// subtreeCacheInvalidator in cmd/server/main.go to wipe the namespace
+// alongside the sentinel-tier prefixes on any topology / grant write.
+func MyGrantsCacheKeyPrefixForTenant(subscriptionID uuid.UUID) string {
+	return fmt.Sprintf("topology:mygrants:%s:*", subscriptionID)
+}
+
+// myGrantsCacheKey is the deterministic key for one (tenant, user, role)
+// tuple. actorRoleID is included because the gadmin branch returns a
+// different shape (synthetic admin grants for every live node) — caching
+// per-role prevents a non-gadmin call leaking a gadmin's universe.
+func myGrantsCacheKey(subscriptionID, userID, actorRoleID uuid.UUID) string {
+	return fmt.Sprintf("topology:mygrants:%s:%s:%s", subscriptionID, userID, actorRoleID)
 }
 
 // SubtreeCacheInvalidator is the narrow interface the topology Service
@@ -1104,6 +1140,56 @@ type MyGrant struct {
 // sort, and Role is fixed to "admin" so any role-coded UI affordance
 // (e.g. role pill in the picker) renders meaningfully.
 func (s *Service) ListMyGrants(ctx context.Context, subscriptionID, userID uuid.UUID, actorRoleID uuid.UUID) ([]MyGrant, error) {
+	// Cache fast path. Per-(tenant, user, role) key. Gadmin branch
+	// goes through the same cache because its result also depends on
+	// topology structure (which is invalidated via subtreeCacheInvalidator).
+	// Cache hit returns immediately; miss / unavailable / decode error
+	// falls through to the SQL implementation below.
+	if s.myGrantsCache != nil && s.myGrantsCache.IsAvailable() {
+		key := myGrantsCacheKey(subscriptionID, userID, actorRoleID)
+		b, err := s.myGrantsCache.Get(ctx, key)
+		switch {
+		case err == nil:
+			var grants []MyGrant
+			if decodeErr := json.Unmarshal(b, &grants); decodeErr == nil {
+				if grants == nil {
+					grants = []MyGrant{}
+				}
+				return grants, nil
+			} else {
+				log.Printf("topology.ListMyGrants cache decode err key=%s: %v", key, decodeErr)
+			}
+		case errors.Is(err, cache.ErrMiss), errors.Is(err, cache.ErrCacheUnavailable):
+			// fall through silently
+		default:
+			log.Printf("topology.ListMyGrants cache get key=%s: %v", key, err)
+		}
+	}
+
+	out, err := s.listMyGrantsFromDB(ctx, subscriptionID, userID, actorRoleID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write-through. Cache the success case only.
+	if s.myGrantsCache != nil && s.myGrantsCache.IsAvailable() {
+		key := myGrantsCacheKey(subscriptionID, userID, actorRoleID)
+		if buf, encErr := json.Marshal(out); encErr == nil {
+			if setErr := s.myGrantsCache.Set(ctx, key, buf); setErr != nil &&
+				!errors.Is(setErr, cache.ErrCacheUnavailable) {
+				log.Printf("topology.ListMyGrants cache set key=%s: %v", key, setErr)
+			}
+		} else {
+			log.Printf("topology.ListMyGrants cache encode err: %v", encErr)
+		}
+	}
+	return out, nil
+}
+
+// listMyGrantsFromDB runs the SQL path. Branches to listMyGrantsGadmin
+// for the platform-support role. Always called on cache miss /
+// unavailable, and always the source-of-truth for write-through above.
+func (s *Service) listMyGrantsFromDB(ctx context.Context, subscriptionID, userID, actorRoleID uuid.UUID) ([]MyGrant, error) {
 	if actorRoleID == roles.SystemGrpGlobalID {
 		return s.listMyGrantsGadmin(ctx, subscriptionID)
 	}

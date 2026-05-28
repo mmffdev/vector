@@ -4,7 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strconv"
@@ -14,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/audit"
+	"github.com/mmffdev/vector-backend/internal/cache"
 	"github.com/mmffdev/vector-backend/internal/geo"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/roletypes"
@@ -117,6 +121,50 @@ type Service struct {
 	// future cross-cutting concerns (presence, last-seen, analytics)
 	// register without rewiring this hook.
 	OnLogin []func(ctx context.Context, user *roletypes.User)
+
+	// PermCache is the Valkey-backed cache for LoadRoleAndPermissions
+	// responses. Wired by main.go via SetCache. Nil-safe: when unset OR
+	// when Valkey is unavailable (breaker open), LoadRoleAndPermissions
+	// falls through to the 3-query SQL path. Invalidation lives in every
+	// writer that touches users_id_role / users_roles_permissions —
+	// users.Service.Update on role-change, roles.Service.AssignPermissions
+	// / RevokePermissions / Archive. Per the SERVER-IS-GATE rule, the
+	// authoritative permission check still runs on every request through
+	// the resolver; the cache only short-circuits the lookup of an
+	// already-derived answer.
+	//
+	// Key shape: `auth:roleperms:{user_id}`. Wipe shape:
+	// `auth:roleperms:*` on any tenant-wide role/perm change (the dev
+	// scale doesn't justify a per-user reverse index; on a permission
+	// flip a few hundred users repopulate within milliseconds).
+	PermCache *cache.Client
+}
+
+// SetCache wires the Valkey cache used by LoadRoleAndPermissions. Pass
+// nil to keep the SQL-only path. Safe to call once at startup; not safe
+// concurrently with LoadRoleAndPermissions.
+func (s *Service) SetCache(c *cache.Client) {
+	s.PermCache = c
+}
+
+// AuthCacheKeyPrefix is the namespace prefix for every cached
+// LoadRoleAndPermissions entry. Exported so invalidator adapters (e.g.
+// the one in cmd/server/main.go) can wipe the whole space on role/perm
+// changes without re-deriving the literal in two places.
+const AuthCacheKeyPrefix = "auth:roleperms:"
+
+// rolePermsCacheKey is the deterministic per-user cache key.
+func rolePermsCacheKey(userID uuid.UUID) string {
+	return fmt.Sprintf("%s%s", AuthCacheKeyPrefix, userID)
+}
+
+// rolePermsCacheEntry is the cached JSON payload. Wire-shape isolated
+// from RolePayload so we can extend it (e.g. add a generation counter)
+// without breaking the public API. JSON encoding keeps entries
+// human-readable in valkey-cli for diagnosis.
+type rolePermsCacheEntry struct {
+	Role  RolePayload `json:"role"`
+	Perms []string    `json:"perms"`
 }
 
 func NewService(pool *pgxpool.Pool, audit *audit.Logger, mailer *email.Service) *Service {
@@ -197,7 +245,57 @@ type RolePayload struct {
 // permission codes. Returns a zero RolePayload + empty slice (no error)
 // rather than failing if the lookup hiccups — auth-payload rendering must
 // not break because the catalogue is briefly unavailable.
+//
+// PERF (2026-05-28, cycle 3): wrapped in a Valkey cache via PermCache.
+// The 3 sequential queries (sqlSelectUserRoleID, sqlSelectRoleByID,
+// Resolver.PermissionCodesFor) collapse to one cache GET on hit; this is
+// the dominant cost of /sentinel/boot per cycle 2's measurement (~310ms
+// → ~50ms target). Invalidation surface — every writer that can change
+// the user's role assignment OR the role's permission grid must wipe
+// either the per-user key (`auth:roleperms:{user_id}`) or the namespace
+// (`auth:roleperms:*` for tenant-pattern changes):
+//
+//   - users.Service.Update    — on role change, wipe per-user key
+//   - roles.Service.AssignPermissions  — wipe namespace
+//   - roles.Service.RevokePermissions — wipe namespace
+//   - roles.Service.Archive   — wipe namespace
+//
+// Server-is-gate compliance: this cache stores the DERIVED answer of an
+// authoritative server-side lookup. It does not bypass the gate; it
+// short-circuits the lookup. Every request still runs through the auth
+// middleware which validates the user, fetches their role, and (cache
+// hit OR miss) returns the same permission set. Stale cache after a
+// missed invalidation is bounded by the 1-hour safety TTL on every
+// cache.Client.Set.
 func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) (RolePayload, []string) {
+	// Cache fast path. Mirrors sentinel.PoolResolver.ResolveSubtree's
+	// availability gate — miss / unavailable / decode-error all fall
+	// through to SQL.
+	if s.PermCache != nil && s.PermCache.IsAvailable() {
+		key := rolePermsCacheKey(userID)
+		b, err := s.PermCache.Get(ctx, key)
+		switch {
+		case err == nil:
+			var entry rolePermsCacheEntry
+			if decodeErr := json.Unmarshal(b, &entry); decodeErr == nil {
+				// Defensive: nil slice → []string{} so handler can range
+				// without nil-check. JSON round-trip preserves this but
+				// belt-and-braces.
+				if entry.Perms == nil {
+					entry.Perms = []string{}
+				}
+				return entry.Role, entry.Perms
+			} else {
+				log.Printf("auth.LoadRoleAndPermissions cache decode err key=%s: %v", key, decodeErr)
+			}
+		case errors.Is(err, cache.ErrMiss), errors.Is(err, cache.ErrCacheUnavailable):
+			// Expected — fall through silently.
+		default:
+			log.Printf("auth.LoadRoleAndPermissions cache get key=%s: %v", key, err)
+		}
+	}
+
+	// SQL path — unchanged from pre-cache implementation.
 	var roleID uuid.UUID
 	if err := s.Pool.QueryRow(ctx, sqlSelectUserRoleID, userID).Scan(&roleID); err != nil {
 		return RolePayload{}, []string{}
@@ -212,6 +310,22 @@ func (s *Service) LoadRoleAndPermissions(ctx context.Context, userID uuid.UUID) 
 		if codes, err := s.Resolver.PermissionCodesFor(ctx, userID); err == nil {
 			perms = codes
 			sort.Strings(perms)
+		}
+	}
+
+	// Write-through. Empty role (zero ID) is a lookup failure that
+	// returned the zero RolePayload — DON'T cache that; the next request
+	// should retry SQL. Only cache the success case.
+	if s.PermCache != nil && s.PermCache.IsAvailable() && rp.ID != uuid.Nil {
+		entry := rolePermsCacheEntry{Role: rp, Perms: perms}
+		if buf, encErr := json.Marshal(entry); encErr == nil {
+			key := rolePermsCacheKey(userID)
+			if setErr := s.PermCache.Set(ctx, key, buf); setErr != nil &&
+				!errors.Is(setErr, cache.ErrCacheUnavailable) {
+				log.Printf("auth.LoadRoleAndPermissions cache set key=%s: %v", key, setErr)
+			}
+		} else {
+			log.Printf("auth.LoadRoleAndPermissions cache encode err: %v", encErr)
 		}
 	}
 	return rp, perms
