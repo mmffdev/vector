@@ -175,6 +175,7 @@ export default function ObjectTree({
   multiSelectEnabled = false,
   onSelectionChange,
   rowButtons,
+  refetchRef,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
@@ -213,6 +214,13 @@ export default function ObjectTree({
   // is owned by ResourceTree so a click never bubbles to row-select.
   // Opt-in: omit to keep the existing column layout.
   rowButtons?: (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[];
+  // Slice 5 / value-sprint — imperative refetch handle. When the host
+  // PATCHes a work item OUTSIDE the tree's own patch wrapper (e.g. the
+  // value-sprint "Add to Sprint" row-button hits apiSite.workItems.patch
+  // directly), it needs a way to ask the tree to re-pull its window so
+  // the new sprint_id surfaces inline. Filling this ref is a one-time
+  // op on mount; callers read .current() to fire a refetch.
+  refetchRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -659,6 +667,23 @@ export default function ObjectTree({
 
   // Bulk-fetch flow states for every artefact type visible in the
   // current window so each row's Status pill row paints with its OWN
+  // Slice 5 / value-sprint — fill the host-provided refetchRef so the
+  // host can imperatively trigger a window refetch after an external
+  // PATCH (e.g. the "Add to Sprint" row button on the value-sprint
+  // backlog calls apiSite.workItems.patch directly and then asks the
+  // tree to repaint). One-time on mount + on refetchWindow identity
+  // change (which itself swaps when resourceUrl / sort / filter change).
+  useEffect(() => {
+    if (refetchRef) {
+      refetchRef.current = async () => {
+        await refetchWindow();
+      };
+    }
+    return () => {
+      if (refetchRef) refetchRef.current = null;
+    };
+  }, [refetchRef, refetchWindow]);
+
   // type's flow (Risk gets Risk states, Task gets Task states, etc.).
   // The legacy `flowStates` (above) stays as a fallback when a row's
   // type id is missing from the by-type cache.

@@ -119,3 +119,85 @@ export function useNextSprint(
 
   return { sprint, loading, error, refetch: load };
 }
+
+/**
+ * useUpcomingSprints — returns the next-up-to-N planned sprints with
+ * start_date >= today, sorted ascending by start_date. Used by the
+ * "Target Sprint" radial pill menu on the value-sprint backlog: the
+ * user picks one of the next 8 sprints to assign a work item to.
+ *
+ * Same workspace + topology clamp + tolerance as useNextSprint; differs
+ * only in returning the list (sliced to `limit`) instead of picking one.
+ */
+export interface UseUpcomingSprintsResult {
+  sprints: SprintWireRow[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useUpcomingSprints(
+  workspaceId: string | null,
+  orgNodeId?: string | null,
+  limit = 8,
+): UseUpcomingSprintsResult {
+  const [list, setList] = useState<SprintWireRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!workspaceId) {
+      setList([]);
+      setError(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ workspace_id: workspaceId });
+      if (orgNodeId) params.set("org_node_id", orgNodeId);
+      const data = await sprints.list(params.toString()) as unknown as {
+        items?: SprintWireRow[];
+        total?: number;
+      };
+      const items = data.items ?? [];
+      const todayIso = new Date().toISOString().slice(0, 10);
+
+      // Planned + future-or-today + active. Active included so a user
+      // mid-sprint can still target it explicitly from the menu.
+      const candidates = items
+        .filter((s) => {
+          const st = s.timeboxes_sprints_status;
+          if (st === "active") return true;
+          if (
+            st === "planned" &&
+            typeof s.timeboxes_sprints_date_start === "string" &&
+            s.timeboxes_sprints_date_start >= todayIso
+          ) {
+            return true;
+          }
+          return false;
+        })
+        .sort((a, b) =>
+          (a.timeboxes_sprints_date_start ?? "").localeCompare(
+            b.timeboxes_sprints_date_start ?? "",
+          ),
+        )
+        .slice(0, limit);
+
+      setList(candidates);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to load sprints";
+      setError(msg);
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId, orgNodeId, limit]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return { sprints: list, loading, error, refetch: load };
+}
