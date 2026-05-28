@@ -104,13 +104,62 @@ func decodeUUIDs(b []byte) ([]uuid.UUID, error) {
 	return out, nil
 }
 
-// SubtreeCacheKeyPrefix is the prefix used by all subtree cache keys
-// for a tenant. Used by topology.Service's invalidation hook to wipe
-// every cached subtree for a tenant when topology_nodes is mutated.
-// Concrete shape: `sentinel:subtree:{tenant}:*`
-func SubtreeCacheKeyPrefix(tenant uuid.UUID) string {
-	return fmt.Sprintf("sentinel:subtree:%s:*", tenant)
+// Single-value encoders for FocusWorkspace (UUID) and GrantOnNode (bool).
+// Tiny payloads — 16 bytes for UUID, 1 byte for bool. Skipping a length
+// prefix because the value class is fixed per cache key.
+
+func encodeUUID(id uuid.UUID) []byte {
+	out := make([]byte, 16)
+	copy(out, id[:])
+	return out
 }
+
+func decodeUUID(b []byte) (uuid.UUID, error) {
+	if len(b) != 16 {
+		return uuid.Nil, fmt.Errorf("decodeUUID: want 16 bytes, got %d", len(b))
+	}
+	var id uuid.UUID
+	copy(id[:], b)
+	return id, nil
+}
+
+func encodeBool(v bool) []byte {
+	if v {
+		return []byte{1}
+	}
+	return []byte{0}
+}
+
+func decodeBool(b []byte) (bool, error) {
+	if len(b) != 1 {
+		return false, fmt.Errorf("decodeBool: want 1 byte, got %d", len(b))
+	}
+	return b[0] == 1, nil
+}
+
+// CacheKeyPrefixForTenant returns the glob pattern that matches every
+// sentinel-namespace cache key scoped to a tenant. Used by the topology
+// invalidator on any topology_nodes write to wipe the tenant's entire
+// sentinel cache footprint in one DelPattern call.
+//
+// Covers the three currently-cached calls:
+//
+//	sentinel:subtree:{tenant}:{focus}:{up}:{down}     — ResolveSubtree
+//	sentinel:focusws:{tenant}:{focus}                  — FocusWorkspace
+//	sentinel:grantnode:{tenant}:{user}:{node}          — GrantOnNode
+//
+// All three share the `sentinel:*:{tenant}:*` shape so one glob catches
+// them. If we add a new sentinel cache namespace, this is the SINGLE
+// place to widen the contract — main.go's invalidator adapter calls
+// this function blindly.
+//
+// Note: HasActiveRole is deliberately NOT cached (filed as a no-op in
+// the design decision; its ~30ms SQL cost doesn't justify the extra
+// grant-write invalidation surface).
+func CacheKeyPrefixForTenant(tenant uuid.UUID) string {
+	return fmt.Sprintf("sentinel:*:%s:*", tenant)
+}
+
 
 
 // ResolveSubtree implements Resolver. Steps:
@@ -283,12 +332,47 @@ func (r *PoolResolver) DefaultFocus(ctx context.Context, userID uuid.UUID) (*uui
 // callers can decide whether a bad explicit URL should 403 or a stale
 // saved default should fall back.
 func (r *PoolResolver) FocusWorkspace(ctx context.Context, tenant, focus uuid.UUID) (uuid.UUID, error) {
+	// Cache fast path. Key shape `sentinel:focusws:{tenant}:{focus}` is
+	// stable: the workspace a node belongs to changes only on a topology
+	// move (which the topology invalidator already wipes via the
+	// tenant-wide DelPattern). We deliberately cache only the success
+	// case — pgx.ErrNoRows is the "focus not in tenant" signal that
+	// middleware needs to return ErrFocusNotInTenant, and caching that
+	// negative answer would make tenant transitions tricky.
+	key := focusWorkspaceCacheKey(tenant, focus)
+	if r.cache != nil && r.cache.IsAvailable() {
+		b, err := r.cache.Get(ctx, key)
+		switch {
+		case err == nil:
+			if id, decodeErr := decodeUUID(b); decodeErr == nil {
+				return id, nil
+			} else {
+				log.Printf("sentinel.FocusWorkspace cache decode err key=%s: %v", key, decodeErr)
+			}
+		case errors.Is(err, cache.ErrMiss), errors.Is(err, cache.ErrCacheUnavailable):
+			// fall through silently
+		default:
+			log.Printf("sentinel.FocusWorkspace cache get key=%s: %v", key, err)
+		}
+	}
+
 	var id uuid.UUID
 	err := r.VAPool.QueryRow(ctx, sqlFocusWorkspace, focus, tenant).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}
+
+	if r.cache != nil && r.cache.IsAvailable() {
+		if setErr := r.cache.Set(ctx, key, encodeUUID(id)); setErr != nil &&
+			!errors.Is(setErr, cache.ErrCacheUnavailable) {
+			log.Printf("sentinel.FocusWorkspace cache set key=%s: %v", key, setErr)
+		}
+	}
 	return id, nil
+}
+
+func focusWorkspaceCacheKey(tenant, focus uuid.UUID) string {
+	return fmt.Sprintf("sentinel:focusws:%s:%s", tenant, focus)
 }
 
 // WorkspaceRoot implements Resolver. Returns the live root topology
@@ -356,12 +440,51 @@ func (r *PoolResolver) HasActiveRole(ctx context.Context, workspaceID, userID uu
 // roleID from request input — that would let a non-gadmin claim the
 // short-circuit.
 func (r *PoolResolver) GrantOnNode(ctx context.Context, tenant, userID, nodeID, roleID uuid.UUID) (bool, error) {
+	// Gadmin short-circuit — runs BEFORE cache. The short-circuit is
+	// role-based (the actor IS gadmin), not tenant-state-based; caching
+	// would be wrong because a non-gadmin call against the same (tenant,
+	// user, node) tuple gets a different answer.
 	if roleID != uuid.Nil && roleID == roles.SystemGrpGlobalID {
 		return true, nil
 	}
+
+	// Cache fast path. Key omits roleID — the SQL answer is the same
+	// for any non-gadmin role (the recursive CTE only consults grant
+	// rows, not the caller's role identity).
+	key := grantOnNodeCacheKey(tenant, userID, nodeID)
+	if r.cache != nil && r.cache.IsAvailable() {
+		b, err := r.cache.Get(ctx, key)
+		switch {
+		case err == nil:
+			if v, decodeErr := decodeBool(b); decodeErr == nil {
+				return v, nil
+			} else {
+				log.Printf("sentinel.GrantOnNode cache decode err key=%s: %v", key, decodeErr)
+			}
+		case errors.Is(err, cache.ErrMiss), errors.Is(err, cache.ErrCacheUnavailable):
+			// fall through silently
+		default:
+			log.Printf("sentinel.GrantOnNode cache get key=%s: %v", key, err)
+		}
+	}
+
 	var ok bool
 	err := r.VAPool.QueryRow(ctx, sqlUserHasGrantOnNodeOrAncestor, nodeID, tenant, userID).Scan(&ok)
-	return ok, err
+	if err != nil {
+		return false, err
+	}
+
+	if r.cache != nil && r.cache.IsAvailable() {
+		if setErr := r.cache.Set(ctx, key, encodeBool(ok)); setErr != nil &&
+			!errors.Is(setErr, cache.ErrCacheUnavailable) {
+			log.Printf("sentinel.GrantOnNode cache set key=%s: %v", key, setErr)
+		}
+	}
+	return ok, nil
+}
+
+func grantOnNodeCacheKey(tenant, userID, nodeID uuid.UUID) string {
+	return fmt.Sprintf("sentinel:grantnode:%s:%s:%s", tenant, userID, nodeID)
 }
 
 // SetUserDefaultFocus implements Resolver. Writes users.default_focus_node_id
