@@ -1,6 +1,6 @@
 ---
 name: solo-dev-mode
-description: Project is in solo-dev mode since 2026-05-17 — WIP cap 5, stories simplified, no new PLAs, indexes frozen, retros auto-only. Hard rails unchanged.
+description: Project is in solo-dev mode since 2026-05-17 — WIP count advisory (was capped at 5, demoted 2026-05-28), stories simplified, no new PLAs, indexes frozen, retros auto-only. Hard rails unchanged.
 metadata:
   type: feedback
 ---
@@ -11,7 +11,7 @@ Vector is in **solo-dev mode** since 2026-05-17. Process scaffolding designed fo
 
 **How to apply:**
 
-- WIP cap **5** items in `Vector_Scope.md`. Anything beyond goes to a `## Parked` section. Touching a parked item requires parking something else.
+- WIP count is **advisory** since 2026-05-28 — SessionStart still shows the in-flight theme count for awareness, but the 5-theme cap was demoted (firing too often, becoming an irritant). `## Parked` section in `Vector_Scope.md` still exists for user-initiated shelving — don't suggest parking unprompted.
 - Stories: title + acceptance criteria (the red-green test) is enough. The full 7-gate `/stories` flow is behind a `--full` flag.
 - Plans: no new `dev/plans/PLA-*.json` files. New work lives as a one-line entry in `Vector_Scope.md`. Existing 53 PLA files preserved as archaeology — not deleted, not renamed.
 - Indexes (`docs/c_plan_index.md`, `docs/c_story_index.md`) carry a `## FROZEN — solo-dev mode (since 2026-05-17)` header at the top. No new entries.

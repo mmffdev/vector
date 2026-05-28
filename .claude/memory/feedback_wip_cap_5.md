@@ -1,27 +1,22 @@
 ---
 name: wip-cap-5
-description: Solo-dev mode — Vector_Scope.md is WIP-capped at 5 in-flight themes. Anything beyond moves to ## Parked; touching a parked item requires parking another.
+description: WIP count is advisory only as of 2026-05-28 — the historical 5-theme cap was demoted because the session-start nag was firing constantly and getting in the way. SessionStart still surfaces the theme count for awareness.
 metadata:
   type: feedback
 ---
 
-In **solo-dev mode** (since 2026-05-17), `Vector_Scope.md` is WIP-capped at **5 in-flight themes**. A theme = one top-level `## ` header that contains at least one `🔵 IN FLIGHT` line. Sub-items inside a theme don't count separately — moving from FE-POR-0002.1.3 to FE-POR-0002.2.1 stays inside one theme, not two.
+**WIP count is advisory** (since 2026-05-28). The session-start hook still emits the in-flight theme count for situational awareness, but the cap is no longer enforced and there's no "park one before starting new work" warning.
 
-**Why:** Multi-stream work in a solo context fragments attention without parallelism benefits. Each theme open = one context that has to be re-loaded, one set of design constraints to remember, one place where decisions can drift. Five is enough breadth to switch contexts when one stalls; more becomes thrash. The cap is empirically chosen — pulled tight when 44 in-flight items were surfacing on every session-start and most weren't being touched.
+**History:** From 2026-05-17 to 2026-05-28 the cap was a hard 5 themes, enforced by `.claude/hooks/scope-session-start.sh` with a ⚠️ banner on every session start when exceeded. Rick demoted it because the warning was firing on most sessions and the friction outweighed the discipline value.
+
+**Why:** Multi-stream work in solo context still fragments attention. But the *enforcement* mechanism (a session-start banner Rick had to read and dismiss) cost more than the discipline gained — Rick already self-regulates context-switching; the hook was telling him things he knew. The count itself is still useful as a glanceable check; the cap rhetoric isn't.
 
 **How to apply:**
 
-- **Default:** check the SessionStart digest before starting work. If it warns `⚠️ Solo-dev WIP cap exceeded: N themes in-flight (cap = 5)`, the WIP-cap hook ([`.claude/hooks/scope-session-start.sh`](../hooks/scope-session-start.sh)) caught a 6th theme — park one before continuing.
-- **Adding a new theme** = swap. Move an existing theme to `## Parked` (verbatim, no content loss), then add the new one. Single transaction.
-- **Touching a parked theme** = swap. To restart parked work, an active theme has to park. Cap stays at 5.
-- **Prod-ready re-activation** unparks the WIP cap entirely — full team-style multi-stream is back on the table.
+- **Don't suggest parking** unless Rick raises it himself. The advisory count is information, not a prompt for action.
+- **Don't claim a cap exists.** If Rick asks "what's the WIP cap?", the answer is "no cap — it's advisory now."
+- **Parking is still a valid tool**, just user-initiated. The `# Parked — solo-dev mode (since 2026-05-17)` section in `Vector_Scope.md` is still the destination if Rick wants to shelve a theme.
 
-**Edge cases:**
-
-- **A sub-item ships, theme isn't "done" yet** — theme stays in-flight; no swap needed.
-- **A theme finishes** (last sub-item marked done) — slot frees up; new work can move in without parking anything.
-- **Cross-cutting fix that spans two parked themes** — surface it instead of "just doing it". The point of parking is to be honest about what's getting attention. A drive-by fix to a parked theme defeats the WIP cap.
-
-**Parking format:** parked themes live verbatim under `# Parked — solo-dev mode (since 2026-05-17)` at the bottom of `Vector_Scope.md`. Every sub-item, every priority tag, every commit ref preserved. Unpark by moving the section back above the Parked divider; mark another theme parked in the same edit.
+**Origin signal:** "remove the cap and make it an advisory, its pising me off" — 2026-05-28. The cap firing was an active irritant, not a useful nudge.
 
 Related: [[solo-dev-mode]], [[no-new-pla-plans]], [[scratch-outside-repo]], [[retros-auto-only]].
