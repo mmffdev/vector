@@ -384,3 +384,225 @@ func writeWriterSvcErr(w http.ResponseWriter, r *http.Request, err error) {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
 	}
 }
+
+// ── type bindings: List / Replace / Update ─────────────────────────────────
+//
+// These three handlers manage the per-field set of artefact_type
+// bindings (artefacts_types_fields). Same auth posture as the field
+// writers: caller is authenticated, fresh password, workspace tenant
+// clamp, scope-clamped writer gate. The bindings themselves are tenant-
+// scoped (the artefact_type row carries subscription_id and is checked
+// by the service), so the gate uses scope='workspace' as the broadest
+// writer-eligible bucket — mirrors Update/Archive's posture.
+//
+// GET maps service sentinels inline (no helper) because the only gate
+// path it touches is the reader gate (AssertCallerMayRead → 404/403);
+// PUT and PATCH go through the existing writeWriterGateErr.
+
+// bindingOut is the wire shape for one binding row.
+type bindingOut struct {
+	ArtefactTypeID    uuid.UUID `json:"artefact_type_id"`
+	ArtefactTypeName  string    `json:"artefact_type_name"`
+	ArtefactTypeScope string    `json:"artefact_type_scope"`
+	Position          int       `json:"position"`
+	Required          bool      `json:"required"`
+	DefaultValue      *string   `json:"default_value"`
+}
+
+type listBindingsResponse struct {
+	FieldID  uuid.UUID    `json:"field_id"`
+	Bindings []bindingOut `json:"bindings"`
+}
+
+type replaceBindingsRequest struct {
+	Bindings []bindingIn `json:"bindings"`
+}
+
+type bindingIn struct {
+	ArtefactTypeID uuid.UUID `json:"artefact_type_id"`
+	Position       int       `json:"position"`
+	Required       bool      `json:"required"`
+	DefaultValue   *string   `json:"default_value,omitempty"`
+}
+
+type updateBindingRequest struct {
+	Position     *int    `json:"position,omitempty"`
+	Required     *bool   `json:"required,omitempty"`
+	DefaultValue *string `json:"default_value,omitempty"`
+}
+
+func toBindingOut(b TypeBinding) bindingOut {
+	return bindingOut{
+		ArtefactTypeID:    b.ArtefactTypeID,
+		ArtefactTypeName:  b.ArtefactTypeName,
+		ArtefactTypeScope: b.ArtefactTypeScope,
+		Position:          b.Position,
+		Required:          b.Required,
+		DefaultValue:      b.DefaultValue,
+	}
+}
+
+// ListBindings handles GET /workspaces/{id}/fields/{field_id}/types.
+// Returns the set of artefact-type bindings for the field. Reader gate
+// (workspace membership OR tenant admin) — mirrors List.
+func (h *Handler) ListBindings(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	wsID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	fieldID, err := uuid.Parse(chi.URLParam(r, "field_id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	// Reader gate: same inline mapping as List — keep the existence-leak
+	// posture identical (cross-tenant probe gets 404, not 403).
+	if err := h.Svc.AssertCallerMayRead(r.Context(), wsID, u); err != nil {
+		switch {
+		case errors.Is(err, ErrWorkspaceNotFound):
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
+		case errors.Is(err, ErrForbidden):
+			httperr.Write(w, r, http.StatusForbidden, usermessages.AuthForbidden)
+		default:
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		}
+		return
+	}
+	if !h.Svc.HasArtefactsPool() {
+		writeJSON(w, http.StatusOK, listBindingsResponse{FieldID: fieldID, Bindings: []bindingOut{}})
+		return
+	}
+	rows, err := h.Svc.ListBindingsForField(r.Context(), u.SubscriptionID, fieldID)
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	out := make([]bindingOut, 0, len(rows))
+	for _, b := range rows {
+		out = append(out, toBindingOut(b))
+	}
+	writeJSON(w, http.StatusOK, listBindingsResponse{FieldID: fieldID, Bindings: out})
+}
+
+// ReplaceBindings handles PUT /workspaces/{id}/fields/{field_id}/types.
+// Atomically replaces the full set of bindings for the field.
+func (h *Handler) ReplaceBindings(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	wsID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	fieldID, err := uuid.Parse(chi.URLParam(r, "field_id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	var body replaceBindingsRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+
+	// Same gate posture as Update/Archive — see Update for rationale.
+	if err := h.Svc.AssertCallerMayWrite(r.Context(), wsID, u, "workspace"); err != nil {
+		writeWriterGateErr(w, r, err)
+		return
+	}
+	if !h.Svc.HasArtefactsPool() {
+		httperr.Write(w, r, http.StatusServiceUnavailable, usermessages.ServiceUnavailable)
+		return
+	}
+
+	wanted := make([]TypeBinding, 0, len(body.Bindings))
+	for _, b := range body.Bindings {
+		wanted = append(wanted, TypeBinding{
+			ArtefactTypeID: b.ArtefactTypeID,
+			Position:       b.Position,
+			Required:       b.Required,
+			DefaultValue:   b.DefaultValue,
+		})
+	}
+
+	rows, err := h.Svc.ReplaceBindingsForField(r.Context(), u.SubscriptionID, fieldID, wanted)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrUnknownArtefactType):
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
+		default:
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		}
+		return
+	}
+	out := make([]bindingOut, 0, len(rows))
+	for _, b := range rows {
+		out = append(out, toBindingOut(b))
+	}
+	writeJSON(w, http.StatusOK, listBindingsResponse{FieldID: fieldID, Bindings: out})
+}
+
+// UpdateBinding handles PATCH /workspaces/{id}/fields/{field_id}/types/{type_id}.
+// Partial update of a single binding's position / required / default_value.
+func (h *Handler) UpdateBinding(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	wsID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	fieldID, err := uuid.Parse(chi.URLParam(r, "field_id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	typeID, err := uuid.Parse(chi.URLParam(r, "type_id"))
+	if err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	var body updateBindingRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+
+	// Same gate posture as Update/Archive.
+	if err := h.Svc.AssertCallerMayWrite(r.Context(), wsID, u, "workspace"); err != nil {
+		writeWriterGateErr(w, r, err)
+		return
+	}
+	if !h.Svc.HasArtefactsPool() {
+		httperr.Write(w, r, http.StatusServiceUnavailable, usermessages.ServiceUnavailable)
+		return
+	}
+
+	row, err := h.Svc.UpdateBinding(r.Context(), u.SubscriptionID, fieldID, typeID, BindingPatch{
+		Position:     body.Position,
+		Required:     body.Required,
+		DefaultValue: body.DefaultValue,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrBindingNotFound), errors.Is(err, ErrUnknownArtefactType):
+			httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)
+		default:
+			httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, toBindingOut(*row))
+}

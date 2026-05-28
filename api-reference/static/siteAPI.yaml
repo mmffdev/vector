@@ -11114,6 +11114,201 @@ paths:
         required: true
         schema:
           type: string
+  /workspaces/{id}/fields/{field_id}/types:
+    get:
+      tags:
+      - workspaces
+      summary: GET /workspaces/{id}/fields/{field_id}/types
+      operationId: getWorkspacesIdFieldsFieldIdTypes
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: fieldsH.ListBindings
+        file: backend/internal/fields/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: field_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_id:
+                    type: string
+                    format: uuid
+                  bindings:
+                    type: array
+                    items:
+                      type: object
+                required:
+                - field_id
+                - bindings
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    put:
+      tags:
+      - workspaces
+      summary: PUT /workspaces/{id}/fields/{field_id}/types
+      operationId: putWorkspacesIdFieldsFieldIdTypes
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: fieldsH.ReplaceBindings
+        file: backend/internal/fields/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bindings:
+                  type: array
+                  items:
+                    type: object
+              required:
+              - bindings
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: field_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_id:
+                    type: string
+                    format: uuid
+                  bindings:
+                    type: array
+                    items:
+                      type: object
+                required:
+                - field_id
+                - bindings
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: '503 — error codes observed: usermessages.ServiceUnavailable'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /workspaces/{id}/fields/{field_id}/types/{type_id}:
+    patch:
+      tags:
+      - workspaces
+      summary: PATCH /workspaces/{id}/fields/{field_id}/types/{type_id}
+      operationId: patchWorkspacesIdFieldsFieldIdTypesTypeId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-GENERATED STUB — needs hand-curation. The shape extractor
+        could not resolve the response or request type from the Go
+        handler (cross-package returns, polymorphic responses, or
+        unrecognised patterns). Open the handler at the file:line
+        below and document the shape manually. Search for
+        `x-needs-curation: true` to find all such operations.
+      x-handler:
+        symbol: fieldsH.UpdateBinding
+        file: backend/internal/fields/handler.go
+        needs_curation: true
+        reasons:
+        - response-payload-shape-toBindingOut(*row)
+      x-stub: true
+      responses:
+        '200':
+          description: 200 (stub response shape — schema not yet curated)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: field_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: type_id
+        in: path
+        required: true
+        schema:
+          type: string
   /workspaces/{id}/portfolio/layers:
     get:
       tags:
