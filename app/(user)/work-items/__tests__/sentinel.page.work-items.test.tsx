@@ -23,7 +23,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 // ─── Static-grep AC1 ─────────────────────────────────────────────────────
 // Read the page source directly. If a future edit re-introduces an old
@@ -175,6 +175,19 @@ describe("sentinel.page.work-items", () => {
         </SentinelProvider>,
       ),
     ).not.toThrow();
+  });
+
+  it("AC2.1 — ObjectTree mounts before the artefact-type catalogue resolves", async () => {
+    const { SentinelProvider } = await import("@/app/sentinel");
+    const { default: WorkItemsPage } = await import("../page");
+
+    render(
+      <SentinelProvider>
+        <WorkItemsPage />
+      </SentinelProvider>,
+    );
+
+    expect(screen.getByTestId("object-tree")).toBeInTheDocument();
   });
 
   it("AC3 — page reads tenant + focus from Sentinel (smoke)", async () => {

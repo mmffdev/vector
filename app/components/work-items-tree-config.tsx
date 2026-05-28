@@ -18,7 +18,7 @@ import { notify } from "@/app/lib/toast";
 import { useUserPreference } from "@/app/hooks/useUserPreference";
 import { useSentinel } from "@/app/sentinel";
 import { type TypeColourMap } from "@/app/lib/colourUtils";
-import { artefactTypesApi } from "@/app/lib/artefactTypesApi";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import InlineEditField from "@/app/components/InlineEditField";
 import { InlineSelect } from "@/app/components/InlineSelect";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
@@ -36,35 +36,15 @@ import { parseShareableParams, buildShareableHref } from "@/app/lib/shareablePar
 
 // ─── Artefact-type colour map ─────────────────────────────────────────────────
 
-// Fetches artefact type colours once per mount (module-level cache so the
-// request fires at most once across all tree instances on the same page).
-let _colourCache: TypeColourMap | null = null;
-let _colourPromise: Promise<TypeColourMap> | null = null;
-
-async function fetchColourMap(): Promise<TypeColourMap> {
-  if (_colourCache) return _colourCache;
-  if (!_colourPromise) {
-    _colourPromise = artefactTypesApi.list().then((types) => {
-      const m: TypeColourMap = new Map();
-      for (const t of types) {
-        if (t.colour) m.set(t.prefix, { colour: t.colour, name: t.name });
-      }
-      _colourCache = m;
-      return m;
-    }).catch(() => new Map());
-  }
-  return _colourPromise;
-}
-
 export function useArtefactTypeColours(): TypeColourMap {
-  const [map, setMap] = useState<TypeColourMap>(_colourCache ?? new Map());
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    fetchColourMap().then((m) => { if (mounted.current) setMap(m); });
-    return () => { mounted.current = false; };
-  }, []);
-  return map;
+  const { types } = useArtefactTypeCatalogue();
+  return useMemo(() => {
+    const m: TypeColourMap = new Map();
+    for (const t of types) {
+      if (t.colour) m.set(t.prefix, { colour: t.colour, name: t.name });
+    }
+    return m;
+  }, [types]);
 }
 
 // ─── Public type ──────────────────────────────────────────────────────────────
