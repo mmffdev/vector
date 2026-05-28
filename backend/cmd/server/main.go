@@ -1828,6 +1828,9 @@ func main() {
 		r.Post("/", fieldsH.Create)
 		r.Patch("/{field_id}", fieldsH.Update)
 		r.Delete("/{field_id}", fieldsH.Archive)
+		r.Get("/{field_id}/types", fieldsH.ListBindings)
+		r.Put("/{field_id}/types", fieldsH.ReplaceBindings)
+		r.Patch("/{field_id}/types/{type_id}", fieldsH.UpdateBinding)
 	})
 
 	// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
@@ -2390,6 +2393,9 @@ func main() {
 			r.Post("/", fieldsH.Create)
 			r.Patch("/{field_id}", fieldsH.Update)
 			r.Delete("/{field_id}", fieldsH.Archive)
+			r.Get("/{field_id}/types", fieldsH.ListBindings)
+			r.Put("/{field_id}/types", fieldsH.ReplaceBindings)
+			r.Patch("/{field_id}/types/{type_id}", fieldsH.UpdateBinding)
 		})
 
 		// ---- /workspace/{id}/portfolio/layers (PLA-0026 B10 / PLA-0030 T3) ----
