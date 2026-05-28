@@ -303,7 +303,7 @@ export default function ObjectTree({
   // Active topology scope. Used by duplicateArtefact to pin the clone
   // when the source artefact had no topology_node_id of its own
   // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
-  const { sentinel_focus_node: activeScopeNodeId, sentinel_user } = useSentinel();
+  const { sentinel_focus_node: activeScopeNodeId, sentinel_user, sentinel_can } = useSentinel();
 
   // Slice 4.5 — column-picker state. Hook MUST be called every render
   // (rules of hooks); we feed it an empty-catalogue sentinel when the
@@ -317,28 +317,44 @@ export default function ObjectTree({
   const visibleWireKeys = columnCatalogue ? picker.visibleWireKeys : null;
   const visibleKeySet = columnCatalogue ? picker.visibleKeySet : null;
 
-  // Saved Views — Task 17 scaffolding. The real isDirty/onLoad/
-  // onClearView/canShareToWorkspace wire-up lands in Task 18 (column
-  // picker state diffing + role check). For now the callbacks are
-  // stubs so the dropdown + modal chrome render end-to-end without
-  // mutating user state.
+  // Saved Views — Task 18 wires the real state into the control props.
+  // activeLoadedView tracks the most-recently-loaded view so we can
+  // diff its visible_columns body against the picker's live visibleKeys
+  // to compute isDirty (Save Changes button visibility).
+  const [activeLoadedView, setActiveLoadedView] = useState<SavedView | null>(null);
+  const activeViewBody = activeLoadedView?.saved_views_body as
+    | { visible_columns?: string[] }
+    | undefined;
+  const isDirty = (() => {
+    if (!activeViewBody) return false;
+    const want = activeViewBody.visible_columns ?? [];
+    const have = picker.visibleKeys ?? [];
+    if (want.length !== have.length) return true;
+    const wantSet = new Set(want);
+    return have.some((k: string) => !wantSet.has(k));
+  })();
   const savedViewsControlProps = savedViews && sentinel_user
     ? {
         kind: savedViews.kind,
         target: savedViews.target,
-        isDirty: false, // wired in Task 18
+        isDirty,
         onLoad: (view: SavedView) => {
-          console.debug("[savedViews] onLoad stub", view.saved_views_name);
+          setActiveLoadedView(view);
+          const body = view.saved_views_body as { visible_columns?: string[] };
+          if (Array.isArray(body.visible_columns)) {
+            picker.setVisibleKeys(body.visible_columns);
+          }
         },
         onSerialise: () => ({ visible_columns: picker.visibleKeys }),
         onClearView: () => {
-          console.debug("[savedViews] onClearView stub");
+          setActiveLoadedView(null);
+          picker.resetToDefaults();
         },
         currentUserID: sentinel_user.id ?? "",
         currentNodeID: activeScopeNodeId,
         currentWorkspaceID: sentinel_user.workspace_id,
         canShareToNode: !!activeScopeNodeId,
-        canShareToWorkspace: false, // wired in Task 18
+        canShareToWorkspace: sentinel_can("workspace.archive"),
       }
     : null;
 
