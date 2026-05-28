@@ -386,9 +386,9 @@ export default function CustomFieldEditorPage() {
             </label>
           )}
 
-          <div style={{ marginTop: 16 }}>
-            <h4 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Applies to artefact types</h4>
-            <p className="form__hint" style={{ marginBottom: 12 }}>
+          <section className="custom-field-editor__BindingsSection">
+            <h4 className="custom-field-editor__BindingsHeading">Applies to artefact types</h4>
+            <p className="form__hint custom-field-editor__BindingsHint">
               Pick which artefact types this field appears on. Per-type position
               sets the order of fields on each form; required marks the field
               mandatory for that type; default value pre-fills when an artefact
@@ -402,7 +402,7 @@ export default function CustomFieldEditorPage() {
               }}
               disabled={busy}
             />
-          </div>
+          </section>
 
           <div className="form__actions">
             <button

@@ -18989,33 +18989,67 @@ tr.is-editing {
    Specs: docs/superpowers/specs/2026-05-28-custom-field-type-bindings-design.md
    ────────────────────────────────────────────────────────────────────── */
 
-.type-bindings-picker {
+/* ─────────────────────────────────────────────────────────────────
+   Section chrome on the custom-fields editor that hosts the picker.
+   Owns the heading + helper-hint spacing so the editor page doesn't
+   carry inline styles.
+   ───────────────────────────────────────────────────────────────── */
+.custom-field-editor__BindingsSection {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
+.custom-field-editor__BindingsHeading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.custom-field-editor__BindingsHint {
+  margin: 0;
+}
+
+/* TypeBindingsPicker — two-column field-to-type binder. */
+.type-bindings-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
 .type-bindings-picker__Columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 20px;
 }
 
 .type-bindings-picker__AvailableCol,
 .type-bindings-picker__SelectedCol {
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 12px;
+  padding: 16px;
   background: var(--surface);
   color: var(--ink);
+  min-height: 240px;
 }
 
 .type-bindings-picker__SectionLabel {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--ink-muted);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.type-bindings-picker__SectionLabel + .type-bindings-picker__SectionLabel,
+.type-bindings-picker__TypeList + .type-bindings-picker__SectionLabel {
+  margin-top: 16px;
 }
 
 .type-bindings-picker__TypeList,
@@ -19031,8 +19065,8 @@ tr.is-editing {
 .type-bindings-picker__TypeRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 10px;
   border-radius: 4px;
   cursor: pointer;
   color: var(--ink);
@@ -19061,12 +19095,16 @@ tr.is-editing {
 .type-bindings-picker__BindingRow {
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 8px;
+  padding: 12px;
   background: var(--surface-sunken);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   color: var(--ink);
+}
+
+.type-bindings-picker__BindingList {
+  gap: 10px;
 }
 
 .type-bindings-picker__BindingHead {
@@ -19078,14 +19116,25 @@ tr.is-editing {
 .type-bindings-picker__BindingControls {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
+  align-items: center;
 }
 
 .type-bindings-picker__InputLabel {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.type-bindings-picker__InputLabel input[type="number"],
+.type-bindings-picker__InputLabel input[type="text"] {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .type-bindings-picker__InputLabel input[type="number"] {
