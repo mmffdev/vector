@@ -14047,6 +14047,340 @@ input[type="reset"] {
   cursor: not-allowed;
 }
 
+/* ── SavedViews family (Rally-style saved view configurations) ─────────── */
+.saved-views__Control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.saved-views__DropdownWrap {
+  position: relative;
+  display: inline-block;
+}
+.saved-views__DropdownTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 280px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.saved-views__DropdownTrigger--open {
+  border-color: var(--accent, var(--ink));
+}
+.saved-views__DropdownTriggerLabel {
+  flex: 1 1 auto;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.saved-views__DropdownTriggerCaret {
+  color: var(--ink-muted, var(--ink-subtle));
+}
+.saved-views__DropdownPanel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-elev, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  z-index: 40;
+}
+.saved-views__DropdownSearch {
+  margin: 10px 14px;
+}
+.saved-views__DropdownList {
+  flex: 1 1 auto;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 8px;
+}
+.saved-views__DropdownItem {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.saved-views__DropdownItem:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.saved-views__DropdownItem--active {
+  background: color-mix(in srgb, var(--accent, var(--ink)) 12%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+}
+.saved-views__DropdownEmpty {
+  padding: 16px;
+  text-align: center;
+  color: var(--ink-muted, var(--ink-subtle));
+  font-size: 12px;
+}
+.saved-views__DropdownFooter {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px 10px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  gap: 4px;
+}
+.saved-views__DropdownAction {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent, var(--ink));
+  cursor: pointer;
+}
+.saved-views__DropdownAction:hover {
+  background: color-mix(in srgb, var(--accent, var(--ink)) 8%, transparent);
+}
+
+.saved-views__SaveChanges {
+  padding: 6px 14px;
+  border: 0;
+  background: var(--accent, var(--ink));
+  color: var(--on-accent, #fff);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.saved-views__SaveChanges:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saved-views__StatusText {
+  color: var(--ink-muted, var(--ink-subtle));
+  font-size: 12px;
+}
+.saved-views__ErrorText {
+  color: var(--err, #c0392b);
+  font-size: 12px;
+}
+
+/* ── Modal shell (reused by SaveAsNewView + ManageSavedViews) ─────────── */
+.saved-views__ModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.saved-views__Modal {
+  width: min(480px, 92vw);
+  background: var(--surface-elev, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.saved-views__Modal--wide {
+  width: min(720px, 92vw);
+  height: min(80vh, 720px);
+}
+.saved-views__ModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+.saved-views__ModalTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+.saved-views__ModalClose {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent, var(--ink));
+  border-radius: 4px;
+}
+.saved-views__ModalBody {
+  padding: 8px 18px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.saved-views__ModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.saved-views__FieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 6px;
+}
+.saved-views__TextInput {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+}
+.saved-views__TextInput:focus {
+  border-color: var(--accent, var(--ink));
+}
+.saved-views__Select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.saved-views__HelpText {
+  font-size: 12px;
+  color: var(--ink-muted, var(--ink-subtle));
+  margin: 4px 0 8px 0;
+}
+.saved-views__BtnPrimary {
+  padding: 8px 18px;
+  border: 0;
+  background: var(--accent, var(--ink));
+  color: var(--on-accent, #fff);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.saved-views__BtnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.saved-views__BtnTertiary {
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--accent, var(--ink));
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.saved-views__BtnDanger {
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--err, #c0392b);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.saved-views__BtnDanger:hover {
+  background: color-mix(in srgb, var(--err, #c0392b) 8%, transparent);
+}
+
+/* ── Manage-modal table ───────────────────────────────────────────────── */
+.saved-views__ManageToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent, var(--ink)) 4%, var(--surface));
+}
+.saved-views__SelectionCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.saved-views__TotalCount {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-muted, var(--ink-subtle));
+}
+.saved-views__ToolbarLink {
+  background: transparent;
+  border: 0;
+  color: var(--accent, var(--ink));
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+.saved-views__ManageList {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+.saved-views__ManageTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.saved-views__ManageTable th,
+.saved-views__ManageTable td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.saved-views__ManageTable th {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+}
+.saved-views__Row--selected {
+  background: color-mix(in srgb, var(--accent, var(--ink)) 8%, transparent);
+}
+.saved-views__InlineEdit {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: text;
+  padding: 0;
+}
+
 /* Table root */
 .tree_accordion-dense__table {
   width: 100%;
