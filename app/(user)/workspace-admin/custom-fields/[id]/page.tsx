@@ -240,7 +240,7 @@ export default function CustomFieldEditorPage() {
           );
         } else if (e.status === 403) {
           setErr(
-            "Forbidden — you do not have permission to manage fields at this scope.",
+            "Forbidden — you do not have permission to manage fields at this visibility level.",
           );
         } else {
           setErr(`Error ${e.status}: ${String(e.body ?? "")}`);
@@ -281,8 +281,9 @@ export default function CustomFieldEditorPage() {
           payloads); the <code>label</code> is what end users see. Choose
           a <em>data type</em> carefully — once any artefact, sprint or
           release stores a value against this field, the type is locked
-          until the field is archived. The <em>scope</em> decides who
-          can manage the field and where it’s visible.
+          until the field is archived. <em>Visibility</em> decides who
+          can manage the field; <em>Applies to</em> below decides which
+          artefact types it appears on — the two are independent.
         </p>
       </PageDescription>
 
@@ -339,21 +340,21 @@ export default function CustomFieldEditorPage() {
             </label>
 
             <label className="form__label">
-              Scope
+              Visibility
               <select
                 className="form__select"
                 value={scope}
                 onChange={(e) => setScope(e.target.value as "workspace" | "tenant")}
                 disabled={!isNew}
               >
-                <option value="workspace">Workspace</option>
-                <option value="tenant">Tenant</option>
+                <option value="workspace">This workspace only</option>
+                <option value="tenant">All workspaces in this tenant</option>
               </select>
-              {!isNew && (
-                <span className="form__hint">
-                  Scope is immutable once a field is created.
-                </span>
-              )}
+              <span className="form__hint">
+                {isNew
+                  ? "Controls who can manage this field — independent of which artefact types it applies to (set below)."
+                  : "Visibility is immutable once a field is created."}
+              </span>
             </label>
           </div>
 
