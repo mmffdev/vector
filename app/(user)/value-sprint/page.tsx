@@ -204,12 +204,18 @@ export default function ValueSprint() {
   // sprint. When panelSprintId is null we still mount the tree (with a
   // sentinel-empty clamp), so the user gets a "no sprint loaded" empty
   // state inside the panel rather than an unmounted void.
-  const panelWizardConfig = useMemo<ObjectTreeDataConfig>(
+  // Only built when a real sprint id is loaded. The tree below is
+  // gated on the same panelSprintId — no point asking the backend
+  // for "sprint = none" (an earlier sentinel value of __none__ tripped
+  // a 500 on the work-items handler's UUID parse).
+  const panelWizardConfig = useMemo<ObjectTreeDataConfig | null>(
     () =>
-      buildWizardConfig(
-        "valuesprintplanned",
-        panelSprintId ? `sprint_id=${panelSprintId}` : "sprint_id=__none__",
-      ),
+      panelSprintId
+        ? buildWizardConfig(
+            "valuesprintplanned",
+            `sprint_id=${panelSprintId}`,
+          )
+        : null,
     [buildWizardConfig, panelSprintId],
   );
 
@@ -516,19 +522,23 @@ export default function ValueSprint() {
 
           {/* Sprint-backlog tree renders BARE (no title / addressableName)
               so it doesn't nest a Panel inside this outer Panel. The
-              outer Panel owns the chrome; the tree owns the table. */}
-          <div ref={panelBulkBarRef}>
-            <ObjectTree
-              selectedId={panelSelectedItem?.id ?? null}
-              onSelect={setPanelSelectedItem}
-              wizardConfig={panelWizardConfig}
-              multiSelectEnabled
-              onSelectionChange={setPanelSelectedIds}
-              rowButtons={panelRowButtons}
-              refetchRef={panelRefetchRef}
-              bulkLeadingButtons={panelBulkLeadingButtons}
-            />
-          </div>
+              outer Panel owns the chrome; the tree owns the table.
+              Mounted only when a sprint is loaded — see panelWizardConfig
+              for the rationale. */}
+          {panelWizardConfig && (
+            <div ref={panelBulkBarRef}>
+              <ObjectTree
+                selectedId={panelSelectedItem?.id ?? null}
+                onSelect={setPanelSelectedItem}
+                wizardConfig={panelWizardConfig}
+                multiSelectEnabled
+                onSelectionChange={setPanelSelectedIds}
+                rowButtons={panelRowButtons}
+                refetchRef={panelRefetchRef}
+                bulkLeadingButtons={panelBulkLeadingButtons}
+              />
+            </div>
+          )}
         </Panel>
 
         {/* Bottom panel — workspace backlog (ObjectTreeV2, clamp = Work Items).
