@@ -199,6 +199,7 @@ export default function ObjectTree<T = WorkItem>({
   // future admin grids) pass an adapter and a matching <T>. Spec:
   // docs/superpowers/specs/2026-05-28-objecttree-generic-rowtype-design.md
   adapter,
+  initialCreateFlyoutOpen,
 }: {
   selectedId: string | null;
   onSelect: (item: T) => void;
@@ -206,6 +207,11 @@ export default function ObjectTree<T = WorkItem>({
   mode?: "work_items" | "portfolio_items";
   wizardConfig?: ObjectTreeDataConfig<T>;
   adapter?: ObjectTreeAdapter<T>;
+  // Deep-link primer for the adapter's create flyout. When true on mount,
+  // the create flyout opens automatically (used by /custom-fields/[id]
+  // route segment `new` to land users straight in create-mode without a
+  // URL query read — PLA-0053 path-only rule).
+  initialCreateFlyoutOpen?: boolean;
   // Saved Views — when supplied, ObjectTree mounts <SavedViewsControl>
   // beside the ActionBar so the user can pick / save / manage views for
   // this grid. `kind` discriminates objecttree vs page_layout; `target`
@@ -331,8 +337,14 @@ export default function ObjectTree<T = WorkItem>({
   // BELOW the grid. `createFlyoutOpen` true → adapter.renderCreateFlyout(...)
   // renders ABOVE the grid. Both stay null/false on every non-adapter
   // mount, so production WorkItem surfaces are untouched.
-  const [flyoutRowId, setFlyoutRowId] = useState<string | null>(null);
-  const [createFlyoutOpen, setCreateFlyoutOpen] = useState(false);
+  // initialOpenId path: when the host primes selectedId AND the adapter has
+  // renderRowFlyout, open the flyout for that row on mount. This is the
+  // deep-link path from the /custom-fields/[id] route segment (PLA-0053
+  // path-only rule — no URL query reads).
+  const [flyoutRowId, setFlyoutRowId] = useState<string | null>(
+    adapter?.renderRowFlyout ? selectedId : null,
+  );
+  const [createFlyoutOpen, setCreateFlyoutOpen] = useState(!!initialCreateFlyoutOpen);
   // Bump on flyout-driven save to force the windowed-fetch hook to refetch
   // — same idiom as refetchRef but inline since the adapter's save is
   // host-side, not a wire-level patch the tree already knows about.

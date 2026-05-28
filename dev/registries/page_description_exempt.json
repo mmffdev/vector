@@ -244,6 +244,14 @@
     {
       "path": "app/(user)/workspace-admin/portfolio-model/page.tsx",
       "reason": "ws-tab embed of /portfolio-model \u2014 host page owns the description"
+    },
+    {
+      "path": "app/(user)/workspace-admin/custom-fields/[id]/page.tsx",
+      "reason": "deep-link route segment \u2014 delegates to CustomFieldsPageBody which renders its own <PageDescription>; this file has no own UI"
+    },
+    {
+      "path": "app/(user)/workspace-admin/custom-fields/page.tsx",
+      "reason": "list route \u2014 delegates to CustomFieldsPageBody (lives outside app/) which renders its own <PageDescription>; this file has no own UI"
     }
   ]
 }
