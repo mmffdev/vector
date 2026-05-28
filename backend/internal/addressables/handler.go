@@ -203,6 +203,159 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// POST /api/addressables/register-bulk  (perf cycle 6)
+// ─────────────────────────────────────────────────────────────────────
+//
+// Identical auth / source / production rules to /addressables/register;
+// the bulk endpoint exists ONLY to collapse N HTTP roundtrips on page
+// mount into one. The single-shot endpoint stays in service for any
+// caller not yet migrated. Each item is gated identically — including
+// the production refusal of source='runtime' and the custom-app token
+// requirement — so the trust surface is the same; only the wire shape
+// changes.
+
+type registerBulkReq struct {
+	Items []registerReq `json:"items"`
+}
+
+type registerBulkResultItem struct {
+	Index    int    `json:"index"`
+	ID       string `json:"id,omitempty"`
+	Address  string `json:"address,omitempty"`
+	Helpable bool   `json:"helpable,omitempty"`
+	Error    string `json:"error,omitempty"`
+	Status   int    `json:"status"` // HTTP status this item would have returned in single-shot form
+}
+
+type registerBulkResp struct {
+	Results []registerBulkResultItem `json:"results"`
+}
+
+// RegisterBulk validates each item, fans through the Service's bulk
+// helper, and returns one result row per request item. Returns 200 even
+// if every item errored — per-item failures are surfaced via the result
+// row's `error` + `status` fields so the caller can choose to ignore
+// partial failures (which is what addressables registration does — a
+// failed registration just degrades to "no addressable_id handle" on
+// the affected component, not a page-level error).
+//
+// Top-level statuses:
+//   - 400 if the body is malformed or items is empty
+//   - 400 if any item has source other than 'runtime'/'custom_app'
+//   - 400 if the per-item slot/kind/name fails the format gate (we fail
+//     fast at the handler so the Service never sees a bad batch)
+//   - 403 if any item is source='runtime' in production
+//   - 200 with per-item status otherwise
+//
+// Hard cap of 64 items per request — defends against a buggy caller
+// flooding the server. 64 is well above the observed 8-item page mount
+// (run 1 of the cycle 5 waterfall) with headroom for the heaviest
+// imaginable dashboard mount.
+func (h *Handler) RegisterBulk(w http.ResponseWriter, r *http.Request) {
+	var req registerBulkReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	if len(req.Items) == 0 {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
+		return
+	}
+	if len(req.Items) > 64 {
+		httperr.Write(w, r, http.StatusBadRequest, "register-bulk accepts at most 64 items per request")
+		return
+	}
+
+	// Convert + validate per-item up-front so the Service call is a clean loop.
+	items := make([]BulkRegisterItem, 0, len(req.Items))
+	for _, item := range req.Items {
+		source, err := ParseSource(item.Source)
+		if err != nil || source == SourceBuild {
+			httperr.Write(w, r, http.StatusBadRequest, "source must be 'runtime' or 'custom_app'")
+			return
+		}
+		if h.Svc.inProduction {
+			if source == SourceCustomApp {
+				if h.customAppToken == "" || r.Header.Get("X-Custom-App-Token") != h.customAppToken {
+					httperr.Write(w, r, http.StatusForbidden, "custom-app token required in production")
+					return
+				}
+			}
+			if source == SourceRuntime {
+				httperr.Write(w, r, http.StatusForbidden, "runtime registration refused in production")
+				return
+			}
+		}
+		slot, err := ParseSlot(item.Slot)
+		if err != nil {
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+			return
+		}
+		if strings.TrimSpace(item.PageRoute) == "" {
+			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
+			return
+		}
+		var customAppID *uuid.UUID
+		if source == SourceCustomApp {
+			if item.CustomAppID == nil || *item.CustomAppID == "" {
+				httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestMissingFields)
+				return
+			}
+			id, err := uuid.Parse(*item.CustomAppID)
+			if err != nil {
+				httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+				return
+			}
+			customAppID = &id
+		}
+		items = append(items, BulkRegisterItem{
+			PageRoute:     item.PageRoute,
+			ParentAddress: item.ParentAddress,
+			Slot:          slot,
+			Kind:          item.Kind,
+			Name:          item.Name,
+			Source:        source,
+			CustomAppID:   customAppID,
+		})
+	}
+
+	results := h.Svc.RegisterFromRuntimeBulk(r.Context(), items)
+	out := make([]registerBulkResultItem, len(results))
+	for i, res := range results {
+		row := registerBulkResultItem{Index: res.Index, Address: res.Address, Helpable: res.Helpable}
+		if res.Err != nil {
+			row.Error = res.Err.Error()
+			row.Status = bulkStatusFor(res.Err)
+		} else {
+			row.ID = res.ID.String()
+			row.Status = http.StatusOK
+		}
+		out[i] = row
+	}
+	writeJSON(w, http.StatusOK, registerBulkResp{Results: out})
+}
+
+// bulkStatusFor mirrors writeServiceErr's mapping so per-item status
+// codes match what the single-shot handler would have returned.
+func bulkStatusFor(err error) int {
+	switch {
+	case errors.Is(err, ErrInvalidViewportSlot),
+		errors.Is(err, ErrInvalidSource),
+		errors.Is(err, ErrInvalidName),
+		errors.Is(err, ErrInvalidKind):
+		return http.StatusBadRequest
+	case errors.Is(err, ErrParentNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, ErrCustomAppCollision):
+		return http.StatusConflict
+	case errors.Is(err, ErrRuntimeRegisterInProduction):
+		return http.StatusForbidden
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // GET /api/addressables/snapshot?route=…
 // ─────────────────────────────────────────────────────────────────────
 

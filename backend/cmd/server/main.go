@@ -1451,6 +1451,10 @@ func main() {
 	// /addressables + /page-help (PLA-0005)
 	r.Post("/addressables/build-reconcile", addressablesH.BuildReconcile)
 	r.Post("/addressables/register", addressablesH.Register)
+	// register-bulk: perf cycle 6 — collapses N parallel /register POSTs
+	// on page mount (one per <Panel>/<Table>/<ResourceTree>) into one
+	// HTTP roundtrip. Same auth/source/production rules as /register.
+	r.Post("/addressables/register-bulk", addressablesH.RegisterBulk)
 	r.Get("/addressables/snapshot", addressablesH.Snapshot)
 	r.Get("/page-help/{addressable_id}", addressablesH.PageHelp)
 	r.Route("/page-help/admin", func(r chi.Router) {

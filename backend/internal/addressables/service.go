@@ -399,6 +399,68 @@ func (s *Service) RegisterFromRuntime(ctx context.Context, pageRoute, parentAddr
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// RegisterFromRuntimeBulk — perf cycle 6
+// ─────────────────────────────────────────────────────────────────────
+
+// BulkRegisterItem is one entry in a RegisterFromRuntimeBulk request.
+// Fields mirror the single-shot RegisterFromRuntime call. Each item is
+// processed independently — a per-item error stays scoped to that item
+// and does NOT abort the whole batch.
+type BulkRegisterItem struct {
+	PageRoute     string
+	ParentAddress string
+	Slot          ViewportSlot
+	Kind          string
+	Name          string
+	Source        Source
+	CustomAppID   *uuid.UUID
+}
+
+// BulkRegisterResult is one entry in the response array. Address + ID +
+// Helpable are zero-valued when Err != nil; callers should branch on Err
+// first. Index echoes back the request-array position so out-of-order
+// processing is not assumed.
+type BulkRegisterResult struct {
+	Index    int
+	ID       uuid.UUID
+	Address  string
+	Helpable bool
+	Err      error
+}
+
+// RegisterFromRuntimeBulk processes N runtime registrations in one
+// service call so the frontend can collapse the N parallel POSTs that
+// fire on page mount (one per <Panel>/<Table>/<ResourceTree> instance)
+// into a single HTTP request. Each item runs through the same
+// RegisterFromRuntime + lookupRowByAddress path as the single-shot
+// handler — including the inProduction gate, the parent-not-found case,
+// and the custom-app collision rule — so the trust contract is identical.
+// Per-item errors are returned in the result slot; the bulk call itself
+// only fails on an unrecoverable system error (rarely seen — the loop
+// is allocation-only). Order of results mirrors order of input.
+//
+// Perf intent: collapses ~8 sequential HTTP roundtrips on /value-sprint
+// mount (each ~150-300ms warm) into one ~250-400ms call. See handover
+// cycle 6 entry for measurement.
+func (s *Service) RegisterFromRuntimeBulk(ctx context.Context, items []BulkRegisterItem) []BulkRegisterResult {
+	results := make([]BulkRegisterResult, len(items))
+	for i, item := range items {
+		addr, err := s.RegisterFromRuntime(ctx, item.PageRoute, item.ParentAddress, item.Slot, item.Kind, item.Name, item.Source, item.CustomAppID)
+		if err != nil {
+			results[i] = BulkRegisterResult{Index: i, Err: err}
+			continue
+		}
+		id, helpable, err := s.lookupRowByAddress(ctx, item.PageRoute, addr)
+		if err != nil {
+			results[i] = BulkRegisterResult{Index: i, Address: addr, Err: err}
+			continue
+		}
+		results[i] = BulkRegisterResult{Index: i, ID: id, Address: addr, Helpable: helpable}
+	}
+	return results
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // page_help reads (used by the snapshot bundle and the /help/<id> route)
 // ─────────────────────────────────────────────────────────────────────
 
