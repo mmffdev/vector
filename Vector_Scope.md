@@ -4779,6 +4779,7 @@ Full lifecycle management for tasks, bugs, epics.
 - **B2.5** Burndown snapshot (`GET /sprints/{id}/burndown?date=`) `[P3]`
 - **B2.6** Active sprint summary per workspace `[P3]`
 - **B2.7** Releases timebox kind `[P4]`
+- 🔵 **B2.8** Value-sprint planning surface (`/value-sprint`) — useNextSprint hook + live sprint panel + RadialPillMenu primitive + multiSelectEnabled + rowButtons slot + per-row & bulk Add/Target/Move Sprint actions; sprint backlog as second ObjectTreeV2 with Switch Sprint affordance; filed TD-VALUE-SPRINT-RANK-PARTITION (child of TD-0185) for cross-sprint rank drift `[P2]`
 
 ---
 
