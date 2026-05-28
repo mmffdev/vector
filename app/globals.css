@@ -14380,6 +14380,11 @@ input[type="reset"] {
   cursor: text;
   padding: 0;
 }
+.objecttree__SavedViewsSlot {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 12px;
+}
 
 /* Table root */
 .tree_accordion-dense__table {

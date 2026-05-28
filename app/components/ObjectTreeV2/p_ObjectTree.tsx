@@ -96,6 +96,8 @@ import {
   useColumnPickerState,
   type ColumnCatalogue,
 } from "@/app/components/ObjectTreeV2/plugins/ColumnPicker";
+import { SavedViewsControl } from "@/app/components/SavedViews/SavedViewsControl";
+import type { Kind as SavedViewsKind, View as SavedView } from "@/app/components/SavedViews/types";
 import { notify } from "@/app/lib/toast";
 
 // Slice 1 of the ObjectTree refactor — work-items-specific cascade triggers.
@@ -179,12 +181,24 @@ export default function ObjectTree({
   dropColumnKeys,
   refetchRef,
   bulkLeadingButtons,
+  savedViews,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
   onPatched?: (body: Record<string, unknown>) => void;
   mode?: "work_items" | "portfolio_items";
   wizardConfig?: ObjectTreeDataConfig<WorkItem>;
+  // Saved Views — when supplied, ObjectTree mounts <SavedViewsControl>
+  // beside the ActionBar so the user can pick / save / manage views for
+  // this grid. `kind` discriminates objecttree vs page_layout; `target`
+  // is the opaque per-page identifier (`<kind>:<stable-id>` convention,
+  // e.g. `objecttree:work_items`). Real isDirty/onLoad/onClearView/
+  // canShareToWorkspace wire-up lands in Task 18; this slice keeps them
+  // stubbed so the chrome renders end-to-end.
+  savedViews?: {
+    kind: SavedViewsKind;
+    target: string;
+  };
   // Chrome props. ObjectTree renders its own outer <Panel> + sunken header;
   // pages no longer wrap with <Panel>. `title` + `addressableName` are
   // required for the new chrome; `subtitleBadge` / `subtitle` / `description`
@@ -302,6 +316,31 @@ export default function ObjectTree({
   const picker = useColumnPickerState(columnCatalogue ?? emptyCatalogue);
   const visibleWireKeys = columnCatalogue ? picker.visibleWireKeys : null;
   const visibleKeySet = columnCatalogue ? picker.visibleKeySet : null;
+
+  // Saved Views — Task 17 scaffolding. The real isDirty/onLoad/
+  // onClearView/canShareToWorkspace wire-up lands in Task 18 (column
+  // picker state diffing + role check). For now the callbacks are
+  // stubs so the dropdown + modal chrome render end-to-end without
+  // mutating user state.
+  const savedViewsControlProps = savedViews && sentinel_user
+    ? {
+        kind: savedViews.kind,
+        target: savedViews.target,
+        isDirty: false, // wired in Task 18
+        onLoad: (view: SavedView) => {
+          console.debug("[savedViews] onLoad stub", view.saved_views_name);
+        },
+        onSerialise: () => ({ visible_columns: picker.visibleKeys }),
+        onClearView: () => {
+          console.debug("[savedViews] onClearView stub");
+        },
+        currentUserID: sentinel_user.id ?? "",
+        currentNodeID: activeScopeNodeId,
+        currentWorkspaceID: sentinel_user.workspace_id,
+        canShareToNode: !!activeScopeNodeId,
+        canShareToWorkspace: false, // wired in Task 18
+      }
+    : null;
 
   // Action bar — artefact type picker that focuses the "Add new" CTA.
   // Design-only for now (no create wiring); options come from the workspace
@@ -1137,30 +1176,40 @@ export default function ObjectTree({
         });
 
   const actionBarNode = (
-    <ActionBar
-      ariaLabel="Work item actions"
-      createAction={createAction}
-      search={{
-        placeholder: config.searchPlaceholder ?? "Search…",
-        value: searchQuery,
-        onChange: setSearchQuery,
-      }}
-      filterChips={
-        <>
-          {config.filterChips}
-          {columnCatalogue && (
-            // Slice 4.5 — column picker sits at the end of the
-            // filter-chip cluster (right side of the action bar).
-            <ColumnPicker
-              catalogue={columnCatalogue}
-              visibleKeys={picker.visibleKeys}
-              onChange={picker.setVisibleKeys}
-              onResetToDefaults={picker.resetToDefaults}
-            />
-          )}
-        </>
-      }
-    />
+    <>
+      {savedViewsControlProps && (
+        // Task 17 — saved-views dropdown sits adjacent to the ActionBar
+        // (sibling, not slot) so the existing ActionBar prop surface
+        // stays unchanged. Task 18 wires real isDirty/onLoad behaviour.
+        <div className="objecttree__SavedViewsSlot">
+          <SavedViewsControl {...savedViewsControlProps} />
+        </div>
+      )}
+      <ActionBar
+        ariaLabel="Work item actions"
+        createAction={createAction}
+        search={{
+          placeholder: config.searchPlaceholder ?? "Search…",
+          value: searchQuery,
+          onChange: setSearchQuery,
+        }}
+        filterChips={
+          <>
+            {config.filterChips}
+            {columnCatalogue && (
+              // Slice 4.5 — column picker sits at the end of the
+              // filter-chip cluster (right side of the action bar).
+              <ColumnPicker
+                catalogue={columnCatalogue}
+                visibleKeys={picker.visibleKeys}
+                onChange={picker.setVisibleKeys}
+                onResetToDefaults={picker.resetToDefaults}
+              />
+            )}
+          </>
+        }
+      />
+    </>
   );
 
   // Always mounted so the slide-down/up animation has both states to
