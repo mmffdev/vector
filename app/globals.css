@@ -14386,16 +14386,6 @@ input[type="reset"] {
   margin-left: 12px;
 }
 
-/* Adapter-supplied create-action node (rendered between the sunken header
-   and the ActionBar when an ObjectTreeAdapter with buildCreateAction is
-   active — e.g. custom-fields' "Create Field" button). Hidden on default
-   WorkItem mounts because they don't pass an adapter. */
-.objecttree__AdapterCreateAction {
-  display: flex;
-  justify-content: flex-end;
-  padding: 12px 16px 0;
-}
-
 .objecttree__Row_adapter_flyout_open {
   background: var(--surface-hover);
 }

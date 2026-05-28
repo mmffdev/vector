@@ -23,6 +23,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   archiveWorkspaceField,
+  getWorkspaceFields,
   updateWorkspaceField,
   type FieldUpdate,
   type WorkspaceField,
@@ -201,6 +202,24 @@ export function createCustomFieldsAdapter(
         rowId,
         body as Partial<FieldUpdate>,
       );
+    },
+
+    // ── Fetch wire ──────────────────────────────────────────────────────
+    //
+    // The fields API returns {workspace_id, fields: [...]} — not the OTV2
+    // canonical {items, total} envelope. Translate at the adapter boundary
+    // so useObjectTreeWindow gets the shape it expects. The endpoint
+    // doesn't paginate (returns all fields for the workspace); pagination
+    // math is owned by ResourceTree's window logic at current scale (66
+    // rows live). Add ?limit/?offset to the wire when catalogue size
+    // grows past ~500.
+    async fetchPage(): Promise<{ items: WorkspaceField[]; total: number }> {
+      const rows = await getWorkspaceFields(workspaceId);
+      // Drop global-scope rows from the admin grid view (read-only,
+      // vector_admin-owned — they belong in a separate read-only surface,
+      // not the catalogue editor).
+      const items = rows.filter((r) => r.scope !== "global");
+      return { items, total: items.length };
     },
 
     // ── Create action ───────────────────────────────────────────────────

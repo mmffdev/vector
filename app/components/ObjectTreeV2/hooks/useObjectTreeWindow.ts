@@ -115,6 +115,26 @@ export interface UseObjectTreeWindowOptions<T> {
    * to handle 409 parent_flow_state_derived; other domains pass nothing.
    */
   onPatchError?: (err: unknown, id: string, body: Record<string, unknown>) => boolean;
+  /**
+   * Optional custom fetcher — bypasses the default apiSite call when an
+   * endpoint doesn't return the canonical {items, total} envelope.
+   * Adapters that wrap a non-OTV2-shaped API (e.g. /workspaces/{id}/fields
+   * returns {workspace_id, fields}) supply this to translate. The hook
+   * still owns paging math, sort/filter compounding, and the result
+   * caches; the custom fetcher just produces the page rows for a request.
+   *
+   * Receives the resolved request parameters; returns the OTV2 envelope.
+   * When omitted, the hook uses its built-in apiSite<{items, total}> call.
+   */
+  fetchPage?: (params: {
+    resourceUrl: string;
+    pageSize: number | "all";
+    pageIndex: number;
+    sortKey: string | null;
+    sortDir: "asc" | "desc";
+    filterQuery: string;
+    fields?: ReadonlyArray<string> | null;
+  }) => Promise<{ items: T[]; total: number }>;
 }
 
 export interface UseObjectTreeWindowResult<T> {
@@ -174,6 +194,7 @@ export function useObjectTreeWindow<T>(
     onCascadeRefresh,
     onPatchError,
     fields,
+    fetchPage,
   } = opts;
 
   // Active topology scope clamps every read. The actual ?meg= param is
@@ -261,6 +282,28 @@ export function useObjectTreeWindow<T>(
     const myGen = reqGenRef.current;
     setLoadingWindow(true);
     try {
+      // Adapter-supplied fetcher path: one call returns the page in
+      // whatever shape the adapter chooses; offset/limit math is the
+      // adapter's problem. Bypasses the chunk loop because non-OTV2
+      // endpoints don't share the limit/offset convention.
+      if (fetchPage) {
+        const res = await fetchPage({
+          resourceUrl, pageSize, pageIndex, sortKey, sortDir, filterQuery, fields,
+        });
+        if (reqGenRef.current !== myGen) return;
+        const nextMap = new Map<string, T>();
+        const nextOrder: string[] = [];
+        for (const row of res.items) {
+          const id = getId(row);
+          nextMap.set(id, row);
+          nextOrder.push(id);
+        }
+        setRowsById(nextMap);
+        setOrder(nextOrder);
+        setTotal(res.total ?? res.items.length);
+        return;
+      }
+
       // "all" mode: fetch in chunks until total reached. Used by reports
       // / aggregation surfaces that need every root, not by paginated
       // grids.

@@ -99,6 +99,24 @@ export interface ObjectTreeAdapter<T> {
   // to produce the optimistic patchAndApply passed to buildColumns.
   patchRow(rowId: string, body: Partial<T>): Promise<T>;
 
+  // Optional custom fetcher. When supplied, OTV2 routes data-loading
+  // through this method instead of the default apiSite<{items, total}>
+  // call. Use when the endpoint's response shape doesn't match the
+  // canonical OTV2 envelope — e.g. /workspaces/{id}/fields returns
+  // {workspace_id, fields} and the adapter translates to {items, total}.
+  // The adapter receives the resolved request params (paging, sort,
+  // filter) and is responsible for assembling the request and shaping
+  // the result.
+  fetchPage?(params: {
+    resourceUrl: string;
+    pageSize: number | "all";
+    pageIndex: number;
+    sortKey: string | null;
+    sortDir: "asc" | "desc";
+    filterQuery: string;
+    fields?: ReadonlyArray<string> | null;
+  }): Promise<{ items: T[]; total: number }>;
+
   // Build the create-action that the component renders in the ActionBar.
   // The result.node is React; the adapter is free to render a button,
   // dropdown, or popover.

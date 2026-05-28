@@ -87,7 +87,7 @@ import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCat
 import type { ColumnDef } from "@/app/components/ResourceTree";
 // Slice 3 — icons moved into the kind components (DenseGridHeader doesn't
 // need any; ActionBar imports MdAdd / MdOutlineCategory / MdSearch itself).
-import { useObjectTreeWindow, ApiError as ObjectTreeApiError } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeWindow";
+import { useObjectTreeWindow, ApiError as ObjectTreeApiError, type UseObjectTreeWindowOptions } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeWindow";
 import { useObjectTreeFacets } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeFacets";
 import { ObjectTreeDetailFlyout, type DetailFlyoutBodyProps } from "@/app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout";
 import { DenseGridHeader } from "@/app/components/ObjectTreeV2/kinds/DenseGridHeader";
@@ -325,6 +325,15 @@ export default function ObjectTree<T = WorkItem>({
   const { filters } = useWorkItemsFilters(filtersPrefKey, sortRef, urlPrefix);
   // Keep filtersRef current so sort-side URL writes reflect latest filters.
   useEffect(() => { filtersRef.current = filters; }, [filters]);
+
+  // Adapter filter chips: call the adapter's useFiltersAndSort hook
+  // unconditionally so rules-of-hooks stays happy when an adapter is
+  // present. When no adapter, the WorkItem path is used and this result
+  // is dropped. The adapter prop is treated as stable for a given mount
+  // (callers don't swap adapters mid-life).
+  const adapterFilterChips = adapter?.useFiltersAndSort
+    ? adapter.useFiltersAndSort({ prefKey: filtersPrefKey, urlPrefix }).filterChips
+    : null;
 
   // PLA-0021 / 00456 — multi-select state lives here; the tree consumes
   // it via the SelectionConfig prop set, and BulkActionBar reads it to
@@ -774,6 +783,11 @@ export default function ObjectTree<T = WorkItem>({
       sortKey,
       sortDir,
       filterQuery,
+      // Adapter-supplied fetcher overrides the default apiSite<{items,total}>
+      // call. Cast: adapter is <T> but useObjectTreeWindow is <WorkItem>
+      // here; the runtime contract holds (adapter returns its own row
+      // shape; the rest of the component body operates on whatever T is).
+      fetchPage: adapter?.fetchPage as unknown as UseObjectTreeWindowOptions<WorkItem>["fetchPage"],
       // Slice 4.5 — visible-column-driven ?fields= projection. Empty
       // unless columnCatalogue is supplied; legacy callers stay on the
       // full-payload path. Slice 4.6a's coalescing handles rapid
@@ -1173,15 +1187,40 @@ export default function ObjectTree<T = WorkItem>({
     [patchAndApply],
   );
 
-  const columns = useMemo(() => {
-    const built = buildWorkItemsColumns(flowStates, patchAndApply, colourMap, {
-      onTypeBadgeClick: openInlineForm,
-      flowStatesByType,
+  // Adapter routes the column build when present. The adapter's extras
+  // bag receives the WorkItem-specific runtime context (flowStates,
+  // colourMap, etc.) — WorkItemsAdapter would consume them; CustomFields
+  // and other non-WorkItem adapters ignore them.
+  const adapterColumns = useMemo(() => {
+    if (!adapter) return null;
+    const adapterPatch = async (rowId: string, body: Partial<unknown>) => {
+      await adapter.patchRow(rowId, body as never);
+    };
+    return adapter.buildColumns({
+      patchAndApply: adapterPatch as (rowId: string, body: Partial<WorkItem>) => Promise<void>,
+      extras: {
+        flowStates,
+        colourMap,
+        onTypeBadgeClick: openInlineForm,
+        flowStatesByType,
+      },
     });
+  }, [adapter, flowStates, colourMap, openInlineForm, flowStatesByType]);
+
+  const columns = useMemo(() => {
+    // Cast: adapterColumns is ColumnDef<T>[]; the inner ResourceTree
+    // is typed ColumnDef<WorkItem>[]. When the adapter is in play the
+    // runtime contract holds (adapter returns columns shaped for its
+    // own rows; ResourceTree renders them without knowing the row type).
+    const built = (adapterColumns as ColumnDef<WorkItem>[] | null) ??
+      buildWorkItemsColumns(flowStates, patchAndApply, colourMap, {
+        onTypeBadgeClick: openInlineForm,
+        flowStatesByType,
+      });
     if (!dropColumnKeys?.length) return built;
     const drop = new Set(dropColumnKeys);
     return built.filter((c) => !drop.has(c.key));
-  }, [flowStates, patchAndApply, colourMap, openInlineForm, flowStatesByType, dropColumnKeys]);
+  }, [adapterColumns, flowStates, patchAndApply, colourMap, openInlineForm, flowStatesByType, dropColumnKeys]);
 
   const handleSortChange = useCallback(
     (key: string | null, dir: "asc" | "desc") => {
@@ -1219,7 +1258,10 @@ export default function ObjectTree<T = WorkItem>({
       return {
         ...(wizardConfig as unknown as ObjectTreeDataConfig<WorkItem>),
         columns,
-        filterChips: wizardConfig.filterChips ?? <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} urlPrefix={urlPrefix} />,
+        // Precedence: adapter's chips > sidecar's chips > WorkItem default.
+        filterChips: adapterFilterChips
+          ?? wizardConfig.filterChips
+          ?? <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} urlPrefix={urlPrefix} />,
       };
     }
     const isPortfolio = mode === "portfolio_items";
@@ -1236,13 +1278,14 @@ export default function ObjectTree<T = WorkItem>({
       getParentId: (r) => r.parent_id,
       getChildrenCount: (r) => r.children_count,
       searchAccessor: (r) => `${r.title} vec-${r.key_num}`,
-      filterChips: <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} urlPrefix={urlPrefix} />,
+      filterChips: adapterFilterChips
+        ?? <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} urlPrefix={urlPrefix} />,
       paginationOptions: [25, 50, 100],
       defaultPageSize: 25,
       resourceUrl: isPortfolio ? "/portfolio-items" : "/work-items",
       scope: isPortfolio ? "strategy" : "work",
     };
-  }, [mode, columns, wizardConfig]);
+  }, [mode, columns, wizardConfig, adapterFilterChips, filtersPrefKey, priorityOptions, typeOptions, urlPrefix]);
 
   // Slice 3 — chrome rows extracted to <DenseGridHeader> + <ActionBar>
   // kind components. The work-items-specific bits (type-picker options
@@ -1263,9 +1306,17 @@ export default function ObjectTree<T = WorkItem>({
 
   // Collapse the create-action to a single labelled button when the
   // grid's allow-list is exactly one type (e.g. /risk → "Risk"). Two
-  // or more options render the type-picker dropdown as before.
-  const createAction =
-    actionTypeOptions.length === 1
+  // or more options render the type-picker dropdown as before. Adapter
+  // mounts always use the single-button path (CustomFields etc. don't
+  // have artefact-type options to pick from) and route to the adapter's
+  // create flyout via setCreateFlyoutOpen.
+  const createAction = adapter
+    ? ({
+        mode: "single" as const,
+        label: "Create New",
+        onCreate: () => setCreateFlyoutOpen(true),
+      })
+    : actionTypeOptions.length === 1
       ? ({
           mode: "single" as const,
           label: actionTypeOptions[0].label,
@@ -1880,12 +1931,12 @@ export default function ObjectTree<T = WorkItem>({
   // flyout so the two don't collide; in practice only one is wired per
   // mount because the adapter route and the WorkItem route are mutually
   // exclusive at the host. Same for the row flyout below the grid.
-  const adapterCreateActionNode = adapter?.buildCreateAction
-    ? adapter.buildCreateAction({
-        scope: (wizardConfig as { scope?: "work" | "strategy" } | undefined)?.scope,
-        onOpenCreateFlyout: () => setCreateFlyoutOpen(true),
-      }).node
-    : null;
+  //
+  // Note: the adapter's buildCreateAction is intentionally NOT rendered
+  // as a standalone button. Create-new is the ActionBar's job (single
+  // affordance per grid). The adapter wires its own onOpenCreateFlyout
+  // via the ActionBar's createAction pipeline — see the create-action
+  // wiring further down where the adapter routes through.
   const adapterCreateFlyoutNode = adapter?.renderCreateFlyout && createFlyoutOpen
     ? adapter.renderCreateFlyout({
         onClose: () => setCreateFlyoutOpen(false),
@@ -1919,9 +1970,6 @@ export default function ObjectTree<T = WorkItem>({
   const inner = (
     <>
       {headerNode}
-      {adapterCreateActionNode && (
-        <div className="objecttree__AdapterCreateAction">{adapterCreateActionNode}</div>
-      )}
       {actionBarNode}
       {adapterCreateFlyoutNode}
       {createFlyoutNode}
