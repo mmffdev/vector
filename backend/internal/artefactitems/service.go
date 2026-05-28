@@ -425,31 +425,48 @@ func (s *Service) ListFacets(
 
 	// PLA-0043 — Topology scope further-narrowing. Intersects with the
 	// Sentinel clamp above so the URL param can only narrow further.
+	//
+	// PERF (2026-05-28) — fast path when ?meg= matches the Sentinel focus
+	// node (mirrors the ListWorkItems fast path in commit 9cb8e7d2). In
+	// the common case (every page passes its current focus as ?meg=), the
+	// Sentinel middleware has ALREADY done the access check + subtree
+	// resolution and the SubtreeClause above already applied it. Re-doing
+	// CanReadScope (1 SQL) + DescendantNodeIDs (1 SQL recursive CTE) +
+	// ApplyClampToIDs (in-process intersect of two identical sets) is
+	// pure duplicate work. Facets has no scope_dir param — always descend
+	// — so the only condition is `scopeNodeID == FocusNodeID`. Slow path
+	// kept for the legacy case where the caller asks about a different
+	// node than the request's focus.
 	if scopeNodeID != uuid.Nil {
-		if s.topology == nil {
-			return FacetSet{}, ErrInvalidInput
-		}
-		if actorUserID == uuid.Nil || actorRoleID == uuid.Nil {
-			return FacetSet{}, ErrInvalidInput
-		}
-		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, actorRoleID)
-		if permErr != nil {
-			if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
-				return FacetSet{}, ErrScopeNodeNotFound
+		clamp := sentinel.FromCtx(ctx)
+		scopeMatchesFocus := clamp.FocusNodeID != uuid.Nil &&
+			scopeNodeID == clamp.FocusNodeID
+		if !scopeMatchesFocus {
+			if s.topology == nil {
+				return FacetSet{}, ErrInvalidInput
 			}
-			return FacetSet{}, permErr
+			if actorUserID == uuid.Nil || actorRoleID == uuid.Nil {
+				return FacetSet{}, ErrInvalidInput
+			}
+			ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUserID, scopeNodeID, actorRoleID)
+			if permErr != nil {
+				if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
+					return FacetSet{}, ErrScopeNodeNotFound
+				}
+				return FacetSet{}, permErr
+			}
+			if !ok {
+				return FacetSet{}, ErrScopeForbidden
+			}
+			ids, resolveErr := s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
+			if resolveErr != nil {
+				return FacetSet{}, resolveErr
+			}
+			ids = sentinel.ApplyClampToIDs(ctx, ids)
+			extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
+			args = append(args, ids)
+			n++
 		}
-		if !ok {
-			return FacetSet{}, ErrScopeForbidden
-		}
-		ids, resolveErr := s.topology.DescendantNodeIDs(ctx, subscriptionID, scopeNodeID)
-		if resolveErr != nil {
-			return FacetSet{}, resolveErr
-		}
-		ids = sentinel.ApplyClampToIDs(ctx, ids)
-		extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
-		args = append(args, ids)
-		n++
 	}
 
 	extraWhere := ""
