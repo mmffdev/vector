@@ -706,7 +706,18 @@ func main() {
 	savedViewsSvc := savedviews.NewService(
 		savedViewsStore,
 		&savedViewsWSAdminAdapter{resolver: permResolver},
-		nil, // audit hook wired in Task 19
+		func(ctx context.Context, actor uuid.UUID, action string, viewID uuid.UUID, detail map[string]any) {
+			resource := "saved_views"
+			resID := viewID.String()
+			actorID := actor
+			auditLog.Log(ctx, audit.Entry{
+				UserID:     &actorID,
+				Action:     action,
+				Resource:   &resource,
+				ResourceID: &resID,
+				Metadata:   detail,
+			})
+		},
 	)
 	savedViewsHandler := savedviews.NewHandler(
 		savedViewsSvc,
