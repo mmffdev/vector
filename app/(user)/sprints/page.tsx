@@ -13,6 +13,7 @@
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
+import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import { useSentinel } from "@/app/sentinel";
 import TimeboxObjectTree from "@/app/components/TimeboxObjectTree";
@@ -27,15 +28,22 @@ export default function SprintsPage() {
     <PageContent>
       <PageHeading level={1} title={full} subtitle="Manage active and planned sprints for the workspace." />
       <PageDescription>
-        Create and manage sprints, assign work items, and track sprint progress and velocity.
+        Create and manage sprints, assign work items, and track sprint progress and velocity. Sprints are pinned to the topology node currently in focus — pick a node before creating.
       </PageDescription>
       <StrictRoute>
-        {workspaceId && (
+        {workspaceId && activeNodeId && (
           <TimeboxObjectTree
-            key={activeNodeId ?? "root"}
+            key={activeNodeId}
             kind="sprint"
             workspaceId={workspaceId}
-            orgNodeId={activeNodeId ?? undefined}
+            orgNodeId={activeNodeId}
+          />
+        )}
+        {workspaceId && !activeNodeId && (
+          <Panel
+            name="panel_sprints_no_focus_node"
+            title="Pick a topology node"
+            description="Sprints belong to a team / squad / value-stream node — focus one in the rail above to list its sprints or create new ones."
           />
         )}
       </StrictRoute>
