@@ -18983,3 +18983,126 @@ tr.is-editing {
   gap: 8px;
   padding: 0 0 8px 0;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   TypeBindingsPicker — two-column field-to-type binder.
+   Specs: docs/superpowers/specs/2026-05-28-custom-field-type-bindings-design.md
+   ────────────────────────────────────────────────────────────────────── */
+
+.type-bindings-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.type-bindings-picker__Columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.type-bindings-picker__AvailableCol,
+.type-bindings-picker__SelectedCol {
+  border: 1px solid var(--border, #2a2a2a);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-1, #1a1a1a);
+}
+
+.type-bindings-picker__SectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ink-muted, #888);
+  margin-bottom: 8px;
+}
+
+.type-bindings-picker__TypeList,
+.type-bindings-picker__BindingList {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.type-bindings-picker__TypeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.type-bindings-picker__TypeRow:hover {
+  background: var(--surface-2, #222);
+}
+
+.type-bindings-picker__TypeRow.is-selected {
+  background: var(--accent-soft, rgba(80, 140, 240, 0.12));
+}
+
+.type-bindings-picker__TypeName {
+  font-size: 13px;
+}
+
+.type-bindings-picker__EmptyRow {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--ink-muted, #888);
+  font-style: italic;
+}
+
+.type-bindings-picker__BindingRow {
+  border: 1px solid var(--border, #2a2a2a);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--surface-2, #222);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.type-bindings-picker__BindingHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.type-bindings-picker__BindingControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.type-bindings-picker__InputLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.type-bindings-picker__InputLabel input[type="number"] {
+  width: 70px;
+}
+
+.type-bindings-picker__InputLabel input[type="text"] {
+  width: 140px;
+}
+
+.type-bindings-picker__RemoveBtn {
+  background: none;
+  border: 1px solid var(--border, #2a2a2a);
+  color: var(--ink-muted, #888);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.type-bindings-picker__RemoveBtn:hover {
+  border-color: var(--danger, #c33);
+  color: var(--danger, #c33);
+}
