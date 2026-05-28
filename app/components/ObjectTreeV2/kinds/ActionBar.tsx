@@ -155,7 +155,11 @@ export function ActionBar({
 
 // ── Create-action chip ──────────────────────────────────────────────────────
 
-function CreateActionChip({ action }: { action: CreateActionConfig }) {
+// Exported so per-row-type ObjectTreeAdapters (see
+// app/components/ObjectTreeV2/adapters/) can reuse the same chip surface
+// when their buildCreateAction() returns a stand-alone React node rather
+// than feeding a config back through ActionBar's createAction prop.
+export function CreateActionChip({ action }: { action: CreateActionConfig }) {
   if (action.mode === "single" || action.mode === "bulk") {
     return (
       <button
