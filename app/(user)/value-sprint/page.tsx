@@ -37,12 +37,18 @@ export default function ValueSprint() {
   const activeNodeId = sentinel_focus_node;
   const direction = sentinel_scope_down ? "descend" : sentinel_scope_up ? "ascend" : "none";
 
-  // Slice 1 — live "next sprint" lookup for the top panel. Workspace ID
-  // comes from the JWT-derived sentinel_user (matches the sprints page);
-  // the topology focus node is passed so the backend's slice-5B ancestor
-  // walk fires when the user is viewing a child node of a propagated
-  // sprint, same as TimeboxObjectTree's reload().
-  const workspaceId = sentinel_user?.workspace_id ?? null;
+  // Slice 1 — live "next sprint" lookup for the top panel. The wire's
+  // workspace_id is the tenant/subscription root UUID (see the live
+  // /timeboxes/sprints response: timeboxes_sprints_id_workspace =
+  // 00000000-0000-0000-0000-000000000001 on the dev seed). That maps to
+  // sentinel_user.tenant_id, NOT sentinel_user.workspace_id — they are
+  // distinct fields on SentinelUser, and the working /sprints page
+  // (app/(user)/sprints/page.tsx) confirms tenant_id is the correct one
+  // for this endpoint. The topology focus node is passed so the
+  // backend's slice-5B ancestor walk fires when the user is viewing a
+  // child node of a propagated sprint, same as TimeboxObjectTree's
+  // reload().
+  const workspaceId = sentinel_user?.tenant_id ?? null;
   const { sprint: nextSprint, refetch: refetchNextSprint } = useNextSprint(
     workspaceId,
     activeNodeId,
