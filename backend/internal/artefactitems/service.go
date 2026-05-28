@@ -651,45 +651,62 @@ func (s *Service) SummariseWorkItems(
 	// clamp above so the URL param can only narrow further. NULL
 	// topology_node_id rows are excluded when scope is active (matches
 	// the List behaviour: unscoped reads only see un-assigned items).
+	//
+	// PERF (2026-05-28) — fast path when ?meg= matches the Sentinel
+	// focus node (mirrors the ListWorkItems fast path in commit 9cb8e7d2).
+	// The summary header is rendered on the same page as the work-items
+	// grid and shares its ?meg= value — so it hits this branch on every
+	// page load. Sentinel middleware has ALREADY done the access check +
+	// subtree resolution and the SubtreeClause above already applied it.
+	// Re-doing CanReadScope + DescendantNodeIDs + ApplyClampToIDs is pure
+	// duplicate work. Condition matches ListWorkItems: focus equal AND
+	// not ascending (the ascend path resolves a different ID set than the
+	// middleware's default descend, so its slow path is genuine).
 	if scopeNodeID != nil && *scopeNodeID != "" {
-		if s.topology == nil {
-			return out, ErrInvalidInput
-		}
-		if actorUserID == nil || actorRoleID == uuid.Nil {
-			return out, ErrInvalidInput
-		}
-		nodeUUID, parseErr := uuid.Parse(*scopeNodeID)
-		if parseErr != nil {
-			return out, ErrInvalidInput
-		}
-		actorUUID, parseErr := uuid.Parse(*actorUserID)
-		if parseErr != nil {
-			return out, ErrInvalidInput
-		}
-		ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, actorRoleID)
-		if permErr != nil {
-			if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
-				return out, ErrScopeNodeNotFound
+		clamp := sentinel.FromCtx(ctx)
+		scopeMatchesFocus := clamp.FocusNodeID != uuid.Nil &&
+			*scopeNodeID == clamp.FocusNodeID.String() &&
+			scopeDirection != "ascend"
+		if !scopeMatchesFocus {
+			if s.topology == nil {
+				return out, ErrInvalidInput
 			}
-			return out, permErr
+			if actorUserID == nil || actorRoleID == uuid.Nil {
+				return out, ErrInvalidInput
+			}
+			nodeUUID, parseErr := uuid.Parse(*scopeNodeID)
+			if parseErr != nil {
+				return out, ErrInvalidInput
+			}
+			actorUUID, parseErr := uuid.Parse(*actorUserID)
+			if parseErr != nil {
+				return out, ErrInvalidInput
+			}
+			ok, permErr := s.topology.CanReadScope(ctx, subscriptionID, actorUUID, nodeUUID, actorRoleID)
+			if permErr != nil {
+				if errors.Is(permErr, ErrNotFound) || errors.Is(permErr, ErrScopeNodeNotFound) {
+					return out, ErrScopeNodeNotFound
+				}
+				return out, permErr
+			}
+			if !ok {
+				return out, ErrScopeForbidden
+			}
+			var ids []uuid.UUID
+			var resolveErr error
+			if scopeDirection == "ascend" {
+				ids, resolveErr = s.topology.AncestorNodeIDs(ctx, subscriptionID, nodeUUID)
+			} else {
+				ids, resolveErr = s.topology.DescendantNodeIDs(ctx, subscriptionID, nodeUUID)
+			}
+			if resolveErr != nil {
+				return out, resolveErr
+			}
+			ids = sentinel.ApplyClampToIDs(ctx, ids)
+			conds = append(conds, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
+			args = append(args, ids)
+			n++
 		}
-		if !ok {
-			return out, ErrScopeForbidden
-		}
-		var ids []uuid.UUID
-		var resolveErr error
-		if scopeDirection == "ascend" {
-			ids, resolveErr = s.topology.AncestorNodeIDs(ctx, subscriptionID, nodeUUID)
-		} else {
-			ids, resolveErr = s.topology.DescendantNodeIDs(ctx, subscriptionID, nodeUUID)
-		}
-		if resolveErr != nil {
-			return out, resolveErr
-		}
-		ids = sentinel.ApplyClampToIDs(ctx, ids)
-		conds = append(conds, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
-		args = append(args, ids)
-		n++
 	}
 	_ = n
 	whereClause := strings.Join(conds, " AND ")
