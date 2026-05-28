@@ -18362,3 +18362,14 @@ tr.is-editing {
   width: 100%;
   border-radius: var(--radius-md, 6px);
 }
+
+/* Slice 7 — Switch Sprint button row above the sprint-panel ObjectTree.
+   Sits inside the panel chrome; right-aligned so the affordance sits
+   over the tree's own action bar's right edge for a clean visual line. */
+.value-sprint__PanelHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px 0;
+}

@@ -57,6 +57,10 @@ export default function ValueSprint() {
 
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  // Slice 7 — separate selection state for the sprint-panel tree so a
+  // click on a panel row doesn't flip the backlog tree's open inline
+  // form (and vice versa).
+  const [panelSelectedItem, setPanelSelectedItem] = useState<WorkItem | null>(null);
   // Slice 3 — backlog multi-select. p_ObjectTree owns the live Set and
   // mirrors it here on each change so the page can drive bulk-action
   // chrome of its own (slice 6 wires the buttons; slice 3 just plumbs).
@@ -68,14 +72,24 @@ export default function ValueSprint() {
   // wrapper isn't involved).
   const backlogRefetchRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Slice 5 — radial picker open state. We track BOTH the row id and the
-  // anchor button element so the menu glues to the right button. Closing
-  // clears both. The picker is reused by slice 6's BULK "Target Sprint"
-  // button — `rowId: null` signals "operate over the current selection".
-  const [targetMenu, setTargetMenu] = useState<
-    | { rowId: string | null; anchor: HTMLElement | null }
-    | null
-  >(null);
+  // Slice 5/6/7 — radial picker open state. Single shared instance,
+  // mode-tagged so onPick knows what to do with the picked sprint id:
+  //
+  //   { mode: "row-backlog",    rowId, anchor }    — per-row "Target Sprint"
+  //                                                  on the backlog (slice 5)
+  //   { mode: "row-panel",      rowId, anchor }    — per-row "Move to Sprint"
+  //                                                  on the sprint panel (slice 7)
+  //   { mode: "bulk-backlog",   anchor }           — bulk on backlog (slice 6)
+  //   { mode: "bulk-panel",     anchor }           — bulk on sprint panel (slice 7)
+  //   { mode: "switch-panel",   anchor }           — Switch Sprint affordance
+  //                                                  on the sprint panel header (slice 7)
+  type TargetMenuMode =
+    | { mode: "row-backlog"; rowId: string; anchor: HTMLElement | null }
+    | { mode: "row-panel"; rowId: string; anchor: HTMLElement | null }
+    | { mode: "bulk-backlog"; anchor: HTMLElement | null }
+    | { mode: "bulk-panel"; anchor: HTMLElement | null }
+    | { mode: "switch-panel"; anchor: HTMLElement | null };
+  const [targetMenu, setTargetMenu] = useState<TargetMenuMode | null>(null);
   // Slice 6 — anchor ref for the bulk "Target Sprint" button in the
   // BulkActionBar. We can't grab activeElement at click-time the way
   // row buttons do (the bar's children are inside a host-owned subtree
@@ -88,6 +102,37 @@ export default function ValueSprint() {
   // newer-selected rows.
   const bulkSelectionRef = useRef<Set<string>>(new Set());
 
+  // Slice 7 — sprint-panel tree state. The panel shows the work items
+  // assigned to a specific sprint. `panelSprintIdOverride` lets the
+  // user pick a different sprint via the Switch Sprint affordance;
+  // when null we fall through to useNextSprint's pick. Selection +
+  // refetch + bulk snapshot mirror the backlog tree.
+  const [panelSprintIdOverride, setPanelSprintIdOverride] = useState<string | null>(null);
+  const [panelSelectedIds, setPanelSelectedIds] = useState<Set<string>>(new Set());
+  const panelRefetchRef = useRef<(() => Promise<void>) | null>(null);
+  // bulkSelectionRef (declared above) is REUSED for both backlog and
+  // panel bulk paths — radial menu's bulk-* modes both read it on pick.
+  // A separate ref isn't needed because only one bulk operation can be
+  // in flight at a time (radial menu is a singleton).
+  // Wrap the sprint-panel ObjectTree in its own ref'd div so the bulk
+  // Move-to-Sprint button can locate itself via [data-action="…"]
+  // without colliding with the backlog tree's bulk bar.
+  const panelBulkBarRef = useRef<HTMLDivElement | null>(null);
+
+  // Resolved sprint id for the panel — override wins, else fall back
+  // to useNextSprint's pick. The matching SprintWireRow comes from the
+  // upcomingSprints list (which already covers planned + active).
+  const panelSprintId =
+    panelSprintIdOverride ?? nextSprint?.timeboxes_sprints_id ?? null;
+  const panelSprint = useMemo(
+    () => upcomingSprints.find((s) => s.timeboxes_sprints_id === panelSprintId) ?? nextSprint,
+    [upcomingSprints, panelSprintId, nextSprint],
+  );
+
+  // Switch-sprint button anchor ref. Lives on the panel header so the
+  // user can flip between sprints without scrolling away.
+  const switchSprintBtnRef = useRef<HTMLButtonElement | null>(null);
+
   // ObjectTreeV2 sidecars — base config is the Work Items wizard, but
   // the value-sprint backlog is intentionally narrower: stories +
   // defects only (no epics, no tasks). We override two fields after
@@ -99,42 +144,68 @@ export default function ValueSprint() {
   //      with ANY($N::uuid[]) — same shape used by the user-facing
   //      type chip.
   const { types } = useArtefactTypeCatalogue();
-  const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
-    const ALLOWED_SLOTS = ["wrk_story", "wrk_defect"] as const;
-    // Resolve allowed slot → UUID from the catalogue.
-    const bySlot = new Map(types.map((t) => [t.slot, t.id]));
-    const allowedIds = ALLOWED_SLOTS
-      .map((s) => bySlot.get(s))
-      .filter((id): id is string => !!id);
-    // Build a narrowed sidecar before slot resolution so the resolver
-    // doesn't promote the full slot list into createableTypeIds.
-    const baseSidecar = {
-      ...(workItemsWizardJson as unknown as Record<string, unknown>),
-      createableTypeSlots: [...ALLOWED_SLOTS],
-    };
-    const resolvedSlots = resolveSlotRefs(baseSidecar, types);
-    const resolved = resolveWizardConfig(resolvedSlots as any);
-    const funcs = buildWorkItemsFunctions();
-    // Clamp the list query to story+defect at the wire. Append onto
-    // resourceUrl with `&` if it already has params, `?` otherwise —
-    // matches the same sep logic in useObjectTreeWindow.
-    const baseUrl = (resolved.resourceUrl as string | undefined) ?? "/work-items";
-    const sep = baseUrl.includes("?") ? "&" : "?";
-    const clampedUrl = allowedIds.length
-      ? `${baseUrl}${sep}item_type_id=${allowedIds.join(",")}`
-      : baseUrl;
-    return {
-      ...resolved,
-      resourceUrl: clampedUrl,
-      // Private filter/sort prefs namespace — without this, the backlog
-      // grid shares `workitems.filters` with /work-items, so a type-chip
-      // narrowing there would leak into this page (and vice versa).
-      treeName: "valuesprintbacklog",
-      getParentId: funcs.getParentId,
-      getChildrenCount: funcs.getChildrenCount,
-      searchAccessor: funcs.searchAccessor,
-    } as ObjectTreeDataConfig;
-  }, [types]);
+
+  // Slice 7 — factored sidecar resolver. Both the backlog tree and the
+  // sprint-panel tree share the same base wizard (story + defect only)
+  // but want different wire clamps:
+  //   backlog: ?item_type_id=<ids>          — everything in scope
+  //   panel:   ?item_type_id=<ids>&sprint_id=<sprintId>
+  //                                         — items assigned to the panel sprint
+  // The factory takes optional extra params + a treeName so each tree
+  // gets its own private filter/sort prefs namespace.
+  const buildWizardConfig = useCallback(
+    (treeName: string, extraParams: string | null): ObjectTreeDataConfig => {
+      const ALLOWED_SLOTS = ["wrk_story", "wrk_defect"] as const;
+      const bySlot = new Map(types.map((t) => [t.slot, t.id]));
+      const allowedIds = ALLOWED_SLOTS
+        .map((s) => bySlot.get(s))
+        .filter((id): id is string => !!id);
+      const baseSidecar = {
+        ...(workItemsWizardJson as unknown as Record<string, unknown>),
+        createableTypeSlots: [...ALLOWED_SLOTS],
+      };
+      const resolvedSlots = resolveSlotRefs(baseSidecar, types);
+      const resolved = resolveWizardConfig(resolvedSlots as any);
+      const funcs = buildWorkItemsFunctions();
+      const baseUrl = (resolved.resourceUrl as string | undefined) ?? "/work-items";
+      const sep1 = baseUrl.includes("?") ? "&" : "?";
+      let url = allowedIds.length
+        ? `${baseUrl}${sep1}item_type_id=${allowedIds.join(",")}`
+        : baseUrl;
+      if (extraParams) {
+        const sep2 = url.includes("?") ? "&" : "?";
+        url = `${url}${sep2}${extraParams}`;
+      }
+      return {
+        ...resolved,
+        resourceUrl: url,
+        treeName,
+        getParentId: funcs.getParentId,
+        getChildrenCount: funcs.getChildrenCount,
+        searchAccessor: funcs.searchAccessor,
+      } as ObjectTreeDataConfig;
+    },
+    [types],
+  );
+
+  const wizardConfig = useMemo<ObjectTreeDataConfig>(
+    () => buildWizardConfig("valuesprintbacklog", null),
+    [buildWizardConfig],
+  );
+
+  // Slice 7 — sprint-panel wizard. Clamps to ?sprint_id=<panelSprintId>
+  // so the tree only shows work items currently assigned to the panel
+  // sprint. When panelSprintId is null we still mount the tree (with a
+  // sentinel-empty clamp), so the user gets a "no sprint loaded" empty
+  // state inside the panel rather than an unmounted void.
+  const panelWizardConfig = useMemo<ObjectTreeDataConfig>(
+    () =>
+      buildWizardConfig(
+        "valuesprintplanned",
+        panelSprintId ? `sprint_id=${panelSprintId}` : "sprint_id=__none__",
+      ),
+    [buildWizardConfig, panelSprintId],
+  );
 
   // Realtime refetch — same topic shape as Work Items so backlog stays
   // in sync when other clients mutate work items in this tenant. We also
@@ -143,6 +214,7 @@ export default function ValueSprint() {
   const refetch = useCallback(async () => {
     await refetchNextSprint();
     await backlogRefetchRef.current?.();
+    await panelRefetchRef.current?.();
   }, [refetchNextSprint]);
 
   // Slice 5 — single-row assignment. PATCH work-item with the target
@@ -240,7 +312,7 @@ export default function ValueSprint() {
             // fires; React already focused the button.
             const anchorEl =
               (document.activeElement as HTMLElement | null) ?? null;
-            setTargetMenu({ rowId: row.id, anchor: anchorEl });
+            setTargetMenu({ mode: "row-backlog", rowId: row.id, anchor: anchorEl });
           },
           variant: "secondary",
         },
@@ -292,7 +364,7 @@ export default function ValueSprint() {
                 const btn = bulkBarRef.current?.querySelector(
                   '[data-action="bulk-target-sprint"]',
                 ) as HTMLElement | null;
-                setTargetMenu({ rowId: null, anchor: btn });
+                setTargetMenu({ mode: "bulk-backlog", anchor: btn });
               },
         variant: "secondary" as const,
       },
@@ -303,6 +375,75 @@ export default function ValueSprint() {
     upcomingSprints.length,
     assignManyToSprint,
   ]);
+
+  // Slice 7 — per-row buttons for the SPRINT PANEL tree. Mirrors the
+  // backlog tree's buttons but in reverse: "Remove from Sprint" pushes
+  // the row back to the backlog (sprint_id = ""), and "Move to Sprint"
+  // re-targets it to a different sprint via the same radial picker.
+  const panelRowButtons = useCallback(
+    (row: WorkItem): RowButton[] => {
+      return [
+        {
+          key: "remove-from-sprint",
+          label: "Remove",
+          ariaLabel: `Remove ${row.title ?? row.id} from this sprint`,
+          onClick: () => void assignToSprint(row.id, null),
+          variant: "secondary",
+        },
+        {
+          key: "move-to-sprint",
+          label: "Move to Sprint",
+          ariaLabel: `Pick a different sprint for ${row.title ?? row.id}`,
+          disabled: upcomingSprints.length === 0,
+          onClick: () => {
+            const anchorEl =
+              (document.activeElement as HTMLElement | null) ?? null;
+            setTargetMenu({ mode: "row-panel", rowId: row.id, anchor: anchorEl });
+          },
+          variant: "ghost",
+        },
+      ];
+    },
+    [assignToSprint, upcomingSprints.length],
+  );
+
+  // Slice 7 — bulk-leading buttons for the SPRINT PANEL tree.
+  // "Remove from Sprint Backlog" clears sprint_id on every selected row.
+  // "Move to Sprint" opens the radial picker in bulk-panel mode.
+  const panelBulkLeadingButtons = useMemo(() => {
+    if (panelSelectedIds.size === 0) return undefined;
+    return [
+      {
+        key: "panel-bulk-remove",
+        label: `Remove ${panelSelectedIds.size} from Sprint Backlog`,
+        ariaLabel: `Remove ${panelSelectedIds.size} selected item${panelSelectedIds.size === 1 ? "" : "s"} from sprint`,
+        onClick: () => {
+          const ids = Array.from(panelSelectedIds);
+          void assignManyToSprint(ids, null);
+        },
+        variant: "secondary" as const,
+      },
+      {
+        key: "panel-bulk-move",
+        label: "Move to Sprint",
+        ariaLabel: `Pick a target sprint for ${panelSelectedIds.size} selected item${panelSelectedIds.size === 1 ? "" : "s"}`,
+        disabled: upcomingSprints.length === 0,
+        onClick:
+          upcomingSprints.length === 0
+            ? undefined
+            : () => {
+                // bulkSelectionRef is reused by the radial onPick handler
+                // for bulk-panel mode (same callback shape as bulk-backlog).
+                bulkSelectionRef.current = new Set(panelSelectedIds);
+                const btn = panelBulkBarRef.current?.querySelector(
+                  '[data-action="panel-bulk-move"]',
+                ) as HTMLElement | null;
+                setTargetMenu({ mode: "bulk-panel", anchor: btn });
+              },
+        variant: "primary" as const,
+      },
+    ];
+  }, [panelSelectedIds, upcomingSprints.length, assignManyToSprint]);
 
   const subscriptionID = sentinel_tenant?.id ?? null;
   const sprintID = filters.sprint_id || null;
@@ -329,27 +470,58 @@ export default function ValueSprint() {
           Manage the active sprint. The top panel holds the sprint scope; the bottom grid is the workspace backlog (same clamp as Work Items). Drag stories from the backlog onto the sprint to commit them.
         </PageDescription>
 
-        {/* Top panel — target sprint drop zone (DnD wiring lands next).
-            Title + description are now live from useNextSprint; if no
-            planned/active sprint is found we show a "no upcoming sprint"
-            placeholder rather than fabricating "Sprint 1". */}
+        {/* Top panel — sprint scope. Title + description reflect the
+            currently-displayed sprint (which defaults to useNextSprint's
+            pick but can be overridden via the Switch Sprint button).
+            The body is now a live ObjectTreeV2 clamped to the sprint's
+            work items rather than a static drop-zone placeholder. */}
         <Panel
           name="panel_value_sprint_target"
           className="page-panel-heading value-sprint__target"
-          title={nextSprint?.timeboxes_sprints_name ?? "No upcoming sprint"}
+          title={panelSprint?.timeboxes_sprints_name ?? "No upcoming sprint"}
           description={
-            nextSprint
-              ? `${nextSprint.timeboxes_sprints_date_start ?? "—"} → ${nextSprint.timeboxes_sprints_date_end ?? "—"} · status ${nextSprint.timeboxes_sprints_status ?? "—"}`
+            panelSprint
+              ? `${panelSprint.timeboxes_sprints_date_start ?? "—"} → ${panelSprint.timeboxes_sprints_date_end ?? "—"} · status ${panelSprint.timeboxes_sprints_status ?? "—"}`
               : "Create a planned sprint to begin — the next future-dated sprint will surface here automatically."
           }
         >
-          <div className="value-sprint__Dropzone" role="region" aria-label="Sprint drop zone">
-            <div className="value-sprint__Dropzone_body">
-              <strong className="value-sprint__Dropzone_title">Plan your sprint</strong>
-              <p className="value-sprint__Dropzone_copy">
-                Drag work items from the Backlog below, or create new ones to plan the work for this sprint. Select Start sprint when you&rsquo;re ready.
-              </p>
-            </div>
+          {/* Switch Sprint affordance — opens a radial picker with all
+              planned + active sprints, up to 8. Disabled when fewer than
+              two options exist (no point switching away from the only
+              candidate). Placement: a small button row above the tree
+              so it sits inside the panel chrome. */}
+          <div className="value-sprint__PanelHeaderActions" role="toolbar" aria-label="Sprint panel actions">
+            <button
+              ref={switchSprintBtnRef}
+              type="button"
+              className="btn btn--ghost btn--sm"
+              disabled={upcomingSprints.length < 2}
+              onClick={() =>
+                setTargetMenu({
+                  mode: "switch-panel",
+                  anchor: switchSprintBtnRef.current,
+                })
+              }
+              aria-label="Switch the displayed sprint"
+            >
+              Switch sprint
+            </button>
+          </div>
+
+          {/* Sprint-backlog tree renders BARE (no title / addressableName)
+              so it doesn't nest a Panel inside this outer Panel. The
+              outer Panel owns the chrome; the tree owns the table. */}
+          <div ref={panelBulkBarRef}>
+            <ObjectTree
+              selectedId={panelSelectedItem?.id ?? null}
+              onSelect={setPanelSelectedItem}
+              wizardConfig={panelWizardConfig}
+              multiSelectEnabled
+              onSelectionChange={setPanelSelectedIds}
+              rowButtons={panelRowButtons}
+              refetchRef={panelRefetchRef}
+              bulkLeadingButtons={panelBulkLeadingButtons}
+            />
           </div>
         </Panel>
 
@@ -395,14 +567,32 @@ export default function ValueSprint() {
           ariaLabel="Pick a target sprint"
           onPick={(sprintId) => {
             if (!targetMenu) return;
-            if (targetMenu.rowId === null) {
-              // Bulk mode — selection was snapshotted into
-              // bulkSelectionRef at click time so a racy reselection
-              // between open and pick doesn't widen the operation.
-              const ids = Array.from(bulkSelectionRef.current);
-              void assignManyToSprint(ids, sprintId);
-            } else {
-              void assignToSprint(targetMenu.rowId, sprintId);
+            switch (targetMenu.mode) {
+              case "row-backlog":
+                void assignToSprint(targetMenu.rowId, sprintId);
+                break;
+              case "row-panel":
+                // Move from one sprint to another — same PATCH, just
+                // anchored on a panel row.
+                void assignToSprint(targetMenu.rowId, sprintId);
+                break;
+              case "bulk-backlog": {
+                const ids = Array.from(bulkSelectionRef.current);
+                void assignManyToSprint(ids, sprintId);
+                break;
+              }
+              case "bulk-panel": {
+                const ids = Array.from(bulkSelectionRef.current);
+                void assignManyToSprint(ids, sprintId);
+                break;
+              }
+              case "switch-panel":
+                // Slice 7 — switch the panel's currently-displayed
+                // sprint. Local state only; the data hook on the
+                // sprint-backlog ObjectTree re-fires when resourceUrl
+                // changes (it carries panelSprintId).
+                setPanelSprintIdOverride(sprintId);
+                break;
             }
           }}
           onClose={() => setTargetMenu(null)}
