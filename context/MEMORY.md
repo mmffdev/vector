@@ -38,6 +38,8 @@
 
 ## Active Threads
 
+**ObjectTreeV2 is intentionally stateless + row-type generic.** The refactor (weeks before 2026-05-28) genericised `useObjectTreeWindow<T>`, `ResourceTree<T>`, `ObjectTreeDataConfig<T>`; the orchestration in `p_ObjectTree.tsx` still imports WorkItem-specific helpers (`buildWorkItemsColumns`, `useWorkItemsFilters`, `useWorkItemsSort`, `WorkItemsFilterChips`, `useWorkItemFlowStates`) — that's the unfinished part of the refactor, NOT the intended end state. When mounting OTV2 on a non-WorkItem surface (custom-fields, future admin grids), do NOT propose "can't be done without big refactor" or "fake a WorkItem shape" or "build a parallel AdminGrid". Finish the prop-signature generalisation + extract WorkItem orchestration into an `ObjectTreeAdapter<T>` with WorkItemsAdapter as default so the 5 existing mounts keep working. Spec: `docs/superpowers/specs/2026-05-28-objecttree-generic-rowtype-design.md`.
+
 **ObjectTreeV2 bulk-create — timeboxes only** → [c_bulkcreate_scoped_to_timeboxes.md](memory/c_bulkcreate_scoped_to_timeboxes.md) — `{ kind: "bulk" }` is scoped to sprints + releases; never propose for work-items / portfolio-items / risks.
 
 **Destructive git applies to "empty" branches too** → [c_destructive_git_empty_branches.md](memory/c_destructive_git_empty_branches.md) — restatement of the HARD RULE; no exception for zero-unique-commit branches. 2026-05-21 incident.
