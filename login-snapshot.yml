@@ -1,0 +1,149 @@
+- generic [active] [ref=e2]:
+  - region "Notifications alt+T"
+  - alert [ref=e1]
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - img
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]:
+            - generic [ref=e9]: FEATURE
+            - generic [ref=e10]: FEA-250
+          - generic [ref=e11]: Backlog
+          - generic [ref=e14]: Ready
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: FEATURE
+            - generic [ref=e18]: FEA-251
+          - generic [ref=e19]: Sprint
+          - generic [ref=e22]: In progress
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e25]: FEATURE
+            - generic [ref=e26]: FEA-252
+          - generic [ref=e27]: Release
+          - generic [ref=e30]: Done
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]: USER STORY
+            - generic [ref=e34]: US-1600
+          - generic [ref=e35]: Triage queue
+          - generic [ref=e38]: Ready
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - generic [ref=e41]: USER STORY
+            - generic [ref=e42]: US-1601
+          - generic [ref=e43]: Estimation
+          - generic [ref=e46]: Done
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - generic [ref=e49]: USER STORY
+            - generic [ref=e50]: US-1602
+          - generic [ref=e51]: Daily standup
+          - generic [ref=e54]: Done
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]: USER STORY
+            - generic [ref=e58]: US-1603
+          - generic [ref=e59]: Burndown
+          - generic [ref=e62]: Ready
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - generic [ref=e65]: USER STORY
+            - generic [ref=e66]: US-1604
+          - generic [ref=e67]: Demo notes
+          - generic [ref=e70]: Done
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - generic [ref=e73]: USER STORY
+            - generic [ref=e74]: US-1605
+          - generic [ref=e75]: Retro
+          - generic [ref=e78]: Done
+        - generic [ref=e79]:
+          - generic [ref=e80]:
+            - generic [ref=e81]: TASK
+            - generic [ref=e82]: TSK-3700
+          - generic [ref=e83]: Bulk move
+          - generic [ref=e86]: Done
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - generic [ref=e89]: TASK
+            - generic [ref=e90]: TSK-3701
+          - generic [ref=e91]: Poker dialog
+          - generic [ref=e94]: Done
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - generic [ref=e97]: TASK
+            - generic [ref=e98]: TSK-3702
+          - generic [ref=e99]: Status sweep
+          - generic [ref=e102]: Done
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - generic [ref=e105]: TASK
+            - generic [ref=e106]: TSK-3703
+          - generic [ref=e107]: Chart compute
+          - generic [ref=e110]: Done
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]: TASK
+            - generic [ref=e114]: TSK-3704
+          - generic [ref=e115]: Recording
+          - generic [ref=e118]: Done
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - generic [ref=e121]: TASK
+            - generic [ref=e122]: TSK-3705
+          - generic [ref=e123]: Action tracker
+          - generic [ref=e126]: Done
+        - img
+      - generic [ref=e127]:
+        - generic [ref=e128]: TOP-DOWN PORTFOLIO VIEW
+        - heading [level=2] [ref=e129]: Every feature, broken down to the task that ships it.
+    - generic [ref=e131]:
+      - generic [ref=e132]:
+        - img "Vector" [ref=e133]
+        - generic [ref=e134]:
+          - generic [ref=e135]: Vector
+          - generic [ref=e136]: PROGRAM MANAGEMENT
+      - generic [ref=e137]:
+        - generic [ref=e138]: ONE WORKSPACE, ONE LOGIN
+        - heading "Welcome back" [level=1] [ref=e139]
+        - paragraph [ref=e140]: Sign in to continue refining work with your teams.
+      - generic [ref=e141]:
+        - generic [ref=e142]:
+          - generic [ref=e143]: USERNAME
+          - generic [ref=e144]:
+            - img [ref=e145]
+            - textbox "USERNAME" [ref=e148]: padmin@mmffdev.com
+        - generic [ref=e149]:
+          - generic [ref=e150]: PASSWORD
+          - generic [ref=e151]:
+            - img [ref=e152]
+            - textbox "PASSWORD Show password" [ref=e155]: password
+            - button "Show password" [ref=e156] [cursor=pointer]:
+              - img [ref=e157]
+        - button "Sign in" [ref=e160] [cursor=pointer]:
+          - generic [ref=e161]: Sign in
+          - img [ref=e162]
+        - link "Forgot password?" [ref=e165] [cursor=pointer]:
+          - /url: /login/reset
+      - generic [ref=e166]:
+        - note "System use notification" [ref=e167]:
+          - generic [ref=e168]:
+            - img [ref=e169]
+            - generic [ref=e172]: RESTRICTED SYSTEM — AUTHORISED ACCESS ONLY
+          - paragraph [ref=e173]: This is a private system operated by MMFFDev. Access is restricted to authorised users acting within the scope of their granted permissions. Unauthorised access, use, modification, or disclosure of information held on this system is prohibited and will be investigated and prosecuted to the fullest extent of the law.
+          - paragraph [ref=e174]:
+            - text: In the United Kingdom this includes prosecution under the
+            - strong [ref=e175]: Computer Misuse Act 1990 (sections 1–3)
+            - text: and the Data Protection Act 2018. Elsewhere, equivalent national and international laws apply, including (without limitation) the United States Computer Fraud and Abuse Act, the EU NIS2 Directive, and applicable provisions of the jurisdiction in which the user is located.
+          - paragraph [ref=e176]: All activity on this system — including authentication attempts, session events, data access, and administrative actions — is logged, retained, and may be monitored, inspected, and disclosed to law-enforcement or regulatory authorities where lawfully required. There is no expectation of privacy on this system.
+          - paragraph [ref=e177]:
+            - text: By continuing you acknowledge this notice, confirm you are an authorised user, and consent to monitoring. You also accept the
+            - link "terms of use" [ref=e178] [cursor=pointer]:
+              - /url: /terms
+            - text: and
+            - link "cookie policy" [ref=e179] [cursor=pointer]:
+              - /url: /cookies
+            - text: .
+        - generic [ref=e180]: © 2026 MMFFDev. All rights reserved.
