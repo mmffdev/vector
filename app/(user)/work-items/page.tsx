@@ -165,6 +165,7 @@ export default function WorkItemsPage() {
           if (needsRefetch) void refetch();
         }}
         wizardConfig={wizardConfig}
+        multiSelectEnabled
       />
     </>
     </PageContent>

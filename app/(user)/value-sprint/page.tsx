@@ -45,6 +45,10 @@ export default function ValueSprint() {
 
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  // Slice 3 — backlog multi-select. p_ObjectTree owns the live Set and
+  // mirrors it here on each change so the page can drive bulk-action
+  // chrome of its own (slice 6 wires the buttons; slice 3 just plumbs).
+  const [backlogSelectedIds, setBacklogSelectedIds] = useState<Set<string>>(new Set());
 
   // ObjectTreeV2 sidecars — base config is the Work Items wizard, but
   // the value-sprint backlog is intentionally narrower: stories +
@@ -117,7 +121,15 @@ export default function ValueSprint() {
   return (
     <PageContent>
       <>
-        <PageHeading level={1} title={full} subtitle="Plan the active sprint — drag items from the backlog into the sprint panel." />
+        <PageHeading
+          level={1}
+          title={full}
+          subtitle={
+            backlogSelectedIds.size > 0
+              ? `${backlogSelectedIds.size} selected — bulk-action chrome lands in slice 6.`
+              : "Plan the active sprint — drag items from the backlog into the sprint panel."
+          }
+        />
         <PageDescription>
           Manage the active sprint. The top panel holds the sprint scope; the bottom grid is the workspace backlog (same clamp as Work Items). Drag stories from the backlog onto the sprint to commit them.
         </PageDescription>
@@ -159,6 +171,8 @@ export default function ValueSprint() {
           selectedId={selectedItem?.id ?? null}
           onSelect={setSelectedItem}
           wizardConfig={wizardConfig}
+          multiSelectEnabled
+          onSelectionChange={setBacklogSelectedIds}
         />
       </>
     </PageContent>

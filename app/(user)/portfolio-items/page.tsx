@@ -136,6 +136,7 @@ export default function PortfolioItemsPage() {
             if (needsRefetch) void refetch();
           }}
           wizardConfig={wizardConfig}
+          multiSelectEnabled
         />
       )}
     </>

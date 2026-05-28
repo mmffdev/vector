@@ -159,6 +159,7 @@ export default function ScopePage() {
           selectedId={selectedItem?.id ?? null}
           onSelect={setSelectedItem}
           wizardConfig={wizardConfig}
+          multiSelectEnabled
         />
       )}
 

@@ -172,6 +172,8 @@ export default function ObjectTree({
   subtitle,
   description,
   columnCatalogue,
+  multiSelectEnabled = false,
+  onSelectionChange,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
@@ -193,6 +195,16 @@ export default function ObjectTree({
   columnCatalogue?: ColumnCatalogue;
   subtitle?: React.ReactNode;
   description?: React.ReactNode;
+  // Slice 3 / value-sprint — opt-in multi-select column. When false
+  // (default), the leading checkbox column is not rendered AND
+  // BulkActionBar stays hidden. When true, ResourceTree mounts its
+  // existing SelectionConfig, BulkActionBar shows on >0 selection, and
+  // selected ids are mirrored to the parent via onSelectionChange so
+  // callers can drive bulk actions (e.g. "Add selected to Sprint").
+  // Back-compat: every existing caller (Work Items, Portfolio, Risks)
+  // omits the prop and gets identical chrome to before.
+  multiSelectEnabled?: boolean;
+  onSelectionChange?: (selectedIds: Set<string>) => void;
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -224,6 +236,16 @@ export default function ObjectTree({
   // decide whether to render itself.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+  // Slice 3 / value-sprint — mirror local selection up to the parent
+  // when multiSelectEnabled is set, so the page can render bulk-action
+  // chrome of its own (e.g. "Add selected to Sprint"). We pipe the
+  // existing local state through unchanged — the parent sees the same
+  // Set reference the tree owns, on every change.
+  useEffect(() => {
+    if (multiSelectEnabled && onSelectionChange) {
+      onSelectionChange(selectedIds);
+    }
+  }, [selectedIds, multiSelectEnabled, onSelectionChange]);
 
   // Active topology scope. Used by duplicateArtefact to pin the clone
   // when the source artefact had no topology_node_id of its own
@@ -1637,7 +1659,9 @@ export default function ObjectTree({
       {actionBarNode}
       {createFlyoutNode}
       {/* TODO(00456): wire bulk action handlers in WS3-D */}
-      <BulkActionBar selectedIds={selectedIds} onClear={clearSelection} />
+      {multiSelectEnabled && (
+        <BulkActionBar selectedIds={selectedIds} onClear={clearSelection} />
+      )}
       <ResourceTree<WorkItem>
         roots={windowRoots}
         total={total}
@@ -1677,7 +1701,13 @@ export default function ObjectTree({
             getCandidateIds: getDragCandidateIds,
           },
         })}
-        selection={{ mode: "multi", selectedIds, onSelectionChange: setSelectedIds }}
+        {...(multiSelectEnabled && {
+          selection: {
+            mode: "multi" as const,
+            selectedIds,
+            onSelectionChange: setSelectedIds,
+          },
+        })}
         cogMenu={buildCogMenu}
         selectedId={selectedId}
         onSelect={onSelect}

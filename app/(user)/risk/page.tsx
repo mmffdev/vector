@@ -154,6 +154,7 @@ export default function RiskPage() {
               if (needsRefetch) void refetch();
             }}
             wizardConfig={wizardConfig}
+            multiSelectEnabled
           />
         )}
       </>
