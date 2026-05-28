@@ -333,9 +333,10 @@
     "remember@claude-plugins-official": true,
     "sourcegraph@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": false,
-    "ralph-loop@claude-plugins-official": false,
+    "ralph-loop@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true
+    "claude-code-setup@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true
   }
 }
