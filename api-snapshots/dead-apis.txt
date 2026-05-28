@@ -3,6 +3,7 @@
 /admin/dev/artefacts-count
 /admin/dev/artefacts-wipe
 /admin/dev/codegraph
+/admin/dev/erd
 /admin/dev/reporting/{id}
 /admin/dev/seed-risks
 /admin/dev/seed-workspace
@@ -22,6 +23,7 @@
 /flow-state-exit-rules/{id}
 /flow-states/{id}
 /flow-states/{id}/exit-rules
+/flowboard/prefs
 /flows/reset/apply
 /flows/reset/preview
 /flows/{flowId}/states
@@ -59,6 +61,7 @@
 /portfolio/master_record
 /roles/{id}
 /roles/{id}/permissions
+/sentinel/boot
 /sentinel/focus
 /tenant-settings
 /timeboxes/milestones/{id}
@@ -80,6 +83,7 @@
 /topology/roles/{grant_id}
 /topology/tree
 /topology/users/{userId}/grants
+/topology/{id}/members
 /user/tab-order/{pageId}
 /work-items/by-ids
 /work-items/columns
