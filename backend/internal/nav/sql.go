@@ -692,11 +692,38 @@ const sqlSelectProfileIsDefaultByID = `
 	`
 
 // sqlDeleteUserNavPrefsForProfile wipes users_nav_prefs for one profile.
-// Used by both ReplacePrefsForProfile (step 1 of the atomic replace)
-// and DeletePrefsForProfile.
+// Used by the explicit-reset paths: DeletePrefs ("Reset to defaults" —
+// user intent is "nuke everything") and DeletePrefsForProfile ("delete
+// this whole profile" — bookmarks die with it). Both are intentional
+// destructive ops. The PUT-prefs flow (ReplacePrefsForProfile) uses the
+// bookmark-sparing variant below instead.
 const sqlDeleteUserNavPrefsForProfile = `
 		DELETE FROM users_nav_prefs
 		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
+	`
+
+// sqlDeleteUserNavPrefsForProfileExceptBookmarks is the bookmark-sparing
+// variant used by ReplacePrefsForProfile (the PUT /nav/prefs handler's
+// wipe-and-replace step). Bookmarks live in the SAME users_nav_prefs
+// table as the pinned-section rows but are written through a SEPARATE
+// API surface (Bookmarks handler; sqlInsertUserNavPrefBookmark with
+// ON CONFLICT DO UPDATE). The PUT-prefs payload does not carry
+// bookmarks, so wiping them along with the pinned-section rows during
+// a profile save (e.g. user re-orders nav rail, changes home page,
+// adds a new pinned page) silently destroys data the user never
+// intended to touch.
+//
+// Origin: 2026-05-28 user-reported bug — changing the home page on
+// /user/navigation wiped padmin's bookmarks on every save. The
+// underlying schema-shape problem (bookmarks + sections sharing a
+// table) is left as TD-NAV-BOOKMARKS-SHARE-PREFS-TABLE; this is the
+// surgical fix that stops the data loss.
+const sqlDeleteUserNavPrefsForProfileExceptBookmarks = `
+		DELETE FROM users_nav_prefs
+		WHERE users_nav_prefs_id_user = $1
+		  AND users_nav_prefs_id_subscription = $2
+		  AND users_nav_prefs_id_profile = $3
+		  AND users_nav_prefs_is_bookmark = FALSE
 	`
 
 // sqlResetUserNavProfilesForSubscription wipes ALL profiles for the

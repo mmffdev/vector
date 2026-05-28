@@ -448,8 +448,13 @@ func (s *Service) ReplacePrefsForProfile(
 		return err
 	}
 
-	// Wipe prefs for THIS profile only (other profiles' rows survive).
-	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
+	// Wipe pinned-section prefs for THIS profile only — bookmarks
+	// (users_nav_prefs_is_bookmark = TRUE) are spared because the PUT
+	// payload doesn't carry them, so the wipe-and-replace would silently
+	// destroy them. Bookmarks are managed via a separate API surface
+	// (Bookmarks handler with its own POST/DELETE). See SQL constant
+	// docs for the full origin note.
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfileExceptBookmarks,
 		userID, subscriptionID, profileID); err != nil {
 		return err
 	}
