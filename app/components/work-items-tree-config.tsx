@@ -611,8 +611,8 @@ export function buildWorkItemsColumns(
     {
       key: "sprint",
       label: "Sprint",
-      width: 95,
-      minWidth: 95,
+      width: 140,
+      minWidth: 110,
       align: "mono",
       cellModifier: "sprint",
       render: (row) => <>{row.sprint?.alias ?? "—"}</>,

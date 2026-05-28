@@ -99,7 +99,7 @@ function pagesForGroup(
   catalogueByKey: Map<string, NavCatalogEntry>,
 ): ShellPage[] {
   return prefs
-    .filter((p) => p.group_id === groupId)
+    .filter((p) => !p.is_bookmark && p.group_id === groupId)
     .map((p) => projectPref(p, catalogueByKey))
     .filter((p): p is ShellPage => p !== null)
     .sort((a, b) => a.position - b.position);
@@ -108,6 +108,13 @@ function pagesForGroup(
 /**
  * Pages bound to a tag bucket: prefs with no custom group_id whose catalogue
  * entry's tagEnum matches.
+ *
+ * Bookmarks are filtered out here — they surface separately via bookmarkPages
+ * (which inverse-filters on is_bookmark). A row can legally exist in BOTH
+ * users_nav_pinned AND users_nav_bookmarks for the same (user, profile,
+ * item_key), and the backend's UNION at sqlListUserNavPrefsForProfile returns
+ * both rows side-by-side. Without this guard the section flyout renders
+ * duplicate React keys (two "risk", two "work-items", etc).
  */
 function pagesForTag(
   tagEnum: string,
@@ -116,6 +123,7 @@ function pagesForTag(
 ): ShellPage[] {
   return prefs
     .filter((p) => {
+      if (p.is_bookmark) return false;
       if (p.group_id != null) return false;
       const e = catalogueByKey.get(p.item_key);
       return e ? (e.tagEnum || "personal") === tagEnum : false;
