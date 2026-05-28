@@ -52,7 +52,17 @@ export function useObjectTreeFacets(
     let cancelled = false;
     setLoading(true);
     setError(null);
-    apiSite<FacetsResponse>(`${resourceUrl}/facets`)
+    // resourceUrl may already carry query params (e.g. `/work-items?item_type_id=<uuid>`
+    // when the value-sprint backlog narrows the list). Naive concatenation produced
+    // `/work-items?item_type_id=<uuid>/facets` — the `/facets` landed INSIDE the
+    // query string and the backend returned 400/500 (depending on which param it
+    // mangled). Split off the path before appending the /facets segment, then
+    // re-attach the original query string.
+    const qIdx = resourceUrl.indexOf("?");
+    const facetsUrl = qIdx === -1
+      ? `${resourceUrl}/facets`
+      : `${resourceUrl.slice(0, qIdx)}/facets${resourceUrl.slice(qIdx)}`;
+    apiSite<FacetsResponse>(facetsUrl)
       .then((res) => {
         if (cancelled) return;
         setTypeIds(res.artefact_type_ids ?? []);
