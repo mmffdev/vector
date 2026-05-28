@@ -3,10 +3,16 @@
 --
 -- Notifications v2 — per-recipient per-channel outbox.
 --
--- One row per (recipient × channel). The relay claims rows in
--- batches (SKIP LOCKED), publishes to RabbitMQ, and the dispatcher
--- writes delivered_at on success. scheduled_for enables quiet-hours
--- deferral (future-dated rows ignored by the relay until due).
+-- This is the PROJECTION TABLE in the CQRS-shaped outbox pattern: the
+-- pipeline package (command handler) writes rows here; the relay
+-- (projection drain) claims them via SKIP LOCKED; the broker
+-- (projection bus, RabbitMQ) carries them to dispatchers which write
+-- the read model. See docs/c_c_outbox_pattern.md.
+--
+-- One row per (recipient × channel). scheduled_for enables quiet-hours
+-- deferral (future-dated rows ignored by the relay until due). UNIQUE
+-- (event_id, recipient_user_id, channel) is the idempotency key
+-- protecting against double-process on relay retry.
 --
 -- Part of the Notifications v2 PLA (S01 — Schema migrations).
 -- See docs/superpowers/specs/2026-05-26-notifications-v2-design.md

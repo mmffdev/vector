@@ -6,6 +6,8 @@
     "backend/internal/artefacttypes/service.go",
     "backend/internal/audit/audit.go",
     "backend/internal/custompages/service.go",
+    "backend/internal/notifications/v2/pipeline/pipeline.go",
+    "backend/internal/notifications/v2/relay/relay.go",
     "backend/internal/polymorphicrefs/service.go",
     "backend/internal/ranking/position.go",
     "backend/internal/ranking/service.go",
