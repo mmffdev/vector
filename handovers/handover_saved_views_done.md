@@ -95,8 +95,43 @@ Create a view → save → refresh → it persists.
 
 ```
 Branch: feat/objecttree-fields-picker
-Ahead of main by: 26 commits
+Ahead of main by: 30 commits
 Worktree: /Users/rick/Documents/MMFFDev - Projects/Vector-feat-objecttree-fields-picker
 ```
 
 Ready for: user review → PR / merge to main, OR further work on the follow-ups above.
+
+---
+
+## Follow-up session (2026-05-28, user out)
+
+While the user was out, Claude executed four of the five follow-ups above. Status updates:
+
+1. **TD-SAVEDVIEWS-CROSS-TENANT-404-TEST** — ✅ Done (`92d553ad`). One unit test added against the fake store (`backend/internal/savedviews/service_test.go`) asserting cross-tenant `GetByID` returns `ErrNotFound`, never `ErrForbidden`. 13/13 unit tests now pass. AC #4 partial closes.
+2. **TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE** — Filed as register entry + inline call-site pointers (`f7a7408b`). NOT applied — the 3-step migration (Go catalogue + DB migration + VerifyParity gate) requires the user's role-set decision before shipping. `backend/cmd/server/main.go:savedViewsWSAdminAdapter` and `app/components/ObjectTreeV2/p_ObjectTree.tsx:canShareToWorkspace` now point at the TD ID so future readers don't re-litigate.
+3. **TD-SAVEDVIEWS-MANAGE-MODAL-SCOPE-CHANGE** — Skipped intentionally. Real UX design surface (per-row scope dropdown); not safe to ship without user in the loop.
+4. **TD-SAVEDVIEWS-OTHER-OTV2-PAGES** — ✅ Done (`6bbc1a0d`). Three production OTV2 surfaces wired with their own `savedViews={{ kind, target }}`:
+   - portfolio-items → `objecttree:portfolio_items`
+   - risk → `objecttree:risks`
+   - value-sprint → `objecttree:value_sprint_panel` + `objecttree:value_sprint_backlog` (two trees on the page, two targets)
+   
+   Handover overestimated scope — no `strategy`, `timeboxes/sprints`, `timeboxes/releases` pages exist yet. `/scope` is the OTV2 test harness (file header line 5 says so) and was deliberately skipped to keep the substrate clean.
+5. **TD-MIG-137-DEFERRED-DRIFT** — ✅ Filed (`ed06ec99`) as a proper TD register entry at S2 (raised from the handover's S3 because applying-silently-on-fresh-DB is a latent footgun, not just cosmetic drift). Two paths documented (apply-now vs stash-out-of-active-schema). NOT applied — touching live schema is the user's call.
+
+### Final sweep (2026-05-28 follow-up session close)
+- `go test ./internal/savedviews/...` → PASS (13 unit + 3 integration with 1 SKIP for missing seed user)
+- `go build ./...` → clean
+- `npx tsc --noEmit` → clean
+- `lint:savedviews-writer-only` → 0 rogue writes
+- `lint:savedviews-context-free` → 0 identity globals
+- `lint:addressables` → 0 panel-shaped element(s)
+
+Two TDs added to `docs/c_tech_debt.md`: `TD-MIG-137-DEFERRED-DRIFT` (S2) and `TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE` (S3). Both carry their full pay-down templates inline so the next session doesn't have to re-derive.
+
+### Notes for the user on return
+- All work is on `feat/objecttree-fields-picker`, fully committed, branch clean.
+- Main worktree had 11 uncommitted files at session start (unrelated to this branch); merge-to-main is still blocked on that. Recommend reviewing+committing main's WIP first, then merging this branch via PR.
+- SY003 NOT regenerated this session — no schema changes shipped (perm-code migration deferred to user, mig 137 not applied). Substrate inventory still matches the 2026-05-28 SY003 snapshot.
+- Two TDs are "ready to apply" the moment the user wants:
+  - TD-MIG-137: 5-min apply OR 5-min stash, user's call.
+  - TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE: ~45-min full migration once role-set is confirmed.
