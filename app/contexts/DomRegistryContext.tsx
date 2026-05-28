@@ -86,6 +86,25 @@ export function useParentAddress(): string {
 // DomRegistryContext — address → id map and dynamic registration
 // ─────────────────────────────────────────────────────────────────────
 
+// One pending runtime-registration enqueued for the next bulk flush.
+// Mirrors the per-item shape of the backend's registerBulkReq.items.
+export interface RegisterRequest {
+  page_route: string;
+  parent_address: string;
+  slot: string;
+  kind: string;
+  name: string;
+  source: "runtime" | "custom_app";
+  custom_app_id?: string;
+}
+
+// Returned to the caller for a single queued item.
+export interface RegisterResponse {
+  id: string;
+  address: string;
+  helpable?: boolean;
+}
+
 interface DomRegistry {
   // Lookup an existing addressable id by canonical address. Undefined
   // when the address is not (yet) in the registry.
@@ -113,6 +132,14 @@ interface DomRegistry {
   // True once the snapshot fetch has completed (success OR failure).
   // Hooks gate registration on this so they don't race the seed.
   ready: boolean;
+
+  // Perf cycle 6 — queue a runtime registration. The provider flushes
+  // pending registrations as a single /addressables/register-bulk POST
+  // after a ~20ms tick, collapsing N parallel register POSTs at page
+  // mount into one HTTP roundtrip. The returned promise resolves with
+  // the per-item result (id + canonical address + helpable bit), or
+  // rejects when the bulk call fails OR the per-item status is non-2xx.
+  queueRegister(req: RegisterRequest): Promise<RegisterResponse>;
 }
 
 const DomRegistryCtx = createContext<DomRegistry | null>(null);
@@ -151,6 +178,96 @@ export function DomRegistryProvider({ children, seed }: DomRegistryProviderProps
   });
   const [ready, setReady] = useState<boolean>(seed !== undefined);
   const mountCountsRef = useRef<Map<string, number>>(new Map());
+
+  // Perf cycle 6 — bulk-register queue.
+  //
+  // Each <Panel>/<Table>/<ResourceTree>/etc. mounts independently and
+  // fires its own useRegisterAddressable effect; pre-cycle-6, every one
+  // of those issued its own POST /addressables/register, producing 8+
+  // parallel HTTP roundtrips on a mount-heavy page. The queue here
+  // gathers them into one POST /addressables/register-bulk after a
+  // ~25ms tick — long enough to catch the typical mount burst, short
+  // enough that perceived latency for any single register is bounded.
+  //
+  // Each queued item carries its own resolve/reject so the
+  // useRegisterAddressable hook still sees a clean per-item Promise
+  // contract — the bulk shape is invisible to callers.
+  const pendingRef = useRef<
+    Array<{
+      req: RegisterRequest;
+      resolve: (r: RegisterResponse) => void;
+      reject: (e: unknown) => void;
+    }>
+  >([]);
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushRegisterQueue = useCallback(() => {
+    flushTimerRef.current = null;
+    const pending = pendingRef.current;
+    if (pending.length === 0) return;
+    pendingRef.current = [];
+
+    interface BulkResultItem {
+      index: number;
+      id?: string;
+      address?: string;
+      helpable?: boolean;
+      error?: string;
+      status: number;
+    }
+
+    const items = pending.map((p) => p.req);
+    apiSite<{ results: BulkResultItem[] }>("/addressables/register-bulk", {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    })
+      .then((data) => {
+        const rows = data?.results ?? [];
+        for (let i = 0; i < pending.length; i++) {
+          const row = rows[i];
+          const p = pending[i];
+          if (!row) {
+            p.reject(new Error("register-bulk: missing result row"));
+            continue;
+          }
+          if (row.status >= 200 && row.status < 300 && row.id && row.address) {
+            p.resolve({ id: row.id, address: row.address, helpable: row.helpable });
+          } else {
+            p.reject(
+              new Error(`register-bulk: item ${i} failed (${row.status}): ${row.error ?? ""}`),
+            );
+          }
+        }
+      })
+      .catch((err) => {
+        for (const p of pending) p.reject(err);
+      });
+  }, []);
+
+  const queueRegister = useCallback(
+    (req: RegisterRequest): Promise<RegisterResponse> => {
+      return new Promise<RegisterResponse>((resolve, reject) => {
+        pendingRef.current.push({ req, resolve, reject });
+        if (flushTimerRef.current === null) {
+          // 25 ms debounce — captures the mount-effect burst that React
+          // schedules across a single render commit + microtask drain
+          // without adding meaningful user-perceived delay.
+          flushTimerRef.current = setTimeout(flushRegisterQueue, 25);
+        }
+      });
+    },
+    [flushRegisterQueue],
+  );
+
+  // On unmount, flush any pending so we don't strand resolvers.
+  useEffect(() => {
+    return () => {
+      if (flushTimerRef.current !== null) {
+        clearTimeout(flushTimerRef.current);
+        flushRegisterQueue();
+      }
+    };
+  }, [flushRegisterQueue]);
 
   // Snapshot seed — one fetch per route change.
   useEffect(() => {
@@ -213,8 +330,9 @@ export function DomRegistryProvider({ children, seed }: DomRegistryProviderProps
       },
       pageRoute: pathname,
       ready,
+      queueRegister,
     }),
-    [byAddress, helpableByAddress, pathname, ready],
+    [byAddress, helpableByAddress, pathname, ready, queueRegister],
   );
 
   return <DomRegistryCtx.Provider value={value}>{children}</DomRegistryCtx.Provider>;
@@ -397,24 +515,21 @@ export function useRegisterAddressable(
     const sdkBody = sdk.customAppId
       ? { source: "custom_app" as const, custom_app_id: sdk.customAppId }
       : { source: "runtime" as const };
-    // Use apiSite() rather than raw fetch — it injects the X-CSRF-Token
-    // header and Bearer token that the backend's CSRF middleware and
-    // RequireAuth (when applied elsewhere) require. Raw fetch would
-    // pass the cookie but omit the double-submit header → 403.
-    void apiSite<{ id: string; address: string; helpable?: boolean }>(
-      "/addressables/register",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          page_route: registry.pageRoute,
-          parent_address: isDirectChild ? "" : parent,
-          slot,
-          kind: args.kind,
-          name: args.name,
-          ...sdkBody,
-        }),
-      }
-    )
+    // Perf cycle 6 — go through the registry's bulk queue instead of
+    // a per-hook POST. The provider coalesces all pending registrations
+    // into one /addressables/register-bulk roundtrip, collapsing the
+    // ~8 concurrent register POSTs on a /value-sprint mount into one.
+    // The promise contract is per-item identical to the old shape, so
+    // failure handling (silent no-op) stays the same.
+    void registry
+      .queueRegister({
+        page_route: registry.pageRoute,
+        parent_address: isDirectChild ? "" : parent,
+        slot: slot ?? "",
+        kind: args.kind,
+        name: args.name,
+        ...sdkBody,
+      })
       .then((data) => {
         if (cancelled || !data) return;
         registry.set(data.address, data.id, data.helpable);
