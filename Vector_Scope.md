@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-28 — Sanitised: extracted three closed top-level themes (RF1, B14, B15) to [`Vector_Scope_Done.md`](Vector_Scope_Done.md); truncated header change-log chain (archived in same Done doc); 13,107 → ~12,800 lines. Most recent active state: ✅ NV1.S06 MERGED at `7683049e` (2026-05-27, Wave 3 closed). 8/16 NV1 stories merged (~52 of ~104 points); Wave 4 next (S09 dispatchers + S12 Valkey PendingStore, parallel-safe).
-**Doc version:** 2.68 (2026-05-28 sanitisation pass — three DONE themes extracted to Vector_Scope_Done.md, header change-log truncated. Prior version history archived in [`Vector_Scope_Done.md` § Historical change log](Vector_Scope_Done.md#historical-change-log--vector_scopemd-header).)
+**Last updated:** 2026-05-28 — Added B4.6–B4.11 (PLA071): type-scoped custom-field bindings — new backend package `artefacttypefields` + Fields-tab UI on the artefact-types admin page. 6 stories × 13pt total (~6–7 solo days). Closes the gap where `artefacts_types_fields` schema exists and the artefact form reads it, but no admin surface writes to it.
+**Doc version:** 2.69 (2026-05-28 — B4.6–B4.11 added from PLA071, type-scoped field bindings.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -710,6 +710,52 @@ Full lifecycle management for tasks, bugs, epics.
   >
 - **B4.4** Custom field manager UI `[P3]`
 - **B4.5** Item templates with field defaults `[P4]`
+
+### B4.6–B4.11 — Type-scoped field bindings (PLA071, 2026-05-28)
+
+> PLA071 closes the gap where `artefacts_types_fields` exists in schema (migs 007 + 101) and is read by the artefact form (`artefactitems/sql.go:713-719`), but no admin surface writes to it. Field scope on the library editor is workspace/tenant only — there's no per-artefact-type binding flow. This sub-theme adds a backend CRUD package + a Fields tab on the artefact-types admin page. Type-centric design (B over A) because the binding row carries per-pair state (`position`, `required`, `default_value`) and matches the user's mental model ("on Risk, I want these fields"). No DB changes, no model decisions to re-litigate.
+
+- **B4.6 [P2] 🔵 IN FLIGHT** — Scaffold `artefacttypefields` backend package + route mounts. (2pt) Create the empty package skeleton and mount the routes returning 501, so the handler tree is settled before any logic lands.
+  - AC: `backend/internal/artefacttypefields/` exists with `handler.go`, `service.go`, `sql.go`; `go build ./...` clean.
+  - AC: Routes `GET / POST /_site/artefact-types/{typeId}/fields` and `PATCH / DELETE /_site/artefact-types/{typeId}/fields/{bindingId}` mounted in `backend/cmd/server/main.go`; all return 501 Not Implemented.
+  - AC: `curl -i` against each route from the dev backend returns 501 with the standard error envelope (not a 404).
+  - AC: SQL constants in `sql.go` use the prefixed column names from mig 101 (`artefacts_types_fields_position` etc.); `npm run lint` green incl. `lint:column-prefix`.
+
+- **B4.7 [P2] 🔵 IN FLIGHT** — Implement `AssertCallerMayWrite` + service-layer auth gate for type-field bindings. (2pt) Server-side auth gate before any CRUD lands — HARD RULE "server is the gate" means this is the first behaviour bit.
+  - AC: `AssertCallerMayWrite(ctx, typeID, user)` exists in `service.go`; matches `fields/service.go:122-199` tier logic (grp_global / grp_portfolio bypass; workspace-admin via active membership).
+  - AC: Cross-tenant typeID returns `ErrTypeNotFound` (existence-leak protection — not 403).
+  - AC: Global-scope artefact types return `ErrForbidden` through this surface — no padmin path can mutate global bindings.
+  - AC: `service_test.go` covers the matrix: tenant-admin allowed, workspace-admin allowed on workspace-scope type, workspace-admin denied on tenant-scope type, cross-tenant 404, archived field denied, archived type denied.
+  - AC: `go test ./backend/internal/artefacttypefields/...` green.
+
+- **B4.8 [P2] 🔵 IN FLIGHT** — Implement `ListByType` + `CreateBinding` service methods + handlers. (3pt) The read + create CRUD half. Read returns binding rows joined to the library so the UI doesn't make two calls.
+  - AC: `GET /_site/artefact-types/{typeId}/fields` returns `200 {"bindings": [...]}` sorted by `artefacts_types_fields_position` asc; each row embeds the joined `artefacts_fields_library` row.
+  - AC: Archived library rows are excluded from the response (matches the library editor's same rule).
+  - AC: `POST /_site/artefact-types/{typeId}/fields` with `{"field_library_id": uuid, "required": bool, "default_value": string?}` returns `201` + the new binding; assigns `position = max(existing) + 1`.
+  - AC: POST against an already-bound (type, field) pair returns `409 Conflict` (unique constraint `artefacts_types_fields_id_artefact_type_id_field_library_uniq`).
+  - AC: POST with a field-library id from a different subscription returns `404` (existence-leak shape).
+  - AC: `handler_test.go` covers 200, 201, 403, 404, 409 cases.
+
+- **B4.9 [P2] 🔵 IN FLIGHT** — Implement `UpdateBinding` + `DeleteBinding` service methods + handlers. (2pt) The write/delete CRUD half. Patch is sparse on position / required / default_value.
+  - AC: `PATCH /_site/artefact-types/{typeId}/fields/{bindingId}` accepts sparse `{position?, required?, default_value?}`; returns `200` + the updated row.
+  - AC: `position` must be a non-negative integer; `400` on invalid.
+  - AC: `DELETE /_site/artefact-types/{typeId}/fields/{bindingId}` returns `204` on success, `404` on missing or cross-tenant.
+  - AC: Delete is a hard delete on `artefacts_types_fields`; library row is unaffected (test asserts library row's archived_at is unchanged).
+  - AC: `handler_test.go` extended for PATCH + DELETE matrix.
+
+- **B4.10 [P2] 🔵 IN FLIGHT** — Frontend API client `artefactTypeFieldsApi.ts`. (1pt) Mirror the shape of `fieldsApi.ts`; embeds the joined field row in the binding type.
+  - AC: `app/lib/artefactTypeFieldsApi.ts` exports `list(typeId)`, `create(typeId, body)`, `patch(bindingId, body)`, `archive(bindingId)`; all routed via `apiSite`.
+  - AC: `TypeFieldBinding` type includes the joined `field: WorkspaceField` so the UI doesn't need a parallel `fieldsApi.list` call.
+  - AC: `tsc --noEmit` green; no `any` in the public surface.
+  - AC: `grep -rn 'fetch(' app/lib/artefactTypeFieldsApi.ts` returns empty (uses `apiSite` wrapper only).
+
+- **B4.11 [P2] 🔵 IN FLIGHT** — Per-type Fields management page UI. (3pt) The actual user-facing surface: list bound fields for one type, add, reorder, toggle required, set default, remove.
+  - AC: `app/(user)/workspace-admin/artefacts/artefact-types/[typeId]/fields/page.tsx` renders a `<PageDescription>`, a bound-fields `<Table>`, and an "Add field" picker; no raw `<h2>` (lint:h2-panel-only enforced).
+  - AC: Drag-and-drop reorder uses `@dnd-kit`; position writes batch with 250ms debounce per `docs/c_c_dnd.md`.
+  - AC: Inline-edit on required (toggle) and default_value (text) PATCH on commit; optimistic UI with revert on 4xx.
+  - AC: Add-field picker filters out fields already bound to this type and excludes archived + global-scope rows.
+  - AC: The artefact-types list page gains a "Manage fields" button per row that routes to the new page; no other behaviour on the list page changes.
+  - AC: Manual verification path: bind a new field to Risk → open `/work-items/new?type=<risk-uuid>` → the new field appears in the form.
 
 ---
 
