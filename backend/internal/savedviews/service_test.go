@@ -307,6 +307,41 @@ func TestUpdateScope_Promote_NodeMember(t *testing.T) {
 	}
 }
 
+// TestService_GetByID_CrossTenantReturnsNotFound pins the existence-leak guard:
+// a view ID belonging to subA, looked up under subB's subscription clamp, MUST
+// return ErrNotFound (404) — never ErrForbidden (403). Distinguishing the two
+// across tenants is itself a security finding (defence/finance posture): the
+// response must be indistinguishable from "this ID does not exist."
+func TestService_GetByID_CrossTenantReturnsNotFound(t *testing.T) {
+	store := newFakeStore()
+	subA, subB, userA := uuid.New(), uuid.New(), uuid.New()
+	store.userInSub[[2]uuid.UUID{userA, subA}] = true
+	svc := newSvc(store, &fakeWSAdmin{})
+
+	// Create a user-scoped view in subA.
+	uid := userA
+	created, err := svc.Create(context.Background(), CreateInput{
+		SubscriptionID: subA, Kind: KindObjectTree, Scope: ScopeUser,
+		UserID: &uid, Target: "objecttree:work_items", Name: "Mine",
+		Body: json.RawMessage(`{}`), ActorUserID: userA,
+	})
+	if err != nil {
+		t.Fatalf("setup: create failed: %v", err)
+	}
+
+	// Look up the same view ID under subB's clamp — must be 404, not 403.
+	view, err := svc.GetByID(context.Background(), subB, created.ID)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for cross-tenant lookup, got %v", err)
+	}
+	if errors.Is(err, ErrForbidden) {
+		t.Fatalf("cross-tenant lookup must not leak existence via ErrForbidden")
+	}
+	if view != nil {
+		t.Fatalf("expected nil view on cross-tenant lookup, got %+v", view)
+	}
+}
+
 func TestArchive_NonOwner_Rejected(t *testing.T) {
 	store := newFakeStore()
 	subID, owner, other := uuid.New(), uuid.New(), uuid.New()
