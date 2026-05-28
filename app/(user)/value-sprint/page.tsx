@@ -14,6 +14,7 @@ import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLo
 import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
+import { useNextSprint } from "@/app/hooks/useNextSprint";
 
 export default function ValueSprint() {
   const { full } = usePageTitle();
@@ -26,9 +27,21 @@ export default function ValueSprint() {
     sentinel_focus_node,
     sentinel_scope_up,
     sentinel_scope_down,
+    sentinel_user,
   } = useSentinel();
   const activeNodeId = sentinel_focus_node;
   const direction = sentinel_scope_down ? "descend" : sentinel_scope_up ? "ascend" : "none";
+
+  // Slice 1 — live "next sprint" lookup for the top panel. Workspace ID
+  // comes from the JWT-derived sentinel_user (matches the sprints page);
+  // the topology focus node is passed so the backend's slice-5B ancestor
+  // walk fires when the user is viewing a child node of a propagated
+  // sprint, same as TimeboxObjectTree's reload().
+  const workspaceId = sentinel_user?.workspace_id ?? null;
+  const { sprint: nextSprint, refetch: refetchNextSprint } = useNextSprint(
+    workspaceId,
+    activeNodeId,
+  );
 
   const [filters] = useState({ sprint_id: "" });
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
@@ -82,8 +95,12 @@ export default function ValueSprint() {
   }, [types]);
 
   // Realtime refetch — same topic shape as Work Items so backlog stays
-  // in sync when other clients mutate work items in this tenant.
-  const refetch = useCallback(() => Promise.resolve(), []);
+  // in sync when other clients mutate work items in this tenant. We also
+  // refetch the sprint panel header so sprint name / date changes pushed
+  // from another tab surface here without a manual reload.
+  const refetch = useCallback(async () => {
+    await refetchNextSprint();
+  }, [refetchNextSprint]);
   useEffect(() => {
     void refetch();
   }, [refetch, activeNodeId, direction]);
@@ -105,12 +122,19 @@ export default function ValueSprint() {
           Manage the active sprint. The top panel holds the sprint scope; the bottom grid is the workspace backlog (same clamp as Work Items). Drag stories from the backlog onto the sprint to commit them.
         </PageDescription>
 
-        {/* Top panel — target sprint drop zone (DnD wiring lands next). */}
+        {/* Top panel — target sprint drop zone (DnD wiring lands next).
+            Title + description are now live from useNextSprint; if no
+            planned/active sprint is found we show a "no upcoming sprint"
+            placeholder rather than fabricating "Sprint 1". */}
         <Panel
           name="panel_value_sprint_target"
           className="page-panel-heading value-sprint__target"
-          title="Sprint 1"
-          description="0 work items · drag items here from the backlog below to plan the sprint."
+          title={nextSprint?.timeboxes_sprints_name ?? "No upcoming sprint"}
+          description={
+            nextSprint
+              ? `${nextSprint.timeboxes_sprints_date_start ?? "—"} → ${nextSprint.timeboxes_sprints_date_end ?? "—"} · status ${nextSprint.timeboxes_sprints_status ?? "—"}`
+              : "Create a planned sprint to begin — the next future-dated sprint will surface here automatically."
+          }
         >
           <div className="value-sprint__Dropzone" role="region" aria-label="Sprint drop zone">
             <div className="value-sprint__Dropzone_body">
