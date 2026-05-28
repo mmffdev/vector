@@ -5,6 +5,8 @@
 // and workspace resolution.
 package artefactitems
 
+import "fmt"
+
 // rollupCTE is the WITH RECURSIVE expression spliced into the list,
 // get-one, and list-children data queries. Independent const so the
 // data SELECTs reference it as `WITH ` + rollupCTE + ` SELECT …`.
@@ -66,8 +68,13 @@ const sqlWorkItemColumns = `
 	pri.artefact_priorities_sort_order         AS priority_sort_order,
 	a.artefacts_story_points        AS story_points,
 	a.artefacts_id_timebox_sprint::text,
-	NULL::text                      AS sprint_ref_id,
-	NULL::text                      AS sprint_ref_alias,
+	-- Denormalised sprint label — single column read, no JOIN. The
+	-- writer side keeps this in sync on artefact-sprint assignment
+	-- (CreateWorkItem / PatchWorkItem) and on sprint rename / suffix
+	-- edit (Sprint service Patch fan-out). NULL when the artefact has
+	-- no sprint assigned. Migration 144 added the column + backfill.
+	a.artefacts_id_timebox_sprint::text AS sprint_ref_id,
+	a.artefacts_timebox_sprint_label    AS sprint_ref_alias,
 	a.artefacts_id_parent::text     AS parent_id,
 	ap.artefacts_id::text           AS parent_ref_id,
 	apt.artefacts_types_prefix      AS parent_ref_type_prefix,
@@ -454,12 +461,39 @@ const sqlSelectNextArtefactPosition = `
 		  AND artefacts_archived_at IS NULL
 	`
 
-const sqlInsertArtefact = `
+// sqlDeriveSprintLabelSubquery is the canonical scalar-subquery for
+// computing the denormalised sprint label from a sprint_id bind. Used by
+// the Create INSERT (sprint_id bound at $10) and the Patch sparse-UPDATE
+// (sprint_id bound dynamically — see Service.PatchWorkItem). %d slots
+// the bind index. Format matches migration 144's backfill:
+//
+//	'<name> — <suffix>' when suffix is non-empty after trimming
+//	'<name>'            otherwise
+//	NULL                when the sprint is archived or the bind is NULL
+const sqlDeriveSprintLabelSubquery = `(
+	SELECT CASE
+		WHEN s.timeboxes_sprints_suffix IS NOT NULL
+		 AND length(btrim(s.timeboxes_sprints_suffix)) > 0
+		THEN s.timeboxes_sprints_name || ' — ' || btrim(s.timeboxes_sprints_suffix)
+		ELSE s.timeboxes_sprints_name
+	END
+	FROM timeboxes_sprints s
+	WHERE s.timeboxes_sprints_id = $%d::uuid
+	  AND s.timeboxes_sprints_archived_at IS NULL)`
+
+// Denormalised sprint label is derived in the same INSERT via the
+// shared sqlDeriveSprintLabelSubquery fragment (sprint_id bound at $10).
+// Keeps the call signature one round-trip while ensuring the row is born
+// with the correct label. NULL when sprint_id is NULL or the sprint is
+// archived.
+var sqlInsertArtefact = `
 		INSERT INTO artefacts
 			(artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_number, artefacts_title, artefacts_description,
 			 artefacts_id_flow_state, artefacts_id_priority, artefacts_story_points, artefacts_id_timebox_sprint, artefacts_id_parent,
-			 artefacts_id_user_owned_by, artefacts_id_user_created_by, artefacts_position, artefacts_id_topology_node)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8::uuid,$9,$10,$11,$12,$13,$14,$15)
+			 artefacts_id_user_owned_by, artefacts_id_user_created_by, artefacts_position, artefacts_id_topology_node,
+			 artefacts_timebox_sprint_label)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8::uuid,$9,$10,$11,$12,$13,$14,$15,
+			` + fmt.Sprintf(sqlDeriveSprintLabelSubquery, 10) + `)
 		RETURNING artefacts_id
 	`
 

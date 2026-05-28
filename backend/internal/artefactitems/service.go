@@ -1185,10 +1185,16 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		n++
 	}
 	if in.SprintID != nil {
+		// Keep the denormalised label in lockstep with the FK — clear to
+		// NULL on unassign, derive via the shared scalar-subquery fragment
+		// on assign. Both SET clauses reference the same $n bind so the
+		// FK + label are computed from the same sprint_id.
 		if *in.SprintID == "" {
 			sets = append(sets, "artefacts_id_timebox_sprint = NULL")
+			sets = append(sets, "artefacts_timebox_sprint_label = NULL")
 		} else {
 			sets = append(sets, fmt.Sprintf("artefacts_id_timebox_sprint = $%d::uuid", n))
+			sets = append(sets, "artefacts_timebox_sprint_label = "+fmt.Sprintf(sqlDeriveSprintLabelSubquery, n))
 			args = append(args, *in.SprintID)
 			n++
 		}

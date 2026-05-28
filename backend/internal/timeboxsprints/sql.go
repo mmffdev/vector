@@ -167,6 +167,34 @@ const sqlArchiveSprint = `
 		  AND timeboxes_sprints_archived_at IS NULL
 	`
 
+// sqlFanoutArtefactSprintLabel refreshes the denormalised sprint label
+// on every live artefact pointing at the given sprint. Called by Update
+// when timeboxes_sprints_name or timeboxes_sprints_suffix changes — the
+// per-artefact read path serves artefacts_timebox_sprint_label directly
+// (no JOIN), so a rename / suffix edit MUST fan out here or the grid
+// will keep rendering the stale label until each row is touched.
+//
+// Same CASE shape as migration 144's backfill and artefactitems'
+// sqlDeriveSprintLabelSubquery — three locations encode the same
+// label-formation rule; keep them in lockstep on any change to the
+// '<name> — <suffix>' format.
+const sqlFanoutArtefactSprintLabel = `
+		UPDATE artefacts
+		SET artefacts_timebox_sprint_label = (
+			SELECT CASE
+				WHEN s.timeboxes_sprints_suffix IS NOT NULL
+				 AND length(btrim(s.timeboxes_sprints_suffix)) > 0
+				THEN s.timeboxes_sprints_name || ' — ' || btrim(s.timeboxes_sprints_suffix)
+				ELSE s.timeboxes_sprints_name
+			END
+			FROM timeboxes_sprints s
+			WHERE s.timeboxes_sprints_id = $1
+			  AND s.timeboxes_sprints_archived_at IS NULL),
+		    artefacts_updated_at = now()
+		WHERE artefacts_id_timebox_sprint = $1
+		  AND artefacts_archived_at IS NULL
+	`
+
 // sqlStartSprint atomically transitions planned → active and returns
 // the hydrated row. RETURNING is empty when status != 'planned'.
 const sqlStartSprint = `

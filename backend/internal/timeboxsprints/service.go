@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -407,6 +408,19 @@ func (s *Service) Update(ctx context.Context, workspaceID, sprintID string, in U
 			return nil, ErrConflict
 		}
 		return nil, fmt.Errorf("update sprint: %w", err)
+	}
+
+	// Fan out the denormalised sprint label across every live artefact
+	// assigned to this sprint when name or suffix changed. Other field
+	// edits (dates, status, cadence, velocity, owner) don't affect the
+	// label so we skip the UPDATE for them. Best-effort — a fan-out
+	// failure doesn't roll back the sprint update; the artefact still
+	// carries the OLD label which is internally consistent and gets
+	// corrected on the next sprint edit or per-artefact write.
+	if in.SprintName != nil || in.SprintSuffix != nil {
+		if _, fanErr := s.pool.Exec(ctx, sqlFanoutArtefactSprintLabel, sprintID); fanErr != nil {
+			log.Printf("timeboxsprints.Update: sprint label fan-out failed for %s: %v", sprintID, fanErr)
+		}
 	}
 	return sprint, nil
 }
