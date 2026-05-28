@@ -31,6 +31,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/geo"
 	"github.com/mmffdev/vector-backend/internal/bootstatus"
+	"github.com/mmffdev/vector-backend/internal/cache"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
 	"github.com/mmffdev/vector-backend/internal/devreports"
@@ -917,8 +918,42 @@ func main() {
 	// role-revocation guard (HasActiveRole), and the per-grant subtree
 	// clamp all live inside sentinel.Middleware now — no caller need
 	// know about workspaces vs topology_nodes vs roles_workspaces.
+	// Cache (Valkey) — backend's read-side cache layer. First consumer:
+	// sentinel.PoolResolver wraps ResolveSubtree's recursive topology
+	// CTE behind this client. PING failure is non-fatal: every cache op
+	// returns ErrCacheUnavailable and callers fall back to source-of-
+	// truth queries. The breaker re-closes on the next successful op.
+	//
+	// Env: VALKEY_HOST + VALKEY_PORT + VALKEY_PASSWORD (set in
+	// backend/.env.dev; see infra/swarm/vector-dev-stack.yml for the
+	// Valkey service). Reuse-target for notifications-v2 PendingStore
+	// (S12 of PLA067) per TD-SEC-REDIS-DEPENDENCY.
+	cacheClient, cacheErr := cache.New(context.Background(), cache.Config{
+		Addr:     os.Getenv("VALKEY_HOST") + ":" + os.Getenv("VALKEY_PORT"),
+		Password: os.Getenv("VALKEY_PASSWORD"),
+	})
+	if cacheErr != nil {
+		log.Printf("cache: startup PING failed — cache disabled, callers fall back to SQL: %v", cacheErr)
+	} else {
+		log.Printf("cache: connected to Valkey at %s:%s", os.Getenv("VALKEY_HOST"), os.Getenv("VALKEY_PORT"))
+	}
+
 	sentinelResolver := sentinel.NewPoolResolver(servicePool, servicePool)
+	sentinelResolver.SetCache(cacheClient)
 	sentinelMW := sentinel.Middleware(sentinelResolver)
+
+	// Wire the cache invalidator into the topology service so any
+	// structure-changing write (CreateNode/MoveNode/ArchiveNode/
+	// RestoreNode/DuplicateSubtree/ArchiveWorkspaceTopology/
+	// RestoreWorkspaceTopology) wipes Sentinel's per-tenant subtree
+	// cache. The adapter is a thin shim over cache.Client.DelPattern +
+	// sentinel.SubtreeCacheKeyPrefix so topology doesn't import
+	// sentinel or cache directly. orgDesignSvc was constructed earlier
+	// (line ~574); we attach the invalidator now that cacheClient
+	// exists. Safe to call after construction — builder semantics.
+	if orgDesignSvc != nil {
+		orgDesignSvc.WithSubtreeCacheInvalidator(&subtreeCacheInvalidator{c: cacheClient})
+	}
 
 	// B7.2: search query handler — fulltext via tsvector (plainto_tsquery).
 	// Only available when vaPool is up (vector_artefacts has the search columns).
@@ -2450,4 +2485,27 @@ func translateTopologyErr(err error) error {
 		return artefactitems.ErrScopeNodeNotFound
 	}
 	return err
+}
+
+// subtreeCacheInvalidator satisfies topology.SubtreeCacheInvalidator.
+// Wipes every cached sentinel subtree for a subscription via Valkey
+// pattern delete; sentinel.SubtreeCacheKeyPrefix(subID) returns the
+// `sentinel:subtree:{sub}:*` glob. Used by main.go to thread the
+// cache into the topology service without forcing topology to import
+// either sentinel or cache (clean one-way dep graph).
+//
+// When the cache client is nil OR Valkey is down (breaker open), the
+// DEL is a no-op; the 1-hour safety TTL on cached entries means stale
+// values evict themselves within an hour even if every invalidate
+// fails. Failures are logged at the cache layer; the writer's call
+// site doesn't propagate them — invalidation is best-effort.
+type subtreeCacheInvalidator struct {
+	c *cache.Client
+}
+
+func (i *subtreeCacheInvalidator) InvalidateSubscription(ctx context.Context, subscriptionID uuid.UUID) {
+	if i.c == nil {
+		return
+	}
+	_, _ = i.c.DelPattern(ctx, sentinel.SubtreeCacheKeyPrefix(subscriptionID))
 }

@@ -734,3 +734,11 @@ const sqlLoadNodeReadOnly = `
 		  FROM topology_nodes
 		 WHERE topology_nodes_id = $1
 	`
+
+// sqlSubscriptionForWorkspace returns the subscription_id of any
+// live node in the workspace. Used by the cache invalidator on workspace
+// bulk-archive/restore to scope the DEL to the right tenant.
+const sqlSubscriptionForWorkspace = `
+		SELECT topology_nodes_id_subscription FROM topology_nodes
+		 WHERE topology_nodes_id_workspace = $1 LIMIT 1
+	`

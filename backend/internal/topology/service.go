@@ -161,9 +161,25 @@ type GrantNotification struct {
 //	three boundary tables (topology_nodes, users_roles_topology_nodes,
 //	topology_view_states) only exist in this database.
 type Service struct {
-	pool     *pgxpool.Pool
-	vaPool   *pgxpool.Pool
-	notifier GrantNotifier
+	pool        *pgxpool.Pool
+	vaPool      *pgxpool.Pool
+	notifier    GrantNotifier
+	invalidator SubtreeCacheInvalidator
+}
+
+// SubtreeCacheInvalidator is the narrow interface the topology Service
+// uses to wipe Sentinel's subtree cache on any structure-changing
+// write. Implementation lives in main.go (a thin adapter over
+// cache.Client.DelPattern + sentinel.SubtreeCacheKeyPrefix) so this
+// package doesn't import sentinel or cache directly — keeps the
+// dep graph one-way (sentinel imports cache; topology calls back via
+// this interface).
+//
+// Implementations MUST be safe to call after every successful write;
+// failure is best-effort (the 1-hour safety TTL on cached entries is
+// the backstop if a publish misses).
+type SubtreeCacheInvalidator interface {
+	InvalidateSubscription(ctx context.Context, subscriptionID uuid.UUID)
 }
 
 // New constructs a Service. pool is the legacy mmff_vector pool (kept
@@ -181,6 +197,34 @@ func New(pool *pgxpool.Pool, vaPool *pgxpool.Pool) *Service {
 func (s *Service) WithNotifier(n GrantNotifier) *Service {
 	s.notifier = n
 	return s
+}
+
+// WithSubtreeCacheInvalidator wires the cache invalidator. Optional —
+// when unset, structure-changing writes do not publish invalidations
+// (the safety TTL on cached entries means stale data still evicts
+// within an hour). Returns the Service so the call can chain off the
+// constructor.
+func (s *Service) WithSubtreeCacheInvalidator(inv SubtreeCacheInvalidator) *Service {
+	s.invalidator = inv
+	return s
+}
+
+// invalidateSubtreeCache is the internal helper called by every
+// structure-changing write method. Wipes the entire subscription's
+// subtree cache so the next ResolveSubtree call re-fetches from SQL.
+//
+// Granularity note: we invalidate the WHOLE subscription rather than
+// computing the affected (focus, scope_up, scope_down) tuples. Moving
+// a node can change the ancestor/descendant sets of arbitrarily many
+// other nodes (e.g. moving the parent of a subtree shifts every node
+// underneath), so the precise affected set is hard to compute and the
+// blast-radius of a per-subscription wipe is small (one tenant's
+// subtrees, repopulated on the next page request).
+func (s *Service) invalidateSubtreeCache(ctx context.Context, subscriptionID uuid.UUID) {
+	if s.invalidator == nil {
+		return
+	}
+	s.invalidator.InvalidateSubscription(ctx, subscriptionID)
 }
 
 // Node is one row of topology_nodes returned by reads.
@@ -333,6 +377,7 @@ func (s *Service) CreateNode(ctx context.Context, in CreateNodeInput) (Node, err
 	if err := tx.Commit(ctx); err != nil {
 		return Node{}, err
 	}
+	s.invalidateSubtreeCache(ctx, in.SubscriptionID)
 	return n, nil
 }
 
@@ -395,7 +440,11 @@ func (s *Service) MoveNode(ctx context.Context, subscriptionID, nodeID uuid.UUID
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.invalidateSubtreeCache(ctx, subscriptionID)
+	return nil
 }
 
 // ArchiveNode sets archived_at = NOW() on a node. The subtree stays
@@ -415,7 +464,11 @@ func (s *Service) ArchiveNode(ctx context.Context, subscriptionID, nodeID uuid.U
 	if _, err := tx.Exec(ctx, sqlArchiveNode, nodeID); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.invalidateSubtreeCache(ctx, subscriptionID)
+	return nil
 }
 
 // NodePositionUpdate is one entry of the BulkPosition payload — the
@@ -597,6 +650,7 @@ func (s *Service) DuplicateSubtree(ctx context.Context, subscriptionID, sourceID
 	if err := tx.Commit(ctx); err != nil {
 		return Node{}, err
 	}
+	s.invalidateSubtreeCache(ctx, subscriptionID)
 	return newRoot, nil
 }
 
@@ -997,7 +1051,11 @@ func (s *Service) RestoreNode(
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.invalidateSubtreeCache(ctx, subscriptionID)
+	return nil
 }
 
 // MyGrant is one row of the user's own grant list — what the scope
@@ -1329,8 +1387,11 @@ func (s *Service) ArchiveWorkspaceTopology(ctx context.Context, workspaceID uuid
 	if s.vaPool == nil {
 		return nil
 	}
-	_, err := s.vaPool.Exec(ctx, sqlArchiveWorkspaceTopology, workspaceID)
-	return err
+	if _, err := s.vaPool.Exec(ctx, sqlArchiveWorkspaceTopology, workspaceID); err != nil {
+		return err
+	}
+	s.invalidateSubtreeCacheForWorkspace(ctx, workspaceID)
+	return nil
 }
 
 // RestoreWorkspaceTopology unarchives every topology node for a
@@ -1341,8 +1402,38 @@ func (s *Service) RestoreWorkspaceTopology(ctx context.Context, workspaceID uuid
 	if s.vaPool == nil {
 		return nil
 	}
-	_, err := s.vaPool.Exec(ctx, sqlRestoreWorkspaceTopology, workspaceID)
-	return err
+	if _, err := s.vaPool.Exec(ctx, sqlRestoreWorkspaceTopology, workspaceID); err != nil {
+		return err
+	}
+	s.invalidateSubtreeCacheForWorkspace(ctx, workspaceID)
+	return nil
+}
+
+// invalidateSubtreeCacheForWorkspace is the workspace-scoped wrapper
+// around invalidateSubtreeCache. The two workspace-bulk ops above
+// only have workspaceID in hand; subscriptionID is a one-row lookup
+// from any node in the workspace. Failure to resolve the subscription
+// (no live node in the workspace, or DB error) means we can't
+// invalidate — logged, swallowed. The 1-hour safety TTL on cached
+// entries catches the omission within an hour.
+func (s *Service) invalidateSubtreeCacheForWorkspace(ctx context.Context, workspaceID uuid.UUID) {
+	if s.invalidator == nil {
+		return
+	}
+	var subID uuid.UUID
+	err := s.vaPool.QueryRow(ctx, sqlSubscriptionForWorkspace, workspaceID).Scan(&subID)
+	if err != nil {
+		// pgx.ErrNoRows or any other error: log and move on. Workspace
+		// with zero nodes can't have cached subtrees anyway.
+		if !errors.Is(err, pgx.ErrNoRows) {
+			// Not using log here to avoid an extra import in this
+			// hot-path-adjacent helper; the cache-layer logs at the
+			// wrapper level too.
+			_ = err
+		}
+		return
+	}
+	s.invalidator.InvalidateSubscription(ctx, subID)
 }
 
 // SeedNodeForTest is a test-only writer that inserts one topology_nodes
