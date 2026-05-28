@@ -1255,13 +1255,32 @@ export default function ObjectTree<T = WorkItem>({
   // type system without changing runtime behaviour.
   const config = useMemo<ObjectTreeDataConfig<WorkItem>>(() => {
     if (wizardConfig) {
+      const wc = wizardConfig as unknown as Partial<ObjectTreeDataConfig<WorkItem>>;
       return {
-        ...(wizardConfig as unknown as ObjectTreeDataConfig<WorkItem>),
+        ...(wc as ObjectTreeDataConfig<WorkItem>),
         columns,
         // Precedence: adapter's chips > sidecar's chips > WorkItem default.
         filterChips: adapterFilterChips
           ?? wizardConfig.filterChips
           ?? <WorkItemsFilterChips prefKey={filtersPrefKey} typeOptions={typeOptions} priorityOptions={priorityOptions} urlPrefix={urlPrefix} />,
+        // Flat-list safe defaults for sidecars that don't define hierarchy
+        // accessors (e.g. custom-fields catalogue rows have no parent/children
+        // concept). The cast as (r: WorkItem) => ... is no-op at runtime;
+        // ResourceTree just needs functions to call.
+        getParentId: wc.getParentId ?? ((_r: WorkItem) => null),
+        getChildrenCount: wc.getChildrenCount ?? ((_r: WorkItem) => 0),
+        searchAccessor: wc.searchAccessor ?? ((r: WorkItem) => {
+          // Sidecar-less search: stringify a few likely fields. Catalogue
+          // rows expose `label` + `name`; WorkItem-shaped fallback uses
+          // `title` + `key_num`. Empty string when neither matches.
+          const rec = r as unknown as Record<string, unknown>;
+          const parts: string[] = [];
+          if (typeof rec.label === "string") parts.push(rec.label);
+          if (typeof rec.name === "string") parts.push(rec.name);
+          if (typeof rec.title === "string") parts.push(rec.title);
+          if (typeof rec.key_num !== "undefined") parts.push(`vec-${rec.key_num}`);
+          return parts.join(" ");
+        }),
       };
     }
     const isPortfolio = mode === "portfolio_items";
