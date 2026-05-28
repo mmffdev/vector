@@ -159,4 +159,14 @@ const (
 		  AND master_record_workspaces_id_subscription = $2
 		  AND master_record_workspaces_archived_at IS NULL
 		LIMIT 1`
+
+	// sqlVerifyNodeMembership — confirms a user is a member of a
+	// topology node. Used by the Service for node-scope write/edit
+	// permission gating (Rally pattern: any node member may create
+	// and edit node-scope views).
+	sqlVerifyNodeMembership = `
+		SELECT 1 FROM topology_nodes_members
+		WHERE topology_nodes_members_user_id = $1
+		  AND topology_nodes_members_node_id = $2
+		LIMIT 1`
 )

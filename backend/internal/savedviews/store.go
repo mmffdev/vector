@@ -29,6 +29,7 @@ type ViewStore interface {
 	VerifyUserInSubscription(ctx context.Context, userID, subID uuid.UUID) (bool, error)
 	VerifyNodeInSubscription(ctx context.Context, nodeID, subID uuid.UUID) (bool, error)
 	VerifyWorkspaceInSubscription(ctx context.Context, wsID, subID uuid.UUID) (bool, error)
+	VerifyNodeMembership(ctx context.Context, userID, nodeID uuid.UUID) (bool, error)
 }
 
 // PostgresViewStore is the default ViewStore impl backed by pgx.
@@ -202,6 +203,18 @@ func (s *PostgresViewStore) VerifyWorkspaceInSubscription(ctx context.Context, w
 	}
 	if err != nil {
 		return false, fmt.Errorf("savedviews.VerifyWorkspaceInSubscription: %w", err)
+	}
+	return true, nil
+}
+
+func (s *PostgresViewStore) VerifyNodeMembership(ctx context.Context, userID, nodeID uuid.UUID) (bool, error) {
+	var one int
+	err := s.pool.QueryRow(ctx, sqlVerifyNodeMembership, userID, nodeID).Scan(&one)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("savedviews.VerifyNodeMembership: %w", err)
 	}
 	return true, nil
 }
