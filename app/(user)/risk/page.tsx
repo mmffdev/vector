@@ -35,6 +35,8 @@ import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueCo
 import { RisksFilterChips } from "@/app/components/risk-tree-config";
 import risksWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_risks.json";
 
+const SAVED_VIEW_TARGET = "objecttree:risks";
+
 interface RisksSummary {
   total: number;
   open: number;
@@ -155,6 +157,7 @@ export default function RiskPage() {
             }}
             wizardConfig={wizardConfig}
             multiSelectEnabled
+            savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET }}
           />
         )}
       </>

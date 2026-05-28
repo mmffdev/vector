@@ -70,6 +70,7 @@ Parallel queryable snapshots of all four live DBs. **The running app does NOT co
 | `timeboxreleases` | `timeboxreleases.NewService(vaPool)` | `timeboxes_releases` |
 | `timeboxmilestones` | `timeboxmilestones.NewService(vaPool)` | `timeboxes_milestones` |
 | `ranking` | `ranking.New(vaPool)` | rank-listener channel + `position` columns on VA tables |
+| `savedviews` | `savedviews.NewService(vaPool)` | `saved_views` (Rally-style persisted view configs; one table serves multiple consumers via `kind` discriminator; `scope` discriminator controls user/node/workspace sharing) |
 | `search` | `search.New(vaPool)` | search index + outbox reads |
 | `searchworker` | `searchworker.New(vaPool, swCfg)` | indexer consumer; reads outbox, writes index |
 | `webhooks` | `webhooks.New(vaPool)` | `webhooks_subscriptions`, `webhooks_deliveries` |

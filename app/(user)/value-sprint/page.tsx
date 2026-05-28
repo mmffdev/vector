@@ -49,6 +49,9 @@ function formatSprintLabel(s: SprintWireRow | null | undefined): string {
   return suffix ? `${name} — ${suffix}` : name;
 }
 
+const SAVED_VIEW_TARGET_PANEL   = "objecttree:value_sprint_panel";
+const SAVED_VIEW_TARGET_BACKLOG = "objecttree:value_sprint_backlog";
+
 export default function ValueSprint() {
   const { full } = usePageTitle();
 
@@ -737,6 +740,7 @@ export default function ValueSprint() {
                     </button>
                   </>
                 }
+                savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET_PANEL }}
               />
             </div>
           )}
@@ -769,6 +773,7 @@ export default function ValueSprint() {
               dropColumnKeys={BACKLOG_DROP_COLS}
               refetchRef={backlogRefetchRef}
               bulkLeadingButtons={bulkLeadingButtons}
+              savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET_BACKLOG }}
             />
           )}
         </div>

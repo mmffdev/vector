@@ -22,6 +22,11 @@ import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_
 // builder so other grids (risk, portfolio) still render it.
 const WORK_ITEMS_DROP_COLS = ["priority"] as const;
 
+// Opaque per-page identifier for saved-views storage. Follows the
+// `<kind>:<stable-id>` convention from the design spec §6 — never the
+// user-visible name, never a route segment.
+const SAVED_VIEW_TARGET = "objecttree:work_items";
+
 export default function WorkItemsPage() {
   const { full } = usePageTitle();
   // PLA062 S10: this page reads identity + tenant + scope from Sentinel.
@@ -171,6 +176,7 @@ export default function WorkItemsPage() {
         wizardConfig={wizardConfig}
         multiSelectEnabled
         dropColumnKeys={WORK_ITEMS_DROP_COLS}
+        savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET }}
       />
     </>
     </PageContent>

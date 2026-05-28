@@ -17,6 +17,8 @@ import { useHintOnce } from "@/app/lib/hints";
 import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
 import portfolioWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_portfolio.json";
 
+const SAVED_VIEW_TARGET = "objecttree:portfolio_items";
+
 export default function PortfolioItemsPage() {
   const { full } = usePageTitle();
   // PLA062 S11: identity + tenant + scope via Sentinel.
@@ -137,6 +139,7 @@ export default function PortfolioItemsPage() {
           }}
           wizardConfig={wizardConfig}
           multiSelectEnabled
+          savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET }}
         />
       )}
     </>

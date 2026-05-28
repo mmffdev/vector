@@ -39,6 +39,7 @@ Migration files at `db/vector_artefacts/schema/NNN_*.sql`; runner: `go run ./bac
 | `timeboxes_sprints` | Sequential time-boxed iteration container at the team level (`subscription_id`, `workspace_id`, `org_node_id`, `sprint_name`, `sprint_suffix`, `sprint_owner`, `sprint_cadence_days`, `sprint_date_start`/`sprint_date_end`, `sprint_scope`/`sprint_velocity`/`sprint_estimate`, `sprint_creep_by_count`/`sprint_creep_by_estimate`, `status`, `sprint_date_added`/`sprint_date_updated`, `archived_at`). EXCLUDE constraint on `(workspace_id, org_node_id, daterange(start,end,'[]'))` rejects overlaps. Added migration 025; supersedes the minimal `sprints` table from migration 013. **Sole writer:** `internal/timeboxsprints` (PLA-0027); enforces adjacency rule (B.start = A.end + 1 day) and lifecycle guard (active/completed blocks delete). REST surface: `/api/v2/timeboxes/sprints` (GET, POST, PUT, DELETE, bulk-create). |
 | `artefacts_fields_library` / `artefacts_types_fields` / `artefacts_fields_values` | Jira-style flexible-field surface for type-specific attributes. |
 | `strategy_layers_adopted` | Records which library strategy layers a subscription has adopted. |
+| `saved_views` | Rally-style saved view configurations — one table serves multiple consumers (objecttree, future page_layout) via kind discriminator; scope discriminator (user/node/workspace) controls sharing. See [`superpowers/specs/2026-05-28-saved-views-design.md`](superpowers/specs/2026-05-28-saved-views-design.md). |
 
 ---
 

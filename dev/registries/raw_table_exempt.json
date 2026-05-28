@@ -13,6 +13,7 @@
     "app/components/ServiceHealthPanel.tsx",
     "app/components/TopologyTreeFlyout.tsx",
     "app/components/ResourceTree.tsx",
+    "app/components/SavedViews/ManageSavedViewsModal.tsx",
     "app/hooks/__tests__/useKeyboardGrid.test.tsx"
   ],
   "categories": {
@@ -30,7 +31,8 @@
       "app/(user)/theme-classic/page.tsx",
       "app/components/ArchiveMapFlyout.tsx",
       "app/components/ServiceHealthPanel.tsx",
-      "app/components/TopologyTreeFlyout.tsx"
+      "app/components/TopologyTreeFlyout.tsx",
+      "app/components/SavedViews/ManageSavedViewsModal.tsx"
     ],
     "test_harness": [
       "app/hooks/__tests__/useKeyboardGrid.test.tsx"

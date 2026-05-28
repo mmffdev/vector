@@ -96,6 +96,8 @@ import {
   useColumnPickerState,
   type ColumnCatalogue,
 } from "@/app/components/ObjectTreeV2/plugins/ColumnPicker";
+import { SavedViewsControl } from "@/app/components/SavedViews/SavedViewsControl";
+import type { Kind as SavedViewsKind, View as SavedView } from "@/app/components/SavedViews/types";
 import { notify } from "@/app/lib/toast";
 
 // Slice 1 of the ObjectTree refactor — work-items-specific cascade triggers.
@@ -180,12 +182,24 @@ export default function ObjectTree({
   refetchRef,
   bulkLeadingButtons,
   actionBarLeading,
+  savedViews,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
   onPatched?: (body: Record<string, unknown>) => void;
   mode?: "work_items" | "portfolio_items";
   wizardConfig?: ObjectTreeDataConfig<WorkItem>;
+  // Saved Views — when supplied, ObjectTree mounts <SavedViewsControl>
+  // beside the ActionBar so the user can pick / save / manage views for
+  // this grid. `kind` discriminates objecttree vs page_layout; `target`
+  // is the opaque per-page identifier (`<kind>:<stable-id>` convention,
+  // e.g. `objecttree:work_items`). Real isDirty/onLoad/onClearView/
+  // canShareToWorkspace wire-up lands in Task 18; this slice keeps them
+  // stubbed so the chrome renders end-to-end.
+  savedViews?: {
+    kind: SavedViewsKind;
+    target: string;
+  };
   // Chrome props. ObjectTree renders its own outer <Panel> + sunken header;
   // pages no longer wrap with <Panel>. `title` + `addressableName` are
   // required for the new chrome; `subtitleBadge` / `subtitle` / `description`
@@ -295,7 +309,7 @@ export default function ObjectTree({
   // Active topology scope. Used by duplicateArtefact to pin the clone
   // when the source artefact had no topology_node_id of its own
   // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
-  const { sentinel_focus_node: activeScopeNodeId, sentinel_user } = useSentinel();
+  const { sentinel_focus_node: activeScopeNodeId, sentinel_user, sentinel_can } = useSentinel();
 
   // Slice 4.5 — column-picker state. Hook MUST be called every render
   // (rules of hooks); we feed it an empty-catalogue sentinel when the
@@ -308,6 +322,50 @@ export default function ObjectTree({
   const picker = useColumnPickerState(columnCatalogue ?? emptyCatalogue);
   const visibleWireKeys = columnCatalogue ? picker.visibleWireKeys : null;
   const visibleKeySet = columnCatalogue ? picker.visibleKeySet : null;
+
+  // Saved Views — Task 18 wires the real state into the control props.
+  // activeLoadedView tracks the most-recently-loaded view so we can
+  // diff its visible_columns body against the picker's live visibleKeys
+  // to compute isDirty (Save Changes button visibility).
+  const [activeLoadedView, setActiveLoadedView] = useState<SavedView | null>(null);
+  const activeViewBody = activeLoadedView?.saved_views_body as
+    | { visible_columns?: string[] }
+    | undefined;
+  const isDirty = (() => {
+    if (!activeViewBody) return false;
+    const want = activeViewBody.visible_columns ?? [];
+    const have = picker.visibleKeys ?? [];
+    if (want.length !== have.length) return true;
+    const wantSet = new Set(want);
+    return have.some((k: string) => !wantSet.has(k));
+  })();
+  const savedViewsControlProps = savedViews && sentinel_user
+    ? {
+        kind: savedViews.kind,
+        target: savedViews.target,
+        isDirty,
+        onLoad: (view: SavedView) => {
+          setActiveLoadedView(view);
+          const body = view.saved_views_body as { visible_columns?: string[] };
+          if (Array.isArray(body.visible_columns)) {
+            picker.setVisibleKeys(body.visible_columns);
+          }
+        },
+        onSerialise: () => ({ visible_columns: picker.visibleKeys }),
+        onClearView: () => {
+          setActiveLoadedView(null);
+          picker.resetToDefaults();
+        },
+        currentUserID: sentinel_user.id ?? "",
+        currentNodeID: activeScopeNodeId,
+        currentWorkspaceID: sentinel_user.workspace_id,
+        canShareToNode: !!activeScopeNodeId,
+        // Proxy: workspace.archive stands in for "can share to workspace
+        // scope" until a dedicated workspace.share_views code exists. See
+        // TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE in docs/c_tech_debt.md.
+        canShareToWorkspace: sentinel_can("workspace.archive"),
+      }
+    : null;
 
   // Action bar — artefact type picker that focuses the "Add new" CTA.
   // Design-only for now (no create wiring); options come from the workspace
@@ -1143,31 +1201,41 @@ export default function ObjectTree({
         });
 
   const actionBarNode = (
-    <ActionBar
-      ariaLabel="Work item actions"
-      leadingActions={actionBarLeading}
-      createAction={createAction}
-      search={{
-        placeholder: config.searchPlaceholder ?? "Search…",
-        value: searchQuery,
-        onChange: setSearchQuery,
-      }}
-      filterChips={
-        <>
-          {config.filterChips}
-          {columnCatalogue && (
-            // Slice 4.5 — column picker sits at the end of the
-            // filter-chip cluster (right side of the action bar).
-            <ColumnPicker
-              catalogue={columnCatalogue}
-              visibleKeys={picker.visibleKeys}
-              onChange={picker.setVisibleKeys}
-              onResetToDefaults={picker.resetToDefaults}
-            />
-          )}
-        </>
-      }
-    />
+    <>
+      {savedViewsControlProps && (
+        // Task 17 — saved-views dropdown sits adjacent to the ActionBar
+        // (sibling, not slot) so the existing ActionBar prop surface
+        // stays unchanged. Task 18 wires real isDirty/onLoad behaviour.
+        <div className="objecttree__SavedViewsSlot">
+          <SavedViewsControl {...savedViewsControlProps} />
+        </div>
+      )}
+      <ActionBar
+        ariaLabel="Work item actions"
+        leadingActions={actionBarLeading}
+        createAction={createAction}
+        search={{
+          placeholder: config.searchPlaceholder ?? "Search…",
+          value: searchQuery,
+          onChange: setSearchQuery,
+        }}
+        filterChips={
+          <>
+            {config.filterChips}
+            {columnCatalogue && (
+              // Slice 4.5 — column picker sits at the end of the
+              // filter-chip cluster (right side of the action bar).
+              <ColumnPicker
+                catalogue={columnCatalogue}
+                visibleKeys={picker.visibleKeys}
+                onChange={picker.setVisibleKeys}
+                onResetToDefaults={picker.resetToDefaults}
+              />
+            )}
+          </>
+        }
+      />
+    </>
   );
 
   // Always mounted so the slide-down/up animation has both states to

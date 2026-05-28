@@ -19,12 +19,18 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { ApiError } from "@/app/lib/api";
 import {
   createWorkspaceField,
+  getFieldTypeBindings,
   getWorkspaceFields,
+  replaceFieldTypeBindings,
   updateWorkspaceField,
   type FieldCreate,
+  type FieldTypeBinding,
   type FieldUpdate,
   type WorkspaceField,
 } from "@/app/lib/fieldsApi";
+import TypeBindingsPicker, {
+  type DraftBinding,
+} from "@/app/components/CustomFields/TypeBindingsPicker";
 
 // The closed set of data_type values the backend's
 // artefacts_fields_library CHECK constraint accepts. Mirrors
@@ -66,6 +72,12 @@ export default function CustomFieldEditorPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Bindings state — loaded in edit mode, empty in new mode. The picker
+  // is a controlled component; parent owns the array so Save can write
+  // bindings atomically with the field.
+  const [bindings, setBindings] = useState<DraftBinding[]>([]);
+  const [bindingsDirty, setBindingsDirty] = useState(false);
+
   // Edit mode: fetch the field by listing all and picking the row.
   // (No GET-by-id endpoint exists; list is the only read path. The
   // server still 404s for cross-tenant ids — defence in depth.)
@@ -91,6 +103,23 @@ export default function CustomFieldEditorPage() {
           ? JSON.stringify(match.options_json, null, 2)
           : "",
       );
+      // Non-fatal: bindings hydrate the picker but their absence isn't
+      // a hard error — the user can pick fresh and Save overwrites.
+      try {
+        const bs = await getFieldTypeBindings(activeWorkspaceId, params.id);
+        setBindings(
+          bs.map((b: FieldTypeBinding) => ({
+            artefact_type_id: b.artefact_type_id,
+            position: b.position,
+            required: b.required,
+            default_value: b.default_value,
+          })),
+        );
+        setBindingsDirty(false);
+      } catch {
+        // Bindings are non-fatal on load. Leave the picker empty; the user
+        // can pick fresh and save will overwrite.
+      }
       setLoading(false);
     } catch (e) {
       setErr(
@@ -152,6 +181,24 @@ export default function CustomFieldEditorPage() {
           options_json: parsed.value,
         };
         const created = await createWorkspaceField(activeWorkspaceId, body);
+
+        // Persist bindings against the new field_id BEFORE navigating
+        // away. If this fails the field row is already created — user
+        // lands on the edit page (next push) and re-saving bindings
+        // is the retry.
+        if (bindings.length > 0) {
+          try {
+            await replaceFieldTypeBindings(activeWorkspaceId, created.id, bindings);
+          } catch (e: unknown) {
+            setErr(
+              "Field created, but bindings failed: " +
+                (e instanceof Error ? e.message : "unknown error") +
+                ". Open the field to retry binding it to artefact types.",
+            );
+            router.push(`/workspace-admin/custom-fields/${created.id}`);
+            return;
+          }
+        }
         router.push(`/workspace-admin/custom-fields/${created.id}`);
       } else {
         if (!current) return;
@@ -166,6 +213,23 @@ export default function CustomFieldEditorPage() {
           options_json: parsed.value,
         };
         await updateWorkspaceField(activeWorkspaceId, current.id, body);
+        // Bindings second — only PUT if user touched the picker.
+        // Stay on page (return early) if bindings fail so the user
+        // can retry without losing the dirty flag.
+        if (bindingsDirty) {
+          try {
+            await replaceFieldTypeBindings(activeWorkspaceId, current.id, bindings);
+            setBindingsDirty(false);
+          } catch (e: unknown) {
+            setErr(
+              "Field saved, but bindings failed: " +
+                (e instanceof Error ? e.message : "unknown error") +
+                ". Re-click Save to retry.",
+            );
+            setBusy(false);
+            return;
+          }
+        }
         await load();
       }
     } catch (e) {
@@ -176,7 +240,7 @@ export default function CustomFieldEditorPage() {
           );
         } else if (e.status === 403) {
           setErr(
-            "Forbidden — you do not have permission to manage fields at this scope.",
+            "Forbidden — you do not have permission to manage fields at this visibility level.",
           );
         } else {
           setErr(`Error ${e.status}: ${String(e.body ?? "")}`);
@@ -217,8 +281,9 @@ export default function CustomFieldEditorPage() {
           payloads); the <code>label</code> is what end users see. Choose
           a <em>data type</em> carefully — once any artefact, sprint or
           release stores a value against this field, the type is locked
-          until the field is archived. The <em>scope</em> decides who
-          can manage the field and where it’s visible.
+          until the field is archived. <em>Visibility</em> decides who
+          can manage the field; <em>Applies to</em> below decides which
+          artefact types it appears on — the two are independent.
         </p>
       </PageDescription>
 
@@ -275,21 +340,21 @@ export default function CustomFieldEditorPage() {
             </label>
 
             <label className="form__label">
-              Scope
+              Visibility
               <select
                 className="form__select"
                 value={scope}
                 onChange={(e) => setScope(e.target.value as "workspace" | "tenant")}
                 disabled={!isNew}
               >
-                <option value="workspace">Workspace</option>
-                <option value="tenant">Tenant</option>
+                <option value="workspace">This workspace only</option>
+                <option value="tenant">All workspaces in this tenant</option>
               </select>
-              {!isNew && (
-                <span className="form__hint">
-                  Scope is immutable once a field is created.
-                </span>
-              )}
+              <span className="form__hint">
+                {isNew
+                  ? "Controls who can manage this field — independent of which artefact types it applies to (set below)."
+                  : "Visibility is immutable once a field is created."}
+              </span>
             </label>
           </div>
 
@@ -320,6 +385,24 @@ export default function CustomFieldEditorPage() {
               </span>
             </label>
           )}
+
+          <div style={{ marginTop: 16 }}>
+            <h4 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Applies to artefact types</h4>
+            <p className="form__hint" style={{ marginBottom: 12 }}>
+              Pick which artefact types this field appears on. Per-type position
+              sets the order of fields on each form; required marks the field
+              mandatory for that type; default value pre-fills when an artefact
+              of that type is created.
+            </p>
+            <TypeBindingsPicker
+              bindings={bindings}
+              onChange={(next) => {
+                setBindings(next);
+                setBindingsDirty(true);
+              }}
+              disabled={busy}
+            />
+          </div>
 
           <div className="form__actions">
             <button
