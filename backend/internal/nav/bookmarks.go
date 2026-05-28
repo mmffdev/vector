@@ -70,14 +70,16 @@ func (b *PageBookmarks) PinPage(ctx context.Context, userID, callerSubscription 
 		return ErrStaticBookmarkCap
 	}
 
-	// Next position.
+	// Next position in the bookmark list (post-141 bookmarks have their
+	// own position sequence, independent of the pinned list).
 	var nextPos int
-	if err = tx.QueryRow(ctx, sqlNextUserNavPrefPosition, userID, callerSubscription, profileID).Scan(&nextPos); err != nil {
+	if err = tx.QueryRow(ctx, sqlNextUserNavBookmarkPosition, userID, callerSubscription, profileID).Scan(&nextPos); err != nil {
 		return err
 	}
 
-	// Insert — idempotent via ON CONFLICT DO NOTHING.
-	if _, err = tx.Exec(ctx, sqlInsertUserNavPrefBookmark, userID, callerSubscription, profileID, pageKey, nextPos); err != nil {
+	// Insert — idempotent via ON CONFLICT DO NOTHING. Bookmark-ness is
+	// table membership now (users_nav_bookmarks), no flag to set.
+	if _, err = tx.Exec(ctx, sqlInsertUserNavBookmark, userID, callerSubscription, profileID, pageKey, nextPos); err != nil {
 		return err
 	}
 
@@ -89,7 +91,11 @@ func (b *PageBookmarks) PinPage(ctx context.Context, userID, callerSubscription 
 	return nil
 }
 
-// UnpinPage removes a static page from the user's bookmarks. Idempotent (no-op if not pinned).
+// UnpinPage removes a static page from the user's bookmarks. Idempotent
+// (no-op if not bookmarked). Post-141: a plain DELETE from
+// users_nav_bookmarks; bookmark rows no longer coexist on the same row
+// as a section pref entry, so we don't need to spare a row that's also
+// pinned in the rail.
 func (b *PageBookmarks) UnpinPage(ctx context.Context, userID, callerSubscription uuid.UUID, pageKey string) error {
 	profileID, err := b.Svc.ResolveProfile(ctx, userID, callerSubscription, nil)
 	if err != nil {
@@ -102,7 +108,7 @@ func (b *PageBookmarks) UnpinPage(ctx context.Context, userID, callerSubscriptio
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if _, err = tx.Exec(ctx, sqlClearPageBookmarkFlag, userID, callerSubscription, profileID, pageKey); err != nil {
+	if _, err = tx.Exec(ctx, sqlDeleteUserNavBookmarkByKey, userID, callerSubscription, profileID, pageKey); err != nil {
 		return err
 	}
 

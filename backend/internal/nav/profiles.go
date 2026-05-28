@@ -131,9 +131,10 @@ func (s *Service) CreateProfile(ctx context.Context, userID, subscriptionID uuid
 	// Without this seed a brand-new profile reads as empty — the editor
 	// shows blank admin buckets and admin pages fall back to the
 	// 'admin_settings' tag bucket. Copy two things:
-	//   1) users_nav_prefs rows (pinned pages, with group_id + parent +
+	//   1) users_nav_pinned rows (pinned pages, with group_id + parent +
 	//      icon_override preserved so admin pages stay inside their
-	//      admin groups).
+	//      admin groups). Bookmarks are NOT cloned — they remain on the
+	//      source profile (per-profile in users_nav_bookmarks).
 	//   2) users_nav_profile_groups placements (the rail/flyout section
 	//      ordering: tag buckets + custom groups).
 	// users_nav_groups itself is per-user (shared across profiles) so
@@ -183,7 +184,7 @@ func (s *Service) RenameProfile(ctx context.Context, userID, subscriptionID, pro
 // custom pages survive (they're user-scoped, not profile-scoped).
 //
 // Side effects handled by FKs:
-//   - users_nav_prefs rows for this profile: ON DELETE CASCADE (035)
+//   - users_nav_pinned + users_nav_bookmarks rows for this profile: ON DELETE CASCADE
 //   - users_nav_profile_groups for this profile: ON DELETE CASCADE (034)
 //   - users.active_nav_profile_id pointing here: ON DELETE SET NULL (035)
 //     The next /api/nav/prefs read falls back to that user's Default.

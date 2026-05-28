@@ -4,7 +4,8 @@
 //
 // The page surfaces in the nav catalogue as kind="user_custom" via the
 // merge in nav handler (CatalogueWithCustom). Pinning lives in
-// users_nav_prefs as item_key="custom:<page.id>".
+// users_nav_pinned as item_key="custom:<page.id>" (bookmarks live
+// in users_nav_bookmarks since the 141 split).
 package custompages
 
 import (
@@ -273,9 +274,9 @@ func (s *Service) Patch(ctx context.Context, userID, subscriptionID, pageID uuid
 }
 
 // Delete removes a page (and cascades its views). Also cascades on the
-// nav side via ON DELETE CASCADE in users_nav_prefs? No — prefs do not
-// FK to custom pages (item_key is a string). So callers should also
-// drop any pinned reference; the frontend does this on delete.
+// nav side via ON DELETE CASCADE in users_nav_pinned / users_nav_bookmarks?
+// No — neither table FKs to custom pages (item_key is a string). So callers
+// should also drop any pinned reference; the frontend does this on delete.
 func (s *Service) Delete(ctx context.Context, userID, subscriptionID, pageID uuid.UUID) error {
 	tag, err := s.Pool.Exec(ctx, `
 		DELETE FROM users_custom_pages

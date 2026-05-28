@@ -85,7 +85,7 @@ type PinnedInput struct {
 
 // CustomGroup is the wire shape for a user-created primary group.
 // Icon is nil = "no override picked"; consumers fall back to a generic
-// group icon. The string vocabulary matches users_nav_prefs.icon_override.
+// group icon. The string vocabulary matches users_nav_pinned.icon_override.
 type CustomGroup struct {
 	ID       string  `json:"id"`
 	Label    string  `json:"label"`
@@ -120,7 +120,7 @@ func (s *Service) GetPrefs(ctx context.Context, userID, subscriptionID uuid.UUID
 //
 // Side effect: opportunistically backfills any system page (created_by IS NULL,
 // subscription_id IS NULL) where pages.default_pinned=TRUE and the user's role
-// is allowed by page_roles, but the user has no row in users_nav_prefs for it.
+// is allowed by page_roles, but the user has no row in users_nav_pinned for it.
 // This eliminates the per-release backfill-migration tax — adding a new system
 // page with default_pinned=TRUE auto-pins it for every existing eligible user
 // on their next nav fetch. One-time per (user, page, profile); subsequent
@@ -448,13 +448,11 @@ func (s *Service) ReplacePrefsForProfile(
 		return err
 	}
 
-	// Wipe pinned-section prefs for THIS profile only — bookmarks
-	// (users_nav_prefs_is_bookmark = TRUE) are spared because the PUT
-	// payload doesn't carry them, so the wipe-and-replace would silently
-	// destroy them. Bookmarks are managed via a separate API surface
-	// (Bookmarks handler with its own POST/DELETE). See SQL constant
-	// docs for the full origin note.
-	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfileExceptBookmarks,
+	// Wipe pinned-section rows for THIS profile only. Post-141 bookmarks
+	// live in their own table (users_nav_bookmarks) so this delete cannot
+	// touch them — the wipe-and-replace is structurally safe. See
+	// sqlDeleteUserNavPinnedForProfile docs for context.
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPinnedForProfile,
 		userID, subscriptionID, profileID); err != nil {
 		return err
 	}
@@ -535,7 +533,7 @@ func (s *Service) DeletePrefs(ctx context.Context, userID, subscriptionID uuid.U
 	if err := tx.QueryRow(ctx, sqlSelectProfileIsDefaultByID, pid).Scan(&isDefault); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
+	if _, err := tx.Exec(ctx, sqlDeleteUserNavPinnedForProfile,
 		userID, subscriptionID, pid); err != nil {
 		return err
 	}
@@ -558,7 +556,7 @@ func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptio
 	if err := s.RequireOwnedProfile(ctx, userID, subscriptionID, profileID); err != nil {
 		return err
 	}
-	_, err := s.Pool.Exec(ctx, sqlDeleteUserNavPrefsForProfile,
+	_, err := s.Pool.Exec(ctx, sqlDeleteUserNavPinnedForProfile,
 		userID, subscriptionID, profileID)
 	return err
 }
@@ -567,7 +565,7 @@ func (s *Service) DeletePrefsForProfile(ctx context.Context, userID, subscriptio
 // page's manual reset button. Deletes every nav-related row owned by the
 // user for the given subscription:
 //
-//   - users_nav_profiles      (CASCADE drops users_nav_prefs +
+//   - users_nav_profiles      (CASCADE drops users_nav_pinned +
 //                              users_nav_profile_groups; SET NULL on
 //                              users.active_nav_profile_id)
 //   - users_nav_groups        (shared custom-group pool — explicit delete

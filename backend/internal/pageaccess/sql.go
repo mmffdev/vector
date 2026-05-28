@@ -20,7 +20,7 @@ const sqlSelectAccessVersion = `
 // Filters to system pages (created_by IS NULL, subscription_id IS
 // NULL) — the access primitive only governs the catalogue, not
 // per-user pinned bookmarks (those have their own visibility model
-// via users_nav_prefs).
+// via users_nav_pinned / users_nav_bookmarks).
 const sqlSelectUserAccessSet = `
 		SELECT p.pages_key_enum
 		  FROM users u

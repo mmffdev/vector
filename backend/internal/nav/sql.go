@@ -13,7 +13,7 @@
 // non-sql.go file in this package contains raw SQL literals.
 //
 // Single DB: every read/write targets the mmff_vector pool (pages,
-// page_tags, users_roles_pages, user_nav_*, page_entity_refs, portfolio,
+// page_tags, users_roles_pages, users_nav_*, page_entity_refs, portfolio,
 // product, users).
 package nav
 
@@ -47,12 +47,12 @@ const sqlPgAdvisoryXactLockForPin = `
 // Filters by p.kind='entity' so the cap is independent of where the
 // bookmark lands in tag groups (products → 'strategic', portfolios →
 // 'bookmarks').
+// Post-141: bookmarks live in users_nav_bookmarks (their own table).
 // $1=userID, $2=subscriptionID, $3=profileID
 const sqlCountUserEntityBookmarks = `
-		SELECT COUNT(*) FROM users_nav_prefs unp
-		JOIN pages p ON p.pages_key_enum = unp.users_nav_prefs_item_key
-		WHERE unp.users_nav_prefs_id_user = $1 AND unp.users_nav_prefs_id_subscription = $2 AND unp.users_nav_prefs_id_profile = $3
-		  AND unp.users_nav_prefs_is_bookmark = TRUE
+		SELECT COUNT(*) FROM users_nav_bookmarks unb
+		JOIN pages p ON p.pages_key_enum = unb.users_nav_bookmarks_item_key
+		WHERE unb.users_nav_bookmarks_id_user = $1 AND unb.users_nav_bookmarks_id_subscription = $2 AND unb.users_nav_bookmarks_id_profile = $3
 		  AND p.pages_kind = 'entity'
 	`
 
@@ -67,12 +67,12 @@ const sqlSelectStaticPageForBookmark = `
 	`
 
 // sqlCountUserStaticBookmarks counts static-kind user bookmarks for the cap check.
+// Post-141: bookmarks live in users_nav_bookmarks (their own table).
 // $1=userID, $2=subscriptionID, $3=profileID
 const sqlCountUserStaticBookmarks = `
-		SELECT COUNT(*) FROM users_nav_prefs unp
-		JOIN pages p ON p.pages_key_enum = unp.users_nav_prefs_item_key
-		WHERE unp.users_nav_prefs_id_user = $1 AND unp.users_nav_prefs_id_subscription = $2 AND unp.users_nav_prefs_id_profile = $3
-		  AND unp.users_nav_prefs_is_bookmark = TRUE
+		SELECT COUNT(*) FROM users_nav_bookmarks unb
+		JOIN pages p ON p.pages_key_enum = unb.users_nav_bookmarks_item_key
+		WHERE unb.users_nav_bookmarks_id_user = $1 AND unb.users_nav_bookmarks_id_subscription = $2 AND unb.users_nav_bookmarks_id_profile = $3
 		  AND p.pages_kind = 'static'
 	`
 
@@ -179,68 +179,37 @@ const sqlBatchRevokeSystemPagesByBucket = `
 	`
 
 
-// sqlNextUserNavPrefPosition returns the next free position for a
-// user's pinned list (max(position) + 1 or 0 when empty).
+// sqlNextUserNavBookmarkPosition returns the next free position for a
+// user's bookmark list (max(position) + 1 or 0 when empty). Post-141
+// bookmarks have their own position sequence — they no longer share
+// the pinned list's positions.
 // $1=userID, $2=subscriptionID, $3=profileID
-const sqlNextUserNavPrefPosition = `
-		SELECT COALESCE(MAX(users_nav_prefs_position) + 1, 0)
-		FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
+const sqlNextUserNavBookmarkPosition = `
+		SELECT COALESCE(MAX(users_nav_bookmarks_position) + 1, 0)
+		FROM users_nav_bookmarks
+		WHERE users_nav_bookmarks_id_user = $1 AND users_nav_bookmarks_id_subscription = $2 AND users_nav_bookmarks_id_profile = $3
 	`
 
-// sqlInsertUserNavPrefBookmark inserts the users_nav_prefs row that
-// makes a bookmark visible in the user's pinned list. ON CONFLICT DO
-// NOTHING — a second pin for the same key is friendlier as a no-op
-// than as an error. is_bookmark=TRUE distinguishes this from section entries.
+// sqlInsertUserNavBookmark inserts a row into users_nav_bookmarks.
+// ON CONFLICT DO NOTHING — a second pin for the same key is friendlier
+// as a no-op than as an error. Bookmark-ness is table membership; the
+// old is_bookmark discriminator column is gone with the 141 split.
 // $1=userID, $2=subscriptionID, $3=profileID, $4=itemKey, $5=position
-const sqlInsertUserNavPrefBookmark = `
-		INSERT INTO users_nav_prefs (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page, users_nav_prefs_is_bookmark)
-		VALUES ($1, $2, $3, $4, $5, FALSE, TRUE)
-		ON CONFLICT (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key) DO UPDATE SET users_nav_prefs_is_bookmark = TRUE
+const sqlInsertUserNavBookmark = `
+		INSERT INTO users_nav_bookmarks (users_nav_bookmarks_id_user, users_nav_bookmarks_id_subscription, users_nav_bookmarks_id_profile, users_nav_bookmarks_item_key, users_nav_bookmarks_position, users_nav_bookmarks_is_start_page)
+		VALUES ($1, $2, $3, $4, $5, FALSE)
+		ON CONFLICT (users_nav_bookmarks_id_user, users_nav_bookmarks_id_subscription, users_nav_bookmarks_id_profile, users_nav_bookmarks_item_key) DO NOTHING
 	`
 
-// sqlSelectUserNavPrefPositionByKey reads the position of a specific
-// bookmark in the user's pinned list. Used by Unpin so it can compact
-// subsequent positions down by 1 in the same tx.
+// sqlDeleteUserNavBookmarkByKey removes one bookmark by item_key. This
+// is the unpin operation post-141: a bookmark is its own row in
+// users_nav_bookmarks, so removing one is a plain DELETE (no
+// is_bookmark flag to flip, no shared-row coexistence with section
+// pref rows).
 // $1=userID, $2=subscriptionID, $3=profileID, $4=itemKey
-const sqlSelectUserNavPrefPositionByKey = `
-		SELECT users_nav_prefs_position FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_item_key = $4
-	`
-
-// sqlDeleteUserNavPrefByKey removes one bookmark from the user's
-// pinned list. Compaction of trailing positions happens via
-// sqlCompactUserNavPrefPositionsAbove.
-// $1=userID, $2=subscriptionID, $3=profileID, $4=itemKey
-const sqlDeleteUserNavPrefByKey = `
-		DELETE FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_item_key = $4
-	`
-
-// sqlClearPageBookmarkFlag clears is_bookmark on a pref row without deleting
-// it — the row may also be the user's section nav entry.
-// $1=userID, $2=subscriptionID, $3=profileID, $4=itemKey
-const sqlClearPageBookmarkFlag = `
-		UPDATE users_nav_prefs SET users_nav_prefs_is_bookmark = FALSE
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_item_key = $4
-	`
-
-// sqlCompactUserNavPrefPositionsAbove shifts every position above the
-// removed slot down by 1 so the user's pinned list stays contiguous
-// 0..N-1. The unique index on (user, tenant, profile, position) is
-// DEFERRABLE so the bulk shift commits without temp positions.
-// $1=userID, $2=subscriptionID, $3=profileID, $4=removedPosition
-const sqlCompactUserNavPrefPositionsAbove = `
-		UPDATE users_nav_prefs SET users_nav_prefs_position = users_nav_prefs_position - 1
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_position > $4
-	`
-
-// sqlCountUserNavPrefByKey is the existence probe behind IsPinned —
-// returns 0 or 1. COUNT(*) over the unique index is cheap.
-// $1=userID, $2=subscriptionID, $3=profileID, $4=itemKey
-const sqlCountUserNavPrefByKey = `
-		SELECT COUNT(*) FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_item_key = $4
+const sqlDeleteUserNavBookmarkByKey = `
+		DELETE FROM users_nav_bookmarks
+		WHERE users_nav_bookmarks_id_user = $1 AND users_nav_bookmarks_id_subscription = $2 AND users_nav_bookmarks_id_profile = $3 AND users_nav_bookmarks_item_key = $4
 	`
 
 // ── registry.go ─────────────────────────────────────────────────────────────
@@ -323,26 +292,26 @@ const sqlInsertUserProfile = `
 		RETURNING users_nav_profiles_id, users_nav_profiles_label, users_nav_profiles_position, users_nav_profiles_is_default, users_nav_profiles_start_page_key
 	`
 
-// sqlSeedNewProfilePrefsFromDefault clones users_nav_prefs rows from the
+// sqlSeedNewProfilePrefsFromDefault clones users_nav_pinned rows from the
 // caller's Default profile into the freshly-created profile so a new
 // profile inherits the user's current pinned/admin-group state instead
 // of reading empty.
 const sqlSeedNewProfilePrefsFromDefault = `
-		INSERT INTO users_nav_prefs
-		    (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position,
-		     users_nav_prefs_is_start_page, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override)
+		INSERT INTO users_nav_pinned
+		    (users_nav_pinned_id_user, users_nav_pinned_id_subscription, users_nav_pinned_id_profile, users_nav_pinned_item_key, users_nav_pinned_position,
+		     users_nav_pinned_is_start_page, users_nav_pinned_parent_item_key, users_nav_pinned_id_group, users_nav_pinned_icon_override)
 		SELECT
-		    src.users_nav_prefs_id_user, src.users_nav_prefs_id_subscription, $3,
-		    src.users_nav_prefs_item_key, src.users_nav_prefs_position,
-		    FALSE, src.users_nav_prefs_parent_item_key, src.users_nav_prefs_id_group, src.users_nav_prefs_icon_override
-		FROM users_nav_prefs src
+		    src.users_nav_pinned_id_user, src.users_nav_pinned_id_subscription, $3,
+		    src.users_nav_pinned_item_key, src.users_nav_pinned_position,
+		    FALSE, src.users_nav_pinned_parent_item_key, src.users_nav_pinned_id_group, src.users_nav_pinned_icon_override
+		FROM users_nav_pinned src
 		JOIN users_nav_profiles dp
-		    ON dp.users_nav_profiles_id_user = src.users_nav_prefs_id_user
-		   AND dp.users_nav_profiles_id_subscription = src.users_nav_prefs_id_subscription
+		    ON dp.users_nav_profiles_id_user = src.users_nav_pinned_id_user
+		   AND dp.users_nav_profiles_id_subscription = src.users_nav_pinned_id_subscription
 		   AND dp.users_nav_profiles_is_default = TRUE
-		WHERE src.users_nav_prefs_id_user = $1
-		  AND src.users_nav_prefs_id_subscription = $2
-		  AND src.users_nav_prefs_id_profile = dp.users_nav_profiles_id
+		WHERE src.users_nav_pinned_id_user = $1
+		  AND src.users_nav_pinned_id_subscription = $2
+		  AND src.users_nav_pinned_id_profile = dp.users_nav_profiles_id
 	`
 
 // sqlSeedNewProfileGroupsFromDefault clones users_nav_profile_groups
@@ -524,7 +493,7 @@ const sqlInsertProfileGroupPlacement = `
 
 // ── service.go ──────────────────────────────────────────────────────────────
 
-// sqlSeedNonDefaultPrefsFromDefaultOnFirstRead clones users_nav_prefs
+// sqlSeedNonDefaultPrefsFromDefaultOnFirstRead clones users_nav_pinned
 // from the user's Default profile when this non-default profile reads
 // empty for the first time. Covers profiles created before
 // CreateProfile started cloning, plus any profile whose prefs were
@@ -537,23 +506,23 @@ const sqlSeedNonDefaultPrefsFromDefaultOnFirstRead = `
 		is_empty AS (
 			SELECT 1 FROM this_profile
 			WHERE NOT EXISTS (
-				SELECT 1 FROM users_nav_prefs
-				WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
+				SELECT 1 FROM users_nav_pinned
+				WHERE users_nav_pinned_id_user = $1 AND users_nav_pinned_id_subscription = $2 AND users_nav_pinned_id_profile = $3
 			)
 		),
 		default_profile AS (
 			SELECT users_nav_profiles_id FROM users_nav_profiles
 			WHERE users_nav_profiles_id_user = $1 AND users_nav_profiles_id_subscription = $2 AND users_nav_profiles_is_default = TRUE
 		)
-		INSERT INTO users_nav_prefs (
-			users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position,
-			users_nav_prefs_is_start_page, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override
+		INSERT INTO users_nav_pinned (
+			users_nav_pinned_id_user, users_nav_pinned_id_subscription, users_nav_pinned_id_profile, users_nav_pinned_item_key, users_nav_pinned_position,
+			users_nav_pinned_is_start_page, users_nav_pinned_parent_item_key, users_nav_pinned_id_group, users_nav_pinned_icon_override
 		)
 		SELECT
-			src.users_nav_prefs_id_user, src.users_nav_prefs_id_subscription, $3, src.users_nav_prefs_item_key, src.users_nav_prefs_position,
-			FALSE, src.users_nav_prefs_parent_item_key, src.users_nav_prefs_id_group, src.users_nav_prefs_icon_override
-		FROM users_nav_prefs src
-		JOIN default_profile dp ON dp.users_nav_profiles_id = src.users_nav_prefs_id_profile
+			src.users_nav_pinned_id_user, src.users_nav_pinned_id_subscription, $3, src.users_nav_pinned_item_key, src.users_nav_pinned_position,
+			FALSE, src.users_nav_pinned_parent_item_key, src.users_nav_pinned_id_group, src.users_nav_pinned_icon_override
+		FROM users_nav_pinned src
+		JOIN default_profile dp ON dp.users_nav_profiles_id = src.users_nav_pinned_id_profile
 		WHERE EXISTS (SELECT 1 FROM is_empty)
 		ON CONFLICT DO NOTHING
 	`
@@ -587,18 +556,18 @@ const sqlSeedNonDefaultGroupPlacementsFromDefaultOnFirstRead = `
 // they show. PLA-0049: $3 is the user's role UUID (not the legacy
 // user_role enum).
 const sqlBackfillDefaultPinnedPages = `
-		INSERT INTO users_nav_prefs (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page)
+		INSERT INTO users_nav_pinned (users_nav_pinned_id_user, users_nav_pinned_id_subscription, users_nav_pinned_id_profile, users_nav_pinned_item_key, users_nav_pinned_position, users_nav_pinned_is_start_page)
 		SELECT
 			$1::uuid,
 			$2::uuid,
 			$4::uuid,
 			p.pages_key_enum,
 			COALESCE(
-				(SELECT MAX(unp.users_nav_prefs_position) + 1
-				 FROM users_nav_prefs unp
-				 WHERE unp.users_nav_prefs_id_user = $1::uuid
-				   AND unp.users_nav_prefs_id_subscription = $2::uuid
-				   AND unp.users_nav_prefs_id_profile = $4::uuid),
+				(SELECT MAX(unp.users_nav_pinned_position) + 1
+				 FROM users_nav_pinned unp
+				 WHERE unp.users_nav_pinned_id_user = $1::uuid
+				   AND unp.users_nav_pinned_id_subscription = $2::uuid
+				   AND unp.users_nav_pinned_id_profile = $4::uuid),
 				0
 			) + (ROW_NUMBER() OVER (ORDER BY p.pages_default_order, p.pages_key_enum) - 1),
 			FALSE
@@ -611,11 +580,11 @@ const sqlBackfillDefaultPinnedPages = `
 		  AND p.pages_pinnable = TRUE
 		  AND pr.users_roles_pages_id_role = $3::uuid
 		  AND NOT EXISTS (
-			  SELECT 1 FROM users_nav_prefs unp
-			  WHERE unp.users_nav_prefs_id_user = $1::uuid
-				AND unp.users_nav_prefs_id_subscription = $2::uuid
-				AND unp.users_nav_prefs_id_profile = $4::uuid
-				AND unp.users_nav_prefs_item_key = p.pages_key_enum
+			  SELECT 1 FROM users_nav_pinned unp
+			  WHERE unp.users_nav_pinned_id_user = $1::uuid
+				AND unp.users_nav_pinned_id_subscription = $2::uuid
+				AND unp.users_nav_pinned_id_profile = $4::uuid
+				AND unp.users_nav_pinned_item_key = p.pages_key_enum
 		  )
 	`
 
@@ -655,13 +624,51 @@ const sqlLazySeedDefaultProfileGroupPlacements = `
 		WHERE NOT EXISTS (SELECT 1 FROM has_placements)
 	`
 
-// sqlListUserNavPrefsForProfile returns the users_nav_prefs rows for one
-// (user, subscription, profile) in display order.
+// sqlListUserNavPrefsForProfile returns the user's pinned + bookmark
+// rows for one (user, subscription, profile), merged into one result
+// set so the wire shape stays one list per profile with an is_bookmark
+// discriminator (preserved post-141 schema split).
+//
+// pinned-section rows come from users_nav_pinned (is_bookmark = false
+// literal). bookmark rows come from users_nav_bookmarks (is_bookmark =
+// true literal). The two tables have independent position sequences;
+// pinned rows sort first (within their own position), bookmarks after
+// (within theirs) — matching the frontend's expectation that the
+// pinned list and the bookmark list are separate groups in the rail
+// even though they ride the same wire shape.
+//
+// is_bookmark is the 4th projected column to match the rows.Scan order
+// in service.go (kept stable across the schema split).
 const sqlListUserNavPrefsForProfile = `
-		SELECT users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page, users_nav_prefs_is_bookmark, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override
-		FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
-		ORDER BY users_nav_prefs_position
+		SELECT item_key, position, is_start_page, is_bookmark, parent_item_key, id_group, icon_override
+		  FROM (
+		    SELECT users_nav_pinned_item_key        AS item_key,
+		           users_nav_pinned_position        AS position,
+		           users_nav_pinned_is_start_page   AS is_start_page,
+		           FALSE                            AS is_bookmark,
+		           users_nav_pinned_parent_item_key AS parent_item_key,
+		           users_nav_pinned_id_group        AS id_group,
+		           users_nav_pinned_icon_override   AS icon_override,
+		           0                                AS sort_bucket
+		      FROM users_nav_pinned
+		     WHERE users_nav_pinned_id_user = $1
+		       AND users_nav_pinned_id_subscription = $2
+		       AND users_nav_pinned_id_profile = $3
+		    UNION ALL
+		    SELECT users_nav_bookmarks_item_key        AS item_key,
+		           users_nav_bookmarks_position        AS position,
+		           users_nav_bookmarks_is_start_page   AS is_start_page,
+		           TRUE                                AS is_bookmark,
+		           users_nav_bookmarks_parent_item_key AS parent_item_key,
+		           users_nav_bookmarks_id_group        AS id_group,
+		           users_nav_bookmarks_icon_override   AS icon_override,
+		           1                                   AS sort_bucket
+		      FROM users_nav_bookmarks
+		     WHERE users_nav_bookmarks_id_user = $1
+		       AND users_nav_bookmarks_id_subscription = $2
+		       AND users_nav_bookmarks_id_profile = $3
+		  ) merged
+		 ORDER BY sort_bucket, position
 	`
 
 // sqlListUserNavGroups returns the user's custom primary groups in
@@ -678,8 +685,8 @@ const sqlListUserNavGroups = `
 // inside one profile. NULL/no-row both map to "no start page set" at
 // the caller.
 const sqlSelectStartPageKeyForProfile = `
-		SELECT users_nav_prefs_item_key FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3 AND users_nav_prefs_is_start_page = TRUE
+		SELECT users_nav_pinned_item_key FROM users_nav_pinned
+		WHERE users_nav_pinned_id_user = $1 AND users_nav_pinned_id_subscription = $2 AND users_nav_pinned_id_profile = $3 AND users_nav_pinned_is_start_page = TRUE
 		LIMIT 1
 	`
 
@@ -691,43 +698,31 @@ const sqlSelectProfileIsDefaultByID = `
 		SELECT users_nav_profiles_is_default FROM users_nav_profiles WHERE users_nav_profiles_id = $1
 	`
 
-// sqlDeleteUserNavPrefsForProfile wipes users_nav_prefs for one profile.
-// Used by the explicit-reset paths: DeletePrefs ("Reset to defaults" —
-// user intent is "nuke everything") and DeletePrefsForProfile ("delete
-// this whole profile" — bookmarks die with it). Both are intentional
-// destructive ops. The PUT-prefs flow (ReplacePrefsForProfile) uses the
-// bookmark-sparing variant below instead.
-const sqlDeleteUserNavPrefsForProfile = `
-		DELETE FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1 AND users_nav_prefs_id_subscription = $2 AND users_nav_prefs_id_profile = $3
-	`
-
-// sqlDeleteUserNavPrefsForProfileExceptBookmarks is the bookmark-sparing
-// variant used by ReplacePrefsForProfile (the PUT /nav/prefs handler's
-// wipe-and-replace step). Bookmarks live in the SAME users_nav_prefs
-// table as the pinned-section rows but are written through a SEPARATE
-// API surface (Bookmarks handler; sqlInsertUserNavPrefBookmark with
-// ON CONFLICT DO UPDATE). The PUT-prefs payload does not carry
-// bookmarks, so wiping them along with the pinned-section rows during
-// a profile save (e.g. user re-orders nav rail, changes home page,
-// adds a new pinned page) silently destroys data the user never
-// intended to touch.
+// sqlDeleteUserNavPinnedForProfile wipes users_nav_pinned for one
+// profile. Used by:
+//   - DeletePrefs            ("Reset to defaults" — user intent is "nuke section nav")
+//   - DeletePrefsForProfile  ("delete this whole profile")
+//   - ReplacePrefsForProfile (the PUT /nav/prefs wipe-and-replace step)
 //
-// Origin: 2026-05-28 user-reported bug — changing the home page on
-// /user/navigation wiped padmin's bookmarks on every save. The
-// underlying schema-shape problem (bookmarks + sections sharing a
-// table) is left as TD-NAV-BOOKMARKS-SHARE-PREFS-TABLE; this is the
-// surgical fix that stops the data loss.
-const sqlDeleteUserNavPrefsForProfileExceptBookmarks = `
-		DELETE FROM users_nav_prefs
-		WHERE users_nav_prefs_id_user = $1
-		  AND users_nav_prefs_id_subscription = $2
-		  AND users_nav_prefs_id_profile = $3
-		  AND users_nav_prefs_is_bookmark = FALSE
+// Post-141: bookmarks live in users_nav_bookmarks and are untouched by
+// this delete. The PUT-prefs payload only carries pinned-section rows
+// and groups, so wiping ONLY pinned is correct. Bookmarks have their
+// own lifecycle via the Bookmarks handler. The "spare bookmarks"
+// surgical filter (sqlDeleteUserNavPrefsForProfileExceptBookmarks) is
+// gone — the split makes it structurally impossible to clobber
+// bookmarks via this code path.
+//
+// For "delete this whole profile" the profile-level CASCADE FKs on
+// both users_nav_pinned and users_nav_bookmarks drop the bookmark
+// rows alongside the pinned rows; this constant only handles the
+// "reset pinned without touching the profile row" case.
+const sqlDeleteUserNavPinnedForProfile = `
+		DELETE FROM users_nav_pinned
+		WHERE users_nav_pinned_id_user = $1 AND users_nav_pinned_id_subscription = $2 AND users_nav_pinned_id_profile = $3
 	`
 
 // sqlResetUserNavProfilesForSubscription wipes ALL profiles for the
-// (user, subscription). CASCADE drops users_nav_prefs +
+// (user, subscription). CASCADE drops users_nav_pinned +
 // users_nav_profile_groups; users.active_nav_profile_id is nulled by
 // ON DELETE SET NULL. Used by Service.ResetAllForUser (the Navigation
 // page's manual reset button) to force a fresh lazy-seed on the next
@@ -755,10 +750,10 @@ const sqlUpsertUserNavGroup = `
 		SET users_nav_groups_label = EXCLUDED.users_nav_groups_label, users_nav_groups_position = EXCLUDED.users_nav_groups_position, users_nav_groups_icon = EXCLUDED.users_nav_groups_icon
 	`
 
-// sqlInsertUserNavPref inserts one users_nav_prefs row. Queued in a
+// sqlInsertUserNavPref inserts one users_nav_pinned row. Queued in a
 // pgx.Batch from ReplacePrefsForProfile so the entire pinned list
 // commits in one round-trip.
 const sqlInsertUserNavPref = `
-		INSERT INTO users_nav_prefs (users_nav_prefs_id_user, users_nav_prefs_id_subscription, users_nav_prefs_id_profile, users_nav_prefs_item_key, users_nav_prefs_position, users_nav_prefs_is_start_page, users_nav_prefs_parent_item_key, users_nav_prefs_id_group, users_nav_prefs_icon_override)
+		INSERT INTO users_nav_pinned (users_nav_pinned_id_user, users_nav_pinned_id_subscription, users_nav_pinned_id_profile, users_nav_pinned_item_key, users_nav_pinned_position, users_nav_pinned_is_start_page, users_nav_pinned_parent_item_key, users_nav_pinned_id_group, users_nav_pinned_icon_override)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`

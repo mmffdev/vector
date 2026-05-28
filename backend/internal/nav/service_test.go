@@ -21,7 +21,8 @@ import (
 //
 // Each test creates its own tenant + user, exercises the service, and
 // leaves rows behind for incidental inspection; ON DELETE CASCADE on
-// users_nav_prefs + users means dropping the test user wipes all prefs.
+// users_nav_pinned + users_nav_bookmarks + users means dropping the test
+// user wipes all prefs + bookmarks.
 // We explicitly delete the test tenant at the end to keep the remote
 // DB tidy.
 
@@ -104,7 +105,7 @@ func mkFixtures(t *testing.T, pool *pgxpool.Pool) (subscriptionID, userID, roleI
 
 	cleanup = func() {
 		// ON DELETE CASCADE on users.subscription_id is RESTRICT, so we delete
-		// user first, then tenant. users_nav_prefs cascades from users.
+		// user first, then tenant. users_nav_pinned + users_nav_bookmarks both cascade from users.
 		if _, err := pool.Exec(ctx, `DELETE FROM users WHERE users_id = $1`, userID); err != nil {
 			t.Logf("cleanup user: %v", err)
 		}
@@ -721,10 +722,12 @@ func TestLoadRegistry_EnvFiltersDevToolsOutOfStaging(t *testing.T) {
 	}
 }
 
-// TestPageBookmarks_PinUnpin verifies the full lifecycle:
-//   - PinPage inserts a pref row with is_bookmark=true
-//   - GetPrefs returns that row with IsBookmark=true
-//   - UnpinPage removes it (idempotent second call is a no-op)
+// TestPageBookmarks_PinUnpin verifies the full lifecycle post-141 split:
+//   - PinPage inserts a row into users_nav_bookmarks
+//   - GetPrefs returns the row with IsBookmark=true (projected from
+//     table membership in the UNION read)
+//   - UnpinPage deletes the row from users_nav_bookmarks (idempotent
+//     second call is a no-op)
 //   - PinPage on a non-pinnable key returns ErrPageNotFound
 func TestPageBookmarks_PinUnpin(t *testing.T) {
 	pool := testPool(t)
@@ -747,25 +750,25 @@ func TestPageBookmarks_PinUnpin(t *testing.T) {
 		}
 	})
 
-	t.Run("prefs row has is_bookmark=true", func(t *testing.T) {
+	t.Run("bookmark row exists in users_nav_bookmarks", func(t *testing.T) {
 		profileID, err := svc.ResolveProfile(ctx, userID, subscriptionID, nil)
 		if err != nil {
 			t.Fatalf("ResolveProfile: %v", err)
 		}
-		var isBookmark bool
+		var count int
 		err = pool.QueryRow(ctx,
-			`SELECT users_nav_prefs_is_bookmark FROM users_nav_prefs
-			 WHERE users_nav_prefs_id_user=$1
-			   AND users_nav_prefs_id_subscription=$2
-			   AND users_nav_prefs_id_profile=$3
-			   AND users_nav_prefs_item_key='dashboard'`,
+			`SELECT COUNT(*) FROM users_nav_bookmarks
+			 WHERE users_nav_bookmarks_id_user=$1
+			   AND users_nav_bookmarks_id_subscription=$2
+			   AND users_nav_bookmarks_id_profile=$3
+			   AND users_nav_bookmarks_item_key='dashboard'`,
 			userID, subscriptionID, profileID,
-		).Scan(&isBookmark)
+		).Scan(&count)
 		if err != nil {
-			t.Fatalf("query pref row: %v", err)
+			t.Fatalf("query bookmark row: %v", err)
 		}
-		if !isBookmark {
-			t.Fatal("want is_bookmark=true, got false")
+		if count != 1 {
+			t.Fatalf("want 1 bookmark row, got %d", count)
 		}
 	})
 
@@ -797,6 +800,28 @@ func TestPageBookmarks_PinUnpin(t *testing.T) {
 		}
 	})
 
+	t.Run("unpin removes the row from users_nav_bookmarks", func(t *testing.T) {
+		profileID, err := svc.ResolveProfile(ctx, userID, subscriptionID, nil)
+		if err != nil {
+			t.Fatalf("ResolveProfile: %v", err)
+		}
+		var count int
+		err = pool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM users_nav_bookmarks
+			 WHERE users_nav_bookmarks_id_user=$1
+			   AND users_nav_bookmarks_id_subscription=$2
+			   AND users_nav_bookmarks_id_profile=$3
+			   AND users_nav_bookmarks_item_key='dashboard'`,
+			userID, subscriptionID, profileID,
+		).Scan(&count)
+		if err != nil {
+			t.Fatalf("query bookmark row: %v", err)
+		}
+		if count != 0 {
+			t.Fatalf("want 0 bookmark rows after unpin, got %d", count)
+		}
+	})
+
 	t.Run("unpin is idempotent", func(t *testing.T) {
 		if err := pb.UnpinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
 			t.Fatalf("second UnpinPage: %v", err)
@@ -811,11 +836,14 @@ func TestPageBookmarks_PinUnpin(t *testing.T) {
 	})
 }
 
-// TestPageBookmarks_PinExistingSectionPref covers the case where the page is
-// already in the user's section nav prefs (is_bookmark=FALSE). PinPage must
-// flip the flag to TRUE rather than silently doing nothing (ON CONFLICT DO UPDATE).
-// UnpinPage must flip it back to FALSE without deleting the row.
-func TestPageBookmarks_PinExistingSectionPref(t *testing.T) {
+// TestPageBookmarks_PinCoexistsWithSectionPref pins a page that is
+// ALREADY in the user's pinned-section list. Post-141 split the two
+// domains live in separate tables, so the bookmark insert must not
+// touch the pinned-section row (and vice versa: unpinning the bookmark
+// must not delete the pinned-section row). This pins the new contract
+// after replacing the old "ON CONFLICT DO UPDATE SET is_bookmark = TRUE"
+// shared-row semantics.
+func TestPageBookmarks_PinCoexistsWithSectionPref(t *testing.T) {
 	pool := testPool(t)
 	defer pool.Close()
 	subscriptionID, userID, roleID, cleanup := mkFixtures(t, pool)
@@ -829,7 +857,7 @@ func TestPageBookmarks_PinExistingSectionPref(t *testing.T) {
 	svc := New(pool, reg)
 	pb := NewPageBookmarks(pool, reg, svc)
 
-	// Put "dashboard" into section prefs first (is_bookmark=FALSE).
+	// Put "dashboard" into the pinned-section list first.
 	if err := svc.ReplacePrefs(ctx, userID, subscriptionID, roletypes.RoleUser, roleID, []PinnedInput{
 		{ItemKey: "dashboard", Position: 0},
 	}, nil, nil, nil); err != nil {
@@ -841,38 +869,50 @@ func TestPageBookmarks_PinExistingSectionPref(t *testing.T) {
 		t.Fatalf("ResolveProfile: %v", err)
 	}
 
-	checkBookmark := func(want bool) {
+	countIn := func(table string) int {
 		t.Helper()
-		var isBookmark bool
-		var rowExists bool
+		var c int
 		err := pool.QueryRow(ctx,
-			`SELECT users_nav_prefs_is_bookmark FROM users_nav_prefs
-			 WHERE users_nav_prefs_id_user=$1 AND users_nav_prefs_id_subscription=$2
-			   AND users_nav_prefs_id_profile=$3 AND users_nav_prefs_item_key='dashboard'`,
+			`SELECT COUNT(*) FROM `+table+`
+			 WHERE `+table+`_id_user=$1 AND `+table+`_id_subscription=$2
+			   AND `+table+`_id_profile=$3 AND `+table+`_item_key='dashboard'`,
 			userID, subscriptionID, profileID,
-		).Scan(&isBookmark)
-		rowExists = err == nil
-		if !rowExists {
-			t.Fatalf("pref row missing — want is_bookmark=%v", want)
+		).Scan(&c)
+		if err != nil {
+			t.Fatalf("count %s: %v", table, err)
 		}
-		if isBookmark != want {
-			t.Fatalf("want is_bookmark=%v, got %v", want, isBookmark)
-		}
+		return c
 	}
 
-	checkBookmark(false) // section pref, not yet bookmarked
+	// Baseline: pinned has dashboard, bookmarks does not.
+	if got := countIn("users_nav_pinned"); got != 1 {
+		t.Fatalf("baseline pinned row count = %d, want 1", got)
+	}
+	if got := countIn("users_nav_bookmarks"); got != 0 {
+		t.Fatalf("baseline bookmark row count = %d, want 0", got)
+	}
 
-	t.Run("pin flips existing row to is_bookmark=true", func(t *testing.T) {
+	t.Run("pin adds bookmark row without touching pinned row", func(t *testing.T) {
 		if err := pb.PinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
 			t.Fatalf("PinPage: %v", err)
 		}
-		checkBookmark(true)
+		if got := countIn("users_nav_pinned"); got != 1 {
+			t.Fatalf("pinned row count after pin = %d, want 1 (untouched)", got)
+		}
+		if got := countIn("users_nav_bookmarks"); got != 1 {
+			t.Fatalf("bookmark row count after pin = %d, want 1", got)
+		}
 	})
 
-	t.Run("unpin clears flag without deleting row", func(t *testing.T) {
+	t.Run("unpin removes bookmark row, leaves pinned row intact", func(t *testing.T) {
 		if err := pb.UnpinPage(ctx, userID, subscriptionID, "dashboard"); err != nil {
 			t.Fatalf("UnpinPage: %v", err)
 		}
-		checkBookmark(false) // row still exists, just no longer bookmarked
+		if got := countIn("users_nav_pinned"); got != 1 {
+			t.Fatalf("pinned row count after unpin = %d, want 1 (untouched)", got)
+		}
+		if got := countIn("users_nav_bookmarks"); got != 0 {
+			t.Fatalf("bookmark row count after unpin = %d, want 0", got)
+		}
 	})
 }
