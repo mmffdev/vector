@@ -227,3 +227,106 @@ const sqlArchiveFieldLibrary = `
 		 WHERE artefacts_fields_library_id = $1
 		   AND artefacts_fields_library_archived_at IS NULL
 	`
+
+// ── Type bindings (artefacts_types_fields) ─────────────────────────────────
+//
+// Reads + writes for the binding between a catalogue field and an artefact
+// type. Tenant clamp is on the SUBSCRIPTION_ID of the type AND of the field —
+// the service layer parameterises both so cross-tenant probes return zero
+// rows (and the service translates to ErrUnknownArtefactType → 404).
+//
+// Called by: ListBindingsForField, ReplaceBindingsForField, UpdateBinding.
+
+// sqlListBindingsForField — every binding for one field, joined with the
+// type label + scope for one-shot rendering. Skips archived types.
+const sqlListBindingsForField = `
+  SELECT tf.artefacts_types_fields_id_artefact_type,
+         at.artefacts_types_name,
+         at.artefacts_types_scope,
+         tf.artefacts_types_fields_position,
+         tf.artefacts_types_fields_required,
+         tf.artefacts_types_fields_default_value
+    FROM artefacts_types_fields tf
+    JOIN artefacts_types at
+      ON at.artefacts_types_id = tf.artefacts_types_fields_id_artefact_type
+    JOIN artefacts_fields_library fl
+      ON fl.artefacts_fields_library_id = tf.artefacts_types_fields_id_field_library
+   WHERE tf.artefacts_types_fields_id_field_library = $1
+     AND fl.artefacts_fields_library_id_subscription IS NOT DISTINCT FROM $2
+     AND at.artefacts_types_archived_at IS NULL
+   ORDER BY at.artefacts_types_scope, at.artefacts_types_name
+`
+
+// sqlValidateArtefactTypesInTenant — given a field's subscription and a set of
+// type IDs, returns ONLY the type IDs that exist, are not archived, and share
+// the same subscription. Caller diffs against the requested set to compute
+// unknown IDs (→ 404).
+const sqlValidateArtefactTypesInTenant = `
+  SELECT artefacts_types_id
+    FROM artefacts_types
+   WHERE artefacts_types_id = ANY($1::uuid[])
+     AND artefacts_types_id_subscription = $2
+     AND artefacts_types_archived_at IS NULL
+`
+
+// sqlUpsertBinding — single-row upsert by (type, field). Used inside the
+// ReplaceBindingsForField transaction loop.
+const sqlUpsertBinding = `
+  INSERT INTO artefacts_types_fields (
+    artefacts_types_fields_id_artefact_type,
+    artefacts_types_fields_id_field_library,
+    artefacts_types_fields_position,
+    artefacts_types_fields_required,
+    artefacts_types_fields_default_value
+  ) VALUES ($1, $2, $3, $4, $5)
+  ON CONFLICT (artefacts_types_fields_id_artefact_type,
+               artefacts_types_fields_id_field_library)
+  DO UPDATE SET
+    artefacts_types_fields_position      = EXCLUDED.artefacts_types_fields_position,
+    artefacts_types_fields_required      = EXCLUDED.artefacts_types_fields_required,
+    artefacts_types_fields_default_value = EXCLUDED.artefacts_types_fields_default_value,
+    artefacts_types_fields_updated_at    = now()
+`
+
+// sqlDeleteBindingsNotIn — removes any binding for this field whose type is
+// NOT in the kept-set. Runs once at the end of the ReplaceBindingsForField
+// transaction to enforce set semantics.
+const sqlDeleteBindingsNotIn = `
+  DELETE FROM artefacts_types_fields
+   WHERE artefacts_types_fields_id_field_library = $1
+     AND artefacts_types_fields_id_artefact_type <> ALL($2::uuid[])
+`
+
+// sqlPatchBinding — single-binding update used by UpdateBinding. Pointer
+// args (NULL = don't change) map to COALESCE; default_value uses the
+// "empty string means NULL" convention — service translates blank to NULL.
+const sqlPatchBinding = `
+  UPDATE artefacts_types_fields
+     SET artefacts_types_fields_position      = COALESCE($3, artefacts_types_fields_position),
+         artefacts_types_fields_required      = COALESCE($4, artefacts_types_fields_required),
+         artefacts_types_fields_default_value = COALESCE($5, artefacts_types_fields_default_value),
+         artefacts_types_fields_updated_at    = now()
+   WHERE artefacts_types_fields_id_field_library = $1
+     AND artefacts_types_fields_id_artefact_type = $2
+   RETURNING artefacts_types_fields_id_artefact_type,
+            artefacts_types_fields_position,
+            artefacts_types_fields_required,
+            artefacts_types_fields_default_value
+`
+
+// sqlFetchOneBinding — read one binding by (field, type), joined with the
+// type label + scope. Used after Upsert/Patch when the caller wants the
+// enriched return shape.
+const sqlFetchOneBinding = `
+  SELECT tf.artefacts_types_fields_id_artefact_type,
+         at.artefacts_types_name,
+         at.artefacts_types_scope,
+         tf.artefacts_types_fields_position,
+         tf.artefacts_types_fields_required,
+         tf.artefacts_types_fields_default_value
+    FROM artefacts_types_fields tf
+    JOIN artefacts_types at
+      ON at.artefacts_types_id = tf.artefacts_types_fields_id_artefact_type
+   WHERE tf.artefacts_types_fields_id_field_library = $1
+     AND tf.artefacts_types_fields_id_artefact_type = $2
+`
