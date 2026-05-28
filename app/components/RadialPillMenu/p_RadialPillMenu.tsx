@@ -32,6 +32,20 @@ import "./r_RadialPillMenu.css";
 export interface RadialPillMenuItem {
   id: string;
   label: string;
+  /**
+   * Optional. When true, the pill renders unclickable (HTML disabled +
+   * aria-disabled) so onPick fires only for valid choices. Used by
+   * value-sprint's Sprint Status picker to grey-out illegal state-machine
+   * transitions (e.g. you cannot go backward from completed → active).
+   */
+  disabled?: boolean;
+  /**
+   * Optional. When true, the pill renders with the
+   * radial-pill-menu__Pill--current modifier so the user can see at a
+   * glance which option is the current value. Click still fires onPick;
+   * the caller decides what (if anything) a re-pick means.
+   */
+  current?: boolean;
 }
 
 export interface RadialPillMenuProps {
@@ -135,14 +149,20 @@ export default function RadialPillMenu({
             key={item.id}
             ref={i === 0 ? firstPillRef : undefined}
             type="button"
-            className="btn btn--primary radial-pill-menu__Pill"
+            className={
+              "btn btn--primary radial-pill-menu__Pill" +
+              (item.current ? " radial-pill-menu__Pill--current" : "")
+            }
             style={{
               // Absolute positioning against the viewport; translate(-50%, -50%)
               // centres the pill on the computed coordinate.
               left: `${x}px`,
               top: `${y}px`,
             }}
+            disabled={item.disabled}
+            aria-disabled={item.disabled || undefined}
             onClick={() => {
+              if (item.disabled) return;
               onPick(item.id);
               onClose();
             }}

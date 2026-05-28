@@ -114,11 +114,86 @@ const sqlCountWorkItemsTemplate = `
 		  AND at.artefacts_types_scope = $2%s
 	`
 
-// sqlListWorkItemsTemplate is the paged data query. %s slots: extra
-// WHERE; ORDER BY; LIMIT/OFFSET bind indexes.
+// sqlWorkItemColumnsListTemplate is the LIST-path column projection. It
+// is identical to sqlWorkItemColumns EXCEPT that the children_count
+// scalar subquery carries a %s slot for an additional AND-clause. The
+// List handler uses this slot to align children_count with the
+// item_type_id filter so a parent whose only children are of types
+// excluded from the row-level filter reports 0 — the frontend expander
+// gates on children_count, so a 0 hides the expander (matches the
+// hidden children).
+//
+// Get / ListChildren keep using the static sqlWorkItemColumns — those
+// paths don't carry a row-level type filter, so "all children" remains
+// the correct count.
+const sqlWorkItemColumnsListTemplate = `
+	a.artefacts_id::text,
+	a.artefacts_id_subscription::text,
+	a.artefacts_number              AS key_num,
+	lower(at.artefacts_types_name)  AS item_type,
+	at.artefacts_types_prefix       AS type_prefix,
+	a.artefacts_id_artefact_type::text AS artefact_type_id,
+	a.artefacts_title               AS title,
+	a.artefacts_description         AS description,
+	''                              AS status,
+	COALESCE(fs.flows_states_id::text, '')        AS flow_state_id,
+	COALESCE(fs.flows_states_name, '')            AS flow_state_name,
+	CASE fs.flows_states_kind
+		WHEN 'backlog'     THEN 'backlog'
+		WHEN 'todo'        THEN 'todo'
+		WHEN 'in_progress' THEN 'doing'
+		WHEN 'done'        THEN 'completed'
+		WHEN 'accepted'    THEN 'accepted'
+		WHEN 'cancelled'   THEN 'cancelled'
+		ELSE                    'backlog'
+	END                             AS flow_state_code,
+	a.artefacts_id_priority::text              AS priority_id,
+	pri.artefact_priorities_name               AS priority_name,
+	pri.artefact_priorities_slot               AS priority_slot,
+	pri.artefact_priorities_sort_order         AS priority_sort_order,
+	a.artefacts_story_points        AS story_points,
+	a.artefacts_id_timebox_sprint::text,
+	a.artefacts_id_timebox_sprint::text AS sprint_ref_id,
+	a.artefacts_timebox_sprint_label    AS sprint_ref_alias,
+	a.artefacts_id_parent::text     AS parent_id,
+	ap.artefacts_id::text           AS parent_ref_id,
+	apt.artefacts_types_prefix      AS parent_ref_type_prefix,
+	ap.artefacts_number             AS parent_ref_key_num,
+	ap.artefacts_title              AS parent_ref_title,
+	NULL::text                      AS root_feature_id,
+	COALESCE(a.artefacts_id_user_owned_by::text, '') AS owner_id,
+	NULL::text                      AS owner_ref_id,
+	NULL::text                      AS owner_display_name,
+	NULL::text                      AS owner_avatar_url,
+	a.artefacts_due_date::text      AS due_date,
+	COALESCE(a.artefacts_id_user_created_by::text, '') AS created_by,
+	a.artefacts_created_at          AS created_at,
+	a.artefacts_updated_at          AS updated_at,
+	a.artefacts_archived_at         AS archived_at,
+	(SELECT count(*) FROM artefacts child
+	 WHERE child.artefacts_id_parent = a.artefacts_id
+	   AND child.artefacts_archived_at IS NULL%s)        AS children_count,
+	COALESCE(rp.rollup_points, a.artefacts_story_points) AS rollup_points,
+	a.artefacts_id_topology_node::text      AS topology_node_id,
+	a.artefacts_colour                      AS colour,
+	a.artefacts_is_blocked                  AS is_blocked,
+	a.artefacts_blocked_reason              AS blocked_reason,
+	a.artefacts_id_timebox_release::text    AS release_id,
+	a.artefacts_id_timebox_milestone::text  AS milestone_id,
+	a.artefacts_description_doc             AS description_doc`
+
+// sqlListWorkItemsTemplate is the paged data query. %s slots (in order):
+//   - childExtra: extra AND-clause for the children_count subquery so
+//     it can mirror the row-level item_type_id allow-list. Empty when
+//     no item_type filter is in play. Wrapped by the caller in the form
+//     `\n  AND <expr>`.
+//   - extraWhere: row-level WHERE additions (sentinel clamp, scope clamp,
+//     item_type, flow_state, priority, sprint, owner, workspace).
+//   - orderBy: column + direction string.
+//   - %d %d: bind indexes for LIMIT and OFFSET.
 const sqlListWorkItemsTemplate = `
 		WITH ` + rollupCTE + `
-		SELECT` + sqlWorkItemColumns + `
+		SELECT` + sqlWorkItemColumnsListTemplate + `
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
@@ -215,8 +290,14 @@ const sqlSelectWorkItemByIDInWorkspace = `
 		  AND at.artefacts_types_id_workspace = $4
 	`
 
-// sqlListChildWorkItems lists direct children of a parent.
-const sqlListChildWorkItems = `
+// sqlListChildWorkItemsTemplate lists direct children of a parent.
+// %s slot: extraWhere clauses (item_type_id allow-list, sprint_id filter)
+// so the chevron-expand view honours the same clamps the parent LIST
+// honoured. Without this, expanding a parent on /value-sprint shows
+// children regardless of type (Tasks leak in) or sprint (Defects without
+// a sprint_id appear alongside in-sprint Defects). Caller supplies the
+// extra clauses wrapped in the canonical `\n  AND <expr>` form.
+const sqlListChildWorkItemsTemplate = `
 		WITH ` + rollupCTE + `
 		SELECT` + sqlWorkItemColumns + `
 		FROM artefacts a
@@ -229,7 +310,7 @@ const sqlListChildWorkItems = `
 		WHERE a.artefacts_id_subscription = $1
 		  AND a.artefacts_id_parent = $2
 		  AND a.artefacts_archived_at IS NULL
-		  AND at.artefacts_types_scope = $3
+		  AND at.artefacts_types_scope = $3%s
 		ORDER BY a.artefacts_position ASC, a.artefacts_number ASC
 	`
 

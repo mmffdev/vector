@@ -29,3 +29,19 @@
      above, pills inherit a stacking context here without an explicit
      z-index because they're later siblings in the same parent. */
 }
+
+.radial-pill-menu__Pill:disabled {
+  /* Greyed-out look for illegal choices (e.g. status transitions the
+     backend won't accept). aria-disabled is set in tandem on the
+     component so AT users hear the unavailable state. */
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(40%);
+}
+
+.radial-pill-menu__Pill--current {
+  /* Outline-style ring to mark the user's current value (e.g. the sprint
+     status that is already set). Clickable, but a no-op caller-side. */
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: 2px;
+}

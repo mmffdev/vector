@@ -323,7 +323,16 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		f.Priority = ids
 	}
 	if v := q.Get("sprint_id"); v != "" {
-		f.SprintID = &v
+		// __none__ is the wire sentinel for "items with NO sprint
+		// assigned" — used by the /value-sprint backlog tree so that
+		// items move out of the backlog the moment they're added to
+		// any sprint. Convention matches Vector's existing __ sentinels
+		// and never collides with a UUID (UUIDs contain no underscores).
+		if v == "__none__" {
+			f.SprintIDIsNull = true
+		} else {
+			f.SprintID = &v
+		}
 	}
 	if v := q.Get("owner_id"); v != "" {
 		ids, perr := parseUUIDList(v)
@@ -464,7 +473,32 @@ func (h *Handler) Facets(w http.ResponseWriter, r *http.Request) {
 		actorRoleID = actor.RoleID
 	}
 
-	facets, err := h.svc.ListFacets(r.Context(), subID, workspaceID, scopeNodeID, actorUserID, actorRoleID)
+	// Row-level filter parity with the List endpoint — same parsers as
+	// (*Handler).List so a page that clamps ?item_type_id=<a,b> + the
+	// __none__ sprint sentinel sees the same intersection on both the
+	// grid and the chip wheel. parseUUIDList rejects the whole list on
+	// any malformed entry; the __none__ sentinel follows the same
+	// convention as List() above (single underscore is reserved by the
+	// project as the "absence" marker).
+	var ff FacetFilters
+	if v := q.Get("item_type_id"); v != "" {
+		ids, perr := parseUUIDList(v)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid item_type_id"}`))
+			return
+		}
+		ff.ItemType = ids
+	}
+	if v := q.Get("sprint_id"); v != "" {
+		if v == "__none__" {
+			ff.SprintIDIsNull = true
+		} else {
+			ff.SprintID = &v
+		}
+	}
+
+	facets, err := h.svc.ListFacets(r.Context(), subID, workspaceID, scopeNodeID, actorUserID, actorRoleID, ff)
 	if err != nil {
 		if errors.Is(err, ErrScopeForbidden) {
 			w.WriteHeader(http.StatusForbidden)
@@ -540,6 +574,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListChildren handles GET /api/v2/work-items/{id}/children.
+//
+// Accepts the same row-level filter query params the LIST endpoint
+// accepts: ?item_type_id=<a,b,c> + ?sprint_id=<uuid>|__none__. The
+// frontend forwards the page's resourceUrl query string when it
+// expands a row (see useObjectTreeWindow.fetchChildren), so the
+// chevron-expand view honours the same clamps the parent grid does.
 func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	subID := auth.UserFromCtx(r.Context()).SubscriptionID
@@ -549,7 +589,28 @@ func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
-	items, err := h.svc.ListChildren(r.Context(), subID, id)
+
+	// Parse row-level filters — same parsers + sentinels as List().
+	var cf ChildFilters
+	q := r.URL.Query()
+	if v := q.Get("item_type_id"); v != "" {
+		ids, perr := parseUUIDList(v)
+		if perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid item_type_id"}`))
+			return
+		}
+		cf.ItemType = ids
+	}
+	if v := q.Get("sprint_id"); v != "" {
+		if v == "__none__" {
+			cf.SprintIDIsNull = true
+		} else {
+			cf.SprintID = &v
+		}
+	}
+
+	items, err := h.svc.ListChildren(r.Context(), subID, id, cf)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(`{"error":"internal"}`))

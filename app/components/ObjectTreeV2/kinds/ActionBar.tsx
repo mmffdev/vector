@@ -86,6 +86,12 @@ export interface ActionBarProps {
   /** aria-label for the toolbar (e.g. "Work item actions", "Sprint actions"). */
   ariaLabel: string;
   /**
+   * Optional host-supplied nodes rendered BEFORE the create-action chip
+   * (left edge of the bar). Used by value-sprint to surface a
+   * "Switch sprint" button styled as a chip alongside Create New.
+   */
+  leadingActions?: React.ReactNode;
+  /**
    * Caller-supplied create-action config(s). When omitted, no create
    * chip renders — used by read-only grids. Pass an array to render
    * multiple chips side-by-side (e.g. sprints render `single` + `bulk`
@@ -106,6 +112,7 @@ export interface ActionBarProps {
 
 export function ActionBar({
   ariaLabel,
+  leadingActions,
   createAction,
   search,
   filterChips,
@@ -116,6 +123,7 @@ export function ActionBar({
       role="toolbar"
       aria-label={ariaLabel}
     >
+      {leadingActions}
       {createAction && (
         Array.isArray(createAction)
           ? createAction.map((a, i) => <CreateActionChip key={i} action={a} />)

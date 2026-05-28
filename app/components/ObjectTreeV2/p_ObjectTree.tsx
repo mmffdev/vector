@@ -179,6 +179,7 @@ export default function ObjectTree({
   dropColumnKeys,
   refetchRef,
   bulkLeadingButtons,
+  actionBarLeading,
 }: {
   selectedId: string | null;
   onSelect: (item: WorkItem) => void;
@@ -244,6 +245,11 @@ export default function ObjectTree({
   // onSelectionChange) and returns its own bulk-action callbacks; this
   // surface stays domain-agnostic.
   bulkLeadingButtons?: BulkActionBarProps["leadingButtons"];
+  // value-sprint — host-supplied node rendered on the ActionBar BEFORE
+  // the Create New chip. Lets pages surface tree-scoped affordances
+  // (e.g. "Switch sprint") inline with the create chip rather than in a
+  // separate panel-header row, while reusing the chip's visual language.
+  actionBarLeading?: React.ReactNode;
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -1139,6 +1145,7 @@ export default function ObjectTree({
   const actionBarNode = (
     <ActionBar
       ariaLabel="Work item actions"
+      leadingActions={actionBarLeading}
       createAction={createAction}
       search={{
         placeholder: config.searchPlaceholder ?? "Search…",

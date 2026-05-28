@@ -414,9 +414,22 @@ export function useObjectTreeWindow<T>(
 
   const fetchChildren = useCallback(
     async (parentId: string) => {
-      const res = await apiSite<{ items: T[] }>(
-        `${resourceUrl}/${parentId}/children`,
-      );
+      // resourceUrl may already carry query params (e.g.
+      // `/work-items?item_type_id=<uuid>&sprint_id=<uuid>` when the
+      // value-sprint backlog or panel tree narrows the list). Naive
+      // concatenation produced
+      //   `/work-items?item_type_id=<uuid>&sprint_id=<uuid>/<parentId>/children`
+      // — the `/{parentId}/children` segments landed INSIDE the query
+      // string and the backend either 404'd or returned no rows. Same
+      // workaround as useObjectTreeFacets: split path from query before
+      // appending the children segment, then re-attach the query string
+      // so the backend ListChildren handler sees the same item_type_id /
+      // sprint_id clamps the LIST endpoint sees.
+      const qIdx = resourceUrl.indexOf("?");
+      const childrenUrl = qIdx === -1
+        ? `${resourceUrl}/${parentId}/children`
+        : `${resourceUrl.slice(0, qIdx)}/${parentId}/children${resourceUrl.slice(qIdx)}`;
+      const res = await apiSite<{ items: T[] }>(childrenUrl);
       return res.items;
     },
     [resourceUrl],

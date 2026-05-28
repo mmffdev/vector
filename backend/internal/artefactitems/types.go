@@ -206,7 +206,15 @@ type Filters struct {
 	Status   []uuid.UUID
 	Priority []uuid.UUID
 	SprintID *string
-	OwnerID  []uuid.UUID
+	// SprintIDIsNull, when true, clamps the read to artefacts whose
+	// artefacts_id_timebox_sprint IS NULL — i.e. items not yet assigned to
+	// any sprint. Used by the /value-sprint backlog tree so the backlog
+	// and sprint-panel views are mutually exclusive (an item is either in
+	// the backlog or in a sprint, never both). Wire-side this is set by
+	// the sentinel value `sprint_id=__none__`; ignored when SprintID is
+	// also set (a UUID filter wins; mutually-exclusive at the handler).
+	SprintIDIsNull bool
+	OwnerID        []uuid.UUID
 	// ScopeNodeID, when set, clamps the read to artefacts whose
 	// topology_node_id is `ScopeNodeID` or any live descendant of it
 	// (PLA-0043). NULL topology_node_id rows are excluded when scope is

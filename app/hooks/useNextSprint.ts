@@ -53,6 +53,14 @@ export interface UseNextSprintResult {
    * one API call instead of two.
    */
   upcoming: SprintWireRow[];
+  /**
+   * The full sprint list (all statuses, including completed), sorted
+   * ascending by start_date — chronological order. Used by Prev/Next
+   * sprint navigation so the user can step back into completed sprints
+   * to reflect on past work and move unfinished items forward. Derived
+   * from the same fetch as `sprint` + `upcoming` — no extra call.
+   */
+  chronological: SprintWireRow[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -77,6 +85,7 @@ export function useNextSprint(
 ): UseNextSprintResult {
   const [sprint, setSprint] = useState<SprintWireRow | null>(null);
   const [upcoming, setUpcoming] = useState<SprintWireRow[]>([]);
+  const [chronological, setChronological] = useState<SprintWireRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +93,7 @@ export function useNextSprint(
     if (!workspaceId) {
       setSprint(null);
       setUpcoming([]);
+      setChronological([]);
       setError(null);
       return;
     }
@@ -146,11 +156,26 @@ export function useNextSprint(
         )
         .slice(0, upcomingLimit);
       setUpcoming(upcomingList);
+
+      // Chronological list — every sprint regardless of status, sorted
+      // ascending by start_date. Sprints with no start_date sort last
+      // (rare; the create form requires one but the column is nullable).
+      // No slice — prev/next nav steps through the whole history, and the
+      // wire is already loaded.
+      const chrono = [...items].sort((a, b) => {
+        const ad = a.timeboxes_sprints_date_start ?? "";
+        const bd = b.timeboxes_sprints_date_start ?? "";
+        if (ad && !bd) return -1;
+        if (!ad && bd) return 1;
+        return ad.localeCompare(bd);
+      });
+      setChronological(chrono);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to load sprints";
       setError(msg);
       setSprint(null);
       setUpcoming([]);
+      setChronological([]);
     } finally {
       setLoading(false);
     }
@@ -160,5 +185,5 @@ export function useNextSprint(
     void load();
   }, [load]);
 
-  return { sprint, upcoming, loading, error, refetch: load };
+  return { sprint, upcoming, chronological, loading, error, refetch: load };
 }

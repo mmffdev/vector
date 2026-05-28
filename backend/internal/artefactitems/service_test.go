@@ -429,7 +429,7 @@ func TestNilPool_ReturnsEmpty(t *testing.T) {
 		t.Errorf("nil pool Get: want ErrNotFound, got %v / %v", wi, err)
 	}
 
-	children, err := svc.ListChildren(ctx, sub, uuid.New())
+	children, err := svc.ListChildren(ctx, sub, uuid.New(), artefactitems.ChildFilters{})
 	if err != nil || len(children) != 0 {
 		t.Errorf("nil pool ListChildren: got %d err %v, want 0/nil", len(children), err)
 	}
@@ -1008,7 +1008,7 @@ func TestListChildren_ReturnsOnlyDirectChildren(t *testing.T) {
 	})
 
 	parentID := uuid.MustParse(parent.ID)
-	children, err := svc.ListChildren(ctx, sub, parentID)
+	children, err := svc.ListChildren(ctx, sub, parentID, artefactitems.ChildFilters{})
 	if err != nil {
 		t.Fatalf("ListChildren: %v", err)
 	}

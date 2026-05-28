@@ -294,7 +294,14 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	// no-op; otherwise emit ANY($N::uuid[]) so the JOIN predicate matches
 	// any artefact_type whose UUID is in the chip's selection. Rename-
 	// invariant: matching by ID instead of lower(name).
+	//
+	// itemTypeBindIdx captures the $N used for the parent's ItemType clause
+	// so the children_count scalar subquery can reuse the same bind (filter
+	// children by the same allow-list). 0 means "no item_type filter in
+	// play" — children_count stays unfiltered.
+	itemTypeBindIdx := 0
 	if len(filters.ItemType) > 0 {
+		itemTypeBindIdx = n
 		extra = append(extra, fmt.Sprintf("at.artefacts_types_id = ANY($%d::uuid[])", n))
 		args = append(args, filters.ItemType)
 		n++
@@ -311,7 +318,12 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 		args = append(args, filters.Priority)
 		n++
 	}
-	if filters.SprintID != nil {
+	if filters.SprintIDIsNull {
+		// __none__ sentinel — items with no sprint assigned. Used by
+		// the /value-sprint backlog tree (mutual exclusion with the
+		// sprint-panel tree). No bind needed; constant predicate.
+		extra = append(extra, "a.artefacts_id_timebox_sprint IS NULL")
+	} else if filters.SprintID != nil {
 		extra = append(extra, fmt.Sprintf("a.artefacts_id_timebox_sprint = $%d::uuid", n))
 		args = append(args, *filters.SprintID)
 		n++
@@ -351,7 +363,18 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	offsetN := n + 1
 	dataArgs := append(args, lim, filters.Offset)
 
-	dataQ := fmt.Sprintf(sqlListWorkItemsTemplate, extraWhere, orderBy, limitN, offsetN)
+	// Children-count slot — when an item_type_id allow-list is in play,
+	// mirror it inside the children_count scalar subquery so a parent
+	// whose only children are of excluded types reports 0. The frontend
+	// expander gates on children_count, so 0 hides the expander and the
+	// row no longer pretends to have hidden descendants. Reuses the
+	// parent ItemType bind (itemTypeBindIdx) — no new arg appended.
+	childExtra := ""
+	if itemTypeBindIdx > 0 {
+		childExtra = fmt.Sprintf("\n	   AND child.artefacts_id_artefact_type = ANY($%d::uuid[])", itemTypeBindIdx)
+	}
+
+	dataQ := fmt.Sprintf(sqlListWorkItemsTemplate, childExtra, extraWhere, orderBy, limitN, offsetN)
 
 	rows, err := s.vectorArtefactsPool.Query(ctx, dataQ, dataArgs...)
 	if err != nil {
@@ -379,6 +402,23 @@ type FacetSet struct {
 	PriorityIDs     []uuid.UUID `json:"priority_ids"`
 }
 
+// FacetFilters carries the same row-level clamps the List endpoint
+// honours, so the facet chip wheel agrees with the grid below it. When
+// the page passes ?item_type_id=<a>,<b> and ?sprint_id=__none__ to the
+// LIST, the chip wheel rendering the Type filter MUST be filtered
+// through the same clauses — otherwise the wheel shows Epic+Task even
+// when the row-level clamp hides Tasks. Origin: 2026-05-28 /value-sprint
+// page where the wheel disagreed with the rows.
+//
+// Empty / nil fields are no-ops. SprintID and SprintIDIsNull mirror the
+// row-level Filters convention: the __none__ sentinel sets IsNull=true
+// and SprintID stays nil; a UUID sets SprintID and IsNull stays false.
+type FacetFilters struct {
+	ItemType       []uuid.UUID
+	SprintID       *string
+	SprintIDIsNull bool
+}
+
 // ListFacets returns the distinct artefact_type_id and priority_id values
 // of live (non-archived) artefacts in the caller's scope. Mirrors the
 // ListWorkItems scope-clamp pipeline so the chip surface always agrees
@@ -399,6 +439,7 @@ type FacetSet struct {
 func (s *Service) ListFacets(
 	ctx context.Context,
 	subscriptionID, workspaceID, scopeNodeID, actorUserID, actorRoleID uuid.UUID,
+	filters FacetFilters,
 ) (FacetSet, error) {
 	if s.vectorArtefactsPool == nil {
 		return FacetSet{}, nil
@@ -467,6 +508,25 @@ func (s *Service) ListFacets(
 			args = append(args, ids)
 			n++
 		}
+	}
+
+	// Row-level filter parity with ListWorkItems. The chip surface must
+	// reflect what the grid below actually shows: when the page clamps
+	// to item_type_id=<a,b,c> + sprint_id=__none__, the Type wheel can
+	// only show types reachable INSIDE that clamp. Without this, the
+	// wheel disagrees with the rows (e.g. the /value-sprint backlog
+	// renders Story-only rows yet the wheel listed Epic + Task too).
+	if len(filters.ItemType) > 0 {
+		extra = append(extra, fmt.Sprintf("at.artefacts_types_id = ANY($%d::uuid[])", n))
+		args = append(args, filters.ItemType)
+		n++
+	}
+	if filters.SprintIDIsNull {
+		extra = append(extra, "a.artefacts_id_timebox_sprint IS NULL")
+	} else if filters.SprintID != nil {
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_timebox_sprint = $%d::uuid", n))
+		args = append(args, *filters.SprintID)
+		n++
 	}
 
 	extraWhere := ""
@@ -579,14 +639,62 @@ func (s *Service) getWorkItemImpl(ctx context.Context, subscriptionID, id uuid.U
 	return wi, nil
 }
 
-// ListChildren returns direct children of parentID scoped to the subscription.
-func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, parentID uuid.UUID) ([]WorkItem, error) {
+// ChildFilters carries the same row-level filters /work-items LIST
+// accepts (item_type_id allow-list, sprint_id incl. __none__ sentinel)
+// so the chevron-expand view honours the same clamps as the parent
+// LIST. Without this, expanding a row leaks children of types or
+// sprints the user has clamped out at the page level — e.g. Tasks
+// appear under a Story on /value-sprint even though the page-level
+// item_type_id clamp hides them. Origin: 2026-05-28 value-sprint
+// "expand-shows-nothing" bug (which was the malformed URL); fix here
+// makes the backend respect the clamps so a corrected URL gets a
+// correct row set.
+//
+// Empty/nil fields are no-ops. SprintIDIsNull mirrors the row-level
+// Filters convention: the __none__ sentinel sets IsNull=true and
+// SprintID stays nil; a UUID sets SprintID and IsNull stays false.
+type ChildFilters struct {
+	ItemType       []uuid.UUID
+	SprintID       *string
+	SprintIDIsNull bool
+}
+
+// ListChildren returns direct children of parentID scoped to the
+// subscription, optionally filtered by item_type_id allow-list and/or
+// sprint_id (with the __none__ sentinel meaning "no sprint assigned").
+// When filters are empty, returns every direct child — same shape as
+// the pre-2026-05-28 zero-arg version.
+func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, parentID uuid.UUID, filters ChildFilters) ([]WorkItem, error) {
 	if s.vectorArtefactsPool == nil {
 		return []WorkItem{}, nil
 	}
-	rows, err := s.vectorArtefactsPool.Query(ctx, sqlListChildWorkItems,
-		subscriptionID, parentID, s.scope,
-	)
+
+	// $1 = subscriptionID, $2 = parentID, $3 = scope. Extras start at $4.
+	args := []any{subscriptionID, parentID, s.scope}
+	n := 4
+	var extra []string
+
+	if len(filters.ItemType) > 0 {
+		extra = append(extra, fmt.Sprintf("at.artefacts_types_id = ANY($%d::uuid[])", n))
+		args = append(args, filters.ItemType)
+		n++
+	}
+	if filters.SprintIDIsNull {
+		extra = append(extra, "a.artefacts_id_timebox_sprint IS NULL")
+	} else if filters.SprintID != nil {
+		extra = append(extra, fmt.Sprintf("a.artefacts_id_timebox_sprint = $%d::uuid", n))
+		args = append(args, *filters.SprintID)
+		n++
+	}
+
+	extraWhere := ""
+	if len(extra) > 0 {
+		extraWhere = "\n  AND " + strings.Join(extra, "\n  AND ")
+	}
+
+	q := fmt.Sprintf(sqlListChildWorkItemsTemplate, extraWhere)
+
+	rows, err := s.vectorArtefactsPool.Query(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
