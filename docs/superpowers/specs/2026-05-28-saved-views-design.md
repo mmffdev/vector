@@ -146,8 +146,27 @@ CREATE TABLE saved_views (
     saved_views_id_node         UUID,
     saved_views_id_workspace    UUID,
 
-    -- What this view applies to. Resource URL for kind='objecttree',
-    -- route path for kind='page_layout'.
+    -- What this view applies to. OPAQUE INTERNAL IDENTIFIER following the
+    -- convention `<kind>:<stable-id>`. Examples:
+    --   objecttree:work_items
+    --   objecttree:portfolio_items
+    --   objecttree:timeboxes_sprints
+    --   objecttree:risks
+    --   chart:burndown                      (future)
+    --   custom_page:<page_uuid>             (future)
+    --   objecttree:custom:<page_uuid>:<instance_uuid>   (future grid inside a custom page)
+    --
+    -- The ID portion (after the colon) is the STABLE identifier of the resource
+    -- the view applies to — NEVER the user-visible name. This is what gives us
+    -- rename propagation for free: when a custom page is renamed, its `page_uuid`
+    -- doesn't change, so every saved-view row pointing at it still resolves;
+    -- the new name is resolved at render time via a JOIN against the underlying
+    -- resource table (custom_pages, topology_nodes, etc.), never stored here.
+    --
+    -- ANTI-PATTERN: do NOT add a denormalised `target_label` column. The "save a
+    -- JOIN" instinct is the trap — it makes renames non-propagating, requires a
+    -- backfill on every rename, and re-introduces the data-drift class of bug
+    -- the opaque-ID convention exists to prevent.
     saved_views_target          TEXT NOT NULL,
 
     -- Human-readable
@@ -363,22 +382,84 @@ No seed data — every row is user-generated.
 
 ---
 
-## 11. Frontend — first consumer integration
+## 11. Frontend — reusable component family
 
-This spec defines the substrate. The first consumer (`<ObjectTree>` saved-views dropdown + manage modal) is its own spec, written next, after this one is approved. Pinning the deliverable so the dependency is clear:
+This spec defines the substrate. The first consumer (`<ObjectTree>` saved-views dropdown + manage modal) is its own integration spec, written next, after this one is approved. What this section pins is the **reusable contract** — the substrate's frontend surface must be designed so that **any** future consumer (charts, custom-pages, dashboards) plugs in by mounting the component with the right props, never by extending the component itself.
 
-The ObjectTreeV2 page header gets:
+### Layer separation
 
-- **Saved Views dropdown** next to the page title (mirroring Rally screenshot 5)
-  - Search input
-  - List of visible views (user-owned + node-shared-to-me + workspace-shared)
-  - Active-view indicator
-  - Footer actions: **Clear View**, **Save As New View**, **Manage Saved Views**
-- **Save Changes** button — visible when current state diverges from the loaded view
-- **Create Saved View modal** — name input + sharing-scope dropdown (Not Shared / Shared With Team / Shared With Workspace), with team/workspace options gated per §4
-- **Manage Saved Views modal** — table list, multi-select delete, inline rename, sharing-state change, search, pagination
+**Layer 1 — `useSavedViews` headless hook**
 
-`<ColumnPicker>` (already shipped on `0b656858`) becomes one of multiple controls whose state contributes to the active view. When the user changes any of: column visibility / column order / filters / sort / page size / group by, a "modified" badge appears on the Saved Views dropdown; Save Changes commits.
+`app/components/SavedViews/useSavedViews.ts` — pure state machine + apiSite calls. Takes `(kind, target)`, returns the contract every consumer needs:
+
+```ts
+const {
+  views,           // View[] — visible-to-me list for this (kind, target)
+  activeView,      // View | null — loaded view, or null = transient state
+  isDirty,         // boolean — current consumer state diverges from active view body
+  loading, error,  // standard async state
+  actions: {
+    loadView,      // (id) → activate that view; consumer reads view.body and applies
+    clearView,     // unload active view; consumer returns to transient state
+    saveChanges,   // patch active view body with consumer's current state
+    saveAsNew,     // (name, scope) → create new row; becomes active
+    deleteView,    // (id) → archive
+    renameView,    // (id, name)
+    updateScope,   // (id, scope, scope_id) → promote/demote
+  },
+} = useSavedViews({ kind, target });
+```
+
+The hook is **schema-agnostic about body**. It loads bytes; the consumer interprets. The consumer is responsible for diffing its current state against `activeView.body` to compute `isDirty`, and for serialising its current state to JSON when `saveChanges` or `saveAsNew` is called. The hook treats body as opaque.
+
+**Layer 2 — `<SavedViewsControl>` component family**
+
+`app/components/SavedViews/` ships:
+
+- `<SavedViewsDropdown>` — the header dropdown (matches Rally screenshot 5: search + list + Clear / Save As New / Manage)
+- `<SaveAsNewViewModal>` — name + sharing scope picker (matches Rally screenshot 3/4)
+- `<ManageSavedViewsModal>` — table, multi-select delete, inline rename, sharing change, search, pagination (matches Rally screenshot 1/2)
+- `<SaveChangesIndicator>` — modified-state badge + button visible when `isDirty`
+
+Each component takes its data from the hook (or accepts it via props for testability). The component family contains all the UI; the hook contains all the logic.
+
+### The component contract — context-free
+
+`<SavedViewsControl>` (the umbrella mount, internally composing dropdown + modals + indicator) takes ONLY these props:
+
+```tsx
+<SavedViewsControl
+  kind={kind}           // string — what kind of view this consumer saves
+  target={target}       // string — opaque internal ID (see §6 convention)
+  isDirty={isDirty}     // boolean — computed by the consumer
+  onLoad={(view) => …}  // consumer applies the loaded body
+  onSerialise={() => …} // consumer returns current state as JSON for save
+/>
+```
+
+The component **reads no globals related to identity**. No `useRouter`. No `window.location`. No route constants. No implicit page context. Everything that identifies *which views to load and save* arrives as props, period. This is the load-bearing rule that makes future consumers (custom-pages, dashboards) plug in without refactoring the component.
+
+### Per-consumer adoption — 1-line wire-up
+
+For each of today's six fixed OTV2 pages, adoption is one constant + one prop:
+
+```tsx
+// app/(user)/work-items/page.tsx
+const SAVED_VIEW_TARGET = "objecttree:work_items";
+
+<ObjectTree
+  ...existingProps
+  savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET }}
+/>
+```
+
+`<ObjectTree>` internally mounts `<SavedViewsControl>` in its header, wires the dropdown to its own state (columns, filters, sort, etc.), and the loop closes.
+
+When custom pages land later, the layout engine generates `target` dynamically per component instance and passes it the same way — same component, same code path, zero refactor.
+
+### What `<ColumnPicker>` becomes
+
+The `<ColumnPicker>` shipped on `0b656858` becomes one of several controls whose state contributes to the active view. When the user changes column visibility / order / filters / sort / page size / group by, the consumer (the `<ObjectTree>` page) recomputes `isDirty` and the Save Changes button appears. Picker localStorage prefs still work for the transient state — they're orthogonal to saved views.
 
 ---
 
@@ -392,6 +473,12 @@ Captured here so they're not lost, not built.
 4. **Live-shared views (grant model)** — discussed as Option C, rejected as premature permission surface. Revisit if customer feedback demands it.
 5. **`kind='page_layout'` actual implementation** — the table is shaped to accept it, but no page-layout consumer ships in the substrate PR. Lands as its own spec when a page needs it.
 6. **Custom-field columns in views** — orthogonal feature. `TD-OBJECTTREE-PICKER-CUSTOM-FIELDS` already files the path. When that lands, custom-field keys (`field:<uuid>`) just appear in the `visible_columns` array of an `objecttree` view body — no schema change here.
+7. **Custom Pages — multi-component user-authored compositions.** When Custom Pages land, they're a new consumer category where users compose multiple components (grids, charts, panels) onto a single page. The saved-views substrate supports this *additively*, no schema change required:
+   - Each component instance inside a custom page mounts its own `<SavedViewsControl>` with `target='objecttree:custom:<page_uuid>:<instance_uuid>'` (or analogous `chart:`, `panel:` prefix per component type).
+   - The custom page itself gets `kind='custom_page'` (new value, added via additive `ALTER TABLE saved_views ADD CONSTRAINT … CHECK (kind IN (…))`) with `target='custom_page:<page_uuid>'`. Its body describes which apps are registered on the page and their arrangement.
+   - Page renames propagate automatically because `<page_uuid>` is stable — the user-visible name lives in the `custom_pages` table and is resolved at render time. **ANTI-PATTERN: do NOT denormalise the page name onto `saved_views`.** Same rule as §6.
+   - Per-component views inside a custom page work with the same `<SavedViewsControl>` mount — the layout engine generates the `target` value at runtime and passes it as a prop. The component takes no other context. Same code path as today's fixed-page mounts.
+   - Result: when Custom Pages ship, zero refactor of the substrate, zero refactor of the component family. Wire-up only.
 
 ---
 
@@ -405,6 +492,8 @@ Captured here so they're not lost, not built.
 | Cache invalidation misses on UpdateScope cross-namespace (promoting from user to workspace must wipe both keys) | Medium (when cache lands) | Medium (stale list for ~60s) | Service-layer invalidation explicit per scope; integration test verifies both old and new namespaces wipe. |
 | Workspace admin deletes a view that's load-bearing for a team — no warning | Low | Low (view is recreatable) | Rally accepts this risk; Vector mirrors. Per §4 only admins can delete workspace views; the audit log captures who deleted what. |
 | Scale beyond 100M rows arrives before partitioning lands | Low (years away at current adoption) | Medium (slower reads) | `ViewStore` interface + documented partitioning playbook in `doc.go` of the package + this spec. Pre-decision = fast execution when trigger fires. |
+| Denormalisation of a mutable resource name onto `saved_views` row — e.g. someone adds a `target_label` column "to save a JOIN" | Medium (real instinct under perf pressure) | Medium (rename propagation breaks; views show stale names after the underlying resource is renamed) | The `target` column comment in §6 names this as an explicit ANTI-PATTERN. All names (workspace, topology node, custom page, user) are resolved at render time via JOIN against the source-of-truth table, never stored on `saved_views`. The opaque-ID convention is what makes this safe. Same rule that the project already follows for `id_user → users.name`, `id_node → topology_nodes.name`, etc. — bringing future Custom Pages under the same discipline. |
+| Component contract drift — a future maintainer adds `useRouter()` or `window.location` into `<SavedViewsControl>` "for convenience" | Medium (the temptation is real under deadline) | High (custom pages and any dynamic-target consumer breaks — the whole future-proofing promise unwinds) | §11 names the rule as load-bearing. Acceptance criterion (§14) verifies it by code-review check: zero references to `useRouter`, `window.location`, route constants, or any source of identity other than props inside `app/components/SavedViews/**`. Wire as a lint check (`lint:savedviews-context-free`) once the file exists. |
 
 ---
 
