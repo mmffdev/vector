@@ -1,15 +1,17 @@
 "use client";
 
-// <TimeboxInlineForm> — inline edit form for a single sprint or release
+// <TimeboxInlineForm> — inline edit form for a single sprint, release, or milestone
 // row. Mounted by ObjectTreeV2's <ObjectTreeDetailFlyout> when the user
 // clicks a row in the timeboxes grid. Slice 6.2 of the ObjectTree
 // refactor.
 //
-// Single component handles both kinds because the field surface is
-// identical apart from wire-key prefix and apiBase. The kind comes in
-// as a prop alongside the row id; the form derives its column prefix
-// and endpoints from a tiny kind-specific config map kept inline so
-// the component stays in one file.
+// sprint + release share a body because their field surface is identical
+// apart from wire-key prefix and apiBase. milestone has a different
+// surface (point-in-time vs date-range; no cadence/velocity) so it
+// gets its own MilestoneBody — dispatched via early-return after hooks.
+// The kind comes in as a prop alongside the row id; the form derives
+// its column prefix and endpoints from a tiny kind-specific config map
+// kept inline so the component stays in one file.
 //
 // Lifecycle contract matches ArtefactInlineForm: rowId nullable, render
 // nothing when null, internal state collapses when rowId clears so the
@@ -128,7 +130,9 @@ function StatusPill({ status }: { status: string }) {
     ? "pill pill--success"
     : status === "completed"
       ? "pill pill--neutral"
-      : "pill pill--info";
+      : status === "missed"
+        ? "pill pill--danger"
+        : "pill pill--info";
   return <span className={cls}>{status || "—"}</span>;
 }
 
@@ -169,7 +173,7 @@ function diffMilestoneEditable(
     patch.timeboxes_milestones_description = current.description || null;
   }
   if (current.date_target !== initial.date_target) {
-    patch.timeboxes_milestones_date_target = current.date_target || null;
+    patch.timeboxes_milestones_date_target = current.date_target;
   }
   if (current.status !== initial.status) {
     patch.timeboxes_milestones_status = current.status;
@@ -234,12 +238,12 @@ function MilestoneBody({
     }
     setSaving(true);
     try {
-      const updated = await apiSite<TimeboxRow>(
+      await apiSite<TimeboxRow>(
         `${cfg.apiBase}/${rowId}?${qs()}`,
         { method: "PATCH", body: JSON.stringify(patch) },
       );
       notify.success("Milestone saved");
-      onSaved?.(updated);
+      onSaved?.(patch);
       onClose();
     } catch (e) {
       notify.apiError(e as ApiError, "Failed to save milestone");
@@ -291,7 +295,7 @@ function MilestoneBody({
               className="form__input"
               type="text"
               value={edit.name}
-              onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+              onChange={(e) => setEdit((prev) => prev ? { ...prev, name: e.target.value } : prev)}
               disabled={saving}
               required
             />
@@ -304,7 +308,7 @@ function MilestoneBody({
             <textarea
               className="form__input"
               value={edit.description}
-              onChange={(e) => setEdit({ ...edit, description: e.target.value })}
+              onChange={(e) => setEdit((prev) => prev ? { ...prev, description: e.target.value } : prev)}
               disabled={saving}
               rows={3}
             />
@@ -318,7 +322,7 @@ function MilestoneBody({
               className="form__input"
               type="date"
               value={edit.date_target}
-              onChange={(e) => setEdit({ ...edit, date_target: e.target.value })}
+              onChange={(e) => setEdit((prev) => prev ? { ...prev, date_target: e.target.value } : prev)}
               disabled={saving}
               required
             />
@@ -328,7 +332,7 @@ function MilestoneBody({
             <select
               className="form__input"
               value={edit.status}
-              onChange={(e) => setEdit({ ...edit, status: e.target.value })}
+              onChange={(e) => setEdit((prev) => prev ? { ...prev, status: e.target.value } : prev)}
               disabled={saving}
             >
               <option value="planned">Planned</option>
