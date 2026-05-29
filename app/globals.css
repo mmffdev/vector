@@ -1274,11 +1274,14 @@ input[type="reset"] {
    white text, black border. Hover state: inverts to white surface with
    the same black border and black text. This is the global default;
    variants below opt out for ghost/secondary/danger usage. */
-/* Button primitive — aligned to the OTV2 actionbar chip look
-   (.tree_accordion-dense__filterbar-chip). Theme-driven surface,
-   hairline border, 32px height, 6px radius. No raw black/white —
-   defaults compose from --surface / --ink / --border so the button
-   re-themes with the active pack.
+/* Button primitive — the single source of truth for buttons across the app.
+   Theme-driven surface, hairline border, 32px height, 6px radius. No raw
+   black/white — defaults compose from --surface / --ink / --border so the
+   button re-themes with the active pack. Folded in (2026-05-29):
+     .action-btn / --primary / --danger      → .btn / .btn--primary
+     .tree_accordion-dense__filterbar-chip   → .btn (with .btn__icon,
+       .btn__overlaid-select, .btn__clear children; --active modifier or
+       aria-pressed for the pressed state).
 
    Variants:
      --primary    → accent fill (the call-to-action / "Save")
@@ -1410,6 +1413,71 @@ input[type="reset"] {
 .btn--icon.btn--xs { width: 28px; height: 28px; }
 .btn--icon.btn--tiny { width: 24px; height: 24px; }
 .btn--icon.btn--micro { width: 20px; height: 20px; }
+
+/* Pressed / toggled state — preferred form is aria-pressed="true" on a
+   <button> so the change is semantic and screen-reader visible. The
+   .btn--active modifier is the fallback for cases where the .btn host
+   must be a non-button element (e.g. a <span> wrapping an overlaid
+   native <select>, where the real interactive target is the <select>
+   underneath). Visual: surface-sunken fill, default border, ink colour. */
+.btn[aria-pressed="true"],
+.btn--active {
+  background: var(--surface-sunken);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+/* Leading icon inside a .btn. Defaults to ink-subtle so the icon reads
+   as a glyph not a focal point. Pressed-state lifts to full --ink so
+   the active button feels heavier. */
+.btn__icon {
+  display: inline-flex;
+  color: var(--ink-subtle);
+}
+.btn[aria-pressed="true"] .btn__icon,
+.btn--active .btn__icon {
+  color: var(--ink);
+}
+
+/* Overlaid native <select> — the button looks custom, the browser still
+   handles the dropdown UX, keyboard nav, and a11y. Pin to the .btn
+   bounds, invisible, intercepts every click. */
+.btn__overlaid-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+}
+
+/* Inline clear-X inside a .btn (e.g. dismissing the current selection of
+   a chip-style dropdown). Round, sits above the overlaid <select> so
+   the X is the click target, not the dropdown. */
+.btn__clear {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+  cursor: pointer;
+}
+.btn__clear:hover {
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+}
 
 .pin-button {
   display: inline-flex;
@@ -9924,56 +9992,9 @@ input[type="reset"] {
   gap: 2px;
 }
 
-.btn.work-items-tree__toolbar-btn {
-  border: none;
-  background: transparent;
-  color: var(--ink-muted);
-}
-
-.btn.work-items-tree__toolbar-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ink) 8%, transparent);
-  color: var(--ink);
-}
-
-/* Sortable header cell */
-.work-items-tree__th {
-  position: relative;
-  padding-right: 12px;
-}
-
-.work-items-tree__sort-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: var(--ink-subtle);
-  cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
-}
-
-.work-items-tree__sort-btn:hover {
-  color: var(--ink);
-}
-
-.work-items-tree__sort-btn--active {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.work-items-tree__sort-icon {
-  font-size: 10px;
-  opacity: 0.5;
-  flex-shrink: 0;
-}
-
-.work-items-tree__sort-btn--active .work-items-tree__sort-icon {
-  opacity: 1;
-  color: var(--accent);
-}
+/* (removed 2026-05-29) .work-items-tree__toolbar-btn / __sort-btn
+   / __sort-icon / __th — legacy v1 work-items-tree, zero TSX callers
+   (the surface moved to OTV2). Re-add if a v1 tree is ever revived. */
 
 /* Column resize handle */
 .work-items-tree__resize-handle {
@@ -10099,10 +10120,10 @@ input[type="reset"] {
 /* Row-button chips run 6px shorter than the ActionBar "Create New" chip
    (26px vs 32px) so the grid row doesn't expand vertically just to hold
    the action affordances. Font drops one step (12px) so the trimmed
-   chip still has comfortable text padding without re-clipping labels
+   button still has comfortable text padding without re-clipping labels
    like "Target Sprint". Scoped to .row-buttons__Button so the same
-   chip class up in the ActionBar keeps its native dimensions. */
-.row-buttons__Button.tree_accordion-dense__filterbar-chip {
+   .btn primitive up in the ActionBar keeps its native dimensions. */
+.row-buttons__Button.btn {
   height: 26px;
   font-size: 12px;
 }
@@ -10243,6 +10264,9 @@ input[type="reset"] {
   padding-left: 0;
   padding-right: 0;
   padding-bottom: 0;
+  /* Clip the pagination footer band to the panel's rounded corners so
+     the white panel bg never paints square corners behind it. */
+  overflow: hidden;
 }
 .panel:has(.tree_accordion-dense__table) > .panel__header,
 .panel:has(.tree_accordion-dense__table) .ui-table > .toolbar,
@@ -13454,8 +13478,7 @@ input[type="reset"] {
 /* Action bar — sits below the panel head, above the filter bar. Same row
    style as the panel head (height, gap, bottom border) but no top border —
    the panel head's bottom border serves as the top edge. Buttons inside use
-   .tree_accordion-dense__filterbar-chip so the visual language matches the
-   filter chips one row down. */
+   the .btn primitive (every chip in OTV2 now folds through .btn). */
 .tree_accordion-dense__actionbar {
   display: flex;
   align-items: center;
@@ -13463,19 +13486,16 @@ input[type="reset"] {
   padding: 10px 12px 9px;
   border-bottom: 0;
 }
-/* All buttons in the action bar share the shell-main bg as their fill,
-   so the row reads as one cohesive group rather than mixing accent and
-   transparent treatments. Applies to Create New (chip--active), the
-   inline Cancel, and any future buttons that land here. */
-.tree_accordion-dense__actionbar .btn,
-.tree_accordion-dense__actionbar .tree_accordion-dense__filterbar-chip {
+/* All buttons in the action bar share the shell-sunken bg as their fill,
+   so the row reads as one cohesive group. Applies to Create New, any
+   filter chip, and any future button that lands here. */
+.tree_accordion-dense__actionbar .btn {
   background: var(--surface-sunken);
   border-color: var(--border);
   color: var(--ink);
   border-radius: 6px;
 }
-.tree_accordion-dense__actionbar .btn:hover:not(:disabled),
-.tree_accordion-dense__actionbar .tree_accordion-dense__filterbar-chip:hover:not(:disabled) {
+.tree_accordion-dense__actionbar .btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--ink) 6%, var(--surface-sunken));
   border-color: var(--border);
   color: var(--ink);
@@ -13725,79 +13745,11 @@ input[type="reset"] {
   color: var(--ink-subtle);
   display: inline-flex;
 }
-.tree_accordion-dense__filterbar-chip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-.tree_accordion-dense__filterbar-chip:hover {
-  background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
-}
-.tree_accordion-dense__filterbar-chip:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.tree_accordion-dense__filterbar-chip--active {
-  border-color: var(--border);
-  background: var(--surface-sunken);
-  color: var(--ink);
-}
-.tree_accordion-dense__filterbar-chip-icon {
-  color: var(--ink-subtle);
-  display: inline-flex;
-}
-.tree_accordion-dense__filterbar-chip--active .tree_accordion-dense__filterbar-chip-icon {
-  color: var(--ink);
-}
-.tree_accordion-dense__filterbar-chip-label {
-  white-space: nowrap;
-}
-/* Native <select> overlaid on the chip — invisible but receives all clicks
-   and pointer events, so the chip looks like a custom button while the
-   browser still handles dropdown UX, keyboard nav, and a11y. */
-.tree_accordion-dense__filterbar-chip-select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  font: inherit;
-}
-.tree_accordion-dense__filterbar-chip-clear {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 2px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--ink) 10%, transparent);
-  color: var(--ink);
-  cursor: pointer;
-}
-.tree_accordion-dense__filterbar-chip-clear:hover {
-  background: color-mix(in srgb, var(--ink) 18%, transparent);
-}
+/* Filter-chip family folded into the .btn primitive (2026-05-29).
+   Use: <button className="btn"> for a neutral chip, add aria-pressed="true"
+   for the former --active state, .btn__icon for the leading glyph,
+   .btn__overlaid-select for the invisible native <select>, and .btn__clear
+   for the inline X. See .btn rules near the top of this file. */
 .tree_accordion-dense__filterbar-clear {
   height: 32px;
   padding: 0 8px;
@@ -13822,26 +13774,9 @@ input[type="reset"] {
   white-space: nowrap;
 }
 
-/* Icon-only filter bar buttons — square, ghost by default, hover lifts to
-   the same tone as a chip. Used for expand-all / collapse-all. */
-.tree_accordion-dense__filterbar-icon-btn {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--ink-muted);
-  cursor: pointer;
-  padding: 0;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-.tree_accordion-dense__filterbar-icon-btn:hover {
-  background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
-  color: var(--ink);
-}
+/* (removed 2026-05-29) .tree_accordion-dense__filterbar-icon-btn —
+   CSS-only orphan with no TSX callers. Future icon-only filterbar
+   buttons should compose .btn.btn--icon.btn--tiny instead. */
 
 /* ── ColumnPicker (OTV2 Slice 4.5, Rally-style "Show Fields" dropdown) ───── */
 .column-picker__Wrap {
@@ -14511,6 +14446,16 @@ input[type="reset"] {
   z-index: 2;
   background: var(--surface-sunken);
 }
+/* Value-sprint page only — amber header band on the backlog grid;
+   green band on the sprint-target panel. Scoped to .value-sprint
+   (set on the page's PageContent) so other pages keep the default
+   --surface-sunken header. */
+.value-sprint .tree_accordion-dense__th {
+  background: #ffcc33;
+}
+.value-sprint .value-sprint__target .tree_accordion-dense__th {
+  background: #5fbb74;
+}
 .tree_accordion-dense__th--mono {
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
@@ -14861,6 +14806,14 @@ input[type="reset"] {
 }
 .tree_accordion-dense__th--type-stripe {
   background: transparent;
+}
+/* Value-sprint page only — type-stripe header inherits the band colour
+   so the leftmost cell doesn't read as a white sliver next to the band. */
+.value-sprint .tree_accordion-dense__th--type-stripe {
+  background: #ffcc33;
+}
+.value-sprint .value-sprint__target .tree_accordion-dense__th--type-stripe {
+  background: #5fbb74;
 }
 
 /* PLA-0021 / 00455 — selection checkbox column (28px). Centered in both
@@ -15812,12 +15765,13 @@ input[type="reset"] {
   border-bottom: 0;
 }
 /* Bottom bar sits flush below the table; the scroll container owns the
-   shared divider, so we drop our top border. Corners stay square so the
-   row reads as a flat footer band — the outer panel still clips it. */
+   shared divider, so we drop our top border. Bottom corners are rounded
+   to match the outer panel (10px); the panel also has overflow:hidden so
+   any rendering hairline at the corner stays inside the panel curve. */
 .tree_accordion-dense__pagination--bottom {
   border-top: 0;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 .tree_accordion-dense__pagination-info {
   flex: 0 0 auto;
@@ -15875,6 +15829,21 @@ input[type="reset"] {
   padding: 0 4px;
   color: var(--ink-subtle);
   user-select: none;
+}
+
+/* Cross-tree drop zone. OTV2's outer wrapper toggles
+   .objecttree__DropZone--active while a foreign Vector row is being
+   dragged from a sibling tree. Soft ring + faint tint so the user
+   reads "drop here"; CSS owns the transition so React just flips a
+   class and the paint stays smooth. */
+.objecttree__DropZone {
+  position: relative;
+  border-radius: 10px;
+  transition: box-shadow 140ms ease, background-color 140ms ease;
+}
+.objecttree__DropZone--active {
+  box-shadow: inset 0 0 0 2px #5fbb74;
+  background-color: color-mix(in srgb, #5fbb74 8%, transparent);
 }
 
 /* ── Artefact-type customisation (Customisation settings page) ─────────────

@@ -164,16 +164,14 @@ export function CreateActionChip({ action }: { action: CreateActionConfig }) {
     return (
       <button
         type="button"
-        className="tree_accordion-dense__filterbar-chip"
+        className="btn"
         onClick={action.onCreate}
         aria-label={action.label}
       >
-        <span className="tree_accordion-dense__filterbar-chip-icon">
+        <span className="btn__icon">
           <MdAdd size={14} />
         </span>
-        <span className="tree_accordion-dense__filterbar-chip-label">
-          {action.label}
-        </span>
+        <span>{action.label}</span>
       </button>
     );
   }
@@ -185,20 +183,14 @@ export function CreateActionChip({ action }: { action: CreateActionConfig }) {
   return (
     <>
       <span
-        className={
-          "tree_accordion-dense__filterbar-chip" +
-          (armed ? " tree_accordion-dense__filterbar-chip--active" : "")
-        }
-        style={{ position: "relative" }}
+        className={"btn" + (armed ? " btn--active" : "")}
       >
-        <span className="tree_accordion-dense__filterbar-chip-icon">
+        <span className="btn__icon">
           {armed ? <MdAdd size={14} /> : <MdOutlineCategory size={14} />}
         </span>
-        <span className="tree_accordion-dense__filterbar-chip-label">
-          {selectedLabel ? `Add new ${selectedLabel}` : label}
-        </span>
+        <span>{selectedLabel ? `Add new ${selectedLabel}` : label}</span>
         <select
-          className="tree_accordion-dense__filterbar-chip-select"
+          className="btn__overlaid-select"
           aria-label={`${label} — pick type`}
           value={selectedTypeId}
           onChange={(e) => onSelectType(e.target.value)}

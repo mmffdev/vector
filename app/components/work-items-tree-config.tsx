@@ -921,7 +921,7 @@ export function WorkItemsFilterChips({
       <button
         type="button"
         className={
-          "navigation-pie__Chip" +
+          "btn navigation-pie__Chip" +
           (ownerIsMe ? " navigation-pie__Chip-active" : "")
         }
         onClick={() => setFilter("owner_id", ownerIsMe ? [] : (meId ? [meId] : []))}

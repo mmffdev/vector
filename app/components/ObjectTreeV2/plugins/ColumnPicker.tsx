@@ -291,7 +291,7 @@ export function ColumnPicker({
     >
       <button
         type="button"
-        className={`tree_accordion-dense__filterbar-chip column-picker__Trigger${
+        className={`btn column-picker__Trigger${
           open ? " column-picker__Trigger--open" : ""
         }`}
         onClick={() => setOpen((o) => !o)}
@@ -299,13 +299,12 @@ export function ColumnPicker({
         title={triggerTooltip}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-pressed={open}
       >
-        <span className="tree_accordion-dense__filterbar-chip-icon">
+        <span className="btn__icon">
           <TbColumns3 size={14} />
         </span>
-        <span className="tree_accordion-dense__filterbar-chip-label">
-          {triggerLabel}
-        </span>
+        <span>{triggerLabel}</span>
       </button>
       {open && (
         <div

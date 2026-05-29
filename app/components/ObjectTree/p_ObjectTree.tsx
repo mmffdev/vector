@@ -620,20 +620,14 @@ export default function ObjectTree({
   const actionBarNode = (
     <div className="tree_accordion-dense__actionbar" role="toolbar" aria-label="Work item actions">
       <span
-        className={
-          "tree_accordion-dense__filterbar-chip" +
-          (actionTypeId ? " tree_accordion-dense__filterbar-chip--active" : "")
-        }
-        style={{ position: "relative" }}
+        className={"btn" + (actionTypeId ? " btn--active" : "")}
       >
-        <span className="tree_accordion-dense__filterbar-chip-icon">
+        <span className="btn__icon">
           {actionTypeId ? <MdAdd size={14} /> : <MdOutlineCategory size={14} />}
         </span>
-        <span className="tree_accordion-dense__filterbar-chip-label">
-          {actionTypeLabel ? `Add new ${actionTypeLabel}` : "Create New"}
-        </span>
+        <span>{actionTypeLabel ? `Add new ${actionTypeLabel}` : "Create New"}</span>
         <select
-          className="tree_accordion-dense__filterbar-chip-select"
+          className="btn__overlaid-select"
           aria-label="Add new artefact — pick type"
           value={actionTypeId}
           onChange={(e) => setActionTypeId(e.target.value)}

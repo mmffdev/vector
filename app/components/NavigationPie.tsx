@@ -298,7 +298,7 @@ export default function NavigationPie({
         ref={chipRef}
         type="button"
         className={
-          "navigation-pie__Chip" +
+          "btn navigation-pie__Chip" +
           (active ? " navigation-pie__Chip-active" : "") +
           (open ? " navigation-pie__Chip-open" : "")
         }

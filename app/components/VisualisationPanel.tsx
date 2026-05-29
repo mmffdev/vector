@@ -3,9 +3,9 @@
 // <VisualisationPanel> — three-panel composite that sits below the
 // PageSummaryHeader on /work-items, /portfolio-items, /risk:
 //
-//   1. Action panel (no title, flush against summary). Three chip buttons
-//      reusing ObjectTreeV2's `.tree_accordion-dense__filterbar-chip`
-//      surface — Charts (toggles the chart flyout), and two stubs.
+//   1. Action panel (no title, flush against summary). Three .btn-primitive
+//      toggles (aria-pressed driven) — Charts (toggles the chart flyout),
+//      and two stubs.
 //   2. Visualisation panel (titled). Slides 0 → 150px when Charts is
 //      armed; pushes ObjectTree down via normal block flow.
 //
@@ -84,54 +84,39 @@ export default function VisualisationPanel({
         <div className="viz-actions" role="toolbar" aria-label="Visualisation actions">
           <button
             type="button"
-            className={
-              "tree_accordion-dense__filterbar-chip" +
-              (chartsOpen ? " tree_accordion-dense__filterbar-chip--active" : "")
-            }
+            className="btn"
             aria-pressed={chartsOpen}
             aria-expanded={chartsOpen}
             onClick={() => setChartsOpen((v) => !v)}
           >
-            <span className="tree_accordion-dense__filterbar-chip-icon">
+            <span className="btn__icon">
               <MdAdd size={14} />
             </span>
-            <span className="tree_accordion-dense__filterbar-chip-label">
-              Charts
-            </span>
+            <span>Charts</span>
           </button>
           <button
             type="button"
-            className={
-              "tree_accordion-dense__filterbar-chip" +
-              (treeOpen ? " tree_accordion-dense__filterbar-chip--active" : "")
-            }
+            className="btn"
             aria-pressed={treeOpen}
             aria-expanded={treeOpen}
             onClick={() => setTreeOpen((v) => !v)}
           >
-            <span className="tree_accordion-dense__filterbar-chip-icon">
+            <span className="btn__icon">
               <MdAccountTree size={14} />
             </span>
-            <span className="tree_accordion-dense__filterbar-chip-label">
-              Tree
-            </span>
+            <span>Tree</span>
           </button>
           <button
             type="button"
-            className={
-              "tree_accordion-dense__filterbar-chip" +
-              (canvasOpen ? " tree_accordion-dense__filterbar-chip--active" : "")
-            }
+            className="btn"
             aria-pressed={canvasOpen}
             aria-expanded={canvasOpen}
             onClick={() => setCanvasOpen((v) => !v)}
           >
-            <span className="tree_accordion-dense__filterbar-chip-icon">
+            <span className="btn__icon">
               <MdAdd size={14} />
             </span>
-            <span className="tree_accordion-dense__filterbar-chip-label">
-              Canvas
-            </span>
+            <span>Canvas</span>
           </button>
         </div>
       </Panel>
