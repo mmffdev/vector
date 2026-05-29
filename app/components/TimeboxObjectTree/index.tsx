@@ -40,13 +40,13 @@ import TimeboxInlineForm from "@/app/components/TimeboxInlineForm";
 
 // ── Kind config (intentionally inline — see component header) ──────────────
 
-type Kind = "sprint" | "release";
+type Kind = "sprint" | "release" | "milestone";
 
 interface KindCfg {
   apiBase: string;
   rowPrefix: string;
   namePrefix: string;
-  listKey: "sprints" | "releases";
+  listKey: "sprints" | "releases" | "milestones";
 }
 
 const KIND_CFG: Record<Kind, KindCfg> = {
@@ -62,6 +62,12 @@ const KIND_CFG: Record<Kind, KindCfg> = {
     namePrefix: "Release",
     listKey: "releases",
   },
+  milestone: {
+    apiBase: "/timeboxes/milestones",
+    rowPrefix: "timeboxes_milestones",
+    namePrefix: "Milestone",
+    listKey: "milestones",
+  },
 };
 
 // ── Bulk-create config factory ─────────────────────────────────────────────
@@ -69,6 +75,36 @@ const KIND_CFG: Record<Kind, KindCfg> = {
 function buildBulkConfig(kind: Kind): BulkCreateConfig {
   const cfg = KIND_CFG[kind];
   const p = cfg.rowPrefix;
+
+  if (kind === "milestone") {
+    return {
+      label: `Create ${cfg.namePrefix}s`,
+      endpoint: `${cfg.apiBase}/bulk-create`,
+      listKey: cfg.listKey,
+      namePattern: `${cfg.namePrefix} {n}`,
+      namePrefixField: `${p}_name`,
+      defaultCount: 1,
+      maxCount: 1, // single-create stopgap; bulk-create endpoint may not exist
+      rules: {},
+      columns: [
+        {
+          key: "date_target",
+          wireKey: `${p}_date_target`,
+          label: "Target Date",
+          type: "date",
+        },
+        {
+          key: "description",
+          wireKey: `${p}_description`,
+          label: "Description (optional)",
+          type: "text",
+          optional: true,
+        },
+      ],
+    };
+  }
+
+  // sprint/release shape — original
   return {
     label: `Create ${cfg.namePrefix}s`,
     endpoint: `${cfg.apiBase}/bulk-create`,
@@ -147,6 +183,8 @@ function statusVariant(status: string): PillVariant {
       return "success";
     case "completed":
       return "neutral";
+    case "missed":
+      return "warning";
     default:
       return "info";
   }
@@ -185,15 +223,18 @@ function TimeboxObjectTreeInner({
     const params = new URLSearchParams({ workspace_id: workspaceId });
     if (orgNodeId) params.set("org_node_id", orgNodeId);
     try {
-      const data = await apiSite<{ items: TimeboxRow[]; total: number }>(
+      const data = await apiSite<Record<string, unknown>>(
         `${cfg.apiBase}?${params.toString()}`,
       );
-      setRows(data.items ?? []);
+      // sprint/release: { items, total }
+      // milestone:      { milestones, count }
+      const items = (data[cfg.listKey] ?? data.items ?? []) as TimeboxRow[];
+      setRows(items);
     } catch (e) {
       notify.apiError(e as ApiError, `Failed to load ${kind}s`);
       setRows([]);
     }
-  }, [cfg.apiBase, kind, workspaceId, orgNodeId]);
+  }, [cfg.apiBase, cfg.listKey, kind, workspaceId, orgNodeId]);
 
   // Initial load — wait for scope bootstrap so the first fetch carries
   // a settled clamp. Re-fires when the dep list changes (kind, workspace,
@@ -204,17 +245,19 @@ function TimeboxObjectTreeInner({
     void reload();
   }, [reload, scopeReady]);
 
-  // Filtered rows (search by name + suffix)
+  // Filtered rows (search by name + suffix for sprint/release; name-only for milestone)
   const filteredRows = useMemo(() => {
     if (!rows) return null;
     const needle = search.trim().toLowerCase();
     if (!needle) return rows;
     return rows.filter((r) => {
       const name = String(r[`${p}_name`] ?? "").toLowerCase();
+      if (name.includes(needle)) return true;
+      if (kind === "milestone") return false;
       const suffix = String(r[`${p}_suffix`] ?? "").toLowerCase();
-      return name.includes(needle) || suffix.includes(needle);
+      return suffix.includes(needle);
     });
-  }, [rows, search, p]);
+  }, [rows, search, p, kind]);
 
   // Next sequence number for namePattern
   const nextNumber = (rows?.length ?? 0) + 1;
@@ -226,104 +269,186 @@ function TimeboxObjectTreeInner({
     return String(sorted[0][`${p}_date_end`] ?? "");
   }, [rows, p]);
 
-  // Columns
-  const columns: Column<TimeboxRow>[] = [
-    {
-      key: `${p}_name`,
-      header: "Name",
-      kind: "custom",
-      render: (r) => {
-        const suffix = r[`${p}_suffix`] as string | null;
-        const name = String(r[`${p}_name`] ?? "");
-        // Slice 7 — inherited-row treatment. The button label sits
-        // italic + muted so it visually reads as "this row didn't
-        // originate here"; the small badge underneath names the
-        // pinned source. Click behaviour is unchanged — opens the
-        // flyout, which shows the read-only banner.
-        const origin = String(r.origin ?? "local");
-        const isInherited = origin === "inherited";
-        const fromNodeName = (r.from_node_name as string | null) ?? null;
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <button
-              type="button"
-              data-objecttree-flyout-trigger="1"
-              className="link-button"
-              style={{
-                background: "none",
-                border: 0,
-                padding: 0,
-                cursor: "pointer",
-                textAlign: "left",
-                color: isInherited
-                  ? "var(--ink-muted)"
-                  : "var(--brand-action)",
-                fontStyle: isInherited ? "italic" : "normal",
-                textDecoration: "underline",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                const id = String(r[`${p}_id`] ?? "");
-                setOpenRowId((cur) => (cur === id ? null : id));
-              }}
-            >
-              {name}
-              {suffix && (
-                <span style={{ color: "var(--ink-subtle)" }}> ({suffix})</span>
-              )}
-            </button>
-            {isInherited && (
-              <span
+  // Columns — milestone vs sprint/release have different shapes.
+  const columns: Column<TimeboxRow>[] = useMemo(() => {
+    if (kind === "milestone") {
+      return [
+        {
+          key: `${p}_name`,
+          header: "Name",
+          kind: "custom",
+          render: (r) => {
+            const name = String(r[`${p}_name`] ?? "");
+            const origin = String(r.origin ?? "local");
+            const isInherited = origin === "inherited";
+            const fromNodeName = (r.from_node_name as string | null) ?? null;
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <button
+                  type="button"
+                  data-objecttree-flyout-trigger="1"
+                  className="link-button"
+                  style={{
+                    background: "none",
+                    border: 0,
+                    padding: 0,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    color: isInherited
+                      ? "var(--ink-muted)"
+                      : "var(--brand-action)",
+                    fontStyle: isInherited ? "italic" : "normal",
+                    textDecoration: "underline",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const id = String(r[`${p}_id`] ?? "");
+                    setOpenRowId((cur) => (cur === id ? null : id));
+                  }}
+                >
+                  {name}
+                </button>
+                {isInherited && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--ink-subtle)",
+                      fontStyle: "italic",
+                    }}
+                    title={`Inherited from ${fromNodeName ?? "a parent node"}`}
+                  >
+                    ↑ from {fromNodeName ?? "parent"}
+                  </span>
+                )}
+              </div>
+            );
+          },
+        },
+        { key: `${p}_date_target`, header: "Target Date", kind: "mono" },
+        {
+          key: `${p}_status`,
+          header: "Status",
+          kind: "pill",
+          pillVariant: (r) => statusVariant(String(r[`${p}_status`] ?? "")),
+          pillLabel: (r) => String(r[`${p}_status`] ?? ""),
+        },
+        { key: `${p}_created_at`, header: "Created", kind: "mono" },
+      ];
+    }
+    // sprint/release shape — original column set
+    return [
+      {
+        key: `${p}_name`,
+        header: "Name",
+        kind: "custom",
+        render: (r) => {
+          const suffix = r[`${p}_suffix`] as string | null;
+          const name = String(r[`${p}_name`] ?? "");
+          // Slice 7 — inherited-row treatment. The button label sits
+          // italic + muted so it visually reads as "this row didn't
+          // originate here"; the small badge underneath names the
+          // pinned source. Click behaviour is unchanged — opens the
+          // flyout, which shows the read-only banner.
+          const origin = String(r.origin ?? "local");
+          const isInherited = origin === "inherited";
+          const fromNodeName = (r.from_node_name as string | null) ?? null;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <button
+                type="button"
+                data-objecttree-flyout-trigger="1"
+                className="link-button"
                 style={{
-                  fontSize: 11,
-                  color: "var(--ink-subtle)",
-                  fontStyle: "italic",
+                  background: "none",
+                  border: 0,
+                  padding: 0,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  color: isInherited
+                    ? "var(--ink-muted)"
+                    : "var(--brand-action)",
+                  fontStyle: isInherited ? "italic" : "normal",
+                  textDecoration: "underline",
                 }}
-                title={`Inherited from ${fromNodeName ?? "a parent node"}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const id = String(r[`${p}_id`] ?? "");
+                  setOpenRowId((cur) => (cur === id ? null : id));
+                }}
               >
-                ↑ from {fromNodeName ?? "parent"}
-              </span>
-            )}
-          </div>
-        );
+                {name}
+                {suffix && (
+                  <span style={{ color: "var(--ink-subtle)" }}> ({suffix})</span>
+                )}
+              </button>
+              {isInherited && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "var(--ink-subtle)",
+                    fontStyle: "italic",
+                  }}
+                  title={`Inherited from ${fromNodeName ?? "a parent node"}`}
+                >
+                  ↑ from {fromNodeName ?? "parent"}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
-    },
-    { key: `${p}_date_start`, header: "Start", kind: "mono" },
-    { key: `${p}_date_end`, header: "End", kind: "mono" },
-    { key: `${p}_cadence_days`, header: "Cadence (days)", kind: "numeric" },
-    {
-      key: `${p}_status`,
-      header: "Status",
-      kind: "pill",
-      pillVariant: (r) => statusVariant(String(r[`${p}_status`] ?? "")),
-      pillLabel: (r) => String(r[`${p}_status`] ?? ""),
-    },
-    {
-      key: `${p}_scope`,
-      header: "Scope",
-      kind: "numeric",
-      render: (r) => String(r[`${p}_scope`] ?? "—"),
-    },
-    {
-      key: `${p}_velocity`,
-      header: "Velocity",
-      kind: "numeric",
-      render: (r) => String(r[`${p}_velocity`] ?? "—"),
-    },
-  ];
+      { key: `${p}_date_start`, header: "Start", kind: "mono" },
+      { key: `${p}_date_end`, header: "End", kind: "mono" },
+      { key: `${p}_cadence_days`, header: "Cadence (days)", kind: "numeric" },
+      {
+        key: `${p}_status`,
+        header: "Status",
+        kind: "pill",
+        pillVariant: (r) => statusVariant(String(r[`${p}_status`] ?? "")),
+        pillLabel: (r) => String(r[`${p}_status`] ?? ""),
+      },
+      {
+        key: `${p}_scope`,
+        header: "Scope",
+        kind: "numeric",
+        render: (r) => String(r[`${p}_scope`] ?? "—"),
+      },
+      {
+        key: `${p}_velocity`,
+        header: "Velocity",
+        kind: "numeric",
+        render: (r) => String(r[`${p}_velocity`] ?? "—"),
+      },
+    ];
+  }, [kind, p]);
 
   // Bulk submit
   const bulkConfig = useMemo(() => buildBulkConfig(kind), [kind]);
   const handleBulkSubmit = useCallback(
     async (payloadRows: Array<Record<string, unknown>>) => {
       try {
-        await apiSite(
-          `${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`,
-          {
-            method: "POST",
-            body: JSON.stringify({ [bulkConfig.listKey]: payloadRows }),
-          },
-        );
+        if (kind === "milestone") {
+          // No bulk endpoint on the milestone backend — POST each row to
+          // the single-create endpoint. With maxCount=1 (see buildBulkConfig)
+          // this is always a single row in practice.
+          for (const row of payloadRows) {
+            await apiSite(
+              `${cfg.apiBase}?workspace_id=${workspaceId}`,
+              {
+                method: "POST",
+                body: JSON.stringify(row),
+              },
+            );
+          }
+        } else {
+          await apiSite(
+            `${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`,
+            {
+              method: "POST",
+              body: JSON.stringify({ [bulkConfig.listKey]: payloadRows }),
+            },
+          );
+        }
         notify.success(
           `Created ${payloadRows.length} ${cfg.namePrefix}${
             payloadRows.length === 1 ? "" : "s"
