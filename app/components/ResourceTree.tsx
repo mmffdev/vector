@@ -287,6 +287,16 @@ export interface ResourceTreeProps<T> {
   // legacy bottom-of-grid behaviour (no extra rows injected).
   renderRowDetail?: (row: T) => React.ReactNode | null;
 
+  // OTV2 create-row slot — when defined and returning non-null, an extra
+  // table row is injected as the FIRST tbody row (above the first data
+  // row, below <thead>) with a single colSpan cell containing the
+  // returned React node. Used to host an inline "create new" flyout
+  // that pushes the rest of the grid + pagination down rather than
+  // rendering as a sibling outside the table. Return null when the
+  // create flyout is closed. Opt-in: omit to keep legacy behaviour
+  // (no extra row injected).
+  renderCreateRow?: () => React.ReactNode | null;
+
   // Disable the inner scroll container — table grows to natural height
   // and the page scrolls instead. Pair with renderRowDetail so opening
   // an inline flyout expands the whole panel rather than spawning a
@@ -880,6 +890,7 @@ function ResourceTreeImpl<T>({
   cogMenu,
   rowButtons,
   renderRowDetail,
+  renderCreateRow,
   disableInnerScroll,
   expandAllConcurrency = 6,
   // Tone (reserved; not consumed in v1 internals — column renderers handle it)
@@ -1928,7 +1939,30 @@ function ResourceTreeImpl<T>({
               })}
             </tr>
           </thead>
-          <tbody>{renderRows(pagedRoots, 0)}</tbody>
+          <tbody>
+            {(() => {
+              // OTV2 create-row slot — single colSpan <tr> at the top of
+              // tbody (above the first data row, below <thead>). Hosts
+              // the create flyout inline so it pushes the rest of the
+              // grid down. e.stopPropagation on the cell prevents the
+              // outside-click handlers from treating clicks inside the
+              // flyout as table clicks.
+              const createNode = renderCreateRow?.();
+              if (!createNode) return null;
+              return (
+                <tr className="tree_accordion-dense__row-create">
+                  <td
+                    className="tree_accordion-dense__cell tree_accordion-dense__cell--row-create"
+                    colSpan={columns.length + leadOffset}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {createNode}
+                  </td>
+                </tr>
+              );
+            })()}
+            {renderRows(pagedRoots, 0)}
+          </tbody>
         </table>
       </div>
 
