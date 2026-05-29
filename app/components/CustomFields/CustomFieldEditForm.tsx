@@ -376,7 +376,7 @@ export default function CustomFieldEditForm({
       <div className="form__actions">
         <button
           type="button"
-          className="action-btn"
+          className="btn"
           onClick={onCancel}
           disabled={busy}
         >
@@ -384,7 +384,7 @@ export default function CustomFieldEditForm({
         </button>
         <button
           type="submit"
-          className="action-btn action-btn--primary"
+          className="btn btn--primary"
           disabled={busy}
         >
           {busy ? "Saving…" : isNew ? "Create" : "Save changes"}
