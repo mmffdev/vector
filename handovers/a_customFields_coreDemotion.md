@@ -337,3 +337,85 @@ git revert 019a6cb1 1d1d3a08 3b00bdc7 8e2f9bae a14d906b a9951217
 ```
 
 (Don't run these blindly. The substrate change is the irreversible bit; the Go + FE work is mechanically revertable.)
+
+---
+
+# Execution Summary — Second wave: Rally screenshots batch (2026-05-29 evening)
+
+After the morning's core demotion landed, Rick provided 7 Rally admin-screen screenshots showing the field list per Rally object type (Defect / User Story / Task / Risk / Portfolio Item / Iteration / Release) and asked for every Rally core attribute to be mapped to its Vector equivalent. This section covers what shipped in that second wave.
+
+## What shipped
+
+**Substrate** (migs 150-158, all applied + recorded in `schema_migrations`):
+- **mig 150** — universal: `artefacts_tags TEXT[]` + GIN partial idx, `artefacts_actual_end_date DATE`
+- **mig 151** — defect-only (8 cols): defect_resolution + CHECK, defect_test_case_status + CHECK, defect_fixed_in_build, defect_found_in_build, defect_is_release_note, defect_steps_to_reproduce (+ _doc JSONB richtext), defect_is_regression
+- **mig 152** — risk-only (7 cols + 1 GENERATED): risk_resolution + CHECK (DIFFERENT vocab from defect — Decision C), risk_impact + impact_score INT 1..4, risk_probability + probability_score INT 1..4, risk_response + CHECK, risk_exposure NUMERIC, **risk_calculated INT GENERATED ALWAYS AS (impact_score * probability_score) STORED**
+- **mig 153** — universal FK: `artefacts_id_user_submitted_by UUID NULL` (gated to defect+risk via mig 158)
+- **mig 154** — strategy-only (2 cols): strategic_job_size INT, strategic_preliminary_estimate_value INT
+- **mig 155** — ALTER `artefacts_estimate_initial` NUMERIC → TEXT (bucket vocab XS/S/M/L/XL/XXL — Decision B) + sidecar `artefacts_estimate_initial_value INT`
+- **mig 156** — timeboxes_sprints +4: actuals, plan_estimate, planned_velocity, theme
+- **mig 157** — timeboxes_releases +5: actuals, plan_estimate, planned_velocity, theme, gross_estimate_conversion_ratio
+- **mig 158** — `trg_artefacts_slot_gate_aiu` BEFORE INSERT/UPDATE trigger enforces slot-gating for defect-only / risk-only / strategy-only fields. **ALSO retroactively gates 6 mig-147 universal columns** per Decision E (Environment, defect_severity, defect_status, estimate_hours, estimate_remaining, affects_doc). The prior loose-write window is closed.
+
+**Backend** (commit `aa879ced`):
+- artefactitems: +24 ColumnSpec, +24 WorkItem + 23 PatchWorkItemInput fields, +7 valid* allow-list maps (validDefectResolutions, validDefectTestCaseStatuses, validRiskResolutions, validRiskImpacts, validRiskProbabilities, validRiskResponses, validEstimateInitialBuckets), +11 validation gates, +23 SET-clause dispatches, NEW columns_rally_screenshots_test.go (12 tests / 183 sub-tests, all green)
+- timeboxsprints + timeboxreleases packages wired in lockstep — also folds a latent SELECT-bug fix in timeboxreleases/sql.go (`_scope_propagation` was being scanned but not selected)
+- `go build` clean, `go vet` clean, 22 top-level / 216 sub-tests green
+
+**Frontend** (commit `f7b09997`):
+- `customFieldsAdapter.tsx` CORE_COLUMN_OVERRIDES lookup map: 24 rally entries + 14 retroactive cleanups for mig-147 cols that had been falling to the generic heuristic. Each entry carries `boundTo` slot metadata (staged for a follow-up render — TD-CORE-ROW-BINDING-RENDER)
+- `risk_calculated` flagged `isComputed: true` (DB-side GENERATED)
+- `estimate_initial` mapped to `data_type: select` with bucket options
+
+## 9 decision A-I summary (locked + shipped per recommended defaults)
+
+- **A. Plan Estimate** → keep INTEGER `artefacts_story_points` (TD-PLAN-ESTIMATE-DECIMAL filed)
+- **B. Preliminary Estimate** → ALTERed to TEXT (bucket) + new INT sidecar
+- **C. Resolution** → TWO columns (`artefacts_defect_resolution` + `artefacts_risk_resolution`), each with column-level CHECK — vocabs are different
+- **D. Tags** → TEXT[] + GIN partial idx (TD-TAGS-REGISTRY filed for later junction-table promotion)
+- **E. Mig 147 retroactive gating** → TIGHTENED via mig 158 trigger
+- **F. Submitted By** → ADDED (`artefacts_id_user_submitted_by`, gated to defect+risk)
+- **G. Calculated Risk** → STORED GENERATED column
+- **H. Milestones + Investments** → DEFERRED (TD-MILESTONES-JUNCTION + TD-INVESTMENTS-JUNCTION filed)
+- **I. Iteration/Release State vocab** → kept current 3-value (planned|active|completed)
+
+## Commits added in this wave (8)
+
+| Hash | Subject |
+|---|---|
+| `29b7fb4b` | feat(db): migs 150-158 — rally screenshots core columns + slot-gate trigger |
+| `aa879ced` | feat(artefactitems+timeboxes): wire 24 rally cols + 9 timebox cols through Go |
+| `f7b09997` | feat(custom-fields): synthesise 24 rally + 14 retroactive CORE rows in admin grid |
+| `55802056` | docs(rally-batch): spec + 2 audits + 5 TD entries + Rally→Vector vocab pin |
+| `de9075e7` | feat(saved-views): page-level KindPage + cross-tree DND for value-sprint |
+| `03dd7880` | refactor(css): chip → .btn primitive across 6 components + 299-line CSS repaint |
+| `b1f39e70` | docs(milestones): spec + plan for milestones page |
+| (`d1d4cfed`, `3c952608`, `f9eda62d`, `9748cc07` — Rick's same-day work, included in branch state) | |
+
+## HARD RULE follow-through
+
+- **SY003 regenerated** — dispatched in background after the FE wired. Substrate state captured: 88 tables, 72 columns on `artefacts` (was 48 → +24 today), 9 timebox columns added, trigger function inventory, GENERATED column catalog, CHECK constraint catalog all updated. Change Log entry prepended.
+- **Server-is-the-gate satisfied**: every CHECK-bound column validates in `service.go` BEFORE write, with the trigger as defence-in-depth. Tested at apply time via 4-quadrant inserts (wrk_story+forbidden=23514, wrk_defect+allowed=pass, etc.).
+
+## Open follow-ups (not blocking — parked for Rick)
+
+- Push branch (+14 commits ahead of origin) — awaiting Rick's explicit go-ahead
+- **TD-CORE-ROW-BINDING-RENDER** — the `boundTo` slot metadata is staged in the FE override map but no UI surfaces it as a slot pill yet
+- **Rally vocab Q3** from the audit: confirm Rick wants the spec defaults shipped for Risk Response vocab (`accept/mitigate/transfer/avoid`) + Theme as plain TEXT + Investment Category as open-text
+- Spec mentions a "future FE batch" to expose the new columns in the work-items edit-form — substrate + API ship now, editors are out of scope this wave
+
+## Recovery commands (this wave)
+
+```bash
+# Down migs (in reverse order)
+for n in 158 157 156 155 154 153 152 151 150; do
+  psql -h localhost -p 5435 -U <user> -d vector_artefacts \
+    -f db/vector_artefacts/schema/down/${n}_*_DOWN.sql
+done
+# Remove schema_migrations rows
+psql ... -c "DELETE FROM schema_migrations WHERE filename LIKE '15%' AND filename != '149_relax_saved_views_kind_check_for_page.sql';"
+# Revert commits (NOT reset — destructive git is HARD RULE)
+git revert b1f39e70 03dd7880 de9075e7 55802056 f7b09997 aa879ced 29b7fb4b
+```
+
+(Mig 155's DOWN is best-effort: ALTER COLUMN TYPE TEXT→NUMERIC needs `USING ::numeric` and will fail on bucket values like 'XL' — accept that data loss if rolling back.)
