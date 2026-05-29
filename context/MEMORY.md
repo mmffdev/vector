@@ -27,7 +27,18 @@
 
 **Collaboration baseline** → [c_collaboration_baseline.md](memory/c_collaboration_baseline.md) — design conversation before code; foundation mode; buyer = defence + finance.
 
-**"Commit all workstreams" = group them ALL, no exceptions.** When Rick says "commit all", "commit all workstreams", or similar phrasing, the instruction is to group EVERY dirty file/workstream on disk into commits by logical workstream and commit them all in one go — never selectively ship only "my" work and leave the rest. Exception only if Rick explicitly names what to exclude. Reason: 2026-05-29 — Claude defaulted to inventorying and excluding "not mine" files; Rick clarified that "all" means all, always, unless he says otherwise. How to apply: stage by explicit path (per the never-`git add .` hard rule) but stage EVERYTHING, grouped by workstream; one commit per workstream with a message that names what each touches.
+**"Commit all" = group them ALL.** When Rick says "commit all" / "commit all workstreams", group EVERY dirty file into commits by workstream — never selectively ship "my" work and leave the rest. Exception only if Rick names what to exclude. Origin: 2026-05-29. Stage by explicit path (per `git add .` hard rule), one commit per workstream.
+
+**Rally → Vector vocabulary mapping.** When reading Rally fields / specs / docs, translate the noun:
+- Rally "Project" → Vector **topology node** (column: `artefacts_topology_node_id`; table: `topology_nodes`)
+- Rally "Iteration" → Vector **sprint** (column: `artefacts_id_timebox_sprint`; table: `timeboxes_sprints`)
+- Rally "Portfolio Item" → Vector **strategic artefact** (artefact_type tier=`strategy`, slot `strt_*`)
+- Rally "Release" → Vector **release** (column: `artefacts_id_timebox_release`; table: `timeboxes_releases`) — name carries through
+- Rally "User Story" → Vector **story** (slot `wrk_story` under execution tier)
+- Rally "Task" → Vector **task** (slot `wrk_task`)
+- Rally "Defect" → Vector **defect** (slot `wrk_defect`)
+- Rally "Risk" → Vector **risk** (slot `wrk_risk`, work-tier)
+Origin: 2026-05-29 — during second-pass core-field demotion. When a Rally screenshot or OpenAPI ref names one of those concepts, use the Vector name in the column/spec/commit; never carry "project" or "iteration" forward into Vector code.
 
 **Workflow rules** → [c_workflow_rules.md](memory/c_workflow_rules.md) — red-green-refactor first; empirical blast radius; single-agent ownership per domain.
 
