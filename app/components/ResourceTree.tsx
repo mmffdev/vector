@@ -294,7 +294,8 @@ export interface ResourceTreeProps<T> {
   // that pushes the rest of the grid + pagination down rather than
   // rendering as a sibling outside the table. Return null when the
   // create flyout is closed. Opt-in: omit to keep legacy behaviour
-  // (no extra row injected).
+  // (no extra row injected). Called on every ResourceTree render — wrap
+  // in useCallback if it closes over expensive state.
   renderCreateRow?: () => React.ReactNode | null;
 
   // Disable the inner scroll container — table grows to natural height
