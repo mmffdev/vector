@@ -99,37 +99,178 @@ interface ColumnsListResponse {
   columns: ColumnSpecWire[];
 }
 
+// Per-column override for CORE rows where the group-heuristic in
+// inferCoreDataType would mislabel the cell. Keyed by ColumnSpec.name
+// (matches the json:"..." tag the API emits — NOT the full DB column
+// name, which is artefacts_<name>; the projection layer strips that
+// prefix before the wire). Vocabulary is the closed list from
+// CustomFieldEditForm.DATA_TYPES (textbox / richtext / integer /
+// decimal / date / boolean / select / multiselect / radio / user /
+// url) so the Type column reads consistently between CUSTOM and CORE
+// rows.
+//
+// `options` is surfaced for enum-shaped columns so a future flyout
+// preview (read-only) could render the same picker users see on a
+// CUSTOM select field. Today the value is informational only — the
+// Source pill marks the row read-only and the row flyout is null-
+// returned (see renderRowFlyout above).
+//
+// `boundTo` carries the slot-gate the backend trigger enforces (mig
+// 158): "universal" → all artefact types; "wrk_defect" / "wrk_risk"
+// → that slot only; "strategy" → any strt_* slot. WorkspaceField
+// has no boundTo field today, so the metadata stays in this lookup
+// and is not yet surfaced in the grid. TD note: see TD-CORE-ROW-
+// BINDING-RENDER suggestion in the reporting paragraph at the end
+// of this file's history; render bindings as Type-Bindings-Picker-
+// shaped pills once the read-only viewer lands.
+interface CoreColumnOverride {
+  data_type: string;
+  options?: string[];
+  /** "universal" | "wrk_defect" | "wrk_risk" | "strategy" */
+  boundTo?: "universal" | "wrk_defect" | "wrk_risk" | "strategy";
+  /** Postgres GENERATED column — never patchable even server-side. */
+  isComputed?: boolean;
+}
+
+const CORE_COLUMN_OVERRIDES: Record<string, CoreColumnOverride> = {
+  // ── Mig 147 core-field demotion (FE-only label fixes) ───────────────────
+  // Most mig-147 columns fall through the inferCoreDataType heuristic
+  // cleanly; the ones below have group labels that don't match the
+  // catalogue vocab.
+  defect_severity: {
+    data_type: "select",
+    options: ["minor", "trivial", "major", "critical", "blocker"],
+    boundTo: "wrk_defect",
+  },
+  defect_status: {
+    data_type: "select",
+    options: ["open", "in_progress", "fixed", "verified", "closed", "reopened"],
+    boundTo: "wrk_defect",
+  },
+  environment: { data_type: "textbox", boundTo: "wrk_defect" },
+  notes: { data_type: "textbox" },
+  notes_doc: { data_type: "richtext" },
+  estimate_hours: { data_type: "decimal" },
+  estimate_remaining: { data_type: "decimal" },
+  estimate_updated: { data_type: "decimal" },
+  count_child_test_cases: { data_type: "integer" },
+  planned_start_date: { data_type: "date" },
+  planned_finish_date: { data_type: "date" },
+  actual_start_date: { data_type: "date" },
+  flow_state_changed_at: { data_type: "date" },
+  strategic_investment_group: { data_type: "textbox", boundTo: "strategy" },
+
+  // ── Mig 150 — universal (apply to all artefact types) ──────────────────
+  actuals: { data_type: "decimal", boundTo: "universal" },
+  // TEXT[] tags column — multiselect is the closest catalogue shape.
+  tags: { data_type: "multiselect", boundTo: "universal" },
+  actual_end_date: { data_type: "date", boundTo: "universal" },
+
+  // ── Mig 151 — defect-only ──────────────────────────────────────────────
+  defect_resolution: {
+    data_type: "select",
+    options: ["fixed", "wontfix", "duplicate", "not_a_defect", "cannot_reproduce", "by_design"],
+    boundTo: "wrk_defect",
+  },
+  defect_test_case_status: {
+    data_type: "select",
+    options: ["none", "passed", "failed", "blocked", "mixed"],
+    boundTo: "wrk_defect",
+  },
+  defect_fixed_in_build: { data_type: "textbox", boundTo: "wrk_defect" },
+  defect_found_in_build: { data_type: "textbox", boundTo: "wrk_defect" },
+  defect_is_release_note: { data_type: "boolean", boundTo: "wrk_defect" },
+  defect_steps_to_reproduce: { data_type: "textbox", boundTo: "wrk_defect" },
+  // JSONB rich-doc sidecar — same shape as description_doc.
+  defect_steps_to_reproduce_doc: { data_type: "richtext", boundTo: "wrk_defect" },
+  defect_is_regression: { data_type: "boolean", boundTo: "wrk_defect" },
+
+  // ── Mig 152 — risk-only (paired bucket-name + score columns) ───────────
+  risk_resolution: {
+    data_type: "select",
+    options: ["accepted", "mitigated", "transferred", "avoided", "closed_no_action"],
+    boundTo: "wrk_risk",
+  },
+  risk_impact: {
+    data_type: "select",
+    options: ["low", "medium", "high", "critical"],
+    boundTo: "wrk_risk",
+  },
+  risk_impact_score: { data_type: "integer", boundTo: "wrk_risk" },
+  risk_probability: {
+    data_type: "select",
+    options: ["low", "medium", "high"],
+    boundTo: "wrk_risk",
+  },
+  risk_probability_score: { data_type: "integer", boundTo: "wrk_risk" },
+  risk_response: {
+    data_type: "select",
+    options: ["accept", "mitigate", "transfer", "avoid"],
+    boundTo: "wrk_risk",
+  },
+  risk_exposure: { data_type: "decimal", boundTo: "wrk_risk" },
+  // GENERATED column (impact_score * probability_score) — Postgres-enforced,
+  // never writable even via direct SQL. The isComputed flag marks it as
+  // computed for a future viewer; today it just renders as Integer.
+  risk_calculated: { data_type: "integer", boundTo: "wrk_risk", isComputed: true },
+
+  // ── Mig 153 — submitted-by FK (defect + risk shared, gated by mig 158) ─
+  // Backend WorkItem json tag is "submitted_by_user_id" (DB column:
+  // artefacts_id_user_submitted_by). User-picker shape; the slot gate
+  // covers defect OR risk per the spec, so we mark it wrk_defect — the
+  // grid's per-row flyout is read-only anyway so the binding is
+  // illustrative. If/when boundTo gets multi-value support, this entry
+  // should expose both wrk_defect and wrk_risk.
+  submitted_by_user_id: { data_type: "user", boundTo: "wrk_defect" },
+
+  // ── Mig 154 — strategy-tier (any strt_* slot) ──────────────────────────
+  strategic_job_size: { data_type: "integer", boundTo: "strategy" },
+  strategic_preliminary_estimate_value: { data_type: "integer", boundTo: "strategy" },
+
+  // ── Mig 155 — estimate_initial bucket ALTER + new sidecar value ────────
+  // Mig 155 ALTERed artefacts_estimate_initial NUMERIC → TEXT bucket-name
+  // (xs/s/m/l/xl/xxl). The sidecar _value column carries the numeric
+  // per-bucket value. Both universal — no slot gate.
+  estimate_initial: {
+    data_type: "select",
+    options: ["xs", "s", "m", "l", "xl", "xxl"],
+    boundTo: "universal",
+  },
+  estimate_initial_value: { data_type: "integer", boundTo: "universal" },
+};
+
 // Map a ColumnSpec.group string to a best-effort data_type. The columns
 // endpoint doesn't carry a wire data-type today, so we read it off the
-// section heading the picker uses to bucket columns. This is intentional
-// best-effort labelling for the Type column in the admin grid — it is
-// NOT load-bearing for any wire contract. The fallback "field" keeps
-// the cell non-empty for groups we don't have a mapping for.
+// section heading the picker uses to bucket columns. The CORE_COLUMN_
+// OVERRIDES lookup takes precedence for columns we've hand-mapped; the
+// group-heuristic is the fallback for anything not in the lookup. Data-
+// type vocabulary matches CustomFieldEditForm.DATA_TYPES so the Type
+// column reads consistently across CUSTOM and CORE rows.
 function inferCoreDataType(spec: ColumnSpecWire): string {
-  // Hand-mapped from the existing ArtefactItemColumns groups + name
-  // shape. Boolean columns are recognised by the `is_` prefix on
-  // existing entries (is_blocked) and the boolean catalogue rows added
-  // in this workstream (is_expedite, is_ready). Date columns end in
-  // `_date` (due_date) or `_at` (created_at, updated_at, archived_at).
-  // Everything else falls back to its group label.
+  // Hand-mapped overrides win first — the rally-screenshots batch
+  // (migs 150-155) all flow through this path with explicit vocabulary.
+  const override = CORE_COLUMN_OVERRIDES[spec.name];
+  if (override) return override.data_type;
+
+  // Heuristic fallback for unmapped columns. Boolean columns are
+  // recognised by the `is_` prefix on existing entries (is_blocked) and
+  // the boolean catalogue rows added in this workstream (is_expedite,
+  // is_ready). Date columns end in `_date` (due_date) or `_at`
+  // (created_at, updated_at, archived_at). Everything else falls back
+  // to a textbox label so the cell renders something in the catalogue
+  // vocab (no longer "field" — which wasn't a real data_type).
   if (spec.name.startsWith("is_")) return "boolean";
   if (spec.name.endsWith("_date")) return "date";
-  if (spec.name.endsWith("_at")) return "timestamp";
+  if (spec.name.endsWith("_at")) return "date";
   switch (spec.group) {
     case "Priority & Estimation":
-      return "number";
-    case "Identity":
-    case "Content":
-    case "Workflow":
-    case "Planning":
-    case "Hierarchy":
+      return "integer";
     case "People":
-    case "Topology":
-    case "Visual":
-    case "Audit":
-      return spec.group.toLowerCase();
+      return "user";
+    case "Content":
+      return "textbox";
     default:
-      return "field";
+      return "textbox";
   }
 }
 
@@ -142,12 +283,21 @@ function inferCoreDataType(spec: ColumnSpecWire): string {
 // columns endpoint doesn't carry any temporal data, and the Updated
 // cell renders "" via formatShortDate for empty inputs.
 function synthesiseCoreRow(spec: ColumnSpecWire): WorkspaceField {
+  // Pull the per-column override (if any) so we can echo enum options
+  // into options_json — matches the wire shape CUSTOM select / multi-
+  // select rows carry, so a future read-only viewer can render the
+  // bucket vocabulary without re-deriving it. Absent override → no
+  // options_json (matches the legacy behaviour).
+  const override = CORE_COLUMN_OVERRIDES[spec.name];
+  const optionsJson =
+    override?.options !== undefined ? { values: override.options } : undefined;
   return {
     id: CORE_ID_PREFIX + spec.name,
     subscription_id: null,
     name: spec.name,
     label: spec.label || spec.name,
     data_type: inferCoreDataType(spec),
+    options_json: optionsJson,
     // The cast to WorkspaceField["scope"] keeps the type narrow at call
     // sites; the sentinel string is a deliberate synthetic widening
     // documented by CORE_SCOPE_SENTINEL above.
