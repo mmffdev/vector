@@ -22,7 +22,7 @@ import { useSentinel } from "@/app/sentinel";
 
 // ── Kind config ────────────────────────────────────────────────────────────
 
-type Kind = "sprint" | "release";
+type Kind = "sprint" | "release" | "milestone";
 
 interface KindCfg {
   apiBase: string;
@@ -41,6 +41,11 @@ const KIND_CFG: Record<Kind, KindCfg> = {
     rowPrefix: "timeboxes_releases",
     namePrefix: "Release",
   },
+  milestone: {
+    apiBase: "/timeboxes/milestones",
+    rowPrefix: "timeboxes_milestones",
+    namePrefix: "Milestone",
+  },
 };
 
 // ── Row + props ────────────────────────────────────────────────────────────
@@ -53,7 +58,7 @@ type TimeboxRow = Record<string, unknown>;
 export interface TimeboxInlineFormProps {
   /** Row id whose detail is being rendered. Null = closed (renders nothing). */
   rowId: string | null;
-  /** Sprint vs release — drives endpoint + prefix derivation. */
+  /** Sprint / release / milestone — drives endpoint + prefix derivation. */
   kind: Kind;
   /** Workspace scope from useAuth — passed through ?workspace_id=. */
   workspaceId: string;
@@ -127,16 +132,238 @@ function StatusPill({ status }: { status: string }) {
   return <span className={cls}>{status || "—"}</span>;
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ── Milestone-specific editable shape ──────────────────────────────────────
+// Milestones are point-in-time markers: no suffix, no cadence, no
+// date range, no velocity. Just name + description + single target
+// date + status.
 
-export default function TimeboxInlineForm({
+interface MilestoneEditableState {
+  name: string;
+  description: string;
+  date_target: string;
+  status: string;
+}
+
+function extractMilestoneEditable(row: TimeboxRow): MilestoneEditableState {
+  const get = (col: string): string => {
+    const v = row[`timeboxes_milestones_${col}`];
+    return v === null || v === undefined ? "" : String(v);
+  };
+  return {
+    name: get("name"),
+    description: get("description"),
+    date_target: get("date_target"),
+    status: get("status") || "planned",
+  };
+}
+
+function diffMilestoneEditable(
+  current: MilestoneEditableState,
+  initial: MilestoneEditableState,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (current.name !== initial.name) {
+    patch.timeboxes_milestones_name = current.name;
+  }
+  if (current.description !== initial.description) {
+    patch.timeboxes_milestones_description = current.description || null;
+  }
+  if (current.date_target !== initial.date_target) {
+    patch.timeboxes_milestones_date_target = current.date_target || null;
+  }
+  if (current.status !== initial.status) {
+    patch.timeboxes_milestones_status = current.status;
+  }
+  return patch;
+}
+
+// ── MilestoneBody ──────────────────────────────────────────────────────────
+
+function MilestoneBody({
   rowId,
-  kind,
   workspaceId,
   orgNodeId,
   onClose,
   onSaved,
 }: TimeboxInlineFormProps) {
+  const cfg = KIND_CFG.milestone;
+  const [row, setRow] = useState<TimeboxRow | null>(null);
+  const [edit, setEdit] = useState<MilestoneEditableState | null>(null);
+  const [initial, setInitial] = useState<MilestoneEditableState | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const qs = useCallback(() => {
+    const params = new URLSearchParams({ workspace_id: workspaceId });
+    if (orgNodeId) params.set("org_node_id", orgNodeId);
+    return params.toString();
+  }, [workspaceId, orgNodeId]);
+
+  useEffect(() => {
+    if (!rowId) {
+      setRow(null);
+      setEdit(null);
+      setInitial(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiSite<TimeboxRow>(
+          `${cfg.apiBase}/${rowId}?${new URLSearchParams({ workspace_id: workspaceId, ...(orgNodeId ? { org_node_id: orgNodeId } : {}) }).toString()}`,
+        );
+        if (cancelled) return;
+        setRow(data);
+        const editable = extractMilestoneEditable(data);
+        setEdit(editable);
+        setInitial(editable);
+      } catch (e) {
+        if (!cancelled) {
+          notify.apiError(e as ApiError, "Failed to load milestone");
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rowId, workspaceId, orgNodeId, cfg.apiBase]);
+
+  const handleSave = useCallback(async () => {
+    if (!rowId || !edit || !initial) return;
+    const patch = diffMilestoneEditable(edit, initial);
+    if (Object.keys(patch).length === 0) {
+      onClose();
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await apiSite<TimeboxRow>(
+        `${cfg.apiBase}/${rowId}?${qs()}`,
+        { method: "PATCH", body: JSON.stringify(patch) },
+      );
+      notify.success("Milestone saved");
+      onSaved?.(updated);
+      onClose();
+    } catch (e) {
+      notify.apiError(e as ApiError, "Failed to save milestone");
+    } finally {
+      setSaving(false);
+    }
+  }, [rowId, edit, initial, cfg.apiBase, qs, onSaved, onClose]);
+
+  if (!rowId || !row || !edit) return null;
+
+  const status = String(row.timeboxes_milestones_status ?? "planned");
+  const name = String(row.timeboxes_milestones_name ?? "—");
+
+  return (
+    <section
+      className="timebox-inline-form"
+      aria-label="Milestone editor"
+    >
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
+        <h3 style={{ margin: 0 }}>{name}</h3>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <StatusPill status={status} />
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            Close
+          </button>
+        </div>
+      </header>
+
+      <form
+        className="form"
+        onSubmit={(e) => { e.preventDefault(); void handleSave(); }}
+      >
+        <div className="form__row">
+          <label className="form__label">
+            Name
+            <input
+              className="form__input"
+              type="text"
+              value={edit.name}
+              onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+              disabled={saving}
+              required
+            />
+          </label>
+        </div>
+
+        <div className="form__row">
+          <label className="form__label">
+            Description
+            <textarea
+              className="form__input"
+              value={edit.description}
+              onChange={(e) => setEdit({ ...edit, description: e.target.value })}
+              disabled={saving}
+              rows={3}
+            />
+          </label>
+        </div>
+
+        <div className="form__row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <label className="form__label">
+            Target Date
+            <input
+              className="form__input"
+              type="date"
+              value={edit.date_target}
+              onChange={(e) => setEdit({ ...edit, date_target: e.target.value })}
+              disabled={saving}
+              required
+            />
+          </label>
+          <label className="form__label">
+            Status
+            <select
+              className="form__input"
+              value={edit.status}
+              onChange={(e) => setEdit({ ...edit, status: e.target.value })}
+              disabled={saving}
+            >
+              <option value="planned">Planned</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="missed">Missed</option>
+            </select>
+          </label>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: 16,
+            gap: 8,
+          }}
+        >
+          <button
+            type="submit"
+            className="btn btn--primary btn--sm"
+            disabled={saving}
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
+
+export default function TimeboxInlineForm(props: TimeboxInlineFormProps) {
+  const { rowId, kind, workspaceId, orgNodeId, onClose, onSaved } = props;
   const cfg = KIND_CFG[kind];
   const p = cfg.rowPrefix;
   const { sentinel_user: _user } = useSentinel();
@@ -189,6 +416,14 @@ export default function TimeboxInlineForm({
       setOriginalPropagation("this_node_only");
     }
   }, [rowId, refetch]);
+
+  // Milestone dispatch — after all hooks so hook order is preserved.
+  // MilestoneBody owns its own state; the sprint/release hooks above
+  // run but go unused (refetch returns early when rowId is null, and
+  // for milestone the editable shape is incompatible anyway).
+  if (kind === "milestone") {
+    return <MilestoneBody {...props} />;
+  }
 
   // Null guard AFTER hooks are declared — preserves hook order across
   // rerenders. The shell still mounts the body when openId is null;
