@@ -1965,18 +1965,24 @@ export default function ObjectTree<T = WorkItem>({
         },
       })
     : null;
-  const adapterRowFlyoutNode = (() => {
-    if (!adapter?.renderRowFlyout || !flyoutRowId) return null;
-    const row = getRowByIdRef.current?.(flyoutRowId);
-    if (!row) return null;
-    return adapter.renderRowFlyout(row as T, {
-      onClose: () => setFlyoutRowId(null),
-      onSaved: () => {
-        setFlyoutRowId(null);
-        setAdapterRefreshTick((n) => n + 1);
-      },
-    });
-  })();
+  // Inline row-detail render function — ResourceTree calls this per row
+  // and injects the returned node into an extra <tr> directly under that
+  // row. Returns null for rows that aren't the active flyout row, so the
+  // flyout only expands under the clicked row (not all rows).
+  const renderAdapterRowDetail = useCallback(
+    (row: WorkItem): React.ReactNode | null => {
+      if (!adapter?.renderRowFlyout) return null;
+      if (flyoutRowId !== (row as { id: string }).id) return null;
+      return adapter.renderRowFlyout(row as unknown as T, {
+        onClose: () => setFlyoutRowId(null),
+        onSaved: () => {
+          setFlyoutRowId(null);
+          setAdapterRefreshTick((n) => n + 1);
+        },
+      });
+    },
+    [adapter, flyoutRowId],
+  );
   // adapterRefreshTick — host-controlled refetch signal. Plumbed to the
   // existing refetchRef path so the windowed-fetch hook re-fires after a
   // flyout save without needing to teach useObjectTreeWindow about the
@@ -2012,13 +2018,18 @@ export default function ObjectTree<T = WorkItem>({
         refetchExpandedChildrenRef={refetchExpandedChildrenRef}
         getRowByIdRef={getRowByIdRef}
         getVisibleIdsRef={getVisibleIdsRef}
-        getRowStripeColour={(row) =>
-          // Per-row override (set via the inline form's ColourPicker)
-          // wins. Falls back to the artefact-type's default colour
-          // when the user hasn't picked one. Null when neither is set,
-          // which leaves the 10px stripe slot transparent.
-          row.colour ?? colourMap?.get(row.type_prefix)?.colour ?? null
-        }
+        {...(adapter
+          ? {}
+          : {
+              getRowStripeColour: (row: WorkItem) =>
+                // Per-row override (set via the inline form's ColourPicker)
+                // wins. Falls back to the artefact-type's default colour
+                // when the user hasn't picked one. Null when neither is set,
+                // which leaves the 10px stripe slot transparent. Adapter
+                // mounts (CustomFields etc.) get no stripe column at all so
+                // rows sit flush to the panel edge.
+                row.colour ?? colourMap?.get(row.type_prefix)?.colour ?? null,
+            })}
         columns={
           // Slice 4.5 — filter columns to the visible set when a
           // catalogue is mounted. visibleKeySet is null when no
@@ -2048,6 +2059,7 @@ export default function ObjectTree<T = WorkItem>({
         })}
         {...(rowButtons && { rowButtons: rowButtons as (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[] })}
         {...(!hideCogMenu && { cogMenu: buildCogMenu })}
+        {...(adapter?.renderRowFlyout && { renderRowDetail: renderAdapterRowDetail })}
         selectedId={selectedId}
         onSelect={((row: WorkItem) => {
           // When an adapter with renderRowFlyout is active, a row click
@@ -2074,7 +2086,6 @@ export default function ObjectTree<T = WorkItem>({
               : undefined
         }
       />
-      {adapterRowFlyoutNode}
     </>
   );
 

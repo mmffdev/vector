@@ -266,6 +266,15 @@ export interface ResourceTreeProps<T> {
   // Portfolio, Risk, Scope all render identically when this is absent).
   rowButtons?: (row: T) => RowButton[];
 
+  // OTV2 adapter row-detail slot — when defined for a row, an extra
+  // table row is injected DIRECTLY UNDERNEATH the matched row with a
+  // single colSpan cell containing the returned React node. Used by
+  // ObjectTreeAdapters (e.g. CustomFields) to expand an edit flyout
+  // inline under the clicked row instead of as a bottom-of-grid panel.
+  // Return null for rows that have no detail. Opt-in: omit to keep
+  // legacy bottom-of-grid behaviour (no extra rows injected).
+  renderRowDetail?: (row: T) => React.ReactNode | null;
+
   // ── Set 5: Colour / tone (no-op default) ──
   tone?: ToneOverrides<T>;
 
@@ -850,6 +859,7 @@ function ResourceTreeImpl<T>({
   selection,
   cogMenu,
   rowButtons,
+  renderRowDetail,
   expandAllConcurrency = 6,
   // Tone (reserved; not consumed in v1 internals — column renderers handle it)
   // (patch / tone are accepted to keep the surface contract; column
@@ -1651,6 +1661,25 @@ function ResourceTreeImpl<T>({
               );
             })}
           </tr>
+          {(() => {
+            // OTV2 adapter row-detail slot — injects an extra <tr> directly
+            // under the matched row with a single colSpan cell containing
+            // the adapter's returned React node. Used by CustomFields to
+            // expand the edit flyout inline under the clicked row.
+            const detail = renderRowDetail?.(item);
+            if (!detail) return null;
+            return (
+              <tr className="tree_accordion-dense__row-detail">
+                <td
+                  className="tree_accordion-dense__cell tree_accordion-dense__cell--row-detail"
+                  colSpan={columns.length + leadOffset}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {detail}
+                </td>
+              </tr>
+            );
+          })()}
           {loadingId === id && (
             <tr>
               <td

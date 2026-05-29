@@ -10,7 +10,6 @@
 
 import { useMemo } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { useSentinel } from "@/app/sentinel";
@@ -61,26 +60,15 @@ export function CustomFieldsPageBody({
 
   return (
     <PageContent>
-      <PageHeading level={1} title={full} subtitle="Catalogue + artefact-type bindings." />
-      <PageDescription title="Custom Fields">
-        <p className="form__hint">
-          Manage the catalogue of fields available to artefacts in this
-          workspace. The <em>Visibility</em> column controls who can manage
-          a row; the per-row flyout binds the field to one or more artefact
-          types and sets per-binding position / required / default.
-        </p>
-      </PageDescription>
-
       <ObjectTree<WorkspaceField>
-        title="Fields"
+        title="Custom Fields"
         addressableName="custom_fields_grid"
-        subtitle="Catalogue & artefact-type bindings"
-        subtitleBadge="ADM"
-        description="One row per catalogue entry. Click a row to edit; the picker on the right binds the field to artefact types."
+        showHeader={false}
         wizardConfig={wizardConfig as Parameters<typeof ObjectTree>[0]["wizardConfig"]}
         adapter={adapter}
         selectedId={initialOpenId ?? null}
         initialCreateFlyoutOpen={initialCreateMode}
+        hideCogMenu
         onSelect={() => { /* selection handled inside OTV2 via adapter flyout */ }}
       />
     </PageContent>

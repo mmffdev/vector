@@ -14390,6 +14390,31 @@ input[type="reset"] {
   background: var(--surface-hover);
 }
 
+/* Inline adapter row-detail — the <tr> ResourceTree injects directly
+   under the active flyout row. Cell is bare so the adapter's flyout
+   shell takes the full slot AND sits flush against the next row (no
+   bottom border, no inner padding). */
+.tree_accordion-dense__row-detail {
+  background: var(--surface);
+}
+.tree_accordion-dense__cell--row-detail {
+  padding: 0 !important;
+  border-bottom: 0 !important;
+}
+
+/* First-cell left padding for stripe-less rows.
+   When the type-stripe column is dropped (adapter mounts — CustomFields
+   and other non-WorkItem grids) the leftmost cell is a data cell sitting
+   flush against the panel edge. Add a comfortable inset so the text
+   doesn't kiss the gridline. Skip when the first cell IS the type-stripe
+   (the stripe already owns its 10px slot) or one of the lead control
+   columns (selection / DnD-handle / row-buttons all have their own
+   spacing). Headers get the same treatment so the column label aligns. */
+.tree_accordion-dense__row > .tree_accordion-dense__cell:first-child:not(.tree_accordion-dense__cell--type-stripe):not(.tree_accordion-dense__cell--selection):not(.tree_accordion-dense__cell--row-buttons):not(.tree_accordion-dense__cell--row-detail),
+.tree_accordion-dense__table thead th:first-child:not(.tree_accordion-dense__th--type-stripe):not(.tree_accordion-dense__th--selection) {
+  padding-left: 16px;
+}
+
 /* Table root */
 .tree_accordion-dense__table {
   width: 100%;
@@ -19203,12 +19228,13 @@ tr.is-editing {
 
 /* Flyout — the inline edit/create surface that expands under a grid row
    (CustomFieldsAdapter.renderRowFlyout + renderCreateFlyout). */
+/* Flyout shell — flush against its host container (the row-detail <td>
+   for inline edit, or the panel body for create-new). No border, no
+   radius, no margin: the host owns those concerns. Inner padding is
+   for the header + content rhythm only. */
 .custom-field-flyout {
-  border: 1px solid var(--border);
-  border-radius: 8px;
   background: var(--surface);
-  padding: 20px;
-  margin: 12px 0;
+  padding: 16px 20px;
 }
 .custom-field-flyout__Header {
   display: flex;
