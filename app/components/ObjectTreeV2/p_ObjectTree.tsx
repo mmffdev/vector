@@ -2211,9 +2211,14 @@ export default function ObjectTree<T = WorkItem>({
         selectedId={selectedId}
         onSelect={((row: WorkItem) => {
           // When an adapter with renderRowFlyout is active, a row click
-          // opens the flyout below in addition to firing the host's
-          // onSelect. Default mounts (no adapter) just call onSelect.
-          if (adapter?.renderRowFlyout) setFlyoutRowId(row.id);
+          // TOGGLES the flyout: clicking an already-open row closes it,
+          // clicking any other row (or a closed row) opens that row's
+          // flyout. Mirrors common dense-grid expander UX so the user
+          // doesn't have to hunt for a Close button to dismiss. Default
+          // mounts (no adapter) just call onSelect.
+          if (adapter?.renderRowFlyout) {
+            setFlyoutRowId((current) => (current === row.id ? null : row.id));
+          }
           (onSelect as (row: WorkItem) => void)(row);
         })}
         pageIndex={pageIndex}
