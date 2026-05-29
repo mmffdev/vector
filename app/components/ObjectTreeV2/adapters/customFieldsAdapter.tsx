@@ -467,7 +467,7 @@ export function createCustomFieldsAdapter(
         node: (
           <button
             type="button"
-            className="action-btn action-btn--primary"
+            className="btn btn--primary"
             onClick={() => ctx.onOpenCreateFlyout?.()}
           >
             Create Field

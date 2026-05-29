@@ -32,7 +32,7 @@ export default function CustomFieldFlyout({
     <div className="custom-field-flyout">
       <div className="custom-field-flyout__Header">
         <h3>{initial ? `Edit: ${initial.label}` : "Create field"}</h3>
-        <button type="button" className="action-btn" onClick={onClose}>
+        <button type="button" className="btn" onClick={onClose}>
           Close
         </button>
       </div>

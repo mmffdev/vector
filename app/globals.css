@@ -6489,11 +6489,22 @@ input[type="reset"] {
   align-items: center;
 }
 
+/* Theme-page swatch button — preview render of the .btn primitive using
+   the per-card --tp-* tokens (not the active --accent/--ink). The card's
+   point is "this is how buttons look in THIS theme", so the swatch must
+   plumb through the card's local tokens, not the live theme.
+   Shape (height/padding/radius/font) MUST track .btn 1:1 so the preview
+   reads true. If .btn changes shape, change this in lockstep. */
 .tp-btn {
-  padding: 4px 8px;
-  border-radius: 0;
-  font-size: 9px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -19188,54 +19199,16 @@ tr.is-editing {
   width: 140px;
 }
 
-/* Picker remove button — size override on top of .action-btn .action-btn--danger.
-   The colour + border + hover behaviour are inherited from the action-btn
-   rules; only the tighter padding + font-size are particular to the picker
-   row. Kept as a single rule so the next reader sees both inputs at once. */
-.type-bindings-picker__RemoveBtn.action-btn {
-  padding: 2px 8px;
+/* Picker remove button — tighter size override on top of .btn for the
+   per-binding row in the type-bindings picker; the picker rows are tight
+   and the default 32px button would crowd them. Hover shifts to danger
+   colour (border + text) since "Remove" deserves the visual warning. */
+.type-bindings-picker__RemoveBtn.btn {
+  height: 24px;
+  padding: 0 8px;
   font-size: 11px;
 }
-
-/* =============================================================
-   Shared .action-btn family + .custom-field-flyout layout
-   ─────────────────────────────────────────────────────────────
-   Used by ActionBar buttons, per-row row-buttons, and any
-   inline flyout action button. Replaces the dark-slab inline-
-   styled buttons that pre-dated this. Variants:
-     --primary  → brand-accent fill
-     --danger   → border + ink shift to --danger on hover
-   ============================================================= */
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 80ms ease;
-}
-.action-btn:hover:not(:disabled) {
-  background: var(--surface-hover);
-}
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.action-btn--primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
-}
-.action-btn--primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-.action-btn--danger:hover:not(:disabled) {
+.type-bindings-picker__RemoveBtn.btn:hover:not(:disabled) {
   border-color: var(--danger);
   color: var(--danger);
 }
@@ -19328,7 +19301,7 @@ tr.is-editing {
 
 /* Scope filter chip — the single filter the CustomFieldsAdapter renders
    into the ActionBar's filter slot. Label-plus-select pill that visually
-   matches the .action-btn cluster sitting next to it. */
+   matches the .btn cluster sitting next to it. */
 .custom-fields-scope-chip {
   display: inline-flex;
   align-items: center;
