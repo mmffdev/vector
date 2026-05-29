@@ -2106,6 +2106,7 @@ export default function ObjectTree<T = WorkItem>({
     },
     [adapter, flyoutRowId, openInlineFormId, inlineFormNode],
   );
+
   // Create-row render function — ResourceTree calls this and injects the
   // returned node as the first <tr> of <tbody> (above the first data
   // row, below <thead>). One of two routes is active per mount:
@@ -2124,10 +2125,10 @@ export default function ObjectTree<T = WorkItem>({
         },
       });
     }
-    // WorkItem route — createFlyoutNode handles its own
-    // data-open attribute and animation. Always rendered, but only
-    // hosted in the table while createFlyoutOpen is true so the row
-    // doesn't take up height when closed.
+    // WorkItem route — createFlyoutNode owns its own data-open
+    // attribute and height animation, but is only injected into the
+    // table when createFlyoutOpen is true so the row takes no height
+    // when closed.
     if (!createFlyoutOpen) return null;
     return createFlyoutNode;
   }, [adapter, createFlyoutOpen, createFlyoutNode]);
@@ -2263,10 +2264,9 @@ export default function ObjectTree<T = WorkItem>({
 
   // When the page passes title + addressableName, ObjectTree owns its own
   // <Panel>. Otherwise (legacy callers still wrapping with their own Panel)
-  // we render bare. The inline form is rendered as a SIBLING after the
-  // panel — not a child — so the panel's white background ends at the
-  // pagination's rounded bottom corners, and the gap above the form
-  // shows the page canvas through (no holdover panel bg).
+  // we render bare. Both the create flyout and the row-detail/edit flyout
+  // are hosted INSIDE <ResourceTree> via renderCreateRow / renderRowDetail,
+  // so the Panel's white background and the table grow together.
   // Cross-tree drop wrapper. Only attaches handlers when the host wired
   // onExternalDrop — otherwise it's an inert <div> and the previous
   // chrome is unchanged. The halo class paints a soft ring + tint so
