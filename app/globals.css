@@ -19293,6 +19293,16 @@ tr.is-editing {
   text-transform: none;
   letter-spacing: 0;
 }
+/* Override the global disabled-state grey wash inside the flyout —
+   immutable post-create fields (Data type, Visibility) keep a clean
+   white background so they don't read as "broken inputs". The disabled
+   ink colour is preserved via the hint copy that explains why it's
+   locked. */
+.custom-field-edit-form__FieldStack > .form__label > .form__input:disabled,
+.custom-field-edit-form__FieldStack > .form__label > .form__select:disabled,
+.custom-field-edit-form__FieldStack > .form__label > .form__textarea:disabled {
+  background: var(--surface);
+}
 .custom-field-edit-form__FieldStack .form__hint {
   font-size: 11px;
   color: var(--ink-subtle);
