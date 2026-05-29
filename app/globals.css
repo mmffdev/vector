@@ -15354,7 +15354,9 @@ input[type="reset"] {
 }
 /* Inline flyout title bars never get rounded corners on the top —
    they sit flush under the row above (or <thead>, for create) once
-   hosted inside ResourceTree via renderRowDetail / renderCreateRow. */
+   hosted inside ResourceTree via renderRowDetail / renderCreateRow.
+   The base rule keeps 9px radius for standalone (non-tree) rendering;
+   override here rather than removing it from the base. */
 .artefact-inline-form__Container_Head,
 .artefact-inline-form__Container_Head--duplicate,
 .artefact-inline-form__Container_Head--deleting {
