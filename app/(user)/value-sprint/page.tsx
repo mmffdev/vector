@@ -656,6 +656,10 @@ export default function ValueSprint() {
           {catalogueReady && panelWizardConfig && (
             <div ref={panelBulkBarRef}>
               <ObjectTree
+                title="Sprint backlog"
+                subtitleBadge="00"
+                subtitle="Sprint scope"
+                description="Load artefacts here for the target sprint"
                 selectedId={panelSelectedItem?.id ?? null}
                 onSelect={setPanelSelectedItem}
                 wizardConfig={panelWizardConfig}
