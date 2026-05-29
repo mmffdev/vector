@@ -2131,14 +2131,20 @@ export default function ObjectTree<T = WorkItem>({
     return createFlyoutNode;
   }, [adapter, createFlyoutOpen, createFlyoutNode]);
 
-  // adapterRefreshTick — host-controlled refetch signal. Plumbed to the
-  // existing refetchRef path so the windowed-fetch hook re-fires after a
-  // flyout save without needing to teach useObjectTreeWindow about the
-  // adapter directly.
+  // adapterRefreshTick — host-controlled refetch signal. Fires
+  // refetchWindow() directly so the grid repaints after an adapter-side
+  // create/save (flyout onCreated/onSaved). Earlier idiom routed through
+  // the optional host-supplied refetchRef, but adapter mounts (custom-
+  // fields, future admin grids) don't pass refetchRef — they don't need
+  // the imperative escape hatch for anything else — so the indirection
+  // dropped the refetch on the floor. Calling refetchWindow directly is
+  // the simpler correct path and works regardless of whether the host
+  // supplied refetchRef. The refetchRef-based path stays alive above for
+  // the value-sprint "Add to Sprint" external-PATCH idiom.
   useEffect(() => {
     if (adapterRefreshTick === 0) return;
-    void refetchRef?.current?.();
-  }, [adapterRefreshTick, refetchRef]);
+    void refetchWindow();
+  }, [adapterRefreshTick, refetchWindow]);
 
   const inner = (
     <>
