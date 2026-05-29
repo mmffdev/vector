@@ -2077,44 +2077,61 @@ export default function ObjectTree<T = WorkItem>({
     />
   );
 
-  // OTV2 generic-rowtype seam: the adapter (when present) owns its own
-  // create UX. We render its node ABOVE the WorkItem-specific create
-  // flyout so the two don't collide; in practice only one is wired per
-  // mount because the adapter route and the WorkItem route are mutually
-  // exclusive at the host. Same for the row flyout below the grid.
-  //
-  // Note: the adapter's buildCreateAction is intentionally NOT rendered
-  // as a standalone button. Create-new is the ActionBar's job (single
-  // affordance per grid). The adapter wires its own onOpenCreateFlyout
-  // via the ActionBar's createAction pipeline — see the create-action
-  // wiring further down where the adapter routes through.
-  const adapterCreateFlyoutNode = adapter?.renderCreateFlyout && createFlyoutOpen
-    ? adapter.renderCreateFlyout({
+  // Inline row-detail render function — ResourceTree calls this per row
+  // and injects the returned node into an extra <tr> directly under that
+  // row. Returns null for rows that aren't the active flyout row, so the
+  // flyout only expands under the clicked row (not all rows). Serves
+  // both routes:
+  //   - Adapter mounts (CustomFields etc): forward to
+  //     adapter.renderRowFlyout. The host owns the flyoutRowId state.
+  //   - WorkItem mounts (default): return the WorkItem inlineFormNode
+  //     IFF openInlineFormId === row.id. The inline form is the
+  //     ObjectTreeDetailFlyout-wrapped ArtefactInlineForm built below.
+  const renderRowDetail = useCallback(
+    (row: WorkItem): React.ReactNode | null => {
+      const rowId = (row as { id: string }).id;
+      if (adapter?.renderRowFlyout) {
+        if (flyoutRowId !== rowId) return null;
+        return adapter.renderRowFlyout(row as unknown as T, {
+          onClose: () => setFlyoutRowId(null),
+          onSaved: () => {
+            setFlyoutRowId(null);
+            setAdapterRefreshTick((n) => n + 1);
+          },
+        });
+      }
+      // WorkItem route — only emit the flyout for the matching row.
+      if (openInlineFormId !== rowId) return null;
+      return inlineFormNode;
+    },
+    [adapter, flyoutRowId, openInlineFormId, inlineFormNode],
+  );
+  // Create-row render function — ResourceTree calls this and injects the
+  // returned node as the first <tr> of <tbody> (above the first data
+  // row, below <thead>). One of two routes is active per mount:
+  //   - Adapter mounts: adapter.renderCreateFlyout owns the JSX.
+  //   - WorkItem mounts (default): the local createFlyoutNode JSX block
+  //     (built above) provides the create form.
+  // Returns null when the create flyout is closed.
+  const renderCreateRow = useCallback((): React.ReactNode | null => {
+    if (adapter?.renderCreateFlyout) {
+      if (!createFlyoutOpen) return null;
+      return adapter.renderCreateFlyout({
         onClose: () => setCreateFlyoutOpen(false),
         onCreated: () => {
           setCreateFlyoutOpen(false);
           setAdapterRefreshTick((n) => n + 1);
         },
-      })
-    : null;
-  // Inline row-detail render function — ResourceTree calls this per row
-  // and injects the returned node into an extra <tr> directly under that
-  // row. Returns null for rows that aren't the active flyout row, so the
-  // flyout only expands under the clicked row (not all rows).
-  const renderAdapterRowDetail = useCallback(
-    (row: WorkItem): React.ReactNode | null => {
-      if (!adapter?.renderRowFlyout) return null;
-      if (flyoutRowId !== (row as { id: string }).id) return null;
-      return adapter.renderRowFlyout(row as unknown as T, {
-        onClose: () => setFlyoutRowId(null),
-        onSaved: () => {
-          setFlyoutRowId(null);
-          setAdapterRefreshTick((n) => n + 1);
-        },
       });
-    },
-    [adapter, flyoutRowId],
-  );
+    }
+    // WorkItem route — createFlyoutNode handles its own
+    // data-open attribute and animation. Always rendered, but only
+    // hosted in the table while createFlyoutOpen is true so the row
+    // doesn't take up height when closed.
+    if (!createFlyoutOpen) return null;
+    return createFlyoutNode;
+  }, [adapter, createFlyoutOpen, createFlyoutNode]);
+
   // adapterRefreshTick — host-controlled refetch signal. Plumbed to the
   // existing refetchRef path so the windowed-fetch hook re-fires after a
   // flyout save without needing to teach useObjectTreeWindow about the
@@ -2128,8 +2145,9 @@ export default function ObjectTree<T = WorkItem>({
     <>
       {headerNode}
       {actionBarNode}
-      {adapterCreateFlyoutNode}
-      {createFlyoutNode}
+      {/* Create flyouts (adapter + WorkItem) and the row-detail flyout
+          are hosted INSIDE <ResourceTree> via renderCreateRow /
+          renderRowDetail. Rendering them here would double them up. */}
       {/* TODO(00456): wire bulk action handlers in WS3-D */}
       {multiSelectEnabled && (
         <BulkActionBar
@@ -2201,13 +2219,14 @@ export default function ObjectTree<T = WorkItem>({
         })}
         {...(rowButtons && { rowButtons: rowButtons as (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[] })}
         {...(!hideCogMenu && { cogMenu: buildCogMenu })}
-        {...(adapter?.renderRowFlyout && {
-          renderRowDetail: renderAdapterRowDetail,
-          // Drop the inner scroll container so opening the inline flyout
-          // pushes the whole panel down instead of spawning a second
-          // scrollbar competing with the page scroll.
-          disableInnerScroll: true,
-        })}
+        renderRowDetail={renderRowDetail}
+        renderCreateRow={renderCreateRow}
+        // Drop the inner scroll container so opening the inline flyout
+        // (adapter row flyout OR WorkItem edit flyout) pushes the whole
+        // panel down instead of spawning a second scrollbar competing
+        // with the page scroll. Applies to both routes — the row-detail
+        // mechanism is unified.
+        disableInnerScroll
         selectedId={selectedId}
         onSelect={((row: WorkItem) => {
           // When an adapter with renderRowFlyout is active, a row click
@@ -2266,18 +2285,10 @@ export default function ObjectTree<T = WorkItem>({
     : {};
   if (title && addressableName) {
     return (
-      <>
-        <Panel name={addressableName} title={title}>
-          <div {...dropZoneProps}>{inner}</div>
-        </Panel>
-        {inlineFormNode}
-      </>
+      <Panel name={addressableName} title={title}>
+        <div {...dropZoneProps}>{inner}</div>
+      </Panel>
     );
   }
-  return (
-    <>
-      <div {...dropZoneProps}>{inner}</div>
-      {inlineFormNode}
-    </>
-  );
+  return <div {...dropZoneProps}>{inner}</div>;
 }
