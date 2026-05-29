@@ -2110,10 +2110,13 @@ export default function ObjectTree<T = WorkItem>({
   // Create-row render function — ResourceTree calls this and injects the
   // returned node as the first <tr> of <tbody> (above the first data
   // row, below <thead>). One of two routes is active per mount:
-  //   - Adapter mounts: adapter.renderCreateFlyout owns the JSX.
-  //   - WorkItem mounts (default): the local createFlyoutNode JSX block
-  //     (built above) provides the create form.
-  // Returns null when the create flyout is closed.
+  //   - Adapter mounts: adapter.renderCreateFlyout owns the open state
+  //     (createFlyoutOpen) and the JSX. Mounted only while open.
+  //   - WorkItem mounts (default): createFlyoutNode is ALWAYS mounted
+  //     and owns its own `data-open={actionTypeId ? ...}` attribute +
+  //     `grid-template-rows: 0fr → 1fr` height animation. The <tr>
+  //     stays in the table with zero height when closed so the open
+  //     animation fires on first paint after actionTypeId is set.
   const renderCreateRow = useCallback((): React.ReactNode | null => {
     if (adapter?.renderCreateFlyout) {
       if (!createFlyoutOpen) return null;
@@ -2125,11 +2128,6 @@ export default function ObjectTree<T = WorkItem>({
         },
       });
     }
-    // WorkItem route — createFlyoutNode owns its own data-open
-    // attribute and height animation, but is only injected into the
-    // table when createFlyoutOpen is true so the row takes no height
-    // when closed.
-    if (!createFlyoutOpen) return null;
     return createFlyoutNode;
   }, [adapter, createFlyoutOpen, createFlyoutNode]);
 
