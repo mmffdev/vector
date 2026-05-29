@@ -15,6 +15,13 @@ import (
 
 // newTestPool connects to the dev vector_artefacts DB (env-overrideable).
 // Mirrors the saved-views integration test pattern.
+//
+// Pool teardown is registered via t.Cleanup (NOT defer pool.Close()) so
+// that seed-row cleanups registered later by seedTestRows run BEFORE the
+// pool is closed. Go runs t.Cleanup callbacks LIFO after the test body
+// returns; defers in the test body unwind first. Mixing the two patterns
+// would close the pool before the DELETE cleanups fire, silently leaking
+// every test_field_* / test type the run created.
 func newTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("VECTOR_ARTEFACTS_DSN")
@@ -25,6 +32,9 @@ func newTestPool(t *testing.T) *pgxpool.Pool {
 	if err != nil {
 		t.Fatalf("pool: %v", err)
 	}
+	// Registered FIRST → runs LAST in the LIFO cleanup chain, so any
+	// DELETE cleanups seedTestRows queues later still see an open pool.
+	t.Cleanup(func() { pool.Close() })
 	return pool
 }
 
@@ -85,16 +95,28 @@ func seedTestRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (uuid.U
 		// types_fields.field FK is RESTRICT, so we must drop bindings before
 		// the field. Types FK is CASCADE, so dropping types alone would purge
 		// bindings, but we keep the explicit DELETE for clarity.
-		_, _ = pool.Exec(ctx, `DELETE FROM artefacts_types_fields WHERE artefacts_types_fields_id_field_library = $1`, fieldID)
-		_, _ = pool.Exec(ctx, `DELETE FROM artefacts_fields_library WHERE artefacts_fields_library_id = $1`, fieldID)
-		_, _ = pool.Exec(ctx, `DELETE FROM artefacts_types WHERE artefacts_types_id = ANY($1)`, []uuid.UUID{typeAID, typeBID})
+		//
+		// Use a fresh background context — the test's ctx may have been
+		// cancelled by the harness by the time cleanups fire. Surface any
+		// cleanup failure via t.Logf so a future helper bug doesn't silently
+		// re-introduce zombie test_field_* rows in the catalogue (the bug
+		// this t.Cleanup block was originally added to prevent).
+		cleanupCtx := context.Background()
+		if _, err := pool.Exec(cleanupCtx, `DELETE FROM artefacts_types_fields WHERE artefacts_types_fields_id_field_library = $1`, fieldID); err != nil {
+			t.Logf("cleanup: delete bindings for field %s: %v", fieldID, err)
+		}
+		if _, err := pool.Exec(cleanupCtx, `DELETE FROM artefacts_fields_library WHERE artefacts_fields_library_id = $1`, fieldID); err != nil {
+			t.Logf("cleanup: delete field %s: %v", fieldID, err)
+		}
+		if _, err := pool.Exec(cleanupCtx, `DELETE FROM artefacts_types WHERE artefacts_types_id = ANY($1)`, []uuid.UUID{typeAID, typeBID}); err != nil {
+			t.Logf("cleanup: delete types %s/%s: %v", typeAID, typeBID, err)
+		}
 	})
 	return fieldID, subID, typeAID, typeBID
 }
 
 func TestReplaceBindingsForField_NewBinding(t *testing.T) {
 	pool := newTestPool(t)
-	defer pool.Close()
 	ctx := context.Background()
 	svc := &Service{artefactsPool: pool}
 
@@ -120,7 +142,6 @@ func TestReplaceBindingsForField_NewBinding(t *testing.T) {
 
 func TestReplaceBindingsForField_SetSemantics(t *testing.T) {
 	pool := newTestPool(t)
-	defer pool.Close()
 	ctx := context.Background()
 	svc := &Service{artefactsPool: pool}
 
@@ -153,7 +174,6 @@ func TestReplaceBindingsForField_SetSemantics(t *testing.T) {
 
 func TestReplaceBindingsForField_UnknownType_Returns404Sentinel(t *testing.T) {
 	pool := newTestPool(t)
-	defer pool.Close()
 	ctx := context.Background()
 	svc := &Service{artefactsPool: pool}
 
@@ -172,7 +192,6 @@ func TestReplaceBindingsForField_UnknownType_Returns404Sentinel(t *testing.T) {
 
 func TestReplaceBindingsForField_CrossTenantType_Returns404Sentinel(t *testing.T) {
 	pool := newTestPool(t)
-	defer pool.Close()
 	ctx := context.Background()
 	svc := &Service{artefactsPool: pool}
 
@@ -191,7 +210,6 @@ func TestReplaceBindingsForField_CrossTenantType_Returns404Sentinel(t *testing.T
 
 func TestUpdateBinding_PatchPosition(t *testing.T) {
 	pool := newTestPool(t)
-	defer pool.Close()
 	ctx := context.Background()
 	svc := &Service{artefactsPool: pool}
 
@@ -216,7 +234,6 @@ func TestUpdateBinding_PatchPosition(t *testing.T) {
 
 func TestUpdateBinding_NoRow_ReturnsErrBindingNotFound(t *testing.T) {
 	pool := newTestPool(t)
-	defer pool.Close()
 	ctx := context.Background()
 	svc := &Service{artefactsPool: pool}
 
