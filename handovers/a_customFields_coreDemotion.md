@@ -419,3 +419,55 @@ git revert b1f39e70 03dd7880 de9075e7 55802056 f7b09997 aa879ced 29b7fb4b
 ```
 
 (Mig 155's DOWN is best-effort: ALTER COLUMN TYPE TEXT→NUMERIC needs `USING ::numeric` and will fail on bucket values like 'XL' — accept that data loss if rolling back.)
+
+---
+
+# Execution Summary — Third wave: Rule 2 custom-field prefix (2026-05-29 late)
+
+After Rick noticed the filter chips weren't working on the custom-fields page (fix shipped at commit `127cfe30` — adapter filter state never reached `useObjectTreeWindow.filterQuery`), he imposed two HARD-RULE-level naming requirements:
+
+1. **Rule 1** (existing — full-table-name prefix on every core column): audited, **0 violations** out of 930 columns / 88 tables. Substrate is already 100% clean.
+2. **Rule 2** (NEW — `c_<tablename>_<column>` on every custom-field catalogue row): audited, **84 / 84 violations**. All renamed; the substrate is now 100% compliant.
+
+## What shipped (4 commits — `6015d1ad` → `05de3386`)
+
+- **mig 160** (`6015d1ad`) — UPDATE renamed all 84 `artefacts_fields_library` rows to `c_artefacts_*` form (20 active + 64 archived per Decision 1). Postgres CHECK constraint `artefacts_fields_library_field_name_c_prefix_check` enforces `^c_artefacts_[a-z][a-z0-9_]*$` going forward.
+- **Backend wiring** (`b6338bc6`) — Handler 400-validator with `ErrFieldNamePrefix` sentinel + explanatory error body (Decision 2). Service.go defence-in-depth duplicate. Literal-string updates in `sqlSummariseRisks` (`'risk_impact'` / `'risk_probability'` → `c_artefacts_` prefixed). Two new tests pass.
+- **Lint tooling** (`b14d51ea`) — `dev/scripts/lint_custom_field_prefix.py` wired into the `lint:rf1` aggregate. Live: `OK — 85 row(s) ... all comply`. Generalisation comment for Decision 3 documented in the script header.
+- **Audit doc** (`05de3386`) — `dev/research/column_prefix_compliance_audit.md` — the read-only audit that drove the build.
+
+## HARD RULE follow-through
+
+- **SY003 regenerated** — substrate changed (UPDATE + CHECK), HARD RULE compliance via background regen subagent.
+- **Server-is-the-gate** — handler validator runs BEFORE the SQL insert, with the CHECK as defence-in-depth.
+
+## Three Rick decisions locked + actioned
+
+| # | Decision | Implementation |
+|---|---|---|
+| 1 | Rename all 84 rows incl archived | Single UPDATE on `artefacts_fields_library_field_name` |
+| 2 | 400 on create violation (not silent prepend) | `ErrFieldNamePrefix` sentinel + explanatory body |
+| 3 | Rule generalises to `c_<table>_<column>` | Documented in script header + handler comment |
+
+## Pre-existing test failures (NOT caused by this batch)
+
+The build subagent noted that `internal/fields/handler_test.go::TestList_AdmittedSet_MatchesResolverRules` + `internal/fields/resolver_test.go::TestResolveField_*` were already failing before this work — they seed using bare `subscription_id, field_name, ...` column names from before RF1.4.4 rename. Same failure signature pre + post. NOT touched here. Worth a separate `<r>` retro session to clean up.
+
+## Open follow-ups (parked for Rick)
+
+- **Uncommitted on disk when this wave ended**: mig 161 (`rehome_value_sprint_add_review.sql`) + companion DOWN + a globals.css selector tweak for `.value-sprint-review__target` — these are Rick's in-flight work for the value-sprint-review nav rehoming. Mig 161 is NOT applied to live DB yet (only 160 shows in `schema_migrations`). Left uncommitted because (a) it's Rick's workstream not mine, (b) the CSS depends on the unapplied page existing. Apply when Rick wakes.
+- **Push** — branch was +24 ahead of origin at this wave's end. Awaiting explicit go-ahead per standing rule.
+
+## Recovery commands (this wave)
+
+```bash
+# Down mig 160
+psql -h localhost -p 5435 -U <user> -d vector_artefacts \
+  -f db/vector_artefacts/schema/down/160_custom_fields_c_prefix_rule2_DOWN.sql
+# Remove schema_migrations row
+psql ... -c "DELETE FROM schema_migrations WHERE filename = '160_custom_fields_c_prefix_rule2.sql';"
+# Revert commits (git revert, NOT reset — destructive git is HARD RULE)
+git revert 05de3386 b14d51ea b6338bc6 6015d1ad
+```
+
+The substrate rename is reversible (DOWN strips the `c_artefacts_` prefix via REGEXP_REPLACE + drops the CHECK).
