@@ -12,7 +12,24 @@
 // at the transactional create boundary.
 
 import React from "react";
+import type { JSONContent } from "@tiptap/react";
+import { RichTextField } from "@/app/components/RichTextField";
 import type { FieldBinding } from "@/app/components/ObjectTreeV2/hooks/useFieldsForType";
+
+// Richtext storage boundary — mirrors EditCustomFields.tsx. The wire
+// stores richtext as TEXT (text_value), so we JSON.stringify on write.
+// Initial state on create is empty (no parse path needed here).
+function stringifyRichtextDoc(doc: JSONContent): string {
+  return JSON.stringify(doc);
+}
+function parseRichtextDoc(raw: string): JSONContent | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    if (v && typeof v === "object" && "type" in v) return v as JSONContent;
+  } catch { /* fall through */ }
+  return { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: raw }] }] };
+}
 
 export type CustomFieldValues = Record<string, string>;
 
@@ -62,20 +79,14 @@ export function CreateCustomFields({ bindings, values, onChange, tabIndex }: Pro
 
         switch (b.field_type) {
           case "richtext":
-            // Plain textarea for now — TipTap upgrade matches the
-            // Description field once richtext custom fields are a real
-            // requirement (tracked alongside TD-CREATE-CUSTOM-FIELDS).
             return (
-              <label key={b.field_library_id} className="tree_accordion-dense__createflyout-field">
+              <div key={b.field_library_id} className="tree_accordion-dense__createflyout-field">
                 {labelNode}
-                <textarea
-                  className="tree_accordion-dense__createflyout-input"
-                  rows={3}
-                  tabIndex={tabIndex}
-                  value={v}
-                  onChange={(e) => set(b.field_library_id, e.target.value)}
+                <RichTextField
+                  value={parseRichtextDoc(v)}
+                  onChange={(doc) => set(b.field_library_id, stringifyRichtextDoc(doc))}
                 />
-              </label>
+              </div>
             );
           case "integer":
             return (

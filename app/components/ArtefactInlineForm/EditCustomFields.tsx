@@ -8,11 +8,32 @@
 // per binding, ordered by display position.
 
 import React, { useEffect, useState } from "react";
+import type { JSONContent } from "@tiptap/react";
 import { apiSite } from "@/app/lib/api";
+import { RichTextField } from "@/app/components/RichTextField";
 import {
   useFieldsForType,
   type FieldBinding,
 } from "@/app/components/ObjectTreeV2/hooks/useFieldsForType";
+
+// Richtext storage boundary — TipTap JSON ↔ wire string.
+//
+// The wire shape stores richtext as a TEXT column (`text_value`), so we
+// JSON.stringify on write and JSON.parse on read. A legacy plain-text
+// value (before this fix) parses as throw → fall back to a doc node that
+// wraps the literal string in a single <p>; the editor renders it as
+// plain prose and the next save round-trips it to canonical JSON.
+function parseRichtextDoc(raw: string): JSONContent | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    if (v && typeof v === "object" && "type" in v) return v as JSONContent;
+  } catch { /* fall through */ }
+  return { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: raw }] }] };
+}
+function stringifyRichtextDoc(doc: JSONContent): string {
+  return JSON.stringify(doc);
+}
 
 interface FieldValueWire {
   id: string;
@@ -148,16 +169,14 @@ export function EditCustomFields({ artefactId, artefactTypeId, resourceUrl }: Pr
         switch (b.field_type) {
           case "richtext":
             return (
-              <label key={b.field_library_id} className="artefact-inline-form__Field">
+              <div key={b.field_library_id} className="artefact-inline-form__Field">
                 {labelNode}
-                <textarea
-                  className="artefact-inline-form__Field_Input"
-                  rows={3}
-                  value={v}
-                  onChange={(e) => setLocal(e.target.value)}
-                  onBlur={(e) => commitIfChanged(e.target.value)}
+                <RichTextField
+                  value={parseRichtextDoc(v)}
+                  onChange={(doc) => setLocal(stringifyRichtextDoc(doc))}
+                  onBlur={(doc) => commitIfChanged(stringifyRichtextDoc(doc))}
                 />
-              </label>
+              </div>
             );
           case "integer":
             return (
