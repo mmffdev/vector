@@ -52,6 +52,13 @@ var ReleaseColumns = []ColumnSpec{
 	// Slice 5A — propagation intent
 	{Name: "timeboxes_releases_scope_propagation"},
 
+	// Rally-screenshots batch (mig 157).
+	{Name: "timeboxes_releases_actuals"},
+	{Name: "timeboxes_releases_plan_estimate"},
+	{Name: "timeboxes_releases_planned_velocity"},
+	{Name: "timeboxes_releases_theme"},
+	{Name: "timeboxes_releases_gross_estimate_conversion_ratio"},
+
 	// Slice 5B — non-persisted read-time inheritance metadata. See
 	// timeboxsprints/columns.go for the contract.
 	{Name: "origin"},

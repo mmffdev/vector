@@ -326,6 +326,52 @@ func (s *Service) Update(ctx context.Context, workspaceID, releaseID string, in 
 		}
 		addField("timeboxes_releases_scope_propagation", *in.ScopePropagation)
 	}
+	// Rally-screenshots batch (mig 157). Three-state on *string; numerics
+	// cast through ::numeric; Actuals is NOT NULL so empty rejected;
+	// gross_estimate_conversion_ratio range-bound 0..10 handler-side
+	// (mirrors the DB CHECK so a bad request returns 400 not 500).
+	if in.Actuals != nil {
+		if *in.Actuals == "" {
+			return nil, ErrInvalidInput
+		}
+		sets = append(sets, fmt.Sprintf("timeboxes_releases_actuals = $%d::numeric", n))
+		args = append(args, *in.Actuals)
+		n++
+	}
+	if in.PlanEstimate != nil {
+		if *in.PlanEstimate == "" {
+			sets = append(sets, "timeboxes_releases_plan_estimate = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("timeboxes_releases_plan_estimate = $%d::numeric", n))
+			args = append(args, *in.PlanEstimate)
+			n++
+		}
+	}
+	if in.PlannedVelocity != nil {
+		if *in.PlannedVelocity == "" {
+			sets = append(sets, "timeboxes_releases_planned_velocity = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("timeboxes_releases_planned_velocity = $%d::numeric", n))
+			args = append(args, *in.PlannedVelocity)
+			n++
+		}
+	}
+	if in.Theme != nil {
+		if *in.Theme == "" {
+			sets = append(sets, "timeboxes_releases_theme = NULL")
+		} else {
+			addField("timeboxes_releases_theme", *in.Theme)
+		}
+	}
+	if in.GrossEstimateConversionRatio != nil {
+		if *in.GrossEstimateConversionRatio == "" {
+			sets = append(sets, "timeboxes_releases_gross_estimate_conversion_ratio = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("timeboxes_releases_gross_estimate_conversion_ratio = $%d::numeric", n))
+			args = append(args, *in.GrossEstimateConversionRatio)
+			n++
+		}
+	}
 
 	if len(sets) == 0 {
 		return s.Get(ctx, workspaceID, releaseID)
@@ -422,6 +468,13 @@ func scanRelease(row scannable) (*Release, error) {
 		&r.ReleaseCreepByCount, &r.ReleaseCreepByEstimate,
 		&r.Status, &r.ReleaseDateAdded, &r.ReleaseDateUpdated, &r.ArchivedAt,
 		&r.ScopePropagation,
+		// Rally-screenshots batch (mig 157). Order MUST match the
+		// trailing columns added to every SELECT/RETURNING in sql.go.
+		&r.Actuals,
+		&r.PlanEstimate,
+		&r.PlannedVelocity,
+		&r.Theme,
+		&r.GrossEstimateConversionRatio,
 	)
 	if err != nil {
 		return nil, err

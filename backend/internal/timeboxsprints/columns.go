@@ -52,6 +52,12 @@ var SprintColumns = []ColumnSpec{
 	// Slice 5A — propagation intent
 	{Name: "timeboxes_sprints_scope_propagation"},
 
+	// Rally-screenshots batch (mig 156).
+	{Name: "timeboxes_sprints_actuals"},
+	{Name: "timeboxes_sprints_plan_estimate"},
+	{Name: "timeboxes_sprints_planned_velocity"},
+	{Name: "timeboxes_sprints_theme"},
+
 	// Slice 5B — non-persisted read-time inheritance metadata.
 	// These are NOT DB columns; they're stamped onto each row by
 	// Service.List when the read came via heartbeat propagation. Listed

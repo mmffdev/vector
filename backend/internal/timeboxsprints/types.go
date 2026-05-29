@@ -61,6 +61,16 @@ type Sprint struct {
 	Origin       string  `json:"origin,omitempty"`
 	FromNodeID   *string `json:"from_node_id,omitempty"`
 	FromNodeName *string `json:"from_node_name,omitempty"`
+	// Rally-screenshots batch (2026-05-29, migration 156). Four new
+	// numeric/text columns. Actuals is NOT NULL DEFAULT 0 in the DB so
+	// the wire shape is a plain string (::text from SQL to preserve
+	// precision); plan_estimate / planned_velocity are nullable. Theme
+	// is a free-form TEXT label.
+	// Spec: docs/superpowers/specs/2026-05-29-rally-screenshots-fields-design.md §4.7
+	Actuals         string  `json:"timeboxes_sprints_actuals"`
+	PlanEstimate    *string `json:"timeboxes_sprints_plan_estimate"`
+	PlannedVelocity *string `json:"timeboxes_sprints_planned_velocity"`
+	Theme           *string `json:"timeboxes_sprints_theme"`
 }
 
 // CreateSprintInput holds required fields to create a sprint.
@@ -97,6 +107,15 @@ type UpdateSprintInput struct {
 	// Slice 7 — toggle propagation intent from the edit form.
 	// Valid values: 'this_node_only' | 'this_node_and_descendants'.
 	ScopePropagation *string
+	// Rally-screenshots batch (mig 156). Numeric columns enter the
+	// service as *string to preserve precision (mirrors the
+	// artefactitems pattern); the service writes them through ::numeric.
+	// Empty string ⇒ clear to NULL (except Actuals which is NOT NULL
+	// DEFAULT 0; service rejects empty Actuals).
+	Actuals         *string
+	PlanEstimate    *string
+	PlannedVelocity *string
+	Theme           *string
 }
 
 // ListFilters holds query parameters for the list endpoint.

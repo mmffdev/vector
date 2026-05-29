@@ -46,6 +46,16 @@ type Release struct {
 	Origin       string  `json:"origin,omitempty"`
 	FromNodeID   *string `json:"from_node_id,omitempty"`
 	FromNodeName *string `json:"from_node_name,omitempty"`
+	// Rally-screenshots batch (2026-05-29, migration 157). Five new
+	// numeric/text columns. Actuals is NOT NULL DEFAULT 0; plan_estimate
+	// / planned_velocity / gross_estimate_conversion_ratio are nullable.
+	// Theme is free-form TEXT.
+	// Spec: docs/superpowers/specs/2026-05-29-rally-screenshots-fields-design.md §4.8
+	Actuals                       string  `json:"timeboxes_releases_actuals"`
+	PlanEstimate                  *string `json:"timeboxes_releases_plan_estimate"`
+	PlannedVelocity               *string `json:"timeboxes_releases_planned_velocity"`
+	Theme                         *string `json:"timeboxes_releases_theme"`
+	GrossEstimateConversionRatio  *string `json:"timeboxes_releases_gross_estimate_conversion_ratio"`
 }
 
 // CreateReleaseInput holds required fields to create a release.
@@ -82,6 +92,16 @@ type UpdateReleaseInput struct {
 	// Slice 7 — toggle propagation intent from the edit form.
 	// Valid values: 'this_node_only' | 'this_node_and_descendants'.
 	ScopePropagation *string
+	// Rally-screenshots batch (mig 157). Numerics enter as *string for
+	// precision (mirrors artefactitems). Three-state: nil ⇒ skip; "" ⇒
+	// clear-to-NULL (Actuals is NOT NULL — service rejects empty);
+	// non-"" ⇒ write through ::numeric. GrossEstimateConversionRatio
+	// is range-bound 0..10 in the DB.
+	Actuals                      *string
+	PlanEstimate                 *string
+	PlannedVelocity              *string
+	Theme                        *string
+	GrossEstimateConversionRatio *string
 }
 
 // ListFilters holds query parameters for the list endpoint.

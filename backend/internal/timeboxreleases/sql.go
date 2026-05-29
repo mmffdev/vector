@@ -39,7 +39,13 @@ const sqlInsertRelease = `
 			timeboxes_releases_created_at,
 			timeboxes_releases_updated_at,
 			timeboxes_releases_archived_at,
-			timeboxes_releases_scope_propagation
+			timeboxes_releases_scope_propagation,
+			-- Rally-screenshots batch (mig 157).
+			timeboxes_releases_actuals::text,
+			timeboxes_releases_plan_estimate::text,
+			timeboxes_releases_planned_velocity::text,
+			timeboxes_releases_theme,
+			timeboxes_releases_gross_estimate_conversion_ratio::text
 	`
 
 // sqlSelectReleaseByID returns one live release scoped to workspace.
@@ -63,7 +69,14 @@ const sqlSelectReleaseByID = `
 			timeboxes_releases_status,
 			timeboxes_releases_created_at,
 			timeboxes_releases_updated_at,
-			timeboxes_releases_archived_at
+			timeboxes_releases_archived_at,
+			timeboxes_releases_scope_propagation,
+			-- Rally-screenshots batch (mig 157).
+			timeboxes_releases_actuals::text,
+			timeboxes_releases_plan_estimate::text,
+			timeboxes_releases_planned_velocity::text,
+			timeboxes_releases_theme,
+			timeboxes_releases_gross_estimate_conversion_ratio::text
 		FROM timeboxes_releases
 		WHERE timeboxes_releases_id = $1
 		  AND timeboxes_releases_id_workspace = $2
@@ -92,7 +105,14 @@ const sqlListReleasesTemplate = `
 			timeboxes_releases_status,
 			timeboxes_releases_created_at,
 			timeboxes_releases_updated_at,
-			timeboxes_releases_archived_at
+			timeboxes_releases_archived_at,
+			timeboxes_releases_scope_propagation,
+			-- Rally-screenshots batch (mig 157).
+			timeboxes_releases_actuals::text,
+			timeboxes_releases_plan_estimate::text,
+			timeboxes_releases_planned_velocity::text,
+			timeboxes_releases_theme,
+			timeboxes_releases_gross_estimate_conversion_ratio::text
 		FROM timeboxes_releases
 		WHERE %s
 		ORDER BY timeboxes_releases_date_start ASC
@@ -126,7 +146,13 @@ const sqlUpdateReleaseTemplate = `
 			timeboxes_releases_created_at,
 			timeboxes_releases_updated_at,
 			timeboxes_releases_archived_at,
-			timeboxes_releases_scope_propagation
+			timeboxes_releases_scope_propagation,
+			-- Rally-screenshots batch (mig 157).
+			timeboxes_releases_actuals::text,
+			timeboxes_releases_plan_estimate::text,
+			timeboxes_releases_planned_velocity::text,
+			timeboxes_releases_theme,
+			timeboxes_releases_gross_estimate_conversion_ratio::text
 	`
 
 // sqlArchiveRelease soft-deletes one release scoped to workspace.

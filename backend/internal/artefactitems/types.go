@@ -141,6 +141,49 @@ type WorkItem struct {
 	ActualStartDate          *string          `json:"actual_start_date"`
 	FlowStateChangedAt       *time.Time       `json:"flow_state_changed_at"`
 	StrategicInvestmentGroup *string          `json:"strategic_investment_group"`
+	// Rally-screenshots batch (2026-05-29, migrations 150-155). 24 new
+	// columns spread across universal (3) / defect (8) / risk (8) /
+	// submitted-by (1) / strategy (2) / estimate-initial sidecar (1).
+	// Spec: docs/superpowers/specs/2026-05-29-rally-screenshots-fields-design.md.
+	// Numerics rendered as *string from the SELECT projection (::text)
+	// to preserve precision — mirrors the mig-147 EstimateHours pattern.
+	//
+	// Universal (mig 150).
+	Actuals       *string  `json:"actuals"`
+	Tags          []string `json:"tags"`
+	ActualEndDate *string  `json:"actual_end_date"`
+	// Defect (mig 151). Booleans NOT NULL DEFAULT false in the DB so
+	// the wire shape can be a plain bool (no pointer); CHECK-bound
+	// columns carry validXxx maps below.
+	DefectResolution          *string          `json:"defect_resolution"`
+	DefectTestCaseStatus      *string          `json:"defect_test_case_status"`
+	DefectFixedInBuild        *string          `json:"defect_fixed_in_build"`
+	DefectFoundInBuild        *string          `json:"defect_found_in_build"`
+	DefectIsReleaseNote       bool             `json:"defect_is_release_note"`
+	DefectStepsToReproduce    *string          `json:"defect_steps_to_reproduce"`
+	DefectStepsToReproduceDoc *json.RawMessage `json:"defect_steps_to_reproduce_doc"`
+	DefectIsRegression        bool             `json:"defect_is_regression"`
+	// Risk (mig 152). Paired (bucket-name TEXT + bucket-value INTEGER)
+	// for impact + probability. risk_calculated is GENERATED ALWAYS AS
+	// STORED — service must NEVER attempt to write it.
+	RiskResolution       *string `json:"risk_resolution"`
+	RiskImpact           *string `json:"risk_impact"`
+	RiskImpactScore      *int    `json:"risk_impact_score"`
+	RiskProbability      *string `json:"risk_probability"`
+	RiskProbabilityScore *int    `json:"risk_probability_score"`
+	RiskResponse         *string `json:"risk_response"`
+	RiskExposure         *string `json:"risk_exposure"`
+	RiskCalculated       *int    `json:"risk_calculated"`
+	// Submitted-by (mig 153) — defect + risk shared. FK to users; ON
+	// DELETE SET NULL so caller-driven user removal cleanly orphans.
+	SubmittedByUserID *string `json:"submitted_by_user_id"`
+	// Strategy (mig 154). Scope-gated to artefacts_types_scope='strategy'.
+	StrategicJobSize                  *int `json:"strategic_job_size"`
+	StrategicPreliminaryEstimateValue *int `json:"strategic_preliminary_estimate_value"`
+	// Estimate-initial sidecar (mig 155). After mig 155 the existing
+	// EstimateInitial column carries the bucket NAME (TEXT) and this
+	// new column carries the numeric value-per-bucket.
+	EstimateInitialValue *int `json:"estimate_initial_value"`
 }
 
 // OwnerRef is the slim user projection embedded on each WorkItem when the
@@ -388,6 +431,39 @@ type PatchWorkItemInput struct {
 	PlannedFinishDate        *string
 	ActualStartDate          *string
 	StrategicInvestmentGroup *string
+	// Rally-screenshots batch (2026-05-29, migrations 150-155).
+	// Same three-state convention as the mig-147 fields above:
+	//   nil    ⇒ field absent (no change)
+	//   "" str ⇒ clear to NULL
+	//   non-"" ⇒ UPDATE (CHECK-bound vocabs validated handler-side)
+	// *bool pointers: nil ⇒ skip; non-nil ⇒ write the bool verbatim.
+	// *int pointers: nil ⇒ skip; non-nil ⇒ write the int verbatim
+	// (no clear-to-NULL — caller can re-PATCH to overwrite, but Defect
+	// booleans default false so "off" = false rather than NULL).
+	// Tags: nil ⇒ skip; non-nil (incl. empty slice) ⇒ replace whole
+	// array. To clear, send an explicit `[]`.
+	Actuals                           *string
+	Tags                              *[]string
+	ActualEndDate                     *string
+	DefectResolution                  *string
+	DefectTestCaseStatus              *string
+	DefectFixedInBuild                *string
+	DefectFoundInBuild                *string
+	DefectIsReleaseNote               *bool
+	DefectStepsToReproduce            *string
+	DefectStepsToReproduceDoc         *json.RawMessage
+	DefectIsRegression                *bool
+	RiskResolution                    *string
+	RiskImpact                        *string
+	RiskImpactScore                   *int
+	RiskProbability                   *string
+	RiskProbabilityScore              *int
+	RiskResponse                      *string
+	RiskExposure                      *string
+	SubmittedByUserID                 *string
+	StrategicJobSize                  *int
+	StrategicPreliminaryEstimateValue *int
+	EstimateInitialValue              *int
 }
 
 // validDefectSeverities mirrors the artefacts_defect_severity_chk
@@ -409,6 +485,91 @@ var validDefectStatuses = map[string]bool{
 	"closed":      true,
 	"wontfix":     true,
 	"duplicate":   true,
+}
+
+// ── Rally-screenshots batch (2026-05-29, migrations 151-155) ──
+//
+// Each map mirrors a CHECK constraint added in the named migration.
+// Empty string is also accepted by the service as the wire "clear-to-NULL"
+// sentinel; the service translates it before the CHECK can fire.
+
+// validDefectResolutions mirrors the artefacts_defect_resolution_chk
+// constraint added in migration 151.
+var validDefectResolutions = map[string]bool{
+	"fixed":            true,
+	"wontfix":          true,
+	"duplicate":        true,
+	"not_a_defect":     true,
+	"cannot_reproduce": true,
+	"by_design":        true,
+}
+
+// validDefectTestCaseStatuses mirrors the
+// artefacts_defect_test_case_status_chk constraint (mig 151).
+var validDefectTestCaseStatuses = map[string]bool{
+	"none":    true,
+	"passed":  true,
+	"failed":  true,
+	"blocked": true,
+	"mixed":   true,
+}
+
+// validRiskResolutions mirrors the artefacts_risk_resolution_chk
+// constraint added in migration 152. NOTE: this vocabulary is
+// DISTINCT from validDefectResolutions per Decision C — defects and
+// risks reach resolution along different lifecycles and the columns
+// are intentionally separate first-class fields.
+var validRiskResolutions = map[string]bool{
+	"accepted":         true,
+	"mitigated":        true,
+	"transferred":      true,
+	"avoided":          true,
+	"closed_no_action": true,
+}
+
+// validRiskImpacts mirrors the artefacts_risk_impact_chk constraint
+// (mig 152). The paired numeric column artefacts_risk_impact_score is
+// range-bound 1..4 in the DB — the handler doesn't enforce the range
+// here because the CHECK is sufficient and the value is integer.
+var validRiskImpacts = map[string]bool{
+	"low":      true,
+	"medium":   true,
+	"high":     true,
+	"critical": true,
+}
+
+// validRiskProbabilities mirrors the artefacts_risk_probability_chk
+// constraint (mig 152). 3-bucket vocab — score column is range-bound
+// 1..3 in the DB.
+var validRiskProbabilities = map[string]bool{
+	"low":    true,
+	"medium": true,
+	"high":   true,
+}
+
+// validRiskResponses mirrors the artefacts_risk_response_chk
+// constraint (mig 152). NOTE: this vocab is the action verb form
+// (accept/mitigate/...) vs validRiskResolutions which is the
+// past-participle outcome form (accepted/mitigated/...).
+var validRiskResponses = map[string]bool{
+	"accept":   true,
+	"mitigate": true,
+	"transfer": true,
+	"avoid":    true,
+}
+
+// validEstimateInitialBuckets mirrors the
+// artefacts_estimate_initial_chk constraint added in migration 155.
+// Decision B: artefacts_estimate_initial was ALTERed from NUMERIC to
+// TEXT bucket-name; the sidecar artefacts_estimate_initial_value
+// INTEGER carries the numeric value-per-bucket.
+var validEstimateInitialBuckets = map[string]bool{
+	"xs":  true,
+	"s":   true,
+	"m":   true,
+	"l":   true,
+	"xl":  true,
+	"xxl": true,
 }
 
 // Sprint is the wire representation of the sprints table.

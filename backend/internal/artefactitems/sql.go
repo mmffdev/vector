@@ -121,7 +121,35 @@ const sqlWorkItemColumns = `
 	a.artefacts_planned_finish_date::text   AS planned_finish_date,
 	a.artefacts_actual_start_date::text     AS actual_start_date,
 	a.artefacts_flow_state_changed_at       AS flow_state_changed_at,
-	a.artefacts_strategic_investment_group  AS strategic_investment_group`
+	a.artefacts_strategic_investment_group  AS strategic_investment_group,
+	-- Rally-screenshots batch (migs 150-155). 24 new columns. Numerics
+	-- cast to ::text to preserve precision; tags is TEXT[] passed
+	-- through as []string. Order MUST stay in lockstep with the
+	-- companion projection sqlWorkItemColumnsListTemplate AND with
+	-- the Scan() call in scanWorkItemRow (service.go).
+	a.artefacts_actuals::text                       AS actuals,
+	a.artefacts_tags                                AS tags,
+	a.artefacts_actual_end_date::text               AS actual_end_date,
+	a.artefacts_defect_resolution                   AS defect_resolution,
+	a.artefacts_defect_test_case_status             AS defect_test_case_status,
+	a.artefacts_defect_fixed_in_build               AS defect_fixed_in_build,
+	a.artefacts_defect_found_in_build               AS defect_found_in_build,
+	a.artefacts_defect_is_release_note              AS defect_is_release_note,
+	a.artefacts_defect_steps_to_reproduce           AS defect_steps_to_reproduce,
+	a.artefacts_defect_steps_to_reproduce_doc       AS defect_steps_to_reproduce_doc,
+	a.artefacts_defect_is_regression                AS defect_is_regression,
+	a.artefacts_risk_resolution                     AS risk_resolution,
+	a.artefacts_risk_impact                         AS risk_impact,
+	a.artefacts_risk_impact_score                   AS risk_impact_score,
+	a.artefacts_risk_probability                    AS risk_probability,
+	a.artefacts_risk_probability_score              AS risk_probability_score,
+	a.artefacts_risk_response                       AS risk_response,
+	a.artefacts_risk_exposure::text                 AS risk_exposure,
+	a.artefacts_risk_calculated                     AS risk_calculated,
+	a.artefacts_id_user_submitted_by::text          AS submitted_by_user_id,
+	a.artefacts_strategic_job_size                  AS strategic_job_size,
+	a.artefacts_strategic_preliminary_estimate_value AS strategic_preliminary_estimate_value,
+	a.artefacts_estimate_initial_value              AS estimate_initial_value`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
@@ -221,7 +249,32 @@ const sqlWorkItemColumnsListTemplate = `
 	a.artefacts_planned_finish_date::text   AS planned_finish_date,
 	a.artefacts_actual_start_date::text     AS actual_start_date,
 	a.artefacts_flow_state_changed_at       AS flow_state_changed_at,
-	a.artefacts_strategic_investment_group  AS strategic_investment_group`
+	a.artefacts_strategic_investment_group  AS strategic_investment_group,
+	-- Rally-screenshots batch (migs 150-155). Kept in lockstep with
+	-- the shared sqlWorkItemColumns above.
+	a.artefacts_actuals::text                       AS actuals,
+	a.artefacts_tags                                AS tags,
+	a.artefacts_actual_end_date::text               AS actual_end_date,
+	a.artefacts_defect_resolution                   AS defect_resolution,
+	a.artefacts_defect_test_case_status             AS defect_test_case_status,
+	a.artefacts_defect_fixed_in_build               AS defect_fixed_in_build,
+	a.artefacts_defect_found_in_build               AS defect_found_in_build,
+	a.artefacts_defect_is_release_note              AS defect_is_release_note,
+	a.artefacts_defect_steps_to_reproduce           AS defect_steps_to_reproduce,
+	a.artefacts_defect_steps_to_reproduce_doc       AS defect_steps_to_reproduce_doc,
+	a.artefacts_defect_is_regression                AS defect_is_regression,
+	a.artefacts_risk_resolution                     AS risk_resolution,
+	a.artefacts_risk_impact                         AS risk_impact,
+	a.artefacts_risk_impact_score                   AS risk_impact_score,
+	a.artefacts_risk_probability                    AS risk_probability,
+	a.artefacts_risk_probability_score              AS risk_probability_score,
+	a.artefacts_risk_response                       AS risk_response,
+	a.artefacts_risk_exposure::text                 AS risk_exposure,
+	a.artefacts_risk_calculated                     AS risk_calculated,
+	a.artefacts_id_user_submitted_by::text          AS submitted_by_user_id,
+	a.artefacts_strategic_job_size                  AS strategic_job_size,
+	a.artefacts_strategic_preliminary_estimate_value AS strategic_preliminary_estimate_value,
+	a.artefacts_estimate_initial_value              AS estimate_initial_value`
 
 // sqlListWorkItemsTemplate is the paged data query. %s slots (in order):
 //   - childExtra: extra AND-clause for the children_count subquery so

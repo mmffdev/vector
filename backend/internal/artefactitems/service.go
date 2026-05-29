@@ -1203,6 +1203,51 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if in.DefectStatus != nil && *in.DefectStatus != "" && !validDefectStatuses[*in.DefectStatus] {
 		return nil, fmt.Errorf("%w: invalid defect_status", ErrInvalidInput)
 	}
+	// Rally-screenshots batch (mig 151+152+155) — mirror the DB CHECK
+	// constraints handler-side so a bad patch returns 400 BEFORE the
+	// round-trip (cleaner error than the trigger's '23514' from SQL).
+	// Empty string is the wire "clear-to-NULL" sentinel — allowed for
+	// every CHECK-bound *string column.
+	if in.DefectResolution != nil && *in.DefectResolution != "" && !validDefectResolutions[*in.DefectResolution] {
+		return nil, fmt.Errorf("%w: invalid defect_resolution", ErrInvalidInput)
+	}
+	if in.DefectTestCaseStatus != nil && *in.DefectTestCaseStatus != "" && !validDefectTestCaseStatuses[*in.DefectTestCaseStatus] {
+		return nil, fmt.Errorf("%w: invalid defect_test_case_status", ErrInvalidInput)
+	}
+	if in.RiskResolution != nil && *in.RiskResolution != "" && !validRiskResolutions[*in.RiskResolution] {
+		return nil, fmt.Errorf("%w: invalid risk_resolution", ErrInvalidInput)
+	}
+	if in.RiskImpact != nil && *in.RiskImpact != "" && !validRiskImpacts[*in.RiskImpact] {
+		return nil, fmt.Errorf("%w: invalid risk_impact", ErrInvalidInput)
+	}
+	if in.RiskProbability != nil && *in.RiskProbability != "" && !validRiskProbabilities[*in.RiskProbability] {
+		return nil, fmt.Errorf("%w: invalid risk_probability", ErrInvalidInput)
+	}
+	if in.RiskResponse != nil && *in.RiskResponse != "" && !validRiskResponses[*in.RiskResponse] {
+		return nil, fmt.Errorf("%w: invalid risk_response", ErrInvalidInput)
+	}
+	// EstimateInitial is now the bucket NAME (mig 155 ALTERed it from
+	// NUMERIC to TEXT). The numeric value-per-bucket lives in the new
+	// EstimateInitialValue column. Mirror the bucket-vocab CHECK here.
+	if in.EstimateInitial != nil && *in.EstimateInitial != "" && !validEstimateInitialBuckets[*in.EstimateInitial] {
+		return nil, fmt.Errorf("%w: invalid estimate_initial bucket", ErrInvalidInput)
+	}
+	// Risk score range gates (1..4 impact, 1..3 probability) per mig 152
+	// — mirror the per-column CHECK so the handler returns 400 before
+	// the round-trip rather than letting the DB raise 23514.
+	if in.RiskImpactScore != nil && (*in.RiskImpactScore < 1 || *in.RiskImpactScore > 4) {
+		return nil, fmt.Errorf("%w: risk_impact_score out of range (1..4)", ErrInvalidInput)
+	}
+	if in.RiskProbabilityScore != nil && (*in.RiskProbabilityScore < 1 || *in.RiskProbabilityScore > 3) {
+		return nil, fmt.Errorf("%w: risk_probability_score out of range (1..3)", ErrInvalidInput)
+	}
+	// Submitted-by must be a parseable UUID — the FK constraint catches
+	// non-existent users, but bad-UUID is a faster handler-side reject.
+	if in.SubmittedByUserID != nil && *in.SubmittedByUserID != "" {
+		if _, perr := uuid.Parse(*in.SubmittedByUserID); perr != nil {
+			return nil, fmt.Errorf("%w: invalid submitted_by_user_id", ErrInvalidInput)
+		}
+	}
 
 	// Snapshot the before-state for the notification-rules hook.
 	// Skipped (and cost-free) when no rule hook is wired. Errors
@@ -1497,7 +1542,10 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		if *in.EstimateInitial == "" {
 			sets = append(sets, "artefacts_estimate_initial = NULL")
 		} else {
-			sets = append(sets, fmt.Sprintf("artefacts_estimate_initial = $%d::numeric", n))
+			// Post mig-155: column type is TEXT (bucket name). Vocab
+			// is validated by validEstimateInitialBuckets above; the
+			// numeric value-per-bucket lives in EstimateInitialValue.
+			sets = append(sets, fmt.Sprintf("artefacts_estimate_initial = $%d", n))
 			args = append(args, *in.EstimateInitial)
 			n++
 		}
@@ -1587,6 +1635,197 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 			args = append(args, *in.StrategicInvestmentGroup)
 			n++
 		}
+	}
+
+	// ── Rally-screenshots batch (migs 150-155) ──
+	// Universal-scope, defect-only, risk-only, strategy-only, +
+	// submitted-by FK. Three-state on *string and *[]string; bool
+	// pointers write verbatim; int pointers write verbatim (no
+	// clear-to-NULL). artefacts_risk_calculated is GENERATED — never
+	// written here. The mig-158 trigger gates the slot/scope after
+	// the write reaches the DB; handler-side validation above
+	// returns 400 BEFORE the round-trip on bad enum values.
+
+	// Universal (mig 150).
+	if in.Actuals != nil {
+		if *in.Actuals == "" {
+			sets = append(sets, "artefacts_actuals = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_actuals = $%d::numeric", n))
+			args = append(args, *in.Actuals)
+			n++
+		}
+	}
+	if in.Tags != nil {
+		// Replace the whole TEXT[]. Empty slice ⇒ empty array (not
+		// NULL); callers wanting NULL would need a separate sentinel
+		// (none today — Rally Tags is intentionally empty-vs-set).
+		sets = append(sets, fmt.Sprintf("artefacts_tags = $%d", n))
+		args = append(args, *in.Tags)
+		n++
+	}
+	if in.ActualEndDate != nil {
+		if *in.ActualEndDate == "" {
+			sets = append(sets, "artefacts_actual_end_date = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_actual_end_date = $%d::date", n))
+			args = append(args, *in.ActualEndDate)
+			n++
+		}
+	}
+
+	// Defect (mig 151).
+	if in.DefectResolution != nil {
+		if *in.DefectResolution == "" {
+			sets = append(sets, "artefacts_defect_resolution = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_resolution = $%d", n))
+			args = append(args, *in.DefectResolution)
+			n++
+		}
+	}
+	if in.DefectTestCaseStatus != nil {
+		if *in.DefectTestCaseStatus == "" {
+			sets = append(sets, "artefacts_defect_test_case_status = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_test_case_status = $%d", n))
+			args = append(args, *in.DefectTestCaseStatus)
+			n++
+		}
+	}
+	if in.DefectFixedInBuild != nil {
+		if *in.DefectFixedInBuild == "" {
+			sets = append(sets, "artefacts_defect_fixed_in_build = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_fixed_in_build = $%d", n))
+			args = append(args, *in.DefectFixedInBuild)
+			n++
+		}
+	}
+	if in.DefectFoundInBuild != nil {
+		if *in.DefectFoundInBuild == "" {
+			sets = append(sets, "artefacts_defect_found_in_build = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_found_in_build = $%d", n))
+			args = append(args, *in.DefectFoundInBuild)
+			n++
+		}
+	}
+	if in.DefectIsReleaseNote != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_defect_is_release_note = $%d", n))
+		args = append(args, *in.DefectIsReleaseNote)
+		n++
+	}
+	if in.DefectStepsToReproduce != nil {
+		if *in.DefectStepsToReproduce == "" {
+			sets = append(sets, "artefacts_defect_steps_to_reproduce = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_steps_to_reproduce = $%d", n))
+			args = append(args, *in.DefectStepsToReproduce)
+			n++
+		}
+	}
+	if in.DefectStepsToReproduceDoc != nil {
+		raw := string(*in.DefectStepsToReproduceDoc)
+		if raw == "" || raw == "null" || raw == "{}" {
+			sets = append(sets, "artefacts_defect_steps_to_reproduce_doc = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_steps_to_reproduce_doc = $%d::jsonb", n))
+			args = append(args, *in.DefectStepsToReproduceDoc)
+			n++
+		}
+	}
+	if in.DefectIsRegression != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_defect_is_regression = $%d", n))
+		args = append(args, *in.DefectIsRegression)
+		n++
+	}
+
+	// Risk (mig 152). risk_calculated is GENERATED — not written here.
+	if in.RiskResolution != nil {
+		if *in.RiskResolution == "" {
+			sets = append(sets, "artefacts_risk_resolution = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_risk_resolution = $%d", n))
+			args = append(args, *in.RiskResolution)
+			n++
+		}
+	}
+	if in.RiskImpact != nil {
+		if *in.RiskImpact == "" {
+			sets = append(sets, "artefacts_risk_impact = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_risk_impact = $%d", n))
+			args = append(args, *in.RiskImpact)
+			n++
+		}
+	}
+	if in.RiskImpactScore != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_risk_impact_score = $%d", n))
+		args = append(args, *in.RiskImpactScore)
+		n++
+	}
+	if in.RiskProbability != nil {
+		if *in.RiskProbability == "" {
+			sets = append(sets, "artefacts_risk_probability = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_risk_probability = $%d", n))
+			args = append(args, *in.RiskProbability)
+			n++
+		}
+	}
+	if in.RiskProbabilityScore != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_risk_probability_score = $%d", n))
+		args = append(args, *in.RiskProbabilityScore)
+		n++
+	}
+	if in.RiskResponse != nil {
+		if *in.RiskResponse == "" {
+			sets = append(sets, "artefacts_risk_response = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_risk_response = $%d", n))
+			args = append(args, *in.RiskResponse)
+			n++
+		}
+	}
+	if in.RiskExposure != nil {
+		if *in.RiskExposure == "" {
+			sets = append(sets, "artefacts_risk_exposure = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_risk_exposure = $%d::numeric", n))
+			args = append(args, *in.RiskExposure)
+			n++
+		}
+	}
+
+	// Submitted-by (mig 153). Already-validated uuid string above.
+	if in.SubmittedByUserID != nil {
+		if *in.SubmittedByUserID == "" {
+			sets = append(sets, "artefacts_id_user_submitted_by = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_id_user_submitted_by = $%d::uuid", n))
+			args = append(args, *in.SubmittedByUserID)
+			n++
+		}
+	}
+
+	// Strategy (mig 154).
+	if in.StrategicJobSize != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_strategic_job_size = $%d", n))
+		args = append(args, *in.StrategicJobSize)
+		n++
+	}
+	if in.StrategicPreliminaryEstimateValue != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_strategic_preliminary_estimate_value = $%d", n))
+		args = append(args, *in.StrategicPreliminaryEstimateValue)
+		n++
+	}
+
+	// Estimate-initial sidecar (mig 155).
+	if in.EstimateInitialValue != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_estimate_initial_value = $%d", n))
+		args = append(args, *in.EstimateInitialValue)
+		n++
 	}
 
 	// WHERE clause args: id=$N, subscription_id=$N+1
@@ -2418,6 +2657,32 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.ActualStartDate,
 		&wi.FlowStateChangedAt,
 		&wi.StrategicInvestmentGroup,
+		// Rally-screenshots batch (migs 150-155). Order MUST match the
+		// trailing projection in sqlWorkItemColumns /
+		// sqlWorkItemColumnsListTemplate.
+		&wi.Actuals,
+		&wi.Tags,
+		&wi.ActualEndDate,
+		&wi.DefectResolution,
+		&wi.DefectTestCaseStatus,
+		&wi.DefectFixedInBuild,
+		&wi.DefectFoundInBuild,
+		&wi.DefectIsReleaseNote,
+		&wi.DefectStepsToReproduce,
+		&wi.DefectStepsToReproduceDoc,
+		&wi.DefectIsRegression,
+		&wi.RiskResolution,
+		&wi.RiskImpact,
+		&wi.RiskImpactScore,
+		&wi.RiskProbability,
+		&wi.RiskProbabilityScore,
+		&wi.RiskResponse,
+		&wi.RiskExposure,
+		&wi.RiskCalculated,
+		&wi.SubmittedByUserID,
+		&wi.StrategicJobSize,
+		&wi.StrategicPreliminaryEstimateValue,
+		&wi.EstimateInitialValue,
 	)
 	if err != nil {
 		return nil, err

@@ -390,6 +390,44 @@ func (s *Service) Update(ctx context.Context, workspaceID, sprintID string, in U
 		}
 		addField("timeboxes_sprints_scope_propagation", *in.ScopePropagation)
 	}
+	// Rally-screenshots batch (mig 156). Three-state convention:
+	// nil ⇒ skip; "" ⇒ clear-to-NULL (except Actuals which is NOT
+	// NULL DEFAULT 0); non-"" ⇒ write through ::numeric for the
+	// three numeric columns; Theme is plain TEXT.
+	if in.Actuals != nil {
+		if *in.Actuals == "" {
+			// NOT NULL column — reject empty rather than corrupt the row.
+			return nil, ErrInvalidInput
+		}
+		sets = append(sets, fmt.Sprintf("timeboxes_sprints_actuals = $%d::numeric", n))
+		args = append(args, *in.Actuals)
+		n++
+	}
+	if in.PlanEstimate != nil {
+		if *in.PlanEstimate == "" {
+			sets = append(sets, "timeboxes_sprints_plan_estimate = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("timeboxes_sprints_plan_estimate = $%d::numeric", n))
+			args = append(args, *in.PlanEstimate)
+			n++
+		}
+	}
+	if in.PlannedVelocity != nil {
+		if *in.PlannedVelocity == "" {
+			sets = append(sets, "timeboxes_sprints_planned_velocity = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("timeboxes_sprints_planned_velocity = $%d::numeric", n))
+			args = append(args, *in.PlannedVelocity)
+			n++
+		}
+	}
+	if in.Theme != nil {
+		if *in.Theme == "" {
+			sets = append(sets, "timeboxes_sprints_theme = NULL")
+		} else {
+			addField("timeboxes_sprints_theme", *in.Theme)
+		}
+	}
 
 	if len(sets) == 0 {
 		return s.Get(ctx, workspaceID, sprintID)
@@ -604,6 +642,12 @@ func scanSprint(row scannable) (*Sprint, error) {
 		// Slice 5A — column appended after archived_at in every SELECT/RETURNING
 		// (see sql.go). Order MUST match the column-list there.
 		&s.ScopePropagation,
+		// Rally-screenshots batch (mig 156). Order MUST match the
+		// trailing columns added to every SELECT/RETURNING in sql.go.
+		&s.Actuals,
+		&s.PlanEstimate,
+		&s.PlannedVelocity,
+		&s.Theme,
 	)
 	if err != nil {
 		return nil, err

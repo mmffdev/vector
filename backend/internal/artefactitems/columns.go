@@ -150,6 +150,43 @@ var ArtefactItemColumns = []ColumnSpec{
 	// Strategic
 	{Name: "strategic_investment_group", Label: "Strategic Investment Group", Group: "Planning", DefaultVisible: false, Addable: true},
 
+	// Rally-screenshots batch (2026-05-29, migrations 150-155). 24
+	// new columns spread across universal / defect / risk / strategy
+	// / submitted-by families plus the estimate_initial ALTER + new
+	// sidecar value column. All default-hidden — opt-in via the
+	// picker. Spec: docs/superpowers/specs/2026-05-29-rally-screenshots-fields-design.md
+	//
+	// Universal (mig 150).
+	{Name: "actuals", Label: "Actuals", Group: "Tags & Actuals", DefaultVisible: false, Addable: true},
+	{Name: "tags", Label: "Tags", Group: "Tags & Actuals", DefaultVisible: false, Addable: true},
+	{Name: "actual_end_date", Label: "Actual End Date", Group: "Planning", DefaultVisible: false, Addable: true},
+	// Defect (mig 151).
+	{Name: "defect_resolution", Label: "Defect Resolution", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_test_case_status", Label: "Defect Test Case Status", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_fixed_in_build", Label: "Fixed In Build", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_found_in_build", Label: "Found In Build", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_is_release_note", Label: "Release Note", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_steps_to_reproduce", Label: "Steps To Reproduce", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_steps_to_reproduce_doc", Label: "Steps To Reproduce (Doc)", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_is_regression", Label: "Regression", Group: "Defect", DefaultVisible: false, Addable: true},
+	// Risk (mig 152) — paired bucket/score columns + GENERATED calculated.
+	{Name: "risk_resolution", Label: "Risk Resolution", Group: "Risk", DefaultVisible: false, Addable: true},
+	{Name: "risk_impact", Label: "Risk Impact", Group: "Risk", DefaultVisible: false, Addable: true},
+	{Name: "risk_impact_score", Label: "Risk Impact Score", Group: "Risk", DefaultVisible: false, Addable: true},
+	{Name: "risk_probability", Label: "Risk Probability", Group: "Risk", DefaultVisible: false, Addable: true},
+	{Name: "risk_probability_score", Label: "Risk Probability Score", Group: "Risk", DefaultVisible: false, Addable: true},
+	{Name: "risk_response", Label: "Risk Response", Group: "Risk", DefaultVisible: false, Addable: true},
+	{Name: "risk_exposure", Label: "Risk Exposure", Group: "Risk", DefaultVisible: false, Addable: true},
+	{Name: "risk_calculated", Label: "Risk Calculated", Group: "Risk", DefaultVisible: false, Addable: true},
+	// Submitted-by (mig 153) — defect + risk shared.
+	{Name: "submitted_by_user_id", Label: "Submitted By", Group: "People", DefaultVisible: false, Addable: true},
+	// Strategy (mig 154).
+	{Name: "strategic_job_size", Label: "Strategic Job Size", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "strategic_preliminary_estimate_value", Label: "Preliminary Estimate Value", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+	// Estimate-initial sidecar (mig 155 — ALTERed _estimate_initial to
+	// TEXT bucket name; this is the numeric value-per-bucket).
+	{Name: "estimate_initial_value", Label: "Initial Estimate Value", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+
 	// Audit
 	{Name: "subscription_id", Label: "Subscription", Group: "Audit", DefaultVisible: false, Addable: true},
 	{Name: "created_at", Label: "Created", Group: "Audit", DefaultVisible: false, Addable: true},

@@ -25,7 +25,14 @@ const sprintCols = `
 		timeboxes_sprints_status,
 		timeboxes_sprints_created_at,
 		timeboxes_sprints_updated_at,
-		timeboxes_sprints_archived_at
+		timeboxes_sprints_archived_at,
+		-- Rally-screenshots batch (mig 156). NOTE: not used by the
+		-- explicit per-statement RETURNING blocks below; kept here
+		-- as the canonical comment.
+		timeboxes_sprints_actuals::text,
+		timeboxes_sprints_plan_estimate::text,
+		timeboxes_sprints_planned_velocity::text,
+		timeboxes_sprints_theme
 	`
 
 // sqlInsertSprint creates a new sprint and returns the hydrated row.
@@ -66,7 +73,12 @@ const sqlInsertSprint = `
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
 			timeboxes_sprints_archived_at,
-			timeboxes_sprints_scope_propagation
+			timeboxes_sprints_scope_propagation,
+			-- Rally-screenshots batch (mig 156).
+			timeboxes_sprints_actuals::text,
+			timeboxes_sprints_plan_estimate::text,
+			timeboxes_sprints_planned_velocity::text,
+			timeboxes_sprints_theme
 	`
 
 // sqlSelectSprintByID returns one live sprint scoped to workspace.
@@ -91,7 +103,12 @@ const sqlSelectSprintByID = `
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
 			timeboxes_sprints_archived_at,
-			timeboxes_sprints_scope_propagation
+			timeboxes_sprints_scope_propagation,
+			-- Rally-screenshots batch (mig 156).
+			timeboxes_sprints_actuals::text,
+			timeboxes_sprints_plan_estimate::text,
+			timeboxes_sprints_planned_velocity::text,
+			timeboxes_sprints_theme
 		FROM timeboxes_sprints
 		WHERE timeboxes_sprints_id = $1
 		  AND timeboxes_sprints_id_workspace = $2
@@ -121,7 +138,12 @@ const sqlListSprintsTemplate = `
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
 			timeboxes_sprints_archived_at,
-			timeboxes_sprints_scope_propagation
+			timeboxes_sprints_scope_propagation,
+			-- Rally-screenshots batch (mig 156).
+			timeboxes_sprints_actuals::text,
+			timeboxes_sprints_plan_estimate::text,
+			timeboxes_sprints_planned_velocity::text,
+			timeboxes_sprints_theme
 		FROM timeboxes_sprints
 		WHERE %s
 		ORDER BY timeboxes_sprints_date_start ASC
@@ -155,7 +177,12 @@ const sqlUpdateSprintTemplate = `
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
 			timeboxes_sprints_archived_at,
-			timeboxes_sprints_scope_propagation
+			timeboxes_sprints_scope_propagation,
+			-- Rally-screenshots batch (mig 156).
+			timeboxes_sprints_actuals::text,
+			timeboxes_sprints_plan_estimate::text,
+			timeboxes_sprints_planned_velocity::text,
+			timeboxes_sprints_theme
 	`
 
 // sqlArchiveSprint soft-deletes one sprint scoped to workspace.
@@ -224,7 +251,12 @@ const sqlStartSprint = `
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
 			timeboxes_sprints_archived_at,
-			timeboxes_sprints_scope_propagation
+			timeboxes_sprints_scope_propagation,
+			-- Rally-screenshots batch (mig 156).
+			timeboxes_sprints_actuals::text,
+			timeboxes_sprints_plan_estimate::text,
+			timeboxes_sprints_planned_velocity::text,
+			timeboxes_sprints_theme
 	`
 
 // sqlCloseSprint atomically transitions active → completed.
@@ -255,7 +287,12 @@ const sqlCloseSprint = `
 			timeboxes_sprints_created_at,
 			timeboxes_sprints_updated_at,
 			timeboxes_sprints_archived_at,
-			timeboxes_sprints_scope_propagation
+			timeboxes_sprints_scope_propagation,
+			-- Rally-screenshots batch (mig 156).
+			timeboxes_sprints_actuals::text,
+			timeboxes_sprints_plan_estimate::text,
+			timeboxes_sprints_planned_velocity::text,
+			timeboxes_sprints_theme
 	`
 
 // sqlSelectLastSprintEndDateRoot returns the latest end-date for

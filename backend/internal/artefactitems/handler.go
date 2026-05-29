@@ -970,6 +970,36 @@ type patchWorkItemReq struct {
 	PlannedFinishDate        *string         `json:"planned_finish_date,omitempty"`
 	ActualStartDate          *string         `json:"actual_start_date,omitempty"`
 	StrategicInvestmentGroup *string         `json:"strategic_investment_group,omitempty"`
+	// Rally-screenshots batch (2026-05-29, migrations 150-155). 24 new
+	// columns. Same three-state convention as the mig-147 block above.
+	// Tags is *[]string so the absent-vs-empty distinction is preserved
+	// (nil ⇒ skip; non-nil incl. `[]` ⇒ replace whole array).
+	// DefectStepsToReproduceDoc mirrors NotesDoc / DescriptionDoc.
+	// risk_calculated is GENERATED in the DB — intentionally NOT
+	// exposed here; any PATCH key on that name is silently ignored
+	// since the DTO has no field.
+	Actuals                           *string         `json:"actuals,omitempty"`
+	Tags                              *[]string       `json:"tags,omitempty"`
+	ActualEndDate                     *string         `json:"actual_end_date,omitempty"`
+	DefectResolution                  *string         `json:"defect_resolution,omitempty"`
+	DefectTestCaseStatus              *string         `json:"defect_test_case_status,omitempty"`
+	DefectFixedInBuild                *string         `json:"defect_fixed_in_build,omitempty"`
+	DefectFoundInBuild                *string         `json:"defect_found_in_build,omitempty"`
+	DefectIsReleaseNote               *bool           `json:"defect_is_release_note,omitempty"`
+	DefectStepsToReproduce            *string         `json:"defect_steps_to_reproduce,omitempty"`
+	DefectStepsToReproduceDoc         json.RawMessage `json:"defect_steps_to_reproduce_doc,omitempty"`
+	DefectIsRegression                *bool           `json:"defect_is_regression,omitempty"`
+	RiskResolution                    *string         `json:"risk_resolution,omitempty"`
+	RiskImpact                        *string         `json:"risk_impact,omitempty"`
+	RiskImpactScore                   *int            `json:"risk_impact_score,omitempty"`
+	RiskProbability                   *string         `json:"risk_probability,omitempty"`
+	RiskProbabilityScore              *int            `json:"risk_probability_score,omitempty"`
+	RiskResponse                      *string         `json:"risk_response,omitempty"`
+	RiskExposure                      *string         `json:"risk_exposure,omitempty"`
+	SubmittedByUserID                 *string         `json:"submitted_by_user_id,omitempty"`
+	StrategicJobSize                  *int            `json:"strategic_job_size,omitempty"`
+	StrategicPreliminaryEstimateValue *int            `json:"strategic_preliminary_estimate_value,omitempty"`
+	EstimateInitialValue              *int            `json:"estimate_initial_value,omitempty"`
 }
 
 // ptrRawMessage returns a pointer to the raw JSON when the caller sent
@@ -1062,6 +1092,29 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		PlannedFinishDate:        req.PlannedFinishDate,
 		ActualStartDate:          req.ActualStartDate,
 		StrategicInvestmentGroup: req.StrategicInvestmentGroup,
+		// Rally-screenshots batch (migs 150-155).
+		Actuals:                           req.Actuals,
+		Tags:                              req.Tags,
+		ActualEndDate:                     req.ActualEndDate,
+		DefectResolution:                  req.DefectResolution,
+		DefectTestCaseStatus:              req.DefectTestCaseStatus,
+		DefectFixedInBuild:                req.DefectFixedInBuild,
+		DefectFoundInBuild:                req.DefectFoundInBuild,
+		DefectIsReleaseNote:               req.DefectIsReleaseNote,
+		DefectStepsToReproduce:            req.DefectStepsToReproduce,
+		DefectStepsToReproduceDoc:         ptrRawMessage(req.DefectStepsToReproduceDoc),
+		DefectIsRegression:                req.DefectIsRegression,
+		RiskResolution:                    req.RiskResolution,
+		RiskImpact:                        req.RiskImpact,
+		RiskImpactScore:                   req.RiskImpactScore,
+		RiskProbability:                   req.RiskProbability,
+		RiskProbabilityScore:              req.RiskProbabilityScore,
+		RiskResponse:                      req.RiskResponse,
+		RiskExposure:                      req.RiskExposure,
+		SubmittedByUserID:                 req.SubmittedByUserID,
+		StrategicJobSize:                  req.StrategicJobSize,
+		StrategicPreliminaryEstimateValue: req.StrategicPreliminaryEstimateValue,
+		EstimateInitialValue:              req.EstimateInitialValue,
 	})
 	if err != nil {
 		switch {

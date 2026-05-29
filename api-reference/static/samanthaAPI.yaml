@@ -2185,6 +2185,16 @@ paths:
                   type: string
                 timeboxes_releases_scope_propagation:
                   type: string
+                timeboxes_releases_actuals:
+                  type: string
+                timeboxes_releases_plan_estimate:
+                  type: string
+                timeboxes_releases_planned_velocity:
+                  type: string
+                timeboxes_releases_theme:
+                  type: string
+                timeboxes_releases_gross_estimate_conversion_ratio:
+                  type: string
       parameters:
       - name: id
         in: path
@@ -2479,6 +2489,14 @@ paths:
                 timeboxes_sprints_status:
                   type: string
                 timeboxes_sprints_scope_propagation:
+                  type: string
+                timeboxes_sprints_actuals:
+                  type: string
+                timeboxes_sprints_plan_estimate:
+                  type: string
+                timeboxes_sprints_planned_velocity:
+                  type: string
+                timeboxes_sprints_theme:
                   type: string
       parameters:
       - name: id

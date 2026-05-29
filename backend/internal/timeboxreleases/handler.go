@@ -293,6 +293,13 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		ReleaseEstimate    *int    `json:"timeboxes_releases_estimate"`
 		Status             *string `json:"timeboxes_releases_status"`
 		ScopePropagation   *string `json:"timeboxes_releases_scope_propagation"`
+		// Rally-screenshots batch (mig 157). Numerics enter as string to
+		// preserve precision through pgx ::numeric.
+		Actuals                      *string `json:"timeboxes_releases_actuals"`
+		PlanEstimate                 *string `json:"timeboxes_releases_plan_estimate"`
+		PlannedVelocity              *string `json:"timeboxes_releases_planned_velocity"`
+		Theme                        *string `json:"timeboxes_releases_theme"`
+		GrossEstimateConversionRatio *string `json:"timeboxes_releases_gross_estimate_conversion_ratio"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
@@ -300,17 +307,22 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	in := UpdateReleaseInput{
-		ReleaseName:        body.ReleaseName,
-		ReleaseSuffix:      body.ReleaseSuffix,
-		ReleaseOwner:       body.ReleaseOwner,
-		ReleaseCadenceDays: body.ReleaseCadenceDays,
-		ReleaseDateStart:   body.ReleaseDateStart,
-		ReleaseDateEnd:     body.ReleaseDateEnd,
-		ReleaseScope:       body.ReleaseScope,
-		ReleaseVelocity:    body.ReleaseVelocity,
-		ReleaseEstimate:    body.ReleaseEstimate,
-		Status:             body.Status,
-		ScopePropagation:   body.ScopePropagation,
+		ReleaseName:                  body.ReleaseName,
+		ReleaseSuffix:                body.ReleaseSuffix,
+		ReleaseOwner:                 body.ReleaseOwner,
+		ReleaseCadenceDays:           body.ReleaseCadenceDays,
+		ReleaseDateStart:             body.ReleaseDateStart,
+		ReleaseDateEnd:               body.ReleaseDateEnd,
+		ReleaseScope:                 body.ReleaseScope,
+		ReleaseVelocity:              body.ReleaseVelocity,
+		ReleaseEstimate:              body.ReleaseEstimate,
+		Status:                       body.Status,
+		ScopePropagation:             body.ScopePropagation,
+		Actuals:                      body.Actuals,
+		PlanEstimate:                 body.PlanEstimate,
+		PlannedVelocity:              body.PlannedVelocity,
+		Theme:                        body.Theme,
+		GrossEstimateConversionRatio: body.GrossEstimateConversionRatio,
 	}
 
 	release, err := h.svc.Update(r.Context(), wsID, id, in)
