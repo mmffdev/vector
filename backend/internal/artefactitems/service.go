@@ -1193,6 +1193,16 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if in.Status != nil && !validStatuses[*in.Status] {
 		return nil, fmt.Errorf("%w: invalid status", ErrInvalidInput)
 	}
+	// Core-field demotion (mig 147) — mirror the DB CHECK constraints
+	// for defect_severity / defect_status so a bad patch returns 400
+	// before the round-trip. Empty string is the wire "clear-to-NULL"
+	// sentinel; allowed values are the CHECK list verbatim.
+	if in.DefectSeverity != nil && *in.DefectSeverity != "" && !validDefectSeverities[*in.DefectSeverity] {
+		return nil, fmt.Errorf("%w: invalid defect_severity", ErrInvalidInput)
+	}
+	if in.DefectStatus != nil && *in.DefectStatus != "" && !validDefectStatuses[*in.DefectStatus] {
+		return nil, fmt.Errorf("%w: invalid defect_status", ErrInvalidInput)
+	}
 
 	// Snapshot the before-state for the notification-rules hook.
 	// Skipped (and cost-free) when no rule hook is wired. Errors
@@ -1430,6 +1440,151 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		} else {
 			sets = append(sets, fmt.Sprintf("artefacts_description_doc = $%d::jsonb", n))
 			args = append(args, *in.DescriptionDoc)
+			n++
+		}
+	}
+
+	// ── Core-field demotion (mig 147) ──
+	// All three-state on *string (nil ⇒ skip / "" ⇒ NULL / non-empty ⇒
+	// write). *bool tri-state (nil ⇒ skip / non-nil ⇒ write). NotesDoc
+	// mirrors DescriptionDoc.
+	if in.DefectSeverity != nil {
+		if *in.DefectSeverity == "" {
+			sets = append(sets, "artefacts_defect_severity = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_severity = $%d", n))
+			args = append(args, *in.DefectSeverity)
+			n++
+		}
+	}
+	if in.DefectStatus != nil {
+		if *in.DefectStatus == "" {
+			sets = append(sets, "artefacts_defect_status = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_status = $%d", n))
+			args = append(args, *in.DefectStatus)
+			n++
+		}
+	}
+	if in.Environment != nil {
+		if *in.Environment == "" {
+			sets = append(sets, "artefacts_environment = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_environment = $%d", n))
+			args = append(args, *in.Environment)
+			n++
+		}
+	}
+	if in.EstimateHours != nil {
+		if *in.EstimateHours == "" {
+			sets = append(sets, "artefacts_estimate_hours = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_estimate_hours = $%d::numeric", n))
+			args = append(args, *in.EstimateHours)
+			n++
+		}
+	}
+	if in.EstimateRemaining != nil {
+		if *in.EstimateRemaining == "" {
+			sets = append(sets, "artefacts_estimate_remaining = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_estimate_remaining = $%d::numeric", n))
+			args = append(args, *in.EstimateRemaining)
+			n++
+		}
+	}
+	if in.EstimateInitial != nil {
+		if *in.EstimateInitial == "" {
+			sets = append(sets, "artefacts_estimate_initial = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_estimate_initial = $%d::numeric", n))
+			args = append(args, *in.EstimateInitial)
+			n++
+		}
+	}
+	if in.EstimateUpdated != nil {
+		if *in.EstimateUpdated == "" {
+			sets = append(sets, "artefacts_estimate_updated = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_estimate_updated = $%d::numeric", n))
+			args = append(args, *in.EstimateUpdated)
+			n++
+		}
+	}
+	if in.IsExpedite != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_is_expedite = $%d", n))
+		args = append(args, *in.IsExpedite)
+		n++
+	}
+	if in.IsReady != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_is_ready = $%d", n))
+		args = append(args, *in.IsReady)
+		n++
+	}
+	if in.AffectsDoc != nil {
+		sets = append(sets, fmt.Sprintf("artefacts_affects_doc = $%d", n))
+		args = append(args, *in.AffectsDoc)
+		n++
+	}
+	if in.CountChildTestCases != nil {
+		// NOT NULL DEFAULT 0 in the DB; nil ⇒ skip, non-nil ⇒ write the
+		// integer verbatim. No "clear-to-NULL" path.
+		sets = append(sets, fmt.Sprintf("artefacts_count_child_test_cases = $%d", n))
+		args = append(args, *in.CountChildTestCases)
+		n++
+	}
+	if in.Notes != nil {
+		if *in.Notes == "" {
+			sets = append(sets, "artefacts_notes = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_notes = $%d", n))
+			args = append(args, *in.Notes)
+			n++
+		}
+	}
+	if in.NotesDoc != nil {
+		raw := string(*in.NotesDoc)
+		if raw == "" || raw == "null" || raw == "{}" {
+			sets = append(sets, "artefacts_notes_doc = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_notes_doc = $%d::jsonb", n))
+			args = append(args, *in.NotesDoc)
+			n++
+		}
+	}
+	if in.PlannedStartDate != nil {
+		if *in.PlannedStartDate == "" {
+			sets = append(sets, "artefacts_planned_start_date = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_planned_start_date = $%d::date", n))
+			args = append(args, *in.PlannedStartDate)
+			n++
+		}
+	}
+	if in.PlannedFinishDate != nil {
+		if *in.PlannedFinishDate == "" {
+			sets = append(sets, "artefacts_planned_finish_date = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_planned_finish_date = $%d::date", n))
+			args = append(args, *in.PlannedFinishDate)
+			n++
+		}
+	}
+	if in.ActualStartDate != nil {
+		if *in.ActualStartDate == "" {
+			sets = append(sets, "artefacts_actual_start_date = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_actual_start_date = $%d::date", n))
+			args = append(args, *in.ActualStartDate)
+			n++
+		}
+	}
+	if in.StrategicInvestmentGroup != nil {
+		if *in.StrategicInvestmentGroup == "" {
+			sets = append(sets, "artefacts_strategic_investment_group = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_strategic_investment_group = $%d", n))
+			args = append(args, *in.StrategicInvestmentGroup)
 			n++
 		}
 	}
@@ -2243,6 +2398,26 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.ReleaseID,
 		&wi.MilestoneID,
 		&wi.DescriptionDoc,
+		// Core-field demotion (mig 147) — order MUST match the trailing
+		// projection in sqlWorkItemColumns / sqlWorkItemColumnsListTemplate.
+		&wi.DefectSeverity,
+		&wi.DefectStatus,
+		&wi.Environment,
+		&wi.EstimateHours,
+		&wi.EstimateRemaining,
+		&wi.EstimateInitial,
+		&wi.EstimateUpdated,
+		&wi.IsExpedite,
+		&wi.IsReady,
+		&wi.AffectsDoc,
+		&wi.CountChildTestCases,
+		&wi.Notes,
+		&wi.NotesDoc,
+		&wi.PlannedStartDate,
+		&wi.PlannedFinishDate,
+		&wi.ActualStartDate,
+		&wi.FlowStateChangedAt,
+		&wi.StrategicInvestmentGroup,
 	)
 	if err != nil {
 		return nil, err

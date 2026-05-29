@@ -948,6 +948,28 @@ type patchWorkItemReq struct {
 	// verbatim into the JSONB column. nil = field absent; "null" or
 	// "{}" = clear to NULL; any other JSON = store as-is.
 	DescriptionDoc   json.RawMessage `json:"description_doc,omitempty"`
+	// Core-field demotion (mig 147) — 18 new first-class columns.
+	// Three-state on *string (absent / "" ⇒ clear / non-empty ⇒
+	// write). *bool tri-state. *int tri-state (no clear-to-NULL —
+	// count_child_test_cases is NOT NULL DEFAULT 0). NotesDoc
+	// mirrors DescriptionDoc.
+	DefectSeverity           *string         `json:"defect_severity,omitempty"`
+	DefectStatus             *string         `json:"defect_status,omitempty"`
+	Environment              *string         `json:"environment,omitempty"`
+	EstimateHours            *string         `json:"estimate_hours,omitempty"`
+	EstimateRemaining        *string         `json:"estimate_remaining,omitempty"`
+	EstimateInitial          *string         `json:"estimate_initial,omitempty"`
+	EstimateUpdated          *string         `json:"estimate_updated,omitempty"`
+	IsExpedite               *bool           `json:"is_expedite,omitempty"`
+	IsReady                  *bool           `json:"is_ready,omitempty"`
+	AffectsDoc               *bool           `json:"affects_doc,omitempty"`
+	CountChildTestCases      *int            `json:"count_child_test_cases,omitempty"`
+	Notes                    *string         `json:"notes,omitempty"`
+	NotesDoc                 json.RawMessage `json:"notes_doc,omitempty"`
+	PlannedStartDate         *string         `json:"planned_start_date,omitempty"`
+	PlannedFinishDate        *string         `json:"planned_finish_date,omitempty"`
+	ActualStartDate          *string         `json:"actual_start_date,omitempty"`
+	StrategicInvestmentGroup *string         `json:"strategic_investment_group,omitempty"`
 }
 
 // ptrRawMessage returns a pointer to the raw JSON when the caller sent
@@ -1022,6 +1044,24 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		// Required for the topology.CanReadScope gate the service runs
 		// when TopologyNodeID is non-nil. Mirrors CreateWorkItem's wiring.
 		ActorRoleID:      u.RoleID,
+		// Core-field demotion (mig 147).
+		DefectSeverity:           req.DefectSeverity,
+		DefectStatus:             req.DefectStatus,
+		Environment:              req.Environment,
+		EstimateHours:            req.EstimateHours,
+		EstimateRemaining:        req.EstimateRemaining,
+		EstimateInitial:          req.EstimateInitial,
+		EstimateUpdated:          req.EstimateUpdated,
+		IsExpedite:               req.IsExpedite,
+		IsReady:                  req.IsReady,
+		AffectsDoc:               req.AffectsDoc,
+		CountChildTestCases:      req.CountChildTestCases,
+		Notes:                    req.Notes,
+		NotesDoc:                 ptrRawMessage(req.NotesDoc),
+		PlannedStartDate:         req.PlannedStartDate,
+		PlannedFinishDate:        req.PlannedFinishDate,
+		ActualStartDate:          req.ActualStartDate,
+		StrategicInvestmentGroup: req.StrategicInvestmentGroup,
 	})
 	if err != nil {
 		switch {

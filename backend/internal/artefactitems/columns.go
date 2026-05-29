@@ -115,6 +115,40 @@ var ArtefactItemColumns = []ColumnSpec{
 	{Name: "colour", Label: "Colour", Group: "Visual", DefaultVisible: false, Addable: true},
 	{Name: "is_blocked", Label: "Blocked", Group: "Visual", DefaultVisible: true, Addable: true},
 	{Name: "blocked_reason", Label: "Blocked Reason", Group: "Visual", DefaultVisible: false, Addable: true},
+	// Core-field demotion (2026-05-29) — 18 columns demoted from the
+	// custom-fields catalogue onto first-class columns on artefacts.
+	// Spec: docs/superpowers/specs/2026-05-29-core-field-demotion-design.md.
+	// All default-hidden — adoption is opt-in via the picker until the
+	// inline-form / grid renderers ship (TD-INLINE-FORM-NEW-CORE-COLUMNS,
+	// TD-GRID-RENDERERS-CORE-BOOLEANS).
+	{Name: "is_expedite", Label: "Expedite", Group: "Visual", DefaultVisible: false, Addable: true},
+	{Name: "is_ready", Label: "Ready", Group: "Visual", DefaultVisible: false, Addable: true},
+	{Name: "affects_doc", Label: "Affects Documentation", Group: "Visual", DefaultVisible: false, Addable: true},
+
+	// Defect
+	{Name: "defect_severity", Label: "Defect Severity", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_status", Label: "Defect Status", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "environment", Label: "Environment", Group: "Defect", DefaultVisible: false, Addable: true},
+
+	// Notes (mirror description/description_doc pair)
+	{Name: "notes", Label: "Notes", Group: "Content", DefaultVisible: false, Addable: true},
+	{Name: "notes_doc", Label: "Notes (Doc)", Group: "Content", DefaultVisible: false, Addable: true},
+
+	// Estimation (additions for the demoted core fields)
+	{Name: "estimate_hours", Label: "Estimate Hours", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+	{Name: "estimate_remaining", Label: "Estimate Remaining", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+	{Name: "estimate_initial", Label: "Initial Estimate", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+	{Name: "estimate_updated", Label: "Updated Estimate", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+	{Name: "count_child_test_cases", Label: "Child Test Cases", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+
+	// Planning (additions for the demoted core fields)
+	{Name: "planned_start_date", Label: "Planned Start", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "planned_finish_date", Label: "Planned Finish", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "actual_start_date", Label: "Actual Start", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "flow_state_changed_at", Label: "Flow State Changed", Group: "Workflow", DefaultVisible: false, Addable: true},
+
+	// Strategic
+	{Name: "strategic_investment_group", Label: "Strategic Investment Group", Group: "Planning", DefaultVisible: false, Addable: true},
 
 	// Audit
 	{Name: "subscription_id", Label: "Subscription", Group: "Audit", DefaultVisible: false, Addable: true},

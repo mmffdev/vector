@@ -114,6 +114,33 @@ type WorkItem struct {
 	BlockedReason *string `json:"blocked_reason"`
 	ReleaseID     *string `json:"release_id"`
 	MilestoneID   *string `json:"milestone_id"`
+	// Core-field demotion (2026-05-29, migration 147). 18 new columns
+	// promoted from the artefacts_fields_library catalogue onto first-
+	// class columns on `artefacts`. See spec
+	// docs/superpowers/specs/2026-05-29-core-field-demotion-design.md
+	// for the rationale and the ColumnSpec mirror in columns.go.
+	//
+	// Numeric columns (artefacts.numeric) are exposed as *string so the
+	// scaler can avoid precision loss and the wire shape mirrors the
+	// existing FieldValue.NumberValue pattern.
+	DefectSeverity           *string          `json:"defect_severity"`
+	DefectStatus             *string          `json:"defect_status"`
+	Environment              *string          `json:"environment"`
+	EstimateHours            *string          `json:"estimate_hours"`
+	EstimateRemaining        *string          `json:"estimate_remaining"`
+	EstimateInitial          *string          `json:"estimate_initial"`
+	EstimateUpdated          *string          `json:"estimate_updated"`
+	IsExpedite               bool             `json:"is_expedite"`
+	IsReady                  bool             `json:"is_ready"`
+	AffectsDoc               bool             `json:"affects_doc"`
+	CountChildTestCases      int              `json:"count_child_test_cases"`
+	Notes                    *string          `json:"notes"`
+	NotesDoc                 *json.RawMessage `json:"notes_doc"`
+	PlannedStartDate         *string          `json:"planned_start_date"`
+	PlannedFinishDate        *string          `json:"planned_finish_date"`
+	ActualStartDate          *string          `json:"actual_start_date"`
+	FlowStateChangedAt       *time.Time       `json:"flow_state_changed_at"`
+	StrategicInvestmentGroup *string          `json:"strategic_investment_group"`
 }
 
 // OwnerRef is the slim user projection embedded on each WorkItem when the
@@ -333,6 +360,55 @@ type PatchWorkItemInput struct {
 	// ErrInvalidInput; passing uuid.Nil when TopologyNodeID is nil is
 	// fine (no scope gate runs).
 	ActorRoleID uuid.UUID
+	// Core-field demotion (2026-05-29, migration 147). Patchable
+	// projections of the 18 new first-class columns. Three-state
+	// convention (nil ⇒ skip / "" ⇒ clear-to-NULL / non-empty ⇒ write)
+	// applies to every *string pointer. *bool pointers are tri-state
+	// (nil ⇒ skip / non-nil ⇒ write). *int pointers are tri-state
+	// (nil ⇒ skip / non-nil ⇒ write — clearing to NULL not supported
+	// because count_child_test_cases is NOT NULL DEFAULT 0).
+	//
+	// DefectSeverity / DefectStatus carry CHECK constraints in the DB
+	// (mig 147); the service mirrors the allowed-value list so a bad
+	// patch returns ErrInvalidInput before the round-trip.
+	DefectSeverity           *string
+	DefectStatus             *string
+	Environment              *string
+	EstimateHours            *string
+	EstimateRemaining        *string
+	EstimateInitial          *string
+	EstimateUpdated          *string
+	IsExpedite               *bool
+	IsReady                  *bool
+	AffectsDoc               *bool
+	CountChildTestCases      *int
+	Notes                    *string
+	NotesDoc                 *json.RawMessage
+	PlannedStartDate         *string
+	PlannedFinishDate        *string
+	ActualStartDate          *string
+	StrategicInvestmentGroup *string
+}
+
+// validDefectSeverities mirrors the artefacts_defect_severity_chk
+// constraint added in migration 147. Empty string is also accepted as
+// the wire "clear-to-NULL" sentinel; the service translates it before
+// the constraint check would fire.
+var validDefectSeverities = map[string]bool{
+	"low": true, "medium": true, "high": true, "critical": true,
+}
+
+// validDefectStatuses mirrors the artefacts_defect_status_chk
+// constraint added in migration 147.
+var validDefectStatuses = map[string]bool{
+	"open":        true,
+	"triaged":     true,
+	"in_progress": true,
+	"fixed":       true,
+	"verified":    true,
+	"closed":      true,
+	"wontfix":     true,
+	"duplicate":   true,
 }
 
 // Sprint is the wire representation of the sprints table.

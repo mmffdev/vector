@@ -100,7 +100,28 @@ const sqlWorkItemColumns = `
 	a.artefacts_blocked_reason              AS blocked_reason,
 	a.artefacts_id_timebox_release::text    AS release_id,
 	a.artefacts_id_timebox_milestone::text  AS milestone_id,
-	a.artefacts_description_doc             AS description_doc`
+	a.artefacts_description_doc             AS description_doc,
+	-- Core-field demotion (mig 147) — 18 columns promoted from the
+	-- custom-fields catalogue. Numerics rendered as ::text so pgx
+	-- preserves precision without forcing a Float scan.
+	a.artefacts_defect_severity             AS defect_severity,
+	a.artefacts_defect_status               AS defect_status,
+	a.artefacts_environment                 AS environment,
+	a.artefacts_estimate_hours::text        AS estimate_hours,
+	a.artefacts_estimate_remaining::text    AS estimate_remaining,
+	a.artefacts_estimate_initial::text      AS estimate_initial,
+	a.artefacts_estimate_updated::text      AS estimate_updated,
+	a.artefacts_is_expedite                 AS is_expedite,
+	a.artefacts_is_ready                    AS is_ready,
+	a.artefacts_affects_doc                 AS affects_doc,
+	a.artefacts_count_child_test_cases      AS count_child_test_cases,
+	a.artefacts_notes                       AS notes,
+	a.artefacts_notes_doc                   AS notes_doc,
+	a.artefacts_planned_start_date::text    AS planned_start_date,
+	a.artefacts_planned_finish_date::text   AS planned_finish_date,
+	a.artefacts_actual_start_date::text     AS actual_start_date,
+	a.artefacts_flow_state_changed_at       AS flow_state_changed_at,
+	a.artefacts_strategic_investment_group  AS strategic_investment_group`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
@@ -180,7 +201,27 @@ const sqlWorkItemColumnsListTemplate = `
 	a.artefacts_blocked_reason              AS blocked_reason,
 	a.artefacts_id_timebox_release::text    AS release_id,
 	a.artefacts_id_timebox_milestone::text  AS milestone_id,
-	a.artefacts_description_doc             AS description_doc`
+	a.artefacts_description_doc             AS description_doc,
+	-- Core-field demotion (mig 147) — kept in lockstep with the
+	-- shared sqlWorkItemColumns above (Get + ListChildren paths).
+	a.artefacts_defect_severity             AS defect_severity,
+	a.artefacts_defect_status               AS defect_status,
+	a.artefacts_environment                 AS environment,
+	a.artefacts_estimate_hours::text        AS estimate_hours,
+	a.artefacts_estimate_remaining::text    AS estimate_remaining,
+	a.artefacts_estimate_initial::text      AS estimate_initial,
+	a.artefacts_estimate_updated::text      AS estimate_updated,
+	a.artefacts_is_expedite                 AS is_expedite,
+	a.artefacts_is_ready                    AS is_ready,
+	a.artefacts_affects_doc                 AS affects_doc,
+	a.artefacts_count_child_test_cases      AS count_child_test_cases,
+	a.artefacts_notes                       AS notes,
+	a.artefacts_notes_doc                   AS notes_doc,
+	a.artefacts_planned_start_date::text    AS planned_start_date,
+	a.artefacts_planned_finish_date::text   AS planned_finish_date,
+	a.artefacts_actual_start_date::text     AS actual_start_date,
+	a.artefacts_flow_state_changed_at       AS flow_state_changed_at,
+	a.artefacts_strategic_investment_group  AS strategic_investment_group`
 
 // sqlListWorkItemsTemplate is the paged data query. %s slots (in order):
 //   - childExtra: extra AND-clause for the children_count subquery so
