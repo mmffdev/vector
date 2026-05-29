@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,6 +41,12 @@ var (
 	ErrFieldTypeRequired    = errors.New("field data_type is required")
 	ErrFieldTypeInvalid     = errors.New("field data_type is not one of the allowed values")
 	ErrFieldScopeInvalid    = errors.New("field scope must be 'tenant' or 'workspace'")
+	// ErrFieldNamePrefix — submitted field name does not match Rule 2
+	// (`c_artefacts_<lower_snake>` — see
+	// dev/research/column_prefix_compliance_audit.md and mig 160). The
+	// error string includes the corrected form to make the rule
+	// discoverable. Translates to 400.
+	ErrFieldNamePrefix = errors.New("field name must start with 'c_artefacts_' (Rule 2 — custom-field prefix); e.g. 'c_artefacts_severity'")
 	// ErrFieldNotFoundWriter — Update/Archive on a row that does not
 	// exist (or was already archived). Distinct from resolver.go's
 	// ErrFieldNotFound which lives on a different code-path. Writer
@@ -222,6 +229,20 @@ type CreateFieldInput struct {
 	Description *string         // optional
 }
 
+// customFieldNameRe pins the Rule 2 shape: `c_artefacts_` + lower_snake.
+// Source: dev/research/column_prefix_compliance_audit.md §C + mig 160
+// (db/vector_artefacts/schema/160_custom_fields_c_prefix_rule2.sql). The
+// CHECK constraint on artefacts_fields_library_field_name uses the same
+// regex — keep the two in lockstep.
+//
+// Generalisation note (Rick decision 3): today only artefacts_fields_library
+// has a custom-field catalogue, so the prefix is the literal `c_artefacts_`.
+// If a second per-table catalogue ever appears (e.g.
+// `workspaces_fields_library`), this regex generalises to
+// `c_<stripped_table_name>_<column>` per catalogue table. See
+// dev/research/column_prefix_compliance_audit.md §F-4.
+var customFieldNameRe = regexp.MustCompile(`^c_artefacts_[a-z][a-z0-9_]*$`)
+
 // validate runs purely-syntactic checks against the input. Returns one of
 // the ErrField* sentinels — handler maps them to 400.
 func (in CreateFieldInput) validate() error {
@@ -239,6 +260,15 @@ func (in CreateFieldInput) validate() error {
 	}
 	if in.Scope != "tenant" && in.Scope != "workspace" {
 		return ErrFieldScopeInvalid
+	}
+	// Rule 2 prefix: defence-in-depth alongside the Postgres CHECK
+	// constraint on artefacts_fields_library_field_name. The CHECK gives
+	// a SQLSTATE 23514 from any path that bypasses the handler; the
+	// handler gives this explanatory 400 to the API caller so the rule
+	// is discoverable from the wire (HARD RULE — server is the gate,
+	// don't make the caller read SQL errors to understand the rule).
+	if !customFieldNameRe.MatchString(in.Name) {
+		return ErrFieldNamePrefix
 	}
 	return nil
 }

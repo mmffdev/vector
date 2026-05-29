@@ -62,7 +62,7 @@ func seedTestRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (uuid.U
 		   artefacts_fields_library_field_name, artefacts_fields_library_label,
 		   artefacts_fields_library_field_type, artefacts_fields_library_scope)
 		VALUES ($1, $2, $3, 'Test Field', 'textbox', 'tenant')`,
-		fieldID, subID, "test_field_"+fieldID.String()[:8]); err != nil {
+		fieldID, subID, "c_artefacts_test_field_"+fieldID.String()[:8]); err != nil {
 		t.Fatalf("seed field: %v", err)
 	}
 

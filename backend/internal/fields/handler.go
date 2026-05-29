@@ -195,6 +195,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		writeWriterGateErr(w, r, err)
 		return
 	}
+
+	// Rule 2 — custom-field prefix (HARD RULE: server is the gate).
+	// Run the prefix check at the handler-side AFTER the auth gate so
+	// we don't leak workspace existence to unauthorised callers via
+	// the 400 vs 403/404 distinction, but BEFORE the artefacts-pool
+	// short-circuit so the explanatory 400 fires regardless of pool
+	// wiring. The service.validate() call downstream applies the same
+	// rule (defence-in-depth), and the Postgres CHECK constraint on
+	// artefacts_fields_library_field_name (mig 160) is the final SQL
+	// gate. See dev/research/column_prefix_compliance_audit.md §C-F.
+	if !customFieldNameRe.MatchString(body.Name) {
+		httperr.Write(w, r, http.StatusBadRequest, ErrFieldNamePrefix.Error())
+		return
+	}
+
 	if !h.Svc.HasArtefactsPool() {
 		httperr.Write(w, r, http.StatusServiceUnavailable, usermessages.ServiceUnavailable)
 		return
@@ -370,7 +385,8 @@ func writeWriterSvcErr(w http.ResponseWriter, r *http.Request, err error) {
 		errors.Is(err, ErrFieldLabelRequired),
 		errors.Is(err, ErrFieldTypeRequired),
 		errors.Is(err, ErrFieldTypeInvalid),
-		errors.Is(err, ErrFieldScopeInvalid):
+		errors.Is(err, ErrFieldScopeInvalid),
+		errors.Is(err, ErrFieldNamePrefix):
 		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 	case errors.Is(err, ErrFieldNotFoundWriter):
 		httperr.Write(w, r, http.StatusNotFound, usermessages.NotFound)

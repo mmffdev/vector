@@ -223,6 +223,76 @@ func TestCreate_InvalidFieldType_Returns400(t *testing.T) {
 	}
 }
 
+// TestCreate_BadPrefix_Returns400 — Rule 2 (custom-field prefix). The
+// handler must reject any name that doesn't match
+// `^c_artefacts_[a-z][a-z0-9_]*$` with 400 + an explanatory error
+// before reaching the auth gate or the artefacts pool. The Postgres
+// CHECK constraint on artefacts_fields_library_field_name (mig 160)
+// is defence-in-depth — we want the API caller to see the rule in
+// the 400 body, not a SQL error code.
+//
+// Source: dev/research/column_prefix_compliance_audit.md §C-F.
+func TestCreate_BadPrefix_Returns400(t *testing.T) {
+	pool := vectorPoolForTest(t)
+	defer pool.Close()
+	g := pickGadmin(t, pool)
+	g.RoleID = roles.SystemGrpPortfolioID
+	// Use a real workspace in the gadmin's tenant so the auth gate
+	// clears and we exercise the prefix validator that runs AFTER
+	// the gate (see handler.go for ordering rationale).
+	wsID := pickWorkspaceInTenant(t, pool, g.SubscriptionID)
+
+	h := NewHandler(NewService(pool, nil))
+	srv := httptest.NewServer(newWriterRouter(h, g))
+	defer srv.Close()
+
+	// `severity` has no prefix — must 400.
+	body := `{"name":"severity","label":"Severity","data_type":"textbox","scope":"tenant"}`
+	resp, err := http.Post(srv.URL+"/api/workspace/"+wsID.String()+"/fields",
+		"application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status: want 400, got %d (body: %s)", resp.StatusCode, readBody(t, resp))
+	}
+	bodyOut := readBody(t, resp)
+	if !strings.Contains(bodyOut, "c_artefacts_") {
+		t.Fatalf("error body should reference c_artefacts_ to make the rule discoverable; got: %s", bodyOut)
+	}
+}
+
+// TestCreate_GoodPrefix_PassesValidator — companion to BadPrefix:
+// `c_artefacts_severity` clears the handler-side prefix validator.
+// Downstream the call may 503 (nil artefacts pool — same pattern as
+// TestCreate_WorkspaceScope_TenantAdmin_PassesGate) or 400 from a
+// later validator; the assertion is "NOT the prefix 400".
+func TestCreate_GoodPrefix_PassesValidator(t *testing.T) {
+	pool := vectorPoolForTest(t)
+	defer pool.Close()
+	g := pickGadmin(t, pool)
+	g.RoleID = roles.SystemGrpPortfolioID
+	wsID := pickWorkspaceInTenant(t, pool, g.SubscriptionID)
+
+	h := NewHandler(NewService(pool, nil))
+	srv := httptest.NewServer(newWriterRouter(h, g))
+	defer srv.Close()
+
+	body := `{"name":"c_artefacts_severity","label":"Severity","data_type":"textbox","scope":"tenant"}`
+	resp, err := http.Post(srv.URL+"/api/workspace/"+wsID.String()+"/fields",
+		"application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	// The compliant name must NOT trigger the prefix 400. Acceptable
+	// outcomes: 201 (real pool), 503 (nil artefacts pool short-circuit).
+	if resp.StatusCode == http.StatusBadRequest {
+		t.Fatalf("compliant prefix should NOT 400, got 400: %s", readBody(t, resp))
+	}
+}
+
 func TestCreate_MissingFields_Returns400(t *testing.T) {
 	pool := vectorPoolForTest(t)
 	defer pool.Close()
@@ -285,17 +355,21 @@ func TestUpdate_TypeChange_WithValues_Returns409(t *testing.T) {
 	var fieldID uuid.UUID
 	err := aPool.QueryRow(ctx, `
 		INSERT INTO artefacts_fields_library
-			(subscription_id, field_name, label, field_type, scope)
+			(artefacts_fields_library_id_subscription,
+			 artefacts_fields_library_field_name,
+			 artefacts_fields_library_label,
+			 artefacts_fields_library_field_type,
+			 artefacts_fields_library_scope)
 		VALUES ($1, $2, $3, 'textbox', 'tenant')
-		RETURNING id`,
-		g.SubscriptionID, "test_typechange_"+uuid.New().String()[:8], "Test Type Change",
+		RETURNING artefacts_fields_library_id`,
+		g.SubscriptionID, "c_artefacts_test_typechange_"+uuid.New().String()[:8], "Test Type Change " + uuid.New().String()[:8],
 	).Scan(&fieldID)
 	if err != nil {
 		t.Fatalf("seed field: %v", err)
 	}
 	t.Cleanup(func() {
 		_, _ = aPool.Exec(context.Background(),
-			`DELETE FROM artefacts_fields_library WHERE id = $1`, fieldID)
+			`DELETE FROM artefacts_fields_library WHERE artefacts_fields_library_id = $1`, fieldID)
 	})
 
 	// Insert a fake artefact + a value referencing the field. The
@@ -323,7 +397,7 @@ func TestUpdate_TypeChange_WithValues_Returns409(t *testing.T) {
 		INSERT INTO artefacts_fields_values
 			(artefacts_fields_values_id_artefact,
 			 artefacts_fields_values_id_field_library,
-			 string_value)
+			 artefacts_fields_values_string_value)
 		VALUES ($1, $2, 'hello')`,
 		artefactID, fieldID,
 	)

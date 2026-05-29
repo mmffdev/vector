@@ -468,9 +468,11 @@ const sqlSummariseByTypeTemplate = `
 
 // ── SummariseRisks (PLA-0052 Story 10) ────────────────────────────────────
 //
-// Severity × likelihood matrix aggregator. Reads risk_impact + risk_probability
-// from artefacts_fields_values; lowercases the value strings; counts per
-// (severity, likelihood) cell + per-axis totals + open count (non-done states).
+// Severity × likelihood matrix aggregator. Reads c_artefacts_risk_impact +
+// c_artefacts_risk_probability from artefacts_fields_values (catalogue row
+// names use the Rule 2 `c_artefacts_` prefix — mig 160); lowercases the
+// value strings; counts per (severity, likelihood) cell + per-axis totals
+// + open count (non-done states).
 //
 // Subscription-scoped. Risk artefacts only (artefacts_types_name='Risk').
 const sqlSummariseRisks = `
@@ -479,10 +481,10 @@ const sqlSummariseRisks = `
 				a.artefacts_id,
 				fs.flows_states_kind AS flow_kind,
 				LOWER(MAX(fvi.artefacts_fields_values_string_value) FILTER (
-					WHERE fli.artefacts_fields_library_field_name = 'risk_impact'
+					WHERE fli.artefacts_fields_library_field_name = 'c_artefacts_risk_impact'
 				)) AS severity,
 				LOWER(MAX(fvp.artefacts_fields_values_string_value) FILTER (
-					WHERE flp.artefacts_fields_library_field_name = 'risk_probability'
+					WHERE flp.artefacts_fields_library_field_name = 'c_artefacts_risk_probability'
 				)) AS likelihood
 			FROM artefacts a
 			JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
