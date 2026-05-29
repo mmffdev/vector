@@ -1274,35 +1274,49 @@ input[type="reset"] {
    white text, black border. Hover state: inverts to white surface with
    the same black border and black text. This is the global default;
    variants below opt out for ghost/secondary/danger usage. */
+/* Button primitive — aligned to the OTV2 actionbar chip look
+   (.tree_accordion-dense__filterbar-chip). Theme-driven surface,
+   hairline border, 32px height, 6px radius. No raw black/white —
+   defaults compose from --surface / --ink / --border so the button
+   re-themes with the active pack.
+
+   Variants:
+     --primary    → accent fill (the call-to-action / "Save")
+     --secondary  → accent outline on transparent
+     --ghost      → muted, borderless-feel
+     --danger     → danger token
+     --sm / --lg  → size ladder (default is 32px, like the chip)
+     --icon       → square; composes with --sm / --xs / --tiny / --micro */
 .btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 40px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 12px;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  border: 1px solid var(--ink);
-  background: var(--ink);
-  color: var(--ink-contrast);
-  border-radius: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
   white-space: nowrap;
   box-shadow: none;
 }
 .btn svg { width: 16px; height: 16px; }
 
 .btn:hover:not(:disabled) {
-  background: var(--surface);
+  background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
+  border-color: var(--border);
   color: var(--ink);
-  border-color: var(--ink);
 }
 
 .btn:disabled {
-  opacity: 0.85;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -1316,7 +1330,7 @@ input[type="reset"] {
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ink) 15%, var(--accent));
+  background: color-mix(in srgb, var(--ink) 12%, var(--accent));
   color: var(--accent-ink);
   border-color: var(--accent);
 }
@@ -1371,14 +1385,14 @@ input[type="reset"] {
 }
 
 .btn--sm {
-  height: 32px;
-  padding: 0 12px;
-  font-size: 13px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .btn--lg {
-  height: 48px;
-  padding: 0 20px;
+  height: 40px;
+  padding: 0 16px;
   font-size: 14px;
 }
 
@@ -19336,4 +19350,29 @@ tr.is-editing {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+}
+
+/* Source pill — small badge in the Source column of the custom-fields
+   admin grid. Distinguishes synthesised CORE rows (read-only, sourced
+   from /work-items/columns) from real catalogue CUSTOM rows. Two tone
+   variants: CORE is muted (read-only signal); CUSTOM uses the accent
+   so the catalogue rows the admin can edit stand out. See
+   docs/superpowers/specs/2026-05-29-core-field-demotion-design.md §4.3. */
+.source-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+.source-pill--core {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+}
+.source-pill--custom {
+  background: var(--accent-muted);
+  color: var(--ink);
 }
