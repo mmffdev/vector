@@ -2059,7 +2059,13 @@ export default function ObjectTree<T = WorkItem>({
         })}
         {...(rowButtons && { rowButtons: rowButtons as (row: WorkItem) => import("@/app/components/ResourceTree").RowButton[] })}
         {...(!hideCogMenu && { cogMenu: buildCogMenu })}
-        {...(adapter?.renderRowFlyout && { renderRowDetail: renderAdapterRowDetail })}
+        {...(adapter?.renderRowFlyout && {
+          renderRowDetail: renderAdapterRowDetail,
+          // Drop the inner scroll container so opening the inline flyout
+          // pushes the whole panel down instead of spawning a second
+          // scrollbar competing with the page scroll.
+          disableInnerScroll: true,
+        })}
         selectedId={selectedId}
         onSelect={((row: WorkItem) => {
           // When an adapter with renderRowFlyout is active, a row click

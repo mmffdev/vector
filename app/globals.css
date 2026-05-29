@@ -19262,6 +19262,20 @@ tr.is-editing {
   }
 }
 
+/* Vertical-stack form layout for the left column of the edit form.
+   Replaces .form__grid (which runs fields inline when the container is
+   wide) so each label sits on its own row. The flyout's horizontal
+   space goes to the picker on the right; the form fields use the
+   vertical space, one row per field. */
+.custom-field-edit-form__FieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.custom-field-edit-form__FieldStack > .form__label {
+  width: 100%;
+}
+
 /* Scope filter chip — the single filter the CustomFieldsAdapter renders
    into the ActionBar's filter slot. Label-plus-select pill that visually
    matches the .action-btn cluster sitting next to it. */

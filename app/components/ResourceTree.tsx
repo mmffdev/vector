@@ -275,6 +275,14 @@ export interface ResourceTreeProps<T> {
   // legacy bottom-of-grid behaviour (no extra rows injected).
   renderRowDetail?: (row: T) => React.ReactNode | null;
 
+  // Disable the inner scroll container — table grows to natural height
+  // and the page scrolls instead. Pair with renderRowDetail so opening
+  // an inline flyout expands the whole panel rather than spawning a
+  // second scrollbar competing with the page scroll. Opt-in: omit to
+  // keep the legacy max-height + overflow-y:auto behaviour used by
+  // long WorkItem grids.
+  disableInnerScroll?: boolean;
+
   // ── Set 5: Colour / tone (no-op default) ──
   tone?: ToneOverrides<T>;
 
@@ -860,6 +868,7 @@ function ResourceTreeImpl<T>({
   cogMenu,
   rowButtons,
   renderRowDetail,
+  disableInnerScroll,
   expandAllConcurrency = 6,
   // Tone (reserved; not consumed in v1 internals — column renderers handle it)
   // (patch / tone are accepted to keep the surface contract; column
@@ -1753,7 +1762,13 @@ function ResourceTreeImpl<T>({
         />
       )}
 
-      <div ref={scrollRef} className="tree_accordion-dense__scroll">
+      <div
+        ref={scrollRef}
+        className={
+          "tree_accordion-dense__scroll" +
+          (disableInnerScroll ? " tree_accordion-dense__scroll-noscroll" : "")
+        }
+      >
         <table
           ref={tableRef}
           className="tree_accordion-dense__table tree_accordion-dense__table--resizable tree_accordion-dense__table--fixed"

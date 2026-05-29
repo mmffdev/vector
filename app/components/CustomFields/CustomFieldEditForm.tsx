@@ -261,7 +261,7 @@ export default function CustomFieldEditForm({
       <div className="custom-field-edit-form__Columns">
         {/* ── Left column: form fields ────────────────────────────────── */}
         <div className="custom-field-edit-form__FormCol">
-          <div className="form__grid">
+          <div className="custom-field-edit-form__FieldStack">
             <label className="form__label">
               Name (machine identifier)
               <input
