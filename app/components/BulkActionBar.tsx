@@ -70,12 +70,17 @@ export default function BulkActionBar({
 
   return (
     <div
-      className="toolbar"
+      className="toolbar toolbar--bulk"
       data-testid="bulk-action-bar"
       role="toolbar"
       aria-label="Bulk actions for selected work items"
     >
-      <div className="toolbar__meta">{count} selected</div>
+      {/* DOM order: actions FIRST (left), meta LAST (right). The .toolbar
+          flex container uses justify-content: space-between, so the two
+          groups sit at opposite ends of the row. Left-padding on
+          .toolbar--bulk mirrors the ActionBar above (.tree_accordion-dense__actionbar)
+          so the leading button on this row aligns vertically with the
+          leading chip ("Create New") of the ActionBar. */}
       <div className="toolbar__actions">
         {/* Slice 6 / value-sprint — host-supplied bulk actions render
             FIRST so domain-specific actions ("Add to Sprint", "Target
@@ -166,6 +171,7 @@ export default function BulkActionBar({
           Clear
         </button>
       </div>
+      <div className="toolbar__meta">{count} selected</div>
     </div>
   );
 }

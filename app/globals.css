@@ -2514,6 +2514,17 @@ input[type="reset"] {
   font-variant-numeric: tabular-nums;
 }
 
+/* BulkActionBar modifier — aligns the bar's leading button with the
+   leading chip of the ActionBar sitting above it (the dense-grid
+   .tree_accordion-dense__actionbar uses padding: 10px 12px 9px). DOM
+   order is actions-first, meta-last so flex space-between puts buttons
+   LEFT and "N selected" RIGHT. Right padding matches the 12px symmetry
+   of the ActionBar so "N selected" sits flush with the action bar's
+   right edge. */
+.toolbar--bulk {
+  padding: 0 12px;
+}
+
 /* ============================================================
    Accordion — global reusable expand/collapse panel system.
    Used by: model-chooser (portfolio selector), zone-toggles
