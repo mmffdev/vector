@@ -89,7 +89,6 @@
 /topology/{id}/members
 /user/tab-order/{pageId}
 /work-items/by-ids
-/work-items/columns
 /work-items/facets
 /work-items/summary
 /work-items/types/{typeId}/fields
