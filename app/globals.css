@@ -14447,13 +14447,15 @@ input[type="reset"] {
   background: var(--surface-sunken);
 }
 /* Value-sprint page only — amber header band on the backlog grid;
-   green band on the sprint-target panel. Scoped to .value-sprint
+   green band on the sprint-target panel (shared by both the
+   value-sprint and value-sprint-review pages). Scoped to .value-sprint
    (set on the page's PageContent) so other pages keep the default
    --surface-sunken header. */
 .value-sprint .tree_accordion-dense__th {
   background: #ffcc33;
 }
-.value-sprint .value-sprint__target .tree_accordion-dense__th {
+.value-sprint__target .tree_accordion-dense__th,
+.value-sprint-review__target .tree_accordion-dense__th {
   background: #5fbb74;
 }
 .tree_accordion-dense__th--mono {
