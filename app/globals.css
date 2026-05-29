@@ -13546,6 +13546,8 @@ input[type="reset"] {
   background: var(--surface-sunken);
   margin: -14px -16px -12px;
   padding: 10px 16px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 .tree_accordion-dense__createflyout-title {
   margin: 0;
@@ -14361,15 +14363,19 @@ input[type="reset"] {
   background: var(--surface-hover);
 }
 
-/* Inline adapter row-detail — the <tr> ResourceTree injects directly
-   under the active flyout row. Cell is bare so the adapter's flyout
-   shell takes the full slot AND sits flush against the next row (no
-   bottom border, no inner padding). */
-.tree_accordion-dense__row-detail {
+/* Inline row-detail and row-create — the <tr>s ResourceTree injects
+   for OTV2's inline flyouts. The cell is bare so the flyout shell
+   takes the full slot AND sits flush both above (against the row /
+   <thead> above) and below (against the next row / pagination). No
+   borders, no inner padding. */
+.tree_accordion-dense__row-detail,
+.tree_accordion-dense__row-create {
   background: var(--surface);
 }
-.tree_accordion-dense__cell--row-detail {
+.tree_accordion-dense__cell--row-detail,
+.tree_accordion-dense__cell--row-create {
   padding: 0 !important;
+  border-top: 0 !important;
   border-bottom: 0 !important;
 }
 
@@ -15345,6 +15351,15 @@ input[type="reset"] {
   background-size: 56.569px 56.569px;
   animation: artefact-inline-form__delete-stripes 2s linear infinite;
   color: #fff;
+}
+/* Inline flyout title bars never get rounded corners on the top —
+   they sit flush under the row above (or <thead>, for create) once
+   hosted inside ResourceTree via renderRowDetail / renderCreateRow. */
+.artefact-inline-form__Container_Head,
+.artefact-inline-form__Container_Head--duplicate,
+.artefact-inline-form__Container_Head--deleting {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 @keyframes artefact-inline-form__delete-stripes {
   from { background-position: 0 0; }
