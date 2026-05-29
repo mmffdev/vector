@@ -19280,6 +19280,38 @@ tr.is-editing {
   font-weight: normal;
   margin-top: 4px;
 }
+/* Read-only Rule-2 prefix affix glued to the left edge of the machine-
+   identifier input. The affix span is non-interactive (aria-hidden,
+   muted background) so it reads as a label-on-the-input rather than a
+   separate field. Border-radius is split so the seam between the affix
+   and the input lands at the same line. */
+.custom-field-edit-form__FieldStack > .form__label > .custom-field-edit-form__PrefixedInput {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+.custom-field-edit-form__InputPrefix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  background: var(--surface-muted, var(--surface));
+  color: var(--ink-muted);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  user-select: none;
+}
+.custom-field-edit-form__FieldStack > .form__label > .custom-field-edit-form__PrefixedInput > .custom-field-edit-form__InputAfterPrefix {
+  border-radius: 0 4px 4px 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
 /* Scope filter chip — the single filter the CustomFieldsAdapter renders
    into the ActionBar's filter slot. Label-plus-select pill that visually

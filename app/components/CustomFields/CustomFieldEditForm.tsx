@@ -31,6 +31,27 @@ import TypeBindingsPicker, {
   type DraftBinding,
 } from "@/app/components/CustomFields/TypeBindingsPicker";
 
+// Rule 2 — custom-field-name prefix. The backend's
+// `backend/internal/fields/service.go` pins every workspace-/tenant-scope
+// field name to `^c_artefacts_[a-z][a-z0-9_]*$` (regex
+// `customFieldNameRe`). Server is the gate (HARD RULE), but the form
+// glues the prefix on for the user so they can't trip a 400 from typing
+// the wrong shape. We strip the prefix on render (so the editor only
+// shows the suffix) and re-attach on submit. Detect-and-pass-through
+// guards the edit-mode path where `name` already carries the prefix.
+const CUSTOM_FIELD_PREFIX = "c_artefacts_";
+
+function stripFieldPrefix(raw: string): string {
+  return raw.startsWith(CUSTOM_FIELD_PREFIX)
+    ? raw.slice(CUSTOM_FIELD_PREFIX.length)
+    : raw;
+}
+
+function attachFieldPrefix(suffix: string): string {
+  const t = suffix.trim();
+  return t.startsWith(CUSTOM_FIELD_PREFIX) ? t : CUSTOM_FIELD_PREFIX + t;
+}
+
 // Closed vocabulary of data_type values the backend accepts. Mirrors
 // AllowedFieldTypes in backend/internal/fields/service.go and matches
 // the list rendered by the legacy [id]/page.tsx editor.
@@ -65,7 +86,10 @@ export default function CustomFieldEditForm({
   const isNew = initial === null;
 
   // ── Form fields ─────────────────────────────────────────────────────────
-  const [name, setName] = useState(initial?.name ?? "");
+  // `name` is the *suffix only* — the prefix is glued on at submit. On
+  // edit-mode hydration the existing wire `name` already carries
+  // `c_artefacts_`, so strip it so the user sees just their part.
+  const [name, setName] = useState(stripFieldPrefix(initial?.name ?? ""));
   const [label, setLabel] = useState(initial?.label ?? "");
   const [dataType, setDataType] = useState(initial?.data_type ?? "textbox");
   const [scope, setScope] = useState<"workspace" | "tenant">(
@@ -154,10 +178,14 @@ export default function CustomFieldEditForm({
       }
       setErr(null);
       setBusy(true);
+      // Rule 2 prefix is glued on here, not stored in `name`. Frontend
+      // is defence-in-depth — the backend handler (handler.go::Create)
+      // and the Postgres CHECK (mig 160) remain the authoritative gates.
+      const wireName = attachFieldPrefix(name);
       try {
         if (isNew) {
           const body: FieldCreate = {
-            name: name.trim(),
+            name: wireName,
             label: label.trim(),
             data_type: dataType,
             scope,
@@ -187,7 +215,7 @@ export default function CustomFieldEditForm({
         } else {
           if (initial == null) return;
           const body: FieldUpdate = {
-            name: name.trim() === initial.name ? undefined : name.trim(),
+            name: wireName === initial.name ? undefined : wireName,
             label: label.trim() === initial.label ? undefined : label.trim(),
             data_type: dataType === initial.data_type ? undefined : dataType,
             description:
@@ -229,7 +257,36 @@ export default function CustomFieldEditForm({
               "Forbidden — you do not have permission to manage fields at this visibility level.",
             );
           } else {
-            setErr(`Error ${ex.status}: ${String(ex.body ?? "")}`);
+            // RFC 9457 Problem Details: ApiError.detail / ApiError.title are
+            // already lifted from the body, and ApiError.body is the parsed
+            // JSON (NOT a string). The previous `String(ex.body ?? "")` was
+            // a bug — it produced "[object Object]" because the body is an
+            // object, not a string. Prefer detail → title → JSON dump → fallback.
+            const detail = ex.detail ?? ex.title;
+            // Rule 2 violation has a distinctive substring — surface a
+            // friendlier message the user can act on without reading the
+            // raw backend wording.
+            if (
+              ex.status === 400 &&
+              typeof detail === "string" &&
+              detail.includes("c_artefacts_")
+            ) {
+              setErr(
+                "Field name must be lower_snake_case starting with a letter (e.g. severity, blocker_reason). The c_artefacts_ prefix is added for you automatically.",
+              );
+            } else if (detail) {
+              setErr(`Error ${ex.status}: ${detail}`);
+            } else {
+              // No detail/title — dump the body as JSON so the user (and any
+              // logs) see SOMETHING actionable instead of "[object Object]".
+              let body: string;
+              try {
+                body = typeof ex.body === "string" ? ex.body : JSON.stringify(ex.body);
+              } catch {
+                body = String(ex.body ?? "");
+              }
+              setErr(`Error ${ex.status}: ${body}`);
+            }
           }
         } else {
           setErr("Save failed.");
@@ -262,22 +319,12 @@ export default function CustomFieldEditForm({
         {/* ── Left column: form fields ────────────────────────────────── */}
         <div className="custom-field-edit-form__FormCol">
           <div className="custom-field-edit-form__FieldStack">
+            {/* Visible-name field FIRST — the field the user actually
+                cares about. The machine identifier (slug) follows in
+                position 2. Wire payload field names (`name` / `label`)
+                are unchanged — only the display labels differ. */}
             <label className="form__label">
-              Name (machine identifier)
-              <input
-                type="text"
-                className="form__input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="severity"
-                required
-                pattern="[a-z][a-z0-9_]*"
-                title="lower_snake_case starting with a letter"
-              />
-            </label>
-
-            <label className="form__label">
-              Label (user-facing)
+              Name
               <input
                 type="text"
                 className="form__input"
@@ -286,6 +333,38 @@ export default function CustomFieldEditForm({
                 placeholder="Severity"
                 required
               />
+            </label>
+
+            <label className="form__label">
+              Machine identifier
+              {/* Rule 2 — read-only prefix affix. The editable input
+                  carries only the suffix; the prefix is glued on at
+                  submit. CSS in app/globals.css renders the affix as a
+                  muted span flush against the input's left edge. */}
+              <div className="custom-field-edit-form__PrefixedInput">
+                <span
+                  className="custom-field-edit-form__InputPrefix"
+                  aria-hidden="true"
+                >
+                  {CUSTOM_FIELD_PREFIX}
+                </span>
+                <input
+                  type="text"
+                  className="form__input custom-field-edit-form__InputAfterPrefix"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="severity"
+                  required
+                  pattern="[a-z][a-z0-9_]*"
+                  title="lower_snake_case starting with a letter"
+                  disabled={!isNew}
+                />
+              </div>
+              <span className="form__hint">
+                The machine identifier is locked to the
+                <code> {CUSTOM_FIELD_PREFIX}</code> prefix
+                (Rule 2). Type the rest in lower_snake_case.
+              </span>
             </label>
 
             <label className="form__label">

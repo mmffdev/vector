@@ -42,9 +42,29 @@ export default function TypeBindingsPicker({ bindings, onChange, disabled }: Pro
       if (t.scope === "work") work.push(t);
       else if (t.scope === "strategy") strategy.push(t);
     }
-    work.sort((a, b) => a.name.localeCompare(b.name));
-    strategy.sort((a, b) => a.name.localeCompare(b.name));
-    return { work, strategy };
+    // Dedup by name, keeping the smallest UUID per name. DB seed history
+    // left duplicate rows for the same name within a single subscription
+    // (e.g. five active "Feature" rows in vector_artefacts.artefacts_types
+    // — possibly multiple seed-replays during the Pillar refactors). The
+    // picker should show one row per distinct name; binding to a single
+    // canonical UUID is the contract. The backend listing also dedups via
+    // DISTINCT ON (artefacts_types_name) for defence-in-depth — this FE
+    // dedup is a belt-and-braces so the picker stays clean if the
+    // backend is ever bypassed (e.g. legacy callers). See
+    // TD-ARTEFACT-TYPES-DUP-SEED in docs/c_tech_debt.md.
+    const dedupByName = <T extends { id: string; name: string }>(arr: T[]): T[] => {
+      const byName = new Map<string, T>();
+      for (const t of arr) {
+        const existing = byName.get(t.name);
+        if (!existing || t.id < existing.id) byName.set(t.name, t);
+      }
+      return Array.from(byName.values());
+    };
+    const workDeduped = dedupByName(work);
+    const strategyDeduped = dedupByName(strategy);
+    workDeduped.sort((a, b) => a.name.localeCompare(b.name));
+    strategyDeduped.sort((a, b) => a.name.localeCompare(b.name));
+    return { work: workDeduped, strategy: strategyDeduped };
   }, [types]);
 
   function toggle(typeId: string) {

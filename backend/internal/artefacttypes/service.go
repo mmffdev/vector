@@ -33,14 +33,29 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 	if s.pool == nil {
 		return nil, errors.New("vector_artefacts pool not available")
 	}
+	// DISTINCT ON (scope, name) dedups duplicate seed rows produced by
+	// historical seed-replays during the Pillar refactors — see
+	// TD-ARTEFACT-TYPES-DUP-SEED in docs/c_tech_debt.md. Within a
+	// (scope, name) collision, the row with the smallest UUID wins so
+	// the picker UI binds to a stable canonical id across reloads. The
+	// outer ORDER BY keeps the caller-facing ordering identical to the
+	// pre-dedup shape so the picker layout is unchanged.
 	const q = `
+		WITH live AS (
+			SELECT DISTINCT ON (artefacts_types_scope, artefacts_types_name)
+				artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
+				artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+				artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+			FROM artefacts_types
+			WHERE artefacts_types_id_subscription = $1
+			  AND artefacts_types_archived_at IS NULL
+			ORDER BY artefacts_types_scope, artefacts_types_name, artefacts_types_id
+		)
 		SELECT
 			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
 			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
 			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
-		FROM artefacts_types
-		WHERE artefacts_types_id_subscription = $1
-		  AND artefacts_types_archived_at IS NULL
+		FROM live
 		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
 
 	return s.queryArtefactTypes(ctx, q, subscriptionID)
@@ -58,15 +73,27 @@ func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspace
 	if s.pool == nil {
 		return nil, errors.New("vector_artefacts pool not available")
 	}
+	// DISTINCT ON (scope, name) dedups duplicate seed rows — see the
+	// matching block in List() and TD-ARTEFACT-TYPES-DUP-SEED in
+	// docs/c_tech_debt.md. Same rationale: smallest UUID wins so the
+	// FE picker binds to a stable canonical row.
 	const q = `
+		WITH live AS (
+			SELECT DISTINCT ON (artefacts_types_scope, artefacts_types_name)
+				artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
+				artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
+				artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+			FROM artefacts_types
+			WHERE artefacts_types_id_subscription = $1
+			  AND artefacts_types_id_workspace    = $2
+			  AND artefacts_types_archived_at IS NULL
+			ORDER BY artefacts_types_scope, artefacts_types_name, artefacts_types_id
+		)
 		SELECT
 			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
 			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
 			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
-		FROM artefacts_types
-		WHERE artefacts_types_id_subscription = $1
-		  AND artefacts_types_id_workspace    = $2
-		  AND artefacts_types_archived_at IS NULL
+		FROM live
 		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
 
 	return s.queryArtefactTypes(ctx, q, subscriptionID, workspaceID)
