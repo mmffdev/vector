@@ -387,6 +387,7 @@ export default function TimeboxInlineForm(props: TimeboxInlineFormProps) {
   }, [workspaceId, orgNodeId]);
 
   const refetch = useCallback(async () => {
+    if (kind === "milestone") return;
     if (!rowId || !workspaceId) return;
     setLoading(true);
     try {
