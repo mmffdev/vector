@@ -1000,6 +1000,13 @@ type patchWorkItemReq struct {
 	StrategicJobSize                  *int            `json:"strategic_job_size,omitempty"`
 	StrategicPreliminaryEstimateValue *int            `json:"strategic_preliminary_estimate_value,omitempty"`
 	EstimateInitialValue              *int            `json:"estimate_initial_value,omitempty"`
+	// Fourth-wave demotion batch (mig 162, 2026-05-29). Three-state on
+	// *string: absent ⇒ no change; "" ⇒ clear-to-NULL; non-empty ⇒
+	// UPDATE. Slot/scope gating enforced by the mig-162 trigger.
+	DefectBrowser                  *string `json:"defect_browser,omitempty"`
+	WorkAcceptedDate               *string `json:"work_accepted_date,omitempty"`
+	StrategicValueStreamIdentifier *string `json:"strategic_value_stream_identifier,omitempty"`
+	StrategicInvestmentWeight      *string `json:"strategic_investment_weight,omitempty"`
 }
 
 // ptrRawMessage returns a pointer to the raw JSON when the caller sent
@@ -1115,6 +1122,11 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		StrategicJobSize:                  req.StrategicJobSize,
 		StrategicPreliminaryEstimateValue: req.StrategicPreliminaryEstimateValue,
 		EstimateInitialValue:              req.EstimateInitialValue,
+		// Fourth-wave demotion batch (mig 162).
+		DefectBrowser:                  req.DefectBrowser,
+		WorkAcceptedDate:               req.WorkAcceptedDate,
+		StrategicValueStreamIdentifier: req.StrategicValueStreamIdentifier,
+		StrategicInvestmentWeight:      req.StrategicInvestmentWeight,
 	})
 	if err != nil {
 		switch {

@@ -187,6 +187,20 @@ var ArtefactItemColumns = []ColumnSpec{
 	// TEXT bucket name; this is the numeric value-per-bucket).
 	{Name: "estimate_initial_value", Label: "Initial Estimate Value", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
 
+	// Fourth-wave demotion batch (mig 162, 2026-05-29). FOUR new core
+	// columns demoted from the artefacts_fields_library catalogue.
+	// mig 163 archives the redundant catalogue rows that motivated this.
+	//   defect_browser                       (defect-only, gated by trigger)
+	//   work_accepted_date                   (universal)
+	//   strategic_value_stream_identifier    (strategy-only, gated by trigger)
+	//   strategic_investment_weight          (strategy-only, gated by trigger;
+	//                                         vocab undefined — see
+	//                                         TD-STRATEGIC-INVESTMENT-WEIGHT-VOCAB)
+	{Name: "defect_browser", Label: "Browser", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "work_accepted_date", Label: "Work Accepted Date", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "strategic_value_stream_identifier", Label: "Strategic Value Stream", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "strategic_investment_weight", Label: "Strategic Investment Weight", Group: "Planning", DefaultVisible: false, Addable: true},
+
 	// Audit
 	{Name: "subscription_id", Label: "Subscription", Group: "Audit", DefaultVisible: false, Addable: true},
 	{Name: "created_at", Label: "Created", Group: "Audit", DefaultVisible: false, Addable: true},

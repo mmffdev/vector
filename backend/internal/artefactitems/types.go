@@ -184,6 +184,18 @@ type WorkItem struct {
 	// EstimateInitial column carries the bucket NAME (TEXT) and this
 	// new column carries the numeric value-per-bucket.
 	EstimateInitialValue *int `json:"estimate_initial_value"`
+	// Fourth-wave demotion batch (mig 162, 2026-05-29). Four new core
+	// columns: defect_browser (defect-only), work_accepted_date
+	// (universal), strategic_value_stream_identifier (strategy-only),
+	// strategic_investment_weight (strategy-only). Slot/scope gating
+	// enforced by the mig-162 trigger update — handler-side validation
+	// only checks free-text non-emptiness; the trigger does the rest.
+	// StrategicInvestmentWeight vocab is INTENTIONALLY undefined —
+	// see TD-STRATEGIC-INVESTMENT-WEIGHT-VOCAB.
+	DefectBrowser                  *string `json:"defect_browser"`
+	WorkAcceptedDate               *string `json:"work_accepted_date"`
+	StrategicValueStreamIdentifier *string `json:"strategic_value_stream_identifier"`
+	StrategicInvestmentWeight      *string `json:"strategic_investment_weight"`
 }
 
 // OwnerRef is the slim user projection embedded on each WorkItem when the
@@ -464,6 +476,19 @@ type PatchWorkItemInput struct {
 	StrategicJobSize                  *int
 	StrategicPreliminaryEstimateValue *int
 	EstimateInitialValue              *int
+	// Fourth-wave demotion batch (mig 162, 2026-05-29). Same three-state
+	// convention on every *string: nil ⇒ skip; "" ⇒ clear-to-NULL;
+	// non-empty ⇒ UPDATE. No CHECK-vocab validation on the handler side
+	// today — defect_browser / work_accepted_date /
+	// strategic_value_stream_identifier are free-text; the trigger
+	// (mig 162) handles slot/scope gating. StrategicInvestmentWeight
+	// vocab is undefined — accepts any non-empty TEXT until the
+	// follow-up migration locks the vocab + CHECK.
+	// See TD-STRATEGIC-INVESTMENT-WEIGHT-VOCAB.
+	DefectBrowser                  *string
+	WorkAcceptedDate               *string
+	StrategicValueStreamIdentifier *string
+	StrategicInvestmentWeight      *string
 }
 
 // validDefectSeverities mirrors the artefacts_defect_severity_chk

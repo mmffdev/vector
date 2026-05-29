@@ -149,7 +149,14 @@ const sqlWorkItemColumns = `
 	a.artefacts_id_user_submitted_by::text          AS submitted_by_user_id,
 	a.artefacts_strategic_job_size                  AS strategic_job_size,
 	a.artefacts_strategic_preliminary_estimate_value AS strategic_preliminary_estimate_value,
-	a.artefacts_estimate_initial_value              AS estimate_initial_value`
+	a.artefacts_estimate_initial_value              AS estimate_initial_value,
+	-- Fourth-wave demotion batch (mig 162). Order MUST stay in
+	-- lockstep with sqlWorkItemColumnsListTemplate AND with the Scan()
+	-- call in scanWorkItemRow (service.go).
+	a.artefacts_defect_browser                      AS defect_browser,
+	a.artefacts_work_accepted_date::text            AS work_accepted_date,
+	a.artefacts_strategic_value_stream_identifier   AS strategic_value_stream_identifier,
+	a.artefacts_strategic_investment_weight         AS strategic_investment_weight`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
@@ -274,7 +281,13 @@ const sqlWorkItemColumnsListTemplate = `
 	a.artefacts_id_user_submitted_by::text          AS submitted_by_user_id,
 	a.artefacts_strategic_job_size                  AS strategic_job_size,
 	a.artefacts_strategic_preliminary_estimate_value AS strategic_preliminary_estimate_value,
-	a.artefacts_estimate_initial_value              AS estimate_initial_value`
+	a.artefacts_estimate_initial_value              AS estimate_initial_value,
+	-- Fourth-wave demotion batch (mig 162). Kept in lockstep with the
+	-- shared sqlWorkItemColumns above.
+	a.artefacts_defect_browser                      AS defect_browser,
+	a.artefacts_work_accepted_date::text            AS work_accepted_date,
+	a.artefacts_strategic_value_stream_identifier   AS strategic_value_stream_identifier,
+	a.artefacts_strategic_investment_weight         AS strategic_investment_weight`
 
 // sqlListWorkItemsTemplate is the paged data query. %s slots (in order):
 //   - childExtra: extra AND-clause for the children_count subquery so

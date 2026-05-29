@@ -1828,6 +1828,50 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		n++
 	}
 
+	// ── Fourth-wave demotion batch (mig 162) ──
+	// Three-state on every *string (nil ⇒ skip / "" ⇒ clear-to-NULL /
+	// non-empty ⇒ UPDATE). No CHECK-vocab validation handler-side —
+	// defect_browser / work_accepted_date / strategic_value_stream_identifier
+	// are free-text/date; strategic_investment_weight vocab is undefined
+	// (see TD-STRATEGIC-INVESTMENT-WEIGHT-VOCAB). The mig-162 trigger
+	// enforces slot/scope gating server-side.
+	if in.DefectBrowser != nil {
+		if *in.DefectBrowser == "" {
+			sets = append(sets, "artefacts_defect_browser = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_defect_browser = $%d", n))
+			args = append(args, *in.DefectBrowser)
+			n++
+		}
+	}
+	if in.WorkAcceptedDate != nil {
+		if *in.WorkAcceptedDate == "" {
+			sets = append(sets, "artefacts_work_accepted_date = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_work_accepted_date = $%d::date", n))
+			args = append(args, *in.WorkAcceptedDate)
+			n++
+		}
+	}
+	if in.StrategicValueStreamIdentifier != nil {
+		if *in.StrategicValueStreamIdentifier == "" {
+			sets = append(sets, "artefacts_strategic_value_stream_identifier = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_strategic_value_stream_identifier = $%d", n))
+			args = append(args, *in.StrategicValueStreamIdentifier)
+			n++
+		}
+	}
+	if in.StrategicInvestmentWeight != nil {
+		if *in.StrategicInvestmentWeight == "" {
+			sets = append(sets, "artefacts_strategic_investment_weight = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_strategic_investment_weight = $%d", n))
+			args = append(args, *in.StrategicInvestmentWeight)
+			n++
+		}
+	}
+
 	// WHERE clause args: id=$N, subscription_id=$N+1
 	args = append(args, id, subscriptionID)
 	idN := n
@@ -2683,6 +2727,13 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.StrategicJobSize,
 		&wi.StrategicPreliminaryEstimateValue,
 		&wi.EstimateInitialValue,
+		// Fourth-wave demotion batch (mig 162). Order MUST match the
+		// trailing projection in sqlWorkItemColumns /
+		// sqlWorkItemColumnsListTemplate.
+		&wi.DefectBrowser,
+		&wi.WorkAcceptedDate,
+		&wi.StrategicValueStreamIdentifier,
+		&wi.StrategicInvestmentWeight,
 	)
 	if err != nil {
 		return nil, err
