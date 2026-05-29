@@ -329,35 +329,35 @@ export default function CustomFieldEditForm({
                   : "Visibility is immutable once a field is created."}
               </span>
             </label>
-          </div>
 
-          <label className="form__label">
-            Description (optional)
-            <textarea
-              className="form__textarea"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Helper text shown beneath the input."
-            />
-          </label>
-
-          {optionsHelp && (
             <label className="form__label">
-              Options (JSON array)
+              Description (optional)
               <textarea
                 className="form__textarea"
-                value={optionsRaw}
-                onChange={(e) => setOptionsRaw(e.target.value)}
-                rows={6}
-                placeholder={'["Low","Medium","High"]'}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Helper text shown beneath the input."
               />
-              <span className="form__hint">
-                Required for select / multi-select / radio. Either an array
-                of strings or an array of <code>{`{value, label}`}</code> objects.
-              </span>
             </label>
-          )}
+
+            {optionsHelp && (
+              <label className="form__label">
+                Options (JSON array)
+                <textarea
+                  className="form__textarea"
+                  value={optionsRaw}
+                  onChange={(e) => setOptionsRaw(e.target.value)}
+                  rows={6}
+                  placeholder={'["Low","Medium","High"]'}
+                />
+                <span className="form__hint">
+                  Required for select / multi-select / radio. Either an array
+                  of strings or an array of <code>{`{value, label}`}</code> objects.
+                </span>
+              </label>
+            )}
+          </div>
         </div>
 
         {/* ── Right column: type bindings picker ──────────────────────── */}

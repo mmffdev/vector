@@ -19263,17 +19263,43 @@ tr.is-editing {
 }
 
 /* Vertical-stack form layout for the left column of the edit form.
-   Replaces .form__grid (which runs fields inline when the container is
-   wide) so each label sits on its own row. The flyout's horizontal
-   space goes to the picker on the right; the form fields use the
-   vertical space, one row per field. */
+   Mirrors the work-items edit panel idiom (.work-items-panel__edit-form +
+   .work-items-panel__field-label): label sits ABOVE input, small muted
+   label text, input full-width, consistent 12px gap between fields. */
 .custom-field-edit-form__FieldStack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
 }
 .custom-field-edit-form__FieldStack > .form__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  margin-bottom: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.custom-field-edit-form__FieldStack > .form__label > .form__input,
+.custom-field-edit-form__FieldStack > .form__label > .form__select,
+.custom-field-edit-form__FieldStack > .form__label > .form__textarea {
+  width: 100%;
+  font-size: 14px;
+  font-weight: normal;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.custom-field-edit-form__FieldStack .form__hint {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: normal;
+  margin-top: 4px;
 }
 
 /* Scope filter chip — the single filter the CustomFieldsAdapter renders
