@@ -482,6 +482,14 @@ export function createCustomFieldsAdapter(
           setSortDir(d);
         },
         filtersRef: filtersRef as React.MutableRefObject<unknown>,
+        // Refetch trigger — encodes Source + Scope so a chip toggle
+        // changes the string, which p_ObjectTree.tsx passes as
+        // useObjectTreeWindow's filterQuery dep. Without this string
+        // the window hook never sees the filter change and reuses the
+        // cached page → chips do nothing on screen (2026-05-29 bug).
+        // The "&" prefix matches the WorkItem filterQuery convention so
+        // the existing concatenation idiom downstream still works.
+        filterQuery: `&_source=${source}&_scope=${scope}`,
       };
     },
 

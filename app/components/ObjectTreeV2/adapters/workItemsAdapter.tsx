@@ -321,6 +321,13 @@ export function createWorkItemsAdapter(
         setSort: (key: string, dir: "asc" | "desc") =>
           setSort(key as SortKey | null, dir),
         filtersRef: filtersRef as React.MutableRefObject<unknown>,
+        // WorkItem filter state lives in the host's own useWorkItemsFilters
+        // hook + filterQuery builder (a long-standing parallel-systems
+        // arrangement). Returning an empty signature here makes
+        // p_ObjectTree.tsx fall through to its own filterQuery — so
+        // WorkItem mounts that supply this adapter (value-sprint et al.)
+        // keep their existing refetch behaviour unchanged.
+        filterQuery: "",
       };
     },
 

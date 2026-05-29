@@ -36,6 +36,13 @@ export interface AdapterFiltersResult {
   // Free-form ref so the component can stash filter state for the fetch
   // hook to consume. Adapters cast as needed.
   filtersRef: React.MutableRefObject<unknown>;
+  // Serialised filter signature used as a refetch trigger by the host.
+  // Must change whenever any filter state that affects fetchPage output
+  // changes (Source filter, Scope filter, etc.). The host passes this
+  // to useObjectTreeWindow as filterQuery — its presence in the
+  // refetchWindow dep list invalidates the cached window and forces a
+  // fresh fetchPage call. Empty string when no filters apply.
+  filterQuery: string;
 }
 
 // Context the component passes to buildCreateAction. Sourced from the

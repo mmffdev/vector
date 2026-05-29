@@ -361,9 +361,18 @@ export default function ObjectTree<T = WorkItem>({
   // present. When no adapter, the WorkItem path is used and this result
   // is dropped. The adapter prop is treated as stable for a given mount
   // (callers don't swap adapters mid-life).
-  const adapterFilterChips = adapter?.useFiltersAndSort
-    ? adapter.useFiltersAndSort({ prefKey: filtersPrefKey, urlPrefix }).filterChips
+  //
+  // 2026-05-29 — capture the FULL result (not just .filterChips). The
+  // adapter's `filterQuery` field is the signature of its filter state
+  // and MUST flow through to useObjectTreeWindow's `filterQuery` prop
+  // so that chip toggles invalidate the cached window and trigger a
+  // refetch. Previously only filterChips was read, so adapter filter
+  // chips were inert (the data stayed pinned to the initial fetch).
+  const adapterFilters = adapter?.useFiltersAndSort
+    ? adapter.useFiltersAndSort({ prefKey: filtersPrefKey, urlPrefix })
     : null;
+  const adapterFilterChips = adapterFilters?.filterChips ?? null;
+  const adapterFilterQuery = adapterFilters?.filterQuery ?? "";
 
   // PLA-0021 / 00456 — multi-select state lives here; the tree consumes
   // it via the SelectionConfig prop set, and BulkActionBar reads it to
@@ -892,6 +901,12 @@ export default function ObjectTree<T = WorkItem>({
   // rather than inside the hook. Behaviour is identical to the legacy
   // useArtefactItemsWindow path; other domains (sprints/releases/risks)
   // will provide their own filter encoders and cascade lists.
+  // Effective filterQuery — adapter's signature takes precedence so its
+  // chip state participates in cache invalidation. When no adapter is
+  // present (production WorkItem mounts), fall through to the
+  // WorkItem-built filterQuery built from filters.type/status/priority/owner_id.
+  const effectiveFilterQuery = adapter ? adapterFilterQuery : filterQuery;
+
   const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
     useObjectTreeWindow<WorkItem>({
       resourceUrl,
@@ -899,7 +914,7 @@ export default function ObjectTree<T = WorkItem>({
       pageIndex,
       sortKey,
       sortDir,
-      filterQuery,
+      filterQuery: effectiveFilterQuery,
       // Adapter-supplied fetcher overrides the default apiSite<{items,total}>
       // call. Cast: adapter is <T> but useObjectTreeWindow is <WorkItem>
       // here; the runtime contract holds (adapter returns its own row
