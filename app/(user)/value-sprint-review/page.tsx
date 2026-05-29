@@ -64,9 +64,10 @@ export default function ValueSprintReview() {
   // Page-level saved views — single dropdown rendered in the shell
   // header (left of the personal nav pill). One grid on this page
   // (the sprint-scoped review tree).
+  const savedViewGrids = useMemo(() => ["panel"], []);
   const pageSavedViews = usePageSavedViews({
     target: SAVED_VIEW_TARGET_PAGE,
-    grids: ["panel"],
+    grids: savedViewGrids,
     currentUserID: sentinel_user?.id ?? "",
     currentNodeID: activeNodeId,
     currentWorkspaceID: sentinel_user?.workspace_id ?? "",

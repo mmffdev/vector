@@ -79,9 +79,10 @@ export default function ValueSprint() {
   // Page-level saved views — single dropdown rendered in the shell
   // header (left of the personal nav pill). Drives both grids' column
   // sets via the bind() helpers spread onto each ObjectTree mount.
+  const savedViewGrids = useMemo(() => ["panel", "backlog"], []);
   const pageSavedViews = usePageSavedViews({
     target: SAVED_VIEW_TARGET_PAGE,
-    grids: ["panel", "backlog"],
+    grids: savedViewGrids,
     currentUserID: sentinel_user?.id ?? "",
     currentNodeID: activeNodeId,
     currentWorkspaceID: sentinel_user?.workspace_id ?? "",

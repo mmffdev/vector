@@ -60,10 +60,18 @@ export interface UsePageSavedViewsResult {
 
 export function usePageSavedViews(params: PageSavedViewsControlParams): UsePageSavedViewsResult {
   const {
-    target, grids,
+    target, grids: gridsParam,
     currentUserID, currentNodeID, currentWorkspaceID,
     canShareToNode, canShareToWorkspace,
   } = params;
+
+  // Stabilise `grids` by content-hash so a caller passing a fresh array
+  // literal each render (e.g. `grids: ["panel"]`) doesn't cascade through
+  // serialiseBody → handleSaveChanges/handleSaveAsNew → node memo →
+  // usePageHeader effect → setStack → re-render → fresh array → infinite
+  // loop. Order is not significant per the param doc, so sort before join.
+  const gridsKey = gridsParam.slice().sort().join("|");
+  const grids = useMemo(() => gridsParam.slice().sort(), [gridsKey]);
 
   const {
     views, activeView, loading, error,
