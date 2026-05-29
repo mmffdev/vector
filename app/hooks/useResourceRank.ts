@@ -95,6 +95,23 @@ export type UseResourceRankOptions = {
    * per consumer.
    */
   getCandidateIds?: (moverID: string) => string[];
+  /**
+   * Cross-tree drop receiver. Fires when a drag that originated in a
+   * DIFFERENT tree on the same page is dropped on one of THIS tree's
+   * rows. `foreignId` is the source row id (read from the custom
+   * MIME); `targetId` + `pos` describe the landing slot relative to
+   * the receiving tree's rows so the host can position the row at the
+   * correct rank. Position is always "above" or "below" — cross-tree
+   * reparent is not modelled (different parent universes).
+   *
+   * When omitted, cross-tree drops on rows are ignored; the outer
+   * objecttree__DropZone catches them as a tree-level drop instead.
+   */
+  onCrossTreeRowDrop?: (
+    foreignId: string,
+    targetId: string,
+    pos: "above" | "below",
+  ) => void;
 };
 
 export function useResourceRank(opts: UseResourceRankOptions) {
@@ -166,25 +183,38 @@ export function useResourceRank(opts: UseResourceRankOptions) {
           .filter(Boolean)
           .join(" "),
         onDragOver: (e: React.DragEvent) => {
-          // Block dropping a parent into its own subtree.
-          if (
-            !draggingRef.current ||
-            draggingRef.current === id ||
-            draggingSubtreeRef.current.has(id)
-          ) {
-            return;
-          }
+          // Cross-tree drag path: no local draggingId, but the source
+          // tree wrote application/x-vector-row+<resourceType>. We can't
+          // reparent across trees safely (different parent universes),
+          // so the cross-tree split is just above/below at 50/50. The
+          // existing dropTarget state paints the same .drag-row--drop-
+          // above / --drop-below classes regardless of who sourced the
+          // drag, so the line lights up for free.
+          const isLocalDrag =
+            !!draggingRef.current &&
+            draggingRef.current !== id &&
+            !draggingSubtreeRef.current.has(id);
+          const crossTreeMime = `application/x-vector-row+${opts.resourceType}`;
+          const isCrossTreeDrag =
+            !draggingRef.current && e.dataTransfer.types.includes(crossTreeMime);
+          if (!isLocalDrag && !isCrossTreeDrag) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
           const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          const offsetY = e.clientY - rect.top;
+          const ratio = rect.height > 0 ? offsetY / rect.height : 0;
+          if (isCrossTreeDrag) {
+            const pos: "above" | "below" = ratio < 0.5 ? "above" : "below";
+            setDropTarget({ id, pos });
+            return;
+          }
+          // Local-drag legacy logic: thirds split with optional reparent.
           // Row split into thirds: 0..25% = above (reorder), 25..75% =
           // onto (reparent), 75..100% = below (reorder). The middle
           // half is intentionally generous so reparent is easy to hit;
           // reorder needs a deliberate aim near the row edges.
           // When the caller didn't wire reparent at all, fall back to
           // the legacy 50/50 above/below split.
-          const offsetY = e.clientY - rect.top;
-          const ratio = rect.height > 0 ? offsetY / rect.height : 0;
           let pos: "above" | "below" | "onto";
           if (!opts.onReparent) {
             pos = ratio < 0.5 ? "above" : "below";
@@ -197,7 +227,7 @@ export function useResourceRank(opts: UseResourceRankOptions) {
           }
           if (pos === "onto") {
             const allowed = opts.canReparent
-              ? opts.canReparent(draggingRef.current, id)
+              ? opts.canReparent(draggingRef.current!, id)
               : true;
             setDropTarget({ id, pos, allowed });
             // Reflect legality in the native drag cursor too. "none"
@@ -224,7 +254,20 @@ export function useResourceRank(opts: UseResourceRankOptions) {
           setDraggingSubtree(new Set());
           setDropTarget(null);
           setCandidateIds(new Set());
-          if (!moverID || moverID === id || !target) return;
+          // Cross-tree path: no local mover, but the source tree wrote
+          // application/x-vector-row+<resourceType>. Pass the landing
+          // slot up so the host can both assign + rank-place the row.
+          if (!moverID) {
+            if (!target || target.pos === "onto") return;
+            const crossTreeMime = `application/x-vector-row+${opts.resourceType}`;
+            const foreignId =
+              e.dataTransfer.getData(crossTreeMime) ||
+              e.dataTransfer.getData("text/plain");
+            if (!foreignId || !opts.onCrossTreeRowDrop) return;
+            opts.onCrossTreeRowDrop(foreignId, target.id, target.pos);
+            return;
+          }
+          if (moverID === id || !target) return;
           if (target.pos === "onto") {
             // ONTO a candidate row → host owns the dispatch (target
             // may be a parent candidate OR a sibling candidate; host
@@ -276,6 +319,18 @@ export function useResourceRank(opts: UseResourceRankOptions) {
         }
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", id);
+        // Cross-tree drop support. Receivers outside the source tree
+        // (e.g. the sprint panel listening for a backlog row) detect a
+        // drag by checking dataTransfer.types in dragover — which CAN
+        // read MIME presence but not values. A custom type signals
+        // "this is a draggable row from somewhere in Vector"; the
+        // resource_type subtype lets receivers filter by kind without
+        // reading the body. Plain text remains the body so any drop
+        // target (including non-Vector ones) can read the id.
+        e.dataTransfer.setData(
+          `application/x-vector-row+${opts.resourceType}`,
+          id,
+        );
       },
       onDragEnd: () => {
         draggingRef.current = null;

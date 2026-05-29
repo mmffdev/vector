@@ -2,7 +2,11 @@
 // 1:1 — the wire shape uses the saved_views_* column-prefix convention.
 
 export type Scope = "user" | "node" | "workspace";
-export type Kind = "objecttree" | "page_layout";
+// Kind discriminators. "page" body shape:
+//   { grids: { <gridKey>: { visible_columns: string[] } } }
+// Partial bodies are honoured — a grid absent from `grids` is left
+// untouched when the view is loaded.
+export type Kind = "objecttree" | "page_layout" | "page";
 
 export interface View {
   saved_views_id: string;

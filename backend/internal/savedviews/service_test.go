@@ -243,6 +243,22 @@ func TestCreate_InvalidKind_Rejected(t *testing.T) {
 	}
 }
 
+func TestCreate_KindPage_Accepted(t *testing.T) {
+	store := newFakeStore()
+	subID, userID := uuid.New(), uuid.New()
+	store.userInSub[[2]uuid.UUID{userID, subID}] = true
+	svc := newSvc(store, &fakeWSAdmin{})
+	_, err := svc.Create(context.Background(), CreateInput{
+		SubscriptionID: subID, Kind: KindPage, Scope: ScopeUser,
+		UserID: &userID, Target: "page:value_sprint", Name: "Mine",
+		Body:        json.RawMessage(`{"grids":{"backlog":{"visible_columns":["title","status"]}}}`),
+		ActorUserID: userID,
+	})
+	if err != nil {
+		t.Fatalf("expected KindPage accepted, got %v", err)
+	}
+}
+
 func TestCreate_BodyTooLarge_Rejected(t *testing.T) {
 	store := newFakeStore()
 	subID, userID := uuid.New(), uuid.New()

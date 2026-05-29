@@ -267,7 +267,7 @@ func (s *Service) verifyTenantIntegrity(ctx context.Context, subID uuid.UUID, sc
 // ── Input validation ───────────────────────────────────────────────
 
 func (s *Service) validateCreateInput(in CreateInput) error {
-	if in.Kind != KindObjectTree && in.Kind != KindPageLayout {
+	if in.Kind != KindObjectTree && in.Kind != KindPageLayout && in.Kind != KindPage {
 		return fmt.Errorf("%w: unknown kind %q", ErrInvalidInput, in.Kind)
 	}
 	if in.Target == "" {

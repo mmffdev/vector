@@ -30,6 +30,13 @@ const (
 const (
 	KindObjectTree = "objecttree"
 	KindPageLayout = "page_layout"
+	// KindPage — page-level saved view (one view applies across N grids
+	// on the same page). Body shape:
+	//   { "grids": { "<gridKey>": { "visible_columns": [...] } } }
+	// Per the value-sprint single-dropdown design (2026-05-29). Partial
+	// bodies are honoured: a grid absent from the body is left untouched
+	// on load.
+	KindPage = "page"
 )
 
 // View is the wire shape returned by the handler. Field names match the

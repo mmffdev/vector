@@ -185,6 +185,8 @@ export default function ObjectTree<T = WorkItem>({
   hideCogMenu = false,
   dropColumnKeys,
   refetchRef,
+  columnsControlRef,
+  onColumnsChange,
   bulkLeadingButtons,
   actionBarLeading,
   savedViews,
@@ -200,6 +202,7 @@ export default function ObjectTree<T = WorkItem>({
   // docs/superpowers/specs/2026-05-28-objecttree-generic-rowtype-design.md
   adapter,
   initialCreateFlyoutOpen,
+  onExternalDrop,
 }: {
   selectedId: string | null;
   onSelect: (item: T) => void;
@@ -278,6 +281,20 @@ export default function ObjectTree<T = WorkItem>({
   // the new sprint_id surfaces inline. Filling this ref is a one-time
   // op on mount; callers read .current() to fire a refetch.
   refetchRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  // Page-level saved views (kind='page', 2026-05-29). When the page
+  // owns a single saved-views dropdown that drives multiple grids,
+  // each grid exposes its column picker to the page via this pair:
+  //   columnsControlRef — host fills .current on mount; calls
+  //                       .setColumns(cols) to push a view's columns
+  //                       into the picker (e.g. on view load).
+  //   onColumnsChange   — host receives every picker change so it
+  //                       can mark the page-level view as dirty.
+  // Same imperative-ref pattern as refetchRef above. When EITHER prop
+  // is supplied, the in-tree <SavedViewsControl> is suppressed (the
+  // page-level dropdown is the source of truth). Grids that aren't
+  // page-driven omit both props and keep their per-grid behaviour.
+  columnsControlRef?: React.MutableRefObject<{ setColumns: (cols: string[]) => void } | null>;
+  onColumnsChange?: (cols: string[]) => void;
   // Slice 6 / value-sprint — host-supplied leading buttons for the
   // BulkActionBar. They render before the generic Status/Priority/Owner
   // trio. The host receives the selectedIds Set (mirrored via
@@ -300,6 +317,19 @@ export default function ObjectTree<T = WorkItem>({
   // (e.g. ?panel.type= vs ?backlog.type=). Single-grid pages omit it
   // and get the legacy ?type=… layout. See shareableParams.ts.
   urlPrefix?: string;
+  // Cross-tree drop receiver. When supplied, ObjectTree paints a halo
+  // on its root container while a row from a DIFFERENT tree is being
+  // dragged (detected via the custom MIME `application/x-vector-row+…`
+  // set in useResourceRank's dragstart). On drop the host receives the
+  // foreign row id PLUS an optional landing slot (`targetId` + `pos`)
+  // when the drop landed on a specific row's above/below indicator.
+  // When omitted (drop landed in empty space below the rows), the host
+  // appends to the end. Receiver is mute when the local tree's own
+  // rank-drag is in flight, so intra-tree DnD is unaffected.
+  onExternalDrop?: (
+    rowId: string,
+    landing?: { targetId: string; pos: "above" | "below" },
+  ) => void;
 }) {
   // For now, build config based on mode. Once we have multiple data types,
   // this could accept a config prop or look it up from the registry.
@@ -358,6 +388,65 @@ export default function ObjectTree<T = WorkItem>({
   // — same idiom as refetchRef but inline since the adapter's save is
   // host-side, not a wire-level patch the tree already knows about.
   const [adapterRefreshTick, setAdapterRefreshTick] = useState(0);
+
+  // Cross-tree drop receiver. Wraps the tree in a drop zone that paints
+  // a halo while a foreign Vector row is being dragged from a sibling
+  // tree on the same page. Counter (not boolean) handles dragenter
+  // bubbling — child <td> dragenters would otherwise toggle a boolean
+  // flag false on every enter/leave between siblings, flashing the halo.
+  const externalCrossTreeMime = useMemo(() => {
+    const rt = mode === "portfolio_items" ? "portfolio_item" : "work_item";
+    return `application/x-vector-row+${rt}`;
+  }, [mode]);
+  const externalDragDepthRef = useRef(0);
+  const [externalDragActive, setExternalDragActive] = useState(false);
+  const handleExternalDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      if (!onExternalDrop) return;
+      if (!e.dataTransfer.types.includes(externalCrossTreeMime)) return;
+      externalDragDepthRef.current += 1;
+      if (!externalDragActive) setExternalDragActive(true);
+    },
+    [onExternalDrop, externalCrossTreeMime, externalDragActive],
+  );
+  const handleExternalDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!onExternalDrop) return;
+      if (!e.dataTransfer.types.includes(externalCrossTreeMime)) return;
+      // Permit the drop — without preventDefault the browser refuses
+      // every drop. effectAllowed is preserved from the source.
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    },
+    [onExternalDrop, externalCrossTreeMime],
+  );
+  const handleExternalDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      if (!onExternalDrop) return;
+      if (!e.dataTransfer.types.includes(externalCrossTreeMime)) return;
+      externalDragDepthRef.current = Math.max(0, externalDragDepthRef.current - 1);
+      if (externalDragDepthRef.current === 0) setExternalDragActive(false);
+    },
+    [onExternalDrop],
+  );
+  const handleExternalDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!onExternalDrop) return;
+      externalDragDepthRef.current = 0;
+      setExternalDragActive(false);
+      // Row-level handler already consumed this drop (preventDefault
+      // ran inside useResourceRank.onDrop's cross-tree branch). Skip
+      // the tree-level dispatch so we don't double-fire.
+      if (e.defaultPrevented) return;
+      const rowId =
+        e.dataTransfer.getData(externalCrossTreeMime) ||
+        e.dataTransfer.getData("text/plain");
+      if (!rowId) return;
+      e.preventDefault();
+      onExternalDrop(rowId);
+    },
+    [onExternalDrop, externalCrossTreeMime],
+  );
   // Slice 3 / value-sprint — mirror local selection up to the parent
   // when multiSelectEnabled is set, so the page can render bulk-action
   // chrome of its own (e.g. "Add selected to Sprint"). We pipe the
@@ -386,6 +475,31 @@ export default function ObjectTree<T = WorkItem>({
   const visibleWireKeys = columnCatalogue ? picker.visibleWireKeys : null;
   const visibleKeySet = columnCatalogue ? picker.visibleKeySet : null;
 
+  // Page-level saved views — wire the imperative handle + change
+  // callback to the picker. The host (page) reads .current().setColumns(view.cols)
+  // when a view is loaded; receives onColumnsChange whenever the
+  // picker mutates so it can compute dirty against the loaded view.
+  // See p_ObjectTree.tsx props block for the design rationale.
+  const pageDriven = columnsControlRef != null || onColumnsChange != null;
+  useEffect(() => {
+    if (!columnsControlRef) return;
+    columnsControlRef.current = {
+      setColumns: (cols: string[]) => picker.setVisibleKeys(cols),
+    };
+    return () => {
+      columnsControlRef.current = null;
+    };
+  }, [columnsControlRef, picker]);
+  const lastNotifiedColsRef = useRef<string[] | null>(null);
+  useEffect(() => {
+    if (!onColumnsChange || !columnCatalogue) return;
+    const cols = picker.visibleKeys;
+    const prev = lastNotifiedColsRef.current;
+    if (prev && prev.length === cols.length && prev.every((k, i) => k === cols[i])) return;
+    lastNotifiedColsRef.current = cols.slice();
+    onColumnsChange(cols);
+  }, [picker.visibleKeys, onColumnsChange, columnCatalogue]);
+
   // Saved Views — Task 18 wires the real state into the control props.
   // activeLoadedView tracks the most-recently-loaded view so we can
   // diff its visible_columns body against the picker's live visibleKeys
@@ -402,7 +516,10 @@ export default function ObjectTree<T = WorkItem>({
     const wantSet = new Set(want);
     return have.some((k: string) => !wantSet.has(k));
   })();
-  const savedViewsControlProps = savedViews && sentinel_user
+  // Suppress the in-tree SavedViewsControl when the host is driving
+  // columns externally via columnsControlRef / onColumnsChange (the
+  // page-level dropdown owns view selection in that case).
+  const savedViewsControlProps = savedViews && sentinel_user && !pageDriven
     ? {
         kind: savedViews.kind,
         target: savedViews.target,
@@ -2048,6 +2165,16 @@ export default function ObjectTree<T = WorkItem>({
             canReparent,
             onReparent: reparentArtefact,
             getCandidateIds: getDragCandidateIds,
+            // Cross-tree drop on a row — forward the landing slot
+            // (target row + above/below) so the host can rank-place
+            // the row at the correct slot, not just append.
+            ...(onExternalDrop && {
+              onCrossTreeRowDrop: (
+                foreignId: string,
+                targetId: string,
+                pos: "above" | "below",
+              ) => onExternalDrop(foreignId, { targetId, pos }),
+            }),
           },
         })}
         {...(multiSelectEnabled && {
@@ -2101,11 +2228,27 @@ export default function ObjectTree<T = WorkItem>({
   // panel — not a child — so the panel's white background ends at the
   // pagination's rounded bottom corners, and the gap above the form
   // shows the page canvas through (no holdover panel bg).
+  // Cross-tree drop wrapper. Only attaches handlers when the host wired
+  // onExternalDrop — otherwise it's an inert <div> and the previous
+  // chrome is unchanged. The halo class paints a soft ring + tint so
+  // the user sees "yes, this tree will accept the drop" instantly. CSS
+  // owns the transition; React only flips a class.
+  const dropZoneProps = onExternalDrop
+    ? {
+        onDragEnter: handleExternalDragEnter,
+        onDragOver: handleExternalDragOver,
+        onDragLeave: handleExternalDragLeave,
+        onDrop: handleExternalDrop,
+        className: externalDragActive
+          ? "objecttree__DropZone objecttree__DropZone--active"
+          : "objecttree__DropZone",
+      }
+    : {};
   if (title && addressableName) {
     return (
       <>
         <Panel name={addressableName} title={title}>
-          {inner}
+          <div {...dropZoneProps}>{inner}</div>
         </Panel>
         {inlineFormNode}
       </>
@@ -2113,7 +2256,7 @@ export default function ObjectTree<T = WorkItem>({
   }
   return (
     <>
-      <div>{inner}</div>
+      <div {...dropZoneProps}>{inner}</div>
       {inlineFormNode}
     </>
   );

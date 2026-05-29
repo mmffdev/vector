@@ -17,10 +17,13 @@ import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { useNextSprint, type SprintWireRow } from "@/app/hooks/useNextSprint";
-import { workItems, sprints as sprintsApi } from "@/app/lib/apiSite";
+import { workItems, sprints as sprintsApi, ranking } from "@/app/lib/apiSite";
 import { ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { MdChevronLeft, MdChevronRight, MdOutlineFlag } from "react-icons/md";
+import { BsCalendar3 } from "react-icons/bs";
+import { usePageSavedViews } from "@/app/components/SavedViews/PageSavedViewsControl";
+import { usePageHeader } from "@/app/contexts/PageHeaderContext";
 
 // Column drops for the value-sprint trees. The rowButtons column adds
 // ~244px of horizontal chrome (Add to Sprint + Target Sprint chips),
@@ -49,8 +52,12 @@ function formatSprintLabel(s: SprintWireRow | null | undefined): string {
   return suffix ? `${name} — ${suffix}` : name;
 }
 
-const SAVED_VIEW_TARGET_PANEL   = "objecttree:value_sprint_panel";
-const SAVED_VIEW_TARGET_BACKLOG = "objecttree:value_sprint_backlog";
+// Page-level saved-views target. One view applies across both grids
+// on this page (panel + backlog). Body shape:
+//   { grids: { panel: { visible_columns }, backlog: { visible_columns } } }
+// See app/components/SavedViews/PageSavedViewsControl.tsx for the
+// design + partial-body rule.
+const SAVED_VIEW_TARGET_PAGE = "page:value_sprint";
 
 export default function ValueSprint() {
   const { full } = usePageTitle();
@@ -64,9 +71,32 @@ export default function ValueSprint() {
     sentinel_scope_up,
     sentinel_scope_down,
     sentinel_user,
+    sentinel_can,
   } = useSentinel();
   const activeNodeId = sentinel_focus_node;
   const direction = sentinel_scope_down ? "descend" : sentinel_scope_up ? "ascend" : "none";
+
+  // Page-level saved views — single dropdown rendered in the shell
+  // header (left of the personal nav pill). Drives both grids' column
+  // sets via the bind() helpers spread onto each ObjectTree mount.
+  const pageSavedViews = usePageSavedViews({
+    target: SAVED_VIEW_TARGET_PAGE,
+    grids: ["panel", "backlog"],
+    currentUserID: sentinel_user?.id ?? "",
+    currentNodeID: activeNodeId,
+    currentWorkspaceID: sentinel_user?.workspace_id ?? "",
+    canShareToNode: !!activeNodeId,
+    // Proxy: workspace.archive stands in for "can share to workspace
+    // scope" until a dedicated workspace.share_views code exists. Same
+    // TD as the per-grid SavedViewsControl — TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE.
+    canShareToWorkspace: sentinel_can("workspace.archive"),
+  });
+  const panelBind = pageSavedViews.bind("panel");
+  const backlogBind = pageSavedViews.bind("backlog");
+  usePageHeader({
+    title: full,
+    actions: pageSavedViews.node,
+  });
 
   // Slice 1 — live "next sprint" lookup for the top panel. The wire's
   // workspace_id is the tenant/subscription root UUID (see the live
@@ -177,6 +207,32 @@ export default function ValueSprint() {
       nextSprint,
     [allSprints, upcomingSprints, panelSprintId, nextSprint],
   );
+
+  // Date-driven "current" sprint — today's date falls within the
+  // sprint's [start, end] window. Powers the "Current sprint" jump
+  // button. Wire dates are ISO YYYY-MM-DD with no time component, so a
+  // string compare against today's local-date ISO works without
+  // timezone juggling. Returns null when today doesn't fall in any
+  // sprint's window (e.g. between two planned sprints).
+  const currentSprint = useMemo<SprintWireRow | null>(() => {
+    if (allSprints.length === 0) return null;
+    const t = new Date();
+    const todayISO = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+    return (
+      allSprints.find((s) => {
+        const start = s.timeboxes_sprints_date_start;
+        const end = s.timeboxes_sprints_date_end;
+        if (!start || !end) return false;
+        return start <= todayISO && todayISO <= end;
+      }) ?? null
+    );
+  }, [allSprints]);
+  // Hide the button when the panel is already on the current sprint
+  // (no-op affordance reads as clutter), or when there's no current
+  // sprint to jump to.
+  const showCurrentSprintBtn =
+    !!currentSprint &&
+    currentSprint.timeboxes_sprints_id !== panelSprintId;
 
   // Switch-sprint button anchor ref. Lives on the panel header so the
   // user can flip between sprints without scrolling away.
@@ -329,6 +385,53 @@ export default function ValueSprint() {
     },
     [refetch],
   );
+
+  // Cross-tree drop landing handler. Steps:
+  //   1. PATCH sprint_id to put the row in the destination scope (sprint
+  //      cohort or backlog cohort — the rank service partitions by
+  //      artefacts_id_timebox_sprint, so the moved row must be in the
+  //      destination scope BEFORE the /rank/move call, otherwise the
+  //      service returns ErrScopeMismatch).
+  //   2. POST /rank/move with `before` / `after` to place the row at
+  //      the exact landing slot the drop indicator showed. If no
+  //      landing slot was captured (drop landed in empty space below
+  //      the rows), fall back to `to_bottom` for sprint targets and
+  //      `to_top` for backlog targets — backlog gets top-of-list so the
+  //      removed row is immediately visible to the user (matches the
+  //      "lands at the top" behaviour requested for sprint → backlog).
+  //   3. Refetch both trees so the row leaves the source and appears
+  //      at the new slot.
+  const placeOnSprint = useCallback(
+    async (
+      workItemId: string,
+      sprintId: string | null,
+      landing: { targetId: string; pos: "above" | "below" } | undefined,
+    ) => {
+      try {
+        await workItems.patch(workItemId, { sprint_id: sprintId ?? "" });
+        const moveBody: Record<string, unknown> = {
+          resource_type: "work_item",
+          row_id: workItemId,
+        };
+        if (landing) {
+          if (landing.pos === "above") moveBody.before = landing.targetId;
+          else moveBody.after = landing.targetId;
+        } else if (sprintId) {
+          moveBody.to_bottom = true;
+        } else {
+          moveBody.to_top = true;
+        }
+        await ranking.move(moveBody);
+        await refetch();
+        notify.success(
+          sprintId ? "Added to sprint." : "Removed from sprint.",
+        );
+      } catch (err) {
+        notify.apiError(err as ApiError, "Failed to place row at landing slot.");
+      }
+    },
+    [refetch],
+  );
   useEffect(() => {
     void refetch();
   }, [refetch, activeNodeId, direction]);
@@ -430,15 +533,15 @@ export default function ValueSprint() {
   );
 
   // Slice 5 — per-row action buttons. "Add to Sprint" assigns the row
-  // to the current next-sprint (disabled when none loaded). "Target
-  // Sprint" opens the radial picker anchored to that button. The
-  // callback closes over nextSprint + assignToSprint; each row's
-  // buttons get fresh closures per render (cheap).
+  // to the sprint CURRENTLY IN FOCUS on the panel above (panelSprint),
+  // not the auto-picked next sprint — otherwise the Switch Sprint
+  // affordance is a lie. Disabled when no panel sprint loaded.
+  // "Target Sprint" opens the radial picker anchored to that button.
   const backlogRowButtons = useCallback(
     (row: WorkItem): RowButton[] => {
-      const currentSprintId = nextSprint?.timeboxes_sprints_id ?? null;
-      const currentSprintName = nextSprint
-        ? formatSprintLabel(nextSprint)
+      const currentSprintId = panelSprint?.timeboxes_sprints_id ?? null;
+      const currentSprintName = panelSprint
+        ? formatSprintLabel(panelSprint)
         : "current sprint";
       return [
         {
@@ -446,7 +549,7 @@ export default function ValueSprint() {
           label: "Add to Sprint",
           ariaLabel: currentSprintId
             ? `Add ${row.title ?? row.id} to ${currentSprintName}`
-            : "No upcoming sprint to add to",
+            : "No sprint in focus to add to",
           disabled: !currentSprintId,
           onClick: () => {
             if (currentSprintId) void assignToSprint(row.id, currentSprintId);
@@ -475,26 +578,26 @@ export default function ValueSprint() {
         },
       ];
     },
-    [nextSprint, upcomingSprints.length, assignToSprint],
+    [panelSprint, upcomingSprints.length, assignToSprint],
   );
 
   // Slice 6 — bulk action buttons surfaced on the BulkActionBar (left
-  // side). "Add to Sprint" runs assignManyToSprint with the current
-  // sprint id; "Target Sprint" opens the same radial picker as the
-  // per-row button, but with rowId: null so the onPick path knows to
-  // operate over the captured selection set rather than a single row.
-  // Both are disabled when their precondition isn't met (no current
-  // sprint / no upcoming sprints).
+  // side). "Add to Sprint" runs assignManyToSprint targeting the sprint
+  // IN FOCUS on the panel above (panelSprint), not the auto-picked
+  // next sprint — same correctness reason as backlogRowButtons.
+  // "Target Sprint" opens the same radial picker as the per-row button,
+  // but with rowId: null so the onPick path knows to operate over the
+  // captured selection set rather than a single row.
   const bulkLeadingButtons = useMemo(() => {
     if (backlogSelectedIds.size === 0) return undefined;
-    const currentSprintId = nextSprint?.timeboxes_sprints_id ?? null;
+    const currentSprintId = panelSprint?.timeboxes_sprints_id ?? null;
     return [
       {
         key: "bulk-add-to-sprint",
         label: `Add ${backlogSelectedIds.size} to Sprint`,
         ariaLabel: currentSprintId
-          ? `Add ${backlogSelectedIds.size} selected item${backlogSelectedIds.size === 1 ? "" : "s"} to ${nextSprint ? formatSprintLabel(nextSprint) : "sprint"}`
-          : "No upcoming sprint to add to",
+          ? `Add ${backlogSelectedIds.size} selected item${backlogSelectedIds.size === 1 ? "" : "s"} to ${panelSprint ? formatSprintLabel(panelSprint) : "sprint"}`
+          : "No sprint in focus to add to",
         disabled: !currentSprintId,
         onClick: currentSprintId
           ? () => {
@@ -528,7 +631,7 @@ export default function ValueSprint() {
     ];
   }, [
     backlogSelectedIds,
-    nextSprint,
+    panelSprint,
     upcomingSprints.length,
     assignManyToSprint,
   ]);
@@ -612,7 +715,7 @@ export default function ValueSprint() {
   useRefetchOnPush({ topic, refetch });
 
   return (
-    <PageContent>
+    <PageContent className="value-sprint">
       <>
         <PageHeading
           level={1}
@@ -624,7 +727,7 @@ export default function ValueSprint() {
           }
         />
         <PageDescription>
-          Manage the active sprint. The top panel holds the sprint scope; the bottom grid is the workspace backlog (same clamp as Work Items). Drag stories from the backlog onto the sprint to commit them.
+          Manage the active sprint. The grid below is the workspace backlog (same clamp as Work Items). Drag stories onto the sprint to commit them.
         </PageDescription>
 
         {/* Top panel — sprint scope. Title + description reflect the
@@ -637,9 +740,13 @@ export default function ValueSprint() {
           className="page-panel-heading value-sprint__target"
           title={panelSprint ? formatSprintLabel(panelSprint) : "No upcoming sprint"}
           description={
-            panelSprint
-              ? `${panelSprint.timeboxes_sprints_date_start ?? "—"} → ${panelSprint.timeboxes_sprints_date_end ?? "—"} · status ${panelSprint.timeboxes_sprints_status ?? "—"}`
-              : "Create a planned sprint to begin — the next future-dated sprint will surface here automatically."
+            panelSprint ? (
+              <>
+                <BsCalendar3 aria-hidden /> {panelSprint.timeboxes_sprints_date_start ?? "—"} → {panelSprint.timeboxes_sprints_date_end ?? "—"} · status {panelSprint.timeboxes_sprints_status ?? "—"}
+              </>
+            ) : (
+              "Create a planned sprint to begin — the next future-dated sprint will surface here automatically."
+            )
           }
         >
           {/* Sprint-backlog tree renders BARE (no title / addressableName)
@@ -672,44 +779,66 @@ export default function ValueSprint() {
                 dropColumnKeys={PANEL_DROP_COLS}
                 refetchRef={panelRefetchRef}
                 bulkLeadingButtons={panelBulkLeadingButtons}
+                onExternalDrop={(rowId, landing) => {
+                  if (!panelSprintId) return;
+                  void placeOnSprint(rowId, panelSprintId, landing);
+                }}
                 actionBarLeading={
                   <>
-                    <button
-                      ref={prevSprintBtnRef}
-                      type="button"
-                      className="tree_accordion-dense__filterbar-chip"
-                      disabled={!sprintNavState.hasPrev}
-                      onClick={() => stepSprint(-1)}
-                      aria-label="Previous sprint"
-                      title="Previous sprint"
-                    >
-                      <span className="tree_accordion-dense__filterbar-chip-icon">
-                        <MdChevronLeft size={14} />
-                      </span>
-                      <span className="tree_accordion-dense__filterbar-chip-label">
-                        Prev
-                      </span>
-                    </button>
-                    <button
-                      ref={nextSprintBtnRef}
-                      type="button"
-                      className="tree_accordion-dense__filterbar-chip"
-                      disabled={!sprintNavState.hasNext}
-                      onClick={() => stepSprint(1)}
-                      aria-label="Next sprint"
-                      title="Next sprint"
-                    >
-                      <span className="tree_accordion-dense__filterbar-chip-label">
-                        Next
-                      </span>
-                      <span className="tree_accordion-dense__filterbar-chip-icon">
-                        <MdChevronRight size={14} />
-                      </span>
-                    </button>
+                    {sprintNavState.hasPrev && (
+                      <button
+                        ref={prevSprintBtnRef}
+                        type="button"
+                        className="btn"
+                        onClick={() => stepSprint(-1)}
+                        aria-label="Previous sprint"
+                        title="Previous sprint"
+                      >
+                        <span className="btn__icon">
+                          <MdChevronLeft size={14} />
+                        </span>
+                        <span>Prev</span>
+                      </button>
+                    )}
+                    {sprintNavState.hasNext && (
+                      <button
+                        ref={nextSprintBtnRef}
+                        type="button"
+                        className="btn"
+                        onClick={() => stepSprint(1)}
+                        aria-label="Next sprint"
+                        title="Next sprint"
+                      >
+                        <span>Next</span>
+                        <span className="btn__icon">
+                          <MdChevronRight size={14} />
+                        </span>
+                      </button>
+                    )}
+                    {showCurrentSprintBtn && (
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => {
+                          if (currentSprint) {
+                            setPanelSprintIdOverride(
+                              currentSprint.timeboxes_sprints_id,
+                            );
+                          }
+                        }}
+                        aria-label="Jump to the current sprint (today's date)"
+                        title="Jump to the sprint that today's date falls within"
+                      >
+                        <span className="btn__icon">
+                          <BsCalendar3 aria-hidden />
+                        </span>
+                        <span>Current sprint</span>
+                      </button>
+                    )}
                     <button
                       ref={switchSprintBtnRef}
                       type="button"
-                      className="tree_accordion-dense__filterbar-chip"
+                      className="btn"
                       disabled={upcomingSprints.length < 2}
                       onClick={() =>
                         setTargetMenu({
@@ -719,14 +848,12 @@ export default function ValueSprint() {
                       }
                       aria-label="Switch the displayed sprint"
                     >
-                      <span className="tree_accordion-dense__filterbar-chip-label">
-                        Switch sprint
-                      </span>
+                      <span>Switch sprint</span>
                     </button>
                     <button
                       ref={statusSprintBtnRef}
                       type="button"
-                      className="tree_accordion-dense__filterbar-chip"
+                      className="btn"
                       disabled={!panelSprint}
                       onClick={() =>
                         setTargetMenu({
@@ -737,16 +864,15 @@ export default function ValueSprint() {
                       aria-label={`Sprint status — ${panelSprint?.timeboxes_sprints_status ?? "—"}`}
                       title="Change sprint status"
                     >
-                      <span className="tree_accordion-dense__filterbar-chip-icon">
+                      <span className="btn__icon">
                         <MdOutlineFlag size={14} />
                       </span>
-                      <span className="tree_accordion-dense__filterbar-chip-label">
-                        Sprint Status
-                      </span>
+                      <span>Sprint Status</span>
                     </button>
                   </>
                 }
-                savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET_PANEL }}
+                columnsControlRef={panelBind.columnsControlRef}
+                onColumnsChange={panelBind.onColumnsChange}
               />
             </div>
           )}
@@ -780,7 +906,16 @@ export default function ValueSprint() {
               dropColumnKeys={BACKLOG_DROP_COLS}
               refetchRef={backlogRefetchRef}
               bulkLeadingButtons={bulkLeadingButtons}
-              savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET_BACKLOG }}
+              columnsControlRef={backlogBind.columnsControlRef}
+              onColumnsChange={backlogBind.onColumnsChange}
+              onExternalDrop={(rowId, landing) => {
+                // Reverse direction: dropping a sprint-panel row on the
+                // backlog removes it from the current sprint (sprint_id="")
+                // and places at the captured slot — or at the TOP when
+                // dropped on empty space, so the removed row surfaces
+                // immediately in the user's view.
+                void placeOnSprint(rowId, null, landing);
+              }}
             />
           )}
         </div>

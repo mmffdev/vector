@@ -151,6 +151,18 @@ export interface DnDConfig {
    * field of valid drops without hunting one row at a time.
    */
   getCandidateIds?: (moverID: string) => string[];
+  /**
+   * Cross-tree drop on a row. Fires when a drag that started in a
+   * DIFFERENT tree on the same page is released on one of this
+   * tree's rows. The hook surfaces the foreign row id + the landing
+   * slot (above/below the receiving row) so the host can both assign
+   * AND rank-position the row in one go.
+   */
+  onCrossTreeRowDrop?: (
+    foreignId: string,
+    targetId: string,
+    pos: "above" | "below",
+  ) => void;
 }
 
 // PLA-0021 / 00455 — multi-select. Selection state stays caller-owned; the
@@ -1105,6 +1117,7 @@ function ResourceTreeImpl<T>({
     canReparent: dnd?.canReparent,
     onReparent: dnd?.onReparent,
     getCandidateIds: dnd?.getCandidateIds,
+    onCrossTreeRowDrop: dnd?.onCrossTreeRowDrop,
   });
 
   // The hook's built-in onDrop only POSTs. Wrap it to apply the local
@@ -1598,10 +1611,9 @@ function ResourceTreeImpl<T>({
               // Slice 4 / value-sprint — per-row inline action buttons.
               // Sits between the DnD handle and the Cog menu. Stops click
               // propagation so a button click never selects/opens the row.
-              // Chip style matches the ActionBar's "Create New" chip
-              // (.tree_accordion-dense__filterbar-chip) so the row's
-              // action affordances share the visual language of the
-              // grid-level action affordance one chrome row up — the
+              // Uses the .btn primitive matching the ActionBar's chips, so
+              // the row's action affordances share the visual language of
+              // the grid-level action affordance one chrome row up. The
               // accent-filled .btn--primary read like "submit" controls
               // and competed for attention with the page's real CTAs.
               const btns = rowButtons!(item).slice(0, ROW_BUTTONS_MAX_BUTTONS);
@@ -1615,14 +1627,12 @@ function ResourceTreeImpl<T>({
                       <button
                         key={b.key}
                         type="button"
-                        className="tree_accordion-dense__filterbar-chip row-buttons__Button"
+                        className="btn row-buttons__Button"
                         onClick={b.onClick}
                         aria-label={b.ariaLabel ?? b.label}
                         disabled={b.disabled}
                       >
-                        <span className="tree_accordion-dense__filterbar-chip-label">
-                          {b.label}
-                        </span>
+                        <span>{b.label}</span>
                       </button>
                     ))}
                   </div>
