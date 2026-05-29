@@ -128,10 +128,10 @@ export default function MilestonesPage() {
 
 ### Migration slice — Nav registration
 
-File: `db/vector_artefacts/schema/151_milestones_page.sql` (NEW)
-File: `db/vector_artefacts/schema/down/151_milestones_page_DOWN.sql` (NEW)
+File: `db/vector_artefacts/schema/158_milestones_page.sql` (NEW)
+File: `db/vector_artefacts/schema/down/158_milestones_page_DOWN.sql` (NEW)
 
-(Numbering: latest applied migration is 150. Next free slot is 151.)
+(Numbering: highest existing slot on disk is 157 — the Rally-fields workstream landed 150–157 uncommitted. Next free slot is **158**. If the Rally migrations are committed/applied between spec-writing and migration-writing, the writing-plans pass re-checks and bumps if needed.)
 
 The migration runs in `vector_artefacts` (post-fold home of the nav cluster — see HARD RULE on DB routing). Schema shape, table names, and column names are the post-fold `pages_*`-prefixed forms — pre-fold seed migrations (129, 138) in `mmff_vector/` are reference-only because they target the old bare-column schema.
 
@@ -265,7 +265,7 @@ Entries to add to `docs/c_tech_debt.md` during implementation:
 
 ## Test plan (manual; no automation in this slice)
 
-1. **Migration applies cleanly.** Run `<migration>` against vector_artefacts. Verify `schema_migrations` records 151.
+1. **Migration applies cleanly.** Run `<migration>` against vector_artefacts. Verify `schema_migrations` records 158 (or the bumped slot if Rally migrations advance the counter further by build time).
 2. **Nav appears.** Sign in as `user@mmffdev.com`. Open the rail. Expect a "Milestones" entry in the Planning bucket, after Releases, with the flag icon.
 3. **Page loads with no node focused.** Click Milestones in the rail with no topology node focused. Expect the "Pick a topology node" panel.
 4. **Page loads with a node focused.** Focus a topology node. Expect the `TimeboxObjectTree` grid, "V2" badge, empty state "No milestones found."
