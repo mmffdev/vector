@@ -258,3 +258,82 @@ The `CustomFieldEditForm.tsx` was touched by linter/Rick post-commit; **read the
 ## Final note
 
 When you start: invoke `superpowers:using-superpowers` skill briefly to refresh hard rules. Then `superpowers:brainstorming` for the design phase. Don't go straight to code. The pattern that's worked twice in this branch is **spec → plan → subagent-per-task → orchestrator commits → push when Rick says**. Follow it.
+
+---
+
+# Execution Summary — 2026-05-29 (post-build)
+
+This section was appended AFTER the build ran. The handover above describes the planning state. Below is what actually shipped.
+
+## What shipped
+
+**Migrations** (all applied to live `vector_artefacts`, recorded in `schema_migrations`):
+- **mig 146** — archived 23 catalogue rows from `artefacts_fields_library` (the demoted-core list) + their bindings + their values
+- **mig 147** — added **18 new core columns** to `artefacts`:
+  - bool ×3: `is_expedite`, `is_ready`, `affects_doc` (partial indexes on `=true`)
+  - timestamp ×4: `planned_finish_date`, `planned_start_date`, `actual_start_date`, `flow_state_changed_at`
+  - numeric ×4: `estimate_hours`, `estimate_remaining`, `estimate_initial`, `estimate_updated`
+  - text-with-CHECK ×2: `defect_severity` (`low|medium|high|critical`), `defect_status` (`open|triaged|in_progress|fixed|verified|closed|wontfix|duplicate`)
+  - text ×4: `environment`, `strategic_investment_group`, `notes`, `notes_doc`
+  - int ×1: `count_child_test_cases`
+- **mig 148** — archived 19 zombie `test_field_*` rows the integration tests had been leaking
+- DOWN scripts for all three under `db/vector_artefacts/schema/down/`
+- Post-apply: 84 total rows in `artefacts_fields_library` = 20 active + 64 archived
+
+**Backend** wired the 18 columns end-to-end:
+- `backend/internal/artefactitems/columns.go` — +18 `ColumnSpec` entries
+- `backend/internal/artefactitems/types.go` — +18 `WorkItem` fields + `validDefectSeverities` + `validDefectStatuses` maps (LIVE values: lowercase `low/medium/high/critical` + `open/triaged/in_progress/fixed/verified/closed/wontfix/duplicate` — NOT the title-case Rally-style values the spec briefing assumed)
+- `backend/internal/artefactitems/sql.go` — both `sqlWorkItemColumns` (SELECT) and `sqlWorkItemColumnsListTemplate` (PATCH whitelist) updated
+- `backend/internal/artefactitems/service.go` — defect validation gate + 18 SET-clause dispatches in sparse UPDATE builder
+- `backend/internal/artefactitems/handler.go` — +18 fields on `patchWorkItemReq`
+- `backend/internal/artefactitems/columns_demotion_test.go` — NEW: 7 unit tests + 71 sub-tests pinning whitelist + spec correctness
+- `backend/internal/fields/bindings_integration_test.go` — test teardown ordering fix (`defer pool.Close()` → `t.Cleanup(...)` so it runs LAST, not BEFORE other cleanup callbacks; this was the root cause of the test-cruft zombie rows that mig 148 had to clean up)
+
+**Frontend**:
+- `app/components/ObjectTreeV2/adapters/customFieldsAdapter.tsx` — Source filter chip (Custom | Core), CORE row synthesis (read-only rows so admins see the core overview alongside the real custom fields), `.source-pill--core/--custom` styling
+- `app/globals.css` — source-pill styles; SEPARATELY `.action-btn` family DELETED, three call-sites (`CustomFieldFlyout` Close, `TypeBindingsPicker` Remove, `customFieldsAdapter` Create-Field button) migrated to `.btn`, `.tp-btn` theme-page swatch retuned to track `.btn` 1:1
+
+## Commits (in order)
+
+| Hash | Subject |
+|---|---|
+| `a9951217` | feat(db): migs 146-148 — core-field demotion + test cruft purge |
+| `a14d906b` | feat(artefactitems): 18 new core columns through the wire — DTO + SQL + handler |
+| `8e2f9bae` | feat(custom-fields): Source filter + synthesised CORE rows in admin grid |
+| `3b00bdc7` | fix(fields-test): root-cause integration-test zombie rows + register pool teardown via t.Cleanup |
+| `1d1d3a08` | chore: memory pin + linter touches + caller-map regen |
+| `019a6cb1` | refactor(css): collapse .action-btn family into .btn primitive |
+
+Tree clean. Branch is +12 commits ahead of `origin/main` (the 6 above + the saved-views / OTV2-generic / custom-field-bindings batch that preceded them).
+
+## HARD RULE follow-throughs
+
+- **SY003 regenerated** (substrate changed → HARD RULE) — POSTed via `/_site/admin/dev/reporting/`. New Change Log entry prepended. New sub-sections added: `artefacts-column-inventory-2026-05-29-core-field-demotion` (the 18-column table) + `core-field-demotion-sql-touchpoints-18-2026-05-29` (file:line callsite map). All 10 required `<h2 id>` sections verified present post-fetch. Content size: 74,798 → 87,298 chars.
+- **Test cleanup ordering fix** — root cause documented in commit `3b00bdc7` body so the next reader sees WHY `t.Cleanup` matters here (defer runs at function-end in source order; `t.Cleanup` runs at test-end in LIFO registration order; pool.Close() registered via t.Cleanup runs LAST, so other cleanup callbacks can still see live tables).
+- **Defect enum values are LOWERCASE** — the spec briefing's title-case values (`Major Problem`/`Submitted`/etc.) were wrong. SY003 records the live `pg_constraint` values verbatim.
+
+## Deferred to TD register
+
+Nothing new added to `docs/c_tech_debt.md` for this workstream. The remaining ~20 active catalogue rows are the legitimate custom-field groups that are not core (one richtext `acceptance_criteria` survived as intended); they're deferred-demotion candidates only if Rick decides any of them are also miscategorised — open question for a follow-up session.
+
+## Pending — needs Rick
+
+- **Push to origin** — branch +12 ahead, awaiting explicit go-ahead.
+- **Open question Q5** from the planning section above (the `pi_*`/`us_*` family) — NOT touched this build. Worth a yes/no per family in a follow-up.
+- **Core-fields overview UI** — the `customFieldsAdapter` now shows CORE rows in the admin grid via the Source filter, which is the lightweight version of Q3. The richer "core-fields admin page" idea is unbuilt and may not be needed once Rick sees the in-grid solution.
+
+## Recovery commands
+
+If anything went sideways and needs rollback:
+```bash
+# Down migs (in reverse order)
+psql -h localhost -p 5435 -U <user> -d vector_artefacts -f db/vector_artefacts/schema/down/148_archive_integration_test_field_cruft_DOWN.sql
+psql -h localhost -p 5435 -U <user> -d vector_artefacts -f db/vector_artefacts/schema/down/147_artefacts_core_fields_from_demotion_DOWN.sql
+psql -h localhost -p 5435 -U <user> -d vector_artefacts -f db/vector_artefacts/schema/down/146_demote_core_fields_archive_catalogue_DOWN.sql
+# Remove schema_migrations rows
+psql ... -c "DELETE FROM schema_migrations WHERE version IN (146,147,148);"
+# Revert commits (use git revert, NOT reset — destructive git is HARD RULE)
+git revert 019a6cb1 1d1d3a08 3b00bdc7 8e2f9bae a14d906b a9951217
+```
+
+(Don't run these blindly. The substrate change is the irreversible bit; the Go + FE work is mechanically revertable.)
