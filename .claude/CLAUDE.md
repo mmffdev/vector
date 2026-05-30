@@ -54,6 +54,8 @@ Load the relevant guide only when the task touches that area — keeps this file
 
 **Third-party SDK source:** when integrating an external SDK/package and docs are thin or stale, vendor the source into `reference/repos/<host>/<org>/<repo>/` and grep there before trusting docs or guessing API names — see [`<source-code-context>`](skills/source-code-context/SKILL.md).
 
+**Tracing authority ("how is X scoped/authorised?"):** clamp/tenant/role authority lives in the route chain, not just the handler — a `ctx`-injected value (`sentinel.FromCtx`) is invisible to handler/service/SQL signatures, so a handler-only trace over-weights loud in-handler machinery (`?meg=`, `CanReadScope`, 403s) and names the wrong thing. Before answering: (1) trace the route mount + every middleware first; (2) for every `FromCtx`/`ctx.Value` read, find + name its SOLE writer; (3) classify each filter ESTABLISH vs NARROW (`?meg=` is a re-validated cosmetic NARROW hint with no authority); (4) validate by the forgery test, not the happy path. Full protocol: [`.claude/skills/diagnose/SKILL.md`](skills/diagnose/SKILL.md) § Tracing authority. Origin: 2026-05-30 sub-agent `?meg=`-vs-sentinel-clamp framing error.
+
 - **Design ethos (award-winning bar)** → [`docs/c_design_ethos.md`](../docs/c_design_ethos.md) — ultra-modern, experimental UI/UX; wow with colour + craft; Awwwards SOTD is the target, not "clean SaaS"; visual quality is part of DoD, never a follow-up polish step.
 - **Styling / CSS** → [`docs/css-guide.md`](../docs/css-guide.md) — catalog class first; no inline `style={{}}`.
 - **CSS/HTML naming** → [`.claude/memory/css_naming_convention.md`](memory/css_naming_convention.md) — `root-block__Container_Child_leaf` pattern; no BEM `--`, no generic names.
@@ -106,6 +108,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Drag-and-drop (`@dnd-kit`)** → [`docs/c_c_dnd.md`](../docs/c_c_dnd.md) — canonical DnD library; 250ms debounce, server-of-truth.
 - **`<Table>` component (PLA-0015)** → [`docs/c_c_table_component.md`](../docs/c_c_table_component.md) — single sanctioned table primitive; `lint:no-raw-table` enforced.
 - **`<ResourceTree>` component (PLA-0021)** → [`docs/c_c_resource_tree.md`](../docs/c_c_resource_tree.md) — hierarchical-tree primitive + 5 prop sets.
+- **`<DataGrid>` component** → [`docs/c_c_datagrid.md`](../docs/c_c_datagrid.md) — lightweight OTV2 replacement; scaffold + page-owned sidecar; opt-in flyouts/forms.
 - **`<Badge>` primitive** → [`docs/c_c_badge.md`](../docs/c_c_badge.md) — `.pill` family; semantic tones only.
 - **`<TimeboxManager>` surface** → [`docs/c_c_timebox_manager.md`](../docs/c_c_timebox_manager.md) — `timeboxes_sprints` / `timeboxes_releases` registry (post RF1.4.2).
 - **Saved Views substrate** → [`docs/superpowers/specs/2026-05-28-saved-views-design.md`](../docs/superpowers/specs/2026-05-28-saved-views-design.md) — Rally-pattern persisted view configs; one table `saved_views` with kind + scope discriminators serves multi-consumer (objecttree today, custom-pages tomorrow).

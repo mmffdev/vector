@@ -15302,10 +15302,39 @@ input[type="reset"] {
 }
 .artefact-inline-form__Container_Loading,
 .artefact-inline-form__Container_Error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   min-height: 0;
   padding: 20px;
   color: var(--ink-muted);
   font-size: 13px;
+}
+.artefact-inline-form__Container_Error_Headline {
+  margin: 0;
+  color: var(--ink, #111);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.artefact-inline-form__Container_Error_Detail {
+  margin: 0;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--ink-muted, #9ca3af);
+}
+.artefact-inline-form__Container_Error_Close {
+  margin-top: 4px;
+  padding: 6px 14px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  color: var(--ink, #111);
+  font-size: 12px;
+  cursor: pointer;
+}
+.artefact-inline-form__Container_Error_Close:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.05));
 }
 .artefact-inline-form__Container_Head {
   display: flex;
@@ -19133,6 +19162,28 @@ tr.is-editing {
   background: var(--accent-muted);
 }
 
+.type-bindings-picker__TypeRow.is-locked {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.type-bindings-picker__TypeRow.is-locked:hover {
+  background: var(--accent-muted);
+}
+
+.type-bindings-picker__LockTag {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: var(--accent-muted);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
 .type-bindings-picker__TypeName {
   font-size: 13px;
   color: var(--ink);
@@ -19380,6 +19431,1036 @@ tr.is-editing {
   background: var(--accent-muted);
   color: var(--ink);
 }
+
+/* ============================================================
+   <DataGrid> — POC shell mirroring ObjectTree's visible chrome.
+   Pure presentation: top bar (title + helper), sub-bar (ident +
+   sub-title), header row, body rows, pagination footer. Lives in
+   app/components/DataGrid/p_DataGrid.tsx. Mounted from /scope.
+   ============================================================ */
+.data-grid {
+  --data-grid-radius:        10px;
+  --data-grid-border:        1px solid var(--border-panel);
+  --data-grid-row-height:    28px;
+  --data-grid-header-bg:     var(--surface-sunken, #f3f3f5);
+  --data-grid-ident-size:    28px;
+
+  display:        flex;
+  flex-direction: column;
+  width:          100%;
+  background:     var(--surface, #ffffff);
+  border:         var(--data-grid-border);
+  border-radius:  var(--data-grid-radius);
+  overflow:       hidden;
+  font-family:    var(--font-sans, system-ui, sans-serif);
+  font-size:      13px;
+  color:          var(--ink, #111);
+}
+
+/* Top bar — radius applied at the .data-grid root via overflow:hidden,
+   so the inner header inherits the rounded top corners. */
+.data-grid__TitleBar {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             12px;
+  padding:         14px 18px;
+  background:      var(--surface, #ffffff);
+}
+.data-grid__TitleBar_Heading {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+  min-width:      0;
+}
+.data-grid__TitleBar_Heading_Title {
+  margin:      0;
+  font-size:   15px;
+  font-weight: 500;
+  color:       var(--ink, #111);
+  line-height: 1.2;
+}
+.data-grid__TitleBar_Heading_Description {
+  margin:      0;
+  font-size:   12px;
+  color:       var(--ink-muted, #777);
+  line-height: 1.35;
+}
+.data-grid__TitleBar_HelperBtn {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  width:           28px;
+  height:          28px;
+  padding:         0;
+  background:      transparent;
+  border:          none;
+  border-radius:   6px;
+  color:           var(--ink-muted, #777);
+  cursor:          pointer;
+}
+.data-grid__TitleBar_HelperBtn:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+  color:      var(--ink, #111);
+}
+.data-grid__TitleBar_HelperBtn svg {
+  width:  18px;
+  height: 18px;
+}
+
+/* Data bar — black ident square + data-title + optional description
+   below; bordered top and bottom. */
+.data-grid__DataBar {
+  display:       flex;
+  align-items:   center;
+  gap:           14px;
+  padding:       14px 18px;
+  border-top:    var(--data-grid-border);
+  border-bottom: var(--data-grid-border);
+  background:    var(--surface, #ffffff);
+}
+.data-grid__DataBar_Ident {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  width:           var(--data-grid-ident-size);
+  height:          var(--data-grid-ident-size);
+  background:      #111;
+  color:           #fff;
+  border-radius:   4px;
+  font-family:     var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size:       12px;
+  font-weight:     600;
+  letter-spacing:  0.02em;
+  flex-shrink:     0;
+}
+.data-grid__DataBar_Heading {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+  min-width:      0;
+}
+.data-grid__DataBar_Heading_Title {
+  margin:      0;
+  font-size:   15px;
+  font-weight: 500;
+  color:       var(--ink, #111);
+  line-height: 1.2;
+}
+.data-grid__DataBar_Heading_Description {
+  margin:      0;
+  font-size:   12px;
+  color:       var(--ink-muted, #777);
+  line-height: 1.35;
+}
+
+/* Action bar — Create button on the left, search field, then filter
+   buttons + Clear filters link on the right. Sits between DataBar and
+   Grid; bordered bottom only (DataBar already has border-bottom). */
+.data-grid__ActionBar {
+  display:       flex;
+  align-items:   center;
+  gap:           10px;
+  padding:       10px 18px;
+  background:    var(--surface, #ffffff);
+  border-bottom: var(--data-grid-border);
+}
+.data-grid__ActionBar_CreateBtn {
+  display:         inline-flex;
+  align-items:     center;
+  gap:             6px;
+  height:          30px;
+  padding:         0 12px;
+  background:      var(--surface, #ffffff);
+  border:          var(--data-grid-border);
+  border-radius:   6px;
+  font:            inherit;
+  font-size:       12px;
+  font-weight:     500;
+  color:           var(--ink, #111);
+  cursor:          pointer;
+}
+.data-grid__ActionBar_CreateBtn:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+}
+.data-grid__ActionBar_CreateBtn svg {
+  width:  14px;
+  height: 14px;
+}
+
+.data-grid__ActionBar_Search {
+  position:    relative;
+  display:     inline-flex;
+  align-items: center;
+  flex:        0 1 280px;
+  height:      30px;
+  padding:     0 10px 0 32px;
+  background:  var(--surface, #ffffff);
+  border:      var(--data-grid-border);
+  border-radius: 6px;
+}
+.data-grid__ActionBar_Search_Icon {
+  position:     absolute;
+  left:         10px;
+  top:          50%;
+  width:        14px;
+  height:       14px;
+  transform:    translateY(-50%);
+  color:        var(--ink-muted, #777);
+  pointer-events: none;
+}
+.data-grid__ActionBar_Search_Input {
+  width:      100%;
+  height:     100%;
+  background: transparent;
+  border:     none;
+  outline:    none;
+  font:       inherit;
+  font-size:  12px;
+  color:      var(--ink, #111);
+}
+.data-grid__ActionBar_Search_Input::placeholder {
+  color: var(--ink-muted, #999);
+}
+
+.data-grid__ActionBar_Filters {
+  display:     inline-flex;
+  align-items: center;
+  gap:         6px;
+  margin-left: 6px;
+}
+.data-grid__ActionBar_Filters_Btn {
+  display:         inline-flex;
+  align-items:     center;
+  gap:             6px;
+  height:          30px;
+  padding:         0 12px;
+  background:      var(--surface, #ffffff);
+  border:          var(--data-grid-border);
+  border-radius:   6px;
+  font:            inherit;
+  font-size:       12px;
+  color:           var(--ink, #111);
+  cursor:          pointer;
+}
+.data-grid__ActionBar_Filters_Btn:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+}
+.data-grid__ActionBar_Filters_Btn svg {
+  width:  14px;
+  height: 14px;
+  color:  var(--ink-muted, #777);
+}
+.data-grid__ActionBar_Filters_Clear {
+  height:        30px;
+  padding:       0 8px;
+  background:    transparent;
+  border:        none;
+  font:          inherit;
+  font-size:     12px;
+  color:         var(--ink-muted, #777);
+  cursor:        pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.data-grid__ActionBar_Filters_Clear:hover {
+  color: var(--ink, #111);
+}
+
+/* Grid — 9-column layout matching the reference shell. Selector column
+   first, then ID, Summary (flex), Status, Pts, Owner, Parent, Sprint, Due. */
+.data-grid__Grid {
+  display:        flex;
+  flex-direction: column;
+  background:     var(--surface, #ffffff);
+}
+.data-grid__Grid_HeaderRow,
+.data-grid__Grid_Body_Row {
+  display:               grid;
+  /* grid-template-columns is injected inline by p_DataGrid from
+     useColumnManager.gridTemplateColumns — widths are runtime state. */
+  align-items:           center;
+  min-height:            var(--data-grid-row-height);
+}
+.data-grid__Grid_HeaderRow {
+  background:    var(--data-grid-header-bg);
+  border-bottom: var(--data-grid-border);
+  font-size:     11px;
+  font-weight:   600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:         var(--ink-muted, #777);
+}
+.data-grid__Grid_HeaderRow_Cell {
+  position:    relative;
+  display:     inline-flex;
+  align-items: center;
+  gap:         4px;
+  padding:     8px 10px;
+  min-width:   0;
+  overflow:    hidden;
+  white-space: nowrap;
+  user-select: none;
+}
+.data-grid__Grid_HeaderRow_Cell[data-sortable] {
+  cursor: pointer;
+}
+.data-grid__Grid_HeaderRow_Cell[data-sortable]:hover {
+  color: var(--ink, #111);
+}
+.data-grid__Grid_HeaderRow_Cell_Label {
+  overflow:      hidden;
+  text-overflow: ellipsis;
+}
+.data-grid__Grid_HeaderRow_Cell_SortCaret {
+  width:  10px;
+  height: 10px;
+  color:  var(--ink, #111);
+}
+.data-grid__Grid_HeaderRow_Cell_ResizeHandle {
+  position:     absolute;
+  top:          0;
+  right:        0;
+  width:        6px;
+  height:       100%;
+  cursor:       col-resize;
+  user-select:  none;
+  background:   transparent;
+  z-index:      1;
+}
+.data-grid__Grid_HeaderRow_Cell_ResizeHandle:hover,
+.data-grid__Grid_HeaderRow_Cell_ResizeHandle:active {
+  background: var(--accent, #6366f1);
+  opacity:    0.35;
+}
+
+.data-grid__Grid_Body_Row {
+  position:      relative;
+  border-bottom: 1px solid var(--border-row, rgba(0,0,0,0.06));
+  cursor:        pointer;
+}
+.data-grid__Grid_Body_Row:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.02));
+}
+.data-grid__Grid_Body_Row-open {
+  background: var(--surface-selected, rgba(99,102,241,0.06));
+}
+.data-grid__Grid_Body_Row:last-child {
+  border-bottom: none;
+}
+.data-grid__Grid_Body_Row_Cell {
+  padding:       4px 10px;
+  height:        var(--data-grid-row-height);
+  display:       flex;
+  align-items:   center;
+  min-width:     0;
+  overflow:      hidden;
+  white-space:   nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ─── Tree mode (opt-in) ────────────────────────────────────────────────────
+   Ported from the OTV2 tree_accordion-dense__row chrome (app/globals.css
+   ~14554) into the data-grid__ namespace. OTV2 draws on <td> cells and uses
+   :has(+ …) sibling selectors to colour a row's TOP edge via the PREVIOUS
+   row's border-bottom. A DataGrid body row is a single CSS-grid <div> box,
+   so the same effects collapse onto the row element directly: the colour
+   stripe is a border-left, the form-open orange edges are border-top +
+   border-bottom on the one box (no sibling trick needed), and the barber-pole
+   fill is the same repeating gradient + keyframes. Inert unless tree mode
+   adds the --epic/--child/--selected classes (flat grids never get them). */
+
+/* Custom colour stripe — the page's per-row colour. OTV2 renders this as a
+   10px LEADING CELL filled edge-to-edge with backgroundColor (ResourceTree
+   tree_accordion-dense__cell--type-stripe), NOT a thin border. We match that
+   exactly: a real grid track (TYPE_STRIPE_COL_WIDTH=10) whose cell is a solid
+   colour block. The colour comes in via --data-grid-row-stripe on the row;
+   the cell reads it so resize/scroll keep it aligned. Header gets an empty
+   stripe cell so the column count + widths line up. */
+.data-grid__Grid_Body_Row_StripeCell,
+.data-grid__Grid_HeaderRow_StripeCell {
+  padding: 0;
+  height:  var(--data-grid-row-height);
+  align-self: stretch;
+}
+.data-grid__Grid_Body_Row_StripeCell {
+  background-color: var(--data-grid-row-stripe, transparent);
+}
+
+/* Leading control cells (selection checkbox / drag handle / cog) — fixed
+   tracks before the user columns, mirroring OTV2's lead-column block. Each is
+   a flex box centring its single affordance; widths come from the grid
+   template (28 / 22 / 32) so these just centre + reset padding. */
+.data-grid__Grid_Body_Row_LeadCell,
+.data-grid__Grid_HeaderRow_LeadCell {
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  height:         var(--data-grid-row-height);
+  padding:        0;
+  min-width:      0;
+}
+/* Expand-all / collapse-all master caret — lives in the cog header slot on
+   scope-clamped tree grids (config.tree.expandAllControl). One click opens
+   the whole client-nested hierarchy; a second collapses it. */
+.data-grid__Grid_HeaderRow_ExpandAll {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  width:           18px;
+  height:          18px;
+  padding:         0;
+  border:          none;
+  border-radius:   4px;
+  background:      transparent;
+  color:          var(--ink-muted, #9ca3af);
+  cursor:         pointer;
+  font-size:      13px;
+  line-height:    1;
+  transition:     color 120ms ease, background 120ms ease;
+}
+.data-grid__Grid_HeaderRow_ExpandAll:hover {
+  color:      var(--ink, #111827);
+  background: var(--surface-hover, rgba(0, 0, 0, 0.05));
+}
+.data-grid__Grid_HeaderRow_ExpandAll:focus-visible {
+  outline:        2px solid var(--focus-ring, #2563eb);
+  outline-offset: 1px;
+}
+.data-grid__Grid_Body_Row_LeadCell input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
+}
+/* Drag grip — six-dot affordance, dimmed until row hover (OTV2 parity). */
+.data-grid__Grid_Body_Row_DragHandle {
+  cursor:      grab;
+  color:       var(--ink-muted, #9ca3af);
+  font-size:   13px;
+  line-height: 1;
+  user-select: none;
+  opacity:     0;
+  transition:  opacity 120ms ease;
+}
+.data-grid__Grid_Body_Row:hover .data-grid__Grid_Body_Row_DragHandle,
+.data-grid__Grid_Body_Row-open  .data-grid__Grid_Body_Row_DragHandle {
+  opacity: 1;
+}
+.data-grid__Grid_Body_Row_DragHandle:active { cursor: grabbing; }
+/* Cog wrapper — positioning context so the absolute dropdown anchors here. */
+.data-grid__Grid_Body_Row_Cog {
+  position: relative;
+}
+/* Cog button — gear that opens the leading row-menu (OTV2 cog-btn). */
+.data-grid__Grid_Body_Row_CogBtn {
+  display:       inline-flex;
+  align-items:   center;
+  justify-content: center;
+  width:         22px;
+  height:        22px;
+  border:        none;
+  background:    transparent;
+  border-radius: 4px;
+  color:         var(--ink-muted, #6b7280);
+  cursor:        pointer;
+}
+.data-grid__Grid_Body_Row_CogBtn:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.06));
+  color:      var(--ink, #111);
+}
+/* Cog dropdown — anchored under the gear; same item list as the row menu. */
+.data-grid__Grid_Body_Row_CogMenu {
+  position:      absolute;
+  top:           100%;
+  left:          0;
+  z-index:       40;
+  min-width:     180px;
+  background:    var(--surface, #fff);
+  border:        1px solid var(--border, rgba(0,0,0,0.1));
+  border-radius: 8px;
+  box-shadow:    0 8px 24px rgba(0,0,0,0.14);
+  padding:       4px;
+}
+.data-grid__Grid_Body_Row_CogMenu_Item {
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  width:         100%;
+  padding:       7px 10px;
+  border:        none;
+  background:    transparent;
+  border-radius: 5px;
+  font-size:     13px;
+  color:         var(--ink, #111);
+  text-align:    left;
+  cursor:        pointer;
+}
+.data-grid__Grid_Body_Row_CogMenu_Item:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.05));
+}
+
+/* Epic (depth 0) reads heavier; child rows are purely structural so the
+   barber-pole stripe stays clean (matches OTV2 --epic / --child). */
+.data-grid__Grid_Body_Row--epic {
+  font-weight: 600;
+}
+.data-grid__Grid_Body_Row--child {
+  /* structural only — no background change */
+}
+
+/* Selected / open row — accent 10% wash (OTV2 --selected). Beats the
+   plain -open background so an expanded-form row reads as selected. */
+.data-grid__Grid_Body_Row--selected,
+.data-grid__Grid_Body_Row--selected:hover {
+  background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface, #fff));
+}
+
+/* Form-open marker — the row whose inline form is expanded gets diagonal
+   barber-pole stripes at -45° that drift continuously, plus an orange
+   #FF6600 edge top + bottom. On OTV2 the top edge was painted on the
+   previous row's border-bottom (cells, :has selector); here the row is one
+   box so both edges live on it directly. */
+.data-grid__Grid_Body_Row--form-open,
+.data-grid__Grid_Body_Row--form-open:hover {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--ink) 3%, var(--surface)) 0,
+    color-mix(in srgb, var(--ink) 3%, var(--surface)) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  background-size: 28.284px 28.284px; /* 20px / cos(45°) — diagonal period */
+  animation: data-grid__form-open-stripes 2.5s linear infinite;
+  border-top:    1px solid #FF6600;
+  border-bottom: 1px solid #FF6600;
+}
+@keyframes data-grid__form-open-stripes {
+  from { background-position: 0 0; }
+  to   { background-position: 28.284px 0; }
+}
+/* Respect motion preference — stripes stay as static hatching, drift stops
+   (defence/finance accessibility default, matches OTV2). */
+@media (prefers-reduced-motion: reduce) {
+  .data-grid__Grid_Body_Row--form-open,
+  .data-grid__Grid_Body_Row--form-open:hover {
+    animation: none;
+  }
+}
+
+/* Lazy child-load placeholder row — shown beneath a parent while its
+   children fetch. Indented to line up under the parent's primary cell
+   (12 + (depth+1)*20 + 32, same offset ResourceTree uses for its Loading
+   row); p_DataGrid supplies the depth-computed value via the
+   --data-grid-loading-indent custom prop (sanctioned runtime-geometry
+   escape hatch — no arbitrary inline styling). */
+.data-grid__Grid_Body_ChildLoading {
+  display:      flex;
+  align-items:  center;
+  min-height:   var(--data-grid-row-height);
+  padding-left: var(--data-grid-loading-indent, 12px);
+  font-size:    12px;
+  font-style:   italic;
+  color:        var(--ink-muted, #777);
+  border-bottom: 1px solid var(--border-row, rgba(0,0,0,0.06));
+}
+
+/* Flyout sibling block — full-width, natural height, in flow.
+   No overflow / max-height — pushing grid taller is intentional. */
+.data-grid__Grid_Body_Flyout {
+  display:       block;
+  width:         100%;
+  background:    var(--surface-sunken, #fafafb);
+  border-bottom: 1px solid var(--border-row, rgba(0,0,0,0.06));
+}
+.data-grid__Grid_Body_Flyout_Inner {
+  padding: 14px 18px;
+}
+
+/* Row gear menu — anchored top-right inside the row. */
+.data-grid__Grid_Body_Row_Menu {
+  position: absolute;
+  top:      0;
+  right:    4px;
+  height:   100%;
+  display:  flex;
+  align-items: center;
+}
+.data-grid__Grid_Body_Row_Menu_Trigger {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  width:           22px;
+  height:          22px;
+  padding:         0;
+  background:      transparent;
+  border:          none;
+  border-radius:   4px;
+  color:           var(--ink-muted, #777);
+  cursor:          pointer;
+  opacity:         0;
+  transition:      opacity 100ms ease;
+}
+.data-grid__Grid_Body_Row:hover .data-grid__Grid_Body_Row_Menu_Trigger,
+.data-grid__Grid_Body_Row-open  .data-grid__Grid_Body_Row_Menu_Trigger {
+  opacity: 1;
+}
+.data-grid__Grid_Body_Row_Menu_Trigger:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.06));
+  color:      var(--ink, #111);
+}
+.data-grid__Grid_Body_Row_Menu_List {
+  position:      absolute;
+  top:           100%;
+  right:         0;
+  z-index:       10;
+  margin:        2px 0 0 0;
+  padding:       4px 0;
+  min-width:     140px;
+  background:    var(--surface, #ffffff);
+  border:        var(--data-grid-border);
+  border-radius: 6px;
+  box-shadow:    0 4px 16px rgba(0,0,0,0.08);
+  list-style:    none;
+}
+.data-grid__Grid_Body_Row_Menu_List_Item {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  width:       100%;
+  padding:     6px 12px;
+  background:  transparent;
+  border:      none;
+  font:        inherit;
+  font-size:   12px;
+  color:       var(--ink, #111);
+  cursor:      pointer;
+  text-align:  left;
+}
+.data-grid__Grid_Body_Row_Menu_List_Item:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+}
+.data-grid__Grid_Body_Row_Menu_List_Item svg {
+  width: 14px; height: 14px; color: var(--ink-muted, #777);
+}
+
+/* Pagination — radius inherits via root overflow:hidden. */
+.data-grid__Pagination {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             12px;
+  padding:         10px 18px;
+  border-top:      var(--data-grid-border);
+  background:      var(--surface, #ffffff);
+  font-size:       12px;
+  color:           var(--ink-muted, #777);
+}
+.data-grid__Pagination_Range {
+  font-variant-numeric: tabular-nums;
+}
+.data-grid__Pagination_PageSizes {
+  display: inline-flex;
+  gap:     2px;
+}
+.data-grid__Pagination_PageSizes_Btn {
+  min-width:     28px;
+  padding:       4px 8px;
+  background:    transparent;
+  border:        none;
+  border-radius: 4px;
+  font:          inherit;
+  color:         var(--ink-muted, #777);
+  cursor:        pointer;
+  font-variant-numeric: tabular-nums;
+}
+.data-grid__Pagination_PageSizes_Btn:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+  color:      var(--ink, #111);
+}
+.data-grid__Pagination_PageSizes_Btn-active {
+  color:       var(--ink, #111);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Work-items page sidecar styles (consumed by
+   p_workItems_dataGridConfig.tsx). These live next to DataGrid's
+   own styles for proximity, but are NAMED under the data-grid
+   root block so they participate in the chain hygiene check.
+   ============================================================ */
+
+/* Generic cell helpers used by the work-items column renderers. */
+/* Primary (tree) cell — the Summary column in tree mode. Lays out the
+   ResourceTree tree-line SVG + expander caret + title text in a single flex
+   row so the lines/caret sit flush-left and the title flexes + truncates.
+   The SVG and the expander own their own dimensions (from the shared
+   ResourceTree helpers); this rule only handles the horizontal flow +
+   the label's overflow. */
+.data-grid__cell_treeCell {
+  display:     inline-flex;
+  align-items: center;
+  gap:         2px;
+  min-width:   0;
+  width:       100%;
+}
+.data-grid__cell_treeCell_label {
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+.data-grid__cell_typeBadge {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  min-width:       22px;
+  height:          16px;
+  padding:         0 4px;
+  background:      #6b7280;
+  color:           #fff;
+  border-radius:   3px;
+  font-family:     var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size:       10px;
+  font-weight:     700;
+  letter-spacing:  0.04em;
+}
+.data-grid__cell_idCell {
+  display:     inline-flex;
+  align-items: center;
+  gap:         6px;
+}
+.data-grid__cell_idCell_id {
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size:   12px;
+  color:       var(--accent, #6366f1);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.data-grid__cell_statusPills {
+  display:     inline-flex;
+  align-items: center;
+  gap:         3px;
+}
+.data-grid__cell_statusPills_pill {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  width:           22px;
+  height:          18px;
+  border:          1px solid var(--border-row, rgba(0,0,0,0.12));
+  border-radius:   3px;
+  font-family:     var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size:       11px;
+  color:           var(--ink-muted, #777);
+  background:      transparent;
+}
+.data-grid__cell_statusPills_pill-active {
+  background:  var(--accent-muted, #c7d2fe);
+  border-color: var(--accent, #6366f1);
+  color:       var(--accent, #4338ca);
+  font-weight: 700;
+}
+.data-grid__cell_ownerPill {
+  display:       inline-flex;
+  align-items:   center;
+  padding:       2px 8px;
+  background:    var(--surface-sunken, #f3f3f5);
+  border-radius: 4px;
+  font-size:     11px;
+  color:         var(--ink, #111);
+}
+
+/* Flyout body (work-items specific). */
+.data-grid__work_items_flyoutBody {
+  display:        flex;
+  flex-direction: column;
+  gap:            12px;
+  font-size:      12px;
+}
+.data-grid__work_items_flyoutBody_Header {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+}
+.data-grid__work_items_flyoutBody_Header_Mode {
+  margin-left:    auto;
+  padding:        2px 8px;
+  background:     var(--ink, #111);
+  color:          #fff;
+  border-radius:  3px;
+  font-family:    var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size:      10px;
+  letter-spacing: 0.05em;
+}
+.data-grid__work_items_flyoutBody_View {
+  display:                grid;
+  grid-template-columns:  120px 1fr;
+  gap:                    6px 12px;
+  margin:                 0;
+}
+.data-grid__work_items_flyoutBody_View dt {
+  color:       var(--ink-muted, #777);
+  font-weight: 500;
+}
+.data-grid__work_items_flyoutBody_View dd {
+  margin: 0;
+}
+.data-grid__work_items_flyoutBody_Confirm {
+  display:        flex;
+  flex-direction: column;
+  gap:            10px;
+}
+.data-grid__work_items_flyoutBody_Confirm_Actions {
+  display: flex;
+  gap:     8px;
+}
+.data-grid__work_items_flyoutBody_Confirm_Actions button {
+  height:        28px;
+  padding:       0 12px;
+  background:    var(--surface, #ffffff);
+  border:        var(--data-grid-border);
+  border-radius: 6px;
+  font:          inherit;
+  font-size:     12px;
+  cursor:        pointer;
+}
+.data-grid__work_items_flyoutBody_Confirm_Actions button:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+}
+
+/* ============================================================
+   <FormRenderer> — spec-driven form mounted inside a DataGrid
+   row flyout. Replicates the visual shape of OTV2's
+   ArtefactInlineForm: head band (with banner colours), action
+   toolbar (with confirm-arm flow), two-column body, footer.
+   ============================================================ */
+.data-grid__form {
+  display:        flex;
+  flex-direction: column;
+  gap:            0;
+  font-size:      13px;
+  color:          var(--ink, #111);
+}
+
+/* Head band — title + banner colours (normal / amber / red). */
+.data-grid__form_Head {
+  padding:       10px 14px;
+  background:    var(--surface-sunken, #f3f3f5);
+  color:         var(--ink, #111);
+  border:        var(--data-grid-border);
+  border-radius: 6px 6px 0 0;
+  border-bottom: none;
+}
+.data-grid__form_Head-duplicate {
+  background: #fcd34d;
+  color:      #7c2d12;
+}
+.data-grid__form_Head-deleting {
+  background: #b91c1c;
+  color:      #fff;
+}
+.data-grid__form_Head_Title {
+  margin:      0;
+  font-size:   13px;
+  font-weight: 600;
+  color:       inherit;
+  line-height: 1.3;
+}
+
+/* Action toolbar — same height + padding as ObjectTree's top bar. */
+.data-grid__form_Actionbar {
+  display:       flex;
+  align-items:   center;
+  gap:           6px;
+  padding:       8px 14px;
+  background:    var(--surface, #ffffff);
+  border-left:   var(--data-grid-border);
+  border-right:  var(--data-grid-border);
+  border-bottom: var(--data-grid-border);
+  flex-wrap:     wrap;
+}
+.data-grid__form_Actionbar_Btn {
+  height:        28px;
+  padding:       0 12px;
+  background:    var(--surface, #ffffff);
+  border:        var(--data-grid-border);
+  border-radius: 6px;
+  font:          inherit;
+  font-size:     12px;
+  cursor:        pointer;
+  color:         var(--ink, #111);
+}
+.data-grid__form_Actionbar_Btn:hover {
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+}
+.data-grid__form_Actionbar_Btn-danger {
+  color:        #b91c1c;
+  border-color: #fecaca;
+}
+.data-grid__form_Actionbar_Btn-danger:hover {
+  background:   #fee2e2;
+}
+.data-grid__form_Actionbar_Btn-confirm {
+  background:   #dc2626;
+  color:        #fff;
+  border-color: #dc2626;
+}
+.data-grid__form_Actionbar_Btn-confirm:hover {
+  background:   #b91c1c;
+  border-color: #b91c1c;
+}
+.data-grid__form_Actionbar_Spacer {
+  flex: 1 1 auto;
+}
+
+/* Two-column body. data-columns="1" → single column. */
+.data-grid__form_Cols {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   18px;
+  padding:               16px 14px;
+  background:            var(--surface, #ffffff);
+  border-left:           var(--data-grid-border);
+  border-right:          var(--data-grid-border);
+}
+.data-grid__form_Cols[data-columns="1"] {
+  grid-template-columns: 1fr;
+}
+.data-grid__form_Cols_Col {
+  display:        flex;
+  flex-direction: column;
+  gap:            14px;
+  min-width:      0;
+}
+
+/* Section group. */
+.data-grid__form_Section {
+  display:        flex;
+  flex-direction: column;
+  gap:            10px;
+}
+.data-grid__form_Section_Label {
+  margin:         0 0 4px 0;
+  font-size:      10px;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          var(--ink-muted, #777);
+}
+
+/* Field. */
+.data-grid__form_Field {
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+  font-size:      12px;
+}
+.data-grid__form_Field-static {
+  flex-direction: row;
+  align-items:    center;
+  gap:            10px;
+}
+.data-grid__form_Field_Label {
+  font-size:   11px;
+  font-weight: 500;
+  color:       var(--ink-muted, #777);
+}
+.data-grid__form_Field_Label_Hint {
+  font-weight: 400;
+  color:       var(--ink-muted, #999);
+}
+.data-grid__form_Field_Static {
+  font-size: 12px;
+  color:     var(--ink, #111);
+}
+.data-grid__form_Field_Stub {
+  display:       block;
+  padding:       10px 12px;
+  background:    var(--surface-sunken, #f3f3f5);
+  border:        1px dashed var(--border-panel, rgba(0,0,0,0.15));
+  border-radius: 4px;
+  color:         var(--ink-muted, #999);
+  font-style:    italic;
+  font-size:     12px;
+}
+.data-grid__form_Field_Input {
+  width:         100%;
+  height:        30px;
+  padding:       0 8px;
+  background:    var(--surface, #ffffff);
+  border:        var(--data-grid-border);
+  border-radius: 4px;
+  font:          inherit;
+  font-size:     12px;
+  color:         var(--ink, #111);
+}
+.data-grid__form_Field_Input-textarea {
+  height:        auto;
+  padding:       8px;
+  resize:        vertical;
+  line-height:   1.4;
+}
+.data-grid__form_Field_Input:focus {
+  outline:       2px solid var(--accent, #6366f1);
+  outline-offset: -1px;
+}
+
+/* Toggle. */
+.data-grid__form_Toggle {
+  display:     inline-flex;
+  align-items: center;
+  gap:         8px;
+  font-size:   12px;
+  cursor:      pointer;
+}
+
+/* Hierarchy snapshot stub. */
+.data-grid__form_Hierarchy {
+  display:        flex;
+  flex-direction: column;
+  gap:            6px;
+  padding:        10px 12px;
+  background:     var(--surface-sunken, #f3f3f5);
+  border-radius:  4px;
+  font-size:      12px;
+}
+.data-grid__form_Hierarchy_Parent {
+  color: var(--ink-muted, #777);
+}
+.data-grid__form_Hierarchy_Selected {
+  font-weight: 600;
+}
+
+/* Footer — single primary action. */
+.data-grid__form_Footer {
+  display:         flex;
+  justify-content: flex-end;
+  padding:         10px 14px;
+  background:      var(--surface, #ffffff);
+  border:          var(--data-grid-border);
+  border-radius:   0 0 6px 6px;
+  border-top:      none;
+}
+.data-grid__form_Footer_Btn {
+  height:        30px;
+  padding:       0 14px;
+  background:    var(--surface, #ffffff);
+  border:        var(--data-grid-border);
+  border-radius: 6px;
+  font:          inherit;
+  font-size:     12px;
+  cursor:        pointer;
+}
+.data-grid__form_Footer_Btn-primary {
+  background:   var(--accent, #6366f1);
+  border-color: var(--accent, #6366f1);
+  color:        #fff;
+}
+.data-grid__form_Footer_Btn-primary:hover {
+  background:   var(--accent-hover, #4f46e5);
+  border-color: var(--accent-hover, #4f46e5);
+}
+
+
 /* ════════════════════════════════════════════════════════════════════════
    Form Layout Builder (flb-*) — 2026-05-30
    Fullscreen drag-and-drop form-layout authoring surface. See
@@ -19512,7 +20593,7 @@ tr.is-editing {
 /* ── Canvas ── */
 .flb-canvas-wrap {
   overflow-y: auto;
-  padding: var(--space-7, 40px) var(--space-8, 48px);
+  padding: 20px;
   display: flex; flex-direction: column; gap: var(--space-5, 20px);
 }
 .flb-canvas-empty {
@@ -19521,7 +20602,7 @@ tr.is-editing {
   min-height: 200px;
 }
 .flb-canvas {
-  max-width: 920px; width: 100%; margin: 0 auto;
+  width: 100%;
 }
 
 /* row in canvas (rendered via FormLayoutRenderer with className flb-canvas-row) */
@@ -19590,18 +20671,70 @@ tr.is-editing {
   color: var(--ink-subtle, #9b9b9b);
 }
 
-/* insert gap (push-down) */
-.flb-gap { height: 10px; display: flex; align-items: center; }
+/* insert gap (push-down + add-row affordance + reorder target) */
+.flb-gap {
+  position: relative; min-height: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
 .flb-gap__Line {
   flex: 1 1 auto; height: 0; border-top: 2px dashed transparent;
   border-radius: 2px; transition: border-color 120ms ease;
 }
-.flb-gap-over { height: 28px; }
+.flb-gap-over { min-height: 28px; }
 .flb-gap-over .flb-gap__Line { border-color: var(--accent, #1a1a1a); }
+
+/* during a row drag, gaps expand into easy drop targets and reveal their line */
+.flb-gap-rowtarget { min-height: 36px; }
+.flb-gap-rowtarget .flb-gap__Line { border-color: var(--border-default, #cfcabf); }
+.flb-gap-rowtarget.flb-gap-over { min-height: 44px; }
+.flb-gap-rowtarget.flb-gap-over .flb-gap__Line {
+  border-color: var(--accent, #1a1a1a); border-top-width: 3px;
+}
+
+/* add-row affordance — hidden until the gap is hovered or its menu is open */
+.flb-gap__Insert { position: relative; flex: 0 0 auto; }
+.flb-gap__Insert_Btn {
+  width: 22px; height: 22px; border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
+  color: var(--ink-subtle, #9b9b9b); font-size: 15px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: all 120ms ease;
+}
+.flb-gap:hover .flb-gap__Insert_Btn,
+.flb-gap-menuopen .flb-gap__Insert_Btn { opacity: 1; }
+.flb-gap__Insert_Btn:hover { border-color: var(--accent, #1a1a1a); color: var(--accent, #1a1a1a); }
+.flb-gap__Insert_Menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 10;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 4px; background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-md, 8px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+.flb-gap__Insert_Item {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 10px; background: transparent; border: none; border-radius: var(--radius-sm, 6px);
+  font-size: 12px; cursor: pointer; white-space: nowrap; transition: background 120ms ease;
+}
+.flb-gap__Insert_Item:hover { background: var(--surface-sunken, #f6f4f0); }
+.flb-gap__Insert_Item_Text { color: var(--text-secondary, #5c5c5c); }
+
+/* row reorder wrapper + handle */
+.flb-canvas-rowwrap { transition: opacity 120ms ease; }
+.flb-canvas-rowwrap-dragging { opacity: 0.4; }
+.flb-row-aside { display: flex; align-items: center; gap: 4px; padding-top: 4px; }
+.flb-row-handle {
+  width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
+  color: var(--ink-subtle, #9b9b9b); font-size: 13px; line-height: 1; cursor: grab;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 120ms ease; touch-action: none;
+}
+.flb-row-handle:hover { border-color: var(--accent, #1a1a1a); color: var(--accent, #1a1a1a); }
+.flb-row-handle:active { cursor: grabbing; }
 
 /* template picker */
 .flb-templates {
-  max-width: 920px; width: 100%; margin: 0 auto;
+  width: 100%;
   display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px);
   padding-top: var(--space-4, 16px);
   border-top: 1px dashed var(--border-default, #e5e1da);
@@ -19629,6 +20762,42 @@ tr.is-editing {
 .flb-btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
 .flb-btn-ghost { background: transparent; color: var(--text-primary, #1a1a1a); border-color: var(--border-default, #e5e1da); }
 .flb-btn-ghost:hover:not(:disabled) { background: var(--surface-sunken, #f6f4f0); }
+.flb-btn-active { background: var(--accent-muted, rgba(26,26,26,0.08)); border-color: var(--accent, #1a1a1a); }
+
+/* Form Layout Builder — full-canvas preview (renders the in-progress form) */
+.flb-canvas-wrap-preview { background: var(--surface-sunken, #f6f4f0); }
+.flb-preview {
+  width: 100%; max-width: 760px; margin: 0 auto;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-7, 40px);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+.flb-preview-grid { gap: var(--space-5, 20px); }
+.flb-preview-grid .flb-grid__Row_Cells { gap: var(--space-5, 20px); }
+.flb-preview__Empty { min-height: 1px; }
+.flb-preview__Field { display: flex; flex-direction: column; gap: 6px; }
+.flb-preview__Field_Label {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary, #5c5c5c);
+}
+.flb-preview__Field_Input {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-md, 8px);
+  background: var(--surface-sunken, #f9f7f4); color: var(--text-primary, #1a1a1a);
+  font-size: 14px;
+}
+.flb-preview__Field_Input-area { resize: none; }
+.flb-preview__Field_Input:disabled { opacity: 1; cursor: default; }
+.flb-preview__Field_Toggle {
+  width: 40px; height: 22px; border-radius: var(--radius-full, 999px);
+  background: var(--border-default, #e5e1da); position: relative; display: inline-block;
+}
+.flb-preview__Field_Toggle::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: var(--radius-full, 999px);
+  background: var(--surface, #fff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
 
 /* Form Layout Builder — launch panel (on custom-fields page) */
 .flb-launch {
@@ -19667,3 +20836,72 @@ tr.is-editing {
 .flb-runtime__Carried_Title { font-size: 13px; font-weight: 600; margin: 0; }
 .flb-runtime__Carried_Hint { font-size: 12px; color: var(--text-secondary, #5c5c5c); margin: 0; }
 .flb-runtime__Carried_List { display: flex; flex-direction: column; gap: var(--space-3, 12px); }
+
+/* Form Layout Builder — launch type-picker dropdown (grouped Strategic/Execution) */
+.flb-typepick {
+  display: flex; flex-direction: column; gap: 6px;
+  flex-basis: 100%;
+  max-width: 360px;
+}
+.flb-typepick__Label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-subtle, #9b9b9b);
+}
+.flb-typepick__Select {
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default, #e5e1da);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  color: var(--ink, #1a1a1a);
+  cursor: pointer;
+}
+.flb-typepick__Select:focus { outline: none; border-color: var(--accent, #1a1a1a); }
+.flb-typepick__Select:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Form Layout Builder — sidebar "Add custom field" button (Custom section) */
+.flb-sidebar__AddField {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  font-size: 12px; font-weight: 600;
+  color: var(--accent, #1a1a1a);
+  background: transparent;
+  border: 1px dashed var(--border-default, #cfcabf);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.flb-sidebar__AddField:hover {
+  border-color: var(--accent, #1a1a1a);
+  background: var(--accent-muted, rgba(26,26,26,0.06));
+}
+.flb-sidebar__AddField_Plus { font-size: 14px; line-height: 1; }
+
+/* Form Layout Builder — add-custom-field modal (mounts above the canvas) */
+.flb-fieldmodal {
+  position: fixed; inset: 0;
+  z-index: 1200;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-5, 20px);
+}
+.flb-fieldmodal__Scrim {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.42);
+}
+.flb-fieldmodal__Card {
+  position: relative;
+  width: min(960px, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.28);
+}
+.flb-fieldmodal__Head {
+  padding: var(--space-4, 16px) var(--space-5, 20px);
+  border-bottom: 1px solid var(--border-default, #e5e1da);
+}
+.flb-fieldmodal__Title { font-size: 15px; font-weight: 600; margin: 0; color: var(--ink, #1a1a1a); }
+.flb-fieldmodal__Sub { font-size: 12px; color: var(--text-secondary, #5c5c5c); margin: 4px 0 0; }
+.flb-fieldmodal__Body { padding: var(--space-5, 20px); }

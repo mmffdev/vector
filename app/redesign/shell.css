@@ -412,7 +412,6 @@
 .rail-2 {
   width: var(--rail-2-w);
   background: var(--surface);
-  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -634,7 +633,7 @@
   height: calc(100vh - var(--rd-statusbar-h));
   overflow: hidden;
   min-width: 0;
-  background: var(--surface-sunken);
+  background: #ffffff;
 }
 
 .rd-shell__main_QrAnchor {
@@ -662,7 +661,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 0 30px;
-  background: var(--surface-sunken);
+  background: #ffffff;
 }
 
 .main_title__text {

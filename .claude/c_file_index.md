@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-05-29 00:56:21
+**Generated:** 2026-05-30 01:48:15
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -34,6 +34,10 @@ Purpose: _(unset)_
 2 file(s) · key: sentinel.page.risks.test.tsx, page.test.tsx
 Purpose: _(unset)_
 
+### app/(user)/scope
+2 file(s) · key: p_scope_workItemsForm_dataGridConfig.tsx, page.tsx
+Purpose: _(unset)_
+
 ### app/(user)/user-management
 2 file(s) · key: page.tsx, layout.tsx
 Purpose: _(unset)_
@@ -47,7 +51,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/work-items
-2 file(s) · key: page.tsx, layout.tsx
+3 file(s) · key: p_workItems_dataGridConfig.tsx, page.tsx, layout.tsx
 Purpose: _(unset)_
 
 ### app/(user)/workspace-admin/artefacts
@@ -55,15 +59,19 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components
-75 file(s) · key: work-items-tree-config.tsx, ResourceTree.tsx, BulkActionBar.tsx
+75 file(s) · key: ResourceTree.tsx, work-items-tree-config.tsx, NavigationPie.tsx
 Purpose: _(unset)_
 
 ### app/components/ArtefactInlineForm
-7 file(s) · key: ArtefactInlineForm.tsx, useParentCandidates.ts, EditCustomFields.tsx
+7 file(s) · key: EditCustomFields.tsx, ArtefactInlineForm.tsx, useParentCandidates.ts
 Purpose: _(unset)_
 
 ### app/components/CustomFields
-4 file(s) · key: CustomFieldsPageBody.tsx, TypeBindingsPicker.tsx, CustomFieldFlyout.tsx
+4 file(s) · key: TypeBindingsPicker.tsx, CustomFieldEditForm.tsx, CustomFieldFlyout.tsx
+Purpose: _(unset)_
+
+### app/components/DataGrid
+6 file(s) · key: useRowFlyout.ts, p_DataGrid.tsx, useColumnManager.ts
 Purpose: _(unset)_
 
 ### app/components/FlowBoard
@@ -99,7 +107,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/ObjectTreeV2/adapters
-3 file(s) · key: customFieldsAdapter.tsx, types.ts, workItemsAdapter.tsx
+3 file(s) · key: workItemsAdapter.tsx, customFieldsAdapter.tsx, types.ts
 Purpose: _(unset)_
 
 ### app/components/ObjectTreeV2/hooks
@@ -119,7 +127,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/SavedViews
-7 file(s) · key: useSavedViews.ts, types.ts, SavedViewsDropdown.tsx
+8 file(s) · key: PageSavedViewsControl.tsx, types.ts, useSavedViews.ts
 Purpose: _(unset)_
 
 ### app/components/WorkItemRelations
@@ -147,7 +155,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/hooks
-17 file(s) · key: useNextSprint.ts, useStepUpAction.ts, useDraft.ts
+17 file(s) · key: useResourceRank.ts, useNextSprint.ts, useStepUpAction.ts
 Purpose: _(unset)_
 
 ### app/hooks/__tests__
@@ -193,6 +201,7 @@ Purpose: _(unset)_
 - app/(user)/dev/library
 - app/(user)/favourites
 - app/(user)/library-releases
+- app/(user)/milestones
 - app/(user)/my-vista
 - app/(user)/p/[id]/[[...vid]]
 - app/(user)/planning
@@ -203,7 +212,6 @@ Purpose: _(unset)_
 - app/(user)/portfolio-settings
 - app/(user)/releases
 - app/(user)/risk
-- app/(user)/scope
 - app/(user)/sprints
 - app/(user)/table-harness
 - app/(user)/theme-classic
@@ -212,6 +220,7 @@ Purpose: _(unset)_
 - app/(user)/value-flow
 - app/(user)/value-sprint
 - app/(user)/value-sprint-board
+- app/(user)/value-sprint-review
 - app/(user)/value-status
 - app/(user)/vector-admin
 - app/(user)/vector-admin/__tests__
@@ -359,7 +368,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-18 file(s) · key: columns.go, service_test.go, handler.go
+21 file(s) · key: columns_fourth_wave_test.go, handler.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
@@ -423,7 +432,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/fields
-9 file(s) · key: sql.go, handler.go, bindings_integration_test.go
+9 file(s) · key: writer_test.go, handler.go, bindings_integration_test.go
 Purpose: _(unset)_
 
 ### backend/internal/flowboard
@@ -563,7 +572,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/savedviews
-8 file(s) · key: types.go, store.go, sql.go
+8 file(s) · key: service_test.go, service.go, types.go
 Purpose: _(unset)_
 
 ### backend/internal/search
@@ -599,11 +608,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/timeboxreleases
-5 file(s) · key: types.go, sql.go, service.go
+5 file(s) · key: sql.go, handler.go, columns.go
 Purpose: _(unset)_
 
 ### backend/internal/timeboxsprints
-8 file(s) · key: service.go, sql.go, ancestor_walk_test.go
+8 file(s) · key: sql.go, handler.go, columns.go
 Purpose: _(unset)_
 
 ### backend/internal/topology
@@ -653,7 +662,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/scripts
-63 file(s) · key: lint_savedviews_writer_only.py, lint_savedviews_context_free.py, lint_no_v1_broker_imports
+64 file(s) · key: lint_custom_field_prefix.py, lint_savedviews_writer_only.py, lint_savedviews_context_free.
 Purpose: _(unset)_
 
 ### dev/scripts/backup/lib
@@ -694,7 +703,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/reports
-1013 file(s) · key: 20260529-005447-addressables.json, 20260529-005431-addressables.json, 20260529-005421-addr
+1074 file(s) · key: 20260530-003807-addressables.json, 20260530-003536-addressables.json, 20260530-001531-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -752,11 +761,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-139 file(s) · key: 145_saved_views.sql, 143_fix_role_cascade_bare_select_plpgsql.sql, 142_nav_cascade_trigger
+157 file(s) · key: 163_archive_resolved_custom_field_rows.sql, 162_artefacts_fourth_wave_core_columns.sql, 16
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-74 file(s) · key: 145_saved_views_DOWN.sql, 143_fix_role_cascade_bare_select_plpgsql_DOWN.sql, 142_nav_casca
+92 file(s) · key: 163_archive_resolved_custom_field_rows_DOWN.sql, 162_artefacts_fourth_wave_core_columns_DO
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/merge_plan
@@ -774,7 +783,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs
-78 file(s) · key: c_c_lsp_mcp.md, c_infra_index.md, c_tech_debt.md
+78 file(s) · key: c_tech_debt.md, c_c_lsp_mcp.md, c_infra_index.md
 Purpose: _(unset)_
 
 ### docs/Database
@@ -794,10 +803,10 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/superpowers/plans
-18 file(s) · key: 2026-05-28-objecttree-generic-rowtype.md, 2026-05-28-saved-views.md, 2026-05-28-custom-fie
+20 file(s) · key: 2026-05-29-objecttree-inline-flyouts.md, 2026-05-29-milestones-page.md, 2026-05-28-objectt
 Purpose: _(unset)_
 
 ### docs/superpowers/specs
-12 file(s) · key: 2026-05-28-objecttree-generic-rowtype-design.md, 2026-05-28-saved-views-design.md, 2026-05
+16 file(s) · key: 2026-05-29-objecttree-inline-flyouts-design.md, 2026-05-29-milestones-page-design.md, 2026
 Purpose: _(unset)_
 

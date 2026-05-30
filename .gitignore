@@ -10,6 +10,7 @@ local-assets/security-flags.jsonl
 prefs-nav-*.png
 avatar-flyout-*.png
 notifications-tabs.png
+scope-*.png
 backend/.env.local
 backend/.env.dev
 backend/.env.staging

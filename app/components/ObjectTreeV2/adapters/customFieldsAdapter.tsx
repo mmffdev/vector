@@ -59,6 +59,63 @@ interface CustomFieldsFilters {
   // unified view. Source-of-truth for CORE rows is the wire payload of
   // /work-items/columns (backend/internal/artefactitems/columns.go).
   source: "all" | "custom" | "core";
+  // Type filter — narrows the grid to one data_type (textbox, select,
+  // …) or "all". Applied client-side in fetchPage against row.data_type.
+  // "all" = no narrowing.
+  dataType: string;
+}
+
+// Closed vocabulary of catalogue data types, mirrored from
+// CustomFieldEditForm.DATA_TYPES. Drives the Type filter chip options
+// and keeps the labels consistent with the Type column cell.
+const DATA_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "All types" },
+  { value: "textbox", label: "Textbox" },
+  { value: "richtext", label: "Rich text" },
+  { value: "integer", label: "Integer" },
+  { value: "decimal", label: "Decimal" },
+  { value: "date", label: "Date" },
+  { value: "boolean", label: "Boolean" },
+  { value: "select", label: "Select" },
+  { value: "multiselect", label: "Multi-select" },
+  { value: "radio", label: "Radio" },
+  { value: "user", label: "User" },
+  { value: "url", label: "URL" },
+];
+
+// Sort one WorkspaceField list by a column key. The catalogue is small
+// (~66 rows, non-paginated) so a client-side comparator is the right
+// tool — the /fields endpoint has no ORDER BY param and the shared
+// useWorkItemsSort whitelist doesn't cover these keys, so the adapter
+// owns sort end-to-end. Unknown keys fall through to label order.
+function sortFields(
+  rows: WorkspaceField[],
+  key: string | null,
+  dir: "asc" | "desc",
+): WorkspaceField[] {
+  if (!key) return rows;
+  const pick = (r: WorkspaceField): string => {
+    switch (key) {
+      case "label":
+        return r.label ?? "";
+      case "name":
+        return r.name ?? "";
+      case "data_type":
+        return r.data_type ?? "";
+      case "scope":
+        return rowScope(r) === CORE_SCOPE_SENTINEL ? "core" : (r.scope ?? "");
+      case "source":
+        return rowScope(r) === CORE_SCOPE_SENTINEL ? "core" : "custom";
+      case "updated_at":
+        return r.updated_at ?? "";
+      default:
+        return r.label ?? "";
+    }
+  };
+  const sorted = [...rows].sort((a, b) =>
+    pick(a).localeCompare(pick(b), undefined, { numeric: true, sensitivity: "base" }),
+  );
+  return dir === "desc" ? sorted.reverse() : sorted;
 }
 
 // Synthetic discriminator written into `scope` on CORE rows so the
@@ -402,6 +459,35 @@ function SourceFilterChip({ value, onChange }: SourceFilterChipProps) {
   );
 }
 
+// ── Internal: type filter chip ──────────────────────────────────────────────
+//
+// Sibling of the Scope/Source chips — same pill geometry. Narrows the grid
+// to one data_type. Applied client-side in fetchPage against row.data_type.
+
+interface TypeFilterChipProps {
+  value: CustomFieldsFilters["dataType"];
+  onChange: (next: CustomFieldsFilters["dataType"]) => void;
+}
+
+function TypeFilterChip({ value, onChange }: TypeFilterChipProps) {
+  return (
+    <label className="custom-fields-scope-chip">
+      <span className="custom-fields-scope-chip__Label">Type</span>
+      <select
+        className="custom-fields-scope-chip__Select"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {DATA_TYPE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 // ── Util: ISO → short locale date ───────────────────────────────────────────
 //
 // Keeps the dependency surface tight (no date-fns / dayjs needed). Falls
@@ -428,7 +514,7 @@ export function createCustomFieldsAdapter(
   // to thread filtersRef into the params shape (which it doesn't,
   // today). The pointer is single-mount per grid — the factory is
   // called once per ObjectTreeV2 mount.
-  let currentFilters: CustomFieldsFilters = { scope: "all", source: "custom" };
+  let currentFilters: CustomFieldsFilters = { scope: "all", source: "custom", dataType: "all" };
 
   return {
     // ── Extras: nothing to inject (no flowStates, no colourMap). ──────────
@@ -451,28 +537,30 @@ export function createCustomFieldsAdapter(
       // user opts in to see CORE rows. See the 2026-05-29 core-field
       // demotion spec §4.3 for the design call.
       const [source, setSource] = useState<CustomFieldsFilters["source"]>("custom");
+      const [dataType, setDataType] = useState<CustomFieldsFilters["dataType"]>("all");
       const [sortKey, setSortKey] = useState<string>("label");
       const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-      const filtersRef = useRef<CustomFieldsFilters>({ scope, source });
+      const filtersRef = useRef<CustomFieldsFilters>({ scope, source, dataType });
       // Keep filtersRef AND the factory-scoped currentFilters pointer
       // current so the host fetch loop AND fetchPage see the latest
-      // scope + source when chips fire (matches the WorkItemsAdapter
+      // scope + source + type when chips fire (matches the WorkItemsAdapter
       // pattern; the currentFilters mirror is local because fetchPage
       // doesn't receive filtersRef in its params shape).
       useEffect(() => {
-        filtersRef.current = { scope, source };
-        currentFilters = { scope, source };
-      }, [scope, source]);
+        filtersRef.current = { scope, source, dataType };
+        currentFilters = { scope, source, dataType };
+      }, [scope, source, dataType]);
 
       return {
-        // Two chips rendered side-by-side in the ActionBar filter slot.
-        // Order: Source first (the new toggle), Scope second (existing).
-        // Wrapped in a fragment because filterChips is React.ReactNode.
+        // Three chips rendered side-by-side in the ActionBar filter slot.
+        // Order: Source, Scope, Type. Wrapped in a fragment because
+        // filterChips is React.ReactNode.
         filterChips: (
           <>
             <SourceFilterChip value={source} onChange={setSource} />
             <ScopeFilterChip value={scope} onChange={setScope} />
+            <TypeFilterChip value={dataType} onChange={setDataType} />
           </>
         ),
         sortKey,
@@ -482,14 +570,14 @@ export function createCustomFieldsAdapter(
           setSortDir(d);
         },
         filtersRef: filtersRef as React.MutableRefObject<unknown>,
-        // Refetch trigger — encodes Source + Scope so a chip toggle
-        // changes the string, which p_ObjectTree.tsx passes as
+        // Refetch trigger — encodes Source + Scope + Type so a chip
+        // toggle changes the string, which p_ObjectTree.tsx passes as
         // useObjectTreeWindow's filterQuery dep. Without this string
         // the window hook never sees the filter change and reuses the
         // cached page → chips do nothing on screen (2026-05-29 bug).
         // The "&" prefix matches the WorkItem filterQuery convention so
         // the existing concatenation idiom downstream still works.
-        filterQuery: `&_source=${source}&_scope=${scope}`,
+        filterQuery: `&_source=${source}&_scope=${scope}&_data_type=${dataType}`,
       };
     },
 
@@ -576,7 +664,10 @@ export function createCustomFieldsAdapter(
     // math is owned by ResourceTree's window logic at current scale (66
     // rows live). Add ?limit/?offset to the wire when catalogue size
     // grows past ~500.
-    async fetchPage(): Promise<{ items: WorkspaceField[]; total: number }> {
+    async fetchPage(params: {
+      sortKey: string | null;
+      sortDir: "asc" | "desc";
+    }): Promise<{ items: WorkspaceField[]; total: number }> {
       // Read the active source filter from the factory-scoped mirror
       // (updated by useFiltersAndSort's effect). Default "custom" keeps
       // today's behaviour when the chip hasn't been touched yet.
@@ -607,10 +698,25 @@ export function createCustomFieldsAdapter(
 
       // Segmentation: in "all" mode show CUSTOM rows first, then CORE
       // (matches the user's mental model — the rows they own come first,
-      // the schema-supplied rows come after as a reference set). Inside
-      // each segment, preserve the server-supplied order (the host
-      // applies sort on top via its sort state).
-      const items: WorkspaceField[] = [...customRows, ...coreRows];
+      // the schema-supplied rows come after as a reference set).
+      let items: WorkspaceField[] = [...customRows, ...coreRows];
+
+      // Type filter — narrow to one data_type when the chip is set to
+      // anything other than "all". Applied here (client-side) because the
+      // /fields endpoint has no type param and CORE rows are synthesised
+      // locally anyway.
+      const dataType = currentFilters.dataType;
+      if (dataType && dataType !== "all") {
+        items = items.filter((r) => r.data_type === dataType);
+      }
+
+      // Sort — the shared useWorkItemsSort whitelist doesn't cover the
+      // catalogue's columns, so the adapter owns ordering. The host feeds
+      // the adapter's own sort state in via params (a header click updates
+      // it through useFiltersAndSort → p_ObjectTree → useObjectTreeWindow,
+      // which re-invokes fetchPage). Default label-asc when unset.
+      items = sortFields(items, params.sortKey ?? "label", params.sortDir);
+
       return { items, total: items.length };
     },
 

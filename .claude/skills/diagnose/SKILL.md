@@ -115,3 +115,20 @@ Required before declaring done:
 - [ ] The hypothesis that turned out correct is stated in the commit / PR message — so the next debugger learns
 
 **Then ask: what would have prevented this bug?** If the answer involves architectural change (no good test seam, tangled callers, hidden coupling) hand off to the `/improve-codebase-architecture` skill with the specifics. Make the recommendation **after** the fix is in, not before — you have more information now than when you started.
+
+---
+
+## Tracing authority through a request — "how is X scoped / authorised?"
+
+A special case that traps even careful tracing: **authority that enters via middleware is invisible to the handler/service/SQL signatures.** A `ctx.Context`-injected scope clamp, tenant ID, or role set leaves no trace at the call site — the handler reads it with a quiet `FromCtx(ctx)` while loud, in-handler machinery (`?meg=` focus hints, `CanReadScope`, 403 branches) dominates the eye. Tracers over-weight the loud machinery and name the wrong thing as the authority.
+
+Origin: 2026-05-30 — a sub-agent traced "how is the work-items grid scoped?" and named `?meg=` (a cosmetic, re-validated focus *hint*, named after Megan, PLA-0053) as the scope authority. The real authority is the JWT-anchored `AllowedSubtreeIDs` clamp computed in `sentinel.Middleware` and injected via ctx — `?meg=` carries **no authority of its own** and cannot widen scope. The handler-only trace missed it because the clamp never appears in any handler/service signature.
+
+When the question is "how is X scoped / authorised / filtered" on a request, follow this **before** answering:
+
+1. **Trace the route mount first, not the handler.** Enumerate every `r.Route` / `r.Use` / `.With(...)` middleware in the chain that reaches the handler. Authority is frequently established in middleware and injected via ctx — it will never show up if you start at the handler body.
+2. **For every `FromCtx` / `ctx.Value` read in the handler/service, find its SOLE writer.** The writer is the authority. The reader is just a consumer. Name the writer.
+3. **Classify each filter ESTABLISH vs NARROW.** An *establishing* filter sets the ceiling of what the caller may see (the JWT-anchored clamp). A *narrowing* input (a focus hint, a UI filter, a `?meg=`) can only sub-select within that ceiling and is re-validated every request — it is never the authority, no matter how prominent it looks in the handler.
+4. **Validate by the forgery test, not the happy path.** Ask "if the caller forges / stales / drops this input, what happens?" The authority is whatever still holds the line under forgery. If forging the input changes nothing (ignored / falls back / 403), it was never the authority. The happy path makes a hint *look* authoritative; the forgery path reveals the real gate.
+
+This is the disciplined answer to "so we know the truth each time" — the trace is not done until you have named the sole writer of every ctx-injected value in the path and confirmed it holds under forgery.

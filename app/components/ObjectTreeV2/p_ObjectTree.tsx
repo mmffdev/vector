@@ -374,6 +374,21 @@ export default function ObjectTree<T = WorkItem>({
   const adapterFilterChips = adapterFilters?.filterChips ?? null;
   const adapterFilterQuery = adapterFilters?.filterQuery ?? "";
 
+  // Sort precedence: when an adapter is present it owns the sortable-key
+  // vocabulary (e.g. custom-fields sorts on label/name/data_type/scope/
+  // updated_at — none of which are in useWorkItemsSort's whitelist, so
+  // routing custom-field sort clicks through the work-items hook silently
+  // collapses them to null and nothing sorts). The adapter's own sort
+  // state has no whitelist, flows straight into fetchPage's params, and
+  // the adapter applies it client-side. Non-adapter WorkItem mounts keep
+  // the whitelisted server-side sort unchanged.
+  const effectiveSortKey = adapter ? (adapterFilters?.sortKey ?? null) : sortKey;
+  const effectiveSortDir = adapter ? (adapterFilters?.sortDir ?? "asc") : sortDir;
+  const effectiveSetSort: (key: string | null, dir: "asc" | "desc") => void =
+    adapter && adapterFilters
+      ? (key, dir) => { if (key) adapterFilters.setSort(key, dir); }
+      : (key, dir) => setSort(key as SortKey | null, dir);
+
   // PLA-0021 / 00456 — multi-select state lives here; the tree consumes
   // it via the SelectionConfig prop set, and BulkActionBar reads it to
   // decide whether to render itself.
@@ -912,8 +927,8 @@ export default function ObjectTree<T = WorkItem>({
       resourceUrl,
       pageSize,
       pageIndex,
-      sortKey,
-      sortDir,
+      sortKey: effectiveSortKey,
+      sortDir: effectiveSortDir,
       filterQuery: effectiveFilterQuery,
       // Adapter-supplied fetcher overrides the default apiSite<{items,total}>
       // call. Cast: adapter is <T> but useObjectTreeWindow is <WorkItem>
@@ -1356,9 +1371,9 @@ export default function ObjectTree<T = WorkItem>({
 
   const handleSortChange = useCallback(
     (key: string | null, dir: "asc" | "desc") => {
-      setSort(key as SortKey | null, dir);
+      effectiveSetSort(key, dir);
     },
-    [setSort],
+    [effectiveSetSort],
   );
 
   // Per-row cog-menu items. Wiring deferred — handlers log for now; the
@@ -2196,7 +2211,7 @@ export default function ObjectTree<T = WorkItem>({
         pagination={{ pageSize, options: config.paginationOptions }}
         paginationPosition="bottom"
         search={{ placeholder: config.searchPlaceholder, accessor: config.searchAccessor }}
-        sort={{ key: sortKey, dir: sortDir, onChange: handleSortChange }}
+        sort={{ key: effectiveSortKey, dir: effectiveSortDir, onChange: handleSortChange }}
         {...(config.dndEnabled && {
           dnd: {
             resourceType: config.dndResourceType,

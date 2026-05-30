@@ -44,6 +44,10 @@ SCOPE_LITERAL_RE = re.compile(r"""['"](work|strategy)['"]""")
 # struct definition / scope field also legitimately mention these strings.
 ALLOWED_TYPES_GO_LINES = re.compile(
     r"""validItemTypesByScope|"work":\s*\{|"strategy":\s*nil|//"""
+    # Canonical scope identity constants declared in types.go. These are
+    # domain constants (named so the rest of the package never re-types the
+    # literal), NOT SQL fragments — the whole point of lint:scope-literals.
+    r"""|lint:scope-literals canonical"""
 )
 
 
