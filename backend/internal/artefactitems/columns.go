@@ -352,6 +352,129 @@ func CoreColumnsForType(slot, scope string) []ColumnSpec {
 	return out
 }
 
+// compulsoryUniversalKeys are compulsory on EVERY artefact type (always
+// placed on a saved form layout, regardless of slot/scope). This is the
+// SERVER-IS-THE-GATE "Required fields" locked-group set; the marker lives
+// in this Go catalogue for now (a future migration may move it to the DB).
+//
+// Each key listed here MUST resolve to a real ColumnSpec AND pass
+// AppliesToType for the universal case (Family == "" ⇒ always true).
+// CompulsoryFieldsForType filters the raw list against the catalogue so a
+// typo'd or non-universal key can never silently demand a field that the
+// builder cannot place. The drift-pin test
+// (formlayouts/compulsory_test.go) asserts every surviving key resolves +
+// applies + is not skipFromBuilder'd.
+var compulsoryUniversalKeys = []string{
+	"title", "description", "owner", "created_by", "parent_id", "tags",
+	"notes", "topology_node_id", "is_blocked", "blocked_reason",
+	"flow_state_changed_at", "flow_state_name",
+	"colour", "children_count",
+	// dropped: flow_state_change_owner_user_id — skipFromBuilder'd in
+	// formlayouts (raw user-FK, rendered nowhere in the builder); the builder
+	// cannot place it, so it cannot be a compulsory-on-layout field.
+}
+
+// compulsoryStrategyKeys add to the universal set for strategy types
+// (scope == ScopeStrategy). Filtered against the catalogue + AppliesToType
+// by CompulsoryFieldsForType.
+var compulsoryStrategyKeys = []string{
+	"is_ready", "estimate_initial", "estimate_updated",
+	"planned_start_date", "planned_finish_date", "actual_start_date",
+	"actual_end_date", "due_date", "strategic_investment_group",
+	"strategic_investment_weight", "strategic_job_size",
+	"strategic_value_stream_identifier", "release_id",
+	// dropped: milestone_id — skipFromBuilder'd in formlayouts (raw FK,
+	// rendered as an internal id, not offered in the builder sidebar).
+}
+
+// compulsoryDefectKeys add to the universal set for defect types
+// (slot == SlotDefect).
+var compulsoryDefectKeys = []string{
+	"sprint", "release_id", "defect_severity",
+	"defect_status", "defect_resolution", "is_expedite", "rollup_points",
+	"work_accepted_date",
+	// dropped: milestone_id — skipFromBuilder'd in formlayouts (raw FK).
+	// dropped: submitted_by_user_id — skipFromBuilder'd in formlayouts (raw
+	//          user-FK, rendered nowhere in the builder).
+}
+
+// compulsoryEpicKeys add to the universal set for epic types (slot == SlotEpic).
+var compulsoryEpicKeys = []string{
+	"sprint", "release_id", "story_points",
+	"is_expedite", "work_accepted_date", "rollup_points",
+	// dropped: milestone_id — skipFromBuilder'd in formlayouts (raw FK).
+}
+
+// compulsoryStoryKeys add to the universal set for story types (slot == SlotStory).
+var compulsoryStoryKeys = []string{
+	"sprint", "release_id", "story_points",
+	"is_expedite", "work_accepted_date",
+	// dropped: milestone_id — skipFromBuilder'd in formlayouts (raw FK).
+}
+
+// compulsoryTaskKeys add to the universal set for task types (slot == SlotTask).
+var compulsoryTaskKeys = []string{
+	"sprint", "release_id", "estimate_hours",
+	// dropped: milestone_id — skipFromBuilder'd in formlayouts (raw FK).
+}
+
+// compulsoryRiskKeys add to the universal set for risk types (slot == SlotRisk).
+var compulsoryRiskKeys = []string{
+	"sprint", "release_id", "estimate_hours",
+	"risk_impact", "risk_impact_score", "risk_probability",
+	"risk_probability_score", "risk_response", "risk_exposure",
+	"risk_calculated", "risk_resolution",
+	"work_accepted_date",
+	// dropped: milestone_id — skipFromBuilder'd in formlayouts (raw FK).
+	// dropped: submitted_by_user_id — skipFromBuilder'd in formlayouts (raw
+	//          user-FK, rendered nowhere in the builder).
+}
+
+// CompulsoryFieldsForType returns the set of core field keys that a saved
+// form layout MUST place for an artefact type with the given slot + scope.
+// It is the universal set ∪ the per-family set, each filtered to keys that
+// (a) resolve to a real ColumnSpec and (b) pass AppliesToType(slot, scope).
+//
+// Keys are keyed by SLOT for work types (Story vs Epic share scope==work
+// but differ by slot) and by SCOPE for strategy. A key that fails to
+// resolve or does not apply to the type is DROPPED here — the rubric is
+// reconciled against the catalogue (the source of truth), never the other
+// way around.
+//
+// NOTE: this function does NOT apply the formlayouts skipFromBuilder filter
+// — that predicate lives in the formlayouts package. Callers in formlayouts
+// (CoreFields, validateDoc) apply skipFromBuilder at their call site so they
+// never demand a field the builder cannot place.
+func CompulsoryFieldsForType(slot, scope string) map[string]bool {
+	raw := append([]string(nil), compulsoryUniversalKeys...)
+	switch {
+	case scope == ScopeStrategy:
+		raw = append(raw, compulsoryStrategyKeys...)
+	case slot == SlotDefect:
+		raw = append(raw, compulsoryDefectKeys...)
+	case slot == SlotEpic:
+		raw = append(raw, compulsoryEpicKeys...)
+	case slot == SlotStory:
+		raw = append(raw, compulsoryStoryKeys...)
+	case slot == SlotTask:
+		raw = append(raw, compulsoryTaskKeys...)
+	case slot == SlotRisk:
+		raw = append(raw, compulsoryRiskKeys...)
+	}
+	out := make(map[string]bool, len(raw))
+	for _, k := range raw {
+		spec, ok := columnSpecByName[k]
+		if !ok {
+			continue // dropped: key not in the catalogue
+		}
+		if !spec.AppliesToType(slot, scope) {
+			continue // dropped: key does not apply to this type
+		}
+		out[k] = true
+	}
+	return out
+}
+
 // columnSpecByName indexes the catalogue by Name for O(1) lookup. Computed
 // once at init.
 var columnSpecByName = func() map[string]ColumnSpec {

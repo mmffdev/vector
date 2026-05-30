@@ -89,6 +89,13 @@ type CoreFieldDescriptor struct {
 	Kind        string `json:"kind"` // "core" | "custom"
 	Group       string `json:"group"`
 	IsMandatory bool   `json:"isMandatory"` // core mandatory → blocks save
+	// IsCompulsory marks a field in the per-artefact-type "Required fields"
+	// locked group: a saved layout MUST place every compulsory field for the
+	// type (SERVER IS THE GATE). This is a SUPERSET of IsMandatory — the small
+	// IsMandatory set still drives the red-dot UX, while IsCompulsory drives
+	// the locked-group save gate. Computed from
+	// artefactitems.CompulsoryFieldsForType(slot, scope).
+	IsCompulsory bool `json:"isCompulsory"`
 }
 
 // mandatoryCoreFieldKeys is the server-side gate: a saved layout MUST place

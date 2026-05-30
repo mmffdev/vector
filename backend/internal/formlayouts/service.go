@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -190,17 +191,35 @@ func validateDoc(doc LayoutDoc, customKeys map[string]bool, slot, scope string) 
 			placed[key] = true
 		}
 	}
-	var missing []string
-	for _, k := range mandatoryCoreFieldKeys {
+	// SERVER IS THE GATE — the "Required fields" locked group. A saved layout
+	// MUST place every compulsory core field for this artefact type. The
+	// compulsory set is a SUPERSET of mandatoryCoreFieldKeys (title /
+	// flow_state_name / owner are all in the universal compulsory set), so
+	// this single check subsumes the old mandatory-only gate. We filter the
+	// compulsory keys through skipFromBuilder so we never demand a field the
+	// builder cannot even place (defence against rubric drift — the columns.go
+	// rubric already drops those, but filtering here is belt-and-braces and
+	// keeps the gate honest if the rubric regresses).
+	//
+	// mandatoryCoreFieldKeys / isMandatoryCore are intentionally kept alive —
+	// IsMandatory is still surfaced to the client for the red-dot UX, distinct
+	// from the broader compulsory locked group.
+	compulsory := artefactitems.CompulsoryFieldsForType(slot, scope)
+	var missingCompulsory []string
+	for k := range compulsory {
+		if skipFromBuilder(k) {
+			continue
+		}
 		if !placed[k] {
-			missing = append(missing, k)
+			missingCompulsory = append(missingCompulsory, k)
 		}
 	}
-	if len(missing) > 0 {
+	if len(missingCompulsory) > 0 {
+		sort.Strings(missingCompulsory) // stable order for the wire detail + tests
 		return &ValidationError{
 			Err:     ErrMissingMandatory,
-			Missing: missing,
-			Reason:  fmt.Sprintf("layout must place mandatory core field(s): %v", missing),
+			Missing: missingCompulsory,
+			Reason:  fmt.Sprintf("layout must place compulsory field(s): %v", missingCompulsory),
 		}
 	}
 	return nil
@@ -239,6 +258,7 @@ func validateFieldKey(key string, customKeys map[string]bool, slot, scope string
 // slot is "" for strategy types (they are scope-gated, not slot-gated).
 func (s *Service) CoreFields(slot, scope string) []CoreFieldDescriptor {
 	cols := artefactitems.CoreColumnsForType(slot, scope)
+	compulsory := artefactitems.CompulsoryFieldsForType(slot, scope)
 	out := make([]CoreFieldDescriptor, 0, len(cols))
 	for _, c := range cols {
 		// Skip pure-audit / id-internal columns the builder shouldn't offer.
@@ -246,12 +266,13 @@ func (s *Service) CoreFields(slot, scope string) []CoreFieldDescriptor {
 			continue
 		}
 		out = append(out, CoreFieldDescriptor{
-			FieldKey:    c.Name,
-			Label:       labelOr(c.Label, c.Name),
-			DataType:    inferDataType(c.Name),
-			Kind:        "core",
-			Group:       c.Group,
-			IsMandatory: isMandatoryCore(c.Name),
+			FieldKey:     c.Name,
+			Label:        labelOr(c.Label, c.Name),
+			DataType:     inferDataType(c.Name),
+			Kind:         "core",
+			Group:        c.Group,
+			IsMandatory:  isMandatoryCore(c.Name),
+			IsCompulsory: compulsory[c.Name],
 		})
 	}
 	return out
