@@ -67,8 +67,13 @@ func TestingWithClamp(ctx context.Context, c Clamp) context.Context {
 }
 
 // WithBypassedSubtreeClamp returns a derived context whose Clamp keeps
-// every field EXCEPT AllowedSubtreeIDs, which is set to nil so the
-// post-SELECT subtree gate in getWorkItemImpl no-ops. Use ONLY on the
+// every field EXCEPT AllowedSubtreeIDs (set to nil) and SubtreeResolved
+// (set to false) so the post-SELECT subtree gate in getWorkItemImpl
+// no-ops. Clearing SubtreeResolved is what keeps the bypass a true
+// no-op: the SQL helpers fail CLOSED on a resolved-but-empty set, so
+// nilling AllowedSubtreeIDs alone would now emit " AND FALSE" and return
+// zero rows. With SubtreeResolved=false the helpers treat this as the
+// no-clamp/bypass state and emit no clause. Use ONLY on the
 // read that immediately follows a write the actor was already
 // authorised for (e.g. PatchWorkItem's post-UPDATE GetWorkItem) — so
 // the response can return the row even when the write moved it out of
@@ -92,5 +97,6 @@ func WithBypassedSubtreeClamp(ctx context.Context) context.Context {
 		return ctx
 	}
 	c.AllowedSubtreeIDs = nil
+	c.SubtreeResolved = false
 	return context.WithValue(ctx, clampCtxKey, c)
 }

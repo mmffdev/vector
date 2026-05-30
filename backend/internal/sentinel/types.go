@@ -40,6 +40,17 @@ import (
 // WorkspaceID was added by S05 (PLA062) absorbing the workspace clamp
 // from topology.WorkspaceClampMiddleware. Handlers that previously
 // read topology.WorkspaceIDFromCtx now read FromCtx(ctx).WorkspaceID.
+//
+// SubtreeResolved is true iff Middleware successfully resolved a real
+// subtree set for this request. It distinguishes "no clamp / deliberate
+// bypass" (false -> the SQL helpers no-op) from "middleware ran but
+// resolved an empty set" (true + empty -> the SQL helpers fail CLOSED).
+// Without this flag the helpers cannot tell a deliberate bypass (state 4)
+// apart from a regression that produced an empty allowed-set (state 3),
+// and would fail OPEN on the latter. See clamp_sql.go for the full
+// four-state contract. Set true only at Middleware Step 7 (success path);
+// cleared by WithBypassedSubtreeClamp; false-by-default on the
+// no-middleware (admin/dev) path.
 type Clamp struct {
 	TenantID          uuid.UUID
 	UserID            uuid.UUID
@@ -50,6 +61,7 @@ type Clamp struct {
 	ScopeUp           bool
 	ScopeDown         bool
 	AllowedSubtreeIDs []uuid.UUID
+	SubtreeResolved   bool
 }
 
 // Resolver is the dependency Middleware needs to compute a Clamp.

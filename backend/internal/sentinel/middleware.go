@@ -150,6 +150,11 @@ func Middleware(r Resolver) func(http.Handler) http.Handler {
 				ScopeUp:           scopeUp,
 				ScopeDown:         scopeDown,
 				AllowedSubtreeIDs: ids,
+				// Step 7 is only reached on the success path (every error
+				// path above returns first). A real subtree was resolved,
+				// so the SQL helpers must fail CLOSED if ids is somehow
+				// empty rather than fall back to subscription-only scoping.
+				SubtreeResolved: true,
 			}
 			next.ServeHTTP(w, req.WithContext(withClamp(req.Context(), c)))
 		})
