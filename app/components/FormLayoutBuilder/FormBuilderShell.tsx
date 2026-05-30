@@ -39,7 +39,10 @@ import {
   getCurrentLayout,
   saveLayout,
   extractValidation,
+  seedRequiredGroup,
+  lockedKeySet,
   MANDATORY_CORE_KEYS,
+  COMPULSORY_GROUP_TITLE,
   type CoreFieldDescriptor,
   type FormCell,
   type FormRow,
@@ -49,7 +52,12 @@ import { ROW_TEMPLATES } from "@/app/lib/formLayoutsApi";
 import { useSentinel } from "@/app/sentinel";
 import CustomFieldEditForm from "@/app/components/CustomFields/CustomFieldEditForm";
 import { FormLayoutRenderer, type RenderCellArgs } from "./FormLayoutRenderer";
-import { useFormBuilderState, type CellAddr } from "./useFormBuilderState";
+import {
+  useFormBuilderState,
+  mintCellId,
+  mintRowId,
+  type CellAddr,
+} from "./useFormBuilderState";
 
 export interface FormBuilderShellProps {
   nodeId: string;
@@ -98,8 +106,19 @@ export function FormBuilderShell({
   const { sentinel_user } = useSentinel();
   const workspaceId = sentinel_user?.workspace_id ?? null;
 
-  const state = useFormBuilderState([]);
   const [fields, setFields] = useState<CoreFieldDescriptor[]>([]);
+
+  // Locked Required-fields region. lockedKeys drives the state engine's
+  // remove/drag-out guards; the ordered compulsory descriptors drive the
+  // seed order. Both derive from the catalogue (server is the source of the
+  // compulsory marker), so they update once getCoreFields resolves.
+  const lockedKeys = useMemo(() => lockedKeySet(fields), [fields]);
+  const compulsoryKeys = useMemo(
+    () => fields.filter((f) => f.isCompulsory).map((f) => f.fieldKey),
+    [fields],
+  );
+
+  const state = useFormBuilderState([], lockedKeys);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -137,7 +156,15 @@ export function FormBuilderShell({
         ]);
         if (cancelled) return;
         setFields(cat);
-        state.reset(existing?.doc.rows ?? []);
+        // Force-seed the locked Required-fields region from the type's
+        // compulsory set (in catalogue order), folding in any existing
+        // layout below it. seedRequiredGroup strips duplicates so a
+        // compulsory field the author previously placed free-form is lifted
+        // into the locked band, never shown twice.
+        const seedKeys = cat.filter((f) => f.isCompulsory).map((f) => f.fieldKey);
+        state.reset(
+          seedRequiredGroup(existing?.doc.rows ?? [], seedKeys, mintCellId, mintRowId),
+        );
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load builder");
       } finally {
@@ -154,10 +181,14 @@ export function FormBuilderShell({
     return m;
   }, [fields]);
 
-  // Mandatory core fields still missing from the canvas (live UX mirror).
-  const missingMandatory = useMemo(
-    () => MANDATORY_CORE_KEYS.filter((k) => !state.placedKeys.has(k)),
-    [state.placedKeys],
+  // Compulsory fields still missing from the canvas (live UX mirror of the
+  // server gate). With the locked Required-fields region force-seeded this
+  // should normally be empty, but we keep the check so any edge (e.g. a
+  // compulsory key not yet in the catalogue) still blocks save client-side.
+  // The server re-validates regardless (SERVER IS THE GATE).
+  const missingCompulsory = useMemo(
+    () => compulsoryKeys.filter((k) => !state.placedKeys.has(k)),
+    [compulsoryKeys, state.placedKeys],
   );
 
   const coreFields = fields.filter((f) => f.kind === "core");
@@ -201,10 +232,10 @@ export function FormBuilderShell({
 
   async function handleSave() {
     setSaveError(null);
-    if (missingMandatory.length > 0) {
+    if (missingCompulsory.length > 0) {
       setSaveError(
         "Place these required fields before saving: " +
-          missingMandatory.map((k) => fieldByKey.get(k)?.label ?? k).join(", "),
+          missingCompulsory.map((k) => fieldByKey.get(k)?.label ?? k).join(", "),
       );
       return;
     }
@@ -277,6 +308,7 @@ export function FormBuilderShell({
               customFields={customFields}
               placedKeys={state.placedKeys}
               mandatoryKeys={new Set(MANDATORY_CORE_KEYS)}
+              compulsoryKeys={lockedKeys}
               canAddField={!!workspaceId}
               onAddField={() => setAddFieldOpen(true)}
             />
@@ -351,6 +383,7 @@ function Sidebar({
   customFields,
   placedKeys,
   mandatoryKeys,
+  compulsoryKeys,
   canAddField,
   onAddField,
 }: {
@@ -360,6 +393,7 @@ function Sidebar({
   customFields: CoreFieldDescriptor[];
   placedKeys: Set<string>;
   mandatoryKeys: Set<string>;
+  compulsoryKeys: Set<string>;
   canAddField: boolean;
   onAddField: () => void;
 }) {
@@ -382,6 +416,7 @@ function Sidebar({
               field={f}
               placed={placedKeys.has(f.fieldKey)}
               mandatory={mandatoryKeys.has(f.fieldKey)}
+              compulsory={compulsoryKeys.has(f.fieldKey)}
             />
           ))
         )}
@@ -394,7 +429,7 @@ function Sidebar({
           <p className="flb-sidebar__Empty">No custom fields bound yet.</p>
         ) : (
           customFields.map((f) => (
-            <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} mandatory={false} />
+            <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} mandatory={false} compulsory={false} />
           ))
         )}
         {canAddField && (
@@ -433,15 +468,20 @@ function SidebarField({
   field,
   placed,
   mandatory,
+  compulsory,
 }: {
   field: CoreFieldDescriptor;
   placed: boolean;
   mandatory: boolean;
+  compulsory: boolean;
 }) {
+  // Compulsory fields live in the locked Required-fields region — they are
+  // always placed and never draggable from the sidebar.
+  const draggableDisabled = placed || compulsory;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `sidebar:${field.fieldKey}`,
     data: { kind: "sidebar", fieldKey: field.fieldKey } satisfies DragData,
-    disabled: placed,
+    disabled: draggableDisabled,
   });
   return (
     <div
@@ -450,15 +490,20 @@ function SidebarField({
         "flb-chip" +
         (placed ? " flb-chip-placed" : "") +
         (mandatory ? " flb-chip-mandatory" : "") +
+        (compulsory ? " flb-chip-compulsory" : "") +
         (isDragging ? " flb-chip-dragging" : "")
       }
-      {...(placed ? {} : listeners)}
-      {...(placed ? {} : attributes)}
-      title={placed ? "Already on the form" : field.label}
+      {...(draggableDisabled ? {} : listeners)}
+      {...(draggableDisabled ? {} : attributes)}
+      title={compulsory ? "Required field — locked to the Required fields group" : placed ? "Already on the form" : field.label}
     >
       <span className="flb-chip__Label">{field.label}</span>
-      {mandatory && <span className="flb-chip__Req" title="Required to save">●</span>}
-      {placed && <span className="flb-chip__Placed">on form</span>}
+      {compulsory ? (
+        <span className="flb-chip__Lock" title="Required field — always on the form" aria-hidden="true">🔒</span>
+      ) : (
+        mandatory && <span className="flb-chip__Req" title="Required to save">●</span>
+      )}
+      {placed && !compulsory && <span className="flb-chip__Placed">on form</span>}
     </div>
   );
 }
@@ -474,21 +519,49 @@ function Canvas({
   fieldByKey: Map<string, CoreFieldDescriptor>;
   rowDragActive: boolean;
 }) {
+  // The locked Required-fields region is the contiguous leading band of
+  // locked rows (the seed places them all first). We render a group header
+  // above it and suppress the gap affordance inside the band (no
+  // inserting/reordering into locked rows).
+  let lockedRowCount = 0;
+  while (lockedRowCount < state.rows.length && state.isRowLocked(lockedRowCount)) {
+    lockedRowCount += 1;
+  }
+
   return (
     <div className={"flb-canvas" + (rowDragActive ? " flb-canvas-rowdrag" : "")}>
-      {/* gap before the first row */}
-      <RowGap rowIndex={0} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
-      {state.rows.map((row, rowIndex) => (
-        <React.Fragment key={row.id}>
-          <SingleRow
-            row={row}
-            rowIndex={rowIndex}
-            fieldByKey={fieldByKey}
-            onRemoveRow={() => state.removeRow(rowIndex)}
-          />
-          <RowGap rowIndex={rowIndex + 1} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
-        </React.Fragment>
-      ))}
+      {lockedRowCount > 0 && (
+        <div className="flb-reqgroup__Head">
+          <span className="flb-reqgroup__Head_Lock" aria-hidden="true">🔒</span>
+          <span className="flb-reqgroup__Head_Title">{COMPULSORY_GROUP_TITLE}</span>
+          <span className="flb-reqgroup__Head_Hint">Always on every form — can&apos;t be removed or reordered</span>
+        </div>
+      )}
+      {/* gap before the first FREE row (never inside the locked band) */}
+      {lockedRowCount === 0 && (
+        <RowGap rowIndex={0} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
+      )}
+      {state.rows.map((row, rowIndex) => {
+        const locked = state.isRowLocked(rowIndex);
+        const isLastLocked = locked && rowIndex === lockedRowCount - 1;
+        return (
+          <React.Fragment key={row.id}>
+            <SingleRow
+              row={row}
+              rowIndex={rowIndex}
+              fieldByKey={fieldByKey}
+              locked={locked}
+              isCellLocked={state.isCellLocked}
+              onRemoveRow={() => state.removeRow(rowIndex)}
+            />
+            {/* a gap follows every FREE row, plus the boundary after the
+                locked band (so you can drop directly below Required fields) */}
+            {(!locked || isLastLocked) && (
+              <RowGap rowIndex={rowIndex + 1} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -557,45 +630,64 @@ function SingleRow({
   row,
   rowIndex,
   fieldByKey,
+  locked,
+  isCellLocked,
   onRemoveRow,
 }: {
   row: FormRow;
   rowIndex: number;
   fieldByKey: Map<string, CoreFieldDescriptor>;
+  locked: boolean;
+  isCellLocked: (addr: CellAddr) => boolean;
   onRemoveRow: () => void;
 }) {
-  // The whole row is a draggable reorder unit, grabbed via its handle.
+  // The whole row is a draggable reorder unit, grabbed via its handle —
+  // except a locked Required-fields row, which has no handle/delete and is
+  // never draggable.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `row:${rowIndex}`,
     data: { kind: "row", rowIndex } satisfies DragData,
+    disabled: locked,
   });
   return (
-    <div ref={setNodeRef} className={"flb-canvas-rowwrap" + (isDragging ? " flb-canvas-rowwrap-dragging" : "")}>
+    <div
+      ref={setNodeRef}
+      className={
+        "flb-canvas-rowwrap" +
+        (isDragging ? " flb-canvas-rowwrap-dragging" : "") +
+        (locked ? " flb-canvas-rowwrap-locked" : "")
+      }
+    >
       <FormLayoutRenderer
         rows={[row]}
-        className="flb-canvas-row"
-        renderRowAside={() => (
-          <div className="flb-row-aside">
-            <button
-              type="button"
-              className="flb-row-handle"
-              title="Drag to reorder row"
-              aria-label="Drag to reorder row"
-              {...listeners}
-              {...attributes}
-            >
-              ⠿
-            </button>
-            <button type="button" className="flb-row-del" onClick={onRemoveRow} title="Delete row" aria-label="Delete row">
-              ×
-            </button>
-          </div>
-        )}
+        className={"flb-canvas-row" + (locked ? " flb-canvas-row-locked" : "")}
+        renderRowAside={
+          locked
+            ? undefined
+            : () => (
+                <div className="flb-row-aside">
+                  <button
+                    type="button"
+                    className="flb-row-handle"
+                    title="Drag to reorder row"
+                    aria-label="Drag to reorder row"
+                    {...listeners}
+                    {...attributes}
+                  >
+                    ⠿
+                  </button>
+                  <button type="button" className="flb-row-del" onClick={onRemoveRow} title="Delete row" aria-label="Delete row">
+                    ×
+                  </button>
+                </div>
+              )
+        }
         renderCell={(args) => (
           <CanvasCell
             {...args}
             rowIndex={rowIndex}
             fieldByKey={fieldByKey}
+            cellLocked={isCellLocked({ rowIndex, cellIndex: args.cellIndex })}
           />
         )}
       />
@@ -672,9 +764,16 @@ function CanvasCell({
   cellIndex,
   rowIndex,
   fieldByKey,
-}: RenderCellArgs & { rowIndex: number; fieldByKey: Map<string, CoreFieldDescriptor> }) {
+  cellLocked,
+}: RenderCellArgs & {
+  rowIndex: number;
+  fieldByKey: Map<string, CoreFieldDescriptor>;
+  cellLocked: boolean;
+}) {
   const addr: CellAddr = { rowIndex, cellIndex };
-  const { setNodeRef, isOver } = useDroppable({ id: cellDroppableId(addr) });
+  // A locked cell is not a drop target — nothing can be placed into or
+  // swapped onto a Required field.
+  const { setNodeRef, isOver } = useDroppable({ id: cellDroppableId(addr), disabled: cellLocked });
 
   return (
     <div
@@ -682,11 +781,12 @@ function CanvasCell({
       className={
         "flb-slot" +
         (cell.fieldKey ? " flb-slot-filled" : " flb-slot-empty") +
+        (cellLocked ? " flb-slot-locked" : "") +
         (isOver ? " flb-slot-over" : "")
       }
     >
       {cell.fieldKey ? (
-        <PlacedChip addr={addr} cell={cell} fieldByKey={fieldByKey} />
+        <PlacedChip addr={addr} cell={cell} fieldByKey={fieldByKey} locked={cellLocked} />
       ) : (
         <AnchorPoint />
       )}
@@ -710,26 +810,35 @@ function PlacedChip({
   addr,
   cell,
   fieldByKey,
+  locked,
 }: {
   addr: CellAddr;
   cell: FormCell;
   fieldByKey: Map<string, CoreFieldDescriptor>;
+  locked: boolean;
 }) {
   const key = cell.fieldKey!;
+  // A locked (compulsory) chip can't be dragged out of its slot.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `cell:${addr.rowIndex}:${addr.cellIndex}`,
     data: { kind: "cell", addr, fieldKey: key } satisfies DragData,
+    disabled: locked,
   });
   const descriptor = fieldByKey.get(key);
   return (
     <div
       ref={setNodeRef}
-      className={"flb-placed" + (isDragging ? " flb-placed-dragging" : "")}
-      {...listeners}
-      {...attributes}
+      className={"flb-placed" + (isDragging ? " flb-placed-dragging" : "") + (locked ? " flb-placed-locked" : "")}
+      {...(locked ? {} : listeners)}
+      {...(locked ? {} : attributes)}
+      title={locked ? "Required field — locked on every form" : undefined}
     >
       <span className="flb-placed__Label">{descriptor?.label ?? key}</span>
-      <span className="flb-placed__Type">{descriptor?.dataType ?? ""}</span>
+      {locked ? (
+        <span className="flb-placed__Lock" aria-hidden="true">🔒</span>
+      ) : (
+        <span className="flb-placed__Type">{descriptor?.dataType ?? ""}</span>
+      )}
     </div>
   );
 }

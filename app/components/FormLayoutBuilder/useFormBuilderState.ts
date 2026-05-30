@@ -18,6 +18,16 @@ function nextId(prefix: string): string {
   return `${prefix}-${_seq}`;
 }
 
+// Exposed so the shell can mint stable cell/row ids when it seeds the
+// locked Required-fields region via seedRequiredGroup (same counter, so
+// ids never collide with builder-minted ones).
+export function mintCellId(): string {
+  return nextId("cell");
+}
+export function mintRowId(): string {
+  return nextId("row");
+}
+
 // emptyRow materialises a row from a template: one empty cell per span.
 export function emptyRow(template: RowTemplate): FormRow {
   const spans = TEMPLATE_SPANS[template];
@@ -38,6 +48,12 @@ export interface FormBuilderState {
   rows: FormRow[];
   /** Keys currently placed on the canvas (so the sidebar can grey them). */
   placedKeys: Set<string>;
+  /** True if rowIndex is part of the locked Required-fields region (holds a
+   *  compulsory field) — its delete/reorder affordances are suppressed. */
+  isRowLocked: (rowIndex: number) => boolean;
+  /** True if the cell at addr holds a compulsory field — it can't be
+   *  cleared, dragged out, or swapped away. */
+  isCellLocked: (addr: CellAddr) => boolean;
   addRow: (template: RowTemplate) => void;
   /** Insert an empty template row at a specific position (push existing down). */
   insertRowAt: (template: RowTemplate, rowIndex: number) => void;
@@ -56,10 +72,45 @@ export interface FormBuilderState {
   reset: (rows: FormRow[]) => void;
 }
 
-export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
+export function useFormBuilderState(
+  initial: FormRow[],
+  lockedKeys: Set<string> = EMPTY_KEYS,
+): FormBuilderState {
   const [rows, setRows] = useState<FormRow[]>(initial);
 
   const placedKeys = collectPlacedKeys(rows);
+
+  const isCellLocked = useCallback(
+    (addr: CellAddr): boolean => {
+      const key = rows[addr.rowIndex]?.cells[addr.cellIndex]?.fieldKey;
+      return !!key && lockedKeys.has(key);
+    },
+    [rows, lockedKeys],
+  );
+
+  const isRowLocked = useCallback(
+    (rowIndex: number): boolean => {
+      const row = rows[rowIndex];
+      if (!row) return false;
+      return row.cells.some((c) => !!c.fieldKey && lockedKeys.has(c.fieldKey));
+    },
+    [rows, lockedKeys],
+  );
+
+  // Internal guards reused by the mutators below, reading the live array
+  // rather than the memoised callbacks (so they're correct inside setRows).
+  const cellLockedIn = useCallback(
+    (arr: FormRow[], addr: CellAddr): boolean => {
+      const key = arr[addr.rowIndex]?.cells[addr.cellIndex]?.fieldKey;
+      return !!key && lockedKeys.has(key);
+    },
+    [lockedKeys],
+  );
+  const rowLockedIn = useCallback(
+    (arr: FormRow[], rowIndex: number): boolean =>
+      !!arr[rowIndex]?.cells.some((c) => !!c.fieldKey && lockedKeys.has(c.fieldKey)),
+    [lockedKeys],
+  );
 
   const addRow = useCallback((template: RowTemplate) => {
     setRows((prev) => [...prev, emptyRow(template)]);
@@ -69,38 +120,50 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
   // rows down — the "add a new row between existing ones" affordance.
   const insertRowAt = useCallback((template: RowTemplate, rowIndex: number) => {
     setRows((prev) => {
-      const clamped = Math.max(0, Math.min(rowIndex, prev.length));
+      const floor = lockedRowCount(prev, lockedKeys);
+      const clamped = Math.max(floor, Math.min(rowIndex, prev.length));
       return [...prev.slice(0, clamped), emptyRow(template), ...prev.slice(clamped)];
     });
-  }, []);
+  }, [lockedKeys]);
 
   // moveRow reorders a row to a new position. toIndex is interpreted in
   // the pre-removal coordinate space (the gap index the user dropped on);
   // we splice after removing the source so the target lands correctly.
+  // A locked row (Required-fields region) can neither be moved nor have a
+  // free row inserted into the middle of the locked block — the locked
+  // region stays a contiguous band at the top.
   const moveRow = useCallback((fromIndex: number, toIndex: number) => {
     setRows((prev) => {
       if (fromIndex < 0 || fromIndex >= prev.length) return prev;
+      if (rowLockedIn(prev, fromIndex)) return prev; // can't drag a locked row
       const without = [...prev.slice(0, fromIndex), ...prev.slice(fromIndex + 1)];
       const dest = toIndex > fromIndex ? toIndex - 1 : toIndex;
       const clamped = Math.max(0, Math.min(dest, without.length));
-      return [...without.slice(0, clamped), prev[fromIndex], ...without.slice(clamped)];
+      // Don't allow a free row to land above the last locked row.
+      const lockedCount = without.filter((_, i) => rowLockedIn(without, i)).length;
+      const floored = Math.max(clamped, lockedCount);
+      return [...without.slice(0, floored), prev[fromIndex], ...without.slice(floored)];
     });
-  }, []);
+  }, [rowLockedIn]);
 
   const removeRow = useCallback((rowIndex: number) => {
-    setRows((prev) => prev.filter((_, i) => i !== rowIndex));
-  }, []);
+    setRows((prev) => (rowLockedIn(prev, rowIndex) ? prev : prev.filter((_, i) => i !== rowIndex)));
+  }, [rowLockedIn]);
 
   const placeField = useCallback((fieldKey: string, addr: CellAddr) => {
-    setRows((prev) => editCell(prev, addr, (c) => ({ ...c, fieldKey })));
-  }, []);
+    // Never overwrite a locked cell.
+    setRows((prev) => (cellLockedIn(prev, addr) ? prev : editCell(prev, addr, (c) => ({ ...c, fieldKey }))));
+  }, [cellLockedIn]);
 
   const clearCell = useCallback((addr: CellAddr) => {
-    setRows((prev) => editCell(prev, addr, (c) => ({ ...c, fieldKey: null })));
-  }, []);
+    setRows((prev) => (cellLockedIn(prev, addr) ? prev : editCell(prev, addr, (c) => ({ ...c, fieldKey: null }))));
+  }, [cellLockedIn]);
 
   const moveField = useCallback((from: CellAddr, to: CellAddr) => {
     setRows((prev) => {
+      // A locked source can't be dragged out; a locked target can't be
+      // overwritten or swapped into.
+      if (cellLockedIn(prev, from) || cellLockedIn(prev, to)) return prev;
       const fromCell = prev[from.rowIndex]?.cells[from.cellIndex];
       const toCell = prev[to.rowIndex]?.cells[to.cellIndex];
       if (!fromCell || !toCell) return prev;
@@ -110,7 +173,7 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
       next = editCell(next, from, (c) => ({ ...c, fieldKey: displacedKey }));
       return next;
     });
-  }, []);
+  }, [cellLockedIn]);
 
   // insertFieldAsRow implements the "insertion pushes down" contract:
   // dropping a field between two stacked fields inserts a new full-width
@@ -123,16 +186,19 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
         template: "100",
         cells: [{ id: nextId("cell"), fieldKey, span: 100 }],
       };
-      const clamped = Math.max(0, Math.min(rowIndex, prev.length));
+      const floor = lockedRowCount(prev, lockedKeys);
+      const clamped = Math.max(floor, Math.min(rowIndex, prev.length));
       return [...prev.slice(0, clamped), row, ...prev.slice(clamped)];
     });
-  }, []);
+  }, [lockedKeys]);
 
   const reset = useCallback((next: FormRow[]) => setRows(next), []);
 
   return {
     rows,
     placedKeys,
+    isRowLocked,
+    isCellLocked,
     addRow,
     insertRowAt,
     moveRow,
@@ -147,10 +213,26 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
 
 // ─── helpers ────────────────────────────────────────────────────────────
 
+// Shared empty set so the default-arg identity is stable across renders
+// (a fresh `new Set()` default would re-run the lock callbacks every render).
+const EMPTY_KEYS: Set<string> = new Set();
+
 function collectPlacedKeys(rows: FormRow[]): Set<string> {
   const s = new Set<string>();
   for (const r of rows) for (const c of r.cells) if (c.fieldKey) s.add(c.fieldKey);
   return s;
+}
+
+// lockedRowCount counts the contiguous leading rows that are locked (hold a
+// compulsory key). The seed places all locked rows first, so this is the
+// floor index below which no free row may be inserted/moved.
+function lockedRowCount(rows: FormRow[], lockedKeys: Set<string>): number {
+  let n = 0;
+  for (const r of rows) {
+    if (r.cells.some((c) => !!c.fieldKey && lockedKeys.has(c.fieldKey))) n += 1;
+    else break;
+  }
+  return n;
 }
 
 function editCell(
