@@ -108,6 +108,11 @@ New package `backend/internal/formlayouts/` (mirrors topology/fields shape; on v
   - `FormLayoutRenderer.tsx` — consumes the row schema, renders rows→cells→fields using the existing field input components (RichTextField for richtext, selects for enums, etc., reused from `EditCustomFields` / `ArtefactInlineForm`). **Two modes:** `mode="builder"` (each cell is a dnd drop target, empty slots highlight on drag, fields wrapped in drag handles) and `mode="runtime"` (plain form, values editable, commits via existing patch + field-values endpoints).
   - `FormBuilderShell.tsx` — fullscreen overlay above rails+shell; top-right Save/Cancel; 20% field sidebar / 80% canvas. Sidebar sections: **Core (must-have)**, **Custom**, **+ Create new field** (loads the existing create-field form into the canvas region). Add-row control with the 5 grid templates. Save blocked with inline reason if mandatory core fields not yet placed.
   - dnd via `@dnd-kit` (the project's canonical DnD lib).
+  - **Builder-mode interaction contract (user, 2026-05-30):**
+    - A placed field is **movable within the canvas** (drag it from one slot to another).
+    - A placed field can be **sent back to the sidebar** — dragging it out (or a remove affordance on the cell) removes it from the canvas and returns it to the available list.
+    - **Insertion pushes down:** dropping a field between two stacked fields (e.g. between `Blah` and `BlahBlah`) inserts it at that grid position and shifts the lower field(s) down one — it never overwrites an occupied slot.
+    - **Anchor-point affordance:** every available/empty slot renders with a **dashed border + a filled circle containing a `+`** centred in it, so empty drop targets read as anchor points.
 - Launch entry: a `<Panel>` on the custom-fields page (`app/(user)/workspace-admin/custom-fields` or equivalent) — title, description, **Launch Form Builder** button → opens `FormBuilderShell` for the current scope node + Story type.
 
 ## Runtime adoption + carry-through

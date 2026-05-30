@@ -39,6 +39,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
 	"github.com/mmffdev/vector-backend/internal/fields"
 	"github.com/mmffdev/vector-backend/internal/flows"
+	"github.com/mmffdev/vector-backend/internal/formlayouts"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
 	"github.com/mmffdev/vector-backend/internal/mentions"
@@ -698,6 +699,17 @@ func main() {
 	// fields slice after the auth gate succeeds (mirrors v2 work-items).
 	fieldsSvc := fields.NewService(servicePool, vaPool)
 	fieldsH := fields.NewHandler(fieldsSvc)
+
+	// Form Layout Builder (2026-05-30) — per-(topology node + artefact
+	// type) versioned form layouts that travel with the artefact. Sole
+	// writer of topology_node_form_layouts in vector_artefacts; runs on
+	// vaPool. Mounted under /_site/api/form-layouts with the sentinel
+	// clamp so saves are scoped to the actor's workspace + tenant. See
+	// docs/superpowers/specs/2026-05-30-form-layout-builder-design.md.
+	var formLayoutsH *formlayouts.Handler
+	if vaPool != nil {
+		formLayoutsH = formlayouts.NewHandler(formlayouts.NewService(vaPool))
+	}
 
 	// savedviews — Rally-style saved view configurations. Sole writer for
 	// saved_views table in vector_artefacts. See
@@ -1415,6 +1427,21 @@ func main() {
 			sentinelMW,
 		).Put("/focus", sentinelH.PutFocus)
 	})
+
+	// /api/form-layouts — Form Layout Builder (2026-05-30). Mounted with
+	// sentinelMW so save/read handlers resolve the actor's workspace +
+	// tenant from the clamp (SERVER IS THE GATE — never from the body).
+	// formLayoutsH is nil when vaPool is unconfigured (legacy envs); the
+	// mount is guarded so the prefix simply 404s rather than panicking.
+	if formLayoutsH != nil {
+		r.Route("/api/form-layouts", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(sentinelMW)
+			r.Mount("/", formLayoutsH.Routes())
+		})
+	}
 
 	// /nav
 	r.Route("/nav", func(r chi.Router) {
