@@ -98,8 +98,10 @@ interface CoreFieldsResponse {
   fields: CoreFieldDescriptor[];
 }
 
-// MANDATORY_CORE_KEYS mirrors backend mandatoryCoreFieldKeys. Used for
-// live "page won't save without these" UX. The server re-checks.
+// MANDATORY_CORE_KEYS mirrors backend mandatoryCoreFieldKeys — the three
+// universal save-blockers. The save gate uses the full isCompulsory set
+// (this is a strict subset); kept as a documented mirror of the backend
+// contract. The server is the authoritative gate.
 export const MANDATORY_CORE_KEYS = ["title", "flow_state_name", "owner"];
 
 // getCurrentLayout fetches the current layout for (node, type), or null

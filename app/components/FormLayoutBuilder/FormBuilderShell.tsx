@@ -39,7 +39,6 @@ import {
   getCurrentLayout,
   saveLayout,
   extractValidation,
-  MANDATORY_CORE_KEYS,
   type CoreFieldDescriptor,
   type FormCell,
   type FormRow,
@@ -300,7 +299,6 @@ export function FormBuilderShell({
               optionalFields={optionalFields}
               customFields={customFields}
               placedKeys={state.placedKeys}
-              saveBlockingKeys={new Set(MANDATORY_CORE_KEYS)}
               canAddField={!!workspaceId}
               onAddField={() => setAddFieldOpen(true)}
             />
@@ -375,7 +373,6 @@ function Sidebar({
   optionalFields,
   customFields,
   placedKeys,
-  saveBlockingKeys,
   canAddField,
   onAddField,
 }: {
@@ -385,7 +382,6 @@ function Sidebar({
   optionalFields: CoreFieldDescriptor[];
   customFields: CoreFieldDescriptor[];
   placedKeys: Set<string>;
-  saveBlockingKeys: Set<string>;
   canAddField: boolean;
   onAddField: () => void;
 }) {
@@ -405,12 +401,7 @@ function Sidebar({
           <p className="flb-sidebar__Empty">No mandatory fields for this type.</p>
         ) : (
           mandatoryFields.map((f) => (
-            <SidebarField
-              key={f.fieldKey}
-              field={f}
-              placed={placedKeys.has(f.fieldKey)}
-              saveBlocking={saveBlockingKeys.has(f.fieldKey)}
-            />
+            <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} />
           ))
         )}
       </SidebarSection>
@@ -422,12 +413,7 @@ function Sidebar({
           <p className="flb-sidebar__Empty">No optional core fields.</p>
         ) : (
           optionalFields.map((f) => (
-            <SidebarField
-              key={f.fieldKey}
-              field={f}
-              placed={placedKeys.has(f.fieldKey)}
-              saveBlocking={saveBlockingKeys.has(f.fieldKey)}
-            />
+            <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} />
           ))
         )}
       </SidebarSection>
@@ -439,7 +425,7 @@ function Sidebar({
           <p className="flb-sidebar__Empty">No custom fields bound yet.</p>
         ) : (
           customFields.map((f) => (
-            <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} saveBlocking={false} />
+            <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} />
           ))
         )}
         {canAddField && (
@@ -477,17 +463,13 @@ function SidebarSection({ title, hint, children }: { title: string; hint?: strin
 function SidebarField({
   field,
   placed,
-  saveBlocking,
 }: {
   field: CoreFieldDescriptor;
   placed: boolean;
-  // saveBlocking marks the three hard mandatory keys (title/flow_state/owner)
-  // with a red dot — a legend cue. Group membership already conveys
-  // mandatory-ness; this just flags the always-blocking trio.
-  saveBlocking: boolean;
 }) {
   // Once placed on the canvas a field is greyed and no longer draggable from
-  // the sidebar (it lives on the form). Drag it back to remove.
+  // the sidebar (it lives on the form). Drag it back to remove. Mandatory-ness
+  // is conveyed by the field's group ("Mandatory fields"), not a per-chip dot.
   const draggableDisabled = placed;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `sidebar:${field.fieldKey}`,
@@ -500,7 +482,6 @@ function SidebarField({
       className={
         "flb-chip" +
         (placed ? " flb-chip-placed" : "") +
-        (saveBlocking ? " flb-chip-mandatory" : "") +
         (isDragging ? " flb-chip-dragging" : "")
       }
       {...(draggableDisabled ? {} : listeners)}
@@ -508,7 +489,6 @@ function SidebarField({
       title={placed ? "Already on the form" : field.label}
     >
       <span className="flb-chip__Label">{field.label}</span>
-      {saveBlocking && <span className="flb-chip__Req" title="Required to save">●</span>}
       {placed && <span className="flb-chip__Placed">on form</span>}
     </div>
   );

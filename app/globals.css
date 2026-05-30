@@ -20580,14 +20580,12 @@ tr.is-editing {
 .flb-chip:hover { border-color: var(--accent, #1a1a1a); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 .flb-chip:active { cursor: grabbing; }
 .flb-chip__Label { flex: 1 1 auto; font-weight: 500; }
-.flb-chip__Req { color: var(--danger, #b91c1c); font-size: 8px; }
 .flb-chip__Placed {
   font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--ink-subtle, #9b9b9b);
 }
 .flb-chip-placed { opacity: 0.5; cursor: default; background: var(--surface-sunken, #f6f4f0); }
 .flb-chip-placed:hover { border-color: var(--border-default, #e5e1da); box-shadow: none; }
-.flb-chip-mandatory { border-left: 3px solid var(--danger, #b91c1c); }
 .flb-chip-dragging { box-shadow: 0 6px 20px rgba(0,0,0,0.18); transform: rotate(-1deg); cursor: grabbing; }
 
 /* ── Canvas ── */
