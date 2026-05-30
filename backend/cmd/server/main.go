@@ -1902,6 +1902,14 @@ func main() {
 			r.With(writeLimit17, userWriteLimiter).Patch("/{id}", h.Patch)
 			r.With(writeLimit17, userWriteLimiter).Delete("/{id}", h.Archive)
 			r.With(readLimit17).Get("/{id}/children", h.ListChildren)
+			// Parent chain for the ArtefactNodeDiagram hierarchy strip.
+			// Handler existed but was never mounted on the artefact-site
+			// group (only /nodes/{id}/ancestors for org-design was), so the
+			// diagram silently showed no ancestors (the .catch in
+			// ArtefactNodeDiagram swallowed the 404). Mounted after /children
+			// so it sits with the other {id} sub-resources; literal segments
+			// above still win over {id}.
+			r.With(readLimit17).Get("/{id}/ancestors", h.ListAncestors)
 			r.With(readLimit17).Get("/{id}/field-values", h.ListFieldValues)
 			r.With(writeLimit17, userWriteLimiter).Put("/{id}/field-values", h.UpsertFieldValues)
 			r.With(writeLimit17, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
