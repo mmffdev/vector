@@ -153,9 +153,31 @@ export function ArtefactInlineForm({
     );
   }
   if (error || !artefact) {
+    // A bare HTTP status (e.g. "HTTP 404") is meaningless to the user and
+    // reads as a broken form. Translate the common case — the row could
+    // not be loaded — into a sentence, keep the raw status as secondary
+    // diagnostic text, and always offer a way out. This is presentation
+    // only: the underlying GET (useArtefactInline) is unchanged; a 404
+    // here means the artefact is gone or outside the caller's scope.
+    const isNotFound = !!error && /\b404\b/.test(error);
+    const headline = !error
+      ? "No artefact loaded."
+      : isNotFound
+        ? "This item could not be loaded — it may have been moved, archived, or is outside your current scope."
+        : "This item could not be loaded.";
     return (
-      <div className="artefact-inline-form__Container_Error">
-        {error ?? "No artefact loaded."}
+      <div className="artefact-inline-form__Container_Error" role="alert">
+        <p className="artefact-inline-form__Container_Error_Headline">{headline}</p>
+        {error && (
+          <p className="artefact-inline-form__Container_Error_Detail">{error}</p>
+        )}
+        <button
+          type="button"
+          className="artefact-inline-form__Container_Error_Close"
+          onClick={onClose}
+        >
+          Close
+        </button>
       </div>
     );
   }
