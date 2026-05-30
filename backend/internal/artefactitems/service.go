@@ -605,26 +605,26 @@ func (s *Service) getWorkItemImpl(ctx context.Context, subscriptionID, id uuid.U
 	}
 	// PLA062 S26 — Sentinel mandatory subtree clamp. The list paths
 	// splice the clamp into SQL; single-row reads use a static SELECT
-	// for the existing-id 404 contract, so we post-filter here. When
-	// the clamp is absent (admin / dev), allow the read. When the
-	// clamp is present and the artefact's topology_node_id falls
-	// outside it (or is NULL — un-pinned, treated as out-of-scope per
-	// the project convention), surface ErrNotFound to preserve the
-	// no-existence-leak property. A 404 here is procurement-equivalent
-	// to a 403 for the data exposure question.
-	if c := sentinel.FromCtx(ctx); len(c.AllowedSubtreeIDs) > 0 {
-		if wi.TopologyNodeID == nil {
-			return nil, ErrNotFound
-		}
-		nodeID, parseErr := uuid.Parse(*wi.TopologyNodeID)
-		if parseErr != nil {
-			return nil, ErrNotFound
-		}
+	// for the existing-id 404 contract, so we post-filter here. This
+	// mirrors the four-state contract of sentinel.SubtreeClause:
+	//   - !SubtreeResolved (no middleware / deliberate bypass): allow.
+	//   - SubtreeResolved && empty (resolved-empty): fail CLOSED → 404.
+	//   - SubtreeResolved && non-empty: membership check.
+	// When the artefact's topology_node_id falls outside the allowed set
+	// (or is NULL — un-pinned, out-of-scope per project convention),
+	// surface ErrNotFound to preserve the no-existence-leak property. A
+	// 404 here is procurement-equivalent to a 403 for the data-exposure
+	// question.
+	if c := sentinel.FromCtx(ctx); c.SubtreeResolved {
 		allowed := false
-		for _, id := range c.AllowedSubtreeIDs {
-			if id == nodeID {
-				allowed = true
-				break
+		if wi.TopologyNodeID != nil {
+			if nodeID, parseErr := uuid.Parse(*wi.TopologyNodeID); parseErr == nil {
+				for _, id := range c.AllowedSubtreeIDs {
+					if id == nodeID {
+						allowed = true
+						break
+					}
+				}
 			}
 		}
 		if !allowed {
@@ -1077,6 +1077,24 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		topologyNodeID = &nodeUUID
 	}
 
+	// Form Layout Builder origin-ref (2026-05-30): if the artefact is
+	// pinned to a topology node that has a current form layout for this
+	// type, stamp the artefact with that exact version row. The story then
+	// renders in — and carries — that layout when work crosses nodes. No
+	// layout → NULL ref → default form. A failed lookup must NOT block
+	// creation (the layout is an enhancement, not a precondition).
+	var formLayoutID *uuid.UUID
+	if topologyNodeID != nil {
+		var flID uuid.UUID
+		lErr := tx.QueryRow(ctx, sqlSelectCurrentFormLayoutForStamp,
+			*topologyNodeID, artefactTypeID).Scan(&flID)
+		if lErr == nil {
+			formLayoutID = &flID
+		} else if !errors.Is(lErr, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("resolve form layout for stamp: %w", lErr)
+		}
+	}
+
 	// Append to existing items (position = MAX + 100).
 	var pos int
 	_ = tx.QueryRow(ctx, sqlSelectNextArtefactPosition,
@@ -1104,7 +1122,7 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		subscriptionID, workspaceID, artefactTypeID, num,
 		in.Title, in.Description,
 		defaultFlowStateID, priorityID, in.StoryPoints, sprintID, parentID,
-		ownerID, createdBy, pos, topologyNodeID,
+		ownerID, createdBy, pos, topologyNodeID, formLayoutID,
 	).Scan(&newID)
 	if err != nil {
 		return nil, err
@@ -1246,6 +1264,13 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if in.SubmittedByUserID != nil && *in.SubmittedByUserID != "" {
 		if _, perr := uuid.Parse(*in.SubmittedByUserID); perr != nil {
 			return nil, fmt.Errorf("%w: invalid submitted_by_user_id", ErrInvalidInput)
+		}
+	}
+	// Flow State Change Owner (mig 164) — uuid FK to users, same shape as
+	// submitted_by: parse-check here, FK catches non-existent users.
+	if in.FlowStateChangeOwnerUserID != nil && *in.FlowStateChangeOwnerUserID != "" {
+		if _, perr := uuid.Parse(*in.FlowStateChangeOwnerUserID); perr != nil {
+			return nil, fmt.Errorf("%w: invalid flow_state_change_owner_user_id", ErrInvalidInput)
 		}
 	}
 
@@ -1868,6 +1893,18 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		} else {
 			sets = append(sets, fmt.Sprintf("artefacts_strategic_investment_weight = $%d", n))
 			args = append(args, *in.StrategicInvestmentWeight)
+			n++
+		}
+	}
+
+	// Flow State Change Owner (mig 164) — uuid FK, same three-state shape
+	// as submitted_by. Already-validated uuid string above.
+	if in.FlowStateChangeOwnerUserID != nil {
+		if *in.FlowStateChangeOwnerUserID == "" {
+			sets = append(sets, "artefacts_id_user_flow_state_change_owner = NULL")
+		} else {
+			sets = append(sets, fmt.Sprintf("artefacts_id_user_flow_state_change_owner = $%d::uuid", n))
+			args = append(args, *in.FlowStateChangeOwnerUserID)
 			n++
 		}
 	}
@@ -2734,6 +2771,10 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		&wi.WorkAcceptedDate,
 		&wi.StrategicValueStreamIdentifier,
 		&wi.StrategicInvestmentWeight,
+		// Flow State Change Owner (mig 164). MUST be last — matches the
+		// trailing projection appended in sqlWorkItemColumns /
+		// sqlWorkItemColumnsListTemplate.
+		&wi.FlowStateChangeOwnerUserID,
 	)
 	if err != nil {
 		return nil, err

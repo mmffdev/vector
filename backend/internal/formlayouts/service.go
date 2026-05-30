@@ -2,6 +2,7 @@ package formlayouts
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,6 +86,29 @@ type SaveInput struct {
 	// CustomFieldKeys is the set of valid custom: keys bound to the type
 	// (resolved by the handler from the catalogue) — used for validation.
 	CustomFieldKeys map[string]bool
+	// Slot + Scope identify the artefact type's family (resolved by the
+	// handler via TypeSlotScope). The save validator rejects any core field
+	// placed on a type it does not apply to (mirrors the slot-gate trigger):
+	// a layout cannot persist defect_severity onto a Story form. Slot is ""
+	// for strategy types.
+	Slot  string
+	Scope string
+}
+
+// TypeSlotScope resolves an artefact type's slot + scope, subscription-scoped
+// for defence-in-depth. slot is "" for strategy types (NULL in the DB). A
+// cross-tenant or archived type id returns ErrNotFound.
+func (s *Service) TypeSlotScope(ctx context.Context, typeID, subscriptionID uuid.UUID) (slot, scope string, err error) {
+	var slotN, scopeN sql.NullString
+	err = s.vaPool.QueryRow(ctx, sqlSelectTypeSlotScope, typeID, subscriptionID).
+		Scan(&slotN, &scopeN)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", ErrNotFound
+	}
+	if err != nil {
+		return "", "", err
+	}
+	return slotN.String, scopeN.String, nil
 }
 
 // Save validates the layout then upserts it: the prior current row for
@@ -92,7 +116,7 @@ type SaveInput struct {
 // SERVER IS THE GATE — mandatory core fields must be present; unknown field
 // keys and malformed templates are rejected.
 func (s *Service) Save(ctx context.Context, in SaveInput) (*Layout, error) {
-	if verr := validateDoc(in.Doc, in.CustomFieldKeys); verr != nil {
+	if verr := validateDoc(in.Doc, in.CustomFieldKeys, in.Slot, in.Scope); verr != nil {
 		return nil, verr
 	}
 
@@ -141,9 +165,11 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (*Layout, error) {
 	return s.GetByID(ctx, newID)
 }
 
-// validateDoc enforces template integrity, known field keys, and the
-// mandatory-core-field gate.
-func validateDoc(doc LayoutDoc, customKeys map[string]bool) error {
+// validateDoc enforces template integrity, known field keys, the
+// per-type-applicability gate (a core field may only be placed on a type it
+// applies to — mirrors the slot-gate trigger), and the mandatory-core-field
+// gate. slot is "" for strategy types.
+func validateDoc(doc LayoutDoc, customKeys map[string]bool, slot, scope string) error {
 	placed := map[string]bool{}
 	for _, row := range doc.Rows {
 		spans, ok := templateSpans[row.Template]
@@ -158,7 +184,7 @@ func validateDoc(doc LayoutDoc, customKeys map[string]bool) error {
 				continue // empty slot is fine
 			}
 			key := *cell.FieldKey
-			if err := validateFieldKey(key, customKeys); err != nil {
+			if err := validateFieldKey(key, customKeys, slot, scope); err != nil {
 				return err
 			}
 			placed[key] = true
@@ -180,26 +206,41 @@ func validateDoc(doc LayoutDoc, customKeys map[string]bool) error {
 	return nil
 }
 
-func validateFieldKey(key string, customKeys map[string]bool) error {
+func validateFieldKey(key string, customKeys map[string]bool, slot, scope string) error {
 	if len(key) > 7 && key[:7] == "custom:" {
 		if customKeys != nil && !customKeys[key] {
 			return &ValidationError{Err: ErrUnknownField, Field: key, Reason: fmt.Sprintf("unknown custom field %q", key)}
 		}
 		return nil
 	}
-	if !artefactitems.IsKnownArtefactItemColumn(key) {
+	spec, ok := artefactitems.CoreColumnSpecForName(key)
+	if !ok {
 		return &ValidationError{Err: ErrUnknownField, Field: key, Reason: fmt.Sprintf("unknown core field %q", key)}
+	}
+	// SERVER IS THE GATE: a core field may only be placed on a type it
+	// applies to. Rejects e.g. defect_severity on a Story form — mirrors the
+	// slot-gate trigger so the layout can never reference a field the DB
+	// would refuse to store on that type.
+	if !spec.AppliesToType(slot, scope) {
+		return &ValidationError{Err: ErrUnknownField, Field: key, Reason: fmt.Sprintf("core field %q does not apply to this artefact type", key)}
 	}
 	return nil
 }
 
 // CoreFields returns the core-field descriptors for the builder sidebar,
-// derived from the authoritative artefactitems column catalogue. Custom
-// fields bound to the type are appended by the handler (it owns the
+// scoped to the artefact type identified by (slot, scope). Only columns
+// that legitimately apply to the type are returned — a Defect never sees
+// strategic/risk columns, an Epic never sees Steps-to-Reproduce. The
+// per-type filter (artefactitems.CoreColumnsForType) mirrors the live
+// slot-gate trigger (migs 158 + 162); see columns.go ColumnSpec.Family.
+// Custom fields bound to the type are appended by the handler (it owns the
 // catalogue join).
-func (s *Service) CoreFields() []CoreFieldDescriptor {
-	out := make([]CoreFieldDescriptor, 0, len(artefactitems.ArtefactItemColumns))
-	for _, c := range artefactitems.ArtefactItemColumns {
+//
+// slot is "" for strategy types (they are scope-gated, not slot-gated).
+func (s *Service) CoreFields(slot, scope string) []CoreFieldDescriptor {
+	cols := artefactitems.CoreColumnsForType(slot, scope)
+	out := make([]CoreFieldDescriptor, 0, len(cols))
+	for _, c := range cols {
 		// Skip pure-audit / id-internal columns the builder shouldn't offer.
 		if skipFromBuilder(c.Name) {
 			continue
@@ -276,12 +317,19 @@ func labelOr(label, name string) string {
 }
 
 // skipFromBuilder hides internal id/audit columns from the sidebar.
+//
+// parent_id and topology_node_id are deliberately NOT skipped: they carry
+// user-facing labels ("Parent", "Topology Node") in the column catalogue
+// and are Addable display fields a padmin legitimately places on a form.
+// They render as reference pickers, not raw UUIDs. (Earlier they were
+// swept into this list with the genuinely-internal FK/audit columns,
+// which hid them from the builder sidebar.)
 func skipFromBuilder(name string) bool {
 	switch name {
 	case "id", "subscription_id", "created_at", "updated_at", "archived_at",
 		"artefact_type_id", "flow_state_id", "priority_id", "sprint_id",
-		"milestone_id", "owner_id", "parent_id", "root_feature_id",
-		"topology_node_id", "type_prefix", "submitted_by_user_id",
+		"milestone_id", "owner_id", "root_feature_id",
+		"type_prefix", "submitted_by_user_id",
 		"flow_state_change_owner_user_id":
 		return true
 	}
@@ -307,7 +355,7 @@ func inferDataType(name string) string {
 		"defect_is_release_note", "defect_is_regression":
 		return "boolean"
 	case "flow_state_name", "status", "priority", "sprint", "release_id",
-		"owner":
+		"owner", "parent_id", "topology_node_id":
 		return "select"
 	default:
 		return "textbox"

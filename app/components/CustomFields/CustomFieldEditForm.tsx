@@ -75,6 +75,13 @@ interface Props {
   initial: WorkspaceField | null;
   onCancel: () => void;
   onSaved: (next: WorkspaceField) => void;
+  /**
+   * Forwarded to TypeBindingsPicker. When set, that artefact type is
+   * force-bound (checked + disabled + un-removable). The Form Layout
+   * Builder's add-custom-field overlay passes the type being edited so a
+   * newly-created field is always available on that type.
+   */
+  lockedTypeId?: string;
 }
 
 export default function CustomFieldEditForm({
@@ -82,6 +89,7 @@ export default function CustomFieldEditForm({
   initial,
   onCancel,
   onSaved,
+  lockedTypeId,
 }: Props) {
   const isNew = initial === null;
 
@@ -448,6 +456,7 @@ export default function CustomFieldEditForm({
               setBindingsDirty(true);
             }}
             disabled={busy}
+            lockedTypeId={lockedTypeId}
           />
         </div>
       </div>

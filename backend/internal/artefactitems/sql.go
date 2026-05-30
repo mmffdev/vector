@@ -156,7 +156,11 @@ const sqlWorkItemColumns = `
 	a.artefacts_defect_browser                      AS defect_browser,
 	a.artefacts_work_accepted_date::text            AS work_accepted_date,
 	a.artefacts_strategic_value_stream_identifier   AS strategic_value_stream_identifier,
-	a.artefacts_strategic_investment_weight         AS strategic_investment_weight`
+	a.artefacts_strategic_investment_weight         AS strategic_investment_weight,
+	-- Flow State Change Owner (mig 164). Universal user-FK; ::text like
+	-- submitted_by. Order MUST stay in lockstep across both SELECT
+	-- templates AND the Scan() call in scanWorkItemRow (service.go).
+	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
@@ -287,7 +291,11 @@ const sqlWorkItemColumnsListTemplate = `
 	a.artefacts_defect_browser                      AS defect_browser,
 	a.artefacts_work_accepted_date::text            AS work_accepted_date,
 	a.artefacts_strategic_value_stream_identifier   AS strategic_value_stream_identifier,
-	a.artefacts_strategic_investment_weight         AS strategic_investment_weight`
+	a.artefacts_strategic_investment_weight         AS strategic_investment_weight,
+	-- Flow State Change Owner (mig 164). Universal user-FK; ::text like
+	-- submitted_by. Order MUST stay in lockstep across both SELECT
+	-- templates AND the Scan() call in scanWorkItemRow (service.go).
+	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id`
 
 // sqlListWorkItemsTemplate is the paged data query. %s slots (in order):
 //   - childExtra: extra AND-clause for the children_count subquery so
@@ -681,11 +689,26 @@ var sqlInsertArtefact = `
 			(artefacts_id_subscription, artefacts_id_workspace, artefacts_id_artefact_type, artefacts_number, artefacts_title, artefacts_description,
 			 artefacts_id_flow_state, artefacts_id_priority, artefacts_story_points, artefacts_id_timebox_sprint, artefacts_id_parent,
 			 artefacts_id_user_owned_by, artefacts_id_user_created_by, artefacts_position, artefacts_id_topology_node,
+			 artefacts_id_form_layout,
 			 artefacts_timebox_sprint_label)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8::uuid,$9,$10,$11,$12,$13,$14,$15,
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8::uuid,$9,$10,$11,$12,$13,$14,$15,$16,
 			` + fmt.Sprintf(sqlDeriveSprintLabelSubquery, 10) + `)
 		RETURNING artefacts_id
 	`
+
+// sqlSelectCurrentFormLayoutForStamp resolves the current form-layout
+// version id for a (topology node, artefact type) so a newly created
+// artefact can be stamped with it (Form Layout Builder origin-ref
+// carry-through, 2026-05-30). Returns no row when no layout exists →
+// the artefact's form-layout ref stays NULL and it renders the default
+// form.
+const sqlSelectCurrentFormLayoutForStamp = `
+		SELECT topology_node_form_layouts_id
+		  FROM topology_node_form_layouts
+		 WHERE topology_node_form_layouts_id_topology_node = $1
+		   AND topology_node_form_layouts_id_artefact_type = $2
+		   AND topology_node_form_layouts_is_current
+		 LIMIT 1`
 
 // ── PatchWorkItem ──────────────────────────────────────────────────────────
 

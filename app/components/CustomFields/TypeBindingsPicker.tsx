@@ -13,7 +13,7 @@
 // does NOT filter by field scope — see
 // docs/superpowers/specs/2026-05-28-custom-field-type-bindings-design.md §4.
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 
 export interface DraftBinding {
@@ -27,12 +27,39 @@ interface Props {
   bindings: DraftBinding[];
   onChange: (next: DraftBinding[]) => void;
   disabled?: boolean;
+  /**
+   * When set, this artefact type is force-bound: the picker seeds a
+   * binding for it on mount, renders its row checked + disabled, and
+   * suppresses its Remove affordance. Used by the Form Layout Builder's
+   * add-custom-field overlay so a field created while working a given
+   * type is always bound to that type (the user may ADD others, never
+   * un-tick the one they're working in). See
+   * docs/superpowers/specs/2026-05-30-per-type-form-builder-design.md.
+   */
+  lockedTypeId?: string;
 }
 
-export default function TypeBindingsPicker({ bindings, onChange, disabled }: Props) {
+export default function TypeBindingsPicker({
+  bindings,
+  onChange,
+  disabled,
+  lockedTypeId,
+}: Props) {
   const { types } = useArtefactTypeCatalogue();
 
   const selectedIds = useMemo(() => new Set(bindings.map((b) => b.artefact_type_id)), [bindings]);
+
+  // Seed the locked type's binding on mount (and re-seed if it's ever
+  // dropped from the incoming bindings). The picker is otherwise stateless
+  // — this is the one place it pushes a binding the parent didn't supply.
+  useEffect(() => {
+    if (!lockedTypeId) return;
+    if (selectedIds.has(lockedTypeId)) return;
+    onChange([
+      ...bindings,
+      { artefact_type_id: lockedTypeId, position: 100, required: false, default_value: null },
+    ]);
+  }, [lockedTypeId, selectedIds, bindings, onChange]);
 
   const groupedAvailable = useMemo(() => {
     const live = types.filter((t) => t.archived_at == null);
@@ -69,6 +96,7 @@ export default function TypeBindingsPicker({ bindings, onChange, disabled }: Pro
 
   function toggle(typeId: string) {
     if (disabled) return;
+    if (typeId === lockedTypeId) return; // locked — cannot be un-bound
     if (selectedIds.has(typeId)) {
       onChange(bindings.filter((b) => b.artefact_type_id !== typeId));
     } else {
@@ -91,14 +119,18 @@ export default function TypeBindingsPicker({ bindings, onChange, disabled }: Pro
           <ul className="type-bindings-picker__TypeList">
             {groupedAvailable.work.map((t) => {
               const selected = selectedIds.has(t.id);
+              const locked = t.id === lockedTypeId;
               return (
                 <li
                   key={t.id}
-                  className={`type-bindings-picker__TypeRow ${selected ? "is-selected" : ""}`}
+                  className={`type-bindings-picker__TypeRow ${selected ? "is-selected" : ""} ${locked ? "is-locked" : ""}`}
                   onClick={() => toggle(t.id)}
                 >
-                  <input type="checkbox" checked={selected} readOnly tabIndex={-1} />
+                  <input type="checkbox" checked={selected} disabled={locked} readOnly tabIndex={-1} />
                   <span className="type-bindings-picker__TypeName">{t.name}</span>
+                  {locked && (
+                    <span className="type-bindings-picker__LockTag">current type</span>
+                  )}
                 </li>
               );
             })}
@@ -111,14 +143,18 @@ export default function TypeBindingsPicker({ bindings, onChange, disabled }: Pro
           <ul className="type-bindings-picker__TypeList">
             {groupedAvailable.strategy.map((t) => {
               const selected = selectedIds.has(t.id);
+              const locked = t.id === lockedTypeId;
               return (
                 <li
                   key={t.id}
-                  className={`type-bindings-picker__TypeRow ${selected ? "is-selected" : ""}`}
+                  className={`type-bindings-picker__TypeRow ${selected ? "is-selected" : ""} ${locked ? "is-locked" : ""}`}
                   onClick={() => toggle(t.id)}
                 >
-                  <input type="checkbox" checked={selected} readOnly tabIndex={-1} />
+                  <input type="checkbox" checked={selected} disabled={locked} readOnly tabIndex={-1} />
                   <span className="type-bindings-picker__TypeName">{t.name}</span>
+                  {locked && (
+                    <span className="type-bindings-picker__LockTag">current type</span>
+                  )}
                 </li>
               );
             })}
@@ -146,14 +182,18 @@ export default function TypeBindingsPicker({ bindings, onChange, disabled }: Pro
                     <span className="type-bindings-picker__TypeName">
                       {t?.name ?? b.artefact_type_id.slice(0, 8) + "…"}
                     </span>
-                    <button
-                      type="button"
-                      className="btn type-bindings-picker__RemoveBtn"
-                      onClick={() => toggle(b.artefact_type_id)}
-                      disabled={disabled}
-                    >
-                      Remove
-                    </button>
+                    {b.artefact_type_id === lockedTypeId ? (
+                      <span className="type-bindings-picker__LockTag">current type</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn type-bindings-picker__RemoveBtn"
+                        onClick={() => toggle(b.artefact_type_id)}
+                        disabled={disabled}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                   <div className="type-bindings-picker__BindingControls">
                     <label className="type-bindings-picker__InputLabel">

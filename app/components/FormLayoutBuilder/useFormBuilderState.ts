@@ -39,6 +39,10 @@ export interface FormBuilderState {
   /** Keys currently placed on the canvas (so the sidebar can grey them). */
   placedKeys: Set<string>;
   addRow: (template: RowTemplate) => void;
+  /** Insert an empty template row at a specific position (push existing down). */
+  insertRowAt: (template: RowTemplate, rowIndex: number) => void;
+  /** Reorder a row from one position to another (drag up/down). */
+  moveRow: (fromIndex: number, toIndex: number) => void;
   removeRow: (rowIndex: number) => void;
   /** Place a field from the sidebar into a specific empty cell. */
   placeField: (fieldKey: string, addr: CellAddr) => void;
@@ -59,6 +63,28 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
 
   const addRow = useCallback((template: RowTemplate) => {
     setRows((prev) => [...prev, emptyRow(template)]);
+  }, []);
+
+  // insertRowAt drops an EMPTY template row at a gap, pushing existing
+  // rows down — the "add a new row between existing ones" affordance.
+  const insertRowAt = useCallback((template: RowTemplate, rowIndex: number) => {
+    setRows((prev) => {
+      const clamped = Math.max(0, Math.min(rowIndex, prev.length));
+      return [...prev.slice(0, clamped), emptyRow(template), ...prev.slice(clamped)];
+    });
+  }, []);
+
+  // moveRow reorders a row to a new position. toIndex is interpreted in
+  // the pre-removal coordinate space (the gap index the user dropped on);
+  // we splice after removing the source so the target lands correctly.
+  const moveRow = useCallback((fromIndex: number, toIndex: number) => {
+    setRows((prev) => {
+      if (fromIndex < 0 || fromIndex >= prev.length) return prev;
+      const without = [...prev.slice(0, fromIndex), ...prev.slice(fromIndex + 1)];
+      const dest = toIndex > fromIndex ? toIndex - 1 : toIndex;
+      const clamped = Math.max(0, Math.min(dest, without.length));
+      return [...without.slice(0, clamped), prev[fromIndex], ...without.slice(clamped)];
+    });
   }, []);
 
   const removeRow = useCallback((rowIndex: number) => {
@@ -108,6 +134,8 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
     rows,
     placedKeys,
     addRow,
+    insertRowAt,
+    moveRow,
     removeRow,
     placeField,
     moveField,

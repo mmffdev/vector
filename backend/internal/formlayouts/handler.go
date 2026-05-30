@@ -128,6 +128,18 @@ func (h *Handler) save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve the type's slot + scope so the save validator can reject any
+	// core field placed on a type it does not apply to (per-type gate).
+	slot, scope, err := h.Svc.TypeSlotScope(r.Context(), typeID, clamp.TenantID)
+	if errors.Is(err, ErrNotFound) {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+
 	layout, err := h.Svc.Save(r.Context(), SaveInput{
 		WorkspaceID:     clamp.WorkspaceID,
 		TopologyNodeID:  nodeID,
@@ -135,6 +147,8 @@ func (h *Handler) save(w http.ResponseWriter, r *http.Request) {
 		CreatedBy:       clamp.UserID,
 		Doc:             LayoutDoc{ArtefactTypeID: req.ArtefactTypeID, Rows: req.Rows},
 		CustomFieldKeys: customKeys,
+		Slot:            slot,
+		Scope:           scope,
 	})
 
 	var verr *ValidationError
@@ -174,7 +188,19 @@ func (h *Handler) coreFields(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fields := h.Svc.CoreFields()
+	// Resolve the type's slot + scope so the sidebar only offers core fields
+	// that legitimately apply to the type (per-type gate, mirrors the trigger).
+	slot, scope, err := h.Svc.TypeSlotScope(r.Context(), typeID, clamp.TenantID)
+	if errors.Is(err, ErrNotFound) {
+		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidID)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+
+	fields := h.Svc.CoreFields(slot, scope)
 	custom, _, err := h.Svc.CustomFields(r.Context(), typeID, clamp.TenantID)
 	if err != nil {
 		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)

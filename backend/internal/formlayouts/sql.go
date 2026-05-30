@@ -82,6 +82,22 @@ const sqlListCustomFieldsForType = `
 	 ORDER BY tf.artefacts_types_fields_position ASC,
 	          fl.artefacts_fields_library_field_name ASC`
 
+// sqlSelectTypeSlotScope resolves an artefact type's slot + scope so the
+// builder can scope its core-field catalogue per type (a Defect never sees
+// strategic columns; an Epic never sees Steps-to-Reproduce). slot is NULL
+// for strategy types — scanned into a sql.NullString. Subscription-scoped
+// for defence-in-depth (the type id is tenant-private, but a cross-tenant
+// enumerating UUID must still come back empty → pgx.ErrNoRows).
+//
+// $1 = artefact_type_id (uuid); $2 = subscription_id (uuid).
+const sqlSelectTypeSlotScope = `
+	SELECT artefacts_types_slot, artefacts_types_scope
+	  FROM artefacts_types
+	 WHERE artefacts_types_id = $1
+	   AND artefacts_types_id_subscription = $2
+	   AND artefacts_types_archived_at IS NULL
+	 LIMIT 1`
+
 // sqlInsertLayout inserts a new current version row and returns its id.
 const sqlInsertLayout = `
 	INSERT INTO topology_node_form_layouts (

@@ -56,6 +56,86 @@ type ColumnSpec struct {
 	// identity / title columns the grid needs to function. AlwaysOn
 	// implies non-addable.
 	Addable bool `json:"addable"`
+
+	// Family tags a column as gated to a specific artefact-type family.
+	// The EMPTY string (zero value) means UNIVERSAL — applies to every
+	// type. This is ADDITIVE: existing readers (?fields= projection,
+	// column picker) ignore Family entirely, so leaving it unset on the
+	// vast majority of columns is a no-op for them.
+	//
+	// ── SOURCE OF TRUTH — migs 158 + 162 ────────────────────────────────
+	// The set of gated families and their members mirrors the live DB
+	// trigger trg_artefacts_slot_gate_aiu_fn (migration 158, extended by
+	// 162), which raises EXCEPTION when an out-of-family core column is
+	// non-null for a given artefacts_types_slot / artefacts_types_scope.
+	// The trigger is the HARD enforcement; this Family tag is the
+	// PRESENTATION + SAVE-VALIDATION mirror so the Form Layout Builder
+	// only offers (and only accepts) fields legitimately on the type.
+	//
+	// THIS MUST STAY IN SYNC WITH THE TRIGGER. The drift-pin test
+	// columns_slot_gate_test.go asserts the family→columns sets here
+	// exactly match the trigger's families; if it breaks, mig 158/162 and
+	// this rubric have diverged and must be reconciled (do not "fix" the
+	// test by loosening it).
+	//
+	// Recognised families (anything else, including "", is universal):
+	//   FamilyDefect      — slot == wrk_defect
+	//   FamilyRisk        — slot == wrk_risk
+	//   FamilyTask        — slot == wrk_task
+	//   FamilySubmittedBy — slot IN (wrk_defect, wrk_risk)
+	//   FamilyStrategy    — scope == strategy
+	Family string `json:"family,omitempty"`
+}
+
+// Artefact-type families used by ColumnSpec.Family. Empty string =
+// universal (no gate). These mirror the gated families in the slot-gate
+// trigger (migs 158 + 162) — see ColumnSpec.Family doc above.
+const (
+	FamilyDefect      = "defect"
+	FamilyRisk        = "risk"
+	FamilyTask        = "task"
+	FamilySubmittedBy = "submitted_by"
+	// FamilyStrategy is the strategy-scope family tag. Its VALUE
+	// intentionally differs from the artefacts_types_scope value
+	// (ScopeStrategy, in types.go) — the family is gated BY that scope but
+	// the tag string is just an internal discriminator.
+	FamilyStrategy = "strategic"
+)
+
+// Slot constants — the artefacts_types_slot values that gate the work
+// families. Strategy types have a NULL slot (slot == "") and are gated by
+// scope instead.
+const (
+	SlotDefect = "wrk_defect"
+	SlotRisk   = "wrk_risk"
+	SlotTask   = "wrk_task"
+	SlotStory  = "wrk_story"
+	SlotEpic   = "wrk_epic"
+)
+
+// AppliesToType reports whether this column is offered/accepted for an
+// artefact type with the given slot + scope. Universal columns (Family
+// == "") apply to every type. Gated columns apply only when the type's
+// slot/scope matches the family's gate (mirrors migs 158 + 162).
+func (c ColumnSpec) AppliesToType(slot, scope string) bool {
+	switch c.Family {
+	case "":
+		return true // universal
+	case FamilyDefect:
+		return slot == SlotDefect
+	case FamilyRisk:
+		return slot == SlotRisk
+	case FamilyTask:
+		return slot == SlotTask
+	case FamilySubmittedBy:
+		return slot == SlotDefect || slot == SlotRisk
+	case FamilyStrategy:
+		return scope == ScopeStrategy // ScopeStrategy declared in types.go
+	default:
+		// Unknown family — fail closed (don't offer it). A new family must
+		// be added to this switch AND the drift-pin test.
+		return false
+	}
 }
 
 // ArtefactItemColumns is the allow-list of fields callers may request
@@ -123,20 +203,20 @@ var ArtefactItemColumns = []ColumnSpec{
 	// TD-GRID-RENDERERS-CORE-BOOLEANS).
 	{Name: "is_expedite", Label: "Expedite", Group: "Visual", DefaultVisible: false, Addable: true},
 	{Name: "is_ready", Label: "Ready", Group: "Visual", DefaultVisible: false, Addable: true},
-	{Name: "affects_doc", Label: "Affects Documentation", Group: "Visual", DefaultVisible: false, Addable: true},
+	{Name: "affects_doc", Label: "Affects Documentation", Group: "Visual", DefaultVisible: false, Addable: true, Family: FamilyDefect},
 
 	// Defect
-	{Name: "defect_severity", Label: "Defect Severity", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_status", Label: "Defect Status", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "environment", Label: "Environment", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_severity", Label: "Defect Severity", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_status", Label: "Defect Status", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "environment", Label: "Environment", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
 
 	// Notes (mirror description/description_doc pair)
 	{Name: "notes", Label: "Notes", Group: "Content", DefaultVisible: false, Addable: true},
 	{Name: "notes_doc", Label: "Notes (Doc)", Group: "Content", DefaultVisible: false, Addable: true},
 
 	// Estimation (additions for the demoted core fields)
-	{Name: "estimate_hours", Label: "Estimate Hours", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
-	{Name: "estimate_remaining", Label: "Estimate Remaining", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+	{Name: "estimate_hours", Label: "Estimate Hours", Group: "Priority & Estimation", DefaultVisible: false, Addable: true, Family: FamilyTask},
+	{Name: "estimate_remaining", Label: "Estimate Remaining", Group: "Priority & Estimation", DefaultVisible: false, Addable: true, Family: FamilyTask},
 	{Name: "estimate_initial", Label: "Initial Estimate", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
 	{Name: "estimate_updated", Label: "Updated Estimate", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
 	{Name: "count_child_test_cases", Label: "Child Test Cases", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
@@ -148,7 +228,7 @@ var ArtefactItemColumns = []ColumnSpec{
 	{Name: "flow_state_changed_at", Label: "Flow State Changed", Group: "Workflow", DefaultVisible: false, Addable: true},
 
 	// Strategic
-	{Name: "strategic_investment_group", Label: "Strategic Investment Group", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "strategic_investment_group", Label: "Strategic Investment Group", Group: "Planning", DefaultVisible: false, Addable: true, Family: FamilyStrategy},
 
 	// Rally-screenshots batch (2026-05-29, migrations 150-155). 24
 	// new columns spread across universal / defect / risk / strategy
@@ -161,28 +241,34 @@ var ArtefactItemColumns = []ColumnSpec{
 	{Name: "tags", Label: "Tags", Group: "Tags & Actuals", DefaultVisible: false, Addable: true},
 	{Name: "actual_end_date", Label: "Actual End Date", Group: "Planning", DefaultVisible: false, Addable: true},
 	// Defect (mig 151).
-	{Name: "defect_resolution", Label: "Defect Resolution", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_test_case_status", Label: "Defect Test Case Status", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_fixed_in_build", Label: "Fixed In Build", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_found_in_build", Label: "Found In Build", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_is_release_note", Label: "Release Note", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_steps_to_reproduce", Label: "Steps To Reproduce", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_steps_to_reproduce_doc", Label: "Steps To Reproduce (Doc)", Group: "Defect", DefaultVisible: false, Addable: true},
-	{Name: "defect_is_regression", Label: "Regression", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_resolution", Label: "Defect Resolution", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_test_case_status", Label: "Defect Test Case Status", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_fixed_in_build", Label: "Fixed In Build", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_found_in_build", Label: "Found In Build", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_is_release_note", Label: "Release Note", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_steps_to_reproduce", Label: "Steps To Reproduce", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_steps_to_reproduce_doc", Label: "Steps To Reproduce (Doc)", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
+	{Name: "defect_is_regression", Label: "Regression", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
 	// Risk (mig 152) — paired bucket/score columns + GENERATED calculated.
-	{Name: "risk_resolution", Label: "Risk Resolution", Group: "Risk", DefaultVisible: false, Addable: true},
-	{Name: "risk_impact", Label: "Risk Impact", Group: "Risk", DefaultVisible: false, Addable: true},
-	{Name: "risk_impact_score", Label: "Risk Impact Score", Group: "Risk", DefaultVisible: false, Addable: true},
-	{Name: "risk_probability", Label: "Risk Probability", Group: "Risk", DefaultVisible: false, Addable: true},
-	{Name: "risk_probability_score", Label: "Risk Probability Score", Group: "Risk", DefaultVisible: false, Addable: true},
-	{Name: "risk_response", Label: "Risk Response", Group: "Risk", DefaultVisible: false, Addable: true},
-	{Name: "risk_exposure", Label: "Risk Exposure", Group: "Risk", DefaultVisible: false, Addable: true},
-	{Name: "risk_calculated", Label: "Risk Calculated", Group: "Risk", DefaultVisible: false, Addable: true},
+	// risk_calculated is GENERATED (self-gates via NULL inputs) so the
+	// trigger does NOT list it; we tag it FamilyRisk anyway so the builder
+	// never offers a read-only generated column on a non-risk type. Go is
+	// intentionally STRICTER than the trigger here — safe (presentation
+	// hides it; the trigger would have allowed a NULL). Pinned in the
+	// drift test as a documented exception.
+	{Name: "risk_resolution", Label: "Risk Resolution", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
+	{Name: "risk_impact", Label: "Risk Impact", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
+	{Name: "risk_impact_score", Label: "Risk Impact Score", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
+	{Name: "risk_probability", Label: "Risk Probability", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
+	{Name: "risk_probability_score", Label: "Risk Probability Score", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
+	{Name: "risk_response", Label: "Risk Response", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
+	{Name: "risk_exposure", Label: "Risk Exposure", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
+	{Name: "risk_calculated", Label: "Risk Calculated", Group: "Risk", DefaultVisible: false, Addable: true, Family: FamilyRisk},
 	// Submitted-by (mig 153) — defect + risk shared.
-	{Name: "submitted_by_user_id", Label: "Submitted By", Group: "People", DefaultVisible: false, Addable: true},
+	{Name: "submitted_by_user_id", Label: "Submitted By", Group: "People", DefaultVisible: false, Addable: true, Family: FamilySubmittedBy},
 	// Strategy (mig 154).
-	{Name: "strategic_job_size", Label: "Strategic Job Size", Group: "Planning", DefaultVisible: false, Addable: true},
-	{Name: "strategic_preliminary_estimate_value", Label: "Preliminary Estimate Value", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
+	{Name: "strategic_job_size", Label: "Strategic Job Size", Group: "Planning", DefaultVisible: false, Addable: true, Family: FamilyStrategy},
+	{Name: "strategic_preliminary_estimate_value", Label: "Preliminary Estimate Value", Group: "Priority & Estimation", DefaultVisible: false, Addable: true, Family: FamilyStrategy},
 	// Estimate-initial sidecar (mig 155 — ALTERed _estimate_initial to
 	// TEXT bucket name; this is the numeric value-per-bucket).
 	{Name: "estimate_initial_value", Label: "Initial Estimate Value", Group: "Priority & Estimation", DefaultVisible: false, Addable: true},
@@ -196,10 +282,15 @@ var ArtefactItemColumns = []ColumnSpec{
 	//   strategic_investment_weight          (strategy-only, gated by trigger;
 	//                                         vocab undefined — see
 	//                                         TD-STRATEGIC-INVESTMENT-WEIGHT-VOCAB)
-	{Name: "defect_browser", Label: "Browser", Group: "Defect", DefaultVisible: false, Addable: true},
+	{Name: "defect_browser", Label: "Browser", Group: "Defect", DefaultVisible: false, Addable: true, Family: FamilyDefect},
 	{Name: "work_accepted_date", Label: "Work Accepted Date", Group: "Planning", DefaultVisible: false, Addable: true},
-	{Name: "strategic_value_stream_identifier", Label: "Strategic Value Stream", Group: "Planning", DefaultVisible: false, Addable: true},
-	{Name: "strategic_investment_weight", Label: "Strategic Investment Weight", Group: "Planning", DefaultVisible: false, Addable: true},
+	{Name: "strategic_value_stream_identifier", Label: "Strategic Value Stream", Group: "Planning", DefaultVisible: false, Addable: true, Family: FamilyStrategy},
+	{Name: "strategic_investment_weight", Label: "Strategic Investment Weight", Group: "Planning", DefaultVisible: false, Addable: true, Family: FamilyStrategy},
+
+	// Flow State Change Owner (mig 164, 2026-05-30) — promoted from the
+	// catalogue to a universal user-FK core column (assigned to ALL
+	// artefact types; no slot/scope gate). Mirrors submitted_by_user_id.
+	{Name: "flow_state_change_owner_user_id", Label: "Flow State Change Owner", Group: "People", DefaultVisible: false, Addable: true},
 
 	// Audit
 	{Name: "subscription_id", Label: "Subscription", Group: "Audit", DefaultVisible: false, Addable: true},
@@ -243,4 +334,39 @@ func AlwaysOnArtefactItemColumns() []string {
 		}
 	}
 	return out
+}
+
+// CoreColumnsForType returns the catalogue columns applicable to an
+// artefact type with the given slot + scope, in catalogue order. Used by
+// the Form Layout Builder (formlayouts) to scope the sidebar's core-field
+// list to the type — a Defect never sees risk/strategic columns, an Epic
+// never sees Steps-to-Reproduce, etc. Universal columns are always
+// included. Mirrors the slot-gate trigger (migs 158 + 162).
+func CoreColumnsForType(slot, scope string) []ColumnSpec {
+	out := make([]ColumnSpec, 0, len(ArtefactItemColumns))
+	for _, c := range ArtefactItemColumns {
+		if c.AppliesToType(slot, scope) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// columnSpecByName indexes the catalogue by Name for O(1) lookup. Computed
+// once at init.
+var columnSpecByName = func() map[string]ColumnSpec {
+	out := make(map[string]ColumnSpec, len(ArtefactItemColumns))
+	for _, c := range ArtefactItemColumns {
+		out[c.Name] = c
+	}
+	return out
+}()
+
+// CoreColumnSpecForName returns the ColumnSpec for a core field name. The
+// second return is false when the name is not in the catalogue (caller
+// should treat that as an unknown-field error). Used by the formlayouts
+// save validator to check AppliesToType for each placed core field.
+func CoreColumnSpecForName(name string) (ColumnSpec, bool) {
+	c, ok := columnSpecByName[name]
+	return c, ok
 }

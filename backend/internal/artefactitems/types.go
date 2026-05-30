@@ -196,6 +196,10 @@ type WorkItem struct {
 	WorkAcceptedDate               *string `json:"work_accepted_date"`
 	StrategicValueStreamIdentifier *string `json:"strategic_value_stream_identifier"`
 	StrategicInvestmentWeight      *string `json:"strategic_investment_weight"`
+	// Flow State Change Owner (mig 164, 2026-05-30). Universal user-FK
+	// core column (no slot/scope gate). FK to users; ON DELETE SET NULL.
+	// Mirrors SubmittedByUserID. Selected as ::text.
+	FlowStateChangeOwnerUserID *string `json:"flow_state_change_owner_user_id"`
 }
 
 // OwnerRef is the slim user projection embedded on each WorkItem when the
@@ -489,6 +493,10 @@ type PatchWorkItemInput struct {
 	WorkAcceptedDate               *string
 	StrategicValueStreamIdentifier *string
 	StrategicInvestmentWeight      *string
+	// Flow State Change Owner (mig 164, 2026-05-30). Three-state *string:
+	// nil ⇒ skip; "" ⇒ clear-to-NULL; non-empty ⇒ validated uuid UPDATE.
+	// Universal (no gate). Mirrors SubmittedByUserID.
+	FlowStateChangeOwnerUserID *string
 }
 
 // validDefectSeverities mirrors the artefacts_defect_severity_chk
@@ -882,6 +890,17 @@ var validFieldTypes = map[string]bool{
 // the DB lookup".
 //
 // B21 (PLA-0037): introduced when artefactitems became scope-parameterised.
+//
+// ScopeWork / ScopeStrategy are the canonical artefacts_types_scope string
+// values, declared once here in the scope-registry file so callers compare
+// against a named constant rather than re-typing the literal (which the
+// lint:scope-literals guard forbids scattering through the package). These
+// are domain identity constants, NOT SQL fragments — the lint blesses these
+// two declaration lines explicitly (see lint_scope_literals.py
+// ALLOWED_TYPES_GO_LINES).
+const ScopeWork = "work"         // lint:scope-literals canonical
+const ScopeStrategy = "strategy" // lint:scope-literals canonical
+
 var validItemTypesByScope = map[string]map[string]bool{
 	"work": {
 		"epic": true, "story": true, "task": true, "defect": true, "risk": true, "portfolio item": true,

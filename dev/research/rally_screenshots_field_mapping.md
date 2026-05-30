@@ -421,6 +421,153 @@ The HARD RULE "SERVER IS THE GATE" pins this to a defence-in-depth model: handle
 
 ---
 
+## H. CANONICAL — Rally CORE-EDITABLE field list (permanent reference)
+
+**Captured:** 2026-05-30, verbatim from the 7 Rally "Fields" admin screenshots (Defect, User Story, Task, Risk, Portfolio Item, Iteration, Release).
+
+**Definition — CORE-EDITABLE:** a field Rally ships as a *standard* (non-custom) attribute whose **data the user can edit**, but whose **name / schema cannot be changed**. This is Rally's `ReadOnly: false` standard-field set. It is the middle tier of the three-tier model:
+
+- **A. Custom** — user owns schema + data (Rally "Add New" fields).
+- **B. Core-editable** — schema locked, **data editable** ← *this section*.
+- **C. Core-locked** — schema locked, **data system-computed** (read-only; listed in §H.2, stripped OUT of the editable list).
+
+The lists below are the **per-type editable-data field set** exactly as the Rally admin presents it. They are the parity target: every name here is a core field on the Vector artefact/timebox that must accept inline data edits (subject to its scope-gate) while remaining un-renameable and un-deletable.
+
+### H.1 Core-editable fields, per Rally type (verbatim)
+
+> **Computed/locked rows have been STRIPPED OUT** of these lists (moved to §H.2). What remains is the editable-data-only set the user asked for.
+
+**Defect** (Type = Defect) — *full list captured 2026-05-30 (second screenshot, past the fold)*
+`Actuals` (Decimal) · `Affects Documentation` (Boolean) · `Blocked` (Boolean) · `Blocked Reason` (String) · `Description` (Text) · `Environment` (Drop Down) · `Expedite` (Boolean) · `Fixed In Build` (String) · `Found In Build` (String) · `Iteration` (Object Selector) · `Milestones` (Object Selector Multi) · `Name` (String) · `Notes` (Text) · `Owner` (Object Selector) · `Package` (Drop Down) · `Plan Estimate` (Decimal) · `Portfolio Item` (Object Selector) · `Priority` (Drop Down) · `Project` (Object Selector) · `Ready` (Boolean) · `Release` (Object Selector) · `Release Note` (Boolean) · `Resolution` (Drop Down) · `Salesforce Case ID` (String) · `Salesforce Case Number` (String) · `Schedule State` (Drop Down) · `Severity` (Drop Down) · `State` (Drop Down) · `Submitted By` (Object Selector) · `Tags` (Object Selector Multi) · `Target Build` (String) · `Target Date` (Date) · `Test Case` (Object Selector) · `Test Case Result` (Object Selector) · `User Story` (Object Selector) · `Verified In Build` (String)
+
+**User Story** (Type = User Story)
+`Actuals` (Decimal) · `Blocked` (Boolean) · `Blocked Reason` (String) · `Description` (Text) · `Expedite` (Boolean) · `Feature` (Object Selector) · `Iteration` (Object Selector) · `Milestones` (Object Selector Multi) · `Name` (String) · `Notes` (Text) · `Owner` (Object Selector) · `Package` (Drop Down) · `Parent` (Object Selector) · `Plan Estimate` (Decimal) · `Portfolio Item` (Object Selector) · `Project` (Object Selector) · `Ready` (Boolean) · `Release` (Object Selector) · `Schedule State` (Drop Down) · `Tags` (Object Selector Multi)
+
+**Task** (Type = Task)
+`Actuals` (Decimal) · `Blocked` (Boolean) · `Blocked Reason` (String) · `Description` (Text) · `Estimate` (Decimal) · `Expedite` (Boolean) · `Iteration` (Object Selector) · `Milestones` (Object Selector Multi) · `Name` (String) · `Notes` (Text) · `Owner` (Object Selector) · `Project` (Object Selector) · `Ready` (Boolean) · `Release` (Object Selector) · `State` (Drop Down) · `Tags` (Object Selector Multi) · `To Do` (Decimal) · `Work Product` (Object Selector)
+
+**Risk** (Type = Risk)
+`Actuals` (Decimal) · `Description` (Text) · `Expedite` (Boolean) · `Exposure` (Decimal) · `Impact` (Drop Down) · `Iteration` (Object Selector) · `Milestones` (Object Selector Multi) · `Name` (String) · `Notes` (Text) · `Owner` (Object Selector) · `Plan Estimate` (Decimal) · `Probability` (Drop Down) · `Project` (Object Selector) · `Release` (Object Selector) · `Resolution` (String) · `Response` (Drop Down) · `Schedule State` (Drop Down) · `State` (Drop Down) · `Submitted By` (Object Selector) · `Tags` (Object Selector Multi)
+
+**Portfolio Item** (Type = Portfolio Item) — **STRATEGIC tier** — *full list captured 2026-05-30 (second screenshot, past the fold)*
+`Actual End Date` (Date) · `Actual Start Date` (Date) · `Archived` (Boolean) · `Blocked` (Boolean) · `Blocked Reason` (String) · `Description` (Text) · `Expedite` (Boolean) · `Investment Category` (Drop Down) · `Investments` (Object Selector Multi) · `Job Size` (Integer) · `Milestones` (Object Selector Multi) · `Name` (String) · `Notes` (Text) · `Owner` (Object Selector) · `Planned End Date` (Date) · `Planned Start Date` (Date) · `Portfolio Item Type` (Drop Down) · `Preliminary Estimate` (Drop Down) · `Preliminary Estimate Value` (Integer) · `Project` (Object Selector) · `Ready` (Boolean) · `Refined Estimate` (Integer) · `Risk Score` (Integer) · `RR/OE Value` (Integer) · `State` (Drop Down) · `State Changed Date` (Date) · `Tags` (Object Selector Multi) · `Time Criticality` (Integer) · `User/Business Value` (Integer) · `Value Score` (Integer)
+
+**Iteration** (Type = Iteration)
+`Actuals` (Decimal) · `End Date` (Date) · `Name` (String) · `Notes` (Text) · `Plan Estimate` (Decimal) · `Planned Velocity` (Decimal) · `Project` (Object Selector) · `Start Date` (Date) · `State` (Drop Down) · `Theme` (Text)
+
+**Release** (Type = Release)
+`Actuals` (Decimal) · `Gross Estimate Conversion Ratio` (Decimal) · `Name` (String) · `Notes` (Text) · `Plan Estimate` (Decimal) · `Planned Velocity` (Decimal) · `Project` (Object Selector) · `Release Date` (Date) · `State` (Drop Down) · `Theme` (Text)
+
+### H.2 STRIPPED OUT — core-LOCKED (computed, read-only) fields
+
+These appear in the Rally admin but are **system-computed** — Rally accepts no data writes on them. They are NOT in the editable list above. In Vector they are GENERATED columns or projection-side rollups (see §B SKIP/DEFER rows).
+
+| Field | Rally type(s) | Why locked | Vector handling |
+|---|---|---|---|
+| `Creation Date` | all 7 | system timestamp | `*_created_at` — never patchable |
+| `ID` | all 7 | system-composed formatted ID | `prefix` + `number` / `suffix` — composed, not stored editable |
+| `Calculated Risk` | Risk | `Impact × Probability` | Postgres GENERATED (`artefacts_risk_calculated`) — §B DEFER |
+| `Direct Children Count` | User Story, Portfolio Item | `COUNT(children)` | projection-side — §B SKIP |
+| `Percent Done By Story Count` | Portfolio Item | rollup | projection-side — §B SKIP |
+| `Percent Done By Story Plan Estimate` | Portfolio Item | rollup | projection-side — §B SKIP |
+| `Release Backlog Items Count` | Release | `COUNT(release items)` | projection-side — §B SKIP |
+| `State Changed Date` | Portfolio Item | audit timestamp, stamped on `State` change | trigger-stamped — never patchable (WSAPI-confirmed read-only, §I) |
+
+> ⚠️ **CORRECTED 2026-05-30 by WSAPI validation (§I):** `WSJF Score`, `Risk Score`, `Value Score` were provisionally listed here as computed — **they are NOT.** Rally's Portfolio Item Fields doc confirms all three are **user-editable manual-entry integers** ("Enter the potential risk", "Enter the value…", WSJF is a "prioritization method" you score by hand). They have been MOVED to the editable set in §H.3 / §I. Rally does not auto-derive WSJF from its inputs; the score is entered directly.
+
+### H.3 Distinct core-editable field set (deduped across all 7 types)
+
+The union of §H.1 — the **permanent allow-list** of names that are core, schema-locked, and data-editable. Group by scope-gate (per §E):
+
+**Universal editable** (every artefact type): `Actuals`, `Blocked`, `Blocked Reason`, `Description`, `Expedite`, `Milestones`, `Name`, `Notes`, `Owner`, `Plan Estimate`, `Project`, `Ready`, `Iteration`, `Release`, `Tags`, `Portfolio Item`/`Parent`/`Feature`/`Work Product` (parent-FK reuse), `Priority`.
+
+**Defect-only editable**: `Affects Documentation`, `Environment`, `Fixed In Build`, `Found In Build`, `Package` (shared w/ Story), `Release Note`, `Resolution` (shared w/ Risk), `State`, `Severity`, `Schedule State`, `Steps to Reproduce`, `Test Case Status`, `Submitted By` (shared w/ Risk), `Salesforce Case ID`, `Salesforce Case Number`, `Target Build`, `Target Date`, `Test Case` (Object Selector), `Test Case Result` (Object Selector), `User Story` (Object Selector — defect→story link), `Verified In Build`.
+
+> **NEW from 2026-05-30 full Defect screenshot** (not in §B OpenAPI pass): `Salesforce Case ID`, `Salesforce Case Number`, `Target Build`, `Target Date`, `Test Case`, `Test Case Result`, `User Story`, `Verified In Build`. These are Rally Defect-tier columns with no Vector column yet — file under the defect-only demotion batch (mig 151 family) if adopted. `Salesforce Case *` are integration-specific (Rally↔SFDC connector) and likely **DROP** for Vector unless a Salesforce bridge is in scope.
+
+**Story-only editable**: `Schedule State`, `Package` (shared w/ Defect).
+
+**Task-only editable**: `Estimate`, `To Do`, `State`, `Work Product` (parent-FK reuse).
+
+**Risk-only editable**: `Exposure`, `Impact`, `Probability`, `Resolution`, `Response`, `Schedule State`, `State`, `Submitted By`.
+
+**Strategy / Portfolio-Item-only editable** *(WSAPI-validated — see §I)*: `Actual Start Date`†, `Actual End Date`†, `Archived`, `Blocked`, `Blocked Reason`, `Expedite`, `Ready`, `State`, `Tags`, `Investment Category`, `Investments`, `Planned End Date`, `Planned Start Date`, `Portfolio Item Type`, `Preliminary Estimate`, `Refined Estimate`, `Risk Score`, `Value Score`, `WSJF Score`, `Job Size`, `User/Business Value`, `Time Criticality`, `RR/OE Value`, `Preliminary Estimate Value`.
+> † `Actual Start Date` / `Actual End Date` are listed editable in the screenshot but the Rally **Fields Help doc marks them READ-ONLY/calculated** ("The earliest/latest date an associated user story or defect is moved") — §I overrides the screenshot. They are in §H.2, not editable.
+
+> **WSAPI CORRECTION 2026-05-30 (§I supersedes the screenshot inference):** `WSJF Score`, `Risk Score`, `Value Score` are **user-editable manual-entry integers**, NOT computed — Rally's Portfolio Item Fields doc confirms direct entry. They are listed editable above. The earlier "WSJF = (UBV+TC+RR/OE)÷Job Size computed" note was WRONG and is struck in §H.2. The genuinely read-only PI fields are: `Actual Start Date`, `Actual End Date`, `State Changed Date`, `Direct Children Count`, `Percent Done By Story Count`, `Percent Done By Story Plan Estimate`, and the rollup family (Leaf Story Count, Total Estimate Rollup, etc.) — all in §I.2.
+
+**Iteration (timebox) editable** (own table): `Actuals`, `End Date`, `Name`, `Notes`, `Plan Estimate`, `Planned Velocity`, `Project`, `Start Date`, `State`, `Theme`.
+
+**Release (timebox) editable** (own table): `Actuals`, `Gross Estimate Conversion Ratio`, `Name`, `Notes`, `Plan Estimate`, `Planned Velocity`, `Project`, `Release Date`, `State`, `Theme`.
+
+> **Parity use:** this §H.3 set is the source of truth for which Vector core columns must be marked **editable** (vs locked) in the custom-fields grid CORE-row rendering and gated as writable in the `artefactitems/service.go` PATCH validator. The §H.2 set is the read-only counterpart that the validator must REJECT writes on.
+
+---
+
+## I. WSAPI-VALIDATED editable vs read-only (authoritative — supersedes screenshot inference)
+
+**Validated:** 2026-05-30 against Broadcom Rally documentation (not the Fields-admin screenshots, which list a field regardless of whether the *user* or the *app* writes it).
+
+**Sources:**
+- Portfolio Item Fields (Rally Help) — `techdocs.broadcom.com/.../creating-portfolio-items/portfolio-item-fields.html` — the only Broadcom page that tabulates editable-vs-calculated per PI field.
+- Rally WSAPI 2.0 reference conventions — artifact-level metadata (`FormattedID`, `CreationDate`, `LastUpdateDate`, `CreatedBy`, `RevisionHistory`) is read-only across all Rally toolkits (pyral, rally-node, rally_api) and WSAPI docs; these are never settable on create/update.
+
+**Why this section exists:** the Rally "Fields" admin screen (§H) lists every attribute that *exists* on a type — including ones the **app writes, not the user**. The user's instruction: validate which are *actually* user-editable. §I is that validation. Where §I disagrees with §H, **§I wins**.
+
+### I.1 Corrections to the screenshot-inferred lists
+
+| Field | Screenshot/§H said | WSAPI/Help doc says | Verdict |
+|---|---|---|---|
+| `WSJF Score` | computed (locked) | **"a prioritization method"** — user enters the score | ✅ **EDITABLE** (correction) |
+| `Risk Score` | computed (locked) | **"Enter the potential risk"** | ✅ **EDITABLE** (correction) |
+| `Value Score` | computed (locked) | **"Enter the value this portfolio item"** | ✅ **EDITABLE** (correction) |
+| `Refined Estimate` | editable | **"Enter an updated estimate"** | ✅ EDITABLE (confirmed) |
+| `Preliminary Estimate` | editable | sized "during planning" | ✅ EDITABLE (confirmed) |
+| `Actual Start Date` | editable (screenshot) | **"earliest date an associated story/defect is moved"** — calculated | ❌ **READ-ONLY** (correction) |
+| `Actual End Date` | editable (screenshot) | **"latest date the final associated story/defect is moved"** — calculated | ❌ **READ-ONLY** (correction) |
+| `State Changed Date` | locked | **"date on which a portfolio item moved"** — calculated | ❌ READ-ONLY (confirmed) |
+| `Percent Done By Story Count` | locked | **"calculated by the number of accepted user stories"** | ❌ READ-ONLY (confirmed) |
+| `Percent Done By Story Plan Estimate` | locked | **"calculated by dividing the number of accepted points"** | ❌ READ-ONLY (confirmed) |
+| `Direct Children Count` | locked | WSAPI `LeafStoryCount`/rollup family — calculated | ❌ READ-ONLY (confirmed) |
+
+**Net correction:** WSJF/Risk/Value Scores move from *locked* → *editable* (Rally does NOT auto-derive WSJF; the score is manual). Actual Start/End Date move from *editable* → *read-only* (app-stamped from child-artefact movement). This is exactly the "app-driven not user-driven" distinction the user flagged.
+
+### I.2 Universal READ-ONLY set (app-driven on EVERY type — never user-editable)
+
+These are written by Rally itself, not the user. In Vector they are system columns / GENERATED / projection-side. The PATCH validator MUST reject writes to all of them:
+
+- **Identity / audit (all types):** `ID` (FormattedID), `Creation Date` (CreationDate), `Last Update Date` (LastUpdateDate), `Created By` (CreatedBy), `Revision History` (RevisionHistory), `Object ID` (ObjectID), `Subscription`, `VersionId`.
+- **State-machine stamps:** `State Changed Date`, `In-Progress Date`, `Accepted Date`, `Ready` *stamp* fields where app-set.
+- **Rollups / counts (PI + Story):** `Direct Children Count`, `Leaf Story Count`, `Accepted Leaf Story Count`, `Leaf Story Plan Estimate Total`, `Accepted Leaf Story Plan Estimate Total`, `Total Count Rollup`, `Accepted Total Count Rollup`, `Total Estimate Rollup`, `Accepted Total Estimate Rollup`, `Defect Count Rollup`, `Un-estimated * Rollup`, `Late Child Count`, `Last Rollup Date`.
+- **Percent-done family:** `Percent Done By Story Count`, `Percent Done By Story Plan Estimate`, `Percent Done By Defect Count`, `Percent Done By Defect Plan Estimate`, `Percent Done By Total Count`, `Percent Done By Total Plan Estimate`, `Estimated Progress by Story Count`, `Estimated Progress by Story Points`.
+- **Derived dates (PI):** `Actual Start Date`, `Actual End Date`.
+- **Release-derived:** `Release Backlog Items Count`.
+- **Defect integration (Rally↔SFDC connector, app-synced):** `Salesforce Case ID`, `Salesforce Case Number` — app-written by the SFDC bridge, not user-editable in Vector context → DROP unless a bridge ships.
+
+### I.3 The validated CORE-EDITABLE allow-list (FINAL — use this, not §H.3, where they differ)
+
+Everything in §H.1 **minus §I.2**. This is the permanent, WSAPI-checked list the implementation should target:
+
+**Universal editable:** `Name`, `Description`, `Notes`, `Owner`, `Project`, `Blocked`, `Blocked Reason`, `Ready`, `Expedite`, `Tags`, `Milestones`, `Iteration`, `Release`, `Plan Estimate`, `Actuals`, `Priority`, parent-FK reuse (`Portfolio Item`/`Parent`/`Feature`/`Work Product`).
+
+**Defect-editable:** `Affects Documentation`, `Environment`, `Severity`, `State`, `Schedule State`, `Resolution`, `Package`, `Fixed In Build`, `Found In Build`, `Verified In Build`, `Target Build`, `Target Date`, `Release Note`, `Steps to Reproduce`, `Test Case`, `Test Case Result`, `User Story` (link), `Submitted By`. *(Salesforce Case ID/Number → read-only, §I.2.)*
+
+**Story-editable:** `Schedule State`, `Package`, `Feature` (link), `Parent` (link). *(Direct Children Count → read-only.)*
+
+**Task-editable:** `Estimate`, `To Do`, `State`, `Work Product` (link).
+
+**Risk-editable:** `Impact`, `Probability`, `Exposure`, `State`, `Schedule State`, `Resolution`, `Response`, `Submitted By`. *(Calculated Risk → read-only/GENERATED.)*
+
+**Portfolio Item (strategy) editable:** `Archived`, `State`, `Investment Category`, `Investments`, `Portfolio Item Type`, `Preliminary Estimate`, `Preliminary Estimate Value`, `Refined Estimate`, `Planned Start Date`, `Planned End Date`, `Job Size`, `User/Business Value`, `Time Criticality`, `RR/OE Value`, `Risk Score`, `Value Score`, `WSJF Score`. *(Actual Start/End Date, State Changed Date, Percent-done family, rollups → read-only, §I.2.)*
+
+**Iteration (timebox) editable:** `Name`, `Notes`, `State`, `Theme`, `Start Date`, `End Date`, `Plan Estimate`, `Planned Velocity`, `Actuals`, `Project`.
+
+**Release (timebox) editable:** `Name`, `Notes`, `State`, `Theme`, `Release Date`, `Plan Estimate`, `Planned Velocity`, `Gross Estimate Conversion Ratio`, `Actuals`, `Project`. *(Release Backlog Items Count → read-only.)*
+
+> **Implementation contract:** §I.3 = columns the custom-fields grid renders as **editable-CORE** and the `artefactitems/service.go` PATCH validator accepts. §I.2 = columns rendered as **locked-CORE** and the validator REJECTS (per the SERVER-IS-THE-GATE hard rule — the read-only set must be enforced server-side, not just hidden client-side).
+
+---
+
 ## End of report
 
 **File:** `/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/dev/research/rally_screenshots_field_mapping.md`
