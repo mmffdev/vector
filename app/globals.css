@@ -19380,3 +19380,290 @@ tr.is-editing {
   background: var(--accent-muted);
   color: var(--ink);
 }
+/* ════════════════════════════════════════════════════════════════════════
+   Form Layout Builder (flb-*) — 2026-05-30
+   Fullscreen drag-and-drop form-layout authoring surface. See
+   docs/superpowers/specs/2026-05-30-form-layout-builder-design.md and
+   app/components/FormLayoutBuilder/. Namespace: flb-<block>__<part>.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.flb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;                 /* above rails + shell */
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #1a1a1a);
+  animation: flb-overlay-in 160ms ease-out;
+}
+@keyframes flb-overlay-in {
+  from { opacity: 0; transform: scale(0.992); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Top bar ── */
+.flb-overlay__Bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px) var(--space-6, 24px);
+  border-bottom: 1px solid var(--border-default, #e5e1da);
+  background: var(--surface, #fff);
+}
+.flb-overlay__Bar_Title { display: flex; flex-direction: column; gap: 2px; }
+.flb-overlay__Bar_Title_Main {
+  font-size: 15px; font-weight: 650; letter-spacing: -0.01em;
+}
+.flb-overlay__Bar_Title_Sub {
+  font-size: 12px; color: var(--text-secondary, #5c5c5c);
+}
+.flb-overlay__Bar_Actions { display: flex; gap: var(--space-2, 8px); }
+
+.flb-overlay__Banner {
+  flex: 0 0 auto;
+  padding: var(--space-2, 8px) var(--space-6, 24px);
+  font-size: 13px;
+}
+.flb-overlay__Banner-error {
+  background: var(--danger-bg, #fdecec);
+  color: var(--danger, #b91c1c);
+  border-bottom: 1px solid var(--danger, #b91c1c);
+}
+
+/* ── Body: 20% / 80% split ── */
+.flb-overlay__Body {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 20%) 1fr;
+  min-height: 0;
+}
+
+/* ── Sidebar ── */
+.flb-sidebar {
+  border-right: 1px solid var(--border-default, #e5e1da);
+  background: var(--surface-sunken, #f6f4f0);
+  overflow-y: auto;
+  padding: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 20px);
+  position: relative;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+.flb-sidebar-removeover {
+  background: var(--danger-bg, #fdecec);
+  box-shadow: inset 0 0 0 2px var(--danger, #b91c1c);
+}
+.flb-sidebar__Error {
+  font-size: 12px; color: var(--danger, #b91c1c);
+  background: var(--danger-bg, #fdecec);
+  padding: var(--space-2, 8px); border-radius: var(--radius-sm, 6px);
+}
+.flb-sidebar__Section_Head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: var(--space-2, 8px);
+}
+.flb-sidebar__Section_Title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-secondary, #5c5c5c);
+}
+.flb-sidebar__Section_Hint { font-size: 10px; color: var(--ink-subtle, #9b9b9b); }
+.flb-sidebar__Section_List { display: flex; flex-direction: column; gap: 6px; }
+.flb-sidebar__Empty { font-size: 12px; color: var(--ink-subtle, #9b9b9b); font-style: italic; }
+.flb-sidebar__Skel {
+  height: 64px; border-radius: var(--radius-md, 8px);
+  background: linear-gradient(90deg, var(--surface, #fff) 25%, var(--surface-sunken, #edeae4) 50%, var(--surface, #fff) 75%);
+  background-size: 200% 100%; animation: flb-skel 1.2s ease-in-out infinite;
+}
+@keyframes flb-skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.flb-sidebar__Removehint {
+  margin-top: auto; text-align: center; font-size: 11px;
+  color: var(--danger, #b91c1c); opacity: 0; transition: opacity 120ms ease;
+  padding: var(--space-2, 8px);
+}
+.flb-sidebar-removeover .flb-sidebar__Removehint { opacity: 1; }
+
+/* ── Field chip (sidebar + drag overlay) ── */
+.flb-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da);
+  border-radius: var(--radius-md, 8px);
+  font-size: 13px; cursor: grab; user-select: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+.flb-chip:hover { border-color: var(--accent, #1a1a1a); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.flb-chip:active { cursor: grabbing; }
+.flb-chip__Label { flex: 1 1 auto; font-weight: 500; }
+.flb-chip__Req { color: var(--danger, #b91c1c); font-size: 8px; }
+.flb-chip__Placed {
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-subtle, #9b9b9b);
+}
+.flb-chip-placed { opacity: 0.5; cursor: default; background: var(--surface-sunken, #f6f4f0); }
+.flb-chip-placed:hover { border-color: var(--border-default, #e5e1da); box-shadow: none; }
+.flb-chip-mandatory { border-left: 3px solid var(--danger, #b91c1c); }
+.flb-chip-dragging { box-shadow: 0 6px 20px rgba(0,0,0,0.18); transform: rotate(-1deg); cursor: grabbing; }
+
+/* ── Canvas ── */
+.flb-canvas-wrap {
+  overflow-y: auto;
+  padding: var(--space-7, 40px) var(--space-8, 48px);
+  display: flex; flex-direction: column; gap: var(--space-5, 20px);
+}
+.flb-canvas-empty {
+  flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+  color: var(--ink-subtle, #9b9b9b); font-size: 14px; text-align: center;
+  min-height: 200px;
+}
+.flb-canvas {
+  max-width: 920px; width: 100%; margin: 0 auto;
+}
+
+/* row in canvas (rendered via FormLayoutRenderer with className flb-canvas-row) */
+.flb-canvas-row .flb-grid__Row {
+  display: grid; grid-template-columns: 1fr auto; align-items: stretch; gap: var(--space-2, 8px);
+}
+.flb-canvas-row .flb-grid__Row_Cells { gap: var(--space-3, 12px); }
+.flb-canvas-row .flb-grid__Row_Aside { display: flex; align-items: flex-start; padding-top: 4px; }
+
+.flb-row-del {
+  width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
+  color: var(--ink-subtle, #9b9b9b); font-size: 16px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 120ms ease;
+}
+.flb-row-del:hover { border-color: var(--danger, #b91c1c); color: var(--danger, #b91c1c); background: var(--danger-bg, #fdecec); }
+
+/* shared grid (FormLayoutRenderer) */
+.flb-grid { display: flex; flex-direction: column; gap: var(--space-4, 16px); }
+.flb-grid__Row_Cells { display: grid; gap: var(--space-3, 12px); }
+
+/* slot (one cell) */
+.flb-slot {
+  min-height: 72px; border-radius: var(--radius-md, 8px);
+  transition: box-shadow 120ms ease, background 120ms ease;
+}
+.flb-slot-over { box-shadow: inset 0 0 0 2px var(--accent, #1a1a1a); background: var(--accent-muted, rgba(26,26,26,0.06)); }
+
+/* anchor point — dashed border + filled circle with + (user spec) */
+.flb-anchor {
+  height: 100%; min-height: 72px;
+  border: 1.5px dashed var(--border-default, #cfcabf);
+  border-radius: var(--radius-md, 8px);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 120ms ease;
+}
+.flb-slot-over .flb-anchor { border-color: var(--accent, #1a1a1a); }
+.flb-anchor__Dot {
+  width: 28px; height: 28px; border-radius: var(--radius-full, 999px);
+  background: var(--ink-subtle, #b8b2a6);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 120ms ease, transform 120ms ease;
+}
+.flb-slot-over .flb-anchor__Dot { background: var(--accent, #1a1a1a); transform: scale(1.12); }
+.flb-anchor__Plus { color: #fff; font-size: 18px; font-weight: 600; line-height: 1; }
+
+/* placed field chip inside a filled slot */
+.flb-placed {
+  height: 100%; min-height: 72px;
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  padding: 12px 14px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--accent-border, rgba(26,26,26,0.2));
+  border-radius: var(--radius-md, 8px);
+  cursor: grab; user-select: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  transition: box-shadow 120ms ease, border-color 120ms ease;
+}
+.flb-placed:hover { border-color: var(--accent, #1a1a1a); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.flb-placed:active { cursor: grabbing; }
+.flb-placed-dragging { opacity: 0.4; }
+.flb-placed__Label { font-size: 14px; font-weight: 600; }
+.flb-placed__Type {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-subtle, #9b9b9b);
+}
+
+/* insert gap (push-down) */
+.flb-gap { height: 10px; display: flex; align-items: center; }
+.flb-gap__Line {
+  flex: 1 1 auto; height: 0; border-top: 2px dashed transparent;
+  border-radius: 2px; transition: border-color 120ms ease;
+}
+.flb-gap-over { height: 28px; }
+.flb-gap-over .flb-gap__Line { border-color: var(--accent, #1a1a1a); }
+
+/* template picker */
+.flb-templates {
+  max-width: 920px; width: 100%; margin: 0 auto;
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px);
+  padding-top: var(--space-4, 16px);
+  border-top: 1px dashed var(--border-default, #e5e1da);
+}
+.flb-templates__Label { font-size: 12px; color: var(--text-secondary, #5c5c5c); margin-right: 4px; }
+.flb-templates__Btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 10px; background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-md, 8px);
+  font-size: 12px; cursor: pointer; transition: all 120ms ease;
+}
+.flb-templates__Btn:hover { border-color: var(--accent, #1a1a1a); background: var(--surface-sunken, #f6f4f0); }
+.flb-templates__Btn_Text { color: var(--text-secondary, #5c5c5c); }
+.flb-glyph { display: grid; gap: 2px; width: 28px; height: 14px; }
+.flb-glyph__Cell { background: var(--ink-subtle, #b8b2a6); border-radius: 2px; }
+
+/* buttons */
+.flb-btn {
+  padding: 8px 16px; border-radius: var(--radius-md, 8px);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid transparent; transition: all 120ms ease;
+}
+.flb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.flb-btn-primary { background: var(--accent, #1a1a1a); color: var(--accent-ink, #fff); }
+.flb-btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+.flb-btn-ghost { background: transparent; color: var(--text-primary, #1a1a1a); border-color: var(--border-default, #e5e1da); }
+.flb-btn-ghost:hover:not(:disabled) { background: var(--surface-sunken, #f6f4f0); }
+
+/* Form Layout Builder — launch panel (on custom-fields page) */
+.flb-launch {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-4, 16px);
+}
+.flb-launch__Meta { display: flex; gap: var(--space-5, 20px); }
+.flb-launch__Meta_Item { display: flex; flex-direction: column; gap: 2px; }
+.flb-launch__Meta_Label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-subtle, #9b9b9b);
+}
+.flb-launch__Meta_Value { font-size: 13px; font-weight: 600; }
+.flb-launch__Reason { flex-basis: 100%; font-size: 12px; color: var(--text-secondary, #5c5c5c); margin: 0; }
+
+/* Form Layout Builder — runtime renderer (artefact view/edit adopts the saved layout) */
+.flb-runtime { display: flex; flex-direction: column; gap: var(--space-5, 20px); }
+.flb-runtime__Loading { padding: var(--space-4, 16px); font-size: 13px; color: var(--text-secondary, #5c5c5c); }
+.flb-runtime__Field { display: flex; flex-direction: column; gap: var(--space-1, 4px); }
+.flb-runtime__Field_Label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-subtle, #9b9b9b);
+}
+.flb-runtime__Field_Input {
+  font-size: 14px; padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-sm, 6px);
+  background: var(--surface, #fff); color: var(--text-primary, #1a1a1a);
+}
+.flb-runtime__Field_Input:focus { outline: none; border-color: var(--accent, #1a1a1a); }
+.flb-runtime__Field_Input-area { resize: vertical; min-height: 84px; font-family: inherit; }
+.flb-runtime__Carried {
+  border-top: 1px dashed var(--border-default, #e5e1da);
+  padding-top: var(--space-4, 16px);
+  display: flex; flex-direction: column; gap: var(--space-3, 12px);
+}
+.flb-runtime__Carried_Title { font-size: 13px; font-weight: 600; margin: 0; }
+.flb-runtime__Carried_Hint { font-size: 12px; color: var(--text-secondary, #5c5c5c); margin: 0; }
+.flb-runtime__Carried_List { display: flex; flex-direction: column; gap: var(--space-3, 12px); }

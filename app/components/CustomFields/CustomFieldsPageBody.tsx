@@ -18,6 +18,7 @@ import { createCustomFieldsAdapter } from "@/app/components/ObjectTreeV2/adapter
 import customFieldsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_custom_fields.json";
 import { resolveWizardConfig } from "@/app/lib/wizardLoader";
 import type { WorkspaceField } from "@/app/lib/fieldsApi";
+import { FormBuilderLaunchPanel } from "@/app/components/FormLayoutBuilder/FormBuilderLaunchPanel";
 
 export function CustomFieldsPageBody({
   initialOpenId,
@@ -60,6 +61,7 @@ export function CustomFieldsPageBody({
 
   return (
     <PageContent>
+      <FormBuilderLaunchPanel />
       <ObjectTree<WorkspaceField>
         title="Custom Fields"
         addressableName="custom_fields_grid"

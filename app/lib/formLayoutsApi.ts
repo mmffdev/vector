@@ -1,0 +1,174 @@
+// Typed client for the Form Layout Builder (2026-05-30 — see
+// docs/superpowers/specs/2026-05-30-form-layout-builder-design.md).
+//
+// Mirrors backend/internal/formlayouts (types.go + handler.go). The
+// server is the gate: it validates core-field presence and rejects
+// unknown fieldKeys / malformed templates. The client mirrors the
+// mandatory-core rule for live UX only — never as the authoritative
+// check.
+//
+// Routes are mounted at /_site/api/form-layouts; apiSite composes
+// relative to /_site, so paths here start at /api/form-layouts.
+
+import { apiSite } from "@/app/lib/api";
+
+// RowTemplate enumerates the fixed grid templates. Cell spans derive
+// from the template, never free-form (keeps snap-to-slot clean).
+export type RowTemplate = "100" | "50-50" | "30-70" | "70-30" | "30-30-30";
+
+// templateSpans mirrors backend/internal/formlayouts/types.go. The
+// builder uses this to materialise a row's empty cells when a template
+// is chosen.
+export const TEMPLATE_SPANS: Record<RowTemplate, number[]> = {
+  "100": [100],
+  "50-50": [50, 50],
+  "30-70": [30, 70],
+  "70-30": [70, 30],
+  "30-30-30": [33, 33, 33],
+};
+
+export const ROW_TEMPLATES: { template: RowTemplate; label: string }[] = [
+  { template: "100", label: "1 column" },
+  { template: "50-50", label: "2 column · 50 / 50" },
+  { template: "30-70", label: "2 column · 30 / 70" },
+  { template: "70-30", label: "2 column · 70 / 30" },
+  { template: "30-30-30", label: "3 column · equal" },
+];
+
+// FormCell is one slot in a row. fieldKey is a core field's stable key
+// ("title"), or "custom:<artefacts_fields_library_id>", or null for an
+// empty slot (an anchor point in the builder).
+export interface FormCell {
+  id: string;
+  fieldKey: string | null;
+  span: number;
+}
+
+export interface FormRow {
+  id: string;
+  template: RowTemplate;
+  cells: FormCell[];
+}
+
+// FormLayoutDoc is the JSON document stored server-side. version is
+// stamped by the server on save.
+export interface FormLayoutDoc {
+  version: number;
+  artefactTypeId: string;
+  rows: FormRow[];
+}
+
+// FormLayout is a stored version row (the GET response shape).
+export interface FormLayout {
+  id: string;
+  topologyNodeId: string;
+  artefactTypeId: string;
+  workspaceId: string;
+  version: number;
+  isCurrent: boolean;
+  doc: FormLayoutDoc;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// CoreFieldDescriptor is one entry in the builder's field sidebar.
+// kind is "core" (a first-class artefacts column) or "custom" (a
+// catalogue field bound to the type). isMandatory core fields block
+// save when absent.
+export interface CoreFieldDescriptor {
+  fieldKey: string;
+  label: string;
+  dataType: string;
+  kind: "core" | "custom";
+  group: string;
+  isMandatory: boolean;
+}
+
+interface CoreFieldsResponse {
+  fields: CoreFieldDescriptor[];
+}
+
+// MANDATORY_CORE_KEYS mirrors backend mandatoryCoreFieldKeys. Used for
+// live "page won't save without these" UX. The server re-checks.
+export const MANDATORY_CORE_KEYS = ["title", "flow_state_name", "owner"];
+
+// getCurrentLayout fetches the current layout for (node, type), or null
+// if none exists yet (the builder then starts from an empty canvas, the
+// runtime falls back to the default form).
+export async function getCurrentLayout(
+  nodeId: string,
+  typeId: string,
+): Promise<FormLayout | null> {
+  try {
+    return await apiSite<FormLayout>(
+      `/api/form-layouts?node=${encodeURIComponent(nodeId)}&type=${encodeURIComponent(typeId)}`,
+    );
+  } catch (err) {
+    // 404 = no layout authored yet; surface as null, re-throw anything else.
+    if (isNotFound(err)) return null;
+    throw err;
+  }
+}
+
+// getLayoutById fetches one specific version row — used by the runtime
+// to render a story stamped with artefacts_id_form_layout.
+export async function getLayoutById(layoutId: string): Promise<FormLayout> {
+  return apiSite<FormLayout>(`/api/form-layouts/${encodeURIComponent(layoutId)}`);
+}
+
+// getCoreFields returns the sidebar catalogue: core (must-have first)
+// then custom fields bound to the type.
+export async function getCoreFields(typeId: string): Promise<CoreFieldDescriptor[]> {
+  const res = await apiSite<CoreFieldsResponse>(
+    `/api/form-layouts/core-fields?type=${encodeURIComponent(typeId)}`,
+  );
+  return res.fields ?? [];
+}
+
+// SaveLayoutInput is the POST body. Identity/tenant/workspace are NOT
+// sent — the server resolves them from the sentinel clamp.
+export interface SaveLayoutInput {
+  nodeId: string;
+  artefactTypeId: string;
+  rows: FormRow[];
+}
+
+// LayoutValidationError is the structured 422 the server returns when a
+// layout omits a mandatory core field or references an unknown key.
+export interface LayoutValidationError {
+  error: string;
+  missing: string[];
+  field: string;
+}
+
+// saveLayout upserts a layout (server does the version flip). On a
+// validation failure the server returns 422 with { error, missing,
+// field } — callers should catch and surface `missing` to the author.
+export async function saveLayout(input: SaveLayoutInput): Promise<FormLayout> {
+  return apiSite<FormLayout>(`/api/form-layouts`, {
+    method: "POST",
+    body: JSON.stringify({
+      nodeId: input.nodeId,
+      artefactTypeId: input.artefactTypeId,
+      rows: input.rows,
+    }),
+  });
+}
+
+// isNotFound / extractValidation are thin helpers over ApiError without
+// importing its concrete type (api.ts shape varies); we duck-type the
+// status.
+function isNotFound(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "status" in err && (err as { status?: number }).status === 404;
+}
+
+// extractValidation pulls the structured 422 body off an ApiError if
+// present, so the builder can show which mandatory fields are missing.
+export function extractValidation(err: unknown): LayoutValidationError | null {
+  if (typeof err !== "object" || err === null) return null;
+  const e = err as { status?: number; body?: unknown; data?: unknown };
+  if (e.status !== 422) return null;
+  const body = (e.body ?? e.data) as LayoutValidationError | undefined;
+  if (body && Array.isArray(body.missing)) return body;
+  return null;
+}
