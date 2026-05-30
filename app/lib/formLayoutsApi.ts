@@ -73,17 +73,17 @@ export interface FormLayout {
 
 // CoreFieldDescriptor is one entry in the builder's field sidebar.
 // kind is "core" (a first-class artefacts column) or "custom" (a
-// catalogue field bound to the type). isMandatory core fields block
-// save when absent.
+// catalogue field bound to the type).
 //
 // isCompulsory marks a field the type REQUIRES on every form (per-type
-// compulsory set, resolved server-side via CompulsoryFieldsForType).
-// Compulsory fields are force-seeded into a locked "Required fields"
-// group at the top of the canvas: they cannot be removed, dragged out,
-// nor can their group rows be deleted/reordered. The server re-checks on
-// save (SERVER IS THE GATE) — the lock is UX; the gate is authoritative.
-// isMandatory is a strict subset of isCompulsory (the three universal
-// save-blockers), kept distinct only for the sidebar red-dot legend.
+// compulsory set, resolved server-side via CompulsoryFieldsForType). It
+// drives two things: (1) which sidebar group the field lands in —
+// "Mandatory fields" vs "Optional fields" — and (2) the save gate (the
+// layout must place every compulsory field SOMEWHERE). The author is free
+// to position them anywhere on the canvas. The server re-checks on save
+// (SERVER IS THE GATE). isMandatory is a strict subset of isCompulsory
+// (the three universal save-blockers), kept distinct only for the sidebar
+// red-dot legend.
 export interface CoreFieldDescriptor {
   fieldKey: string;
   label: string;
@@ -101,57 +101,6 @@ interface CoreFieldsResponse {
 // MANDATORY_CORE_KEYS mirrors backend mandatoryCoreFieldKeys. Used for
 // live "page won't save without these" UX. The server re-checks.
 export const MANDATORY_CORE_KEYS = ["title", "flow_state_name", "owner"];
-
-// COMPULSORY_GROUP_TITLE labels the locked leading region. Display-only —
-// not persisted as a field; the lock is derived from each cell's key being
-// in the compulsory set, never from a stored flag.
-export const COMPULSORY_GROUP_TITLE = "Required fields";
-
-// seedRequiredGroup guarantees every compulsory field for the type is
-// present in a locked leading region, and that compulsory fields appear
-// EXACTLY ONCE (never duplicated below). Given the existing rows and the
-// ordered compulsory field keys, it:
-//   1. strips every compulsory key from the incoming rows (wherever the
-//      author had dropped them) — they belong only in the locked region;
-//   2. drops any rows left fully empty by that strip;
-//   3. prepends one full-width locked row per compulsory key, in the given
-//      order, ABOVE the author's free-form rows.
-// Idempotent: re-seeding already-seeded rows yields the same shape. Cell
-// IDs for the locked region are minted by mintCell so they stay stable
-// within a render pass (the caller supplies a counter-backed minter).
-export function seedRequiredGroup(
-  rows: FormRow[],
-  compulsoryKeys: string[],
-  mintCell: () => string,
-  mintRow: () => string,
-): FormRow[] {
-  const required = new Set(compulsoryKeys);
-  // 1+2: strip compulsory keys from author rows, drop emptied rows.
-  const freeRows: FormRow[] = [];
-  for (const row of rows) {
-    const cells = row.cells.map((c) =>
-      c.fieldKey && required.has(c.fieldKey) ? { ...c, fieldKey: null } : c,
-    );
-    if (cells.some((c) => c.fieldKey)) freeRows.push({ ...row, cells });
-  }
-  // 3: one locked full-width row per compulsory key, in canonical order.
-  const lockedRows: FormRow[] = compulsoryKeys.map((key) => ({
-    id: mintRow(),
-    template: "100",
-    cells: [{ id: mintCell(), fieldKey: key, span: 100 }],
-  }));
-  return [...lockedRows, ...freeRows];
-}
-
-// lockedKeySet derives the set of locked cell keys from the field
-// catalogue: every descriptor with isCompulsory. The state engine and
-// renderer consult this to refuse remove/drag-out and hide delete/handle
-// affordances on locked cells/rows.
-export function lockedKeySet(fields: CoreFieldDescriptor[]): Set<string> {
-  const s = new Set<string>();
-  for (const f of fields) if (f.isCompulsory) s.add(f.fieldKey);
-  return s;
-}
 
 // getCurrentLayout fetches the current layout for (node, type), or null
 // if none exists yet (the builder then starts from an empty canvas, the

@@ -20590,16 +20590,6 @@ tr.is-editing {
 .flb-chip-mandatory { border-left: 3px solid var(--danger, #b91c1c); }
 .flb-chip-dragging { box-shadow: 0 6px 20px rgba(0,0,0,0.18); transform: rotate(-1deg); cursor: grabbing; }
 
-/* compulsory chip — required field, locked into the Required-fields group.
-   Reads as not-draggable + permanently on the form (no grab cursor). */
-.flb-chip-compulsory {
-  border-left: 3px solid var(--accent, #1a1a1a);
-  background: var(--accent-muted, rgba(26,26,26,0.05));
-  cursor: default; opacity: 0.78;
-}
-.flb-chip-compulsory:hover { border-color: var(--accent-border, rgba(26,26,26,0.2)); box-shadow: none; }
-.flb-chip__Lock { font-size: 11px; line-height: 1; filter: grayscale(0.3); }
-
 /* ── Canvas ── */
 .flb-canvas-wrap {
   overflow-y: auto;
@@ -20614,33 +20604,6 @@ tr.is-editing {
 .flb-canvas {
   width: 100%;
 }
-
-/* ── Required-fields locked group ── */
-/* The contiguous leading band of compulsory rows renders under this header
-   and on a tinted backing so it reads as a single locked group the author
-   can't reorder or remove. */
-.flb-reqgroup__Head {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 4px 2px 8px;
-  border-bottom: 1px solid var(--accent-border, rgba(26,26,26,0.15));
-  margin-bottom: 4px;
-}
-.flb-reqgroup__Head_Lock { font-size: 13px; line-height: 1; align-self: center; }
-.flb-reqgroup__Head_Title {
-  font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
-  color: var(--ink, #1a1a1a);
-}
-.flb-reqgroup__Head_Hint {
-  font-size: 11px; color: var(--ink-subtle, #9b9b9b);
-}
-
-/* a locked row: tinted backing, no aside column (handle/delete suppressed) */
-.flb-canvas-rowwrap-locked {
-  background: var(--accent-muted, rgba(26,26,26,0.035));
-  border-radius: var(--radius-md, 8px);
-  padding: 2px 6px;
-}
-.flb-canvas-row-locked .flb-grid__Row { grid-template-columns: 1fr; }
 
 /* row in canvas (rendered via FormLayoutRenderer with className flb-canvas-row) */
 .flb-canvas-row .flb-grid__Row {
@@ -20668,8 +20631,6 @@ tr.is-editing {
   transition: box-shadow 120ms ease, background 120ms ease;
 }
 .flb-slot-over { box-shadow: inset 0 0 0 2px var(--accent, #1a1a1a); background: var(--accent-muted, rgba(26,26,26,0.06)); }
-/* a locked slot never accepts a drop; no hover affordance */
-.flb-slot-locked { cursor: default; }
 
 /* anchor point — dashed border + filled circle with + (user spec) */
 .flb-anchor {
@@ -20709,14 +20670,6 @@ tr.is-editing {
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-subtle, #9b9b9b);
 }
-/* a locked placed chip — required field, can't be dragged out */
-.flb-placed-locked {
-  cursor: default;
-  border-color: var(--accent-border, rgba(26,26,26,0.25));
-  background: var(--accent-muted, rgba(26,26,26,0.04));
-}
-.flb-placed-locked:hover { box-shadow: 0 1px 2px rgba(0,0,0,0.04); border-color: var(--accent-border, rgba(26,26,26,0.25)); }
-.flb-placed__Lock { font-size: 11px; line-height: 1; align-self: flex-end; }
 
 /* insert gap (push-down + add-row affordance + reorder target) */
 .flb-gap {
