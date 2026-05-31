@@ -53,7 +53,12 @@ export interface FormCell {
   span: number;
   /** Vertical extent in sub-rows. Default 1 (omitted). */
   rowSpan?: number;
-  /** If set, this cell is a tombstone covered by the cell whose id === absorbedBy. */
+  /** Horizontal extent in column tracks. Default 1 (omitted). A cell with
+   *  colSpan > 1 has absorbed the cell(s) to its right in the same row; those
+   *  become tombstones. Its `span` already carries the summed width. */
+  colSpan?: number;
+  /** If set, this cell is a tombstone covered by another cell (vertical OR
+   *  horizontal merge) whose id === absorbedBy. The renderer skips it. */
   absorbedBy?: string;
 }
 

@@ -20478,30 +20478,54 @@ tr.is-editing {
   color: var(--text-primary, #1a1a1a);
   animation: flb-overlay-in 160ms ease-out;
 }
+/* Opacity-only entrance — NO scale/transform, so the logo (and everything
+   else) never moves a pixel as the overlay mounts. A scale would shift the
+   logo off the rail-logo position it must match exactly. */
 @keyframes flb-overlay-in {
-  from { opacity: 0; transform: scale(0.992); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-/* ── Top bar ── */
+/* ── Top bar ──
+   Height MUST equal the page header (--header-band-h: 100px) and the logo MUST
+   sit at the SAME screen position as the primary-rail logo (40×40 centred in
+   the 100px rail → left edge at 30px, vertically centred in the 100px bar) so
+   it does not jump when the overlay mounts over the app shell. The overlay is
+   position:fixed inset:0, so these offsets are viewport-absolute, matching the
+   rail exactly. */
 .flb-overlay__Bar {
   flex: 0 0 auto;
+  height: 100px; /* == --header-band-h */
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-4, 16px);
-  padding: var(--space-4, 16px) var(--space-6, 24px);
+  /* left padding 30px lands the 40px logo's left edge at x=30 (== rail gutter) */
+  padding: 0 var(--space-6, 24px) 0 30px;
   border-bottom: 1px solid var(--border-default, #e5e1da);
   background: var(--surface, #fff);
 }
-.flb-overlay__Bar_Title { display: flex; flex-direction: column; gap: 2px; }
+/* logo wrapper — identical box to the rail brand (40×40, centred) */
+.flb-overlay__Bar_Brand {
+  flex: 0 0 auto;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+}
+.flb-overlay__Bar_Brand_Logo {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+}
+/* title takes the remaining space (after the logo); actions sit hard right */
+.flb-overlay__Bar_Title {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
 .flb-overlay__Bar_Title_Main {
   font-size: 15px; font-weight: 650; letter-spacing: -0.01em;
 }
 .flb-overlay__Bar_Title_Sub {
   font-size: 12px; color: var(--text-secondary, #5c5c5c);
 }
-.flb-overlay__Bar_Actions { display: flex; gap: var(--space-2, 8px); }
+.flb-overlay__Bar_Actions { flex: 0 0 auto; display: flex; gap: var(--space-2, 8px); }
 
 .flb-overlay__Banner {
   flex: 0 0 auto;
@@ -20525,7 +20549,7 @@ tr.is-editing {
 /* ── Sidebar ── */
 .flb-sidebar {
   border-right: 1px solid var(--border-default, #e5e1da);
-  background: var(--surface-sunken, #f6f4f0);
+  background: transparent;
   overflow-y: auto;
   padding: var(--space-4, 16px);
   display: flex;
@@ -20627,17 +20651,37 @@ tr.is-editing {
 }
 .flb-row-del:hover { border-color: var(--danger, #b91c1c); color: var(--danger, #b91c1c); background: var(--danger-bg, #fdecec); }
 
-/* shared grid (FormLayoutRenderer) — bands of stacked rows. A band is one CSS
-   grid (columns × sub-rows) so a merged cell spans sub-rows via grid-row. */
-.flb-grid { display: flex; flex-direction: column; gap: var(--space-4, 16px); }
+/* shared grid (FormLayoutRenderer) — each contiguous same-template RUN is one
+   CSS grid (columns × one row-track per row) so EVERY column aligns whether or
+   not a column is merged; a merged cell just spans row-tracks. */
+/* Consistent vertical rhythm: NO flex gap. All inter-band spacing comes from
+   the RowGap strip between bands (idle height == the 12px intra-band row-gap),
+   so a band boundary reads exactly like a row boundary — no jarring large gap.
+   (Within a band, rows are spaced by the grid's 12px row-gap.) */
+.flb-grid { display: flex; flex-direction: column; gap: 0; }
 .flb-grid__Band_Cells { display: grid; gap: var(--space-3, 12px); }
-/* builder canvas: gutter | cells | aside */
+/* builder canvas band: gutter | cells | aside, all three sharing the run's
+   row-tracks (+ identical row-gap) so per-row numbers/handles stay aligned. */
 .flb-canvas-grid .flb-grid__Band {
-  display: grid; grid-template-columns: 40px 1fr auto; align-items: stretch;
-  gap: var(--space-2, 8px);
+  display: grid; grid-template-columns: 34px 1fr auto; align-items: stretch;
+  column-gap: var(--space-2, 8px);
 }
 .flb-canvas-grid .flb-grid__Band_Cells { gap: var(--space-3, 12px); }
-.flb-canvas-grid .flb-grid__Band_Aside { display: flex; align-items: center; }
+.flb-canvas-grid .flb-grid__Band_Gutter,
+.flb-canvas-grid .flb-grid__Band_Aside { row-gap: var(--space-3, 12px); position: relative; }
+/* PER-ROW gutter: number top-anchored, then a line segment below it that stays
+   WITHIN this row's track (stops ~8px short of the bottom so it never bleeds
+   into the next row's number). One segment per row — they don't merge. */
+.flb-grid__Band_Gutter_Cell {
+  position: relative; display: flex; align-items: flex-start;
+}
+.flb-grid__Band_Gutter_Cell::after {
+  content: ""; position: absolute; left: 9px;
+  top: 24px;   /* 10px below the number (number ≈14px tall) */
+  bottom: 8px; /* stop short of the track bottom → gap before next number */
+  width: 2px; background: var(--border-default, #e3e3e6); border-radius: 2px;
+}
+.flb-grid__Band_Aside_Cell { display: flex; align-items: center; justify-content: center; }
 /* runtime / preview have no gutter or aside — cells fill the row */
 .flb-runtime-grid .flb-grid__Band_Cells,
 .flb-preview-grid .flb-grid__Band_Cells { gap: var(--space-5, 20px); }
@@ -20668,34 +20712,69 @@ tr.is-editing {
 }
 .flb-cell__Split:hover { background: var(--accent-muted, #fff7e6); transform: scale(1.08); }
 
-/* ◇ seam join handle — straddles the bottom edge of a mergeable cell */
+/* Seam join handle — a BsArrowsCollapse icon on a grey circle (matching the
+   "+" add circles), the icon in #FFCC33 orange. Dead-centre on the seam line
+   between the two rows, and ALWAYS VISIBLE (not hover-gated). The wrapper has
+   zero height pinned to the cell's bottom edge so the circle straddles the
+   boundary exactly. */
 .flb-grid__Seam {
-  position: absolute; left: 0; right: 0; bottom: -7px;
-  display: flex; justify-content: center; pointer-events: none; z-index: 4;
+  /* Centre the handle in the 12px row-gap, not on the cell's bottom edge:
+     the edge is at the TOP of the gap, so drop the zero-height wrapper by half
+     the gap (6px) to land dead-centre between the two rows. */
+  position: absolute; left: 0; right: 0; bottom: -6px;
+  height: 0; display: flex; justify-content: center; align-items: center;
+  pointer-events: none; z-index: 6;
 }
+/* The button is transparent — the gold double-arrow glyph IS the handle (no
+   grey circle). Sized to the glyph; on a white surface chip behind it for
+   contrast against busy cells. */
 .flb-seam__Join {
   pointer-events: auto;
-  width: 22px; height: 22px; border-radius: var(--radius-full, 999px);
-  border: none; background: var(--accent, #f5c451); color: var(--accent-strong, #7a5600);
-  font-size: 13px; font-weight: 700; line-height: 1; cursor: pointer;
+  width: 28px; height: 32px; padding: 0; border: none; cursor: pointer;
+  background: transparent;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
-  opacity: 0; transition: opacity 120ms ease, transform 120ms ease;
+  transition: transform 120ms ease;
 }
-.flb-grid__Cell:hover .flb-seam__Join,
-.flb-seam__Join:focus-visible { opacity: 1; }
-.flb-seam__Join:hover { transform: scale(1.12); }
+/* glyph keeps the SVG's own aspect (taller viewBox pushes the arrowheads
+   apart via the lengthened connector — see JoinArrowIcon). */
+.flb-seam__Glyph {
+  width: 26px; height: 30px; display: block;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.28));
+}
+.flb-seam__Glyph-h { transform: rotate(90deg); } /* horizontal join variant */
+.flb-seam__Join:hover { transform: scale(1.14); }
+
+/* HORIZONTAL seam — same handle on the cell's RIGHT edge, centred in the 12px
+   column-gap (drop the zero-width wrapper 6px right to land dead-centre between
+   the two cells). The icon inside is rotated 90° (set inline in the button). */
+.flb-grid__HSeam {
+  position: absolute; top: 0; bottom: 0; right: -6px;
+  width: 0; display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 6;
+}
+
+/* During a ROW drag, the seam + split handles must not intercept the pointer —
+   otherwise they block dropping a row onto the slot/gap beneath them. */
+.flb-canvas-rowdrag .flb-seam__Join,
+.flb-canvas-rowdrag .flb-grid__HSeam .flb-seam__Join,
+.flb-canvas-rowdrag .flb-cell__Split { pointer-events: none; }
+.flb-seam__Join:focus-visible { outline: 2px solid #FFCC33; outline-offset: 2px; }
+
+/* horizontal split handle — top-LEFT of a wide cell (keeps clear of the V-split
+   at top-right when a cell is both tall and wide). */
+.flb-cell__Split-h { left: 6px; right: auto; }
 
 /* anchor point — dashed border + filled circle with + (user spec) */
 .flb-anchor {
   height: 100%; min-height: 72px;
   border: 1.5px dashed var(--border-default, #cfcabf);
   border-radius: var(--radius-md, 8px);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
   transition: border-color 120ms ease;
 }
 .flb-slot-over .flb-anchor { border-color: var(--accent, #1a1a1a); }
 .flb-anchor__Dot {
+  flex: 0 0 auto;
   width: 28px; height: 28px; border-radius: var(--radius-full, 999px);
   background: var(--ink-subtle, #b8b2a6);
   display: flex; align-items: center; justify-content: center;
@@ -20703,6 +20782,10 @@ tr.is-editing {
 }
 .flb-slot-over .flb-anchor__Dot { background: var(--accent, #1a1a1a); transform: scale(1.12); }
 .flb-anchor__Plus { color: #fff; font-size: 18px; font-weight: 600; line-height: 1; }
+.flb-anchor__Hint {
+  font-size: 12px; color: var(--ink-subtle, #9b9b9b); letter-spacing: 0.01em;
+}
+.flb-slot-over .flb-anchor__Hint { color: var(--accent, #1a1a1a); }
 
 /* ── Field card (shared: sidebar picker + canvas placed cell) ──
    Rounded card with a left ACCENT BAR THAT FOLLOWS THE RADIUS (a coloured
@@ -20714,8 +20797,8 @@ tr.is-editing {
   min-height: 56px; padding: 10px 14px;
   background: var(--surface, #fff);
   border: 1px solid var(--border-default, #e6e6e9);
-  border-left: 3px solid var(--border-default, #e6e6e9);
-  border-radius: var(--radius-md, 11px);
+  border-left: 4px solid var(--border-default, #e6e6e9);
+  border-radius: 5px; /* 5px radius so the left accent bar rounds cleanly */
   cursor: grab; user-select: none;
   box-shadow: 0 1px 2px rgba(20,20,40,0.04);
   transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
@@ -20737,11 +20820,17 @@ tr.is-editing {
   line-height: 1; letter-spacing: 1px;
 }
 .flb-fieldcard__Main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
+/* Picker cards (sidebar — NOT the canvas placed cells): name + type on one
+   inline row, name left, type right. */
+.flb-fieldcard:not(.flb-fieldcard-placed) .flb-fieldcard__Main {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;
+}
 .flb-fieldcard__Label {
   font-size: 14px; font-weight: 600; color: var(--ink, #1c1c22);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .flb-fieldcard__Meta {
+  flex: 0 0 auto;
   font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--ink-subtle, #9a9aa2);
 }
@@ -20749,12 +20838,32 @@ tr.is-editing {
   flex: 0 0 auto; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--ink-subtle, #9a9aa2);
 }
+/* remove / place-back button on a placed field — right side, inline */
+.flb-fieldcard__Remove {
+  flex: 0 0 auto; margin-left: 4px;
+  width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
+  color: var(--ink-subtle, #9b9b9b); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 120ms ease;
+}
+.flb-fieldcard__Remove svg { width: 13px; height: 13px; }
+.flb-fieldcard__Remove:hover { border-color: var(--danger, #b91c1c); color: var(--danger, #b91c1c); background: var(--danger-bg, #fdecec); }
+.flb-fieldcard__Remove:focus { outline: none; }
+.flb-fieldcard__Remove:focus-visible { outline: 2px solid var(--danger, #b91c1c); outline-offset: 2px; }
+/* the grip is now the drag affordance (only it carries listeners) */
+.flb-fieldcard-placed .flb-fieldcard__Grip { cursor: grab; }
+.flb-fieldcard-placed .flb-fieldcard__Grip:active { cursor: grabbing; }
 
 /* insert gap (push-down + add-row affordance + reorder target) */
 .flb-gap {
-  position: relative; min-height: 10px;
+  position: relative; min-height: 12px;
   display: flex; align-items: center; gap: 8px;
 }
+/* idle gap = one row-gap (12px) so band boundaries match within-band spacing;
+   reveals a slim insert affordance on hover; expands as a drop target during a
+   drag (rules below). */
+.flb-gap:hover { min-height: 22px; }
 .flb-gap__Line {
   flex: 1 1 auto; height: 0; border-top: 2px dashed transparent;
   border-radius: 2px; transition: border-color 120ms ease;
@@ -20797,11 +20906,10 @@ tr.is-editing {
 .flb-gap__Insert_Item:hover { background: var(--surface-sunken, #f6f4f0); }
 .flb-gap__Insert_Item_Text { color: var(--text-secondary, #5c5c5c); }
 
-/* row reorder wrapper + handle */
-/* band aside — drag + delete, vertically CENTRED on the whole band */
+/* per-row aside — drag + delete, centred on the row's track */
 .flb-row-aside {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 6px;
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: 4px;
 }
 .flb-row-aside-dragging { opacity: 0.4; }
 .flb-row-handle {
@@ -20814,40 +20922,66 @@ tr.is-editing {
 .flb-row-handle:hover { border-color: var(--accent, #1a1a1a); color: var(--accent, #1a1a1a); }
 .flb-row-handle:active { cursor: grabbing; }
 
-/* band gutter — numbered markers (01, 02…) top-anchored to each sub-row, with
-   a vertical line spanning the whole band height. The gutter is a grid mirroring
-   the band's sub-row tracks (row-gap matches the cells' gap) so numbers stay
-   aligned to their row even when a cell grows. */
-.flb-gutter {
-  position: relative; display: grid; gap: var(--space-3, 12px); padding-top: 2px;
+/* Remove the sticky black outline buttons keep after a MOUSE click — show a
+   focus ring only for keyboard nav (:focus-visible). Applies to the canvas
+   button cluster. */
+.flb-row-handle:focus,
+.flb-row-del:focus,
+.flb-cell__Split:focus,
+.flb-gap__Insert_Btn:focus { outline: none; }
+.flb-row-handle:focus:not(:focus-visible),
+.flb-row-del:focus:not(:focus-visible),
+.flb-cell__Split:focus:not(:focus-visible),
+.flb-gap__Insert_Btn:focus:not(:focus-visible) {
+  border-color: var(--border-default, #e5e1da);
 }
-.flb-gutter__Line {
-  position: absolute; left: 9px; top: 20px; bottom: 8px; width: 2px;
-  background: var(--border-default, #e3e3e6); border-radius: 2px;
-  grid-row: 1 / -1;
+.flb-row-handle:focus-visible,
+.flb-row-del:focus-visible,
+.flb-cell__Split:focus-visible,
+.flb-gap__Insert_Btn:focus-visible {
+  outline: 2px solid var(--accent, #1a1a1a); outline-offset: 2px;
 }
+
+/* per-row gutter number (01, 02…) — top-anchored in its track; the continuous
+   vertical line is drawn by .flb-grid__Band_Gutter::before. */
 .flb-gutter__Num {
-  position: relative; z-index: 1; align-self: start;
+  position: relative; z-index: 1; padding-top: 2px;
   font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
   color: var(--ink-subtle, #b9b9bd); line-height: 1;
 }
 
 /* template picker */
+/* Row-template picker — CENTRED above the form. An "ADD ROW" label on the left,
+   then descriptive card buttons (glyph + bold primary label + muted ratio). */
 .flb-templates {
   width: 100%;
-  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px);
-  padding-top: var(--space-4, 16px);
-  border-top: 1px dashed var(--border-default, #e5e1da);
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: var(--space-5, 20px);
+  margin-bottom: var(--space-4, 16px);
+  border-bottom: 1px dashed var(--border-default, #e5e1da);
 }
-.flb-templates__Label { font-size: 12px; color: var(--text-secondary, #5c5c5c); margin-right: 4px; }
+.flb-templates__Label {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-subtle, #9b9b9b);
+}
+.flb-templates__Btns { display: flex; align-items: stretch; flex-wrap: wrap; gap: 12px; }
 .flb-templates__Btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 10px; background: var(--surface, #fff);
-  border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-md, 8px);
-  font-size: 12px; cursor: pointer; transition: all 120ms ease;
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 12px 18px; background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e6e6e9); border-radius: 10px;
+  cursor: pointer; transition: border-color 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 1px 2px rgba(20,20,40,0.04);
 }
-.flb-templates__Btn:hover { border-color: var(--accent, #1a1a1a); background: var(--surface-sunken, #f6f4f0); }
-.flb-templates__Btn_Text { color: var(--text-secondary, #5c5c5c); }
+.flb-templates__Btn:hover { border-color: var(--accent, #1a1a1a); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.flb-templates__Btn:focus { outline: none; }
+.flb-templates__Btn:focus-visible { outline: 2px solid var(--accent, #1a1a1a); outline-offset: 2px; }
+.flb-templates__Btn_Text { display: flex; flex-direction: column; gap: 1px; text-align: left; line-height: 1.15; }
+.flb-templates__Btn_Primary { font-size: 14px; font-weight: 600; color: var(--ink, #1c1c22); }
+.flb-templates__Btn_Secondary { font-size: 11px; color: var(--ink-subtle, #9b9b9b); }
+/* larger glyph for the redesigned card buttons */
+.flb-templates__Btn .flb-glyph { width: 40px; height: 26px; gap: 3px; }
+.flb-templates__Btn .flb-glyph__Cell { border-radius: 3px; }
 .flb-glyph { display: grid; gap: 2px; width: 28px; height: 14px; }
 .flb-glyph__Cell { background: var(--ink-subtle, #b8b2a6); border-radius: 2px; }
 
@@ -20863,6 +20997,15 @@ tr.is-editing {
 .flb-btn-ghost { background: transparent; color: var(--text-primary, #1a1a1a); border-color: var(--border-default, #e5e1da); }
 .flb-btn-ghost:hover:not(:disabled) { background: var(--surface-sunken, #f6f4f0); }
 .flb-btn-active { background: var(--accent-muted, rgba(26,26,26,0.08)); border-color: var(--accent, #1a1a1a); }
+/* icon-only button (undo / redo) — square, ghost-styled */
+.flb-btn-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0;
+  background: transparent; color: var(--text-primary, #1a1a1a);
+  border-color: var(--border-default, #e5e1da);
+}
+.flb-btn-icon svg { width: 16px; height: 16px; }
+.flb-btn-icon:hover:not(:disabled) { background: var(--surface-sunken, #f6f4f0); }
 
 /* Form Layout Builder — full-canvas preview (renders the in-progress form) */
 .flb-canvas-wrap-preview { background: var(--surface-sunken, #f6f4f0); }

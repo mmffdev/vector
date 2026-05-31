@@ -23,6 +23,8 @@
 // Save button shows which mandatory fields are still missing).
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { BsArrowReturnLeft, BsArrowCounterclockwise, BsArrowClockwise } from "react-icons/bs";
+import { JoinArrowIcon } from "./JoinArrowIcon";
 import {
   DndContext,
   DragOverlay,
@@ -31,8 +33,11 @@ import {
   useSensors,
   useDraggable,
   useDroppable,
+  pointerWithin,
+  rectIntersection,
   type DragStartEvent,
   type DragEndEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import {
   getCoreFields,
@@ -49,7 +54,7 @@ import { ROW_TEMPLATES } from "@/app/lib/formLayoutsApi";
 import { useSentinel } from "@/app/sentinel";
 import CustomFieldEditForm from "@/app/components/CustomFields/CustomFieldEditForm";
 import { FormLayoutRenderer, type RenderCellArgs } from "./FormLayoutRenderer";
-import type { Band } from "./mergeTransitions";
+import type { MergeGroup } from "./mergeTransitions";
 import { PreviewDataPicker } from "./PreviewDataPicker";
 import {
   useFormBuilderState,
@@ -70,7 +75,7 @@ export interface FormBuilderShellProps {
 type DragData =
   | { kind: "sidebar"; fieldKey: string }
   | { kind: "cell"; addr: CellAddr; fieldKey: string }
-  | { kind: "row"; rowIndex: number };
+  | { kind: "row"; rowIndex: number; count: number };
 
 // Droppable id schemes:
 //   cell:<rowIndex>:<cellIndex>  — an empty/occupied slot
@@ -91,6 +96,16 @@ function parseDroppableId(id: string): { type: "cell"; addr: CellAddr } | { type
   }
   return null;
 }
+
+// Collision detection: prefer pointerWithin (the cursor literally inside a
+// droppable) so the THIN row-gaps between tall bands are reliably hittable when
+// reordering a row; fall back to rectIntersection for the wider cell targets
+// when the pointer isn't over any droppable. Default dnd-kit rectIntersection
+// alone loses the thin gaps to the large adjacent band rects.
+const collisionDetection: CollisionDetection = (args) => {
+  const within = pointerWithin(args);
+  return within.length > 0 ? within : rectIntersection(args);
+};
 
 export function FormBuilderShell({
   nodeId,
@@ -231,10 +246,10 @@ export function FormBuilderShell({
       return;
     }
     if (target.type === "gap") {
-      // A whole row dragged onto a gap reorders it; a field reorders into
-      // a new full-width row at that position.
+      // A row/group dragged onto a gap reorders the WHOLE group (merges intact);
+      // a field reorders into a new full-width row at that position.
       if (drag.kind === "row") {
-        state.moveRow(drag.rowIndex, target.rowIndex);
+        state.moveGroup(drag.rowIndex, drag.count, target.rowIndex);
         return;
       }
       const key = drag.fieldKey;
@@ -320,10 +335,37 @@ export function FormBuilderShell({
     return () => clearTimeout(t);
   }, [draftToast]);
 
+  // Undo / redo keyboard shortcuts — ⌘Z / Ctrl+Z (undo), ⌘⇧Z / Ctrl+Y (redo).
+  // Scoped to the builder (the overlay is modal). Ignored while typing in an
+  // input/textarea/contenteditable, and while previewing.
+  useEffect(() => {
+    if (previewing) return;
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      const key = e.key.toLowerCase();
+      const isRedo = (key === "z" && e.shiftKey) || key === "y";
+      const isUndo = key === "z" && !e.shiftKey;
+      if (isRedo) { e.preventDefault(); state.redo(); }
+      else if (isUndo) { e.preventDefault(); state.undo(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewing, state]);
+
   return (
     <div className="flb-overlay" role="dialog" aria-modal="true" aria-label="Form layout builder">
-      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <header className="flb-overlay__Bar">
+          {/* Vector logo — pinned to the EXACT same screen position as the
+              primary-rail logo (40×40 centred in the 100px rail/header gutter,
+              i.e. left 30px, vertical-centre in the 100px bar) so it does not
+              jump when the overlay mounts over the app shell. */}
+          <span className="flb-overlay__Bar_Brand" aria-hidden="true">
+            <img src="/logo-vector.png" alt="Vector" className="flb-overlay__Bar_Brand_Logo" />
+          </span>
           <div className="flb-overlay__Bar_Title">
             <span className="flb-overlay__Bar_Title_Main">Form Layout Builder</span>
             <span className="flb-overlay__Bar_Title_Sub">
@@ -331,6 +373,26 @@ export function FormBuilderShell({
             </span>
           </div>
           <div className="flb-overlay__Bar_Actions">
+            <button
+              type="button"
+              className="flb-btn flb-btn-icon"
+              onClick={state.undo}
+              disabled={!state.canUndo || previewing}
+              title="Undo (⌘Z)"
+              aria-label="Undo"
+            >
+              <BsArrowCounterclockwise aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="flb-btn flb-btn-icon"
+              onClick={state.redo}
+              disabled={!state.canRedo || previewing}
+              title="Redo (⌘⇧Z)"
+              aria-label="Redo"
+            >
+              <BsArrowClockwise aria-hidden="true" />
+            </button>
             <button
               type="button"
               className={"flb-btn flb-btn-ghost" + (previewing ? " flb-btn-active" : "")}
@@ -398,6 +460,9 @@ export function FormBuilderShell({
             />
 
             <main className="flb-canvas-wrap">
+              {/* Row-template picker — centred at the TOP, above the form. */}
+              <TemplatePicker onAdd={state.addRow} />
+
               {loading ? (
                 <div className="flb-canvas-empty">Loading…</div>
               ) : state.rows.length === 0 ? (
@@ -407,8 +472,6 @@ export function FormBuilderShell({
               ) : (
                 <Canvas state={state} fieldByKey={fieldByKey} rowDragActive={activeDrag?.kind === "row"} />
               )}
-
-              <TemplatePicker onAdd={state.addRow} />
             </main>
           </div>
         )}
@@ -416,7 +479,11 @@ export function FormBuilderShell({
         <DragOverlay dropAnimation={null}>
           {activeDrag ? (
             activeDrag.kind === "row" ? (
-              <div className="flb-chip flb-chip-dragging">Row {activeDrag.rowIndex + 1}</div>
+              <div className="flb-chip flb-chip-dragging">
+                {activeDrag.count > 1
+                  ? `Group · rows ${activeDrag.rowIndex + 1}–${activeDrag.rowIndex + activeDrag.count}`
+                  : `Row ${activeDrag.rowIndex + 1}`}
+              </div>
             ) : (
               <div className="flb-chip flb-chip-dragging">
                 {fieldByKey.get(activeDrag.fieldKey)?.label ?? activeDrag.fieldKey}
@@ -676,9 +743,9 @@ function Canvas({
   fieldByKey: Map<string, CoreFieldDescriptor>;
   rowDragActive: boolean;
 }) {
-  // One renderer call over ALL rows so adjacent merged rows compute into bands
-  // correctly. The renderer interleaves RowGaps between bands (insert/reorder
-  // drop targets), a numbered gutter and a centred drag/delete aside per band,
+  // One renderer call over ALL rows. Each contiguous same-template run renders
+  // as ONE grid (so columns ALWAYS align — merged or not), with a per-row
+  // numbered gutter + per-row drag/delete aside aligned to each row's track,
   // and ◇ join handles on mergeable seams.
   return (
     <div className={"flb-canvas" + (rowDragActive ? " flb-canvas-rowdrag" : "")}>
@@ -688,11 +755,15 @@ function Canvas({
         renderRowGap={(rowIndex) => (
           <RowGap rowIndex={rowIndex} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
         )}
-        renderRowGutter={(band) => <BandGutter band={band} />}
-        renderRowAside={(band) => (
-          <BandAside
-            band={band}
-            onRemove={() => state.removeBand(band.startRow, band.subRowCount)}
+        renderRowGutter={(rowIndex) => <RowGutter rowIndex={rowIndex} />}
+        renderRowAside={(group) => (
+          <RowAside
+            group={group}
+            onRemove={() =>
+              group.merged
+                ? state.unmergeGroup(group.startRow, group.count) // un-merge, keep rows
+                : state.removeRow(group.startRow)
+            }
           />
         )}
         renderSeamJoin={({ rowIndex, colIndex }) => (
@@ -703,7 +774,19 @@ function Canvas({
             aria-label="Merge column down"
             onClick={() => state.mergeDown({ rowIndex, cellIndex: colIndex })}
           >
-            ◇
+            <JoinArrowIcon className="flb-seam__Glyph" />
+          </button>
+        )}
+        renderHSeamJoin={({ rowIndex, colIndex }) => (
+          <button
+            type="button"
+            className="flb-seam__Join flb-seam__Join-h"
+            title="Merge this cell with the empty cell to its right"
+            aria-label="Merge cell right"
+            onClick={() => state.mergeRight({ rowIndex, cellIndex: colIndex })}
+          >
+            {/* same glyph, rotated 90° — horizontal join */}
+            <JoinArrowIcon className="flb-seam__Glyph flb-seam__Glyph-h" />
           </button>
         )}
         renderCell={(args) => (
@@ -711,6 +794,8 @@ function Canvas({
             {...args}
             fieldByKey={fieldByKey}
             onSplit={() => state.splitCell({ rowIndex: args.rowIndex, cellIndex: args.cellIndex })}
+            onSplitH={() => state.splitCellH({ rowIndex: args.rowIndex, cellIndex: args.cellIndex })}
+            onRemove={() => state.clearCell({ rowIndex: args.rowIndex, cellIndex: args.cellIndex })}
           />
         )}
       />
@@ -718,33 +803,19 @@ function Canvas({
   );
 }
 
-// BandGutter — numbered row markers (01, 02…) anchored to the top of each
-// sub-row of the band, with a vertical line spanning the band height. For a
-// merged band the line covers all its sub-rows.
-function BandGutter({ band }: { band: Band }) {
-  // The gutter mirrors the band's sub-row grid so each number top-aligns with
-  // its row even when a cell grows past the 72px minimum.
-  return (
-    <div
-      className="flb-gutter"
-      style={{ gridTemplateRows: `repeat(${band.subRowCount}, minmax(72px, auto))` }}
-    >
-      <span className="flb-gutter__Line" />
-      {band.rows.map((row, i) => (
-        <span key={row.id} className="flb-gutter__Num">
-          {String(band.startRow + i + 1).padStart(2, "0")}
-        </span>
-      ))}
-    </div>
-  );
+// RowGutter — the numbered marker (01, 02…) for ONE row, top-aligned to its
+// track. The continuous vertical line is drawn by the gutter column's CSS.
+function RowGutter({ rowIndex }: { rowIndex: number }) {
+  return <span className="flb-gutter__Num">{String(rowIndex + 1).padStart(2, "0")}</span>;
 }
 
-// BandAside — the centred drag-reorder + delete cluster for a whole band.
-// Dragging reorders the band as a unit (its first row index is the drag id).
-function BandAside({ band, onRemove }: { band: Band; onRemove: () => void }) {
+// RowAside — ONE drag-reorder + delete cluster per MERGE GROUP, centred on the
+// group's rows. A merged group drags as a unit (no fracturing); its delete
+// un-merges (keeps the rows). A singleton (unmerged) row deletes normally.
+function RowAside({ group, onRemove }: { group: MergeGroup; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `row:${band.startRow}`,
-    data: { kind: "row", rowIndex: band.startRow } satisfies DragData,
+    id: `row:${group.startRow}`,
+    data: { kind: "row", rowIndex: group.startRow, count: group.count } satisfies DragData,
   });
   return (
     <div
@@ -754,8 +825,8 @@ function BandAside({ band, onRemove }: { band: Band; onRemove: () => void }) {
       <button
         type="button"
         className="flb-row-handle"
-        title="Drag to reorder"
-        aria-label="Drag to reorder row"
+        title={group.merged ? "Drag to move this merged group" : "Drag to reorder"}
+        aria-label={group.merged ? "Drag to move merged group" : "Drag to reorder row"}
         {...listeners}
         {...attributes}
       >
@@ -765,8 +836,8 @@ function BandAside({ band, onRemove }: { band: Band; onRemove: () => void }) {
         type="button"
         className="flb-row-del"
         onClick={onRemove}
-        title="Delete row"
-        aria-label="Delete row"
+        title={group.merged ? "Un-merge this group (keeps the rows)" : "Delete row"}
+        aria-label={group.merged ? "Un-merge group" : "Delete row"}
       >
         ×
       </button>
@@ -952,13 +1023,18 @@ function CanvasCell({
   rowIndex,
   fieldByKey,
   onSplit,
+  onSplitH,
+  onRemove,
 }: RenderCellArgs & {
   fieldByKey: Map<string, CoreFieldDescriptor>;
   onSplit: () => void;
+  onSplitH: () => void;
+  onRemove: () => void;
 }) {
   const addr: CellAddr = { rowIndex, cellIndex };
   const { setNodeRef, isOver } = useDroppable({ id: cellDroppableId(addr) });
   const isTall = (cell.rowSpan ?? 1) > 1;
+  const isWide = (cell.colSpan ?? 1) > 1;
 
   return (
     <div
@@ -967,11 +1043,12 @@ function CanvasCell({
         "flb-slot" +
         (cell.fieldKey ? " flb-slot-filled" : " flb-slot-empty") +
         (isTall ? " flb-slot-tall" : "") +
+        (isWide ? " flb-slot-wide" : "") +
         (isOver ? " flb-slot-over" : "")
       }
     >
       {cell.fieldKey ? (
-        <PlacedChip addr={addr} cell={cell} fieldByKey={fieldByKey} />
+        <PlacedChip addr={addr} cell={cell} fieldByKey={fieldByKey} onRemove={onRemove} />
       ) : (
         <AnchorPoint />
       )}
@@ -986,18 +1063,27 @@ function CanvasCell({
           ⊟
         </button>
       )}
+      {isWide && (
+        <button
+          type="button"
+          className="flb-cell__Split flb-cell__Split-h"
+          onClick={onSplitH}
+          title="Split this merged cell back into separate columns"
+          aria-label="Split wide cell"
+        >
+          ⊟
+        </button>
+      )}
     </div>
   );
 }
 
-// AnchorPoint — the dashed-border + filled-circle-with-+ affordance the
-// user asked for on every empty/available slot.
+// AnchorPoint — the dashed-border empty-slot affordance: just the
+// "Drop a field here" text (no circle / + icon).
 function AnchorPoint() {
   return (
     <div className="flb-anchor" aria-hidden="true">
-      <span className="flb-anchor__Dot">
-        <span className="flb-anchor__Plus">+</span>
-      </span>
+      <span className="flb-anchor__Hint">Drop a field here</span>
     </div>
   );
 }
@@ -1006,10 +1092,12 @@ function PlacedChip({
   addr,
   cell,
   fieldByKey,
+  onRemove,
 }: {
   addr: CellAddr;
   cell: FormCell;
   fieldByKey: Map<string, CoreFieldDescriptor>;
+  onRemove: () => void;
 }) {
   const key = cell.fieldKey!;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -1026,10 +1114,10 @@ function PlacedChip({
         (isCompulsory ? " flb-fieldcard-req" : "") +
         (isDragging ? " flb-fieldcard-dragging" : "")
       }
-      {...listeners}
-      {...attributes}
     >
-      <span className="flb-fieldcard__Grip" aria-hidden="true">⠿</span>
+      {/* Only the grip carries the drag listeners, so the remove button (and
+          future controls) stay clickable without starting a drag. */}
+      <span className="flb-fieldcard__Grip" aria-label="Drag to move" {...listeners} {...attributes}>⠿</span>
       <span className="flb-fieldcard__Main">
         <span className="flb-fieldcard__Label">{descriptor?.label ?? key}</span>
         <span className="flb-fieldcard__Meta">
@@ -1037,28 +1125,56 @@ function PlacedChip({
           {isCompulsory ? " · Required" : ""}
         </span>
       </span>
+      <button
+        type="button"
+        className="flb-fieldcard__Remove"
+        title="Remove from form (return to the field picker)"
+        aria-label="Remove field from form"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+      >
+        <BsArrowReturnLeft aria-hidden="true" />
+      </button>
     </div>
   );
 }
 
 // ─── Template picker (add-row) ───────────────────────────────────────────
 
+// Two-line descriptive labels for each row template: a bold primary name + a
+// smaller secondary ratio underneath (per the picker redesign).
+const TEMPLATE_LABELS: Record<RowTemplate, { primary: string; secondary: string }> = {
+  "100": { primary: "Single", secondary: "100" },
+  "50-50": { primary: "Equal", secondary: "50 / 50" },
+  "70-30": { primary: "Wide left", secondary: "70 / 30" },
+  "30-70": { primary: "Wide right", secondary: "30 / 70" },
+  "30-30-30": { primary: "Thirds", secondary: "33 / 33 / 33" },
+};
+
 function TemplatePicker({ onAdd }: { onAdd: (t: RowTemplate) => void }) {
   return (
     <div className="flb-templates">
-      <span className="flb-templates__Label">Add row:</span>
-      {ROW_TEMPLATES.map((t) => (
-        <button
-          key={t.template}
-          type="button"
-          className="flb-templates__Btn"
-          onClick={() => onAdd(t.template)}
-          title={t.label}
-        >
-          <TemplateGlyph template={t.template} />
-          <span className="flb-templates__Btn_Text">{t.label}</span>
-        </button>
-      ))}
+      <span className="flb-templates__Label">Add row</span>
+      <div className="flb-templates__Btns">
+        {ROW_TEMPLATES.map((t) => {
+          const lbl = TEMPLATE_LABELS[t.template];
+          return (
+            <button
+              key={t.template}
+              type="button"
+              className="flb-templates__Btn"
+              onClick={() => onAdd(t.template)}
+              title={t.label}
+            >
+              <TemplateGlyph template={t.template} />
+              <span className="flb-templates__Btn_Text">
+                <span className="flb-templates__Btn_Primary">{lbl.primary}</span>
+                <span className="flb-templates__Btn_Secondary">{lbl.secondary}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

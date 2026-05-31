@@ -387,3 +387,53 @@ func TestValidateMerge_MergedCompulsoryFieldCountsForGate(t *testing.T) {
 		t.Fatalf("merged compulsory field should satisfy the gate, got %v", err)
 	}
 }
+
+// ─── Horizontal merge geometry ──────────────────────────────────────────────
+
+// hMergedRow builds a single 30-30-30 row with cols 0+1 horizontally merged:
+// col0 carries ColSpan 2 + summed width 66, col1 is its tombstone.
+func hMergedRow() LayoutDoc {
+	return LayoutDoc{Rows: []Row{
+		{ID: "r1", Template: Template303030, Cells: []Cell{
+			{ID: "a1", FieldKey: strptr("title"), Span: 66, ColSpan: 2},
+			{ID: "a2", FieldKey: nil, Span: 33, AbsorbedBy: "a1"},
+			{ID: "a3", FieldKey: strptr("owner"), Span: 33},
+		}},
+	}}
+}
+
+func TestValidateHMerge_AcceptsValidRow(t *testing.T) {
+	if err := validateDocStructure(hMergedRow(), nil, artefactitems.SlotStory, artefactitems.ScopeWork); err != nil {
+		t.Fatalf("expected valid horizontal merge to pass, got %v", err)
+	}
+}
+
+func TestValidateHMerge_RejectsMissingTombstone(t *testing.T) {
+	doc := hMergedRow()
+	doc.Rows[0].Cells[1].AbsorbedBy = "" // no longer points at the owner
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for missing horizontal tombstone")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}
+
+func TestValidateHMerge_RejectsTombstoneWithField(t *testing.T) {
+	doc := hMergedRow()
+	doc.Rows[0].Cells[1].FieldKey = strptr("status") // tombstone must be empty
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for horizontal tombstone carrying a field")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}
+
+func TestValidateHMerge_RejectsOverrun(t *testing.T) {
+	doc := hMergedRow()
+	doc.Rows[0].Cells[0].ColSpan = 4 // claims 4 cols but only 3 exist
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for overrunning colSpan")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}

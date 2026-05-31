@@ -15,8 +15,10 @@ describe("addRow → bandsOf", () => {
     expect(bands[1].rows[0].cells).toHaveLength(3);
   });
 
-  it("two adjacent unmerged 30-30-30 rows are two separate bands", () => {
+  it("two adjacent 30-30-30 rows form ONE band (one grid → columns align)", () => {
     const rows = [emptyRowFor("30-30-30"), emptyRowFor("30-30-30")];
-    expect(bandsOf(rows)).toHaveLength(2);
+    const bands = bandsOf(rows);
+    expect(bands).toHaveLength(1);
+    expect(bands[0].subRowCount).toBe(2);
   });
 });

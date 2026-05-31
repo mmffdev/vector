@@ -14,6 +14,11 @@ import { TEMPLATE_SPANS } from "@/app/lib/formLayoutsApi";
 import {
   mergeDown as mergeDownRows,
   splitCell as splitCellRows,
+  mergeRight as mergeRightRows,
+  splitCellH as splitCellHRows,
+  removeRow as removeRowMergeAware,
+  moveGroup as moveGroupRows,
+  unmergeGroup as unmergeGroupRows,
 } from "./mergeTransitions";
 
 let _seq = 0;
@@ -47,10 +52,12 @@ export interface FormBuilderState {
   insertRowAt: (template: RowTemplate, rowIndex: number) => void;
   /** Reorder a row from one position to another (drag up/down). */
   moveRow: (fromIndex: number, toIndex: number) => void;
+  /** Remove a row (merge-aware: shrinks/splits any column merge touching it). */
   removeRow: (rowIndex: number) => void;
-  /** Remove a whole band (count consecutive rows starting at startRow). A
-   *  merged band deletes all its sub-rows together. */
-  removeBand: (startRow: number, count: number) => void;
+  /** Move a whole merge group (consecutive rows) to a new gap, merges intact. */
+  moveGroup: (startRow: number, count: number, toIndex: number) => void;
+  /** Un-merge every merge in a group, keeping the rows (group delete handle). */
+  unmergeGroup: (startRow: number, count: number) => void;
   /** Place a field from the sidebar into a specific empty cell. */
   placeField: (fieldKey: string, addr: CellAddr) => void;
   /** Move a placed field from one cell to another (swap-aware). */
@@ -65,11 +72,65 @@ export interface FormBuilderState {
   mergeDown: (addr: CellAddr) => void;
   /** Un-fuse a tall cell at `addr` back into one cell per row (split). */
   splitCell: (addr: CellAddr) => void;
+  /** Fuse the cell owning `addr` with the empty cell to its RIGHT (horizontal
+   *  merge). No-op unless the right cell is empty + single-row. */
+  mergeRight: (addr: CellAddr) => void;
+  /** Un-fuse a wide cell at `addr` back into one cell per column. */
+  splitCellH: (addr: CellAddr) => void;
   reset: (rows: FormRow[]) => void;
+  /** Undo the last mutation (no-op if nothing to undo). */
+  undo: () => void;
+  /** Redo the last undone mutation (no-op if nothing to redo). */
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
+// History container — the document is one immutable `rows` value, so undo/redo
+// is just a stack of snapshots. `past` holds states we can return to; `future`
+// holds states we undid away from (cleared on any fresh edit). Capped so a long
+// session can't grow unbounded.
+interface History {
+  rows: FormRow[];
+  past: FormRow[][];
+  future: FormRow[][];
+}
+const HISTORY_CAP = 100;
+
 export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
-  const [rows, setRows] = useState<FormRow[]>(initial);
+  const [hist, setHist] = useState<History>({ rows: initial, past: [], future: [] });
+  const rows = hist.rows;
+
+  // setRows — every mutation routes through here. It snapshots the PREVIOUS rows
+  // onto `past` (one undo step per action) and clears `future`. A no-op update
+  // (updater returns the same reference) records no history, so dead clicks don't
+  // pollute the stack. Signature matches the old setRows so method bodies below
+  // are unchanged.
+  const setRows = useCallback((updater: (prev: FormRow[]) => FormRow[]) => {
+    setHist((h) => {
+      const next = updater(h.rows);
+      if (next === h.rows) return h; // no change → no history entry
+      const past = [...h.past, h.rows];
+      if (past.length > HISTORY_CAP) past.shift();
+      return { rows: next, past, future: [] };
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    setHist((h) => {
+      if (h.past.length === 0) return h;
+      const prev = h.past[h.past.length - 1];
+      return { rows: prev, past: h.past.slice(0, -1), future: [h.rows, ...h.future] };
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setHist((h) => {
+      if (h.future.length === 0) return h;
+      const next = h.future[0];
+      return { rows: next, past: [...h.past, h.rows], future: h.future.slice(1) };
+    });
+  }, []);
 
   const placedKeys = collectPlacedKeys(rows);
 
@@ -99,12 +160,18 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
     });
   }, []);
 
+  // Merge-aware: deleting a row shrinks/splits any column merge that touches it
+  // so no dangling rowSpan/tombstone survives.
   const removeRow = useCallback((rowIndex: number) => {
-    setRows((prev) => prev.filter((_, i) => i !== rowIndex));
+    setRows((prev) => removeRowMergeAware(prev, rowIndex));
   }, []);
 
-  const removeBand = useCallback((startRow: number, count: number) => {
-    setRows((prev) => [...prev.slice(0, startRow), ...prev.slice(startRow + count)]);
+  const moveGroup = useCallback((startRow: number, count: number, toIndex: number) => {
+    setRows((prev) => moveGroupRows(prev, startRow, count, toIndex));
+  }, []);
+
+  const unmergeGroup = useCallback((startRow: number, count: number) => {
+    setRows((prev) => unmergeGroupRows(prev, startRow, count));
   }, []);
 
   const placeField = useCallback((fieldKey: string, addr: CellAddr) => {
@@ -152,7 +219,20 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
     setRows((prev) => splitCellRows(prev, addr));
   }, []);
 
-  const reset = useCallback((next: FormRow[]) => setRows(next), []);
+  const mergeRight = useCallback((addr: CellAddr) => {
+    setRows((prev) => mergeRightRows(prev, addr));
+  }, []);
+
+  const splitCellH = useCallback((addr: CellAddr) => {
+    setRows((prev) => splitCellHRows(prev, addr));
+  }, []);
+
+  // reset replaces the document wholesale (draft load / reopen) and CLEARS the
+  // undo/redo history — you can't undo past a fresh load into a prior document's
+  // edits.
+  const reset = useCallback((next: FormRow[]) => {
+    setHist({ rows: next, past: [], future: [] });
+  }, []);
 
   return {
     rows,
@@ -161,14 +241,21 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
     insertRowAt,
     moveRow,
     removeRow,
-    removeBand,
+    moveGroup,
+    unmergeGroup,
     placeField,
     moveField,
     clearCell,
     insertFieldAsRow,
     mergeDown,
     splitCell,
+    mergeRight,
+    splitCellH,
     reset,
+    undo,
+    redo,
+    canUndo: hist.past.length > 0,
+    canRedo: hist.future.length > 0,
   };
 }
 

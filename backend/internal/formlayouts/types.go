@@ -56,6 +56,7 @@ type Cell struct {
 	FieldKey   *string `json:"fieldKey"`
 	Span       int     `json:"span"`
 	RowSpan    int     `json:"rowSpan,omitempty"`
+	ColSpan    int     `json:"colSpan,omitempty"`
 	AbsorbedBy string  `json:"absorbedBy,omitempty"`
 }
 
@@ -65,6 +66,14 @@ func (c Cell) effectiveRowSpan() int {
 		return 1
 	}
 	return c.RowSpan
+}
+
+// effectiveColSpan normalises an omitted (0) ColSpan to 1.
+func (c Cell) effectiveColSpan() int {
+	if c.ColSpan < 1 {
+		return 1
+	}
+	return c.ColSpan
 }
 
 // isTombstone reports whether the cell is covered by an earlier merged cell.

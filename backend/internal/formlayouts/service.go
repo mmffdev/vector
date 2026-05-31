@@ -300,54 +300,78 @@ func validateMergeGeometry(doc LayoutDoc) error {
 
 	for ri, row := range rows {
 		for ci, cell := range row.Cells {
-			span := cell.effectiveRowSpan()
-			if span == 1 && !cell.isTombstone() {
-				continue
-			}
 			if cell.isTombstone() {
 				continue // validated from the owner's side below
 			}
-			// cell has RowSpan > 1 — verify its tombstones.
-			need := span - 1
-			for k := 1; k <= need; k++ {
-				tr := ri + k
-				if tr >= len(rows) {
-					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns the layout (rowSpan %d)", cell.ID, span)}
+			// VERTICAL: cell with RowSpan > 1 — verify its column tombstones.
+			if span := cell.effectiveRowSpan(); span > 1 {
+				for k := 1; k <= span-1; k++ {
+					tr := ri + k
+					if tr >= len(rows) {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns the layout (rowSpan %d)", cell.ID, span)}
+					}
+					below := rows[tr]
+					if below.Template != row.Template {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q spans across a template change", cell.ID)}
+					}
+					if ci >= colCount(below) {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q has no column %d in row %d", cell.ID, ci, tr)}
+					}
+					t := below.Cells[ci]
+					if t.AbsorbedBy != cell.ID {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q missing tombstone at row %d col %d", cell.ID, tr, ci)}
+					}
+					if t.FieldKey != nil {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d must be empty", tr, ci)}
+					}
 				}
-				below := rows[tr]
-				if below.Template != row.Template {
-					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q spans across a template change", cell.ID)}
-				}
-				if ci >= colCount(below) {
-					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q has no column %d in row %d", cell.ID, ci, tr)}
-				}
-				t := below.Cells[ci]
-				if t.AbsorbedBy != cell.ID {
-					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q missing tombstone at row %d col %d", cell.ID, tr, ci)}
-				}
-				if t.FieldKey != nil {
-					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d must be empty", tr, ci)}
+			}
+			// HORIZONTAL: cell with ColSpan > 1 — verify its in-row tombstones.
+			if cspan := cell.effectiveColSpan(); cspan > 1 {
+				for k := 1; k <= cspan-1; k++ {
+					tc := ci + k
+					if tc >= colCount(row) {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns the row (colSpan %d)", cell.ID, cspan)}
+					}
+					t := row.Cells[tc]
+					if t.AbsorbedBy != cell.ID {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q missing tombstone at row %d col %d", cell.ID, ri, tc)}
+					}
+					if t.FieldKey != nil {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d must be empty", ri, tc)}
+					}
 				}
 			}
 		}
 	}
 
-	// Reverse check: every tombstone must be claimed by a spanning owner above
-	// it in the same column whose span actually reaches it (no dangling refs).
+	// Reverse check: every tombstone must be claimed by a spanning owner — either
+	// ABOVE it in the same column (vertical) or to its LEFT in the same row
+	// (horizontal) — whose span actually reaches it (no dangling refs).
 	for ri, row := range rows {
 		for ci, cell := range row.Cells {
 			if !cell.isTombstone() {
 				continue
 			}
 			found := false
-			for up := ri - 1; up >= 0; up-- {
+			// vertical owner: above, same column.
+			for up := ri - 1; up >= 0 && !found; up-- {
 				if ci >= len(rows[up].Cells) {
 					break
 				}
 				cand := rows[up].Cells[ci]
 				if cand.ID == cell.AbsorbedBy {
-					// owner must span far enough to cover this row.
 					if up+cand.effectiveRowSpan()-1 >= ri {
+						found = true
+					}
+					break
+				}
+			}
+			// horizontal owner: left, same row.
+			for left := ci - 1; left >= 0 && !found; left-- {
+				cand := row.Cells[left]
+				if cand.ID == cell.AbsorbedBy {
+					if left+cand.effectiveColSpan()-1 >= ci {
 						found = true
 					}
 					break
