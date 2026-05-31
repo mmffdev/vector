@@ -20508,34 +20508,42 @@ tr.is-editing {
   background: var(--surface, #fff);
 }
 /* logo wrapper — the 40×40 logo sits at its LEFT (x=30, matching the rail-1
-   brand), but the wrapper stretches to the rail-1+rail-2 boundary so the TITLE
-   after it begins exactly where the app's .main_title does (no jump when the
-   overlay mounts). Shell geometry: rail-1 100px + rail-2 240px = 340px; the
-   wrapper starts at the bar's 30px padding, so its width is 340 − 30 = 310px. */
+   brand). The wrapper ends just before the rail-2 title inset (x=116) so the
+   TITLE after it begins exactly where the app's rail-2 node title does. Brand
+   starts at the bar's 30px padding; rail-2 title sits at rail-1(100) + 16 inset
+   = 116, so the brand width is 116 − 30 = 86px (expressed via the rail var so it
+   tracks rail-1 width). */
 .flb-overlay__Bar_Brand {
   flex: 0 0 auto;
-  width: calc(var(--rd-rail-w, 100px) + var(--rail-2-w, 240px) - 30px);
+  width: calc(var(--rd-rail-w, 100px) + 16px - 30px);
   height: 40px;
   display: flex; align-items: center; justify-content: flex-start;
 }
 .flb-overlay__Bar_Brand_Logo {
   width: 40px; height: 40px; object-fit: contain; display: block;
 }
-/* title starts after the brand zone, with the SAME 30px inset the app's
-   .main_title uses (padding: 0 30px) → title text lands at x=370, aligned with
-   the parent page title. */
+/* Title is pixel-aligned to the rail-2 TOPOLOGY-NODE block it overlays, NOT the
+   main page title — so the node title + its date line don't jump when the
+   builder opens. Title text starts at x=116 (== .rail-2__title left): the brand
+   ends there and there's no extra left inset here. The block is top-aligned to
+   match the rail-2 block's vertical rhythm (title top ≈ 32, date below). */
 .flb-overlay__Bar_Title {
   flex: 1 1 auto; min-width: 0;
-  padding-left: 30px;
-  display: flex; flex-direction: column; gap: 2px;
+  align-self: stretch;
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
 }
+/* Main title — matches .rail-2__title (16px / 600 / lh 1.2 / -0.01em / --ink). */
 .flb-overlay__Bar_Title_Main {
-  font-size: 15px; font-weight: 650; letter-spacing: -0.01em;
+  font-size: 16px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em;
+  color: var(--ink, #1a1a1a);
   display: flex; align-items: center; gap: var(--space-2, 8px);
   min-width: 0;
 }
+/* Sub-line = live timestamp, matches .rail-2__date (10px / lh 1.2 / muted /
+   tabular-nums) so it's identical to the rail's date line it overlays. */
 .flb-overlay__Bar_Title_Sub {
-  font-size: 12px; color: var(--text-secondary, #5c5c5c);
+  font-size: 10px; line-height: 1.2; color: var(--text-secondary, #5c5c5c);
+  font-variant-numeric: tabular-nums;
 }
 /* status flag after the title — Unsaved / Draft / Live / New. A small pill that
    reads like the main-site status chips; tone colours match the app's semantic
@@ -20544,8 +20552,8 @@ tr.is-editing {
 .flb-overlay__Bar_Status {
   flex: 0 0 auto;
   display: inline-flex; align-items: center;
-  height: 20px; padding: 0 8px;
-  font-size: 11px; font-weight: 650; letter-spacing: 0.02em;
+  height: 18px; padding: 0 8px;
+  font-size: 10px; font-weight: 650; letter-spacing: 0.02em;
   text-transform: uppercase;
   border-radius: var(--radius-full, 999px);
   border: 1px solid transparent;
@@ -20769,7 +20777,7 @@ tr.is-editing {
    --flb-pole is the shared diagonal-stripe paint (10px orange / 10px near-black,
    −45°). Each edge layer is a thin slice of it positioned to that edge. */
 .flb-grid__Cell {
-  --flb-pole-w: 3px;
+  --flb-pole-w: 5px;
   --flb-pole: repeating-linear-gradient(-45deg, #FFCC33 0 10px, #1c1c22 10px 20px);
   background-repeat: no-repeat;
   /* paint the pole at the true CELL edge (border box), so the per-edge padding
@@ -20904,6 +20912,15 @@ tr.is-editing {
   transition: border-color 120ms ease;
 }
 .flb-slot-over .flb-anchor { border-color: var(--accent, #1a1a1a); }
+/* Hide the empty-cell dashed border on any edge that carries a barber-pole
+   stripe — the pole already marks that edge as a mergeable seam, so the dashes
+   underneath it read as visual noise. Edge-specific (not the whole border) so a
+   cell poled on one side keeps its dashes on the un-poled sides. Gated by the
+   parent cell's data-pole-* flags (same flags that paint the stripe). */
+.flb-grid__Cell[data-pole-top] .flb-anchor    { border-top: 0; }
+.flb-grid__Cell[data-pole-bottom] .flb-anchor { border-bottom: 0; }
+.flb-grid__Cell[data-pole-left] .flb-anchor   { border-left: 0; }
+.flb-grid__Cell[data-pole-right] .flb-anchor  { border-right: 0; }
 .flb-anchor__Dot {
   flex: 0 0 auto;
   width: 28px; height: 28px; border-radius: var(--radius-full, 999px);

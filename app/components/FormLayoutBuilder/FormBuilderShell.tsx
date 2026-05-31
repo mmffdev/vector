@@ -80,6 +80,25 @@ export interface FormBuilderShellProps {
   onSaved?: () => void;
 }
 
+// Live timestamp for the title sub-line — MUST match the rail-2 node block's
+// date line exactly (app/redesign/components/nav_primary_rail_2.tsx formatNow),
+// so the title is pixel-identical to the node title it overlays and nothing
+// jumps when the builder opens.
+function formatNow(d: Date): string {
+  const date = d.toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const time = d.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  return `${date} · ${time}`;
+}
+
 // Drag payload kinds. A sidebar drag carries a fieldKey; a canvas drag
 // carries the source cell address.
 type DragData =
@@ -169,6 +188,14 @@ export function FormBuilderShell({
   // Add-custom-field overlay: when true, the create form mounts above the
   // canvas with the current artefact type force-bound (lockedTypeId).
   const [addFieldOpen, setAddFieldOpen] = useState(false);
+
+  // Live clock for the title sub-line — ticks every second to mirror the
+  // rail-2 node block's date line exactly (see formatNow above).
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -421,10 +448,13 @@ export function FormBuilderShell({
             <img src="/logo-vector.png" alt="Vector" className="flb-overlay__Bar_Brand_Logo" />
           </span>
           <div className="flb-overlay__Bar_Title">
-            {/* Title mirrors the main-site page title: which topology node +
-                artefact type this form is for, with a live status flag. Format:
-                "Insurance - Risk Form (Live)". Status: Unsaved (dirty edits) >
-                Draft (saved WIP) > Live (published current) > New (nothing yet). */}
+            {/* Title is pixel-aligned to the rail-2 TOPOLOGY-NODE block it
+                overlays (.rail-2__title + .rail-2__date), NOT the main page
+                title — so nothing jumps when the builder opens over the app.
+                Title line = node + artefact type + status flag (16px/600,
+                matching .rail-2__title); sub-line = the SAME live timestamp the
+                rail shows (10px, .rail-2__date). Status: Unsaved > Draft > Live
+                > New. */}
             <span className="flb-overlay__Bar_Title_Main">
               {nodeName ?? "This node"} — {artefactTypeLabel ?? "Artefact"} Form
               <span
@@ -434,7 +464,7 @@ export function FormBuilderShell({
                 {titleStatus.label}
               </span>
             </span>
-            <span className="flb-overlay__Bar_Title_Sub">Form Layout Builder</span>
+            <span className="flb-overlay__Bar_Title_Sub" aria-live="off">{formatNow(now)}</span>
           </div>
           <div className="flb-overlay__Bar_Actions">
             {/* In-builder form switcher — re-target to another artefact type on
