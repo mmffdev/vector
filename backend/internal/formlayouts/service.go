@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/artefactitems"
+	"github.com/mmffdev/vector-backend/internal/vectorfields"
 )
 
 var (
@@ -30,10 +31,11 @@ var (
 // vaPool (vector_artefacts).
 type Service struct {
 	vaPool *pgxpool.Pool
+	vf     *vectorfields.Service
 }
 
-func NewService(vaPool *pgxpool.Pool) *Service {
-	return &Service{vaPool: vaPool}
+func NewService(vaPool *pgxpool.Pool, vf *vectorfields.Service) *Service {
+	return &Service{vaPool: vaPool, vf: vf}
 }
 
 // ValidationError carries the structured 422 detail for a rejected save.
@@ -378,40 +380,43 @@ func (s *Service) CoreFields(slot, scope string) []CoreFieldDescriptor {
 // mig 167) the publish gate requires be placed. FieldKey is
 // "custom:<library_id>".
 func (s *Service) CustomFields(ctx context.Context, typeID, subscriptionID uuid.UUID) ([]CoreFieldDescriptor, map[string]bool, map[string]bool, error) {
-	rows, err := s.vaPool.Query(ctx, sqlListCustomFieldsForType, typeID, subscriptionID)
+	// Phase 4 Task 5: custom fields now read from the unified 3-layer field
+	// model (vector_fields_context ⋈ vector_fields_library) via the
+	// vectorfields reader, replacing the legacy sqlListCustomFieldsForType
+	// query against artefacts_types_fields/artefacts_fields_library. The
+	// reader already filters vector_fields_library_archived_at IS NULL and
+	// orders by position then name — the return triple shape is unchanged so
+	// handlers and the save validator are untouched.
+	entries, err := s.vf.ContextForType(ctx, subscriptionID, "artefact", typeID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	defer rows.Close()
 
 	var out []CoreFieldDescriptor
 	keys := map[string]bool{}
 	compulsory := map[string]bool{}
-	for rows.Next() {
-		var libID, name, label, fieldType string
-		var required, isCompulsory bool
-		if err := rows.Scan(&libID, &name, &label, &fieldType, &required, &isCompulsory); err != nil {
-			return nil, nil, nil, err
-		}
-		key := "custom:" + libID
-		keys[key] = true
-		if isCompulsory {
-			compulsory[key] = true
+	for _, e := range entries {
+		keys[e.FieldKey] = true
+		if e.IsCompulsory {
+			compulsory[e.FieldKey] = true
 		}
 		out = append(out, CoreFieldDescriptor{
-			FieldKey:    key,
-			Label:       labelOr(label, name),
-			DataType:    customDataType(fieldType),
+			FieldKey: e.FieldKey,
+			Label:    e.Label,
+			// vector_fields_library_type was backfilled verbatim from
+			// artefacts_fields_library_field_type, so apply the SAME
+			// customDataType mapping the legacy path applied for exact parity.
+			DataType:    customDataType(e.DataType),
 			Kind:        "custom",
 			Group:       "Custom",
 			IsMandatory: false,
 			// Per-binding compulsory marker (mig 167). Drives the locked-group
 			// save gate for custom fields, mirroring the core compulsory set.
-			IsCompulsory:  isCompulsory,
-			ValueLocation: ValueLocationEAV,
+			IsCompulsory:  e.IsCompulsory,
+			ValueLocation: e.ValueLocation,
 		})
 	}
-	return out, keys, compulsory, rows.Err()
+	return out, keys, compulsory, nil
 }
 
 // customDataType maps an artefacts_fields_library_field_type to the

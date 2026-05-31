@@ -72,6 +72,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/workspacemasterrecord"
 	"github.com/mmffdev/vector-backend/internal/usertaborder"
 	"github.com/mmffdev/vector-backend/internal/users"
+	"github.com/mmffdev/vector-backend/internal/vectorfields"
 	"github.com/mmffdev/vector-backend/internal/lookups"
 	"github.com/mmffdev/vector-backend/internal/timeboxmilestones"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
@@ -708,7 +709,7 @@ func main() {
 	// docs/superpowers/specs/2026-05-30-form-layout-builder-design.md.
 	var formLayoutsH *formlayouts.Handler
 	if vaPool != nil {
-		formLayoutsH = formlayouts.NewHandler(formlayouts.NewService(vaPool))
+		formLayoutsH = formlayouts.NewHandler(formlayouts.NewService(vaPool, vectorfields.NewService(vaPool)))
 	}
 
 	// savedviews — Rally-style saved view configurations. Sole writer for
