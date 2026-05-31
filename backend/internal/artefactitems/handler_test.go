@@ -40,6 +40,7 @@ func newTestRouter(h *artefactitems.Handler, u *roletypes.User) http.Handler {
 	// Mirror cmd/server/main.go registration order: /bulk and /summary and
 	// /flow-states MUST be before /{id} so chi's trie prefers them.
 	r.Get("/api/v2/work-items", h.List)
+	r.Post("/api/v2/work-items/query", h.Query)
 	r.Post("/api/v2/work-items", h.Create)
 	r.Post("/api/v2/work-items/bulk", h.Bulk)
 	r.Get("/api/v2/work-items/summary", h.Summary)
@@ -489,5 +490,159 @@ func TestHandler_Bulk_SetPriority(t *testing.T) {
 	}
 	if len(result.Failed) != 0 {
 		t.Errorf("failed = %v, want empty", result.Failed)
+	}
+}
+
+// ── POST /query — audited read-gateway tests ──────────────────────────────────
+
+// TestHandler_Query_NilPool_Roots verifies that POST /query with an empty
+// body `{}` takes the roots path and returns 200 {items:[], total:0} when
+// the vector_artefacts pool is nil (mirrors TestHandler_List_NilPool).
+func TestHandler_Query_NilPool_Roots(t *testing.T) {
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
+	user := newTestUser(uuid.New())
+	srv := httptest.NewServer(newTestRouter(h, user))
+	defer srv.Close()
+
+	resp, err := http.Post(srv.URL+"/api/v2/work-items/query", "application/json",
+		bytes.NewReader([]byte(`{}`)))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		Items []any `json:"items"`
+		Total int   `json:"total"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Items) != 0 {
+		t.Errorf("items = %d, want 0 for nil pool", len(body.Items))
+	}
+	if body.Total != 0 {
+		t.Errorf("total = %d, want 0 for nil pool", body.Total)
+	}
+}
+
+// TestHandler_Query_NilPool_Children verifies that POST /query with a valid
+// parentId takes the children path and returns 200 {items:[]} (no total)
+// when the pool is nil.
+func TestHandler_Query_NilPool_Children(t *testing.T) {
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
+	user := newTestUser(uuid.New())
+	srv := httptest.NewServer(newTestRouter(h, user))
+	defer srv.Close()
+
+	payload, _ := json.Marshal(map[string]any{"parentId": uuid.New().String()})
+	resp, err := http.Post(srv.URL+"/api/v2/work-items/query", "application/json",
+		bytes.NewReader(payload))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		Items []any `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Items) != 0 {
+		t.Errorf("items = %d, want 0 for nil pool", len(body.Items))
+	}
+}
+
+// TestHandler_Query_InvalidParentId verifies that a malformed parentId in
+// the body returns 400.
+func TestHandler_Query_InvalidParentId(t *testing.T) {
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
+	user := newTestUser(uuid.New())
+	srv := httptest.NewServer(newTestRouter(h, user))
+	defer srv.Close()
+
+	resp, err := http.Post(srv.URL+"/api/v2/work-items/query", "application/json",
+		bytes.NewReader([]byte(`{"parentId":"not-a-uuid"}`)))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+// TestHandler_Query_EmptyBody verifies that POST with NO body at all (nil
+// reader) is tolerated: EOF → zero-value request → roots path → 200.
+func TestHandler_Query_EmptyBody(t *testing.T) {
+	svc := artefactitems.NewService(nil, nil, "work")
+	h := artefactitems.NewHandler(svc)
+	user := newTestUser(uuid.New())
+	srv := httptest.NewServer(newTestRouter(h, user))
+	defer srv.Close()
+
+	resp, err := http.Post(srv.URL+"/api/v2/work-items/query", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200 (EOF tolerated)", resp.StatusCode)
+	}
+}
+
+// TestHandler_Query_ForgedParent_WithDB is the SECURITY FORGERY test. It
+// drives the children path with a parentId that is NOT a real child in the
+// caller's subscription and proves the service's `$1 = subscriptionID`
+// clamp drops it (empty result), so a forged/non-owned parentId in the
+// body cannot widen scope. SKIPs cleanly when the DB is unavailable.
+func TestHandler_Query_ForgedParent_WithDB(t *testing.T) {
+	va := vaPool(t)
+	mp := mainPool(t)
+	sub := pickTestSubscription(t, va) // subscription A
+	svc := artefactitems.NewService(va, mp, "work")
+	h := artefactitems.NewHandler(svc)
+
+	var ownerID uuid.UUID
+	if err := mp.QueryRow(context.Background(),
+		`SELECT users_id FROM users WHERE users_id_subscription=$1 AND users_is_active=true LIMIT 1`, sub,
+	).Scan(&ownerID); err != nil {
+		t.Skipf("no active user: %v", err)
+	}
+
+	user := &roletypes.User{ID: ownerID, SubscriptionID: sub, IsActive: true}
+	srv := httptest.NewServer(newTestRouter(h, user))
+	defer srv.Close()
+
+	// A random UUID that is not a real child in subscription A. The
+	// subscription clamp means children-of(this) is empty regardless of
+	// whether the row exists in another subscription — forging it cannot
+	// surface cross-subscription data.
+	payload, _ := json.Marshal(map[string]any{"parentId": uuid.New().String()})
+	resp, err := http.Post(srv.URL+"/api/v2/work-items/query", "application/json",
+		bytes.NewReader(payload))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		Items []artefactitems.WorkItem `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Items) != 0 {
+		t.Errorf("items = %d, want 0 — forged/non-owned parentId must be dropped by the subscription clamp", len(body.Items))
 	}
 }

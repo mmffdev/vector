@@ -17,3 +17,44 @@ func MapPublicWorkItem(w WorkItem) WorkItem {
 func MapPublicSprint(s Sprint) Sprint {
 	return s
 }
+
+// QueryRequest is the body DTO for the audited POST read-gateway
+// (POST /work-items/query + /portfolio-items/query). It unifies "list
+// roots" (no ParentID) and "list children" (ParentID set) behind one
+// body-driven endpoint so every read is logged uniformly for SOC 2.
+//
+// SECURITY: every field here is a NARROW hint, re-validated each request.
+// The authority for what the caller may see is the SERVER-SIDE clamp
+// (subscription from auth ctx + workspace from sentinel ctx) — never the
+// body. A forged ParentID/filters can only sub-select within that ceiling.
+type QueryRequest struct {
+	ParentID *string       `json:"parentId"`
+	Filters  *QueryFilters `json:"filters"`
+	Page     *QueryPage    `json:"page"`
+	Sort     *QuerySort    `json:"sort"`
+}
+
+// QueryFilters carries the row-level allow-lists. ItemTypeID maps to
+// Filters.ItemType / ChildFilters.ItemType, FlowStateID → Filters.Status,
+// PriorityID → Filters.Priority, OwnerID → Filters.OwnerID. SprintID uses
+// the "__none__" sentinel for "no sprint assigned".
+type QueryFilters struct {
+	ItemTypeID  []string `json:"itemTypeId"`
+	FlowStateID []string `json:"flowStateId"`
+	PriorityID  []string `json:"priorityId"`
+	OwnerID     []string `json:"ownerId"`
+	SprintID    *string  `json:"sprintId"`
+}
+
+// QueryPage carries the page window (roots path only; children return the
+// full direct-child set, matching the GET /{id}/children contract).
+type QueryPage struct {
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+}
+
+// QuerySort carries the sort key + direction (roots path only).
+type QuerySort struct {
+	Key string `json:"key"`
+	Dir string `json:"dir"`
+}

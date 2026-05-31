@@ -27,9 +27,9 @@
  *   flowStates         — patch
  *   workspaceFields    — list
  *   workItems          — list, get, create, patch, archive, bulk, summary, listFlowStates,
- *                        listChildren, getFieldValues, upsertFieldValues, deleteFieldValue
+ *                        listChildren, query, getFieldValues, upsertFieldValues, deleteFieldValue
  *   portfolioItems     — list, get, create, patch, archive, bulk, summary, listFlowStates,
- *                        listChildren, getFieldValues, upsertFieldValues, deleteFieldValue
+ *                        listChildren, query, getFieldValues, upsertFieldValues, deleteFieldValue
  *   ranking            — move
  *   sprints            — list, get, create, bulkCreate, update, delete, start, close
  *   releases           — list, get, create, bulkCreate, update, delete
@@ -53,6 +53,32 @@ import { apiSite } from "@/app/lib/api";
 
 export type ID = string;
 export type ISODate = string;
+
+// Body DTO for the audited POST read-gateway (POST /work-items/query +
+// /portfolio-items/query). Unifies "list roots" (no parentId) and "list
+// children" (parentId set) behind one body-driven endpoint so every read
+// is logged uniformly for SOC 2 — no identifiers in any URL. The server
+// clamp (subscription + workspace from ctx) is the authority; every field
+// here is a re-validated NARROW hint that can only sub-select within it.
+export interface WorkItemQueryBody {
+  parentId?: ID;
+  filters?: {
+    itemTypeId?: ID[];
+    flowStateId?: ID[];
+    priorityId?: ID[];
+    ownerId?: ID[];
+    sprintId?: string; // UUID, or "__none__" for "no sprint assigned"
+  };
+  page?: { limit?: number; offset?: number };
+  sort?: { key: string; dir: string };
+}
+
+// Roots path returns { items, total }; children path returns { items }
+// (no total, matching the GET /{id}/children contract) — total optional.
+export interface WorkItemQueryResult {
+  items: unknown[];
+  total?: number;
+}
 
 // Pages: app/login/page.tsx, app/login/reset/page.tsx, app/login/reset/confirm/page.tsx,
 //        app/change-password/page.tsx, app/contexts/AuthContext.tsx
@@ -774,6 +800,15 @@ export const workItems = {
   listChildren: (id: ID) =>
     apiSite<{ items: unknown[] }>(`/work-items/${id}/children`),
 
+  // Audited POST read-gateway — the canonical read path for the Grid tree.
+  // body.parentId set → direct children; absent → roots (with page window).
+  // No identifiers in the URL; the server clamp is the authority.
+  query: (body: WorkItemQueryBody) =>
+    apiSite<WorkItemQueryResult>("/work-items/query", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
   // Parent chain — immediate-parent-first up to topmost ancestor.
   // Slim projection used by ArtefactNodeDiagram.
   listAncestors: (id: ID) =>
@@ -833,6 +868,13 @@ export const portfolioItems = {
 
   listChildren: (id: ID) =>
     apiSite<{ items: unknown[] }>(`/portfolio-items/${id}/children`),
+
+  // Audited POST read-gateway — parity with workItems.query.
+  query: (body: WorkItemQueryBody) =>
+    apiSite<WorkItemQueryResult>("/portfolio-items/query", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   listAncestors: (id: ID) =>
     apiSite<{ ancestors: unknown[] }>(`/portfolio-items/${id}/ancestors`),

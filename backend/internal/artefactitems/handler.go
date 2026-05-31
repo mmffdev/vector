@@ -619,6 +619,167 @@ func (h *Handler) ListChildren(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
 }
 
+// Query handles POST /work-items/query (and the identical
+// /portfolio-items/query). It is the audited read-gateway that unifies
+// "list roots" and "list children" behind one body-driven endpoint so
+// every read is logged uniformly for SOC 2 (PLA — no identifiers in URLs,
+// no scattered GET routes). It REUSES the existing service methods and
+// the existing Sentinel clamp — it adds NO new SQL.
+//
+// SECURITY INVARIANT: the authority for what the caller may see is the
+// SERVER-SIDE clamp, never the body. subID comes from the auth ctx (the
+// SQL `$1 = subscriptionID` clamp drops any forged cross-subscription
+// parentId); the workspace clamp comes from sentinel.WorkspaceIDFromCtx
+// (set on Filters.WorkspaceID EXACTLY as List does). The body's
+// parentId/filters are NARROW hints, re-validated every request — forging
+// them cannot widen scope, only sub-select within the established ceiling.
+func (h *Handler) Query(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	subID := auth.UserFromCtx(r.Context()).SubscriptionID
+
+	// Tolerate an EMPTY body: EOF → zero-value request (roots, default
+	// page). Any OTHER decode error → 400.
+	var req QueryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid body"}`))
+		return
+	}
+
+	// ── Children path: a non-empty ParentID means "list direct children". ──
+	if req.ParentID != nil && *req.ParentID != "" {
+		pid, err := uuid.Parse(*req.ParentID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid parent_id"}`))
+			return
+		}
+		var cf ChildFilters
+		if req.Filters != nil {
+			if len(req.Filters.ItemTypeID) > 0 {
+				ids, perr := parseUUIDList(strings.Join(req.Filters.ItemTypeID, ","))
+				if perr != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					_, _ = w.Write([]byte(`{"error":"invalid item_type_id"}`))
+					return
+				}
+				cf.ItemType = ids
+			}
+			if req.Filters.SprintID != nil {
+				if v := *req.Filters.SprintID; v == "__none__" {
+					cf.SprintIDIsNull = true
+				} else if v != "" {
+					cf.SprintID = &v
+				}
+			}
+		}
+		items, err := h.svc.ListChildren(r.Context(), subID, pid, cf)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"internal"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+		return
+	}
+
+	// ── Roots path: no ParentID → top-level list with the page window. ──
+	f := Filters{Limit: 50}
+	if req.Page != nil && req.Page.Limit > 0 {
+		f.Limit = req.Page.Limit
+		if req.Page.Offset >= 0 {
+			f.Offset = req.Page.Offset
+		}
+	}
+	if req.Sort != nil {
+		f.Sort = req.Sort.Key
+		f.Dir = req.Sort.Dir
+	}
+	if req.Filters != nil {
+		if len(req.Filters.ItemTypeID) > 0 {
+			ids, perr := parseUUIDList(strings.Join(req.Filters.ItemTypeID, ","))
+			if perr != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid item_type_id"}`))
+				return
+			}
+			f.ItemType = ids
+		}
+		if len(req.Filters.FlowStateID) > 0 {
+			ids, perr := parseUUIDList(strings.Join(req.Filters.FlowStateID, ","))
+			if perr != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid flow_state_id"}`))
+				return
+			}
+			f.Status = ids
+		}
+		if len(req.Filters.PriorityID) > 0 {
+			ids, perr := parseUUIDList(strings.Join(req.Filters.PriorityID, ","))
+			if perr != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid priority_id"}`))
+				return
+			}
+			f.Priority = ids
+		}
+		if len(req.Filters.OwnerID) > 0 {
+			ids, perr := parseUUIDList(strings.Join(req.Filters.OwnerID, ","))
+			if perr != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid owner_id"}`))
+				return
+			}
+			f.OwnerID = ids
+		}
+		if req.Filters.SprintID != nil {
+			if v := *req.Filters.SprintID; v == "__none__" {
+				f.SprintIDIsNull = true
+			} else if v != "" {
+				f.SprintID = &v
+			}
+		}
+	}
+
+	// Workspace clamp from sentinel ctx — EXACTLY as List does. When
+	// absent, the service falls back to subscription-only.
+	if wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context()); ok {
+		wsStr := wsID.String()
+		f.WorkspaceID = &wsStr
+	}
+
+	items, total, err := h.svc.ListWorkItems(r.Context(), subID, f)
+	if err != nil {
+		if errors.Is(err, ErrScopeForbidden) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"scope_read_denied"}`))
+			return
+		}
+		if errors.Is(err, ErrScopeNodeNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"scope node not found"}`))
+			return
+		}
+		if errors.Is(err, ErrInvalidInput) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(jsonErrBody(err))
+			return
+		}
+		log.Printf("artefactitems.Query: subID=%s err=%v", subID, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal"}`))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items": items,
+		"total": total,
+	})
+}
+
 // ListAncestors handles GET /_site/work-items/{id}/ancestors. Returns
 // the slim parent chain (immediate-parent-first) used by the
 // ArtefactNodeDiagram to render the hierarchy above the selected row.

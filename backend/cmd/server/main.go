@@ -1875,6 +1875,11 @@ func main() {
 			// Runs after auth so middleware has u.WorkspaceID populated.
 			r.Use(sentinelMW)
 			r.With(readLimit17).Get("/", h.List)
+			// PLA — audited POST read-gateway: unifies "list roots" and
+			// "list children" behind one body-driven endpoint so every
+			// read is logged uniformly for SOC 2 (no identifiers in URLs).
+			// Clamp is automatic via the RequireAuth + sentinelMW above.
+			r.With(readLimit17).Post("/query", h.Query)
 			r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
 			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
 			r.With(readLimit17).Get("/summary", h.Summary)
@@ -2228,6 +2233,11 @@ func main() {
 				read := apikeys.RequireScope(readScope)
 				write := apikeys.RequireScope(writeScope)
 				r.With(readLimit, read).Get("/", h.List)
+				// PLA — audited POST read-gateway (parity with the /_site
+				// mount). Unifies roots + children behind one body-driven
+				// endpoint for uniform SOC 2 read logging. Clamp is
+				// automatic via RequireAuth + sentinelMW above.
+				r.With(readLimit, read).Post("/query", h.Query)
 				r.With(writeLimit, userWriteLimiter, write).Post("/", h.Create)
 				r.With(writeLimit, userWriteLimiter, write).Post("/bulk", h.Bulk)
 				r.With(readLimit, read).Get("/summary", h.Summary)

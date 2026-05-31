@@ -1,20 +1,27 @@
 "use client";
 
-// /scope — component POC harness.
+// /scope — the work-item hierarchy, rendered on the new Grid primitive.
 //
-// Mounts the <DataGrid> wired to live GET /work-items via apiSite()
-// (inheriting the production ?meg= + Sentinel scope clamp). The row
-// flyout opens the REAL ArtefactInlineForm — same component the OTV2
-// surface uses — populated from live tenant data. Proves the grid + the
-// production inline form work together against real data.
+// Three layers, top to bottom:
+//   • <DataContainer>  (Layer 1) — the dumb frame: header band + zero-padding
+//                       viewport. Knows nothing about trees.
+//   • <GridExecution>  (Layer 2) — the per-page assembler: wires useTree() +
+//                       Grid__Tree + the /scope columns + the expandable-flyout
+//                       extension. Pushes the header strings UP via setHeader.
+//   • the primitive    (Layer 3) — useTree() (headless core) + Grid__Tree
+//                       (canonical skin) + the pure-CSS connector system.
+//
+// Parentage is SERVER-DRIVEN through the audited POST read-gateway
+// (workItems.query — roots with no parentId, true children by parentId, all
+// workspace-clamped by Sentinel). This replaces the old <DataGrid> + the
+// client-side nestWindow() reconstruction that broke the tree connectors.
 
 import React from "react";
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
-import Panel from "@/app/components/Panel";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import DataGrid from "@/app/components/DataGrid/p_DataGrid";
-import { workItemsDataGridConfig } from "@/app/(user)/work-items/p_workItems_dataGridConfig";
+import { DataContainer } from "@/app/components/DataContainer/DataContainer";
+import { GridExecution } from "./GridExecution";
 
 export default function ScopePage() {
   const { full } = usePageTitle();
@@ -22,14 +29,15 @@ export default function ScopePage() {
   return (
     <PageContent>
       <PageDescription>
-        Component POC harness — mounts <code>&lt;DataGrid&gt;</code> wired to
-        live <code>/work-items</code> data, with the real ArtefactInlineForm
-        in the row flyout. {full}
+        The work-item hierarchy for this workspace, on the new Grid primitive —
+        server-driven parentage via the audited <code>/work-items/query</code>{" "}
+        read-gateway, with the real ArtefactInlineForm in each row&apos;s
+        flyout-below. {full}
       </PageDescription>
 
-      <Panel name="real_data_poc" title="Real-data PoC — ArtefactInlineForm over live /work-items" helpable={false}>
-        <DataGrid config={workItemsDataGridConfig} />
-      </Panel>
+      <DataContainer>
+        {(setHeader) => <GridExecution onHeader={setHeader} />}
+      </DataContainer>
     </PageContent>
   );
 }
