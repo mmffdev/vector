@@ -20499,33 +20499,98 @@ tr.is-editing {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--space-4, 16px);
+  /* NO flex gap — the title's own left edge is positioned exactly (see below),
+     so a gap here would push it past the parent page title. */
+  gap: 0;
   /* left padding 30px lands the 40px logo's left edge at x=30 (== rail gutter) */
   padding: 0 var(--space-6, 24px) 0 30px;
   border-bottom: 1px solid var(--border-default, #e5e1da);
   background: var(--surface, #fff);
 }
-/* logo wrapper — identical box to the rail brand (40×40, centred) */
+/* logo wrapper — the 40×40 logo sits at its LEFT (x=30, matching the rail-1
+   brand), but the wrapper stretches to the rail-1+rail-2 boundary so the TITLE
+   after it begins exactly where the app's .main_title does (no jump when the
+   overlay mounts). Shell geometry: rail-1 100px + rail-2 240px = 340px; the
+   wrapper starts at the bar's 30px padding, so its width is 340 − 30 = 310px. */
 .flb-overlay__Bar_Brand {
   flex: 0 0 auto;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
+  width: calc(var(--rd-rail-w, 100px) + var(--rail-2-w, 240px) - 30px);
+  height: 40px;
+  display: flex; align-items: center; justify-content: flex-start;
 }
 .flb-overlay__Bar_Brand_Logo {
-  width: 100%; height: 100%; object-fit: contain; display: block;
+  width: 40px; height: 40px; object-fit: contain; display: block;
 }
-/* title takes the remaining space (after the logo); actions sit hard right */
+/* title starts after the brand zone, with the SAME 30px inset the app's
+   .main_title uses (padding: 0 30px) → title text lands at x=370, aligned with
+   the parent page title. */
 .flb-overlay__Bar_Title {
   flex: 1 1 auto; min-width: 0;
+  padding-left: 30px;
   display: flex; flex-direction: column; gap: 2px;
 }
 .flb-overlay__Bar_Title_Main {
   font-size: 15px; font-weight: 650; letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: var(--space-2, 8px);
+  min-width: 0;
 }
 .flb-overlay__Bar_Title_Sub {
   font-size: 12px; color: var(--text-secondary, #5c5c5c);
 }
-.flb-overlay__Bar_Actions { flex: 0 0 auto; display: flex; gap: var(--space-2, 8px); }
+/* status flag after the title — Unsaved / Draft / Live / New. A small pill that
+   reads like the main-site status chips; tone colours match the app's semantic
+   set (amber = in-flight/unsaved, blue = draft WIP, green = live/published,
+   neutral = brand-new). */
+.flb-overlay__Bar_Status {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center;
+  height: 20px; padding: 0 8px;
+  font-size: 11px; font-weight: 650; letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid transparent;
+}
+.flb-overlay__Bar_Status-unsaved {
+  color: #8a5a00; background: #fff4e0; border-color: #f3d39a;
+}
+.flb-overlay__Bar_Status-draft {
+  color: #1f4e7a; background: #e8f1fb; border-color: #b9d6f2;
+}
+.flb-overlay__Bar_Status-live {
+  color: #1f6b3a; background: #e6f5ec; border-color: #abdcbd;
+}
+.flb-overlay__Bar_Status-new {
+  color: #5c5c5c; background: #f1efea; border-color: #ddd8cf;
+}
+.flb-overlay__Bar_Actions { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-2, 8px); }
+
+/* In-builder form switcher — a compact labelled select in the header actions,
+   lets the author re-target to another artefact type on this node without
+   exiting. Sits left of the undo/redo cluster. */
+.flb-overlay__Bar_Switch {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-right: var(--space-2, 8px);
+  cursor: pointer;
+}
+.flb-overlay__Bar_Switch_Label {
+  font-size: 11px; font-weight: 650; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-secondary, #5c5c5c);
+}
+.flb-overlay__Bar_Switch_Select {
+  height: 32px; padding: 0 28px 0 10px;
+  font-size: 13px; font-weight: 550; color: var(--ink, #1a1a1a);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  max-width: 220px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.flb-overlay__Bar_Switch_Select:hover { border-color: var(--accent, #1a1a1a); }
+.flb-overlay__Bar_Switch_Select:focus-visible {
+  outline: 2px solid var(--accent, #1a1a1a); outline-offset: 1px;
+}
+.flb-overlay__Bar_Switch_Select:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .flb-overlay__Banner {
   flex: 0 0 auto;
@@ -20542,7 +20607,12 @@ tr.is-editing {
 .flb-overlay__Body {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: minmax(220px, 20%) 1fr;
+  /* The field-selector rail is pinned to the COMBINED width of the app's two
+     left rails (primary scope rail + secondary sidebar) so the overlay feels
+     continuous with the app shell — the logo (already pinned) AND the canvas
+     start land on the same x as the main site, with no jump when the overlay
+     mounts or the title swaps. 44 + 240 = 284px. */
+  grid-template-columns: calc(var(--scope-rail-w, 44px) + var(--sidebar-width, 240px)) 1fr;
   min-height: 0;
 }
 
@@ -20689,6 +20759,65 @@ tr.is-editing {
 /* one cell wrapper (positioned in the band grid; may span sub-rows) */
 .flb-grid__Cell { position: relative; min-height: 0; }
 
+/* ── Barber-pole borders (mergeable-seam edges) ──────────────────────────────
+   A 3px diagonal orange/black stripe on each edge that faces a mergeable
+   neighbour, so the two sides of a seam point at each other ("these can join").
+   Painted as up to four stacked background-image layers on the cell wrapper —
+   one per poled edge — gated by the renderer's data-pole-* flags (which already
+   apply the grid-perimeter suppression rules). The field content (.flb-slot)
+   insets 3px on any poled edge so it sits INSIDE the barber frame.
+   --flb-pole is the shared diagonal-stripe paint (10px orange / 10px near-black,
+   −45°). Each edge layer is a thin slice of it positioned to that edge. */
+.flb-grid__Cell {
+  --flb-pole-w: 3px;
+  --flb-pole: repeating-linear-gradient(-45deg, #FFCC33 0 10px, #1c1c22 10px 20px);
+  background-repeat: no-repeat;
+  /* paint the pole at the true CELL edge (border box), so the per-edge padding
+     that insets the field does NOT push the stripe inward — the stripe stays on
+     the outer edge, the field sits inside it. */
+  background-origin: border-box;
+  background-clip: border-box;
+}
+/* Per-edge layers. Stacking multiple data-pole-* attrs composes the layers via
+   the comma-separated background shorthand. We declare each combination we need
+   rather than rely on the cascade (CSS can't "append" a background-image), so
+   the renderer's flags map to an explicit paint. Horizontal edges = full-width
+   slice 3px tall; vertical edges = full-height slice 3px wide. */
+.flb-grid__Cell[data-pole-top]    { background-image: var(--flb-pole); background-size: 100% var(--flb-pole-w); background-position: top center; }
+.flb-grid__Cell[data-pole-bottom] { background-image: var(--flb-pole); background-size: 100% var(--flb-pole-w); background-position: bottom center; }
+.flb-grid__Cell[data-pole-left]   { background-image: var(--flb-pole); background-size: var(--flb-pole-w) 100%; background-position: left center; }
+.flb-grid__Cell[data-pole-right]  { background-image: var(--flb-pole); background-size: var(--flb-pole-w) 100%; background-position: right center; }
+/* two-edge combinations (the common cases: a seam pair gives one edge each, but
+   a cell can sit between two seams and pole two edges). */
+.flb-grid__Cell[data-pole-top][data-pole-bottom]   { background-image: var(--flb-pole), var(--flb-pole); background-size: 100% var(--flb-pole-w), 100% var(--flb-pole-w); background-position: top center, bottom center; }
+.flb-grid__Cell[data-pole-left][data-pole-right]   { background-image: var(--flb-pole), var(--flb-pole); background-size: var(--flb-pole-w) 100%, var(--flb-pole-w) 100%; background-position: left center, right center; }
+.flb-grid__Cell[data-pole-top][data-pole-left]     { background-image: var(--flb-pole), var(--flb-pole); background-size: 100% var(--flb-pole-w), var(--flb-pole-w) 100%; background-position: top center, left center; }
+.flb-grid__Cell[data-pole-top][data-pole-right]    { background-image: var(--flb-pole), var(--flb-pole); background-size: 100% var(--flb-pole-w), var(--flb-pole-w) 100%; background-position: top center, right center; }
+.flb-grid__Cell[data-pole-bottom][data-pole-left]  { background-image: var(--flb-pole), var(--flb-pole); background-size: 100% var(--flb-pole-w), var(--flb-pole-w) 100%; background-position: bottom center, left center; }
+.flb-grid__Cell[data-pole-bottom][data-pole-right] { background-image: var(--flb-pole), var(--flb-pole); background-size: 100% var(--flb-pole-w), var(--flb-pole-w) 100%; background-position: bottom center, right center; }
+/* three- and four-edge combinations (a fully-mergeable cell framed all round) */
+.flb-grid__Cell[data-pole-top][data-pole-bottom][data-pole-left],
+.flb-grid__Cell[data-pole-top][data-pole-bottom][data-pole-right],
+.flb-grid__Cell[data-pole-top][data-pole-left][data-pole-right],
+.flb-grid__Cell[data-pole-bottom][data-pole-left][data-pole-right],
+.flb-grid__Cell[data-pole-top][data-pole-bottom][data-pole-left][data-pole-right] {
+  background-image: var(--flb-pole), var(--flb-pole), var(--flb-pole), var(--flb-pole);
+  background-size: 100% var(--flb-pole-w), 100% var(--flb-pole-w), var(--flb-pole-w) 100%, var(--flb-pole-w) 100%;
+  background-position: top center, bottom center, left center, right center;
+}
+/* inset the field content so a placed field sits INSIDE the frame. We pad the
+   CELL WRAPPER (not margin the slot): the slot is height:100%, so a margin would
+   overflow the cell and hide the pole — padding shrinks the slot's box instead.
+   box-sizing:border-box + the pole painted as a background on the wrapper means
+   the 3px strip shows in the padding band, under the inset slot. This is why a
+   FILLED cell now shows its pole too (the opaque slot no longer covers the edge).
+   Applies whether the cell is empty or filled. */
+.flb-grid__Cell { box-sizing: border-box; }
+.flb-grid__Cell[data-pole-top]    { padding-top: var(--flb-pole-w); }
+.flb-grid__Cell[data-pole-bottom] { padding-bottom: var(--flb-pole-w); }
+.flb-grid__Cell[data-pole-left]   { padding-left: var(--flb-pole-w); }
+.flb-grid__Cell[data-pole-right]  { padding-right: var(--flb-pole-w); }
+
 /* slot (one cell) */
 .flb-slot {
   height: 100%; min-height: 72px; border-radius: var(--radius-md, 8px);
@@ -20730,15 +20859,17 @@ tr.is-editing {
    contrast against busy cells. */
 .flb-seam__Join {
   pointer-events: auto;
-  width: 28px; height: 32px; padding: 0; border: none; cursor: pointer;
+  /* 50% larger than the original 28×32 (Rick, 2026-05-31) */
+  width: 42px; height: 48px; padding: 0; border: none; cursor: pointer;
   background: transparent;
   display: flex; align-items: center; justify-content: center;
   transition: transform 120ms ease;
 }
 /* glyph keeps the SVG's own aspect (taller viewBox pushes the arrowheads
-   apart via the lengthened connector — see JoinArrowIcon). */
+   apart via the lengthened connector — see JoinArrowIcon). 50% larger than the
+   original 26×30. */
 .flb-seam__Glyph {
-  width: 26px; height: 30px; display: block;
+  width: 39px; height: 45px; display: block;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.28));
 }
 .flb-seam__Glyph-h { transform: rotate(90deg); } /* horizontal join variant */

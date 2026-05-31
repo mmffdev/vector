@@ -45,6 +45,58 @@ function isEmptyTarget(cell: FormCell): boolean {
   return cell.fieldKey == null && !isTombstone(cell);
 }
 
+// emptyStripAbsorbHeight — for a vertical merge DOWN, inspect the cell strip in
+// `row` starting at column `startCol` that should tile EXACTLY `colSpan` columns
+// of empty space. Returns the number of ROWS the merge would absorb (the tiles'
+// common rowSpan), or 0 if the strip can't be cleanly absorbed.
+//
+// The strip may be ONE wide empty cell (colSpan === owner's), several 1×1
+// empties, or any mix summing to the owner's width — a wide cell can thus grow
+// down into an equally-wide empty cell. To stay rectangular, every tile must be
+// empty AND share the SAME rowSpan (so a colSpan-1 owner can still absorb a tall
+// empty block beneath it — rowSpan N — while a wide owner absorbs a single row).
+// Returns 0 on: out-of-range, a non-empty/tombstone cell, mixed tile heights, or
+// a tiling that overshoots the owner width.
+function emptyStripAbsorbHeight(row: FormRow, startCol: number, colSpan: number): number {
+  let covered = 0;
+  let c = startCol;
+  let height = 0;
+  while (covered < colSpan) {
+    const cell = row.cells[c];
+    if (!cell || !isEmptyTarget(cell)) return 0;
+    const h = effectiveRowSpan(cell);
+    if (height === 0) height = h;
+    else if (h !== height) return 0; // mixed heights would break the rectangle
+    covered += effectiveColSpan(cell);
+    c += effectiveColSpan(cell);
+  }
+  return covered === colSpan ? height : 0; // exact tiling required
+}
+
+// emptyColStripAbsorbWidth — the horizontal mirror of emptyStripAbsorbHeight, for
+// a merge RIGHT. Inspects the cell strip going DOWN column `col` from row
+// `startRow` that should tile EXACTLY `rowSpan` rows of empty space. Returns the
+// columns absorbed (the tiles' common colSpan), or 0 if it can't be cleanly
+// absorbed. The strip may be ONE tall empty cell (rowSpan === owner's), several
+// 1×1 empties, or any mix summing to the owner's height — so a tall cell can grow
+// right into an equally-tall empty cell. Every tile must be empty AND share the
+// same colSpan (so the result stays rectangular).
+function emptyColStripAbsorbWidth(rows: FormRow[], startRow: number, col: number, rowSpan: number): number {
+  let covered = 0;
+  let r = startRow;
+  let width = 0;
+  while (covered < rowSpan) {
+    const cell = rows[r]?.cells[col];
+    if (!cell || !isEmptyTarget(cell)) return 0;
+    const w = effectiveColSpan(cell);
+    if (width === 0) width = w;
+    else if (w !== width) return 0; // mixed widths would break the rectangle
+    covered += effectiveRowSpan(cell);
+    r += effectiveRowSpan(cell);
+  }
+  return covered === rowSpan ? width : 0; // exact tiling required
+}
+
 // A seam is a mergeable boundary: column `colIndex` between `rowIndex` and the
 // row directly below it. Only emitted when the two rows share a template, the
 // upper cell is a real (non-tombstone) cell, and the lower cell is empty.
@@ -103,8 +155,9 @@ export function seamsFor(rows: FormRow[]): Seam[] {
       const belowCell = below.cells[c];
 
       // (a) DOWN: the rectangle owning (r,c) bottoms here at its LEFT column,
-      // and the strip directly below — across the owner's full colSpan — is all
-      // empty 1×1 targets (colSpan-aware → a wide cell can grow down into a 2×2).
+      // and the strip directly below — across the owner's full colSpan — is empty
+      // and TILES the owner's width (one wide empty cell, several 1×1s, or any
+      // mix). A wide cell can thus grow down into an equally-wide empty cell.
       const owner = ownerOf(rows, r, c);
       let downOk = false;
       if (owner != null && bottomRowOf(rows, owner) === r) {
@@ -112,9 +165,7 @@ export function seamsFor(rows: FormRow[]): Seam[] {
         const cSpan = effectiveColSpan(oCell);
         // only at the owner's left column (so one handle for a wide owner)
         if (owner.cellIndex === c) {
-          downOk = Array.from({ length: cSpan }, (_, k) => below.cells[c + k]).every(
-            (cc) => cc != null && isEmptyTarget(cc) && effectiveColSpan(cc) === 1,
-          );
+          downOk = emptyStripAbsorbHeight(below, c, cSpan) > 0;
         }
       }
 
@@ -127,6 +178,173 @@ export function seamsFor(rows: FormRow[]): Seam[] {
     }
   }
   return seams;
+}
+
+// ─── Dominant-seam policy (one joiner on the widest/tallest) ──────────────────
+//
+// GOLDEN RULE (user, 2026-05-31): "two cells can merge → detect the longest →
+// make that the owner → place the joiner in its centre." When several seams sit
+// at the SAME boundary over ONE contiguous empty band, the user wants a SINGLE
+// handle, on the WIDEST cell (vertical) / TALLEST cell (horizontal), centred on
+// it — not one stranded handle per narrow column. Equal sizes keep every handle
+// (there's no dominant cell, so each centres on its own equal column/row).
+//
+// This is a PRESENTATION policy: it never changes what mergeDown/mergeRight do
+// (each surviving handle still merges its own clean rectangle — no L-shapes). It
+// only suppresses the non-dominant, co-located handles so the eye sees the
+// joiner where the merge will actually land.
+
+// seamOwnerWidth — the column weight (span) of the cell that owns a vertical
+// seam, i.e. the width the merged rectangle will have. Used to pick the widest.
+function seamOwnerWidth(rows: FormRow[], seam: Seam): number {
+  const owner = ownerOf(rows, seam.rowIndex, seam.colIndex);
+  // UP seams own from the empty top cell; DOWN seams from the tall owner. Either
+  // way the rectangle's width is the owning cell's span.
+  const addr = owner ?? { rowIndex: seam.rowIndex, cellIndex: seam.colIndex };
+  return rows[addr.rowIndex]?.cells[addr.cellIndex]?.span ?? 0;
+}
+
+// dominantVSeams keeps, per contiguous run of competing vertical seams at one
+// boundary row, only the widest owner's seam (ties keep all). Seams at the same
+// boundary row `r` COMPETE when their owner columns are adjacent (form one run
+// of side-by-side seams) — i.e. they would otherwise strand a narrow handle next
+// to a wide one over the same empty band. Seams at different boundary rows, or
+// separated by a non-seam column, never compete.
+export function dominantVSeams(rows: FormRow[]): Seam[] {
+  const all = seamsFor(rows);
+  if (all.length <= 1) return all;
+  // bucket by boundary row, then split each bucket into contiguous-column runs.
+  const byRow = new Map<number, Seam[]>();
+  for (const s of all) {
+    const list = byRow.get(s.rowIndex) ?? [];
+    list.push(s);
+    byRow.set(s.rowIndex, list);
+  }
+  const kept: Seam[] = [];
+  for (const list of byRow.values()) {
+    list.sort((a, b) => a.colIndex - b.colIndex);
+    let run: Seam[] = [];
+    const flush = () => {
+      if (run.length === 0) return;
+      const maxW = Math.max(...run.map((s) => seamOwnerWidth(rows, s)));
+      // keep every seam whose owner is the widest in the run (ties → all kept).
+      for (const s of run) if (seamOwnerWidth(rows, s) === maxW) kept.push(s);
+      run = [];
+    };
+    for (const s of list) {
+      if (run.length === 0) { run = [s]; continue; }
+      const prev = run[run.length - 1];
+      // adjacent if the previous seam's owner rectangle ends exactly where this
+      // one begins (no gap, no filled column between two competing seams).
+      const prevOwner = ownerOf(rows, prev.rowIndex, prev.colIndex);
+      const prevSpan = prevOwner ? effectiveColSpan(rows[prevOwner.rowIndex].cells[prevOwner.cellIndex]) : 1;
+      const prevRight = (prevOwner?.cellIndex ?? prev.colIndex) + prevSpan - 1;
+      if (s.colIndex === prevRight + 1) { run.push(s); } else { flush(); run = [s]; }
+    }
+    flush();
+  }
+  return kept;
+}
+
+// dominantHSeams — the horizontal mirror: per contiguous run of competing
+// horizontal seams at one boundary COLUMN, keep only the TALLEST owner's seam
+// (ties keep all). Competition is along the row axis (seams stacked over one
+// empty band on the same column boundary).
+function hSeamOwnerHeight(rows: FormRow[], seam: HSeam): number {
+  const oRow = vOwnerRow(rows, seam.rowIndex, seam.colIndex);
+  const oCol = hOwnerOf(rows, oRow, seam.colIndex);
+  if (oCol == null) return 0;
+  return effectiveRowSpan(rows[oRow].cells[oCol]);
+}
+
+export function dominantHSeams(rows: FormRow[]): HSeam[] {
+  const all = hSeamsFor(rows);
+  if (all.length <= 1) return all;
+  const byCol = new Map<number, HSeam[]>();
+  for (const s of all) {
+    const list = byCol.get(s.colIndex) ?? [];
+    list.push(s);
+    byCol.set(s.colIndex, list);
+  }
+  const kept: HSeam[] = [];
+  for (const list of byCol.values()) {
+    list.sort((a, b) => a.rowIndex - b.rowIndex);
+    let run: HSeam[] = [];
+    const flush = () => {
+      if (run.length === 0) return;
+      const maxH = Math.max(...run.map((s) => hSeamOwnerHeight(rows, s)));
+      for (const s of run) if (hSeamOwnerHeight(rows, s) === maxH) kept.push(s);
+      run = [];
+    };
+    for (const s of list) {
+      if (run.length === 0) { run = [s]; continue; }
+      const prev = run[run.length - 1];
+      const pRow = vOwnerRow(rows, prev.rowIndex, prev.colIndex);
+      const pCol = hOwnerOf(rows, pRow, prev.colIndex);
+      const pSpan = pCol == null ? 1 : effectiveRowSpan(rows[pRow].cells[pCol]);
+      const prevBottom = pRow + pSpan - 1;
+      if (s.rowIndex === prevBottom + 1) { run.push(s); } else { flush(); run = [s]; }
+    }
+    flush();
+  }
+  return kept;
+}
+
+// ─── Barber-pole edges (mergeable-boundary borders) ──────────────────────────
+//
+// Every mergeable seam draws a barber-pole stripe on BOTH cells it joins, the
+// two stripes facing each other (the seam reads as "these two can merge"). This
+// is computed from the RAW seam sets (every mergeable boundary, not the dominant
+// glyph set): a vertical seam poles the upper cell's BOTTOM + the lower cell's
+// TOP; a horizontal seam poles the left cell's RIGHT + the right cell's LEFT.
+//
+// Keyed by the RENDERED cell's owner position ("rowIndex:cellIndex" — the same
+// (rowIndex, cellIndex) the renderer iterates), each value a set of edges. The
+// renderer reads its four edges off this map. Grid-perimeter suppression (a
+// first-column cell never poles LEFT, etc.) is applied by the RENDERER, since it
+// alone knows the band's column count + top/bottom rows.
+
+export type PoleEdge = "top" | "right" | "bottom" | "left";
+
+// poleEdgesFor returns the per-cell barber-pole edges for every mergeable seam.
+// For a vertical seam {r,c}: resolve the upper owner (bottoms at r) → its BOTTOM
+// edge; resolve the lower cell at (r+1,c)'s owner → its TOP edge. For a
+// horizontal seam {r,c}: the left owner → RIGHT edge; the right cell at (r,c+1)'s
+// owner → LEFT edge. Owner resolution means a wide/tall cell gets ONE pole on the
+// shared boundary, keyed at its top-left position (where the renderer draws it).
+export function poleEdgesFor(rows: FormRow[]): Map<string, Set<PoleEdge>> {
+  const edges = new Map<string, Set<PoleEdge>>();
+  const add = (rowIndex: number, colIndex: number, edge: PoleEdge) => {
+    const key = `${rowIndex}:${colIndex}`;
+    let set = edges.get(key);
+    if (!set) { set = new Set(); edges.set(key, set); }
+    set.add(edge);
+  };
+
+  // vertical seams → upper BOTTOM + lower TOP
+  for (const seam of seamsFor(rows)) {
+    const upper = ownerOf(rows, seam.rowIndex, seam.colIndex);
+    if (upper) add(upper.rowIndex, upper.cellIndex, "bottom");
+    // the lower cell sits at (r+1, c); resolve its owner so a wide lower target
+    // poles once at its left column.
+    const lowerRow = seam.rowIndex + 1;
+    const lowerOwner = ownerOf(rows, lowerRow, seam.colIndex);
+    if (lowerOwner) add(lowerOwner.rowIndex, lowerOwner.cellIndex, "top");
+  }
+
+  // horizontal seams → left RIGHT + right LEFT
+  for (const seam of hSeamsFor(rows)) {
+    const leftRow = vOwnerRow(rows, seam.rowIndex, seam.colIndex);
+    const leftCol = hOwnerOf(rows, leftRow, seam.colIndex);
+    if (leftCol != null) add(leftRow, leftCol, "right");
+    // the right cell sits at (r, c+1); resolve its owner.
+    const rightCol0 = seam.colIndex + 1;
+    const rRow = vOwnerRow(rows, seam.rowIndex, rightCol0);
+    const rCol = hOwnerOf(rows, rRow, rightCol0);
+    if (rCol != null) add(rRow, rCol, "left");
+  }
+
+  return edges;
 }
 
 // ─── Horizontal merge (join cells across columns within ONE row) ─────────────
@@ -178,16 +396,70 @@ export function hSeamsFor(rows: FormRow[]): HSeam[] {
       // seam offered once, at the rectangle's RIGHT edge on its TOP row.
       if (rightEdge !== c || oRow !== rowIndex) continue;
       const newCol = rightEdge + 1;
-      // the whole right strip [oRow..oRow+rSpan-1][newCol] must be empty + 1×1.
-      let ok = true;
-      for (let dr = 0; dr < rSpan; dr++) {
-        const cell = rows[oRow + dr]?.cells[newCol];
-        if (!cell || !isEmptyTarget(cell) || effectiveColSpan(cell) > 1 || effectiveRowSpan(cell) > 1) { ok = false; break; }
+      // the right strip [oRow..oRow+rSpan-1][newCol] must be empty and TILE the
+      // owner's height — one tall empty cell, several 1×1s, or any mix (a tall
+      // cell can grow right into an equally-tall empty cell).
+      if (emptyColStripAbsorbWidth(rows, oRow, newCol, rSpan) > 0) {
+        seams.push({ rowIndex, colIndex: c });
       }
-      if (ok) seams.push({ rowIndex, colIndex: c });
     }
   });
   return seams;
+}
+
+// normalizeOwnership makes OWNER cells the single source of truth and rebuilds
+// every tombstone's absorbedBy from the owners' spans — so a stale/cross-wired
+// absorbedBy (left by an overlapping merge, a drag, an undo, or any edit that
+// didn't fully re-tombstone) is corrected. The model: a cell is an OWNER iff it
+// has a fieldKey OR a span marker (rowSpan/colSpan > 1) and is not itself a
+// tombstone. Each owner claims its rowSpan×colSpan rectangle; every covered
+// non-owner cell becomes a tombstone pointing at THAT owner. Any cell left
+// uncovered by every owner is revived to a plain empty cell (its stale
+// absorbedBy dropped). This is idempotent and fail-closed: it can only ever
+// produce a document whose tombstones exactly tile each owner's rectangle — the
+// invariant the server's validateMergeGeometry enforces. Origin: 2026-05-31 —
+// the "sprint" 2×2 whose top-right corner pointed at colour's tombstone (a
+// stolen corner) → server 422; normalizing on load/save closes the class.
+export function normalizeOwnership(rows: FormRow[]): FormRow[] {
+  // 1. Map every covered position → the owner id that claims it. Later owners do
+  //    not overwrite earlier claims (the first owner whose rectangle covers a
+  //    cell wins — owners never legitimately overlap, but if a corrupt doc has
+  //    two, deterministic first-wins keeps it rectangular).
+  const claim = new Map<string, string>(); // "ri:ci" -> owner cell id
+  rows.forEach((row, ri) => {
+    row.cells.forEach((cell, ci) => {
+      if (cell.absorbedBy) return; // a tombstone is not an owner
+      const rs = effectiveRowSpan(cell);
+      const cs = effectiveColSpan(cell);
+      if (rs === 1 && cs === 1) return; // a 1×1 cell owns only itself — nothing to claim
+      for (let dr = 0; dr < rs; dr++) {
+        for (let dc = 0; dc < cs; dc++) {
+          if (dr === 0 && dc === 0) continue; // the owner cell itself
+          const key = `${ri + dr}:${ci + dc}`;
+          if (!claim.has(key)) claim.set(key, cell.id);
+        }
+      }
+    });
+  });
+  // 2. Rewrite each cell from the claim map. A claimed cell → tombstone of its
+  //    claimer; an unclaimed cell that still carries absorbedBy → revived empty.
+  return rows.map((row, ri) => ({
+    ...row,
+    cells: row.cells.map((cell, ci) => {
+      const owner = claim.get(`${ri}:${ci}`);
+      if (owner) {
+        // covered → tombstone of the claiming owner (drop any field/span markers)
+        const { rowSpan: _r, colSpan: _c, ...rest } = cell;
+        return { id: rest.id, fieldKey: null, span: rest.span, absorbedBy: owner };
+      }
+      if (cell.absorbedBy) {
+        // uncovered but still tombstoned → stale; revive to empty.
+        const { absorbedBy: _drop, ...rest } = cell;
+        return { ...rest, fieldKey: null };
+      }
+      return cell;
+    }),
+  }));
 }
 
 // A merged cell owns a rectangle [ownerRow .. ownerRow+rowSpan-1] ×
@@ -210,16 +482,16 @@ export function mergeRight(rows: FormRow[], addr: CellAddr): FormRow[] {
   const cSpan = effectiveColSpan(ownerCell);
   const newCol = ownerCol + cSpan; // first column of the strip to absorb
 
-  // the strip [ownerRow..ownerRow+rSpan-1] × [newCol] must all be empty + in
-  // range + same template throughout.
-  let absorbedWidth = 0;
+  // the right strip [ownerRow..ownerRow+rSpan-1] × [newCol] must be empty and
+  // TILE the owner's height — one tall empty cell, several 1×1s, or any mix (a
+  // tall cell can grow right into an equally-tall empty cell). 0 = not mergeable.
+  if (emptyColStripAbsorbWidth(rows, ownerRow, newCol, rSpan) === 0) return rows;
+  // same template across every absorbed row (a merge never crosses a template).
   for (let dr = 0; dr < rSpan; dr++) {
-    const r = rows[ownerRow + dr];
-    const cell = r?.cells[newCol];
-    if (!cell || !isEmptyTarget(cell) || effectiveColSpan(cell) > 1 || effectiveRowSpan(cell) > 1) return rows;
-    if (r.template !== rows[ownerRow].template) return rows;
-    if (dr === 0) absorbedWidth = cell.span;
+    if (rows[ownerRow + dr]?.template !== rows[ownerRow].template) return rows;
   }
+  // the new column's display width (the absorbed strip's left tile span).
+  const absorbedWidth = rows[ownerRow].cells[newCol]?.span ?? 0;
 
   return rows.map((r, ri) => {
     if (ri < ownerRow || ri > ownerRow + rSpan - 1) return r;
@@ -305,15 +577,15 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
   // whole strip (which may itself be a tall block) and tombstone every cell in
   // the owner's column range across the absorbed rows.
   const oColSpan = effectiveColSpan(ownerCell);
-  const stripEmpty =
-    below &&
-    top.template === below.template &&
-    top.cells.length === below.cells.length &&
-    Array.from({ length: oColSpan }, (_, k) => below.cells[col + k]).every(
-      (cc) => cc != null && isEmptyTarget(cc) && effectiveColSpan(cc) === 1,
-    );
-  if (below && stripEmpty) {
-    const absorbedSpan = effectiveRowSpan(below.cells[col]); // 1 for a slot, N for a block
+  // the strip below must be empty and TILE the owner's width — one wide empty
+  // cell, several 1×1s, or any mix (a wide cell can grow down into a wide empty).
+  // Returns the rows absorbed (1 for a slot row, N when the tile(s) are a tall
+  // empty block); 0 = not mergeable.
+  const absorbedSpan =
+    below && top.template === below.template && top.cells.length === below.cells.length
+      ? emptyStripAbsorbHeight(below, col, oColSpan)
+      : 0;
+  if (below && absorbedSpan > 0) {
     const nextSpan = effectiveRowSpan(ownerCell) + absorbedSpan;
     const absorbedStart = bottom + 1;
     const absorbedEnd = bottom + absorbedSpan; // inclusive last absorbed row

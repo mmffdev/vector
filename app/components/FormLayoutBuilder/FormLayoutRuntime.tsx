@@ -27,22 +27,7 @@ import {
   type FormLayout,
 } from "@/app/lib/formLayoutsApi";
 import { FormLayoutRenderer, type RenderCellArgs } from "./FormLayoutRenderer";
-
-interface FieldValueWire {
-  id: string;
-  field_library_id: string | null;
-  field_name: string;
-  label: string;
-  field_type: string;
-  string_value: string | null;
-  number_value: string | null;
-  text_value: string | null;
-  date_value: string | null;
-}
-
-function valueFromWire(fv: FieldValueWire): string {
-  return fv.string_value ?? fv.number_value ?? fv.text_value ?? fv.date_value ?? "";
-}
+import { valueFromWire, type FieldValueWire } from "./previewValues";
 
 export interface FormLayoutRuntimeProps {
   artefactId: string;

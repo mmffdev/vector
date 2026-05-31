@@ -72,3 +72,53 @@ describe("useFormBuilderState — undo / redo", () => {
     expect(result.current.rows[0].cells[0].rowSpan).toBe(2);
   });
 });
+
+// ── corrupt-draft ID repair (reset re-keys duplicate IDs) ────────────────────
+// A draft saved by an older build could carry COLLIDING row/cell IDs (the seq
+// counter restarted at 1 on reload). Duplicate IDs corrupt ownerOf/absorbedBy
+// resolution → broken seams + merges. reset() must re-key to unique IDs while
+// preserving merge geometry. Origin: 2026-05-31 "Blocked" draft (3× cell-2).
+import { isTombstone, effectiveRowSpan } from "../mergeTransitions";
+import type { FormRow } from "@/app/lib/formLayoutsApi";
+
+describe("useFormBuilderState — corrupt-draft repair on reset", () => {
+  it("re-keys duplicate IDs and repoints absorbedBy to the right owner", () => {
+    // Two rows that BOTH reuse id 'cell-1' for the owner and 'cell-2' for the
+    // tombstone — a vertical merge with colliding IDs. The tombstone's
+    // absorbedBy ('cell-1') is ambiguous across the document.
+    const corrupt: FormRow[] = [
+      { id: "row-1", template: "100", cells: [{ id: "cell-1", fieldKey: "Tall", span: 100, rowSpan: 2 }] },
+      { id: "row-1", template: "100", cells: [{ id: "cell-2", fieldKey: null, span: 100, absorbedBy: "cell-1" }] },
+      { id: "row-1", template: "100", cells: [{ id: "cell-1", fieldKey: "Other", span: 100 }] }, // dup id 'cell-1'
+    ];
+    const { result } = renderHook(() => useFormBuilderState([]));
+    act(() => result.current.reset(corrupt));
+    const rows = result.current.rows;
+    // every id is now unique
+    const ids = new Set<string>();
+    let dup = false;
+    rows.forEach((r) => { if (ids.has(r.id)) dup = true; ids.add(r.id); r.cells.forEach((c) => { if (ids.has(c.id)) dup = true; ids.add(c.id); }); });
+    expect(dup).toBe(false);
+    // geometry preserved: row1's tombstone still absorbed by row0's owner (its NEW id)
+    expect(isTombstone(rows[1].cells[0])).toBe(true);
+    expect(rows[1].cells[0].absorbedBy).toBe(rows[0].cells[0].id);
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(2);
+    // and a fresh addRow can't collide (the real bug): mint a new row, ids stay unique
+    act(() => result.current.addRow("100"));
+    const ids2 = new Set<string>();
+    let dup2 = false;
+    result.current.rows.forEach((r) => { if (ids2.has(r.id)) dup2 = true; ids2.add(r.id); r.cells.forEach((c) => { if (ids2.has(c.id)) dup2 = true; ids2.add(c.id); }); });
+    expect(dup2).toBe(false);
+  });
+
+  it("clean (unique-ID) documents pass through reset unchanged", () => {
+    const clean: FormRow[] = [
+      { id: "row-10", template: "50-50", cells: [{ id: "cell-20", fieldKey: "A", span: 50 }, { id: "cell-21", fieldKey: null, span: 50 }] },
+    ];
+    const { result } = renderHook(() => useFormBuilderState([]));
+    act(() => result.current.reset(clean));
+    // ids untouched (no needless re-key churn)
+    expect(result.current.rows[0].id).toBe("row-10");
+    expect(result.current.rows[0].cells[0].id).toBe("cell-20");
+  });
+});

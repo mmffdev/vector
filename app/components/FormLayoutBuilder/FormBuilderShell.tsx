@@ -55,6 +55,9 @@ import { useSentinel } from "@/app/sentinel";
 import CustomFieldEditForm from "@/app/components/CustomFields/CustomFieldEditForm";
 import { FormLayoutRenderer, type RenderCellArgs } from "./FormLayoutRenderer";
 import type { MergeGroup } from "./mergeTransitions";
+import { normalizeOwnership } from "./mergeTransitions";
+import { type ArtefactType } from "@/app/lib/artefactTypesApi";
+import { groupByScope } from "./artefactTypeGroups";
 import { PreviewDataPicker } from "./PreviewDataPicker";
 import {
   useFormBuilderState,
@@ -66,6 +69,13 @@ export interface FormBuilderShellProps {
   nodeName?: string;
   artefactTypeId: string;
   artefactTypeLabel?: string;
+  /** Full artefact-type catalogue, for the in-builder type switcher. When
+   *  provided (with onSelectType), the header renders a "Create new form"
+   *  dropdown so the author can re-target to another type WITHOUT exiting. */
+  types?: ArtefactType[];
+  /** Called when the author picks a different type in the in-builder switcher.
+   *  The parent updates the selected type → the shell reloads that layout. */
+  onSelectType?: (typeId: string) => void;
   onClose: () => void;
   onSaved?: () => void;
 }
@@ -112,6 +122,8 @@ export function FormBuilderShell({
   nodeName,
   artefactTypeId,
   artefactTypeLabel,
+  types,
+  onSelectType,
   onClose,
   onSaved,
 }: FormBuilderShellProps) {
@@ -141,7 +153,16 @@ export function FormBuilderShell({
   // Cancel only prompts when the canvas diverges from this, so an untouched
   // open closes silently. Compared by serialising fieldKey/template shape.
   const [baseline, setBaseline] = useState<string>(serializeRows([]));
+  // Persisted status of the layout currently loaded, for the title flag:
+  //   "draft" — a saved WIP draft is the source; "live" — a published current
+  //   version; "none" — nothing saved yet for this (node, type). Combined with
+  //   isDirty below to produce the (Unsaved/Draft/Live) badge.
+  const [savedStatus, setSavedStatus] = useState<"none" | "draft" | "live">("none");
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // In-builder type switch: when the author picks a different type with unsaved
+  // edits, we stash the target here and raise the discard confirm; on confirm we
+  // call onSelectType(pendingTypeId). Null = no pending switch.
+  const [pendingTypeId, setPendingTypeId] = useState<string | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
   // Transient "Draft saved" confirmation; cleared after a few seconds.
   const [draftToast, setDraftToast] = useState<string | null>(null);
@@ -185,6 +206,7 @@ export function FormBuilderShell({
         const initialRows = existing?.doc.rows ?? [];
         state.reset(initialRows);
         setBaseline(serializeRows(initialRows));
+        setSavedStatus(!existing ? "none" : existing.isDraft ? "draft" : "live");
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load builder");
       } finally {
@@ -215,6 +237,14 @@ export function FormBuilderShell({
     () => serializeRows(state.rows) !== baseline,
     [state.rows, baseline],
   );
+  // Title status flag, in precedence order: Unsaved (dirty edits) > Draft (saved
+  // WIP) > Live (published current) > New (nothing saved for this node+type yet).
+  const titleStatus = useMemo(() => {
+    if (isDirty) return { label: "Unsaved", tone: "unsaved" };
+    if (savedStatus === "live") return { label: "Live", tone: "live" };
+    if (savedStatus === "draft") return { label: "Draft", tone: "draft" };
+    return { label: "New", tone: "new" };
+  }, [isDirty, savedStatus]);
 
   // Sidebar partitions fields into two labelled groups: Mandatory (the
   // per-type compulsory set, which MUST be placed to save) and Available
@@ -277,7 +307,11 @@ export function FormBuilderShell({
     }
     setSaving(true);
     try {
-      await saveLayout({ nodeId, artefactTypeId, rows: state.rows });
+      // Normalise tombstone ownership from the owners' spans before persisting,
+      // so a stale/cross-wired absorbedBy (from an overlapping merge / drag /
+      // undo) can never reach the server's rectangle validator. See
+      // normalizeOwnership.
+      await saveLayout({ nodeId, artefactTypeId, rows: normalizeOwnership(state.rows) });
       onSaved?.();
       onClose();
     } catch (err) {
@@ -301,8 +335,10 @@ export function FormBuilderShell({
     setSaveError(null);
     setDraftSaving(true);
     try {
-      await saveDraft({ nodeId, artefactTypeId, rows: state.rows });
-      setBaseline(serializeRows(state.rows));
+      const normalized = normalizeOwnership(state.rows);
+      await saveDraft({ nodeId, artefactTypeId, rows: normalized });
+      setBaseline(serializeRows(normalized));
+      setSavedStatus("draft"); // it's now a saved draft, no longer dirty
       setDraftToast("Draft saved — it'll be here when you come back.");
     } catch (err) {
       const v = extractValidation(err);
@@ -327,6 +363,24 @@ export function FormBuilderShell({
     }
     onClose();
   }
+
+  // In-builder type switch: re-target the open builder to another artefact type
+  // for the SAME node, without exiting. Guards unsaved work — a dirty canvas
+  // raises the discard confirm (which, on confirm, performs the stashed switch);
+  // a clean canvas switches immediately. No-op if the chosen type is the current
+  // one or the parent didn't wire onSelectType.
+  function handleSwitchType(typeId: string) {
+    if (!onSelectType || typeId === artefactTypeId || typeId === "") return;
+    if (isDirty) {
+      setPendingTypeId(typeId);
+      setConfirmCancel(true);
+      return;
+    }
+    onSelectType(typeId);
+  }
+
+  // Grouped catalogue for the in-builder switcher dropdown (Strategic / Execution).
+  const typeGroups = useMemo(() => groupByScope(types ?? []), [types]);
 
   // Clear the draft toast a few seconds after it appears.
   useEffect(() => {
@@ -367,12 +421,52 @@ export function FormBuilderShell({
             <img src="/logo-vector.png" alt="Vector" className="flb-overlay__Bar_Brand_Logo" />
           </span>
           <div className="flb-overlay__Bar_Title">
-            <span className="flb-overlay__Bar_Title_Main">Form Layout Builder</span>
-            <span className="flb-overlay__Bar_Title_Sub">
-              {(artefactTypeLabel ?? "User Story")} · {nodeName ?? "this node"}
+            {/* Title mirrors the main-site page title: which topology node +
+                artefact type this form is for, with a live status flag. Format:
+                "Insurance - Risk Form (Live)". Status: Unsaved (dirty edits) >
+                Draft (saved WIP) > Live (published current) > New (nothing yet). */}
+            <span className="flb-overlay__Bar_Title_Main">
+              {nodeName ?? "This node"} — {artefactTypeLabel ?? "Artefact"} Form
+              <span
+                className={"flb-overlay__Bar_Status flb-overlay__Bar_Status-" + titleStatus.tone}
+                aria-label={"Status: " + titleStatus.label}
+              >
+                {titleStatus.label}
+              </span>
             </span>
+            <span className="flb-overlay__Bar_Title_Sub">Form Layout Builder</span>
           </div>
           <div className="flb-overlay__Bar_Actions">
+            {/* In-builder form switcher — re-target to another artefact type on
+                this SAME node without exiting (mirrors the launch panel's "Create
+                new form" picker). Guards unsaved work via the discard confirm. */}
+            {onSelectType && types && types.length > 0 && (
+              <label className="flb-overlay__Bar_Switch" title="Switch to another form on this node">
+                <span className="flb-overlay__Bar_Switch_Label">Form</span>
+                <select
+                  className="flb-overlay__Bar_Switch_Select"
+                  value={artefactTypeId}
+                  disabled={previewing}
+                  onChange={(e) => handleSwitchType(e.target.value)}
+                  aria-label="Switch form — pick an artefact type to build for this node"
+                >
+                  {typeGroups.strategic.length > 0 && (
+                    <optgroup label="Strategic">
+                      {typeGroups.strategic.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {typeGroups.execution.length > 0 && (
+                    <optgroup label="Execution">
+                      {typeGroups.execution.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </label>
+            )}
             <button
               type="button"
               className="flb-btn flb-btn-icon"
@@ -524,18 +618,22 @@ export function FormBuilderShell({
 
       {confirmCancel && (
         <div className="flb-confirm" role="dialog" aria-modal="true" aria-label="Discard unsaved changes">
-          <div className="flb-confirm__Scrim" onClick={() => setConfirmCancel(false)} />
+          <div
+            className="flb-confirm__Scrim"
+            onClick={() => { setConfirmCancel(false); setPendingTypeId(null); }}
+          />
           <div className="flb-confirm__Card">
             <h3 className="flb-confirm__Title">Discard unsaved changes?</h3>
             <p className="flb-confirm__Body">
-              You have unsaved changes to this layout. Leaving now loses them.
+              You have unsaved changes to this layout.{" "}
+              {pendingTypeId ? "Switching forms" : "Leaving"} now loses them.
               Use <strong>Save as Draft</strong> if you want to come back to it.
             </p>
             <div className="flb-confirm__Actions">
               <button
                 type="button"
                 className="flb-btn flb-btn-ghost"
-                onClick={() => setConfirmCancel(false)}
+                onClick={() => { setConfirmCancel(false); setPendingTypeId(null); }}
               >
                 Keep editing
               </button>
@@ -545,17 +643,33 @@ export function FormBuilderShell({
                 onClick={async () => {
                   setConfirmCancel(false);
                   await handleSaveDraft();
-                  onClose();
+                  // pendingTypeId → switch to the new form; else close the overlay.
+                  if (pendingTypeId) {
+                    const next = pendingTypeId;
+                    setPendingTypeId(null);
+                    onSelectType?.(next);
+                  } else {
+                    onClose();
+                  }
                 }}
               >
-                Save as Draft &amp; close
+                Save as Draft &amp; {pendingTypeId ? "switch" : "close"}
               </button>
               <button
                 type="button"
                 className="flb-btn flb-btn-danger"
-                onClick={() => { setConfirmCancel(false); onClose(); }}
+                onClick={() => {
+                  setConfirmCancel(false);
+                  if (pendingTypeId) {
+                    const next = pendingTypeId;
+                    setPendingTypeId(null);
+                    onSelectType?.(next);
+                  } else {
+                    onClose();
+                  }
+                }}
               >
-                Discard &amp; close
+                Discard &amp; {pendingTypeId ? "switch" : "close"}
               </button>
             </div>
           </div>

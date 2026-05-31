@@ -23,8 +23,9 @@ import {
   isTombstone,
   effectiveRowSpan,
   effectiveColSpan,
-  seamsFor,
-  hSeamsFor,
+  dominantVSeams,
+  dominantHSeams,
+  poleEdgesFor,
   mergeGroupsOf,
   type Band,
   type MergeGroup,
@@ -84,20 +85,34 @@ export function FormLayoutRenderer({
   // per-group drag/delete aside. A group never crosses a band (a merge can't
   // cross a template change), so each group lies fully within one band.
   const groups = React.useMemo(() => mergeGroupsOf(rows), [rows]);
-  // Vertical mergeable seams keyed "rowIndex:colIndex" for O(1) lookup.
+  // Vertical mergeable seams keyed "rowIndex:colIndex" for O(1) lookup. We use
+  // the DOMINANT set: when several seams compete over one empty band at the same
+  // boundary, only the WIDEST owner's handle survives, so the joiner lands in the
+  // centre of the widest cell — never stranded on a narrow column next to it
+  // (golden rule, dominantVSeams).
   const seamSet = React.useMemo(() => {
     if (!renderSeamJoin) return null;
     const s = new Set<string>();
-    for (const seam of seamsFor(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
+    for (const seam of dominantVSeams(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
     return s;
   }, [rows, renderSeamJoin]);
-  // Horizontal mergeable seams keyed "rowIndex:colIndex" (the LEFT cell).
+  // Horizontal mergeable seams keyed "rowIndex:colIndex" (the LEFT cell) — the
+  // dominant set keeps only the TALLEST owner per competing run.
   const hSeamSet = React.useMemo(() => {
     if (!renderHSeamJoin) return null;
     const s = new Set<string>();
-    for (const seam of hSeamsFor(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
+    for (const seam of dominantHSeams(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
     return s;
   }, [rows, renderHSeamJoin]);
+  // Barber-pole edges: every mergeable boundary draws a stripe on BOTH cells it
+  // joins (the RAW seam sets, not the dominant glyph set). Builder-only — gated
+  // on a seam renderer being present, same as the join handles. Keyed
+  // "rowIndex:cellIndex" → the edges that cell shows. Perimeter suppression is
+  // applied per-cell below (the renderer knows the band geometry).
+  const poleEdges = React.useMemo(() => {
+    if (!renderSeamJoin && !renderHSeamJoin) return null;
+    return poleEdgesFor(rows);
+  }, [rows, renderSeamJoin, renderHSeamJoin]);
 
   return (
     <div className={"flb-grid" + (className ? " " + className : "")}>
@@ -148,6 +163,20 @@ export function FormLayoutRenderer({
                   // Horizontal seam sits at the cell's RIGHT edge.
                   const rightCol = cellIndex + colSpan - 1;
                   const showHSeam = hSeamSet?.has(`${rowIndex}:${rightCol}`) ?? false;
+                  // Barber-pole edges for this cell, with GRID-PERIMETER
+                  // suppression: a first-column cell never poles LEFT, a
+                  // last-column never poles RIGHT, the top row never poles TOP,
+                  // the bottom row never poles BOTTOM (spec hard rules). The
+                  // renderer is the only place that knows the band column count +
+                  // the layout's top/bottom rows, so suppression lives here.
+                  const cellPoles = poleEdges?.get(`${rowIndex}:${cellIndex}`);
+                  const lastCol = row.cells.length - 1;
+                  const isTopRow = rowIndex === 0;
+                  const isBottomRow = bottomRow === rows.length - 1;
+                  const poleTop = !!cellPoles?.has("top") && !isTopRow;
+                  const poleBottom = !!cellPoles?.has("bottom") && !isBottomRow;
+                  const poleLeft = !!cellPoles?.has("left") && cellIndex !== 0;
+                  const poleRight = !!cellPoles?.has("right") && rightCol !== lastCol;
                   return (
                     <div
                       key={cell.id}
@@ -155,6 +184,10 @@ export function FormLayoutRenderer({
                       data-filled={cell.fieldKey ? "true" : "false"}
                       data-tall={span > 1 ? "true" : "false"}
                       data-wide={colSpan > 1 ? "true" : "false"}
+                      data-pole-top={poleTop ? "true" : undefined}
+                      data-pole-bottom={poleBottom ? "true" : undefined}
+                      data-pole-left={poleLeft ? "true" : undefined}
+                      data-pole-right={poleRight ? "true" : undefined}
                       style={{
                         gridColumn: `${cellIndex + 1} / span ${colSpan}`,
                         gridRow: `${localRow + 1} / span ${span}`,

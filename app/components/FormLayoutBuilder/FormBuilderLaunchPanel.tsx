@@ -13,6 +13,7 @@ import Panel from "@/app/components/Panel";
 import { useSentinel } from "@/app/sentinel";
 import { artefactTypesApi, type ArtefactType } from "@/app/lib/artefactTypesApi";
 import { FormBuilderShell } from "./FormBuilderShell";
+import { groupByScope } from "./artefactTypeGroups";
 
 export function FormBuilderLaunchPanel() {
   const { sentinel_focus_node, sentinel_grants } = useSentinel();
@@ -110,11 +111,19 @@ export function FormBuilderLaunchPanel() {
 
       {open && nodeId && selectedType && (
         <FormBuilderShell
-          key={`${selectedType.id}:${savedTick}`}
+          // Key by NODE + savedTick only (NOT type): switching the artefact type
+          // is handled IN the shell via onSelectType — keying by type would
+          // remount on every switch and lose the unsaved-changes guard. A
+          // savedTick bump (after publish) still forces a clean reload.
+          key={`${nodeId}:${savedTick}`}
           nodeId={nodeId}
           nodeName={nodeName}
           artefactTypeId={selectedType.id}
           artefactTypeLabel={selectedType.name}
+          // In-builder type switcher: the panel still owns the catalogue +
+          // selection, so picking a new type here re-targets the open shell.
+          types={types ?? []}
+          onSelectType={setSelectedTypeId}
           onClose={() => { setOpen(false); setSelectedTypeId(""); }}
           onSaved={() => setSavedTick((t) => t + 1)}
         />
@@ -123,28 +132,3 @@ export function FormBuilderLaunchPanel() {
   );
 }
 
-// groupByScope splits the live catalogue into Strategic (scope=strategy) and
-// Execution (scope=work) buckets, each ordered to mirror the portfolio
-// hierarchy: highest-altitude type at the TOP, lowest at the BOTTOM.
-//
-// The DB's artefacts_types_sort_order encodes altitude ASCENDING from the
-// floor of each stack (Feature=0 … Portfolio Runway=40 for strategy;
-// Story=10 … Epic=40 for work). The portfolio stack reads the other way —
-// Portfolio Runway above Feature, Epic above Story — so we render each group
-// in DESCENDING sort_order. Pure presentation; the catalogue data is
-// unchanged. Archived types are excluded.
-function groupByScope(types: ArtefactType[]): {
-  strategic: ArtefactType[];
-  execution: ArtefactType[];
-} {
-  const live = types.filter((t) => !t.archived_at);
-  // Descending sort_order = top-of-stack first. Tie-break by name so equal
-  // sort_order tiers (e.g. placeholder "Test Type …" rows at 100) stay
-  // deterministic rather than relying on insertion order.
-  const byStackDesc = (a: ArtefactType, b: ArtefactType) =>
-    b.sort_order - a.sort_order || a.name.localeCompare(b.name);
-  return {
-    strategic: live.filter((t) => t.scope === "strategy").sort(byStackDesc),
-    execution: live.filter((t) => t.scope === "work").sort(byStackDesc),
-  };
-}

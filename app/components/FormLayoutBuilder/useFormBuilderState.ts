@@ -19,12 +19,109 @@ import {
   removeRow as removeRowMergeAware,
   moveGroup as moveGroupRows,
   unmergeGroup as unmergeGroupRows,
+  normalizeOwnership,
 } from "./mergeTransitions";
 
+// _seq mints monotonic suffixes for new row/cell IDs WITHIN a session. It is
+// module-level (one counter per page load), so a freshly-loaded DRAFT carries
+// IDs minted in a PRIOR session ("cell-2", "row-1", …) that start over from 1.
+// If we don't advance _seq past those, the next addRow/placeField mints a
+// COLLIDING id — and duplicate IDs silently corrupt ownerOf / hOwnerOf /
+// vOwnerRow (they resolve absorbedBy to the FIRST matching id, i.e. the wrong
+// cell), which breaks seam placement and every merge on a reloaded draft.
+// `bumpSeqPast` (called from reset) closes that hole. Origin: 2026-05-31 —
+// reloaded "Blocked" draft had 3× cell-2 / 3× row-1, stranding/​dropping seam
+// handles around the Blocked cell.
 let _seq = 0;
 function nextId(prefix: string): string {
   _seq += 1;
   return `${prefix}-${_seq}`;
+}
+
+// bumpSeqPast scans a loaded document's row + cell IDs and advances _seq past
+// the highest numeric suffix it finds (matching our "<prefix>-<n>" minting), so
+// subsequently-minted IDs can never collide with the loaded ones. IDs that
+// don't match the numeric pattern are ignored (they can't collide with our
+// counter-based scheme anyway).
+function bumpSeqPast(rows: FormRow[]): void {
+  let max = _seq;
+  const consider = (id: string | undefined) => {
+    if (!id) return;
+    const m = /-(\d+)$/.exec(id);
+    if (m) max = Math.max(max, Number(m[1]));
+  };
+  for (const r of rows) {
+    consider(r.id);
+    for (const c of r.cells) consider(c.id);
+  }
+  _seq = max;
+}
+
+// hasDuplicateIds — true if any row or cell id repeats across the document.
+// A duplicate makes absorbedBy ambiguous (ownerOf resolves to the FIRST match),
+// so a corrupt draft must be re-keyed before use.
+function hasDuplicateIds(rows: FormRow[]): boolean {
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if (seen.has(r.id)) return true;
+    seen.add(r.id);
+    for (const c of r.cells) {
+      if (seen.has(c.id)) return true;
+      seen.add(c.id);
+    }
+  }
+  return false;
+}
+
+// repairDuplicateIds re-keys a document so every row + cell id is unique, while
+// PRESERVING merge geometry. The challenge: a tombstone's `absorbedBy` points to
+// its owner BY ID — but with duplicate IDs that pointer is ambiguous. So we first
+// resolve each tombstone's owner POSITIONALLY (the nearest real cell above in the
+// same column = vertical owner; if that owner is itself wide, the rectangle's
+// top-left cell = the canonical owner), then assign fresh IDs and repoint every
+// absorbedBy to its owner's NEW id. Cells with no resolvable owner (orphaned
+// tombstones from prior corruption) are revived to empty cells — fail-safe, never
+// leave a dangling tombstone. Only called when hasDuplicateIds is true.
+function repairDuplicateIds(rows: FormRow[]): FormRow[] {
+  // 1. Assign a fresh unique id to every cell, keyed by (rowIndex, colIndex) —
+  //    position is unambiguous even when ids collide.
+  const newCellId: string[][] = rows.map((r) => r.cells.map(() => nextId("cell")));
+  const newRowId: string[] = rows.map(() => nextId("row"));
+
+  // 2. Resolve a tombstone's owner position by walking up the same column to the
+  //    nearest non-tombstone cell (its vertical owner). That owner may itself be
+  //    horizontally absorbed — but for V-tombstones in a column, the owner is the
+  //    real cell directly above. For H-tombstones (absorbed within a row by a
+  //    wide cell), walk LEFT to the nearest real cell in the same row.
+  const isTomb = (ri: number, ci: number) => !!rows[ri]?.cells[ci]?.absorbedBy;
+  const ownerOfPos = (ri: number, ci: number): { r: number; c: number } | null => {
+    // vertical tombstone: nearest real cell above in this column.
+    for (let r = ri - 1; r >= 0; r--) {
+      if (!rows[r]?.cells[ci]) break;
+      if (!isTomb(r, ci)) return { r, c: ci };
+    }
+    // horizontal tombstone: nearest real cell to the left in this row.
+    for (let c = ci - 1; c >= 0; c--) {
+      if (!rows[ri]?.cells[c]) break;
+      if (!isTomb(ri, c)) return { r: ri, c };
+    }
+    return null;
+  };
+
+  return rows.map((row, ri) => ({
+    ...row,
+    id: newRowId[ri],
+    cells: row.cells.map((cell, ci) => {
+      if (!cell.absorbedBy) return { ...cell, id: newCellId[ri][ci] };
+      const owner = ownerOfPos(ri, ci);
+      if (!owner) {
+        // orphaned tombstone → revive to a plain empty cell (fail-safe).
+        const { absorbedBy: _drop, ...rest } = cell;
+        return { ...rest, id: newCellId[ri][ci], fieldKey: null };
+      }
+      return { ...cell, id: newCellId[ri][ci], absorbedBy: newCellId[owner.r][owner.c] };
+    }),
+  }));
 }
 
 // emptyRow materialises a row from a template: one empty cell per span.
@@ -231,7 +328,21 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
   // undo/redo history — you can't undo past a fresh load into a prior document's
   // edits.
   const reset = useCallback((next: FormRow[]) => {
-    setHist({ rows: next, past: [], future: [] });
+    // Advance the ID counter past the loaded document so new rows/cells can't
+    // mint a colliding id (duplicate IDs corrupt owner resolution → broken
+    // seams). See bumpSeqPast.
+    bumpSeqPast(next);
+    // If the loaded document ALREADY contains duplicate IDs (a draft saved by an
+    // older build that minted colliding ids), re-key it so owner resolution is
+    // unambiguous. bumpSeqPast already ran, so repair mints from a safe high
+    // watermark. See repairDuplicateIds.
+    const deduped = hasDuplicateIds(next) ? repairDuplicateIds(next) : next;
+    // Rebuild tombstone ownership from the owners' spans, so a draft saved with a
+    // stale/cross-wired absorbedBy (an overlapping merge / drag / undo left a
+    // stolen corner) self-heals on reopen — and can't re-trip the server's
+    // rectangle validator on the next save. See normalizeOwnership.
+    const clean = normalizeOwnership(deduped);
+    setHist({ rows: clean, past: [], future: [] });
   }, []);
 
   return {

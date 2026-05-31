@@ -444,3 +444,179 @@ describe("splitCellH (inverse of mergeRight)", () => {
     expect(after[0].cells[1].fieldKey).toBeNull();
   });
 });
+
+// ── dominant seams (golden rule: one joiner on the widest/tallest) ───────────
+// User rule (2026-05-31): "two cells can merge → detect the longest → make that
+// the owner → joiner in the centre." When competing seams share one empty band
+// at a boundary, only the widest (V) / tallest (H) owner's handle survives.
+import { dominantVSeams, dominantHSeams } from "../mergeTransitions";
+
+const row3070 = (l: string | null, r: string | null): FormRow => ({
+  id: `r${seq++}`,
+  template: "30-70",
+  cells: [cell(l, 30), cell(r, 70)],
+});
+
+describe("dominantVSeams — widest owner wins a contiguous boundary run", () => {
+  it("drops the narrow ↕ when a wider cell competes at the same boundary", () => {
+    // wide-right 'Description' tall over rows 0-1; narrow-left stack L1/L2 with an
+    // empty cell beneath BOTH columns at row 2 → raw seamsFor offers a narrow ↕
+    // (col0, 30%) AND a wide ↕ (col1, 70%) at boundary row 1. Golden rule keeps
+    // only the WIDE one.
+    let rows = [row3070("L1", "Description"), row3070("L2", null), row3070(null, null)];
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 }); // Description spans rows 0-1
+    // both seams exist raw…
+    expect(seamsFor(rows)).toEqual([
+      { rowIndex: 1, colIndex: 0 },
+      { rowIndex: 1, colIndex: 1 },
+    ]);
+    // …but only the wider (col1, span 70) survives the dominance filter.
+    expect(dominantVSeams(rows)).toEqual([{ rowIndex: 1, colIndex: 1 }]);
+  });
+
+  it("keeps BOTH equal-width ↕ (no dominant when sizes match)", () => {
+    // equal thirds F1 | Desc(tall) | F2 over an empty bottom row → the two outer
+    // seams are equal width AND separated by the tall middle, so both survive.
+    let rows = [row3("F1", "Desc", "F2"), row3(null, null, null)];
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 });
+    expect(dominantVSeams(rows).sort((a, b) => a.colIndex - b.colIndex)).toEqual([
+      { rowIndex: 0, colIndex: 0 },
+      { rowIndex: 0, colIndex: 2 },
+    ]);
+  });
+
+  it("does not let a wide seam suppress a non-adjacent narrow one", () => {
+    // Two independent empty bands separated by a filled column must each keep
+    // their handle regardless of width — they don't compete.
+    const rows = [
+      { id: "ra", template: "30-30-30" as const, cells: [cell("A"), cell("KEEP"), cell("C")] },
+      { id: "rb", template: "30-30-30" as const, cells: [cell(null), cell("X"), cell(null)] },
+    ];
+    // col0 and col2 are empty below (independent bands), col1 filled → both ↕ kept
+    expect(dominantVSeams(rows).sort((a, b) => a.colIndex - b.colIndex)).toEqual([
+      { rowIndex: 0, colIndex: 0 },
+      { rowIndex: 0, colIndex: 2 },
+    ]);
+  });
+});
+
+describe("dominantHSeams — tallest owner wins a contiguous boundary run", () => {
+  it("keeps a lone horizontal seam untouched", () => {
+    // [A,B] / [C,empty]: C can merge right into empty → one ↔, no competitor.
+    const c = (k: string | null) => cell(k, 50);
+    const rows = [
+      { id: "h0", template: "50-50" as const, cells: [c("A"), c("B")] },
+      { id: "h1", template: "50-50" as const, cells: [c("C"), c(null)] },
+    ];
+    expect(dominantHSeams(rows)).toEqual(hSeamsFor(rows));
+  });
+});
+
+// ── width/height-tiling merges (wide→wide, tall→tall) ────────────────────────
+// User rule (2026-05-31): a merge may consume an empty strip that TILES the
+// owner's extent — a wide cell into an equally-wide empty, a tall cell into an
+// equally-tall empty — not only single 1×1 targets. Origin: the "Blocked" draft
+// where a 2-wide Blocked cell sat above a 2-wide empty and offered no ↕.
+describe("width-tiling vertical merge (wide → wide)", () => {
+  it("offers a ↕ below a WIDE cell sitting above an equally-wide empty, and merges", () => {
+    // 30-30-30. Row0 col1 is wide (merged right cols 1-2). Row1 cols 1-2 empty.
+    let rows = [row3("A", "Wide", null), row3("B", null, null)];
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 1 }); // Wide spans cols 1-2
+    expect(effectiveColSpan(rows[0].cells[1])).toBe(2);
+    // the empty below also wide? after mergeRight on row0 only, row1 is still two
+    // 1×1 empties — that already tiles width 2, so a ↕ is offered at {0,1}.
+    expect(seamsFor(rows).some((s) => s.rowIndex === 0 && s.colIndex === 1)).toBe(true);
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 }); // Wide grows down → 2×2
+    expect(effectiveColSpan(rows[0].cells[1])).toBe(2);
+    expect(effectiveRowSpan(rows[0].cells[1])).toBe(2);
+    expect(isTombstone(rows[1].cells[1])).toBe(true);
+    expect(isTombstone(rows[1].cells[2])).toBe(true);
+  });
+
+  it("merges a wide cell down into a WIDE empty (single colSpan-2 empty below)", () => {
+    // build a wide empty below: row1 cols1-2 merged into one empty wide cell.
+    let rows = [row3("A", "Wide", null), row3("B", null, null)];
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 1 }); // top Wide cols1-2
+    rows = mergeRight(rows, { rowIndex: 1, cellIndex: 1 }); // bottom empty wide cols1-2
+    expect(effectiveColSpan(rows[1].cells[1])).toBe(2);
+    // ↕ still offered: the strip below is one wide empty that tiles width 2.
+    expect(seamsFor(rows).some((s) => s.rowIndex === 0 && s.colIndex === 1)).toBe(true);
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 });
+    expect(effectiveRowSpan(rows[0].cells[1])).toBe(2);
+    expect(effectiveColSpan(rows[0].cells[1])).toBe(2);
+  });
+});
+
+describe("height-tiling horizontal merge (tall → tall)", () => {
+  it("offers a ↔ beside a TALL cell next to an equally-tall empty, and merges", () => {
+    const c = (k: string | null) => cell(k, 50);
+    let rows: FormRow[] = [
+      { id: "t0", template: "50-50", cells: [c("Left"), c(null)] },
+      { id: "t1", template: "50-50", cells: [c(null), c(null)] },
+    ];
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 }); // Left tall rows 0-1
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 }); // right col → tall empty
+    expect(effectiveRowSpan(rows[0].cells[1])).toBe(2);
+    // ↔ now offered: tall Left can grow right into the tall empty.
+    expect(hSeamsFor(rows).some((s) => s.rowIndex === 0 && s.colIndex === 0)).toBe(true);
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 0 }); // Left grows right → 2×2
+    expect(effectiveColSpan(rows[0].cells[0])).toBe(2);
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(2);
+    expect(isTombstone(rows[0].cells[1])).toBe(true);
+    expect(isTombstone(rows[1].cells[1])).toBe(true);
+  });
+});
+
+// ── normalizeOwnership (rebuild tombstones from owner spans) ─────────────────
+// A corrupt doc (overlapping merge / drag / undo) can leave a tombstone pointing
+// at the WRONG owner — e.g. a 2×2 block's corner stolen by an adjacent merge's
+// tombstone → the server's rectangle validator 422s. normalizeOwnership rebuilds
+// every absorbedBy from the owners' spans so the doc always tiles cleanly.
+// Origin: 2026-05-31 — the live "sprint" 2×2 whose top-right corner pointed at
+// colour's tombstone (cell-41 -> cell-38 instead of -> cell-40).
+import { normalizeOwnership } from "../mergeTransitions";
+
+describe("normalizeOwnership", () => {
+  it("repoints a stolen 2×2 corner to its true owner", () => {
+    // colour (col2, rowSpan2 over rows 0-1) + sprint (cols1-2, 2×2 over rows 2-3).
+    // sprint's corner (row2,col2) is corrupted to point at colour's tombstone.
+    const rows: FormRow[] = [
+      { id: "r0", template: "30-30-30", cells: [cell("notes", 33), cell("rel", 33), { id: "colour", fieldKey: "colour", span: 33, rowSpan: 2 }] },
+      { id: "r1", template: "30-30-30", cells: [cell(null, 33), cell("blk", 33), { id: "ct1", fieldKey: null, span: 33, absorbedBy: "colour" }] },
+      { id: "r2", template: "30-30-30", cells: [cell(null, 33), { id: "sprint", fieldKey: "sprint", span: 66, colSpan: 2, rowSpan: 2 }, { id: "corner", fieldKey: null, span: 33, absorbedBy: "ct1" }] }, // STOLEN: -> ct1 (a tombstone)
+      { id: "r3", template: "30-30-30", cells: [cell(null, 33), { id: "s2", fieldKey: null, span: 66, absorbedBy: "sprint" }, { id: "s3", fieldKey: null, span: 33, absorbedBy: "sprint" }] },
+    ];
+    const out = normalizeOwnership(rows);
+    // the corner now belongs to sprint, not the colour tombstone
+    expect(out[2].cells[2].absorbedBy).toBe("sprint");
+    expect(out[2].cells[2].fieldKey).toBeNull();
+    // colour still owns its own column tombstone (row1,col2)
+    expect(out[1].cells[2].absorbedBy).toBe("colour");
+    // owners keep their spans + fields
+    expect(out[0].cells[2].fieldKey).toBe("colour");
+    expect(effectiveRowSpan(out[0].cells[2])).toBe(2);
+    expect(out[2].cells[1].fieldKey).toBe("sprint");
+    expect(effectiveColSpan(out[2].cells[1])).toBe(2);
+    expect(effectiveRowSpan(out[2].cells[1])).toBe(2);
+  });
+
+  it("revives a tombstone covered by no owner (stale absorbedBy → empty)", () => {
+    // a lone tombstone whose owner doesn't span it → revived to empty.
+    const rows: FormRow[] = [
+      { id: "r0", template: "50-50", cells: [cell("A", 50), { id: "ghost", fieldKey: null, span: 50, absorbedBy: "nonexistent" }] },
+    ];
+    const out = normalizeOwnership(rows);
+    expect(out[0].cells[1].absorbedBy).toBeUndefined();
+    expect(out[0].cells[1].fieldKey).toBeNull();
+  });
+
+  it("is a no-op on an already-clean document", () => {
+    const rows: FormRow[] = [
+      { id: "r0", template: "30-30-30", cells: [{ id: "o", fieldKey: "x", span: 33, rowSpan: 2 }, cell("y", 33), cell("z", 33)] },
+      { id: "r1", template: "30-30-30", cells: [{ id: "t", fieldKey: null, span: 33, absorbedBy: "o" }, cell(null, 33), cell(null, 33)] },
+    ];
+    const out = normalizeOwnership(rows);
+    expect(out[1].cells[0].absorbedBy).toBe("o");
+    expect(out[0].cells[0].fieldKey).toBe("x");
+  });
+});

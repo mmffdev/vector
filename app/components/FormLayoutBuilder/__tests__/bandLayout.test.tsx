@@ -78,3 +78,71 @@ describe("band layout — 4 rows, middle merged across rows 2-3", () => {
     expect(spanning).toBeTruthy();
   });
 });
+
+// ── barber-pole edges on mergeable seams ─────────────────────────────────────
+// Every mergeable boundary draws a 3px stripe on BOTH joining cells (data-pole-*
+// on .flb-grid__Cell), with grid-perimeter suppression. Builder-only (gated on a
+// seam renderer). Origin: 2026-05-31 — "make it visually clear which can join".
+describe("barber-pole edges", () => {
+  it("poles BOTH sides of a vertical seam, with perimeter suppression", () => {
+    // 2 rows of 30-30-30, all empty. Every column has a ↕ seam between rows 0-1.
+    // Each upper cell poles BOTTOM; each lower cell poles TOP. Top row's TOP and
+    // bottom row's BOTTOM are perimeter-suppressed, so the only poles are the
+    // INTERIOR boundary: upper-bottom + lower-top.
+    const rows = [row3(), row3()];
+    const { container } = render(
+      <FormLayoutRenderer
+        rows={rows}
+        renderCell={() => <div className="flb-slot" />}
+        renderSeamJoin={() => <i />}
+        renderHSeamJoin={() => <i />}
+      />,
+    );
+    const cells = Array.from(container.querySelectorAll(".flb-grid__Cell")) as HTMLElement[];
+    // 6 cells (2 rows × 3 cols), none tombstone.
+    expect(cells).toHaveLength(6);
+    // top-row cells: pole BOTTOM (interior seam), NOT top (perimeter).
+    const topRow = cells.slice(0, 3);
+    for (const el of topRow) {
+      expect(el.getAttribute("data-pole-bottom")).toBe("true");
+      expect(el.getAttribute("data-pole-top")).toBeNull(); // perimeter
+    }
+    // bottom-row cells: pole TOP (interior seam), NOT bottom (perimeter).
+    const botRow = cells.slice(3);
+    for (const el of botRow) {
+      expect(el.getAttribute("data-pole-top")).toBe("true");
+      expect(el.getAttribute("data-pole-bottom")).toBeNull(); // perimeter
+    }
+  });
+
+  it("poles horizontal seams left/right, suppressing the outer columns", () => {
+    // one 30-30-30 row, all empty → ↔ seams between col0|1 and col1|2.
+    // col0 poles RIGHT (not left — perimeter); col1 poles LEFT+RIGHT; col2 poles
+    // LEFT (not right — perimeter).
+    const rows = [row3()];
+    const { container } = render(
+      <FormLayoutRenderer
+        rows={rows}
+        renderCell={() => <div className="flb-slot" />}
+        renderHSeamJoin={() => <i />}
+      />,
+    );
+    const cells = Array.from(container.querySelectorAll(".flb-grid__Cell")) as HTMLElement[];
+    expect(cells).toHaveLength(3);
+    expect(cells[0].getAttribute("data-pole-left")).toBeNull(); // perimeter
+    expect(cells[0].getAttribute("data-pole-right")).toBe("true");
+    expect(cells[1].getAttribute("data-pole-left")).toBe("true");
+    expect(cells[1].getAttribute("data-pole-right")).toBe("true");
+    expect(cells[2].getAttribute("data-pole-left")).toBe("true");
+    expect(cells[2].getAttribute("data-pole-right")).toBeNull(); // perimeter
+  });
+
+  it("draws NO poles in the runtime (no seam renderers)", () => {
+    const rows = [row3(), row3()];
+    const { container } = render(
+      <FormLayoutRenderer rows={rows} renderCell={() => <div className="flb-slot" />} />,
+    );
+    const poled = container.querySelectorAll("[data-pole-top],[data-pole-bottom],[data-pole-left],[data-pole-right]");
+    expect(poled).toHaveLength(0);
+  });
+});
