@@ -66,6 +66,7 @@ export interface FormLayout {
   workspaceId: string;
   version: number;
   isCurrent: boolean;
+  isDraft: boolean;
   doc: FormLayoutDoc;
   createdAt: string;
   updatedAt: string;
@@ -92,6 +93,13 @@ export interface CoreFieldDescriptor {
   group: string;
   isMandatory: boolean;
   isCompulsory: boolean;
+  // valueLocation tells a consumer (e.g. the form-viewer preview) WHERE this
+  // field's value physically lives, so it knows how to read it. The unified
+  // field model keeps values in two homes: "artefacts_column" for core fields
+  // (a typed column on the artefacts row) and "eav" for custom fields (an
+  // artefacts_fields_values row). Mirrors backend
+  // formlayouts.CoreFieldDescriptor.ValueLocation (mig 167 / Option A registry).
+  valueLocation: "artefacts_column" | "eav";
 }
 
 interface CoreFieldsResponse {
@@ -117,6 +125,24 @@ export async function getCurrentLayout(
     );
   } catch (err) {
     // 404 = no layout authored yet; surface as null, re-throw anything else.
+    if (isNotFound(err)) return null;
+    throw err;
+  }
+}
+
+// getLayoutForBuilder is the BUILDER's load path: it returns the WIP draft
+// for (node, type) if one exists, else the published current layout, or null
+// if neither exists (empty canvas). The runtime renderer must keep using
+// getCurrentLayout — drafts are never rendered live.
+export async function getLayoutForBuilder(
+  nodeId: string,
+  typeId: string,
+): Promise<FormLayout | null> {
+  try {
+    return await apiSite<FormLayout>(
+      `/api/form-layouts?node=${encodeURIComponent(nodeId)}&type=${encodeURIComponent(typeId)}&draft=1`,
+    );
+  } catch (err) {
     if (isNotFound(err)) return null;
     throw err;
   }
@@ -158,6 +184,21 @@ export interface LayoutValidationError {
 // field } — callers should catch and surface `missing` to the author.
 export async function saveLayout(input: SaveLayoutInput): Promise<FormLayout> {
   return apiSite<FormLayout>(`/api/form-layouts`, {
+    method: "POST",
+    body: JSON.stringify({
+      nodeId: input.nodeId,
+      artefactTypeId: input.artefactTypeId,
+      rows: input.rows,
+    }),
+  });
+}
+
+// saveDraft persists the WIP draft for (node, type) WITHOUT publishing it.
+// No version flip, no compulsory-field gate (a draft may be incomplete), and
+// the runtime never renders it. Re-saving overwrites the single draft row.
+// Reopening the builder reloads it via getLayoutForBuilder.
+export async function saveDraft(input: SaveLayoutInput): Promise<FormLayout> {
+  return apiSite<FormLayout>(`/api/form-layouts/draft`, {
     method: "POST",
     body: JSON.stringify({
       nodeId: input.nodeId,

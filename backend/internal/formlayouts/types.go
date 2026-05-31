@@ -73,6 +73,7 @@ type Layout struct {
 	WorkspaceID    uuid.UUID `json:"workspaceId"`
 	Version        int       `json:"version"`
 	IsCurrent      bool      `json:"isCurrent"`
+	IsDraft        bool      `json:"isDraft"`
 	Doc            LayoutDoc `json:"doc"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
@@ -93,10 +94,25 @@ type CoreFieldDescriptor struct {
 	// locked group: a saved layout MUST place every compulsory field for the
 	// type (SERVER IS THE GATE). This is a SUPERSET of IsMandatory — the small
 	// IsMandatory set still drives the red-dot UX, while IsCompulsory drives
-	// the locked-group save gate. Computed from
-	// artefactitems.CompulsoryFieldsForType(slot, scope).
+	// the locked-group save gate. For core fields it is computed from
+	// artefactitems.CompulsoryFieldsForType(slot, scope); for custom fields it
+	// is the per-binding artefacts_types_fields_is_compulsory marker (mig 167).
 	IsCompulsory bool `json:"isCompulsory"`
+	// ValueLocation tells a consumer (e.g. the form-viewer preview) WHERE a
+	// field's value physically lives, so it knows how to read it. The unified
+	// field model keeps values in two performant homes (Option A — registry
+	// unifies METADATA only, never values): "artefacts_column" for core fields
+	// (a typed column on the artefacts row) and "eav" for custom fields (an
+	// artefacts_fields_values row keyed by id_field_library). See
+	// docs/superpowers/specs/2026-05-30-unified-field-model-design.md.
+	ValueLocation string `json:"valueLocation"` // "artefacts_column" | "eav"
 }
+
+// Value-location constants for CoreFieldDescriptor.ValueLocation.
+const (
+	ValueLocationCore = "artefacts_column" // core field → typed artefacts column
+	ValueLocationEAV  = "eav"              // custom field → artefacts_fields_values row
+)
 
 // mandatoryCoreFieldKeys is the server-side gate: a saved layout MUST place
 // every one of these (SERVER IS THE GATE). The client mirrors this for live

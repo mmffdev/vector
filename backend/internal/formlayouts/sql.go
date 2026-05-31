@@ -6,8 +6,15 @@ package formlayouts
 
 // ── service.go ──────────────────────────────────────────────────────────────
 
-// sqlSelectCurrentLayoutByNodeType returns the live layout row for a
-// (topology node, artefact type) pair. pgx.ErrNoRows → ErrNotFound.
+// sqlSelectCurrentLayoutByNodeType returns the live PUBLISHED layout row
+// for a (topology node, artefact type) pair. pgx.ErrNoRows → ErrNotFound.
+//
+// SERVER IS THE GATE — the runtime form renderer reaches the live layout
+// through this query. The explicit is_draft = FALSE predicate is
+// belt-and-braces: drafts already have is_current = FALSE (so the
+// is_current predicate alone excludes them), but pinning is_draft = FALSE
+// here means no future query path can ever leak a half-built draft into a
+// live form, even if the is_current invariant regresses.
 const sqlSelectCurrentLayoutByNodeType = `
 	SELECT topology_node_form_layouts_id,
 	       topology_node_form_layouts_id_topology_node,
@@ -15,6 +22,7 @@ const sqlSelectCurrentLayoutByNodeType = `
 	       topology_node_form_layouts_id_workspace,
 	       topology_node_form_layouts_version,
 	       topology_node_form_layouts_is_current,
+	       topology_node_form_layouts_is_draft,
 	       topology_node_form_layouts_layout_json,
 	       topology_node_form_layouts_created_at,
 	       topology_node_form_layouts_updated_at
@@ -22,6 +30,28 @@ const sqlSelectCurrentLayoutByNodeType = `
 	 WHERE topology_node_form_layouts_id_topology_node = $1
 	   AND topology_node_form_layouts_id_artefact_type = $2
 	   AND topology_node_form_layouts_is_current
+	   AND topology_node_form_layouts_is_draft = FALSE
+	 LIMIT 1`
+
+// sqlSelectDraftByNodeType returns the WIP draft row for a (node, type)
+// pair (at most one — guarded by uq_topology_node_form_layouts_draft).
+// The builder's draft-aware load tries this first, falling back to the
+// published current. The runtime NEVER calls this.
+const sqlSelectDraftByNodeType = `
+	SELECT topology_node_form_layouts_id,
+	       topology_node_form_layouts_id_topology_node,
+	       topology_node_form_layouts_id_artefact_type,
+	       topology_node_form_layouts_id_workspace,
+	       topology_node_form_layouts_version,
+	       topology_node_form_layouts_is_current,
+	       topology_node_form_layouts_is_draft,
+	       topology_node_form_layouts_layout_json,
+	       topology_node_form_layouts_created_at,
+	       topology_node_form_layouts_updated_at
+	  FROM topology_node_form_layouts
+	 WHERE topology_node_form_layouts_id_topology_node = $1
+	   AND topology_node_form_layouts_id_artefact_type = $2
+	   AND topology_node_form_layouts_is_draft
 	 LIMIT 1`
 
 // sqlSelectLayoutByID returns one specific version row (the runtime
@@ -33,6 +63,7 @@ const sqlSelectLayoutByID = `
 	       topology_node_form_layouts_id_workspace,
 	       topology_node_form_layouts_version,
 	       topology_node_form_layouts_is_current,
+	       topology_node_form_layouts_is_draft,
 	       topology_node_form_layouts_layout_json,
 	       topology_node_form_layouts_created_at,
 	       topology_node_form_layouts_updated_at
@@ -69,7 +100,8 @@ const sqlListCustomFieldsForType = `
 	       fl.artefacts_fields_library_field_name,
 	       fl.artefacts_fields_library_label,
 	       fl.artefacts_fields_library_field_type,
-	       tf.artefacts_types_fields_required
+	       tf.artefacts_types_fields_required,
+	       tf.artefacts_types_fields_is_compulsory
 	  FROM artefacts_types_fields tf
 	  JOIN artefacts_fields_library fl
 	    ON fl.artefacts_fields_library_id = tf.artefacts_types_fields_id_field_library
@@ -110,3 +142,44 @@ const sqlInsertLayout = `
 		topology_node_form_layouts_created_by
 	) VALUES ($1,$2,$3,$4,$5,TRUE,$6)
 	RETURNING topology_node_form_layouts_id`
+
+// sqlUpsertDraft inserts or replaces the single draft row for a (node,
+// type). A draft does NOT burn a version (version pinned to 0 — drafts are
+// not part of the monotonic published sequence), does NOT set is_current,
+// and is flagged is_draft=TRUE. ON CONFLICT targets the partial unique
+// index uq_topology_node_form_layouts_draft so re-saving a draft overwrites
+// the layout_json in place rather than accumulating rows. updated_at is
+// bumped by the table's BEFORE UPDATE trigger.
+//
+// $1 node, $2 type, $3 workspace, $4 layout_json, $5 created_by.
+const sqlUpsertDraft = `
+	INSERT INTO topology_node_form_layouts (
+		topology_node_form_layouts_id_topology_node,
+		topology_node_form_layouts_id_artefact_type,
+		topology_node_form_layouts_id_workspace,
+		topology_node_form_layouts_version,
+		topology_node_form_layouts_layout_json,
+		topology_node_form_layouts_is_current,
+		topology_node_form_layouts_is_draft,
+		topology_node_form_layouts_created_by
+	) VALUES ($1,$2,$3,0,$4,FALSE,TRUE,$5)
+	ON CONFLICT (
+		topology_node_form_layouts_id_topology_node,
+		topology_node_form_layouts_id_artefact_type
+	) WHERE topology_node_form_layouts_is_draft
+	DO UPDATE SET
+		topology_node_form_layouts_layout_json = EXCLUDED.topology_node_form_layouts_layout_json,
+		topology_node_form_layouts_id_workspace = EXCLUDED.topology_node_form_layouts_id_workspace,
+		topology_node_form_layouts_created_by = EXCLUDED.topology_node_form_layouts_created_by
+	RETURNING topology_node_form_layouts_id`
+
+// sqlDeleteDraft removes the draft row for a (node, type), if any. Called
+// when a layout is PUBLISHED (Save layout) — the draft is superseded by the
+// new published version, so it must not linger and reload over the live one.
+//
+// $1 node, $2 type.
+const sqlDeleteDraft = `
+	DELETE FROM topology_node_form_layouts
+	 WHERE topology_node_form_layouts_id_topology_node = $1
+	   AND topology_node_form_layouts_id_artefact_type = $2
+	   AND topology_node_form_layouts_is_draft`

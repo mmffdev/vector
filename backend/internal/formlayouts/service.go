@@ -58,12 +58,27 @@ func (s *Service) GetByID(ctx context.Context, layoutID uuid.UUID) (*Layout, err
 	return s.scanOne(ctx, sqlSelectLayoutByID, layoutID)
 }
 
+// GetDraftOrCurrent is the BUILDER's load path: it returns the WIP draft
+// for (node, type) if one exists, else the published current layout, else
+// ErrNotFound. The runtime form renderer must NOT use this — it calls
+// GetCurrent (drafts excluded) so a half-built draft never goes live.
+func (s *Service) GetDraftOrCurrent(ctx context.Context, nodeID, typeID uuid.UUID) (*Layout, error) {
+	draft, err := s.scanOne(ctx, sqlSelectDraftByNodeType, nodeID, typeID)
+	if err == nil {
+		return draft, nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return nil, err
+	}
+	return s.GetCurrent(ctx, nodeID, typeID)
+}
+
 func (s *Service) scanOne(ctx context.Context, q string, args ...any) (*Layout, error) {
 	var l Layout
 	var raw []byte
 	err := s.vaPool.QueryRow(ctx, q, args...).Scan(
 		&l.ID, &l.TopologyNodeID, &l.ArtefactTypeID, &l.WorkspaceID,
-		&l.Version, &l.IsCurrent, &raw, &l.CreatedAt, &l.UpdatedAt,
+		&l.Version, &l.IsCurrent, &l.IsDraft, &raw, &l.CreatedAt, &l.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -87,6 +102,12 @@ type SaveInput struct {
 	// CustomFieldKeys is the set of valid custom: keys bound to the type
 	// (resolved by the handler from the catalogue) — used for validation.
 	CustomFieldKeys map[string]bool
+	// CompulsoryCustomKeys is the subset of CustomFieldKeys flagged compulsory
+	// for this type (artefacts_types_fields_is_compulsory, mig 167). The
+	// publish gate requires every one of these be PLACED on the layout, exactly
+	// as it requires the compulsory CORE set — so a team can mark a custom field
+	// "must appear on every form for this type" and the server enforces it.
+	CompulsoryCustomKeys map[string]bool
 	// Slot + Scope identify the artefact type's family (resolved by the
 	// handler via TypeSlotScope). The save validator rejects any core field
 	// placed on a type it does not apply to (mirrors the slot-gate trigger):
@@ -117,7 +138,7 @@ func (s *Service) TypeSlotScope(ctx context.Context, typeID, subscriptionID uuid
 // SERVER IS THE GATE — mandatory core fields must be present; unknown field
 // keys and malformed templates are rejected.
 func (s *Service) Save(ctx context.Context, in SaveInput) (*Layout, error) {
-	if verr := validateDoc(in.Doc, in.CustomFieldKeys, in.Slot, in.Scope); verr != nil {
+	if verr := validateDoc(in.Doc, in.CustomFieldKeys, in.CompulsoryCustomKeys, in.Slot, in.Scope); verr != nil {
 		return nil, verr
 	}
 
@@ -160,25 +181,75 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (*Layout, error) {
 		return nil, err
 	}
 
+	// Publishing supersedes any WIP draft for this (node, type): drop it so
+	// the builder doesn't reload a stale draft over the freshly-published
+	// layout. No-op if no draft exists.
+	if _, err = tx.Exec(ctx, sqlDeleteDraft,
+		in.TopologyNodeID, in.ArtefactTypeID); err != nil {
+		return nil, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 	return s.GetByID(ctx, newID)
 }
 
-// validateDoc enforces template integrity, known field keys, the
-// per-type-applicability gate (a core field may only be placed on a type it
-// applies to — mirrors the slot-gate trigger), and the mandatory-core-field
-// gate. slot is "" for strategy types.
-func validateDoc(doc LayoutDoc, customKeys map[string]bool, slot, scope string) error {
+// SaveDraft upserts the single WIP draft row for (node, type). A draft is
+// NOT validated against the compulsory-field gate — it is intentionally
+// allowed to be incomplete (that is the whole point of a draft). It does
+// not burn a version, does not flip is_current, and is never read by the
+// runtime form renderer. Field-key/template integrity is still checked so a
+// malformed document can't be persisted.
+func (s *Service) SaveDraft(ctx context.Context, in SaveInput) (*Layout, error) {
+	// Validate structure (templates + known field keys) but SKIP the
+	// compulsory-field gate — a draft may legitimately omit them.
+	if verr := validateDocStructure(in.Doc, in.CustomFieldKeys, in.Slot, in.Scope); verr != nil {
+		return nil, verr
+	}
+
+	in.Doc.Version = 0 // drafts are outside the published version sequence
+	docJSON, err := json.Marshal(in.Doc)
+	if err != nil {
+		return nil, err
+	}
+
+	var createdBy any
+	if in.CreatedBy != uuid.Nil {
+		createdBy = in.CreatedBy
+	}
+
+	var draftID uuid.UUID
+	err = s.vaPool.QueryRow(ctx, sqlUpsertDraft,
+		in.TopologyNodeID, in.ArtefactTypeID, in.WorkspaceID,
+		docJSON, createdBy).Scan(&draftID)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetByID(ctx, draftID)
+}
+
+// validateDocStructure enforces template integrity, known field keys, and
+// the per-type-applicability gate (a core field may only be placed on a
+// type it applies to — mirrors the slot-gate trigger). It does NOT enforce
+// the compulsory-field gate, so it is shared by both the publish path
+// (validateDoc, which layers the gate on top) and the draft path (which
+// allows an incomplete document). Returns the set of placed field keys for
+// the caller's gate check. slot is "" for strategy types.
+func validateDocStructure(doc LayoutDoc, customKeys map[string]bool, slot, scope string) error {
+	_, err := collectPlacedAndValidate(doc, customKeys, slot, scope)
+	return err
+}
+
+func collectPlacedAndValidate(doc LayoutDoc, customKeys map[string]bool, slot, scope string) (map[string]bool, error) {
 	placed := map[string]bool{}
 	for _, row := range doc.Rows {
 		spans, ok := templateSpans[row.Template]
 		if !ok {
-			return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("unknown template %q", row.Template)}
+			return nil, &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("unknown template %q", row.Template)}
 		}
 		if len(row.Cells) != len(spans) {
-			return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("template %q expects %d cells, got %d", row.Template, len(spans), len(row.Cells))}
+			return nil, &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("template %q expects %d cells, got %d", row.Template, len(spans), len(row.Cells))}
 		}
 		for _, cell := range row.Cells {
 			if cell.FieldKey == nil {
@@ -186,10 +257,23 @@ func validateDoc(doc LayoutDoc, customKeys map[string]bool, slot, scope string) 
 			}
 			key := *cell.FieldKey
 			if err := validateFieldKey(key, customKeys, slot, scope); err != nil {
-				return err
+				return nil, err
 			}
 			placed[key] = true
 		}
+	}
+	return placed, nil
+}
+
+// validateDoc enforces template integrity, known field keys, the
+// per-type-applicability gate (a core field may only be placed on a type it
+// applies to — mirrors the slot-gate trigger), and the compulsory-field gate
+// for BOTH core (CompulsoryFieldsForType) and custom (compulsoryCustom, from
+// the per-binding is_compulsory marker). slot is "" for strategy types.
+func validateDoc(doc LayoutDoc, customKeys, compulsoryCustom map[string]bool, slot, scope string) error {
+	placed, err := collectPlacedAndValidate(doc, customKeys, slot, scope)
+	if err != nil {
+		return err
 	}
 	// SERVER IS THE GATE — the "Required fields" locked group. A saved layout
 	// MUST place every compulsory core field for this artefact type. The
@@ -210,6 +294,15 @@ func validateDoc(doc LayoutDoc, customKeys map[string]bool, slot, scope string) 
 		if skipFromBuilder(k) {
 			continue
 		}
+		if !placed[k] {
+			missingCompulsory = append(missingCompulsory, k)
+		}
+	}
+	// Custom compulsory fields (per-binding is_compulsory, mig 167) are gated
+	// the same way: every one must be placed. These keys are already validated
+	// as bound to the type (collectPlacedAndValidate → validateFieldKey), so an
+	// unplaced one is a genuine "you marked this required, place it" failure.
+	for k := range compulsoryCustom {
 		if !placed[k] {
 			missingCompulsory = append(missingCompulsory, k)
 		}
@@ -266,38 +359,45 @@ func (s *Service) CoreFields(slot, scope string) []CoreFieldDescriptor {
 			continue
 		}
 		out = append(out, CoreFieldDescriptor{
-			FieldKey:     c.Name,
-			Label:        labelOr(c.Label, c.Name),
-			DataType:     inferDataType(c.Name),
-			Kind:         "core",
-			Group:        c.Group,
-			IsMandatory:  isMandatoryCore(c.Name),
-			IsCompulsory: compulsory[c.Name],
+			FieldKey:      c.Name,
+			Label:         labelOr(c.Label, c.Name),
+			DataType:      inferDataType(c.Name),
+			Kind:          "core",
+			Group:         c.Group,
+			IsMandatory:   isMandatoryCore(c.Name),
+			IsCompulsory:  compulsory[c.Name],
+			ValueLocation: ValueLocationCore,
 		})
 	}
 	return out
 }
 
 // CustomFields returns the custom-field descriptors bound to an artefact
-// type (for the builder sidebar's Custom section) plus the valid-key set
-// used by Save's validation. FieldKey is "custom:<library_id>".
-func (s *Service) CustomFields(ctx context.Context, typeID, subscriptionID uuid.UUID) ([]CoreFieldDescriptor, map[string]bool, error) {
+// type (for the builder sidebar's Custom section), the valid-key set used by
+// Save's validation, and the compulsory subset (per-binding is_compulsory,
+// mig 167) the publish gate requires be placed. FieldKey is
+// "custom:<library_id>".
+func (s *Service) CustomFields(ctx context.Context, typeID, subscriptionID uuid.UUID) ([]CoreFieldDescriptor, map[string]bool, map[string]bool, error) {
 	rows, err := s.vaPool.Query(ctx, sqlListCustomFieldsForType, typeID, subscriptionID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer rows.Close()
 
 	var out []CoreFieldDescriptor
 	keys := map[string]bool{}
+	compulsory := map[string]bool{}
 	for rows.Next() {
 		var libID, name, label, fieldType string
-		var required bool
-		if err := rows.Scan(&libID, &name, &label, &fieldType, &required); err != nil {
-			return nil, nil, err
+		var required, isCompulsory bool
+		if err := rows.Scan(&libID, &name, &label, &fieldType, &required, &isCompulsory); err != nil {
+			return nil, nil, nil, err
 		}
 		key := "custom:" + libID
 		keys[key] = true
+		if isCompulsory {
+			compulsory[key] = true
+		}
 		out = append(out, CoreFieldDescriptor{
 			FieldKey:    key,
 			Label:       labelOr(label, name),
@@ -305,9 +405,13 @@ func (s *Service) CustomFields(ctx context.Context, typeID, subscriptionID uuid.
 			Kind:        "custom",
 			Group:       "Custom",
 			IsMandatory: false,
+			// Per-binding compulsory marker (mig 167). Drives the locked-group
+			// save gate for custom fields, mirroring the core compulsory set.
+			IsCompulsory:  isCompulsory,
+			ValueLocation: ValueLocationEAV,
 		})
 	}
-	return out, keys, rows.Err()
+	return out, keys, compulsory, rows.Err()
 }
 
 // customDataType maps an artefacts_fields_library_field_type to the
