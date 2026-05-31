@@ -36,8 +36,9 @@ import {
 } from "@dnd-kit/core";
 import {
   getCoreFields,
-  getCurrentLayout,
+  getLayoutForBuilder,
   saveLayout,
+  saveDraft,
   extractValidation,
   type CoreFieldDescriptor,
   type FormCell,
@@ -48,6 +49,8 @@ import { ROW_TEMPLATES } from "@/app/lib/formLayoutsApi";
 import { useSentinel } from "@/app/sentinel";
 import CustomFieldEditForm from "@/app/components/CustomFields/CustomFieldEditForm";
 import { FormLayoutRenderer, type RenderCellArgs } from "./FormLayoutRenderer";
+import type { Band } from "./mergeTransitions";
+import { PreviewDataPicker } from "./PreviewDataPicker";
 import {
   useFormBuilderState,
   type CellAddr,
@@ -119,6 +122,14 @@ export function FormBuilderShell({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [activeDrag, setActiveDrag] = useState<DragData | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  // Baseline = the rows as loaded (published current OR a reloaded draft).
+  // Cancel only prompts when the canvas diverges from this, so an untouched
+  // open closes silently. Compared by serialising fieldKey/template shape.
+  const [baseline, setBaseline] = useState<string>(serializeRows([]));
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  // Transient "Draft saved" confirmation; cleared after a few seconds.
+  const [draftToast, setDraftToast] = useState<string | null>(null);
   // Add-custom-field overlay: when true, the create form mounts above the
   // canvas with the current artefact type force-bound (lockedTypeId).
   const [addFieldOpen, setAddFieldOpen] = useState(false);
@@ -144,16 +155,21 @@ export function FormBuilderShell({
       setLoading(true);
       setLoadError(null);
       try {
+        // Draft-aware load: a saved draft takes precedence over the
+        // published current, so reopening resumes WIP ("so when you go back
+        // it's there"). The runtime renderer keeps using getCurrentLayout.
         const [cat, existing] = await Promise.all([
           getCoreFields(artefactTypeId),
-          getCurrentLayout(nodeId, artefactTypeId),
+          getLayoutForBuilder(nodeId, artefactTypeId),
         ]);
         if (cancelled) return;
         setFields(cat);
         // Canvas starts from whatever layout exists (empty for a fresh
         // form). Compulsory fields are NOT pre-placed — the author drags
         // them in and positions them freely; the save gate enforces presence.
-        state.reset(existing?.doc.rows ?? []);
+        const initialRows = existing?.doc.rows ?? [];
+        state.reset(initialRows);
+        setBaseline(serializeRows(initialRows));
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load builder");
       } finally {
@@ -178,12 +194,26 @@ export function FormBuilderShell({
     [compulsoryKeys, state.placedKeys],
   );
 
-  // Sidebar partitions core fields into Mandatory (compulsory set) and
-  // Optional (the rest), then Custom fields bound to the type — three
-  // labelled groups, in that order.
-  const mandatoryFields = fields.filter((f) => f.kind === "core" && f.isCompulsory);
-  const optionalFields = fields.filter((f) => f.kind === "core" && !f.isCompulsory);
-  const customFields = fields.filter((f) => f.kind === "custom");
+  // Dirty = canvas diverges from what was loaded. Drives the Cancel confirm
+  // (only prompt when there's unsaved work to lose).
+  const isDirty = useMemo(
+    () => serializeRows(state.rows) !== baseline,
+    [state.rows, baseline],
+  );
+
+  // Sidebar partitions fields into two labelled groups: Mandatory (the
+  // per-type compulsory set, which MUST be placed to save) and Available
+  // (everything else — optional core ∪ custom, distinguished by their
+  // data-type tag). A search box filters both by label.
+  const [fieldQuery, setFieldQuery] = useState("");
+  const matchesQuery = useCallback(
+    (f: CoreFieldDescriptor) =>
+      fieldQuery.trim() === "" ||
+      f.label.toLowerCase().includes(fieldQuery.trim().toLowerCase()),
+    [fieldQuery],
+  );
+  const mandatoryFields = fields.filter((f) => f.isCompulsory && matchesQuery(f));
+  const availableFields = fields.filter((f) => !f.isCompulsory && matchesQuery(f));
 
   function onDragStart(e: DragStartEvent) {
     setActiveDrag((e.active.data.current as DragData) ?? null);
@@ -249,6 +279,47 @@ export function FormBuilderShell({
     }
   }
 
+  // Save as Draft: persists WIP without the compulsory gate or version flip.
+  // Stays open + toasts (per the design); the saved rows become the new
+  // baseline so an immediate Cancel won't re-prompt over already-saved work.
+  async function handleSaveDraft() {
+    setSaveError(null);
+    setDraftSaving(true);
+    try {
+      await saveDraft({ nodeId, artefactTypeId, rows: state.rows });
+      setBaseline(serializeRows(state.rows));
+      setDraftToast("Draft saved — it'll be here when you come back.");
+    } catch (err) {
+      const v = extractValidation(err);
+      setSaveError(
+        v
+          ? v.error + (v.missing.length ? " — missing: " + v.missing.join(", ") : "")
+          : err instanceof Error
+            ? err.message
+            : "Could not save draft",
+      );
+    } finally {
+      setDraftSaving(false);
+    }
+  }
+
+  // Cancel: prompt only when there's unsaved work (isDirty). An untouched
+  // canvas closes immediately — no nagging.
+  function handleCancel() {
+    if (isDirty) {
+      setConfirmCancel(true);
+      return;
+    }
+    onClose();
+  }
+
+  // Clear the draft toast a few seconds after it appears.
+  useEffect(() => {
+    if (!draftToast) return;
+    const t = setTimeout(() => setDraftToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [draftToast]);
+
   return (
     <div className="flb-overlay" role="dialog" aria-modal="true" aria-label="Form layout builder">
       <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -270,14 +341,28 @@ export function FormBuilderShell({
             >
               {previewing ? "Edit layout" : "Preview form"}
             </button>
-            <button type="button" className="flb-btn flb-btn-ghost" onClick={onClose} disabled={saving}>
+            <button
+              type="button"
+              className="flb-btn flb-btn-ghost"
+              onClick={handleCancel}
+              disabled={saving || draftSaving}
+            >
               Cancel
+            </button>
+            <button
+              type="button"
+              className="flb-btn flb-btn-secondary"
+              onClick={handleSaveDraft}
+              disabled={draftSaving || saving || loading}
+              title="Save your progress without publishing — resumes here next time"
+            >
+              {draftSaving ? "Saving draft…" : "Save as Draft"}
             </button>
             <button
               type="button"
               className="flb-btn flb-btn-primary"
               onClick={handleSave}
-              disabled={saving || loading}
+              disabled={saving || draftSaving || loading}
             >
               {saving ? "Saving…" : "Save layout"}
             </button>
@@ -285,10 +370,18 @@ export function FormBuilderShell({
         </header>
 
         {saveError && <div className="flb-overlay__Banner flb-overlay__Banner-error">{saveError}</div>}
+        {draftToast && (
+          <div className="flb-overlay__Banner flb-overlay__Banner-ok" role="status">{draftToast}</div>
+        )}
 
         {previewing ? (
           <main className="flb-canvas-wrap flb-canvas-wrap-preview">
-            <FormPreview rows={state.rows} fieldByKey={fieldByKey} />
+            <FormPreview
+              rows={state.rows}
+              fieldByKey={fieldByKey}
+              artefactTypeId={artefactTypeId}
+              typeLabel={artefactTypeLabel ?? "artefact"}
+            />
           </main>
         ) : (
           <div className="flb-overlay__Body">
@@ -296,9 +389,10 @@ export function FormBuilderShell({
               loading={loading}
               loadError={loadError}
               mandatoryFields={mandatoryFields}
-              optionalFields={optionalFields}
-              customFields={customFields}
+              availableFields={availableFields}
               placedKeys={state.placedKeys}
+              query={fieldQuery}
+              onQueryChange={setFieldQuery}
               canAddField={!!workspaceId}
               onAddField={() => setAddFieldOpen(true)}
             />
@@ -360,7 +454,59 @@ export function FormBuilderShell({
           </div>
         </div>
       )}
+
+      {confirmCancel && (
+        <div className="flb-confirm" role="dialog" aria-modal="true" aria-label="Discard unsaved changes">
+          <div className="flb-confirm__Scrim" onClick={() => setConfirmCancel(false)} />
+          <div className="flb-confirm__Card">
+            <h3 className="flb-confirm__Title">Discard unsaved changes?</h3>
+            <p className="flb-confirm__Body">
+              You have unsaved changes to this layout. Leaving now loses them.
+              Use <strong>Save as Draft</strong> if you want to come back to it.
+            </p>
+            <div className="flb-confirm__Actions">
+              <button
+                type="button"
+                className="flb-btn flb-btn-ghost"
+                onClick={() => setConfirmCancel(false)}
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                className="flb-btn flb-btn-secondary"
+                onClick={async () => {
+                  setConfirmCancel(false);
+                  await handleSaveDraft();
+                  onClose();
+                }}
+              >
+                Save as Draft &amp; close
+              </button>
+              <button
+                type="button"
+                className="flb-btn flb-btn-danger"
+                onClick={() => { setConfirmCancel(false); onClose(); }}
+              >
+                Discard &amp; close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// serializeRows reduces a layout to its meaningful shape (template + ordered
+// fieldKeys per row), ignoring volatile cell/row ids. Used for the dirty
+// check so reordering or re-placing fields is detected but id churn isn't.
+function serializeRows(rows: FormRow[]): string {
+  return JSON.stringify(
+    rows.map((r) => ({
+      t: r.template,
+      c: r.cells.map((c) => ({ k: c.fieldKey, s: c.rowSpan ?? 1, a: c.absorbedBy ?? null })),
+    })),
   );
 }
 
@@ -370,23 +516,27 @@ function Sidebar({
   loading,
   loadError,
   mandatoryFields,
-  optionalFields,
-  customFields,
+  availableFields,
   placedKeys,
+  query,
+  onQueryChange,
   canAddField,
   onAddField,
 }: {
   loading: boolean;
   loadError: string | null;
   mandatoryFields: CoreFieldDescriptor[];
-  optionalFields: CoreFieldDescriptor[];
-  customFields: CoreFieldDescriptor[];
+  availableFields: CoreFieldDescriptor[];
   placedKeys: Set<string>;
+  query: string;
+  onQueryChange: (q: string) => void;
   canAddField: boolean;
   onAddField: () => void;
 }) {
   // Sidebar is itself a droppable: dropping a placed cell here removes it.
   const { setNodeRef, isOver } = useDroppable({ id: "sidebar-dropzone" });
+  // Count of not-yet-placed available fields — shown in the group's badge.
+  const availableUnplaced = availableFields.filter((f) => !placedKeys.has(f.fieldKey)).length;
   return (
     <aside
       ref={setNodeRef}
@@ -394,11 +544,25 @@ function Sidebar({
     >
       {loadError && <div className="flb-sidebar__Error">{loadError}</div>}
 
+      <div className="flb-sidebar__Search">
+        <span className="flb-sidebar__Search_Icon" aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          className="flb-sidebar__Search_Input"
+          placeholder="Search fields"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          aria-label="Search fields"
+        />
+      </div>
+
       <SidebarSection title="Mandatory fields" hint="Must be placed to save">
         {loading ? (
           <div className="flb-sidebar__Skel" />
         ) : mandatoryFields.length === 0 ? (
-          <p className="flb-sidebar__Empty">No mandatory fields for this type.</p>
+          <p className="flb-sidebar__Empty">
+            {query ? "No matching mandatory fields." : "No mandatory fields for this type."}
+          </p>
         ) : (
           mandatoryFields.map((f) => (
             <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} />
@@ -406,25 +570,15 @@ function Sidebar({
         )}
       </SidebarSection>
 
-      <SidebarSection title="Optional fields" hint="Place as needed">
+      <SidebarSection title="Available fields" badge={loading ? undefined : availableUnplaced}>
         {loading ? (
           <div className="flb-sidebar__Skel" />
-        ) : optionalFields.length === 0 ? (
-          <p className="flb-sidebar__Empty">No optional core fields.</p>
+        ) : availableFields.length === 0 ? (
+          <p className="flb-sidebar__Empty">
+            {query ? "No matching fields." : "No available fields."}
+          </p>
         ) : (
-          optionalFields.map((f) => (
-            <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} />
-          ))
-        )}
-      </SidebarSection>
-
-      <SidebarSection title="Custom fields" hint="Bound to this type">
-        {loading ? (
-          <div className="flb-sidebar__Skel" />
-        ) : customFields.length === 0 ? (
-          <p className="flb-sidebar__Empty">No custom fields bound yet.</p>
-        ) : (
-          customFields.map((f) => (
+          availableFields.map((f) => (
             <SidebarField key={f.fieldKey} field={f} placed={placedKeys.has(f.fieldKey)} />
           ))
         )}
@@ -448,12 +602,23 @@ function Sidebar({
   );
 }
 
-function SidebarSection({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function SidebarSection({
+  title,
+  hint,
+  badge,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  badge?: number;
+  children: React.ReactNode;
+}) {
   return (
     <section className="flb-sidebar__Section">
       <div className="flb-sidebar__Section_Head">
         <h3 className="flb-sidebar__Section_Title">{title}</h3>
         {hint && <span className="flb-sidebar__Section_Hint">{hint}</span>}
+        {badge !== undefined && <span className="flb-sidebar__Section_Count">{badge}</span>}
       </div>
       <div className="flb-sidebar__Section_List">{children}</div>
     </section>
@@ -468,8 +633,9 @@ function SidebarField({
   placed: boolean;
 }) {
   // Once placed on the canvas a field is greyed and no longer draggable from
-  // the sidebar (it lives on the form). Drag it back to remove. Mandatory-ness
-  // is conveyed by the field's group ("Mandatory fields"), not a per-chip dot.
+  // the sidebar (it lives on the form). Drag it back to remove. The card shares
+  // the canvas placed-cell styling: left accent bar (following the radius),
+  // grip, label, and right-aligned data-type tag.
   const draggableDisabled = placed;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `sidebar:${field.fieldKey}`,
@@ -480,16 +646,21 @@ function SidebarField({
     <div
       ref={setNodeRef}
       className={
-        "flb-chip" +
-        (placed ? " flb-chip-placed" : "") +
-        (isDragging ? " flb-chip-dragging" : "")
+        "flb-fieldcard" +
+        (field.isCompulsory ? " flb-fieldcard-req" : "") +
+        (placed ? " flb-fieldcard-onform" : "") +
+        (isDragging ? " flb-fieldcard-dragging" : "")
       }
       {...(draggableDisabled ? {} : listeners)}
       {...(draggableDisabled ? {} : attributes)}
       title={placed ? "Already on the form" : field.label}
     >
-      <span className="flb-chip__Label">{field.label}</span>
-      {placed && <span className="flb-chip__Placed">on form</span>}
+      <span className="flb-fieldcard__Grip" aria-hidden="true">⠿</span>
+      <span className="flb-fieldcard__Main">
+        <span className="flb-fieldcard__Label">{field.label}</span>
+        <span className="flb-fieldcard__Meta">{field.dataType}</span>
+      </span>
+      {placed && <span className="flb-fieldcard__OnForm">On form</span>}
     </div>
   );
 }
@@ -505,20 +676,100 @@ function Canvas({
   fieldByKey: Map<string, CoreFieldDescriptor>;
   rowDragActive: boolean;
 }) {
+  // One renderer call over ALL rows so adjacent merged rows compute into bands
+  // correctly. The renderer interleaves RowGaps between bands (insert/reorder
+  // drop targets), a numbered gutter and a centred drag/delete aside per band,
+  // and ◇ join handles on mergeable seams.
   return (
     <div className={"flb-canvas" + (rowDragActive ? " flb-canvas-rowdrag" : "")}>
-      <RowGap rowIndex={0} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
-      {state.rows.map((row, rowIndex) => (
-        <React.Fragment key={row.id}>
-          <SingleRow
-            row={row}
-            rowIndex={rowIndex}
-            fieldByKey={fieldByKey}
-            onRemoveRow={() => state.removeRow(rowIndex)}
+      <FormLayoutRenderer
+        rows={state.rows}
+        className="flb-canvas-grid"
+        renderRowGap={(rowIndex) => (
+          <RowGap rowIndex={rowIndex} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
+        )}
+        renderRowGutter={(band) => <BandGutter band={band} />}
+        renderRowAside={(band) => (
+          <BandAside
+            band={band}
+            onRemove={() => state.removeBand(band.startRow, band.subRowCount)}
           />
-          <RowGap rowIndex={rowIndex + 1} onInsertRow={state.insertRowAt} rowDragActive={rowDragActive} />
-        </React.Fragment>
+        )}
+        renderSeamJoin={({ rowIndex, colIndex }) => (
+          <button
+            type="button"
+            className="flb-seam__Join"
+            title="Merge this column with the empty cell below"
+            aria-label="Merge column down"
+            onClick={() => state.mergeDown({ rowIndex, cellIndex: colIndex })}
+          >
+            ◇
+          </button>
+        )}
+        renderCell={(args) => (
+          <CanvasCell
+            {...args}
+            fieldByKey={fieldByKey}
+            onSplit={() => state.splitCell({ rowIndex: args.rowIndex, cellIndex: args.cellIndex })}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
+// BandGutter — numbered row markers (01, 02…) anchored to the top of each
+// sub-row of the band, with a vertical line spanning the band height. For a
+// merged band the line covers all its sub-rows.
+function BandGutter({ band }: { band: Band }) {
+  // The gutter mirrors the band's sub-row grid so each number top-aligns with
+  // its row even when a cell grows past the 72px minimum.
+  return (
+    <div
+      className="flb-gutter"
+      style={{ gridTemplateRows: `repeat(${band.subRowCount}, minmax(72px, auto))` }}
+    >
+      <span className="flb-gutter__Line" />
+      {band.rows.map((row, i) => (
+        <span key={row.id} className="flb-gutter__Num">
+          {String(band.startRow + i + 1).padStart(2, "0")}
+        </span>
       ))}
+    </div>
+  );
+}
+
+// BandAside — the centred drag-reorder + delete cluster for a whole band.
+// Dragging reorders the band as a unit (its first row index is the drag id).
+function BandAside({ band, onRemove }: { band: Band; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `row:${band.startRow}`,
+    data: { kind: "row", rowIndex: band.startRow } satisfies DragData,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={"flb-row-aside" + (isDragging ? " flb-row-aside-dragging" : "")}
+    >
+      <button
+        type="button"
+        className="flb-row-handle"
+        title="Drag to reorder"
+        aria-label="Drag to reorder row"
+        {...listeners}
+        {...attributes}
+      >
+        ⠿
+      </button>
+      <button
+        type="button"
+        className="flb-row-del"
+        onClick={onRemove}
+        title="Delete row"
+        aria-label="Delete row"
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -583,69 +834,32 @@ function RowGap({
   );
 }
 
-function SingleRow({
-  row,
-  rowIndex,
-  fieldByKey,
-  onRemoveRow,
-}: {
-  row: FormRow;
-  rowIndex: number;
-  fieldByKey: Map<string, CoreFieldDescriptor>;
-  onRemoveRow: () => void;
-}) {
-  // The whole row is a draggable reorder unit, grabbed via its handle.
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `row:${rowIndex}`,
-    data: { kind: "row", rowIndex } satisfies DragData,
-  });
-  return (
-    <div
-      ref={setNodeRef}
-      className={"flb-canvas-rowwrap" + (isDragging ? " flb-canvas-rowwrap-dragging" : "")}
-    >
-      <FormLayoutRenderer
-        rows={[row]}
-        className="flb-canvas-row"
-        renderRowAside={() => (
-          <div className="flb-row-aside">
-            <button
-              type="button"
-              className="flb-row-handle"
-              title="Drag to reorder row"
-              aria-label="Drag to reorder row"
-              {...listeners}
-              {...attributes}
-            >
-              ⠿
-            </button>
-            <button type="button" className="flb-row-del" onClick={onRemoveRow} title="Delete row" aria-label="Delete row">
-              ×
-            </button>
-          </div>
-        )}
-        renderCell={(args) => (
-          <CanvasCell {...args} rowIndex={rowIndex} fieldByKey={fieldByKey} />
-        )}
-      />
-    </div>
-  );
-}
 
 // ─── Preview (full-canvas WYSIWYG form) ──────────────────────────────────
 
 // FormPreview renders the IN-PROGRESS layout (state.rows) as the real form
 // an end user would see — same FormLayoutRenderer geometry, real field
-// inputs instead of draggable chips. It is non-binding (no save, no fetch):
-// a faithful look at the form the author is building, full-canvas. Empty
-// cells render nothing so the preview reads like a finished form, not a grid.
+// inputs instead of draggable chips. A data picker at the top lists real
+// artefacts of this type (clamp-scoped); selecting one populates every PLACED
+// cell with that artefact's real value (true WYSIWYG — only placed fields).
+// With no selection it falls back to label placeholders. Read-only throughout
+// (a layout+data preview, never a data-entry surface). Empty cells render
+// nothing so the preview reads like a finished form, not a grid.
 function FormPreview({
   rows,
   fieldByKey,
+  artefactTypeId,
+  typeLabel,
 }: {
   rows: FormRow[];
   fieldByKey: Map<string, CoreFieldDescriptor>;
+  artefactTypeId: string;
+  typeLabel: string;
 }) {
+  // valueFor resolves a placed cell's real value once an artefact is picked;
+  // null means "no artefact selected" → cells fall back to placeholders.
+  const [valueFor, setValueFor] = useState<((fieldKey: string) => string) | null>(null);
+
   if (rows.length === 0) {
     return (
       <div className="flb-canvas-empty">
@@ -655,13 +869,26 @@ function FormPreview({
   }
   return (
     <div className="flb-preview">
+      <PreviewDataPicker
+        artefactTypeId={artefactTypeId}
+        typeLabel={typeLabel}
+        fieldByKey={fieldByKey}
+        onValuesChange={(fn) => setValueFor(() => fn)}
+      />
       <FormLayoutRenderer
         rows={rows}
         className="flb-preview-grid"
         renderCell={({ cell }) => {
           if (!cell.fieldKey) return <div className="flb-preview__Empty" aria-hidden="true" />;
           const d = fieldByKey.get(cell.fieldKey);
-          return <PreviewField label={d?.label ?? cell.fieldKey} dataType={d?.dataType ?? "textbox"} />;
+          const value = valueFor ? valueFor(cell.fieldKey) : undefined;
+          return (
+            <PreviewField
+              label={d?.label ?? cell.fieldKey}
+              dataType={d?.dataType ?? "textbox"}
+              value={value}
+            />
+          );
         }}
       />
     </div>
@@ -669,27 +896,50 @@ function FormPreview({
 }
 
 // PreviewField renders a labelled, disabled input matching the field's data
-// type — a sample of the live form control. Disabled because the preview is
-// a layout check, not a data-entry surface.
-function PreviewField({ label, dataType }: { label: string; dataType: string }) {
+// type. Disabled because the preview is a layout+data check, not a data-entry
+// surface. `value` (when an artefact is selected) shows the real data; when
+// undefined the control falls back to the label as placeholder, exactly as the
+// pre-data-picker preview behaved.
+function PreviewField({
+  label,
+  dataType,
+  value,
+}: {
+  label: string;
+  dataType: string;
+  value?: string;
+}) {
   const multiline = dataType === "richtext" || dataType === "textarea";
+  const hasValue = value !== undefined && value !== "";
   return (
     <label className="flb-preview__Field">
       <span className="flb-preview__Field_Label">{label}</span>
       {multiline ? (
-        <textarea className="flb-preview__Field_Input flb-preview__Field_Input-area" rows={3} disabled placeholder={label} />
+        <textarea
+          className="flb-preview__Field_Input flb-preview__Field_Input-area"
+          rows={3}
+          disabled
+          placeholder={label}
+          value={value ?? ""}
+          readOnly
+        />
       ) : dataType === "boolean" ? (
-        <span className="flb-preview__Field_Toggle" aria-hidden="true" />
+        <span
+          className={"flb-preview__Field_Toggle" + (value === "true" ? " flb-preview__Field_Toggle-on" : "")}
+          aria-hidden="true"
+        />
       ) : dataType === "select" ? (
-        <select className="flb-preview__Field_Input" disabled>
-          <option>{label}…</option>
+        <select className="flb-preview__Field_Input" disabled value="__preview">
+          <option value="__preview">{hasValue ? value : `${label}…`}</option>
         </select>
       ) : (
         <input
           className="flb-preview__Field_Input"
-          type={dataType === "number" ? "number" : dataType === "date" ? "date" : "text"}
+          type={hasValue ? "text" : dataType === "number" ? "number" : dataType === "date" ? "date" : "text"}
           disabled
           placeholder={label}
+          value={value ?? ""}
+          readOnly
         />
       )}
     </label>
@@ -701,12 +951,14 @@ function CanvasCell({
   cellIndex,
   rowIndex,
   fieldByKey,
+  onSplit,
 }: RenderCellArgs & {
-  rowIndex: number;
   fieldByKey: Map<string, CoreFieldDescriptor>;
+  onSplit: () => void;
 }) {
   const addr: CellAddr = { rowIndex, cellIndex };
   const { setNodeRef, isOver } = useDroppable({ id: cellDroppableId(addr) });
+  const isTall = (cell.rowSpan ?? 1) > 1;
 
   return (
     <div
@@ -714,6 +966,7 @@ function CanvasCell({
       className={
         "flb-slot" +
         (cell.fieldKey ? " flb-slot-filled" : " flb-slot-empty") +
+        (isTall ? " flb-slot-tall" : "") +
         (isOver ? " flb-slot-over" : "")
       }
     >
@@ -721,6 +974,17 @@ function CanvasCell({
         <PlacedChip addr={addr} cell={cell} fieldByKey={fieldByKey} />
       ) : (
         <AnchorPoint />
+      )}
+      {isTall && (
+        <button
+          type="button"
+          className="flb-cell__Split"
+          onClick={onSplit}
+          title="Split this merged cell back into separate rows"
+          aria-label="Split merged cell"
+        >
+          ⊟
+        </button>
       )}
     </div>
   );
@@ -753,15 +1017,26 @@ function PlacedChip({
     data: { kind: "cell", addr, fieldKey: key } satisfies DragData,
   });
   const descriptor = fieldByKey.get(key);
+  const isCompulsory = descriptor?.isCompulsory;
   return (
     <div
       ref={setNodeRef}
-      className={"flb-placed" + (isDragging ? " flb-placed-dragging" : "")}
+      className={
+        "flb-fieldcard flb-fieldcard-placed" +
+        (isCompulsory ? " flb-fieldcard-req" : "") +
+        (isDragging ? " flb-fieldcard-dragging" : "")
+      }
       {...listeners}
       {...attributes}
     >
-      <span className="flb-placed__Label">{descriptor?.label ?? key}</span>
-      <span className="flb-placed__Type">{descriptor?.dataType ?? ""}</span>
+      <span className="flb-fieldcard__Grip" aria-hidden="true">⠿</span>
+      <span className="flb-fieldcard__Main">
+        <span className="flb-fieldcard__Label">{descriptor?.label ?? key}</span>
+        <span className="flb-fieldcard__Meta">
+          {descriptor?.dataType ?? ""}
+          {isCompulsory ? " · Required" : ""}
+        </span>
+      </span>
     </div>
   );
 }

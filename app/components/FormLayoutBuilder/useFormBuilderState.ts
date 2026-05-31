@@ -11,6 +11,10 @@
 import { useCallback, useState } from "react";
 import type { FormRow, FormCell, RowTemplate } from "@/app/lib/formLayoutsApi";
 import { TEMPLATE_SPANS } from "@/app/lib/formLayoutsApi";
+import {
+  mergeDown as mergeDownRows,
+  splitCell as splitCellRows,
+} from "./mergeTransitions";
 
 let _seq = 0;
 function nextId(prefix: string): string {
@@ -44,6 +48,9 @@ export interface FormBuilderState {
   /** Reorder a row from one position to another (drag up/down). */
   moveRow: (fromIndex: number, toIndex: number) => void;
   removeRow: (rowIndex: number) => void;
+  /** Remove a whole band (count consecutive rows starting at startRow). A
+   *  merged band deletes all its sub-rows together. */
+  removeBand: (startRow: number, count: number) => void;
   /** Place a field from the sidebar into a specific empty cell. */
   placeField: (fieldKey: string, addr: CellAddr) => void;
   /** Move a placed field from one cell to another (swap-aware). */
@@ -53,6 +60,11 @@ export interface FormBuilderState {
   /** Insert a new single-column row carrying `fieldKey` at rowIndex,
    *  pushing existing rows (and their fields) down. */
   insertFieldAsRow: (fieldKey: string, rowIndex: number) => void;
+  /** Fuse the tall cell owning `addr` with the empty cell below it (vertical
+   *  merge). No-op unless the lower cell is empty + same-template. */
+  mergeDown: (addr: CellAddr) => void;
+  /** Un-fuse a tall cell at `addr` back into one cell per row (split). */
+  splitCell: (addr: CellAddr) => void;
   reset: (rows: FormRow[]) => void;
 }
 
@@ -89,6 +101,10 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
 
   const removeRow = useCallback((rowIndex: number) => {
     setRows((prev) => prev.filter((_, i) => i !== rowIndex));
+  }, []);
+
+  const removeBand = useCallback((startRow: number, count: number) => {
+    setRows((prev) => [...prev.slice(0, startRow), ...prev.slice(startRow + count)]);
   }, []);
 
   const placeField = useCallback((fieldKey: string, addr: CellAddr) => {
@@ -128,6 +144,14 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
     });
   }, []);
 
+  const mergeDown = useCallback((addr: CellAddr) => {
+    setRows((prev) => mergeDownRows(prev, addr));
+  }, []);
+
+  const splitCell = useCallback((addr: CellAddr) => {
+    setRows((prev) => splitCellRows(prev, addr));
+  }, []);
+
   const reset = useCallback((next: FormRow[]) => setRows(next), []);
 
   return {
@@ -137,10 +161,13 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
     insertRowAt,
     moveRow,
     removeRow,
+    removeBand,
     placeField,
     moveField,
     clearCell,
     insertFieldAsRow,
+    mergeDown,
+    splitCell,
     reset,
   };
 }

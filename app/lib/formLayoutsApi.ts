@@ -38,10 +38,23 @@ export const ROW_TEMPLATES: { template: RowTemplate; label: string }[] = [
 // FormCell is one slot in a row. fieldKey is a core field's stable key
 // ("title"), or "custom:<artefacts_fields_library_id>", or null for an
 // empty slot (an anchor point in the builder).
+//
+// Vertical merge (2026-05-31): a cell may span several stacked rows of the
+// SAME template. The TOP cell of a merge carries rowSpan > 1; the cells it
+// covers in the rows below become TOMBSTONES — fieldKey:null + absorbedBy set
+// to the top cell's id. Tombstones keep the rows[] array rectangular (indices
+// never shift) and the renderer skips them (the tall cell's grid-row span
+// covers their track). Absent rowSpan/absorbedBy ⇒ a plain 1-row cell, so old
+// layouts are valid untouched. See
+// docs/superpowers/specs/2026-05-31-flb-vertical-merge-design.md.
 export interface FormCell {
   id: string;
   fieldKey: string | null;
   span: number;
+  /** Vertical extent in sub-rows. Default 1 (omitted). */
+  rowSpan?: number;
+  /** If set, this cell is a tombstone covered by the cell whose id === absorbedBy. */
+  absorbedBy?: string;
 }
 
 export interface FormRow {

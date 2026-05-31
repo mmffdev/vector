@@ -44,11 +44,31 @@ var templateSpans = map[RowTemplate][]int{
 // Cell is one slot in a row. FieldKey is a core field's stable string key
 // (e.g. "title"), or "custom:<artefacts_fields_library_id>", or nil for an
 // empty slot.
+//
+// Vertical merge (2026-05-31): a cell may span several stacked rows of the
+// same template. The TOP cell of a merge carries RowSpan > 1; the cells it
+// covers in the rows below are TOMBSTONES — FieldKey nil + AbsorbedBy set to
+// the top cell's ID. Tombstones keep Rows rectangular so indices never shift.
+// RowSpan==0 (omitted) is normalised to 1. See
+// docs/superpowers/specs/2026-05-31-flb-vertical-merge-design.md.
 type Cell struct {
-	ID       string  `json:"id"`
-	FieldKey *string `json:"fieldKey"`
-	Span     int     `json:"span"`
+	ID         string  `json:"id"`
+	FieldKey   *string `json:"fieldKey"`
+	Span       int     `json:"span"`
+	RowSpan    int     `json:"rowSpan,omitempty"`
+	AbsorbedBy string  `json:"absorbedBy,omitempty"`
 }
+
+// effectiveRowSpan normalises an omitted (0) RowSpan to 1.
+func (c Cell) effectiveRowSpan() int {
+	if c.RowSpan < 1 {
+		return 1
+	}
+	return c.RowSpan
+}
+
+// isTombstone reports whether the cell is covered by an earlier merged cell.
+func (c Cell) isTombstone() bool { return c.AbsorbedBy != "" }
 
 // Row is one horizontal band of the form.
 type Row struct {

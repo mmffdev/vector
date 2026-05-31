@@ -254,6 +254,15 @@ func collectPlacedAndValidate(doc LayoutDoc, customKeys map[string]bool, slot, s
 			return nil, &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("template %q expects %d cells, got %d", row.Template, len(spans), len(row.Cells))}
 		}
 		for _, cell := range row.Cells {
+			// A tombstone carries no field and is never "placed" — it is covered
+			// by an earlier merged cell. Reject a tombstone that also claims a
+			// field (contradictory).
+			if cell.isTombstone() {
+				if cell.FieldKey != nil {
+					return nil, &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone cell %q must not carry a field", cell.ID)}
+				}
+				continue
+			}
 			if cell.FieldKey == nil {
 				continue // empty slot is fine
 			}
@@ -264,7 +273,92 @@ func collectPlacedAndValidate(doc LayoutDoc, customKeys map[string]bool, slot, s
 			placed[key] = true
 		}
 	}
+	// Vertical-merge geometry: every rowSpan>1 cell must be backed by exactly
+	// the right tombstones beneath it, and each band must stay rectangular.
+	if err := validateMergeGeometry(doc); err != nil {
+		return nil, err
+	}
 	return placed, nil
+}
+
+// validateMergeGeometry enforces the vertical-merge invariants (2026-05-31):
+//
+//   - a cell with RowSpan > 1 must be covered by exactly RowSpan-1 tombstones
+//     directly beneath it in the SAME column, each AbsorbedBy == the cell's ID,
+//     and all within rows that share the cell's template;
+//   - a tombstone's AbsorbedBy must resolve to a real spanning cell that
+//     actually reaches it (no dangling / overrunning references);
+//   - the band stays rectangular — the merge never runs past the rows[] array
+//     or into a different-template row.
+//
+// It mirrors the client's mergeTransitions.ts so the server is the gate for
+// any hand-crafted or tampered payload. See
+// docs/superpowers/specs/2026-05-31-flb-vertical-merge-design.md.
+func validateMergeGeometry(doc LayoutDoc) error {
+	rows := doc.Rows
+	colCount := func(r Row) int { return len(r.Cells) }
+
+	for ri, row := range rows {
+		for ci, cell := range row.Cells {
+			span := cell.effectiveRowSpan()
+			if span == 1 && !cell.isTombstone() {
+				continue
+			}
+			if cell.isTombstone() {
+				continue // validated from the owner's side below
+			}
+			// cell has RowSpan > 1 — verify its tombstones.
+			need := span - 1
+			for k := 1; k <= need; k++ {
+				tr := ri + k
+				if tr >= len(rows) {
+					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns the layout (rowSpan %d)", cell.ID, span)}
+				}
+				below := rows[tr]
+				if below.Template != row.Template {
+					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q spans across a template change", cell.ID)}
+				}
+				if ci >= colCount(below) {
+					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q has no column %d in row %d", cell.ID, ci, tr)}
+				}
+				t := below.Cells[ci]
+				if t.AbsorbedBy != cell.ID {
+					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q missing tombstone at row %d col %d", cell.ID, tr, ci)}
+				}
+				if t.FieldKey != nil {
+					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d must be empty", tr, ci)}
+				}
+			}
+		}
+	}
+
+	// Reverse check: every tombstone must be claimed by a spanning owner above
+	// it in the same column whose span actually reaches it (no dangling refs).
+	for ri, row := range rows {
+		for ci, cell := range row.Cells {
+			if !cell.isTombstone() {
+				continue
+			}
+			found := false
+			for up := ri - 1; up >= 0; up-- {
+				if ci >= len(rows[up].Cells) {
+					break
+				}
+				cand := rows[up].Cells[ci]
+				if cand.ID == cell.AbsorbedBy {
+					// owner must span far enough to cover this row.
+					if up+cand.effectiveRowSpan()-1 >= ri {
+						found = true
+					}
+					break
+				}
+			}
+			if !found {
+				return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d references no spanning cell %q", ri, ci, cell.AbsorbedBy)}
+			}
+		}
+	}
+	return nil
 }
 
 // validateDoc enforces template integrity, known field keys, the

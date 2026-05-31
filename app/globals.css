@@ -20552,6 +20552,27 @@ tr.is-editing {
   letter-spacing: 0.06em; color: var(--text-secondary, #5c5c5c);
 }
 .flb-sidebar__Section_Hint { font-size: 10px; color: var(--ink-subtle, #9b9b9b); }
+.flb-sidebar__Section_Count {
+  margin-left: auto;
+  min-width: 22px; height: 20px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--text-secondary, #5c5c5c);
+  background: var(--surface, #fff); border: 1px solid var(--border-default, #e5e1da);
+  border-radius: var(--radius-full, 999px);
+}
+
+/* search box */
+.flb-sidebar__Search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-md, 10px);
+}
+.flb-sidebar__Search_Icon { color: var(--ink-subtle, #9b9b9b); font-size: 14px; }
+.flb-sidebar__Search_Input {
+  flex: 1 1 auto; border: none; outline: none; background: transparent;
+  font-size: 13px; color: var(--ink, #1c1c22);
+}
+.flb-sidebar__Search_Input::placeholder { color: var(--ink-subtle, #b6b6bd); }
 .flb-sidebar__Section_List { display: flex; flex-direction: column; gap: 6px; }
 .flb-sidebar__Empty { font-size: 12px; color: var(--ink-subtle, #9b9b9b); font-style: italic; }
 .flb-sidebar__Skel {
@@ -20579,13 +20600,7 @@ tr.is-editing {
 }
 .flb-chip:hover { border-color: var(--accent, #1a1a1a); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 .flb-chip:active { cursor: grabbing; }
-.flb-chip__Label { flex: 1 1 auto; font-weight: 500; }
-.flb-chip__Placed {
-  font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--ink-subtle, #9b9b9b);
-}
-.flb-chip-placed { opacity: 0.5; cursor: default; background: var(--surface-sunken, #f6f4f0); }
-.flb-chip-placed:hover { border-color: var(--border-default, #e5e1da); box-shadow: none; }
+/* .flb-chip is now used only by the DragOverlay floating preview pill. */
 .flb-chip-dragging { box-shadow: 0 6px 20px rgba(0,0,0,0.18); transform: rotate(-1deg); cursor: grabbing; }
 
 /* ── Canvas ── */
@@ -20603,13 +20618,6 @@ tr.is-editing {
   width: 100%;
 }
 
-/* row in canvas (rendered via FormLayoutRenderer with className flb-canvas-row) */
-.flb-canvas-row .flb-grid__Row {
-  display: grid; grid-template-columns: 1fr auto; align-items: stretch; gap: var(--space-2, 8px);
-}
-.flb-canvas-row .flb-grid__Row_Cells { gap: var(--space-3, 12px); }
-.flb-canvas-row .flb-grid__Row_Aside { display: flex; align-items: flex-start; padding-top: 4px; }
-
 .flb-row-del {
   width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
   border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
@@ -20619,16 +20627,64 @@ tr.is-editing {
 }
 .flb-row-del:hover { border-color: var(--danger, #b91c1c); color: var(--danger, #b91c1c); background: var(--danger-bg, #fdecec); }
 
-/* shared grid (FormLayoutRenderer) */
+/* shared grid (FormLayoutRenderer) — bands of stacked rows. A band is one CSS
+   grid (columns × sub-rows) so a merged cell spans sub-rows via grid-row. */
 .flb-grid { display: flex; flex-direction: column; gap: var(--space-4, 16px); }
-.flb-grid__Row_Cells { display: grid; gap: var(--space-3, 12px); }
+.flb-grid__Band_Cells { display: grid; gap: var(--space-3, 12px); }
+/* builder canvas: gutter | cells | aside */
+.flb-canvas-grid .flb-grid__Band {
+  display: grid; grid-template-columns: 40px 1fr auto; align-items: stretch;
+  gap: var(--space-2, 8px);
+}
+.flb-canvas-grid .flb-grid__Band_Cells { gap: var(--space-3, 12px); }
+.flb-canvas-grid .flb-grid__Band_Aside { display: flex; align-items: center; }
+/* runtime / preview have no gutter or aside — cells fill the row */
+.flb-runtime-grid .flb-grid__Band_Cells,
+.flb-preview-grid .flb-grid__Band_Cells { gap: var(--space-5, 20px); }
+
+/* one cell wrapper (positioned in the band grid; may span sub-rows) */
+.flb-grid__Cell { position: relative; min-height: 0; }
 
 /* slot (one cell) */
 .flb-slot {
-  min-height: 72px; border-radius: var(--radius-md, 8px);
+  height: 100%; min-height: 72px; border-radius: var(--radius-md, 8px);
+  position: relative;
   transition: box-shadow 120ms ease, background 120ms ease;
 }
 .flb-slot-over { box-shadow: inset 0 0 0 2px var(--accent, #1a1a1a); background: var(--accent-muted, rgba(26,26,26,0.06)); }
+/* a tall (merged) slot fills the full band height it spans */
+.flb-slot-tall .flb-fieldcard,
+.flb-slot-tall .flb-anchor { height: 100%; }
+
+/* split (un-merge) handle — top-right corner of a tall cell */
+.flb-cell__Split {
+  position: absolute; top: 6px; right: 6px; z-index: 3;
+  width: 22px; height: 22px; border-radius: var(--radius-full, 999px);
+  border: 1.5px solid var(--accent, #f5c451);
+  background: var(--surface, #fff); color: var(--accent-strong, #b98a00);
+  font-size: 12px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12); transition: all 120ms ease;
+}
+.flb-cell__Split:hover { background: var(--accent-muted, #fff7e6); transform: scale(1.08); }
+
+/* ◇ seam join handle — straddles the bottom edge of a mergeable cell */
+.flb-grid__Seam {
+  position: absolute; left: 0; right: 0; bottom: -7px;
+  display: flex; justify-content: center; pointer-events: none; z-index: 4;
+}
+.flb-seam__Join {
+  pointer-events: auto;
+  width: 22px; height: 22px; border-radius: var(--radius-full, 999px);
+  border: none; background: var(--accent, #f5c451); color: var(--accent-strong, #7a5600);
+  font-size: 13px; font-weight: 700; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  opacity: 0; transition: opacity 120ms ease, transform 120ms ease;
+}
+.flb-grid__Cell:hover .flb-seam__Join,
+.flb-seam__Join:focus-visible { opacity: 1; }
+.flb-seam__Join:hover { transform: scale(1.12); }
 
 /* anchor point — dashed border + filled circle with + (user spec) */
 .flb-anchor {
@@ -20648,25 +20704,50 @@ tr.is-editing {
 .flb-slot-over .flb-anchor__Dot { background: var(--accent, #1a1a1a); transform: scale(1.12); }
 .flb-anchor__Plus { color: #fff; font-size: 18px; font-weight: 600; line-height: 1; }
 
-/* placed field chip inside a filled slot */
-.flb-placed {
-  height: 100%; min-height: 72px;
-  display: flex; flex-direction: column; justify-content: center; gap: 4px;
-  padding: 12px 14px;
+/* ── Field card (shared: sidebar picker + canvas placed cell) ──
+   Rounded card with a left ACCENT BAR THAT FOLLOWS THE RADIUS (a coloured
+   border-left inheriting border-radius — not a floating inset pill), a grip
+   inside the card (drag affordance), label + data-type meta. One treatment so
+   sidebar and canvas read as one system. */
+.flb-fieldcard {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 56px; padding: 10px 14px;
   background: var(--surface, #fff);
-  border: 1px solid var(--accent-border, rgba(26,26,26,0.2));
-  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-default, #e6e6e9);
+  border-left: 3px solid var(--border-default, #e6e6e9);
+  border-radius: var(--radius-md, 11px);
   cursor: grab; user-select: none;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-  transition: box-shadow 120ms ease, border-color 120ms ease;
+  box-shadow: 0 1px 2px rgba(20,20,40,0.04);
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
-.flb-placed:hover { border-color: var(--accent, #1a1a1a); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-.flb-placed:active { cursor: grabbing; }
-.flb-placed-dragging { opacity: 0.4; }
-.flb-placed__Label { font-size: 14px; font-weight: 600; }
-.flb-placed__Type {
-  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--ink-subtle, #9b9b9b);
+.flb-fieldcard:hover { border-left-color: var(--accent, #1a1a1a); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.flb-fieldcard:active { cursor: grabbing; }
+/* compulsory / required → strong accent bar */
+.flb-fieldcard-req { border-left-color: var(--accent-strong, #1f2557); }
+/* placed on canvas (its own slot) — fills the slot height, centred content */
+.flb-fieldcard-placed { height: 100%; flex-direction: row; }
+/* already-on-form chip in the sidebar — greyed, not draggable */
+.flb-fieldcard-onform {
+  opacity: 0.55; cursor: default; background: var(--surface-sunken, #f6f4f0);
+}
+.flb-fieldcard-onform:hover { border-left-color: var(--border-default, #e6e6e9); box-shadow: none; }
+.flb-fieldcard-dragging { opacity: 0.4; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+.flb-fieldcard__Grip {
+  flex: 0 0 auto; color: var(--ink-subtle, #c4c4cc); font-size: 14px;
+  line-height: 1; letter-spacing: 1px;
+}
+.flb-fieldcard__Main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.flb-fieldcard__Label {
+  font-size: 14px; font-weight: 600; color: var(--ink, #1c1c22);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.flb-fieldcard__Meta {
+  font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink-subtle, #9a9aa2);
+}
+.flb-fieldcard__OnForm {
+  flex: 0 0 auto; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink-subtle, #9a9aa2);
 }
 
 /* insert gap (push-down + add-row affordance + reorder target) */
@@ -20717,9 +20798,12 @@ tr.is-editing {
 .flb-gap__Insert_Item_Text { color: var(--text-secondary, #5c5c5c); }
 
 /* row reorder wrapper + handle */
-.flb-canvas-rowwrap { transition: opacity 120ms ease; }
-.flb-canvas-rowwrap-dragging { opacity: 0.4; }
-.flb-row-aside { display: flex; align-items: center; gap: 4px; padding-top: 4px; }
+/* band aside — drag + delete, vertically CENTRED on the whole band */
+.flb-row-aside {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+}
+.flb-row-aside-dragging { opacity: 0.4; }
 .flb-row-handle {
   width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
   border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
@@ -20729,6 +20813,24 @@ tr.is-editing {
 }
 .flb-row-handle:hover { border-color: var(--accent, #1a1a1a); color: var(--accent, #1a1a1a); }
 .flb-row-handle:active { cursor: grabbing; }
+
+/* band gutter — numbered markers (01, 02…) top-anchored to each sub-row, with
+   a vertical line spanning the whole band height. The gutter is a grid mirroring
+   the band's sub-row tracks (row-gap matches the cells' gap) so numbers stay
+   aligned to their row even when a cell grows. */
+.flb-gutter {
+  position: relative; display: grid; gap: var(--space-3, 12px); padding-top: 2px;
+}
+.flb-gutter__Line {
+  position: absolute; left: 9px; top: 20px; bottom: 8px; width: 2px;
+  background: var(--border-default, #e3e3e6); border-radius: 2px;
+  grid-row: 1 / -1;
+}
+.flb-gutter__Num {
+  position: relative; z-index: 1; align-self: start;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--ink-subtle, #b9b9bd); line-height: 1;
+}
 
 /* template picker */
 .flb-templates {
@@ -20773,7 +20875,6 @@ tr.is-editing {
   box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
 .flb-preview-grid { gap: var(--space-5, 20px); }
-.flb-preview-grid .flb-grid__Row_Cells { gap: var(--space-5, 20px); }
 .flb-preview__Empty { min-height: 1px; }
 .flb-preview__Field { display: flex; flex-direction: column; gap: 6px; }
 .flb-preview__Field_Label {
@@ -20795,6 +20896,28 @@ tr.is-editing {
   content: ""; position: absolute; top: 2px; left: 2px;
   width: 18px; height: 18px; border-radius: var(--radius-full, 999px);
   background: var(--surface, #fff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  transition: left 120ms ease;
+}
+.flb-preview__Field_Toggle-on { background: var(--accent, #6b4ee6); }
+.flb-preview__Field_Toggle-on::after { left: 20px; }
+
+/* Form Layout Builder — preview data picker (live-data preview) */
+.flb-preview__Picker {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3, 12px);
+  margin-bottom: var(--space-6, 28px); padding-bottom: var(--space-5, 20px);
+  border-bottom: 1px dashed var(--border-default, #e5e1da);
+}
+.flb-preview__Picker_Label {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary, #5c5c5c);
+}
+.flb-preview__Picker_Select {
+  flex: 1 1 220px; min-width: 200px; padding: 8px 12px;
+  border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-md, 8px);
+  background: var(--surface, #fff); color: var(--text-primary, #1a1a1a);
+  font-size: 14px; cursor: pointer;
+}
+.flb-preview__Picker_Hint {
+  font-size: 12px; color: var(--text-tertiary, #8a8a8a); margin: 0;
 }
 
 /* Form Layout Builder — launch panel (on custom-fields page) */
@@ -20903,3 +21026,437 @@ tr.is-editing {
 .flb-fieldmodal__Title { font-size: 15px; font-weight: 600; margin: 0; color: var(--ink, #1a1a1a); }
 .flb-fieldmodal__Sub { font-size: 12px; color: var(--text-secondary, #5c5c5c); margin: 4px 0 0; }
 .flb-fieldmodal__Body { padding: var(--space-5, 20px); }
+
+/* Form Layout Builder — "Draft saved" confirmation banner (sibling of the
+   error banner; success tone). */
+.flb-overlay__Banner-ok {
+  background: var(--success-bg, #e8f5ec);
+  color: var(--success, #1f7a3d);
+  border-bottom: 1px solid var(--success, #1f7a3d);
+}
+
+/* Form Layout Builder — Save-as-Draft (secondary) + Discard (danger) buttons */
+.flb-btn-secondary {
+  background: var(--surface, #fff);
+  color: var(--text-primary, #1a1a1a);
+  border-color: var(--border-strong, #c9c3b8);
+}
+.flb-btn-secondary:hover:not(:disabled) { background: var(--surface-sunken, #f6f4f0); }
+.flb-btn-danger {
+  background: var(--danger, #b91c1c);
+  color: #fff;
+  border-color: var(--danger, #b91c1c);
+}
+.flb-btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
+
+/* Form Layout Builder — Cancel "are you sure" confirm dialog */
+.flb-confirm {
+  position: fixed; inset: 0;
+  z-index: 1300;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-5, 20px);
+}
+.flb-confirm__Scrim {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.42);
+}
+.flb-confirm__Card {
+  position: relative;
+  width: min(440px, 94vw);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e5e1da);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.28);
+  padding: var(--space-5, 20px);
+}
+.flb-confirm__Title { font-size: 16px; font-weight: 700; margin: 0 0 var(--space-2, 8px); color: var(--ink, #1a1a1a); }
+.flb-confirm__Body { font-size: 13px; line-height: 1.5; color: var(--text-secondary, #5c5c5c); margin: 0 0 var(--space-5, 20px); }
+.flb-confirm__Actions { display: flex; gap: var(--space-2, 8px); justify-content: flex-end; flex-wrap: wrap; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ── Grid primitive ──
+   The canonical skin for the headless useTree() core. Owns the tree's entire
+   look in ONE place; every extension inherits it (NCY). The ├ / └ / through-
+   line connectors are drawn with PURE CSS BORDERS off real DOM nesting
+   (.grid__Branch_Children > .grid__Branch) + :last-child — NOT JS geometry.
+   This block is what fixes the /scope connector bug: depth / isLast /
+   continuations[] are gone; :last-child carries everything. Change a constant
+   below and every grid in the app re-flows with zero JS edits.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.grid {
+  /* Connector geometry — matched to ResourceTree so the two surfaces read
+     identically. STEP = indent per level, ROW_H = row height, MID = elbow
+     midpoint (≈ ROW_H/2), rail-inset = how far the rail sits in from the
+     child's left edge. */
+  --tree-step: 20px;
+  --tree-row-h: 28px;
+  --tree-mid: 14px;
+  --tree-rail-inset: 8px;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* ── Header band ─────────────────────────────────────────────────────────── */
+.grid__Head {
+  display: grid;
+  align-items: stretch;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+.grid__Head_Lead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.grid__Head_Cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 8px;
+  height: var(--tree-row-h);
+}
+.grid__Head_Label {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #5c5c5c);
+  text-align: left;
+  cursor: default;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grid__Head_Cell[data-sortable="true"] .grid__Head_Label { cursor: pointer; }
+.grid__Head_Cell[data-sortable="true"] .grid__Head_Label:hover { color: var(--ink); }
+.grid__Head_SortGlyph { font-size: 9px; line-height: 1; color: var(--accent, #2563eb); }
+/* Resize gutter — a thin hit-area pinned to the cell's right edge. */
+.grid__Head_Resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+}
+.grid__Head_Resize::after {
+  content: "";
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 50%;
+  background: var(--border);
+}
+.grid__Head_Resize:hover::after { background: var(--accent, #2563eb); height: 100%; top: 0; }
+
+/* ── Body + rows ─────────────────────────────────────────────────────────── */
+.grid__Body {
+  display: flex;
+  flex-direction: column;
+}
+.grid__Tree_Row {
+  display: grid;
+  align-items: center;
+  height: var(--tree-row-h);
+  border-bottom: 1px solid var(--border);
+  /* Per-row colour accent — runtime value arrives via the --row-accent custom
+     property set inline (the one sanctioned style={{}} case). Transparent when
+     unset so plain rows show no rail. */
+  border-left: 3px solid var(--row-accent, transparent);
+  background: var(--surface);
+  cursor: default;
+}
+.grid__Tree_Row:hover { background: var(--surface-hover, color-mix(in srgb, var(--ink) 3%, var(--surface))); }
+.grid__Tree_Row--selected,
+.grid__Tree_Row--selected:hover {
+  background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface));
+}
+.grid__Tree_Row--parent { font-weight: 500; }
+.grid__Tree_Cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Caret (expand toggle) ───────────────────────────────────────────────── */
+.grid__Tree_Caret {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary, #5c5c5c);
+}
+.grid__Tree_Caret:hover { color: var(--ink); }
+.grid__Tree_CaretGlyph {
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid currentColor;
+  transition: transform 0.12s ease;
+}
+.grid__Tree_Caret[data-expanded="true"] .grid__Tree_CaretGlyph { transform: rotate(90deg); }
+.grid__Tree_CaretSpacer { flex: 0 0 auto; width: 16px; height: 16px; }
+
+/* Expand-all toggle — lives inside the primary header cell, aligned to carets. */
+.grid__Tree_ExpandAll {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0 4px 0 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary, #5c5c5c);
+  font-size: 10px;
+}
+.grid__Tree_ExpandAll:hover { color: var(--ink); }
+
+/* Drag grip (dnd opt-in). */
+.grid__Tree_DragGrip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-tertiary, #9ca3af);
+  cursor: grab;
+  letter-spacing: -2px;
+  font-size: 10px;
+}
+.grid__Tree_DragGrip:active { cursor: grabbing; }
+
+/* ══ The connector system — 3 rules, zero JS. ════════════════════════════════
+   A Branch wraps a row + (optionally) its detail flyout + its children. The
+   rail is painted by the CHILDREN container's direct Branch children:
+     • ::before  → the elbow (└) every child gets.
+     • :not(:last-child)::after → the through-drop (├ tail + ancestor carry)
+       that only non-last siblings get. A non-last Branch's ::after spans its
+       WHOLE subtree height, so ancestor through-lines are free.
+   Last child → only ::before (└). Non-last → ::before + ::after (├). The
+   detail flyout sits inside its own Branch (grid__Branch_Detail), NOT in
+   _Children, so it never matches these selectors → never grows an elbow nor
+   shifts a sibling's :last-child. */
+.grid__Branch { position: relative; }
+.grid__Branch_Children { padding-left: var(--tree-step); }
+.grid__Branch_Children > .grid__Branch::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  left: calc(var(--tree-rail-inset) - var(--tree-step));
+  top: 0;
+  height: var(--tree-mid);
+  width: calc(var(--tree-step) - var(--tree-rail-inset));
+  border-left: 1px solid var(--tree-connector);
+  border-bottom: 1px solid var(--tree-connector);
+}
+.grid__Branch_Children > .grid__Branch:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  left: calc(var(--tree-rail-inset) - var(--tree-step));
+  top: var(--tree-mid);
+  bottom: 0;
+  border-left: 1px solid var(--tree-connector);
+}
+
+/* Detail flyout row (the expandable-flyout extension payload) — sits directly
+   below its node's row, inside the same Branch. Full-bleed; the host
+   (Grid__Forms → ArtefactInlineForm) owns its inner chrome. */
+.grid__Branch_Detail {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* ══ Barber-pole — the loadingStyle="barberpole" prop, re-homed from the old
+   tree_accordion-dense skin. NO Grid__BarberPole component: this class is
+   emitted by Grid__Row when loadingStyle==="barberpole" && the row's detail is
+   open. Diagonal -45° stripes pan continuously; orange row edges mark the
+   active row. Faithful port of the proven pattern (globals.css §14585). */
+.grid__Tree_Row--formOpen,
+.grid__Tree_Row--formOpen:hover {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--ink) 3%, var(--surface)) 0,
+    color-mix(in srgb, var(--ink) 3%, var(--surface)) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  background-size: 28.284px 28.284px; /* 20px / cos(45°) — diagonal period */
+  animation: grid__Tree_formOpen-stripes 2.5s linear infinite;
+  /* Orange active-row edges. The div-grid (unlike the old <table>) lets us put
+     both edges directly on the row, so no previous-sibling border trick. The
+     row already owns border-bottom; override its colour and add a top edge. */
+  border-top: 1px solid #ff6600;
+  border-bottom-color: #ff6600;
+}
+@keyframes grid__Tree_formOpen-stripes {
+  from { background-position: 0 0; }
+  to   { background-position: 28.284px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .grid__Tree_Row--formOpen,
+  .grid__Tree_Row--formOpen:hover { animation: none; }
+}
+
+/* ── Scope cell renderers — salvaged from the old data-grid__cell_* family so
+   the /scope page's badges/pills survive the DataGrid deletion. Used by
+   scopeColumns.tsx; named under grid__Cell_ so they belong to the new
+   primitive's surface, not the dead scaffold. (Per-page cell chrome legit-
+   imately lives in the page layer; the primitive owns row/tree look only.) */
+.grid__Cell_Id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.grid__Cell_IdText {
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 12px;
+  color: var(--accent, #6366f1);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grid__Cell_TypeBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 16px;
+  padding: 0 4px;
+  background: #6b7280;
+  color: #fff;
+  border-radius: 3px;
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.grid__Cell_StatusPills {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.grid__Cell_StatusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 18px;
+  border: 1px solid var(--border-row, rgba(0, 0, 0, 0.12));
+  border-radius: 3px;
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 11px;
+  color: var(--ink-muted, #777);
+  background: transparent;
+}
+.grid__Cell_StatusPill--active {
+  background: var(--accent-muted, #c7d2fe);
+  border-color: var(--accent, #6366f1);
+  color: var(--accent, #4338ca);
+  font-weight: 700;
+}
+.grid__Cell_OwnerPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--surface-sunken, #f3f3f5);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--ink, #111);
+}
+.grid__Cell_Summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ── DataContainer (Layer 1) — dumb frame: header band + zero-padding viewport.
+   Renders four header strings pushed UP by the content via render-prop; the
+   viewport is empty and owns nothing else. */
+.data-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.data-container__Header {
+  flex: 0 0 auto;
+  padding: var(--space-4, 16px) var(--space-5, 20px);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.data-container__Title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+.data-container__Description {
+  font-size: 13px;
+  color: var(--text-secondary, #5c5c5c);
+  margin: 2px 0 0;
+}
+.data-container__SubTitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #5c5c5c);
+  margin: 8px 0 0;
+}
+.data-container__SubDescription {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+  margin: 2px 0 0;
+}
+.data-container__Viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0;
+}

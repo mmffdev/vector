@@ -287,3 +287,103 @@ func TestValidateDoc_RejectsStrategicFieldOnWorkForm(t *testing.T) {
 		t.Fatalf("expected ErrUnknownField, got %v", err)
 	}
 }
+
+// ─── Vertical-merge geometry (validateMergeGeometry) ─────────────────────────
+//
+// A merged column carries rowSpan>1 on the top cell and exactly rowSpan-1
+// tombstones beneath it (AbsorbedBy == top cell ID, FieldKey nil). These pin
+// the SERVER-IS-THE-GATE checks for hand-crafted / tampered payloads. They use
+// validateDocStructure so they isolate the GEOMETRY check from the compulsory
+// gate (a 2-row band can't place the whole compulsory set). See
+// docs/superpowers/specs/2026-05-31-flb-vertical-merge-design.md.
+
+// mergedBand2 builds a valid 2-row 30-30-30 band with the MIDDLE column merged
+// down (rowSpan 2 + one tombstone). The fields are all valid story keys.
+func mergedBand2() LayoutDoc {
+	return LayoutDoc{Rows: []Row{
+		{ID: "r1", Template: Template303030, Cells: []Cell{
+			{ID: "a1", FieldKey: strptr("title"), Span: 33},
+			{ID: "a2", FieldKey: strptr("status"), Span: 33, RowSpan: 2},
+			{ID: "a3", FieldKey: strptr("owner"), Span: 33},
+		}},
+		{ID: "r2", Template: Template303030, Cells: []Cell{
+			{ID: "b1", FieldKey: strptr("flow_state_name"), Span: 33},
+			{ID: "b2", FieldKey: nil, Span: 33, AbsorbedBy: "a2"},
+			{ID: "b3", FieldKey: nil, Span: 33},
+		}},
+	}}
+}
+
+func TestValidateMerge_AcceptsValidBand(t *testing.T) {
+	if err := validateDocStructure(mergedBand2(), nil, artefactitems.SlotStory, artefactitems.ScopeWork); err != nil {
+		t.Fatalf("expected valid merged band to pass, got %v", err)
+	}
+}
+
+func TestValidateMerge_RejectsMissingTombstone(t *testing.T) {
+	doc := mergedBand2()
+	doc.Rows[1].Cells[1].AbsorbedBy = "" // absorbed cell no longer points at owner
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for missing tombstone")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}
+
+func TestValidateMerge_RejectsTombstoneWithField(t *testing.T) {
+	doc := mergedBand2()
+	doc.Rows[1].Cells[1].FieldKey = strptr("status") // tombstone must be empty
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for tombstone carrying a field")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}
+
+func TestValidateMerge_RejectsOverrun(t *testing.T) {
+	doc := mergedBand2()
+	doc.Rows[0].Cells[1].RowSpan = 3 // claims 3 rows but only 2 exist
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for overrunning rowSpan")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}
+
+func TestValidateMerge_RejectsDanglingTombstone(t *testing.T) {
+	doc := mergedBand2()
+	doc.Rows[0].Cells[1].RowSpan = 0 // owner no longer spans, tombstone still cites it
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for dangling tombstone")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}
+
+func TestValidateMerge_RejectsSpanAcrossTemplateChange(t *testing.T) {
+	doc := mergedBand2()
+	doc.Rows[1].Template = Template100
+	doc.Rows[1].Cells = []Cell{{ID: "b1", FieldKey: nil, Span: 100, AbsorbedBy: "a2"}}
+	if err := validateDocStructure(doc, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err == nil {
+		t.Fatal("expected ErrBadTemplate for span across template change")
+	} else if ve, ok := err.(*ValidationError); !ok || ve.Err != ErrBadTemplate {
+		t.Fatalf("expected ErrBadTemplate, got %v", err)
+	}
+}
+
+// A merged COMPULSORY field is still "placed" exactly once — the full
+// compulsory layout with its first field merged down must still pass the gate.
+func TestValidateMerge_MergedCompulsoryFieldCountsForGate(t *testing.T) {
+	doc := compulsoryLayout(artefactitems.SlotStory, artefactitems.ScopeWork)
+	owner := doc.Rows[0].Cells[0]
+	doc.Rows[0].Cells[0].RowSpan = 2
+	// Insert an absorbed tombstone row directly beneath row 0.
+	tomb := Row{
+		ID: "rTomb", Template: Template100,
+		Cells: []Cell{{ID: "cTomb", FieldKey: nil, Span: 100, AbsorbedBy: owner.ID}},
+	}
+	doc.Rows = append(doc.Rows[:1], append([]Row{tomb}, doc.Rows[1:]...)...)
+	if err := validateDoc(doc, nil, nil, artefactitems.SlotStory, artefactitems.ScopeWork); err != nil {
+		t.Fatalf("merged compulsory field should satisfy the gate, got %v", err)
+	}
+}
