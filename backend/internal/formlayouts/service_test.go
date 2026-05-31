@@ -437,3 +437,36 @@ func TestValidateHMerge_RejectsOverrun(t *testing.T) {
 		t.Fatalf("expected ErrBadTemplate, got %v", err)
 	}
 }
+
+// wideTallBlock builds a valid 2×2 block (a colSpan-2 + rowSpan-2 cell), like the
+// "Blocked" layout: a wide cell merged DOWN into an equally-wide empty. Its
+// bottom-right tombstone's owner sits DIAGONALLY up-left — the case the reverse
+// owner-check previously rejected with a 422. Origin: 2026-05-31.
+func wideTallBlock() LayoutDoc {
+	return LayoutDoc{Rows: []Row{
+		{ID: "r1", Template: Template303030, Cells: []Cell{
+			{ID: "a1", FieldKey: strptr("title"), Span: 33},
+			{ID: "a2", FieldKey: strptr("status"), Span: 66, ColSpan: 2, RowSpan: 2},
+			{ID: "a3", FieldKey: nil, Span: 33, AbsorbedBy: "a2"},
+		}},
+		{ID: "r2", Template: Template303030, Cells: []Cell{
+			{ID: "b1", FieldKey: strptr("owner"), Span: 33},
+			{ID: "b2", FieldKey: nil, Span: 66, ColSpan: 2, AbsorbedBy: "a2"},
+			{ID: "b3", FieldKey: nil, Span: 33, AbsorbedBy: "a2"}, // diagonal owner
+		}},
+	}}
+}
+
+func TestValidateMerge_AcceptsWideTallBlock(t *testing.T) {
+	if err := validateMergeGeometry(wideTallBlock()); err != nil {
+		t.Fatalf("expected a valid 2×2 block to pass (diagonal owner), got %v", err)
+	}
+}
+
+func TestValidateMerge_RejectsBlockMissingCornerTombstone(t *testing.T) {
+	doc := wideTallBlock()
+	doc.Rows[1].Cells[2].AbsorbedBy = "" // bottom-right corner no longer claimed
+	if err := validateMergeGeometry(doc); err == nil {
+		t.Fatal("expected ErrBadTemplate for an under-tombstoned 2×2 block")
+	}
+}

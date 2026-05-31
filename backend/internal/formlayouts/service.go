@@ -303,78 +303,81 @@ func validateMergeGeometry(doc LayoutDoc) error {
 			if cell.isTombstone() {
 				continue // validated from the owner's side below
 			}
-			// VERTICAL: cell with RowSpan > 1 — verify its column tombstones.
-			if span := cell.effectiveRowSpan(); span > 1 {
-				for k := 1; k <= span-1; k++ {
-					tr := ri + k
-					if tr >= len(rows) {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns the layout (rowSpan %d)", cell.ID, span)}
-					}
-					below := rows[tr]
-					if below.Template != row.Template {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q spans across a template change", cell.ID)}
-					}
-					if ci >= colCount(below) {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q has no column %d in row %d", cell.ID, ci, tr)}
-					}
-					t := below.Cells[ci]
-					if t.AbsorbedBy != cell.ID {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q missing tombstone at row %d col %d", cell.ID, tr, ci)}
-					}
-					if t.FieldKey != nil {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d must be empty", tr, ci)}
-					}
-				}
+			// A merged cell owns the RECTANGLE [ri..ri+rowSpan-1] × [ci..ci+colSpan-1].
+			// Verify EVERY position in that rectangle (except the owner itself) is a
+			// tombstone pointing back to the owner — this covers a plain vertical
+			// merge (colSpan 1), a plain horizontal merge (rowSpan 1), AND a full
+			// 2×2+ block where the bottom-right corner is a diagonal tombstone
+			// (the case the per-axis check missed → under-tombstoned blocks slipped
+			// through). The band must stay rectangular and same-template throughout.
+			rspan := cell.effectiveRowSpan()
+			cspan := cell.effectiveColSpan()
+			if rspan == 1 && cspan == 1 {
+				continue
 			}
-			// HORIZONTAL: cell with ColSpan > 1 — verify its in-row tombstones.
-			if cspan := cell.effectiveColSpan(); cspan > 1 {
-				for k := 1; k <= cspan-1; k++ {
-					tc := ci + k
-					if tc >= colCount(row) {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns the row (colSpan %d)", cell.ID, cspan)}
+			for dr := 0; dr < rspan; dr++ {
+				tr := ri + dr
+				if tr >= len(rows) {
+					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns the layout (rowSpan %d)", cell.ID, rspan)}
+				}
+				below := rows[tr]
+				if below.Template != row.Template {
+					return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q spans across a template change", cell.ID)}
+				}
+				for dc := 0; dc < cspan; dc++ {
+					if dr == 0 && dc == 0 {
+						continue // the owner cell itself
 					}
-					t := row.Cells[tc]
+					tc := ci + dc
+					if tc >= colCount(below) {
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q overruns row %d (col %d)", cell.ID, tr, tc)}
+					}
+					t := below.Cells[tc]
 					if t.AbsorbedBy != cell.ID {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q missing tombstone at row %d col %d", cell.ID, ri, tc)}
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("merged cell %q missing tombstone at row %d col %d", cell.ID, tr, tc)}
 					}
 					if t.FieldKey != nil {
-						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d must be empty", ri, tc)}
+						return &ValidationError{Err: ErrBadTemplate, Reason: fmt.Sprintf("tombstone at row %d col %d must be empty", tr, tc)}
 					}
 				}
 			}
 		}
 	}
 
-	// Reverse check: every tombstone must be claimed by a spanning owner — either
-	// ABOVE it in the same column (vertical) or to its LEFT in the same row
-	// (horizontal) — whose span actually reaches it (no dangling refs).
+	// Reverse check: every tombstone must be claimed by a spanning owner whose
+	// RECTANGLE actually covers the tombstone's position. The owner may sit
+	// directly above (vertical merge), directly left (horizontal merge), OR
+	// DIAGONALLY up-and-left (a 2×2+ block — the owner is the rectangle's
+	// top-left cell, so a bottom-right tombstone is neither in the owner's column
+	// nor its row). We therefore locate the owner by ID anywhere above-or-equal
+	// in row and at-or-left in column, then verify its rowSpan×colSpan rectangle
+	// reaches (ri,ci). This accepts the width/height-tiling 2×2 blocks the client
+	// now produces (wide→wide, tall→tall) — see mergeTransitions.ts.
 	for ri, row := range rows {
 		for ci, cell := range row.Cells {
 			if !cell.isTombstone() {
 				continue
 			}
 			found := false
-			// vertical owner: above, same column.
-			for up := ri - 1; up >= 0 && !found; up-- {
-				if ci >= len(rows[up].Cells) {
-					break
-				}
-				cand := rows[up].Cells[ci]
-				if cand.ID == cell.AbsorbedBy {
-					if up+cand.effectiveRowSpan()-1 >= ri {
+			// scan the rectangle of candidate owners: rows ri..0 (up), cols ci..0
+			// (left). The owner is the first cell whose ID matches AND whose span
+			// rectangle covers (ri,ci).
+			for up := ri; up >= 0 && !found; up-- {
+				for left := ci; left >= 0 && !found; left-- {
+					if up == ri && left == ci {
+						continue // skip the tombstone itself
+					}
+					if left >= len(rows[up].Cells) {
+						continue
+					}
+					cand := rows[up].Cells[left]
+					if cand.ID != cell.AbsorbedBy {
+						continue
+					}
+					// owner found — does its rectangle actually cover (ri,ci)?
+					if up+cand.effectiveRowSpan()-1 >= ri && left+cand.effectiveColSpan()-1 >= ci {
 						found = true
 					}
-					break
-				}
-			}
-			// horizontal owner: left, same row.
-			for left := ci - 1; left >= 0 && !found; left-- {
-				cand := row.Cells[left]
-				if cand.ID == cell.AbsorbedBy {
-					if left+cand.effectiveColSpan()-1 >= ci {
-						found = true
-					}
-					break
 				}
 			}
 			if !found {
