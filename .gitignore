@@ -60,3 +60,6 @@ dev/tests/playwright/test-results/
 # SaaS account credentials (never commit)
 docs/saasAccounts/
 
+
+# Brainstorming visual companion mockups
+.superpowers/
