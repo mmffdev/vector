@@ -1223,9 +1223,12 @@ function CanvasCell({
           uniform circular buttons, same size + colour, wrapped in a same-colour
           pill (a single button reads as one circle, two+ as a pill). Only the
           actions that apply to THIS cell render — split-row when tall, split-col
-          when wide, put-back (remove) whenever a field is placed. The cluster is
-          centred over the cell; on an empty cell it doesn't render. */}
+          when wide, put-back (remove) whenever a field is placed. On an EMPTY
+          cell the pill carries a "Drop Here" label to the LEFT of any button
+          (the drop hint lives in the same centred pill). The cluster is centred
+          over the cell. */}
       <CellActions
+        isEmpty={!isFilled}
         canSplitRow={isTall}
         canSplitCol={isWide}
         canRemove={isFilled}
@@ -1237,10 +1240,14 @@ function CanvasCell({
   );
 }
 
-// CellActions — the centred pill of per-field action buttons. Empty if no action
-// applies (so it never paints on a bare empty cell). Each button is a uniform
-// circle; the shared pill wrapper gives them one same-colour border + 3px pad.
+// CellActions — the centred pill of per-field controls. On an EMPTY cell it leads
+// with a "Drop Here" label; then any applicable buttons (un-merge rows/cols when
+// merged, put-back when filled). Each button is a uniform circle; the shared pill
+// wrapper gives them one same-colour border + 3px pad. Renders nothing only if
+// there is neither a label nor a button (i.e. a filled, unmerged cell shows just
+// the put-back button; an empty unmerged cell shows just the "Drop Here" label).
 function CellActions({
+  isEmpty,
   canSplitRow,
   canSplitCol,
   canRemove,
@@ -1248,6 +1255,7 @@ function CellActions({
   onSplitH,
   onRemove,
 }: {
+  isEmpty: boolean;
   canSplitRow: boolean;
   canSplitCol: boolean;
   canRemove: boolean;
@@ -1255,11 +1263,12 @@ function CellActions({
   onSplitH: () => void;
   onRemove: () => void;
 }) {
-  if (!canSplitRow && !canSplitCol && !canRemove) return null;
+  if (!isEmpty && !canSplitRow && !canSplitCol && !canRemove) return null;
   // Stop drag from starting when interacting with the actions.
   const guard = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
   return (
     <div className="flb-cell__Actions" onPointerDown={guard}>
+      {isEmpty && <span className="flb-cell__Actions_Label">Drop Here</span>}
       {canSplitRow && (
         <button
           type="button"
@@ -1298,14 +1307,11 @@ function CellActions({
   );
 }
 
-// AnchorPoint — the dashed-border empty-slot affordance: just the
-// "Drop a field here" text (no circle / + icon).
+// AnchorPoint — the dashed-border empty-slot affordance. The drop hint text now
+// lives in the centred CellActions pill ("Drop Here"), so this is just the
+// dashed frame that gives the empty target its shape.
 function AnchorPoint() {
-  return (
-    <div className="flb-anchor" aria-hidden="true">
-      <span className="flb-anchor__Hint">Drop a field here</span>
-    </div>
-  );
+  return <div className="flb-anchor" aria-hidden="true" />;
 }
 
 function PlacedChip({

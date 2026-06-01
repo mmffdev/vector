@@ -20899,6 +20899,16 @@ tr.is-editing {
   border: 1px solid var(--border-panel, #C8C3BB);
   box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 }
+/* "Drop Here" hint inside the pill on an empty cell — sits to the LEFT of any
+   button; the pill stays centred and grows to wrap label + button(s). A little
+   left padding so the text isn't tight against the pill's rounded edge. */
+.flb-cell__Actions_Label {
+  flex: 0 0 auto;
+  padding: 0 4px 0 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  color: var(--ink-subtle, #6b6b73); white-space: nowrap;
+  user-select: none;
+}
 /* one uniform circular action button — same size + colour for every action,
    no dark outline (the pill carries the only border). */
 .flb-cell__Action {
@@ -21000,19 +21010,9 @@ tr.is-editing {
    contained shape on every cell — filled or empty, poled or not. (Earlier we
    zeroed poled edges because the pre-inset anchor sat directly under the stripe;
    the clearance gap made that unnecessary.) */
-.flb-anchor__Dot {
-  flex: 0 0 auto;
-  width: 28px; height: 28px; border-radius: var(--radius-full, 999px);
-  background: var(--ink-subtle, #b8b2a6);
-  display: flex; align-items: center; justify-content: center;
-  transition: background 120ms ease, transform 120ms ease;
-}
-.flb-slot-over .flb-anchor__Dot { background: var(--accent, #1a1a1a); transform: scale(1.12); }
-.flb-anchor__Plus { color: #fff; font-size: 18px; font-weight: 600; line-height: 1; }
-.flb-anchor__Hint {
-  font-size: 12px; color: var(--ink-subtle, #9b9b9b); letter-spacing: 0.01em;
-}
-.flb-slot-over .flb-anchor__Hint { color: var(--accent, #1a1a1a); }
+/* (The empty-cell "Drop a field here" text + dot are gone — the drop hint now
+   reads "Drop Here" inside the centred .flb-cell__Actions pill. The .flb-anchor
+   dashed frame above is all that remains of the empty affordance.) */
 
 /* ── Field card (shared: sidebar picker + canvas placed cell) ──
    Rounded card with a left ACCENT BAR THAT FOLLOWS THE RADIUS (a coloured
