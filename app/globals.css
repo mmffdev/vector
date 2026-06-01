@@ -20859,28 +20859,30 @@ tr.is-editing {
   min-height: 36px;
   padding: 3px;                         /* the requested 3px pad inside the pill */
   border-radius: var(--radius-full, 999px);
-  background: var(--surface, #fff);
-  /* pill border is the SAME colour as the buttons (the panel-border token). */
-  border: 1px solid var(--border-panel, #C8C3BB);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  /* BLACK pill wrapper (Rick, 2026-06-01) — the buttons sit on it as white
+     circles (page bg), so each control reads as a white circle on black. */
+  background: var(--ink, #1c1c22);
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
 }
 /* "Drop Here" hint inside the pill on an empty cell — sits to the LEFT of any
    button; the pill stays centred and grows to wrap label + button(s). A little
-   left padding so the text isn't tight against the pill's rounded edge. */
+   left padding so the text isn't tight against the pill's rounded edge. Light
+   text so it reads on the black pill. */
 .flb-cell__Actions_Label {
   flex: 0 0 auto;
-  padding: 0 4px 0 8px;
+  padding: 0 4px 0 10px;
   font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
-  color: var(--ink-subtle, #6b6b73); white-space: nowrap;
+  color: var(--surface, #fff); white-space: nowrap;
   user-select: none;
 }
-/* one uniform circular action button — same size + colour for every action,
-   no dark outline (the pill carries the only border). */
+/* one uniform circular action button — same size for every action, the PAGE BG
+   (white) as its background so it reads as a white circle on the black pill. */
 .flb-cell__Action {
   flex: 0 0 auto;
   width: 28px; height: 28px; padding: 0;
   border: none; border-radius: var(--radius-full, 999px);
-  background: transparent;
+  background: var(--surface, #fff);
   color: var(--ink-subtle, #6b6b73);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
