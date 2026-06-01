@@ -54,6 +54,7 @@ import {
 import { ROW_TEMPLATES, TEMPLATE_SPANS } from "@/app/lib/formLayoutsApi";
 import { useSentinel } from "@/app/sentinel";
 import CustomFieldEditForm from "@/app/components/CustomFields/CustomFieldEditForm";
+import { PopUpConfirm } from "@/app/components/PopUpConfirm";
 import { FormLayoutRenderer, type RenderCellArgs } from "./FormLayoutRenderer";
 import type { MergeGroup } from "./mergeTransitions";
 import { normalizeOwnership } from "./mergeTransitions";
@@ -179,6 +180,7 @@ export function FormBuilderShell({
   //   isDirty below to produce the (Unsaved/Draft/Live) badge.
   const [savedStatus, setSavedStatus] = useState<"none" | "draft" | "live">("none");
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   // In-builder type switch: when the author picks a different type with unsaved
   // edits, we stash the target here and raise the discard confirm; on confirm we
   // call onSelectType(pendingTypeId). Null = no pending switch.
@@ -397,6 +399,37 @@ export function FormBuilderShell({
     onClose();
   }
 
+  // Reset: clear the in-memory canvas only. This returns every placed field to
+  // the sidebar because placedKeys is derived from rows. It deliberately does
+  // NOT save, draft, or move the baseline; after reset, the cleared canvas is
+  // still an unsaved edit until the author explicitly saves.
+  function handleResetForm() {
+    if (state.rows.length === 0) return;
+    setConfirmReset(true);
+  }
+
+  function confirmResetForm() {
+    state.reset([]);
+    setPreviewing(false);
+    setSaveError(null);
+    setConfirmReset(false);
+  }
+
+  function dismissCancelConfirm() {
+    setConfirmCancel(false);
+    setPendingTypeId(null);
+  }
+
+  function finishCancelConfirm() {
+    if (pendingTypeId) {
+      const next = pendingTypeId;
+      setPendingTypeId(null);
+      onSelectType?.(next);
+    } else {
+      onClose();
+    }
+  }
+
   // In-builder type switch: re-target the open builder to another artefact type
   // for the SAME node, without exiting. Guards unsaved work — a dirty canvas
   // raises the discard confirm (which, on confirm, performs the stashed switch);
@@ -552,6 +585,15 @@ export function FormBuilderShell({
             <button
               type="button"
               className="flb-btn flb-btn-ghost"
+              onClick={handleResetForm}
+              disabled={loading || saving || draftSaving || state.rows.length === 0}
+              title="Clear the canvas without saving"
+            >
+              Reset form
+            </button>
+            <button
+              type="button"
+              className="flb-btn flb-btn-ghost"
               onClick={handleCancel}
               disabled={saving || draftSaving}
             >
@@ -669,23 +711,23 @@ export function FormBuilderShell({
       )}
 
       {confirmCancel && (
-        <div className="flb-confirm" role="dialog" aria-modal="true" aria-label="Discard unsaved changes">
-          <div
-            className="flb-confirm__Scrim"
-            onClick={() => { setConfirmCancel(false); setPendingTypeId(null); }}
-          />
-          <div className="flb-confirm__Card">
-            <h3 className="flb-confirm__Title">Discard unsaved changes?</h3>
-            <p className="flb-confirm__Body">
+        <PopUpConfirm
+          ariaLabel="Discard unsaved changes"
+          title="Discard unsaved changes?"
+          onDismiss={dismissCancelConfirm}
+          body={
+            <>
               You have unsaved changes to this layout.{" "}
               {pendingTypeId ? "Switching forms" : "Leaving"} now loses them.
               Use <strong>Save as Draft</strong> if you want to come back to it.
-            </p>
-            <div className="flb-confirm__Actions">
+            </>
+          }
+          actions={
+            <>
               <button
                 type="button"
                 className="flb-btn flb-btn-ghost"
-                onClick={() => { setConfirmCancel(false); setPendingTypeId(null); }}
+                onClick={dismissCancelConfirm}
               >
                 Keep editing
               </button>
@@ -695,14 +737,7 @@ export function FormBuilderShell({
                 onClick={async () => {
                   setConfirmCancel(false);
                   await handleSaveDraft();
-                  // pendingTypeId → switch to the new form; else close the overlay.
-                  if (pendingTypeId) {
-                    const next = pendingTypeId;
-                    setPendingTypeId(null);
-                    onSelectType?.(next);
-                  } else {
-                    onClose();
-                  }
+                  finishCancelConfirm();
                 }}
               >
                 Save as Draft &amp; {pendingTypeId ? "switch" : "close"}
@@ -712,20 +747,41 @@ export function FormBuilderShell({
                 className="flb-btn flb-btn-danger"
                 onClick={() => {
                   setConfirmCancel(false);
-                  if (pendingTypeId) {
-                    const next = pendingTypeId;
-                    setPendingTypeId(null);
-                    onSelectType?.(next);
-                  } else {
-                    onClose();
-                  }
+                  finishCancelConfirm();
                 }}
               >
                 Discard &amp; {pendingTypeId ? "switch" : "close"}
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
+      )}
+
+      {confirmReset && (
+        <PopUpConfirm
+          ariaLabel="Reset form layout"
+          title="Reset this form?"
+          onDismiss={() => setConfirmReset(false)}
+          body="Resetting clears every row on the canvas and returns placed fields to the field picker. It will not save or publish anything."
+          actions={
+            <>
+              <button
+                type="button"
+                className="flb-btn flb-btn-ghost"
+                onClick={() => setConfirmReset(false)}
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                className="flb-btn flb-btn-danger"
+                onClick={confirmResetForm}
+              >
+                Reset form
+              </button>
+            </>
+          }
+        />
       )}
     </div>
   );

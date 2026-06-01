@@ -60,6 +60,18 @@ describe("useFormBuilderState — undo / redo", () => {
     expect(result.current.canRedo).toBe(false);
   });
 
+  it("reset to empty returns placed fields to the picker", () => {
+    const { result } = renderHook(() => useFormBuilderState([]));
+    act(() => result.current.addRow("100"));
+    act(() => result.current.placeField("Title", { rowIndex: 0, cellIndex: 0 }));
+    expect(result.current.placedKeys.has("Title")).toBe(true);
+
+    act(() => result.current.reset([]));
+
+    expect(result.current.rows).toHaveLength(0);
+    expect(result.current.placedKeys.has("Title")).toBe(false);
+  });
+
   it("undo/redo round-trips a vertical merge", () => {
     const { result } = renderHook(() => useFormBuilderState([]));
     act(() => result.current.addRow("30-30-30"));

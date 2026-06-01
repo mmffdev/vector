@@ -21439,17 +21439,20 @@ tr.is-editing {
 }
 .flb-btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
 
-/* Form Layout Builder — Cancel "are you sure" confirm dialog */
+/* Shared confirm popup — used by Form Layout Builder cancel/reset flows. */
+.popup-confirm,
 .flb-confirm {
   position: fixed; inset: 0;
   z-index: 1300;
   display: flex; align-items: center; justify-content: center;
   padding: var(--space-5, 20px);
 }
+.popup-confirm__Scrim,
 .flb-confirm__Scrim {
   position: absolute; inset: 0;
   background: rgba(0,0,0,0.42);
 }
+.popup-confirm__Card,
 .flb-confirm__Card {
   position: relative;
   width: min(440px, 94vw);
@@ -21459,8 +21462,11 @@ tr.is-editing {
   box-shadow: 0 20px 60px rgba(0,0,0,0.28);
   padding: var(--space-5, 20px);
 }
+.popup-confirm__Title,
 .flb-confirm__Title { font-size: 16px; font-weight: 700; margin: 0 0 var(--space-2, 8px); color: var(--ink, #1a1a1a); }
+.popup-confirm__Body,
 .flb-confirm__Body { font-size: 13px; line-height: 1.5; color: var(--text-secondary, #5c5c5c); margin: 0 0 var(--space-5, 20px); }
+.popup-confirm__Actions,
 .flb-confirm__Actions { display: flex; gap: var(--space-2, 8px); justify-content: flex-end; flex-wrap: wrap; }
 
 /* ══════════════════════════════════════════════════════════════════════════
