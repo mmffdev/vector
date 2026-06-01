@@ -308,20 +308,37 @@ export function useFormBuilderState(initial: FormRow[]): FormBuilderState {
     });
   }, []);
 
+  // Every merge/split runs through normalizeOwnership AFTER the raw transform.
+  // The transforms grow/shrink one owner rectangle at a time; a transform that
+  // touches a cell which was ALSO an owner on the other axis (e.g. a vertical
+  // merge into a cell that horizontally owns a wide block) can leave a tombstone
+  // pointing at an id that is no longer an owner — the renderer skips it and the
+  // cell VANISHES. normalizeOwnership is idempotent + fail-closed: it rebuilds
+  // every tombstone from the surviving owners' spans and revives any orphan to a
+  // plain empty cell, so the whole orphan-vanish class is closed at the seam,
+  // not patched per-path. (Origin 2026-06-01: "merge r1+r2 → r3 vanished",
+  // repeatable across columns — same root as the wide-cell-split vanish.)
+  // normalizeIfChanged runs normalizeOwnership ONLY when the raw transform
+  // actually mutated the document (reference changed). A no-op transform returns
+  // `prev` unchanged, so setRows's reference-equality no-op guard still suppresses
+  // an empty history entry — normalize must not allocate on a no-op.
+  const normalizeIfChanged = (prev: FormRow[], next: FormRow[]) =>
+    next === prev ? prev : normalizeOwnership(next);
+
   const mergeDown = useCallback((addr: CellAddr) => {
-    setRows((prev) => mergeDownRows(prev, addr));
+    setRows((prev) => normalizeIfChanged(prev, mergeDownRows(prev, addr)));
   }, []);
 
   const splitCell = useCallback((addr: CellAddr) => {
-    setRows((prev) => splitCellRows(prev, addr));
+    setRows((prev) => normalizeIfChanged(prev, splitCellRows(prev, addr)));
   }, []);
 
   const mergeRight = useCallback((addr: CellAddr) => {
-    setRows((prev) => mergeRightRows(prev, addr));
+    setRows((prev) => normalizeIfChanged(prev, mergeRightRows(prev, addr)));
   }, []);
 
   const splitCellH = useCallback((addr: CellAddr) => {
-    setRows((prev) => splitCellHRows(prev, addr));
+    setRows((prev) => normalizeIfChanged(prev, splitCellHRows(prev, addr)));
   }, []);
 
   // reset replaces the document wholesale (draft load / reopen) and CLEARS the
