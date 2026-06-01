@@ -1149,7 +1149,7 @@ function PreviewField({
   const multiline = dataType === "richtext" || dataType === "textarea";
   const hasValue = value !== undefined && value !== "";
   return (
-    <label className="flb-preview__Field">
+    <label className={"flb-preview__Field" + (multiline ? " flb-preview__Field-multiline" : "")}>
       <span className="flb-preview__Field_Label">{label}</span>
       {multiline ? (
         <textarea

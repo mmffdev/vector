@@ -22,6 +22,9 @@ import {
   effectiveColSpan,
   isTombstone,
   poleEdgesFor,
+  mergeEdgesPass,
+  blockRectOf,
+  normalizeOwnership,
 } from "../mergeTransitions";
 
 // ── builders ──────────────────────────────────────────────────────────────
@@ -46,6 +49,24 @@ const row1 = (a: string | null): FormRow => ({
   cells: [cell(a, 100)],
 });
 
+const row252550 = (): FormRow => ({
+  id: `r${seq++}`,
+  template: "25-25-50",
+  cells: [cell(null, 25), cell(null, 25), cell(null, 50)],
+});
+
+const row502525 = (): FormRow => ({
+  id: `r${seq++}`,
+  template: "50-25-25",
+  cells: [cell(null, 50), cell(null, 25), cell(null, 25)],
+});
+
+function mergeRowFullWidth(rows: FormRow[], rowIndex: number): FormRow[] {
+  let next = mergeRight(rows, { rowIndex, cellIndex: 0 });
+  next = mergeRight(next, { rowIndex, cellIndex: 0 });
+  return next;
+}
+
 // ── seamsFor ────────────────────────────────────────────────────────────────
 
 describe("seamsFor", () => {
@@ -61,6 +82,109 @@ describe("seamsFor", () => {
   it("offers no seam across different templates", () => {
     const rows = [row3("A", "B", "C"), row1(null)];
     expect(seamsFor(rows)).toEqual([]);
+  });
+
+  it("offers full-width seams across same-slot template changes", () => {
+    let rows = [row252550(), row502525(), row252550()];
+    rows = mergeRowFullWidth(rows, 0);
+    rows = mergeRowFullWidth(rows, 1);
+    rows = mergeRowFullWidth(rows, 2);
+
+    expect(seamsFor(rows)).toContainEqual({ rowIndex: 0, colIndex: 0 });
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 });
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(2);
+    expect(rows[1].cells.every(isTombstone)).toBe(true);
+
+    expect(seamsFor(rows)).toContainEqual({ rowIndex: 1, colIndex: 0 });
+    rows = mergeDown(rows, { rowIndex: 1, cellIndex: 0 });
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(3);
+    expect(rows[2].cells.every(isTombstone)).toBe(true);
+  });
+
+  it("offers and executes an upward full-width merge across same-slot template changes", () => {
+    const lower = row502525();
+    lower.cells[0].fieldKey = "risk_score";
+    let rows = [row252550(), lower];
+    rows = mergeRowFullWidth(rows, 0);
+    rows = mergeRowFullWidth(rows, 1);
+
+    expect(seamsFor(rows)).toContainEqual({ rowIndex: 0, colIndex: 0 });
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 });
+
+    expect(rows[0].cells[0].fieldKey).toBe("risk_score");
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(2);
+    expect(effectiveColSpan(rows[0].cells[0])).toBe(3);
+    expect(rows[1].cells.every((cell) => cell.absorbedBy === rows[0].cells[0].id)).toBe(true);
+  });
+
+  it("blocks template-change seams that would cut through a neighbouring block", () => {
+    const rows = [row252550(), row502525()];
+    const seams = seamsFor(rows);
+    expect(seams).toContainEqual({ rowIndex: 0, colIndex: 2 }); // visible right half: exact 50-wide region
+    expect(seams).not.toContainEqual({ rowIndex: 0, colIndex: 0 }); // 25 would cut the lower 50
+    expect(seams).not.toContainEqual({ rowIndex: 0, colIndex: 1 }); // 25 starts inside the lower 50
+  });
+
+  it("uses the current merged shape, so 25+25 can merge with a 50 below", () => {
+    let rows = [row252550(), row502525()];
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 0 }); // visible row 1 col1+2 => 50-wide
+
+    expect(seamsFor(rows)).toContainEqual({ rowIndex: 0, colIndex: 0 });
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 });
+    rows = normalizeOwnership(rows);
+
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(2);
+    expect(effectiveColSpan(rows[0].cells[0])).toBe(2);
+    expect(rows[1].cells[0].absorbedBy).toBe(rows[0].cells[0].id);
+  });
+
+  it("offers and executes visible rows 14-17 col3/4 as one right-half chain", () => {
+    let rows = [row252550(), row252550(), row502525(), row252550()];
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 2 }); // visible rows 14-15 col3/4
+    rows = mergeRight(rows, { rowIndex: 2, cellIndex: 1 }); // visible row 16 col3/4
+
+    expect(seamsFor(rows)).toContainEqual({ rowIndex: 1, colIndex: 2 });
+    rows = mergeDown(rows, { rowIndex: 1, cellIndex: 2 });
+    rows = normalizeOwnership(rows);
+
+    expect(effectiveRowSpan(rows[0].cells[2])).toBe(3);
+    expect(rows[2].cells[1].absorbedBy).toBe(rows[0].cells[2].id);
+    expect(rows[2].cells[2].absorbedBy).toBe(rows[0].cells[2].id);
+
+    expect(seamsFor(rows)).toContainEqual({ rowIndex: 2, colIndex: 2 });
+    rows = mergeDown(rows, { rowIndex: 2, cellIndex: 2 });
+    rows = normalizeOwnership(rows);
+
+    expect(effectiveRowSpan(rows[0].cells[2])).toBe(4);
+    expect(rows[3].cells[2].absorbedBy).toBe(rows[0].cells[2].id);
+  });
+
+  it("lets visible rows 14-15 c2 merge into the c3/4 right block, then c1 into the 3x2 block", () => {
+    let rows = [row252550(), row252550()];
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 2 }); // right block: visible c3/4 across rows 14-15
+
+    expect(hSeamsFor(rows)).toContainEqual({ rowIndex: 0, colIndex: 2, side: "left" });
+    expect(hSeamsFor(rows)).not.toContainEqual({ rowIndex: 0, colIndex: 1 });
+    expect(hSeamsFor(rows)).not.toContainEqual({ rowIndex: 1, colIndex: 1 });
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 2 });
+    rows = normalizeOwnership(rows);
+
+    expect(effectiveRowSpan(rows[0].cells[1])).toBe(2);
+    expect(effectiveColSpan(rows[0].cells[1])).toBe(2); // raw c2+c3 = visible c2+c3+c4
+    expect(rows[0].cells[2].absorbedBy).toBe(rows[0].cells[1].id);
+    expect(rows[1].cells[1].absorbedBy).toBe(rows[0].cells[1].id);
+    expect(rows[1].cells[2].absorbedBy).toBe(rows[0].cells[1].id);
+
+    expect(hSeamsFor(rows)).toContainEqual({ rowIndex: 0, colIndex: 1, side: "left" });
+    expect(hSeamsFor(rows)).not.toContainEqual({ rowIndex: 1, colIndex: 0 });
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 1 });
+    rows = normalizeOwnership(rows);
+
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(2);
+    expect(effectiveColSpan(rows[0].cells[0])).toBe(3); // full visible c1+c2+c3+c4
+    expect(rows[0].cells[1].absorbedBy).toBe(rows[0].cells[0].id);
+    expect(rows[0].cells[2].absorbedBy).toBe(rows[0].cells[0].id);
+    expect(rows[1].cells.every((cell) => cell.absorbedBy === rows[0].cells[0].id)).toBe(true);
   });
 
   it("offers no seam when the lower cell is occupied", () => {
@@ -234,11 +358,11 @@ describe("splitCell", () => {
 
 // ── bandsOf ──────────────────────────────────────────────────────────────────
 
-describe("bandsOf (contiguous same-template runs — one grid per run)", () => {
-  it("groups ALL contiguous same-template rows into one band (merged or not)", () => {
+describe("bandsOf (contiguous same-slot runs — one grid per run)", () => {
+  it("groups ALL contiguous same-slot rows into one band (merged or not)", () => {
     // Two 30-30-30 rows + a 100 row → the two 3-col rows are ONE band (so their
     // columns align); the 100 row is its own band. This is the fix for the gap
-    // bug: same-template rows share one grid whether or not they're merged.
+    // bug: same-slot rows share one grid whether or not they're merged.
     const rows = [row3("A", "B", "C"), row3(null, null, null), row1(null)];
     const bands = bandsOf(rows);
     expect(bands).toHaveLength(2);
@@ -248,9 +372,14 @@ describe("bandsOf (contiguous same-template runs — one grid per run)", () => {
     expect(bands[1].startRow).toBe(2);
   });
 
-  it("a template change starts a new band", () => {
+  it("a column-count change starts a new band", () => {
     const rows = [row3("A", "B", "C"), row1(null), row3(null, null, null)];
     expect(bandsOf(rows).map((b) => b.subRowCount)).toEqual([1, 1, 1]);
+  });
+
+  it("same-slot template changes stay in one band on the shared micro-grid", () => {
+    const rows = [row252550(), row502525(), row252550()];
+    expect(bandsOf(rows).map((b) => b.subRowCount)).toEqual([3]);
   });
 
   it("merging within a run does NOT change the band grouping (still one grid)", () => {
@@ -599,70 +728,53 @@ describe("splitCellH (inverse of mergeRight)", () => {
   });
 });
 
-// ── dominant seams (golden rule: one joiner on the widest/tallest) ───────────
-// User rule (2026-05-31): "two cells can merge → detect the longest → make that
-// the owner → joiner in the centre." When competing seams share one empty band
-// at a boundary, only the widest (V) / tallest (H) owner's handle survives.
-import { dominantVSeams, dominantHSeams } from "../mergeTransitions";
-
 const row3070 = (l: string | null, r: string | null): FormRow => ({
   id: `r${seq++}`,
   template: "30-70",
   cells: [cell(l, 30), cell(r, 70)],
 });
 
-describe("dominantVSeams — widest owner wins a contiguous boundary run", () => {
-  it("drops the narrow ↕ when a wider cell competes at the same boundary", () => {
-    // wide-right 'Description' tall over rows 0-1; narrow-left stack L1/L2 with an
-    // empty cell beneath BOTH columns at row 2 → raw seamsFor offers a narrow ↕
-    // (col0, 30%) AND a wide ↕ (col1, 70%) at boundary row 1. Golden rule keeps
-    // only the WIDE one.
+describe("mergeEdgesPass — reciprocal exact-edge detection", () => {
+  it("emits executable seam adapters from the confirmed edge set", () => {
     let rows = [row3070("L1", "Description"), row3070("L2", null), row3070(null, null)];
     rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 }); // Description spans rows 0-1
-    // both seams exist raw…
-    expect(seamsFor(rows)).toEqual([
-      { rowIndex: 1, colIndex: 0 },
-      { rowIndex: 1, colIndex: 1 },
-    ]);
-    // …but only the wider (col1, span 70) survives the dominance filter.
-    expect(dominantVSeams(rows)).toEqual([{ rowIndex: 1, colIndex: 1 }]);
+    const edges = mergeEdgesPass(rows).filter((edge) => edge.kind === "V");
+    expect(edges.map((edge) => `${edge.rowIndex}:${edge.cellIndex}`)).toEqual(["1:0", "1:1"]);
+    for (const edge of edges) {
+      expect(mergeDown(rows, { rowIndex: edge.rowIndex, cellIndex: edge.cellIndex })).not.toBe(rows);
+    }
   });
 
-  it("keeps BOTH equal-width ↕ (no dominant when sizes match)", () => {
-    // equal thirds F1 | Desc(tall) | F2 over an empty bottom row → the two outer
-    // seams are equal width AND separated by the tall middle, so both survive.
-    let rows = [row3("F1", "Desc", "F2"), row3(null, null, null)];
-    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 });
-    expect(dominantVSeams(rows).sort((a, b) => a.colIndex - b.colIndex)).toEqual([
-      { rowIndex: 0, colIndex: 0 },
-      { rowIndex: 0, colIndex: 2 },
-    ]);
+  it("rejects a partial vertical edge that would cut a wider block", () => {
+    let rows = [row3(null, null, null), row3("colour", null, null)];
+    rows = mergeRight(rows, { rowIndex: 1, cellIndex: 0 }); // lower col0 spans cols 0-1
+    expect(effectiveColSpan(rows[1].cells[0])).toBe(2);
+    expect(seamsFor(rows).some((s) => s.rowIndex === 0 && s.colIndex === 0)).toBe(false);
   });
 
-  it("does not let a wide seam suppress a non-adjacent narrow one", () => {
-    // Two independent empty bands separated by a filled column must each keep
-    // their handle regardless of width — they don't compete.
-    const rows = [
-      { id: "ra", template: "30-30-30" as const, cells: [cell("A"), cell("KEEP"), cell("C")] },
-      { id: "rb", template: "30-30-30" as const, cells: [cell(null), cell("X"), cell(null)] },
-    ];
-    // col0 and col2 are empty below (independent bands), col1 filled → both ↕ kept
-    expect(dominantVSeams(rows).sort((a, b) => a.colIndex - b.colIndex)).toEqual([
-      { rowIndex: 0, colIndex: 0 },
-      { rowIndex: 0, colIndex: 2 },
-    ]);
-  });
-});
-
-describe("dominantHSeams — tallest owner wins a contiguous boundary run", () => {
-  it("keeps a lone horizontal seam untouched", () => {
-    // [A,B] / [C,empty]: C can merge right into empty → one ↔, no competitor.
+  it("offers one full-height horizontal edge for a 2x2 square, not row partials", () => {
     const c = (k: string | null) => cell(k, 50);
-    const rows = [
-      { id: "h0", template: "50-50" as const, cells: [c("A"), c("B")] },
-      { id: "h1", template: "50-50" as const, cells: [c("C"), c(null)] },
+    let rows: FormRow[] = [
+      { id: "sq0", template: "50-50", cells: [c("Left"), c(null)] },
+      { id: "sq1", template: "50-50", cells: [c(null), c(null)] },
     ];
-    expect(dominantHSeams(rows)).toEqual(hSeamsFor(rows));
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 }); // left spans rows 0-1
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 1 }); // right empty spans rows 0-1
+    const h = mergeEdgesPass(rows).filter((edge) => edge.kind === "H");
+    expect(h).toHaveLength(1);
+    expect(h[0]).toMatchObject({ kind: "H", rowIndex: 0, cellIndex: 0 });
+    expect(h[0].key).toBe("H:30:0:1");
+    expect(hSeamsFor(rows)).toEqual([{ rowIndex: 0, colIndex: 0 }]);
+  });
+
+  it("resolves tombstone positions back to the owning block rectangle", () => {
+    let rows = [row3("A", null, null), row3(null, null, null)];
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 0 });
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 });
+    const rect = blockRectOf(rows, 1, 1);
+    expect(rect?.addr).toEqual({ rowIndex: 0, cellIndex: 0 });
+    expect(rect?.rowSpan).toBe(2);
+    expect(rect?.colSpan).toBe(2);
   });
 });
 
@@ -728,7 +840,6 @@ describe("height-tiling horizontal merge (tall → tall)", () => {
 // every absorbedBy from the owners' spans so the doc always tiles cleanly.
 // Origin: 2026-05-31 — the live "sprint" 2×2 whose top-right corner pointed at
 // colour's tombstone (cell-41 -> cell-38 instead of -> cell-40).
-import { normalizeOwnership } from "../mergeTransitions";
 
 describe("normalizeOwnership", () => {
   it("repoints a stolen 2×2 corner to its true owner", () => {

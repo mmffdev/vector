@@ -17,7 +17,6 @@
 
 import React from "react";
 import type { FormRow, FormCell } from "@/app/lib/formLayoutsApi";
-import { TEMPLATE_SPANS } from "@/app/lib/formLayoutsApi";
 import {
   bandsOf,
   isTombstone,
@@ -27,7 +26,8 @@ import {
   hSeamsFor,
   poleEdgesFor,
   mergeGroupsOf,
-  type Band,
+  MICRO_BASE,
+  rowMicro,
   type MergeGroup,
 } from "./mergeTransitions";
 
@@ -97,13 +97,17 @@ export function FormLayoutRenderer({
     for (const seam of seamsFor(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
     return s;
   }, [rows, renderSeamJoin]);
-  // Horizontal mergeable seams keyed "rowIndex:colIndex" (the LEFT cell) — raw
-  // set, same as the poles (see seamSet above).
-  const hSeamSet = React.useMemo(() => {
+  // Horizontal mergeable seams keyed by rendered cell edge. Most render from the
+  // left cell's RIGHT edge; when the larger block is on the right, that block owns
+  // one centred LEFT-edge handle instead of each smaller left tile showing one.
+  const hSeamMap = React.useMemo(() => {
     if (!renderHSeamJoin) return null;
-    const s = new Set<string>();
-    for (const seam of hSeamsFor(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
-    return s;
+    const m = new Map<string, { rowIndex: number; colIndex: number; side: "left" | "right" }>();
+    for (const seam of hSeamsFor(rows)) {
+      const side = seam.side ?? "right";
+      m.set(`${seam.rowIndex}:${seam.colIndex}:${side}`, { rowIndex: seam.rowIndex, colIndex: seam.colIndex, side });
+    }
+    return m;
   }, [rows, renderHSeamJoin]);
   // Barber-pole edges: every mergeable boundary draws a stripe on BOTH cells it
   // joins (the RAW seam sets, not the dominant glyph set). Builder-only — gated
@@ -122,16 +126,9 @@ export function FormLayoutRenderer({
         // All three sub-grids (gutter | cells | aside) share the SAME row-track
         // template so a per-row number / handle lines up exactly with its row,
         // and a merged cell spans tracks without knocking neighbours out of
-        // alignment. One grid for the whole same-template run = columns always
-        // align (no inter-band gaps).
+        // alignment. One grid for the whole same-slot-count run = columns always
+        // align on the shared micro-grid (no inter-band gaps).
         const rowTracks = `repeat(${band.subRowCount}, minmax(72px, auto))`;
-        // Per-band micro layout: each template column's width in micro-tracks, and
-        // the cumulative micro-START line of each column (1-based grid line). A
-        // cell at column c starts at line microStart[c]+1 and spans the summed
-        // micro-widths of the columns it covers (colSpan).
-        const microW = templateMicro(band);
-        const microStart: number[] = [];
-        microW.reduce((acc, w, i) => { microStart[i] = acc; return acc + w; }, 0);
         return (
          <React.Fragment key={band.rows[0].id}>
           <div className="flb-grid__Band" data-template={band.rows[0].template}>
@@ -155,8 +152,13 @@ export function FormLayoutRenderer({
               }}
               data-subrows={band.subRowCount}
             >
-              {band.rows.map((row, localRow) =>
-                row.cells.map((cell, cellIndex) => {
+              {band.rows.map((row, localRow) => {
+                // Per-row micro layout: each row template gets its own column
+                // widths, but all land on the same 60-track master grid.
+                const microW = rowMicro(row);
+                const microStart: number[] = [];
+                microW.reduce((acc, w, i) => { microStart[i] = acc; return acc + w; }, 0);
+                return row.cells.map((cell, cellIndex) => {
                   if (isTombstone(cell)) return null; // covered by a spanning cell (V or H)
                   const rowIndex = band.startRow + localRow;
                   const span = effectiveRowSpan(cell);
@@ -168,9 +170,11 @@ export function FormLayoutRenderer({
                   // owner) wrapper, whose bottom edge is exactly there.
                   const bottomRow = rowIndex + span - 1;
                   const showSeam = seamSet?.has(`${bottomRow}:${cellIndex}`) ?? false;
-                  // Horizontal seam sits at the cell's RIGHT edge.
+                  // Horizontal seam sits at the selected owner edge: usually
+                  // the cell's RIGHT edge, or the larger right block's LEFT edge.
                   const rightCol = cellIndex + colSpan - 1;
-                  const showHSeam = hSeamSet?.has(`${rowIndex}:${rightCol}`) ?? false;
+                  const hSeamRight = hSeamMap?.get(`${rowIndex}:${rightCol}:right`) ?? null;
+                  const hSeamLeft = hSeamMap?.get(`${rowIndex}:${cellIndex}:left`) ?? null;
                   // Barber-pole edges for this cell, with GRID-PERIMETER
                   // suppression: a first-column cell never poles LEFT, a
                   // last-column never poles RIGHT, the top row never poles TOP,
@@ -208,9 +212,14 @@ export function FormLayoutRenderer({
                       }}
                     >
                       {renderCell({ row, cell, rowIndex, cellIndex })}
-                      {showHSeam && renderHSeamJoin && (
+                      {hSeamLeft && renderHSeamJoin && (
+                        <div className="flb-grid__HSeam flb-grid__HSeam-left">
+                          {renderHSeamJoin({ rowIndex: hSeamLeft.rowIndex, colIndex: hSeamLeft.colIndex })}
+                        </div>
+                      )}
+                      {hSeamRight && renderHSeamJoin && (
                         <div className="flb-grid__HSeam">
-                          {renderHSeamJoin({ rowIndex, colIndex: rightCol })}
+                          {renderHSeamJoin({ rowIndex: hSeamRight.rowIndex, colIndex: hSeamRight.colIndex })}
                         </div>
                       )}
                       {showSeam && renderSeamJoin && (
@@ -220,8 +229,8 @@ export function FormLayoutRenderer({
                       )}
                     </div>
                   );
-                }),
-              )}
+                });
+              })}
             </div>
             {renderRowAside && (
               <div
@@ -255,30 +264,6 @@ export function FormLayoutRenderer({
       })}
     </div>
   );
-}
-
-// ── Master micro-column grid ────────────────────────────────────────────────
-// Every band renders on the SAME fine grid of MICRO_BASE equal columns, so a
-// cell boundary lands on the same x in EVERY row regardless of its template —
-// e.g. a 25% boundary in a 25/25/50 row lines up with the 25% boundary in a
-// 50/25/25 row (Rick, 2026-06-01: "both should align to a shared grid"). 60 is
-// the magic base: every template percentage maps to a whole number of micro-
-// tracks — 25→15, 30→18, 33⅓→20, 50→30, 70→42, 75→45, 100→60.
-const MICRO_BASE = 60;
-
-// microWidths converts a template's percentage spans to integer micro-track
-// counts on the MICRO_BASE grid. The "33" spans are the 100/3 thirds, so they
-// resolve to MICRO_BASE/3 exactly (20) rather than round(33% · 60)=20 — same
-// here, but the explicit third keeps the sum exact at any base.
-function microWidths(spans: number[]): number[] {
-  return spans.map((s) => (s === 33 ? MICRO_BASE / 3 : Math.round((s / 100) * MICRO_BASE)));
-}
-
-// templateMicro returns the per-template-column micro widths for a band (from the
-// canonical template spans, NOT row[0]'s cells which an H-merge may have widened).
-function templateMicro(band: Band): number[] {
-  const spans = TEMPLATE_SPANS[band.rows[0].template] ?? band.rows[0].cells.map((c) => c.span);
-  return microWidths(spans);
 }
 
 // bandColumnTracks: the master micro-grid, identical for every band, so column

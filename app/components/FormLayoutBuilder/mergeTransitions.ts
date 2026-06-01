@@ -3,8 +3,8 @@
 // useFormBuilderState). The hook wraps these; tests exercise them directly.
 //
 // Model (see docs/superpowers/specs/2026-05-31-flb-vertical-merge-design.md):
-//   A column can be merged DOWN through adjacent rows that share the SAME
-//   template. The TOP cell carries rowSpan > 1; each covered cell below
+//   A cell can be merged DOWN through adjacent rows whose edge aligns on the
+//   shared micro-grid. The TOP cell carries rowSpan > 1; each covered cell below
 //   becomes a TOMBSTONE (fieldKey:null + absorbedBy = top cell id). Tombstones
 //   keep rows[] rectangular so indices never shift.
 //
@@ -17,6 +17,32 @@
 import type { FormRow, FormCell } from "@/app/lib/formLayoutsApi";
 import { TEMPLATE_SPANS } from "@/app/lib/formLayoutsApi";
 import type { CellAddr } from "./useFormBuilderState";
+
+// ── Master micro-column grid ────────────────────────────────────────────────
+// Every band renders on the SAME fine grid of MICRO_BASE equal columns, so a
+// cell boundary lands on the same x in EVERY row regardless of its template.
+// 60 is the magic base: every template percentage maps to a whole number of
+// micro-tracks — 25→15, 30→18, 33⅓→20, 50→30, 70→42, 75→45, 100→60.
+export const MICRO_BASE = 60;
+
+// microWidths converts a template's percentage spans to integer micro-track
+// counts on the MICRO_BASE grid. The "33" spans are the 100/3 thirds, so they
+// resolve to MICRO_BASE/3 exactly rather than relying on a rounded percentage.
+export function microWidths(spans: number[]): number[] {
+  return spans.map((s) => (s === 33 ? MICRO_BASE / 3 : Math.round((s / 100) * MICRO_BASE)));
+}
+
+// templateMicro returns the per-template-column micro widths for a band (from the
+// canonical template spans, NOT row[0]'s cells which an H-merge may have widened).
+export function templateMicro(band: Band): number[] {
+  const spans = TEMPLATE_SPANS[band.rows[0].template] ?? band.rows[0].cells.map((c) => c.span);
+  return microWidths(spans);
+}
+
+export function rowMicro(row: FormRow): number[] {
+  const spans = TEMPLATE_SPANS[row.template] ?? row.cells.map((c) => c.span);
+  return microWidths(spans);
+}
 
 /** rowSpan with the omitted (undefined/0) case normalised to 1. */
 export function effectiveRowSpan(cell: FormCell): number {
@@ -105,6 +131,14 @@ export interface Seam {
   colIndex: number;
 }
 
+// An HSeam is the vertical boundary between column `colIndex` and `colIndex+1`
+// in row `rowIndex`. The rotated join handle renders there.
+export interface HSeam {
+  rowIndex: number;
+  colIndex: number;
+  side?: "left" | "right"; // edge of this rendered cell; default/right keeps the legacy shape
+}
+
 // ownerOf finds the tall cell that controls position (rowIndex, colIndex):
 // either the cell itself (if real) or the cell in an earlier row whose id ===
 // this cell's absorbedBy. Returns the owner's address, or null if the position
@@ -129,165 +163,266 @@ function bottomRowOf(rows: FormRow[], owner: CellAddr): number {
   return owner.rowIndex + effectiveRowSpan(cell) - 1;
 }
 
-// seamsFor returns every mergeable seam in the layout. A seam at (rowIndex,
-// colIndex) is the boundary between row `rowIndex` and `rowIndex+1` in column
-// `colIndex`, where a click extends a cell into an EMPTY neighbour — so a
-// column can be merged all the way through a same-template run, growing a tall
-// cell DOWNWARD or UPWARD. Two mergeable shapes per boundary:
-//
-//   (a) merge DOWN — the cell owning (r,c) bottoms at row r AND the cell at
-//       (r+1,c) is empty → absorb it downward.
-//   (b) merge UP   — the cell at (r,c) is empty AND the cell at (r+1,c) is the
-//       TOP (owner) of a tall cell → absorb the empty cell upward into it.
-//
-// Each unique boundary is emitted once; the builder renders one ◇ handle and
-// mergeDown() resolves which direction applies. clicking calls
-// mergeDown({rowIndex, cellIndex}).
-export function seamsFor(rows: FormRow[]): Seam[] {
-  const seams: Seam[] = [];
-  for (let r = 0; r < rows.length - 1; r++) {
-    const top = rows[r];
-    const below = rows[r + 1];
-    if (top.template !== below.template) continue;
-    if (top.cells.length !== below.cells.length) continue;
-    for (let c = 0; c < top.cells.length; c++) {
-      const topCell = top.cells[c];
-      const belowCell = below.cells[c];
+export interface CellBlockRect {
+  addr: CellAddr;
+  cell: FormCell;
+  rowTop: number;
+  rowBottom: number;
+  rowSpan: number;
+  colLeft: number;
+  colRight: number;
+  colSpan: number;
+  microLeft: number;
+  microRight: number;
+  microSpan: number;
+  fields: number;
+}
 
-      // (a) DOWN: the rectangle owning (r,c) bottoms here at its LEFT column,
-      // and the strip directly below — across the owner's full colSpan — is empty
-      // and TILES the owner's width (one wide empty cell, several 1×1s, or any
-      // mix). A wide cell can thus grow down into an equally-wide empty cell.
-      const owner = ownerOf(rows, r, c);
-      let downOk = false;
-      if (owner != null && bottomRowOf(rows, owner) === r) {
-        const oCell = rows[owner.rowIndex].cells[owner.cellIndex];
-        const cSpan = effectiveColSpan(oCell);
-        // only at the owner's left column (so one handle for a wide owner)
-        if (owner.cellIndex === c) {
-          downOk = emptyStripAbsorbHeight(below, c, cSpan) > 0;
-        }
+export interface MergeEdge {
+  kind: "V" | "H";
+  rowIndex: number;
+  cellIndex: number;
+  key: string;
+  top: CellAddr[];
+  bottom: CellAddr[];
+  left: CellAddr[];
+  right: CellAddr[];
+}
+
+function uniqueOwnerOf(rows: FormRow[], rowIndex: number, colIndex: number): CellAddr | null {
+  const cell = rows[rowIndex]?.cells[colIndex];
+  if (!cell) return null;
+  if (!isTombstone(cell)) return { rowIndex, cellIndex: colIndex };
+  for (let r = 0; r < rows.length; r++) {
+    const c = rows[r].cells.findIndex((candidate) => candidate.id === cell.absorbedBy);
+    if (c >= 0) return { rowIndex: r, cellIndex: c };
+  }
+  return null;
+}
+
+function microStarts(widths: number[]): number[] {
+  const starts: number[] = [];
+  widths.reduce((acc, width, index) => {
+    starts[index] = acc;
+    return acc + width;
+  }, 0);
+  return starts;
+}
+
+function cellMicroRect(row: FormRow, cellIndex: number): { microLeft: number; microRight: number } | null {
+  const cell = row.cells[cellIndex];
+  if (!cell) return null;
+  const widths = rowMicro(row);
+  const starts = microStarts(widths);
+  const microLeft = starts[cellIndex];
+  const microSpan = widths
+    .slice(cellIndex, cellIndex + effectiveColSpan(cell))
+    .reduce((sum, width) => sum + width, 0);
+  if (microLeft == null || microSpan <= 0) return null;
+  return { microLeft, microRight: microLeft + microSpan };
+}
+
+function blockRectFromOwner(owner: CellAddr, rows: FormRow[]): CellBlockRect | null {
+  const cell = rows[owner.rowIndex]?.cells[owner.cellIndex];
+  if (!cell || isTombstone(cell)) return null;
+  const micro = cellMicroRect(rows[owner.rowIndex], owner.cellIndex);
+  if (!micro) return null;
+  const colSpan = effectiveColSpan(cell);
+  const rowSpan = effectiveRowSpan(cell);
+  return {
+    addr: owner,
+    cell,
+    rowTop: owner.rowIndex,
+    rowBottom: owner.rowIndex + rowSpan - 1,
+    rowSpan,
+    colLeft: owner.cellIndex,
+    colRight: owner.cellIndex + colSpan - 1,
+    colSpan,
+    microLeft: micro.microLeft,
+    microRight: micro.microRight,
+    microSpan: micro.microRight - micro.microLeft,
+    fields: cell.fieldKey != null ? 1 : 0,
+  };
+}
+
+export function blockRectOf(rows: FormRow[], rowIndex: number, cellIndex: number): CellBlockRect | null {
+  const owner = uniqueOwnerOf(rows, rowIndex, cellIndex);
+  if (!owner) return null;
+  return blockRectFromOwner(owner, rows);
+}
+
+function blockRectsForRows(rows: FormRow[]): CellBlockRect[] {
+  const rects: CellBlockRect[] = [];
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < rows[r].cells.length; c++) {
+      if (isTombstone(rows[r].cells[c])) continue;
+      const rect = blockRectFromOwner({ rowIndex: r, cellIndex: c }, rows);
+      if (rect) rects.push(rect);
+    }
+  }
+  return rects;
+}
+
+function exactMicroTiles(
+  candidates: CellBlockRect[],
+  microLeft: number,
+  microRight: number,
+): CellBlockRect[] | null {
+  const tiles = candidates
+    .filter((rect) => rect.microLeft < microRight && rect.microRight > microLeft)
+    .sort((a, b) => a.microLeft - b.microLeft);
+  if (tiles.length === 0) return null;
+  let cursor = microLeft;
+  for (const tile of tiles) {
+    if (tile.microLeft !== cursor || tile.microRight > microRight) return null;
+    cursor = tile.microRight;
+  }
+  return cursor === microRight ? tiles : null;
+}
+
+function exactRowTiles(
+  candidates: CellBlockRect[],
+  rowTop: number,
+  rowBottom: number,
+): CellBlockRect[] | null {
+  const tiles = candidates
+    .filter((rect) => rect.rowTop <= rowBottom && rect.rowBottom >= rowTop)
+    .sort((a, b) => a.rowTop - b.rowTop);
+  if (tiles.length === 0) return null;
+  let cursor = rowTop;
+  for (const tile of tiles) {
+    if (tile.rowTop !== cursor || tile.rowBottom > rowBottom) return null;
+    cursor = tile.rowBottom + 1;
+  }
+  return cursor === rowBottom + 1 ? tiles : null;
+}
+
+function verticalTilesBelow(rects: CellBlockRect[], boundaryRow: number, owner: CellBlockRect): CellBlockRect[] | null {
+  return exactMicroTiles(
+    rects.filter((rect) => rect.rowTop === boundaryRow + 1),
+    owner.microLeft,
+    owner.microRight,
+  );
+}
+
+function horizontalTilesRight(rects: CellBlockRect[], boundaryMicro: number, owner: CellBlockRect): CellBlockRect[] | null {
+  return exactRowTiles(
+    rects.filter((rect) => rect.microLeft === boundaryMicro),
+    owner.rowTop,
+    owner.rowBottom,
+  );
+}
+
+function horizontalTilesLeft(rects: CellBlockRect[], boundaryMicro: number, owner: CellBlockRect): CellBlockRect[] | null {
+  return exactRowTiles(
+    rects.filter((rect) => rect.microRight === boundaryMicro),
+    owner.rowTop,
+    owner.rowBottom,
+  );
+}
+
+function unionFieldCount(owner: CellBlockRect, tiles: CellBlockRect[]): number {
+  return owner.fields + tiles.reduce((sum, tile) => sum + tile.fields, 0);
+}
+
+function commonRowSpan(tiles: CellBlockRect[]): number {
+  if (tiles.length === 0) return 0;
+  const rowSpan = tiles[0].rowSpan;
+  return tiles.every((tile) => tile.rowSpan === rowSpan) ? rowSpan : 0;
+}
+
+function commonMicroSpan(tiles: CellBlockRect[]): boolean {
+  if (tiles.length === 0) return false;
+  const { microLeft, microRight } = tiles[0];
+  return tiles.every((tile) => tile.microLeft === microLeft && tile.microRight === microRight);
+}
+
+function verticalBoundaryAllowed(rows: FormRow[], owner: CellBlockRect, tiles: CellBlockRect[]): boolean {
+  const topRow = rows[owner.rowBottom];
+  const belowRow = rows[owner.rowBottom + 1];
+  if (!topRow || !belowRow) return false;
+  return topRow.cells.length === belowRow.cells.length && commonRowSpan(tiles) > 0;
+}
+
+function addMergeEdge(edges: Map<string, MergeEdge>, edge: MergeEdge): void {
+  if (!edges.has(edge.key)) edges.set(edge.key, edge);
+}
+
+// mergeEdgesPass is the single source of truth for offered merge handles. It
+// evaluates owner rectangles on the renderer's micro-grid and confirms an edge
+// only when the opposite side tiles the full shared segment exactly. The public
+// seam adapters below keep returning executable mergeDown/mergeRight addresses.
+export function mergeEdgesPass(rows: FormRow[]): MergeEdge[] {
+  const edges = new Map<string, MergeEdge>();
+  const rects = blockRectsForRows(rows);
+  for (const owner of rects) {
+    if (owner.rowBottom < rows.length - 1) {
+      const tiles = verticalTilesBelow(rects, owner.rowBottom, owner);
+      if (
+        tiles &&
+        verticalBoundaryAllowed(rows, owner, tiles) &&
+        unionFieldCount(owner, tiles) <= 1
+      ) {
+        addMergeEdge(edges, {
+          kind: "V",
+          rowIndex: owner.rowBottom,
+          cellIndex: owner.colLeft,
+          key: `V:${owner.rowBottom}:${owner.microLeft}:${owner.microRight}`,
+          top: [owner.addr],
+          bottom: tiles.map((tile) => tile.addr),
+          left: [],
+          right: [],
+        });
       }
+    }
 
-      // (b) UP: this cell empty, the cell below is a real (non-tombstone) cell.
-      // (A merge upward absorbs THIS empty cell into the run below — see
-      // mergeUp in mergeDown's resolution.)
-      const upOk = isEmptySlot(topCell) && !isTombstone(belowCell);
+    if (owner.microRight < MICRO_BASE) {
+      const tiles = horizontalTilesRight(rects, owner.microRight, owner);
+      if (tiles && commonMicroSpan(tiles) && unionFieldCount(owner, tiles) <= 1) {
+        addMergeEdge(edges, {
+          kind: "H",
+          rowIndex: owner.rowTop,
+          cellIndex: owner.colRight,
+          key: `H:${owner.microRight}:${owner.rowTop}:${owner.rowBottom}`,
+          top: [],
+          bottom: [],
+          left: [owner.addr],
+          right: tiles.map((tile) => tile.addr),
+        });
+      }
+    }
 
-      if (downOk || upOk) seams.push({ rowIndex: r, colIndex: c });
+    if (owner.microLeft > 0) {
+      const tiles = horizontalTilesLeft(rects, owner.microLeft, owner);
+      if (tiles && commonMicroSpan(tiles) && unionFieldCount(owner, tiles) <= 1) {
+        const firstLeft = tiles[0];
+        addMergeEdge(edges, {
+          kind: "H",
+          rowIndex: firstLeft.rowTop,
+          cellIndex: firstLeft.colRight,
+          key: `H:${owner.microLeft}:${owner.rowTop}:${owner.rowBottom}`,
+          top: [],
+          bottom: [],
+          left: tiles.map((tile) => tile.addr),
+          right: [owner.addr],
+        });
+      }
     }
   }
-  return seams;
+  return Array.from(edges.values()).sort((a, b) =>
+    a.kind.localeCompare(b.kind) ||
+    a.rowIndex - b.rowIndex ||
+    a.cellIndex - b.cellIndex ||
+    a.key.localeCompare(b.key),
+  );
 }
 
-// ─── Dominant-seam policy (one joiner on the widest/tallest) ──────────────────
-//
-// GOLDEN RULE (user, 2026-05-31): "two cells can merge → detect the longest →
-// make that the owner → place the joiner in its centre." When several seams sit
-// at the SAME boundary over ONE contiguous empty band, the user wants a SINGLE
-// handle, on the WIDEST cell (vertical) / TALLEST cell (horizontal), centred on
-// it — not one stranded handle per narrow column. Equal sizes keep every handle
-// (there's no dominant cell, so each centres on its own equal column/row).
-//
-// This is a PRESENTATION policy: it never changes what mergeDown/mergeRight do
-// (each surviving handle still merges its own clean rectangle — no L-shapes). It
-// only suppresses the non-dominant, co-located handles so the eye sees the
-// joiner where the merge will actually land.
-
-// seamOwnerWidth — the column weight (span) of the cell that owns a vertical
-// seam, i.e. the width the merged rectangle will have. Used to pick the widest.
-function seamOwnerWidth(rows: FormRow[], seam: Seam): number {
-  const owner = ownerOf(rows, seam.rowIndex, seam.colIndex);
-  // UP seams own from the empty top cell; DOWN seams from the tall owner. Either
-  // way the rectangle's width is the owning cell's span.
-  const addr = owner ?? { rowIndex: seam.rowIndex, cellIndex: seam.colIndex };
-  return rows[addr.rowIndex]?.cells[addr.cellIndex]?.span ?? 0;
-}
-
-// dominantVSeams keeps, per contiguous run of competing vertical seams at one
-// boundary row, only the widest owner's seam (ties keep all). Seams at the same
-// boundary row `r` COMPETE when their owner columns are adjacent (form one run
-// of side-by-side seams) — i.e. they would otherwise strand a narrow handle next
-// to a wide one over the same empty band. Seams at different boundary rows, or
-// separated by a non-seam column, never compete.
-export function dominantVSeams(rows: FormRow[]): Seam[] {
-  const all = seamsFor(rows);
-  if (all.length <= 1) return all;
-  // bucket by boundary row, then split each bucket into contiguous-column runs.
-  const byRow = new Map<number, Seam[]>();
-  for (const s of all) {
-    const list = byRow.get(s.rowIndex) ?? [];
-    list.push(s);
-    byRow.set(s.rowIndex, list);
-  }
-  const kept: Seam[] = [];
-  for (const list of byRow.values()) {
-    list.sort((a, b) => a.colIndex - b.colIndex);
-    let run: Seam[] = [];
-    const flush = () => {
-      if (run.length === 0) return;
-      const maxW = Math.max(...run.map((s) => seamOwnerWidth(rows, s)));
-      // keep every seam whose owner is the widest in the run (ties → all kept).
-      for (const s of run) if (seamOwnerWidth(rows, s) === maxW) kept.push(s);
-      run = [];
-    };
-    for (const s of list) {
-      if (run.length === 0) { run = [s]; continue; }
-      const prev = run[run.length - 1];
-      // adjacent if the previous seam's owner rectangle ends exactly where this
-      // one begins (no gap, no filled column between two competing seams).
-      const prevOwner = ownerOf(rows, prev.rowIndex, prev.colIndex);
-      const prevSpan = prevOwner ? effectiveColSpan(rows[prevOwner.rowIndex].cells[prevOwner.cellIndex]) : 1;
-      const prevRight = (prevOwner?.cellIndex ?? prev.colIndex) + prevSpan - 1;
-      if (s.colIndex === prevRight + 1) { run.push(s); } else { flush(); run = [s]; }
-    }
-    flush();
-  }
-  return kept;
-}
-
-// dominantHSeams — the horizontal mirror: per contiguous run of competing
-// horizontal seams at one boundary COLUMN, keep only the TALLEST owner's seam
-// (ties keep all). Competition is along the row axis (seams stacked over one
-// empty band on the same column boundary).
-function hSeamOwnerHeight(rows: FormRow[], seam: HSeam): number {
-  const oRow = vOwnerRow(rows, seam.rowIndex, seam.colIndex);
-  const oCol = hOwnerOf(rows, oRow, seam.colIndex);
-  if (oCol == null) return 0;
-  return effectiveRowSpan(rows[oRow].cells[oCol]);
-}
-
-export function dominantHSeams(rows: FormRow[]): HSeam[] {
-  const all = hSeamsFor(rows);
-  if (all.length <= 1) return all;
-  const byCol = new Map<number, HSeam[]>();
-  for (const s of all) {
-    const list = byCol.get(s.colIndex) ?? [];
-    list.push(s);
-    byCol.set(s.colIndex, list);
-  }
-  const kept: HSeam[] = [];
-  for (const list of byCol.values()) {
-    list.sort((a, b) => a.rowIndex - b.rowIndex);
-    let run: HSeam[] = [];
-    const flush = () => {
-      if (run.length === 0) return;
-      const maxH = Math.max(...run.map((s) => hSeamOwnerHeight(rows, s)));
-      for (const s of run) if (hSeamOwnerHeight(rows, s) === maxH) kept.push(s);
-      run = [];
-    };
-    for (const s of list) {
-      if (run.length === 0) { run = [s]; continue; }
-      const prev = run[run.length - 1];
-      const pRow = vOwnerRow(rows, prev.rowIndex, prev.colIndex);
-      const pCol = hOwnerOf(rows, pRow, prev.colIndex);
-      const pSpan = pCol == null ? 1 : effectiveRowSpan(rows[pRow].cells[pCol]);
-      const prevBottom = pRow + pSpan - 1;
-      if (s.rowIndex === prevBottom + 1) { run.push(s); } else { flush(); run = [s]; }
-    }
-    flush();
-  }
-  return kept;
+// seamsFor returns every executable vertical merge seam. A seam at (rowIndex,
+// colIndex) is the address passed to mergeDown().
+export function seamsFor(rows: FormRow[]): Seam[] {
+  return mergeEdgesPass(rows)
+    .filter((edge) => edge.kind === "V")
+    .map((edge) => ({ rowIndex: edge.rowIndex, colIndex: edge.cellIndex }));
 }
 
 // ─── Barber-pole edges (mergeable-boundary borders) ──────────────────────────
@@ -321,53 +456,13 @@ export function poleEdgesFor(rows: FormRow[]): Map<string, Set<PoleEdge>> {
     set.add(edge);
   };
 
-  // vertical seams → upper BOTTOM + lower TOP. When the upper owner is WIDE
-  // (colSpan > 1) it merges down into a strip of empty tiles that spans its full
-  // width — each tile must pole its TOP, not just the leftmost (else the wide
-  // cell's bottom is yellow while the right tiles below stay blocked/red). Walk
-  // the lower row across the owner's columns and pole every distinct owner once.
-  for (const seam of seamsFor(rows)) {
-    const upper = ownerOf(rows, seam.rowIndex, seam.colIndex);
-    if (upper) add(upper.rowIndex, upper.cellIndex, "bottom");
-    const lowerRow = seam.rowIndex + 1;
-    const upWidth = upper
-      ? effectiveColSpan(rows[upper.rowIndex].cells[upper.cellIndex])
-      : 1;
-    const upLeftCol = upper ? upper.cellIndex : seam.colIndex;
-    const seenLower = new Set<string>();
-    for (let dc = 0; dc < upWidth; dc++) {
-      const lowerOwner = ownerOf(rows, lowerRow, upLeftCol + dc);
-      if (!lowerOwner) continue;
-      const k = `${lowerOwner.rowIndex}:${lowerOwner.cellIndex}`;
-      if (seenLower.has(k)) continue;
-      seenLower.add(k);
-      add(lowerOwner.rowIndex, lowerOwner.cellIndex, "top");
-    }
-  }
-
-  // horizontal seams → left RIGHT + right LEFT. Mirror of the vertical case: a
-  // TALL left owner (rowSpan > 1) merges right into a strip of empty tiles
-  // spanning its full HEIGHT — each tile must pole its LEFT (else the tall cell's
-  // right edge is yellow while the lower tiles to its right stay blocked/red, the
-  // "red pole on the right lower" report). Walk the right column down the left
-  // owner's rows and pole every distinct owner once.
-  for (const seam of hSeamsFor(rows)) {
-    const leftRow = vOwnerRow(rows, seam.rowIndex, seam.colIndex);
-    const leftCol = hOwnerOf(rows, leftRow, seam.colIndex);
-    if (leftCol != null) add(leftRow, leftCol, "right");
-    const leftHeight =
-      leftCol != null ? effectiveRowSpan(rows[leftRow].cells[leftCol]) : 1;
-    const leftTopRow = leftCol != null ? leftRow : seam.rowIndex;
-    const rightCol0 = seam.colIndex + 1;
-    const seenRight = new Set<string>();
-    for (let dr = 0; dr < leftHeight; dr++) {
-      const rRow = vOwnerRow(rows, leftTopRow + dr, rightCol0);
-      const rCol = hOwnerOf(rows, rRow, rightCol0);
-      if (rCol == null) continue;
-      const k = `${rRow}:${rCol}`;
-      if (seenRight.has(k)) continue;
-      seenRight.add(k);
-      add(rRow, rCol, "left");
+  for (const edge of mergeEdgesPass(rows)) {
+    if (edge.kind === "V") {
+      for (const owner of edge.top) add(owner.rowIndex, owner.cellIndex, "bottom");
+      for (const owner of edge.bottom) add(owner.rowIndex, owner.cellIndex, "top");
+    } else {
+      for (const owner of edge.left) add(owner.rowIndex, owner.cellIndex, "right");
+      for (const owner of edge.right) add(owner.rowIndex, owner.cellIndex, "left");
     }
   }
 
@@ -375,19 +470,6 @@ export function poleEdgesFor(rows: FormRow[]): Map<string, Set<PoleEdge>> {
 }
 
 // ─── Horizontal merge (join cells across columns within ONE row) ─────────────
-
-// An HSeam is the vertical boundary between column `colIndex` and `colIndex+1`
-// in row `rowIndex`. The rotated join handle renders there.
-export interface HSeam {
-  rowIndex: number;
-  colIndex: number; // the LEFT cell of the pair
-}
-
-// rightEdgeColOf returns the last column track a (possibly wide) cell occupies:
-// its own colIndex + colSpan - 1.
-function rightEdgeColOf(cell: FormCell, colIndex: number): number {
-  return colIndex + effectiveColSpan(cell) - 1;
-}
 
 // hOwnerOf finds the cell that controls column position (rowIndex, colIndex) —
 // either the cell itself, or an earlier cell IN THE SAME ROW whose id ===
@@ -403,65 +485,151 @@ function hOwnerOf(rows: FormRow[], rowIndex: number, colIndex: number): number |
   return null;
 }
 
-// hSeamsFor returns every horizontal-mergeable seam: a boundary where the LEFT
-// cell (or the wide cell owning that column) has its right edge at colIndex and
-// the cell to its right is an empty target to absorb. Multi-row (rowSpan>1)
-// cells are NOT horizontally mergeable (keeps the rectangle clean) — only span-1
-// rows participate.
-// hSeamsFor — the SYMMETRIC horizontal-merge rule (2026-06-01). For each
-// vertical boundary between column `c` and `c+1`, a merge is offered iff the two
-// rectangles meeting at the boundary have EQUAL HEIGHT aligned at this row
-// (clean rectangle, no L-shape) AND together hold ≤1 field. Filled/empty and
-// which side the field is on do NOT matter — the field (if any) occupies the
-// merged block. This unifies the old "filled-left → empty-right only" case with
-// its mirror (empty-left ← filled-right, e.g. an empty cell merging with a
-// Colour field to its right). Seam is keyed once, at the LEFT rectangle's right
-// edge on its top row.
+// hSeamsFor returns every executable horizontal merge seam. A seam at (rowIndex,
+// colIndex) is the address passed to mergeRight().
 export function hSeamsFor(rows: FormRow[]): HSeam[] {
+  const seen = new Set<string>();
   const seams: HSeam[] = [];
-  rows.forEach((row, rowIndex) => {
-    for (let c = 0; c < row.cells.length - 1; c++) {
-      // LEFT rectangle owner at this boundary column.
-      const lRow = vOwnerRow(rows, rowIndex, c);
-      const lCol = hOwnerOf(rows, lRow, c);
-      if (lCol == null) continue;
-      const leftCell = rows[lRow].cells[lCol];
-      const lTop = lRow;
-      const lHeight = effectiveRowSpan(leftCell);
-      const rightEdge = rightEdgeColOf(leftCell, lCol);
-      // offer once, at the left rectangle's RIGHT edge on its TOP row.
-      if (rightEdge !== c || lTop !== rowIndex) continue;
-      const newCol = rightEdge + 1;
-      if (newCol >= row.cells.length) continue;
+  for (const edge of mergeEdgesPass(rows)) {
+    if (edge.kind !== "H") continue;
+    const seam = representativeHSeam(rows, edge);
+    if (!seam) continue;
+    const side = seam.side ?? "right";
+    const key = `${seam.rowIndex}:${seam.colIndex}:${side}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    seams.push(seam);
+  }
+  return seams.sort((a, b) =>
+    a.rowIndex - b.rowIndex ||
+    a.colIndex - b.colIndex ||
+    (a.side ?? "right").localeCompare(b.side ?? "right"),
+  );
+}
 
-      // The right region must tile the left rectangle's height into a clean
-      // rectangle, two ways:
-      //   (a) EMPTY strip — one tall empty cell, several 1×1 empties, or any mix
-      //       summing to lHeight (the classic "grow into empty" case, incl. the
-      //       2-tall cell growing right into two stacked 1×1 empties → 2×2). The
-      //       union has ≤1 field automatically (right side empty).
-      //   (b) a SINGLE filled owner of EQUAL height aligned at this row (the
-      //       mirror case: an empty cell merging with a Colour field to its
-      //       right). Union ≤1 field is enforced explicitly.
-      const emptyTiles = emptyColStripAbsorbWidth(rows, lRow, newCol, lHeight) > 0;
-      let ok = emptyTiles;
-      if (!ok) {
-        const rRow = vOwnerRow(rows, rowIndex, newCol);
-        const rCol = hOwnerOf(rows, rRow, newCol);
-        if (rCol != null) {
-          const rightCell = rows[rRow].cells[rCol];
-          const equalHeightAligned =
-            rRow === rowIndex && rCol === newCol && effectiveRowSpan(rightCell) === lHeight;
-          const unionFields = (leftCell.fieldKey != null ? 1 : 0) + (rightCell.fieldKey != null ? 1 : 0);
-          ok = equalHeightAligned && unionFields <= 1;
-        }
+function representativeHSeam(rows: FormRow[], edge: MergeEdge): HSeam | null {
+  const leftRects = edge.left
+    .map((addr) => blockRectFromOwner(addr, rows))
+    .filter((rect): rect is CellBlockRect => !!rect);
+  const rightRects = edge.right
+    .map((addr) => blockRectFromOwner(addr, rows))
+    .filter((rect): rect is CellBlockRect => !!rect);
+  if (leftRects.length === 0 || rightRects.length === 0) return null;
+
+  const largestLeft = largestRect(leftRects);
+  const largestRight = largestRect(rightRects);
+  if (!largestLeft || !largestRight) return null;
+
+  const leftArea = rectArea(largestLeft);
+  const rightArea = rectArea(largestRight);
+  if (rightArea > leftArea) {
+    return { rowIndex: largestRight.rowTop, colIndex: largestRight.colLeft, side: "left" };
+  }
+  return { rowIndex: largestLeft.rowTop, colIndex: largestLeft.colRight };
+}
+
+function largestRect(rects: CellBlockRect[]): CellBlockRect | null {
+  return [...rects].sort((a, b) =>
+    rectArea(b) - rectArea(a) ||
+    a.rowTop - b.rowTop ||
+    a.microLeft - b.microLeft,
+  )[0] ?? null;
+}
+
+function rectArea(rect: CellBlockRect): number {
+  return rect.microSpan * rect.rowSpan;
+}
+
+function horizontalEdgeForAddr(rows: FormRow[], addr: CellAddr): MergeEdge | null {
+  for (const edge of mergeEdgesPass(rows)) {
+    if (edge.kind !== "H") continue;
+    for (const leftAddr of edge.left) {
+      const rect = blockRectFromOwner(leftAddr, rows);
+      if (rect && rect.rowTop === addr.rowIndex && rect.colRight === addr.cellIndex) {
+        return edge;
       }
-      if (!ok) continue;
-
-      seams.push({ rowIndex, colIndex: c });
     }
-  });
-  return seams;
+  }
+  for (const edge of mergeEdgesPass(rows)) {
+    if (edge.kind !== "H") continue;
+    for (const rightAddr of edge.right) {
+      const rect = blockRectFromOwner(rightAddr, rows);
+      if (rect && rect.rowTop === addr.rowIndex && rect.colLeft === addr.cellIndex) {
+        return edge;
+      }
+    }
+  }
+  return null;
+}
+
+function colSpanToMicroRight(row: FormRow, startCol: number, microRight: number): number {
+  const widths = rowMicro(row);
+  const starts = microStarts(widths);
+  let cursor = starts[startCol];
+  if (cursor == null) return 0;
+  let col = startCol;
+  while (col < row.cells.length && cursor < microRight) {
+    cursor += widths[col] ?? 0;
+    col++;
+  }
+  return cursor === microRight ? col - startCol : 0;
+}
+
+function spanForColumns(row: FormRow, startCol: number, colSpan: number): number {
+  const spans = TEMPLATE_SPANS[row.template] ?? row.cells.map((cell) => cell.span);
+  return spans.slice(startCol, startCol + colSpan).reduce((sum, span) => sum + span, 0);
+}
+
+function mergeHorizontalEdge(rows: FormRow[], edge: MergeEdge): FormRow[] {
+  const leftRects = edge.left
+    .map((addr) => blockRectFromOwner(addr, rows))
+    .filter((rect): rect is CellBlockRect => !!rect);
+  const rightRects = edge.right
+    .map((addr) => blockRectFromOwner(addr, rows))
+    .filter((rect): rect is CellBlockRect => !!rect);
+  if (leftRects.length !== edge.left.length || rightRects.length !== edge.right.length) return rows;
+
+  const rects = [...leftRects, ...rightRects];
+  const fieldRects = rects.filter((rect) => rect.cell.fieldKey != null);
+  if (fieldRects.length > 1) return rows;
+
+  const rowTop = Math.min(...rects.map((rect) => rect.rowTop));
+  const rowBottom = Math.max(...rects.map((rect) => rect.rowBottom));
+  const microLeft = Math.min(...rects.map((rect) => rect.microLeft));
+  const microRight = Math.max(...rects.map((rect) => rect.microRight));
+  const owner = [...leftRects].sort((a, b) => a.rowTop - b.rowTop || a.microLeft - b.microLeft)[0];
+  if (!owner || owner.microLeft !== microLeft) return rows;
+
+  const ownerRow = rows[owner.addr.rowIndex];
+  const nextColSpan = colSpanToMicroRight(ownerRow, owner.addr.cellIndex, microRight);
+  if (nextColSpan <= 0) return rows;
+  const nextRowSpan = rowBottom - rowTop + 1;
+  const nextSpan = spanForColumns(ownerRow, owner.addr.cellIndex, nextColSpan);
+  const ownerId = owner.cell.id;
+  const fieldKey = owner.cell.fieldKey ?? fieldRects[0]?.cell.fieldKey ?? null;
+
+  return rows.map((row, ri) => ({
+    ...row,
+    cells: row.cells.map((cell, ci) => {
+      if (ri === owner.addr.rowIndex && ci === owner.addr.cellIndex) {
+        const next: FormCell = { ...cell, fieldKey, span: nextSpan };
+        if (nextColSpan > 1) next.colSpan = nextColSpan;
+        else delete next.colSpan;
+        if (nextRowSpan > 1) next.rowSpan = nextRowSpan;
+        else delete next.rowSpan;
+        return next;
+      }
+      if (ri < rowTop || ri > rowBottom) return cell;
+      const micro = cellMicroRect(row, ci);
+      const inside =
+        micro &&
+        micro.microLeft >= microLeft &&
+        micro.microRight <= microRight;
+      if (!inside) return cell;
+      const { rowSpan: _r, colSpan: _c, ...rest } = cell;
+      return { id: rest.id, fieldKey: null, span: rest.span, absorbedBy: ownerId };
+    }),
+  }));
 }
 
 // normalizeOwnership makes OWNER cells the single source of truth and rebuilds
@@ -478,10 +646,12 @@ export function hSeamsFor(rows: FormRow[]): HSeam[] {
 // the "sprint" 2×2 whose top-right corner pointed at colour's tombstone (a
 // stolen corner) → server 422; normalizing on load/save closes the class.
 export function normalizeOwnership(rows: FormRow[]): FormRow[] {
-  // 1. Map every covered position → the owner id that claims it. Later owners do
-  //    not overwrite earlier claims (the first owner whose rectangle covers a
-  //    cell wins — owners never legitimately overlap, but if a corrupt doc has
-  //    two, deterministic first-wins keeps it rectangular).
+  // 1. Map every covered position → the owner id that claims it. Claims use the
+  //    shared micro-grid rather than raw column indexes, so a right-half owner in
+  //    a 25-25-50 row can legitimately cover cells 2+3 in a 50-25-25 row below.
+  //    Later owners do not overwrite earlier claims (the first owner whose
+  //    rectangle covers a cell wins — owners never legitimately overlap, but if a
+  //    corrupt doc has two, deterministic first-wins keeps it rectangular).
   const claim = new Map<string, string>(); // "ri:ci" -> owner cell id
   rows.forEach((row, ri) => {
     row.cells.forEach((cell, ci) => {
@@ -489,10 +659,20 @@ export function normalizeOwnership(rows: FormRow[]): FormRow[] {
       const rs = effectiveRowSpan(cell);
       const cs = effectiveColSpan(cell);
       if (rs === 1 && cs === 1) return; // a 1×1 cell owns only itself — nothing to claim
-      for (let dr = 0; dr < rs; dr++) {
-        for (let dc = 0; dc < cs; dc++) {
-          if (dr === 0 && dc === 0) continue; // the owner cell itself
-          const key = `${ri + dr}:${ci + dc}`;
+      const ownerMicro = cellMicroRect(row, ci);
+      if (!ownerMicro) return;
+      for (let r = ri; r < ri + rs; r++) {
+        const targetRow = rows[r];
+        if (!targetRow) continue;
+        for (let c = 0; c < targetRow.cells.length; c++) {
+          if (r === ri && c === ci) continue; // the owner cell itself
+          const targetMicro = cellMicroRect(targetRow, c);
+          if (!targetMicro) continue;
+          const covered =
+            targetMicro.microLeft >= ownerMicro.microLeft &&
+            targetMicro.microRight <= ownerMicro.microRight;
+          if (!covered) continue;
+          const key = `${r}:${c}`;
           if (!claim.has(key)) claim.set(key, cell.id);
         }
       }
@@ -531,6 +711,12 @@ export function normalizeOwnership(rows: FormRow[]): FormRow[] {
 // those cells becomes a tombstone. No-op unless the strip is a clean empty
 // target (so a merge never overwrites a placed field).
 export function mergeRight(rows: FormRow[], addr: CellAddr): FormRow[] {
+  const edge = horizontalEdgeForAddr(rows, addr);
+  if (edge) {
+    const merged = mergeHorizontalEdge(rows, edge);
+    if (merged !== rows) return merged;
+  }
+
   const ownerRow = vOwnerRow(rows, addr.rowIndex, addr.cellIndex);
   const ownerCol = hOwnerOf(rows, ownerRow, addr.cellIndex);
   if (ownerCol == null) return rows;
@@ -659,12 +845,23 @@ function vOwnerRow(rows: FormRow[], rowIndex: number, colIndex: number): number 
   return rowIndex;
 }
 
-// mergeDown absorbs the empty cell directly below the tall cell that owns
-// `addr` into that tall cell. It resolves the owner first (so passing a
+// mergeDown absorbs the micro-aligned region directly below the tall cell that
+// owns `addr` into that tall cell. It resolves the owner first (so passing a
 // tombstone address extends the existing merge rather than no-opping), grows
-// the owner's rowSpan by 1, and tombstones the absorbed cell. No-op unless the
-// owner's bottom neighbour is empty and same-template.
+// the owner's rowSpan, and tombstones the absorbed cells. No-op unless the
+// shared edge forms an exact rectangle with at most one field.
 export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
+  const edge = mergeEdgesPass(rows).find(
+    (candidate) =>
+      candidate.kind === "V" &&
+      candidate.rowIndex === addr.rowIndex &&
+      candidate.cellIndex === addr.cellIndex,
+  );
+  if (edge) {
+    const merged = mergeVerticalEdge(rows, edge);
+    if (merged !== rows) return merged;
+  }
+
   const owner = ownerOf(rows, addr.rowIndex, addr.cellIndex);
   if (!owner) return rows;
   const col = owner.cellIndex;
@@ -682,8 +879,12 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
   // cell, several 1×1s, or any mix (a wide cell can grow down into a wide empty).
   // Returns the rows absorbed (1 for a slot row, N when the tile(s) are a tall
   // empty block); 0 = not mergeable.
+  const sameTemplateBoundary =
+    below && top.template === below.template && top.cells.length === below.cells.length;
+  const fullWidthBoundary =
+    below && top.cells.length === below.cells.length && col === 0 && oColSpan === top.cells.length;
   const absorbedSpan =
-    below && top.template === below.template && top.cells.length === below.cells.length
+    below && (sameTemplateBoundary || fullWidthBoundary)
       ? emptyStripAbsorbHeight(below, col, oColSpan)
       : 0;
   if (below && absorbedSpan > 0) {
@@ -707,7 +908,7 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
     });
   }
 
-  // UP case: the clicked cell is EMPTY and the cell directly below is a real
+  // Legacy UP fallback: the clicked cell is EMPTY and the cell directly below is a real
   // (non-tombstone) cell → the empty cell becomes the new owner, extending the
   // run below upward by one. Only valid when the clicked cell has span 1 (it's
   // an empty slot) and the row below shares the template.
@@ -717,7 +918,6 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
     clicked &&
     isEmptySlot(clicked) &&
     lowerRow &&
-    rows[addr.rowIndex].template === lowerRow.template &&
     rows[addr.rowIndex].cells.length === lowerRow.cells.length
   ) {
     const lowerCell = lowerRow.cells[addr.cellIndex];
@@ -732,6 +932,44 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
       // disappeared after merging the wide cell's left column" bug, 2026-06-01).
       const lowerOwnerId = lowerCell.id;
       const lowerColSpan = effectiveColSpan(lowerCell);
+      const clickedColSpan = effectiveColSpan(clicked);
+      const sameTemplateBoundary = rows[addr.rowIndex].template === lowerRow.template;
+      const fullWidthBoundary =
+        addr.cellIndex === 0 &&
+        clickedColSpan === rows[addr.rowIndex].cells.length &&
+        lowerColSpan === lowerRow.cells.length;
+      if (!sameTemplateBoundary && !fullWidthBoundary) return rows;
+
+      // Equal-width upward merge: the empty upper owner takes the lower owner's
+      // field/height and preserves the full rectangle. This is the mirror of the
+      // down-grow path and is what lets full-width rows merge upward across
+      // 25-25-50 ↔ 50-25-25 boundaries.
+      if (clickedColSpan === lowerColSpan) {
+        const inCols = (ci: number) => ci >= addr.cellIndex && ci < addr.cellIndex + clickedColSpan;
+        const lowerSpan = effectiveRowSpan(lowerCell);
+        return rows.map((row, ri) => {
+          if (ri === addr.rowIndex) {
+            return {
+              ...row,
+              cells: row.cells.map((c, ci) =>
+                ci === addr.cellIndex
+                  ? { ...c, fieldKey: lowerCell.fieldKey, rowSpan: newSpan }
+                  : c,
+              ),
+            };
+          }
+          if (ri >= addr.rowIndex + 1 && ri <= addr.rowIndex + lowerSpan) {
+            return {
+              ...row,
+              cells: row.cells.map((c, ci) =>
+                inCols(ci) ? { id: c.id, fieldKey: null, span: c.span, absorbedBy: newOwnerId } : c,
+              ),
+            };
+          }
+          return row;
+        });
+      }
+
       const lowerTmplSpans = TEMPLATE_SPANS[lowerRow.template] ?? [];
       return rows.map((row, ri) => {
         if (ri === addr.rowIndex) {
@@ -782,6 +1020,40 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
   }
 
   return rows;
+}
+
+function mergeVerticalEdge(rows: FormRow[], edge: MergeEdge): FormRow[] {
+  const ownerAddr = edge.top[0];
+  if (!ownerAddr) return rows;
+  const owner = blockRectFromOwner(ownerAddr, rows);
+  if (!owner) return rows;
+  const tiles = edge.bottom
+    .map((addr) => blockRectFromOwner(addr, rows))
+    .filter((rect): rect is CellBlockRect => !!rect);
+  if (tiles.length !== edge.bottom.length) return rows;
+  const absorbedSpan = commonRowSpan(tiles);
+  if (absorbedSpan <= 0) return rows;
+
+  const fieldTiles = [owner, ...tiles].filter((rect) => rect.cell.fieldKey != null);
+  if (fieldTiles.length > 1) return rows;
+  const fieldKey = owner.cell.fieldKey ?? fieldTiles[0]?.cell.fieldKey ?? null;
+  const absorbedOwnerIds = new Set(tiles.map((tile) => tile.cell.id));
+  const ownerId = owner.cell.id;
+  const nextSpan = owner.rowSpan + absorbedSpan;
+
+  return rows.map((row, ri) => ({
+    ...row,
+    cells: row.cells.map((cell, ci) => {
+      if (ri === owner.addr.rowIndex && ci === owner.addr.cellIndex) {
+        return { ...cell, fieldKey, rowSpan: nextSpan };
+      }
+      if (absorbedOwnerIds.has(cell.id) || (cell.absorbedBy && absorbedOwnerIds.has(cell.absorbedBy))) {
+        const { rowSpan: _r, colSpan: _c, ...rest } = cell;
+        return { id: rest.id, fieldKey: null, span: rest.span, absorbedBy: ownerId };
+      }
+      return cell;
+    }),
+  }));
 }
 
 // splitCell collapses the owner rectangle's ROWS back to 1 (a 2×2 → 1×2 wide, a
@@ -880,7 +1152,7 @@ function revive(c: FormCell): FormCell {
 
 // ─── Band detection (for the renderer) ───────────────────────────────────
 
-// A Band is a maximal run of adjacent rows sharing one template. Within a band,
+// A Band is a maximal run of adjacent rows sharing one slot count. Within a band,
 // merged cells span multiple sub-rows. A band with no merges is just its rows.
 export interface Band {
   startRow: number; // index into rows[] of the first row in the band
@@ -888,15 +1160,13 @@ export interface Band {
   subRowCount: number; // number of grid rows the band occupies (== rows.length)
 }
 
-// bandsOf groups CONTIGUOUS rows that share a template + column count into one
-// band. Critically this is NOT gated on merge-linkage: two adjacent 30-30-30
-// rows form ONE band whether or not a column is merged between them. That is
-// what keeps every column aligned across a merge — the whole run is a single
-// CSS grid with one track per row, so a merged cell just spans tracks while its
-// unmerged neighbours stay on their own track (no separate grids → no gaps, and
-// a column can be merged all the way through the run). subRowCount == row count
-// (tombstones keep every column rectangular). A template change starts a new
-// band (merge can't cross it, by the same-template rule).
+// bandsOf groups CONTIGUOUS rows that share a column count into one band.
+// Critically this is NOT gated on merge-linkage: adjacent 3-slot rows form ONE
+// band even when their templates differ, because all templates render on the
+// shared 60-track micro-grid. That lets exact rectangles span across a
+// 25-25-50 ↔ 50-25-25 boundary once their current merged widths line up.
+// subRowCount == row count (tombstones keep every column rectangular). A
+// column-count change starts a new band.
 export function bandsOf(rows: FormRow[]): Band[] {
   const bands: Band[] = [];
   let i = 0;
@@ -904,7 +1174,6 @@ export function bandsOf(rows: FormRow[]): Band[] {
     let j = i + 1;
     while (
       j < rows.length &&
-      rows[j].template === rows[i].template &&
       rows[j].cells.length === rows[i].cells.length
     ) {
       j++;

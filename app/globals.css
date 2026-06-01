@@ -20766,9 +20766,20 @@ tr.is-editing {
   width: 2px; background: var(--border-default, #e3e3e6); border-radius: 2px;
 }
 .flb-grid__Band_Aside_Cell { display: flex; align-items: center; justify-content: center; }
-/* runtime / preview have no gutter or aside — cells fill the row */
+/* Runtime / preview use the 60-track micro-grid for geometry. Horizontal cell
+   gutters are inner padding, not CSS column-gap, otherwise the micro-grid would
+   create 59 gutters and overflow the preview card. */
+.flb-runtime-grid,
+.flb-preview-grid { --flb-runtime-cell-gap: var(--space-5, 20px); }
 .flb-runtime-grid .flb-grid__Band_Cells,
-.flb-preview-grid .flb-grid__Band_Cells { gap: var(--space-5, 20px); }
+.flb-preview-grid .flb-grid__Band_Cells {
+  column-gap: 0;
+  row-gap: var(--flb-runtime-cell-gap);
+  margin-inline: calc(var(--flb-runtime-cell-gap) / -2);
+  width: calc(100% + var(--flb-runtime-cell-gap));
+}
+.flb-runtime-grid .flb-grid__Cell,
+.flb-preview-grid .flb-grid__Cell { padding-inline: calc(var(--flb-runtime-cell-gap) / 2); }
 
 /* one cell wrapper (positioned in the band grid; may span sub-rows) */
 /* NORMAL mode: a plain cell — no pole backgrounds, no padding gutter. The
@@ -20959,6 +20970,9 @@ tr.is-editing {
   width: 0; display: flex; align-items: center; justify-content: center;
   pointer-events: none; z-index: 6;
 }
+.flb-grid__HSeam-left {
+  left: -6px; right: auto;
+}
 
 /* During a ROW drag, the seam + action handles must not intercept the pointer —
    otherwise they block dropping a row onto the slot/gap beneath them. */
@@ -21089,8 +21103,13 @@ tr.is-editing {
   border-color: var(--accent, #1a1a1a); border-top-width: 3px;
 }
 
-/* add-row affordance — hidden until the gap is hovered or its menu is open */
-.flb-gap__Insert { position: relative; flex: 0 0 auto; }
+/* add-row affordance — hidden until the gap is hovered or its menu is open.
+   Absolute placement keeps the 22px button from increasing the idle 12px row
+   rhythm at band boundaries. */
+.flb-gap__Insert {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 7;
+}
 .flb-gap__Insert_Btn {
   width: 22px; height: 22px; border-radius: var(--radius-full, 999px);
   border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
@@ -21228,9 +21247,12 @@ tr.is-editing {
   padding: var(--space-7, 40px);
   box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
-.flb-preview-grid { gap: var(--space-5, 20px); }
 .flb-preview__Empty { min-height: 1px; }
-.flb-preview__Field { display: flex; flex-direction: column; gap: 6px; }
+.flb-preview__Field {
+  display: flex; flex-direction: column; gap: 6px;
+  min-width: 0; box-sizing: border-box;
+}
+.flb-preview-grid .flb-preview__Field { height: 100%; min-height: 0; }
 .flb-preview__Field_Label {
   font-size: 12px; font-weight: 600; color: var(--text-secondary, #5c5c5c);
 }
@@ -21238,7 +21260,11 @@ tr.is-editing {
   width: 100%; padding: 9px 12px;
   border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-md, 8px);
   background: var(--surface-sunken, #f9f7f4); color: var(--text-primary, #1a1a1a);
-  font-size: 14px;
+  font-size: 14px; min-width: 0; box-sizing: border-box;
+}
+.flb-preview__Field-multiline .flb-preview__Field_Input-area {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .flb-preview__Field_Input-area { resize: none; }
 .flb-preview__Field_Input:disabled { opacity: 1; cursor: default; }
@@ -21291,7 +21317,11 @@ tr.is-editing {
 /* Form Layout Builder — runtime renderer (artefact view/edit adopts the saved layout) */
 .flb-runtime { display: flex; flex-direction: column; gap: var(--space-5, 20px); }
 .flb-runtime__Loading { padding: var(--space-4, 16px); font-size: 13px; color: var(--text-secondary, #5c5c5c); }
-.flb-runtime__Field { display: flex; flex-direction: column; gap: var(--space-1, 4px); }
+.flb-runtime__Field {
+  display: flex; flex-direction: column; gap: var(--space-1, 4px);
+  min-width: 0; box-sizing: border-box;
+}
+.flb-runtime-grid .flb-runtime__Field { height: 100%; min-height: 0; }
 .flb-runtime__Field_Label {
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--ink-subtle, #9b9b9b);
@@ -21300,9 +21330,15 @@ tr.is-editing {
   font-size: 14px; padding: var(--space-2, 8px) var(--space-3, 12px);
   border: 1px solid var(--border-default, #e5e1da); border-radius: var(--radius-sm, 6px);
   background: var(--surface, #fff); color: var(--text-primary, #1a1a1a);
+  min-width: 0; box-sizing: border-box;
 }
 .flb-runtime__Field_Input:focus { outline: none; border-color: var(--accent, #1a1a1a); }
 .flb-runtime__Field_Input-area { resize: vertical; min-height: 84px; font-family: inherit; }
+.flb-runtime-grid .flb-runtime__Field-multiline .flb-runtime__Field_Input-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  resize: none;
+}
 .flb-runtime__Carried {
   border-top: 1px dashed var(--border-default, #e5e1da);
   padding-top: var(--space-4, 16px);

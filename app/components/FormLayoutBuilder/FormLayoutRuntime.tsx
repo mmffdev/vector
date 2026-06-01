@@ -187,7 +187,7 @@ function RuntimeField({
   const isMultiline = dataType === "richtext" || dataType === "textarea";
 
   return (
-    <label className="flb-runtime__Field">
+    <label className={"flb-runtime__Field" + (isMultiline ? " flb-runtime__Field-multiline" : "")}>
       <span className="flb-runtime__Field_Label">{label}</span>
       {isMultiline ? (
         <textarea

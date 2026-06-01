@@ -4,12 +4,29 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import { FormLayoutRenderer } from "../FormLayoutRenderer";
-import { bandsOf, mergeDown } from "../mergeTransitions";
+import { bandsOf, mergeDown, mergeRight } from "../mergeTransitions";
 import type { FormRow } from "@/app/lib/formLayoutsApi";
 
 let seq = 0;
 const c = (k: string | null) => ({ id: `c${seq++}`, fieldKey: k, span: 33 });
 const row3 = (): FormRow => ({ id: `r${seq++}`, template: "30-30-30", cells: [c(null), c(null), c(null)] });
+const cell = (span: number) => ({ id: `c${seq++}`, fieldKey: null, span });
+const row252550 = (): FormRow => ({
+  id: `r${seq++}`,
+  template: "25-25-50",
+  cells: [cell(25), cell(25), cell(50)],
+});
+const row502525 = (): FormRow => ({
+  id: `r${seq++}`,
+  template: "50-25-25",
+  cells: [cell(50), cell(25), cell(25)],
+});
+
+function mergeRowFullWidth(rows: FormRow[], rowIndex: number): FormRow[] {
+  let next = mergeRight(rows, { rowIndex, cellIndex: 0 });
+  next = mergeRight(next, { rowIndex, cellIndex: 0 });
+  return next;
+}
 
 describe("band layout — 4 rows, middle merged across rows 2-3", () => {
   it("renders ONE grid with 4 row-tracks (columns align, no separate grids)", () => {
@@ -35,6 +52,29 @@ describe("band layout — 4 rows, middle merged across rows 2-3", () => {
     ) as HTMLElement;
     expect(tall).toBeTruthy();
     expect(tall.style.gridRow).toContain("span 2");
+  });
+
+  it("renders mixed 3-slot templates in one grid so full-width merges can span them", () => {
+    let rows = [row252550(), row502525(), row252550()];
+    rows = mergeRowFullWidth(rows, 0);
+    rows = mergeRowFullWidth(rows, 1);
+    rows = mergeRowFullWidth(rows, 2);
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 });
+    rows = mergeDown(rows, { rowIndex: 1, cellIndex: 0 });
+
+    const bands = bandsOf(rows);
+    expect(bands).toHaveLength(1);
+    expect(bands[0].subRowCount).toBe(3);
+
+    const { container } = render(
+      <FormLayoutRenderer rows={rows} renderCell={() => <div className="cell" />} />,
+    );
+    const grids = container.querySelectorAll(".flb-grid__Band_Cells");
+    expect(grids).toHaveLength(1);
+    expect((grids[0] as HTMLElement).style.gridTemplateRows).toContain("repeat(3,");
+    const tall = container.querySelector(".flb-grid__Cell[data-tall='true']") as HTMLElement;
+    expect(tall.style.gridColumn).toBe("1 / span 60");
+    expect(tall.style.gridRow).toContain("span 3");
   });
 
   it("renders the seam handle at a TALL cell's bottom edge (extend-down through merge)", () => {
