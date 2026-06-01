@@ -20784,9 +20784,9 @@ tr.is-editing {
      curves inside the clear band rather than under the pole. */
   --flb-pole-gap: 4px;
   /* TWO presentation modes for the merge poles (Rick, 2026-06-01):
-       • NORMAL (default) — quiet. The "can-merge" pole is the site sand bg
-         (--surface-sunken #EDEAE4) / white instead of loud yellow/black, and the
-         "blocked" red/white pole is HIDDEN entirely (transparent). So in normal
+       • NORMAL (default) — quiet. The "can-merge" pole is the sandy
+         --pole-sand-on tone / white instead of loud yellow/black, and the
+         "blocked" pole is --pole-sand-off (transparent) → HIDDEN. So in normal
          use you see a subtle sandy stripe only on mergeable edges, nothing on the
          rest.
        • DEBUG (add .flb-debug-poles on an ancestor) — the original bright scheme:
@@ -20794,10 +20794,17 @@ tr.is-editing {
          legible while diagnosing the merge logic.
      The variables default to the NORMAL palette here and are overridden by the
      debug class below. */
-  /* "can merge" pole — NORMAL: sandy site bg / white, −45°, 10px/10px stripes. */
-  --flb-pole: repeating-linear-gradient(-45deg, var(--surface-sunken, #EDEAE4) 0 10px, #ffffff 10px 20px);
-  /* "blocked" pole — NORMAL: hidden (no stripe on non-mergeable edges). */
-  --flb-blocked: none;
+  /* Quiet-mode pole tones — named so the on/off states are explicit and tunable
+     in one place. ON = the sandy stripe colour; OFF = transparent (hidden). */
+  --pole-sand-on: #EDEAE4;
+  --pole-sand-off: transparent;
+  /* "can merge" pole — NORMAL: sandy / white, −45°, 10px/10px stripes. */
+  --flb-pole: repeating-linear-gradient(-45deg, var(--pole-sand-on) 0 10px, #ffffff 10px 20px);
+  /* "blocked" pole — NORMAL: the OFF tone, painted as a flat gradient so it's a
+     valid background-image layer (a bare colour keyword is NOT a valid
+     background-image, which would break the layer). --pole-sand-off:transparent
+     ⇒ nothing visible on non-mergeable edges. */
+  --flb-blocked: linear-gradient(var(--pole-sand-off), var(--pole-sand-off));
 
   /* PER-EDGE SWITCH. Each edge is its own background layer whose PAINT is a
      variable that defaults to the red/white BLOCKED pole and is swapped to the
