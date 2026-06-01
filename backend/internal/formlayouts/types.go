@@ -30,6 +30,9 @@ const (
 	Template3070   RowTemplate = "30-70"
 	Template7030   RowTemplate = "70-30"
 	Template303030 RowTemplate = "30-30-30"
+	Template502525 RowTemplate = "50-25-25"
+	Template255025 RowTemplate = "25-50-25"
+	Template252550 RowTemplate = "25-25-50"
 )
 
 // templateSpans maps each template to its ordered cell spans (percent).
@@ -39,6 +42,9 @@ var templateSpans = map[RowTemplate][]int{
 	Template3070:   {30, 70},
 	Template7030:   {70, 30},
 	Template303030: {33, 33, 33},
+	Template502525: {50, 25, 25},
+	Template255025: {25, 50, 25},
+	Template252550: {25, 25, 50},
 }
 
 // Cell is one slot in a row. FieldKey is a core field's stable string key

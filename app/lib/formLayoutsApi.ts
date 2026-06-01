@@ -14,7 +14,15 @@ import { apiSite } from "@/app/lib/api";
 
 // RowTemplate enumerates the fixed grid templates. Cell spans derive
 // from the template, never free-form (keeps snap-to-slot clean).
-export type RowTemplate = "100" | "50-50" | "30-70" | "70-30" | "30-30-30";
+export type RowTemplate =
+  | "100"
+  | "50-50"
+  | "30-70"
+  | "70-30"
+  | "30-30-30"
+  | "50-25-25"
+  | "25-50-25"
+  | "25-25-50";
 
 // templateSpans mirrors backend/internal/formlayouts/types.go. The
 // builder uses this to materialise a row's empty cells when a template
@@ -25,6 +33,9 @@ export const TEMPLATE_SPANS: Record<RowTemplate, number[]> = {
   "30-70": [30, 70],
   "70-30": [70, 30],
   "30-30-30": [33, 33, 33],
+  "50-25-25": [50, 25, 25],
+  "25-50-25": [25, 50, 25],
+  "25-25-50": [25, 25, 50],
 };
 
 export const ROW_TEMPLATES: { template: RowTemplate; label: string }[] = [
@@ -33,6 +44,9 @@ export const ROW_TEMPLATES: { template: RowTemplate; label: string }[] = [
   { template: "30-70", label: "2 column · 30 / 70" },
   { template: "70-30", label: "2 column · 70 / 30" },
   { template: "30-30-30", label: "3 column · equal" },
+  { template: "50-25-25", label: "3 column · 50 / 25 / 25" },
+  { template: "25-50-25", label: "3 column · 25 / 50 / 25" },
+  { template: "25-25-50", label: "3 column · 25 / 25 / 50" },
 ];
 
 // FormCell is one slot in a row. fieldKey is a core field's stable key

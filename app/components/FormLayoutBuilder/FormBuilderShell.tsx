@@ -51,7 +51,7 @@ import {
   type FormRow,
   type RowTemplate,
 } from "@/app/lib/formLayoutsApi";
-import { ROW_TEMPLATES } from "@/app/lib/formLayoutsApi";
+import { ROW_TEMPLATES, TEMPLATE_SPANS } from "@/app/lib/formLayoutsApi";
 import { useSentinel } from "@/app/sentinel";
 import CustomFieldEditForm from "@/app/components/CustomFields/CustomFieldEditForm";
 import { FormLayoutRenderer, type RenderCellArgs } from "./FormLayoutRenderer";
@@ -1364,6 +1364,9 @@ const TEMPLATE_LABELS: Record<RowTemplate, { primary: string; secondary: string 
   "70-30": { primary: "Wide left", secondary: "70 / 30" },
   "30-70": { primary: "Wide right", secondary: "30 / 70" },
   "30-30-30": { primary: "Thirds", secondary: "33 / 33 / 33" },
+  "50-25-25": { primary: "Wide left ×3", secondary: "50 / 25 / 25" },
+  "25-50-25": { primary: "Wide centre ×3", secondary: "25 / 50 / 25" },
+  "25-25-50": { primary: "Wide right ×3", secondary: "25 / 25 / 50" },
 };
 
 function TemplatePicker({ onAdd }: { onAdd: (t: RowTemplate) => void }) {
@@ -1394,14 +1397,10 @@ function TemplatePicker({ onAdd }: { onAdd: (t: RowTemplate) => void }) {
   );
 }
 
-// TemplateGlyph draws a tiny preview of the column split.
+// TemplateGlyph draws a tiny preview of the column split. Driven off
+// TEMPLATE_SPANS so a new template's glyph is automatic (no per-template branch).
 function TemplateGlyph({ template }: { template: RowTemplate }) {
-  const spans =
-    template === "100" ? [100] :
-    template === "50-50" ? [50, 50] :
-    template === "30-70" ? [30, 70] :
-    template === "70-30" ? [70, 30] :
-    [33, 33, 33];
+  const spans = TEMPLATE_SPANS[template] ?? [100];
   return (
     <span className="flb-glyph" style={{ gridTemplateColumns: spans.map((s) => `${s}fr`).join(" ") }}>
       {spans.map((_, i) => <span key={i} className="flb-glyph__Cell" />)}
