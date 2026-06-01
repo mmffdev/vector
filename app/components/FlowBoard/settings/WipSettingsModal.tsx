@@ -231,5 +231,3 @@ export function WipSettingsModal({
     </div>
   );
 }
-
-export default WipSettingsModal;

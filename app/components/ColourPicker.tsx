@@ -152,5 +152,3 @@ export function ColourPicker(props: ColourPickerProps) {
     </div>
   );
 }
-
-export default ColourPicker;

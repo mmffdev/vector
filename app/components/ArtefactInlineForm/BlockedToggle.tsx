@@ -72,5 +72,3 @@ export function BlockedToggle({ isBlocked, blockedReason, onToggle, onReasonChan
     </div>
   );
 }
-
-export default BlockedToggle;

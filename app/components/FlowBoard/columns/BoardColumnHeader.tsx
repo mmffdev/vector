@@ -66,5 +66,3 @@ export function BoardColumnHeader({
     </div>
   );
 }
-
-export default BoardColumnHeader;

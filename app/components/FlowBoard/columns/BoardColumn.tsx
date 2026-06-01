@@ -106,5 +106,3 @@ export function BoardColumn({
     </div>
   );
 }
-
-export default BoardColumn;

@@ -104,5 +104,3 @@ export function BoardCard({
     </div>
   );
 }
-
-export default BoardCard;

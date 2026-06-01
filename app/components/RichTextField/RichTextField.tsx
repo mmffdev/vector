@@ -119,5 +119,3 @@ export function RichTextField({
     </div>
   );
 }
-
-export default RichTextField;

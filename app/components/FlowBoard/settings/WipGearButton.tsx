@@ -52,5 +52,3 @@ export function WipGearButton({
     </button>
   );
 }
-
-export default WipGearButton;

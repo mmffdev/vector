@@ -463,5 +463,3 @@ function ScopeDivider() {
     </div>
   );
 }
-
-export default ArtefactNodeDiagram;

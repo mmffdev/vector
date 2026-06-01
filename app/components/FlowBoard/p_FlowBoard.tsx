@@ -669,5 +669,3 @@ export function FlowBoard({
     </Panel>
   );
 }
-
-export default FlowBoard;

@@ -79,5 +79,3 @@ export function CardFieldRenderer({
       return null;
   }
 }
-
-export default CardFieldRenderer;
