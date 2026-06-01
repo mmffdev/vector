@@ -20852,6 +20852,11 @@ tr.is-editing {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 4;
   display: inline-flex; align-items: center; gap: 4px;
+  /* Pill is at least as tall as a buttoned one so a label-ONLY pill ("Drop Here"
+     with no buttons) matches its height — the bare text would otherwise collapse
+     it shorter (Rick, 2026-06-01). 36px = 28px button + 3px pad ×2 + 1px border
+     ×2 (box-sizing is border-box, so min-height is the OUTER box). */
+  min-height: 36px;
   padding: 3px;                         /* the requested 3px pad inside the pill */
   border-radius: var(--radius-full, 999px);
   background: var(--surface, #fff);
