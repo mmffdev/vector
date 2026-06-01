@@ -24,6 +24,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { BsArrowReturnLeft, BsArrowCounterclockwise, BsArrowClockwise } from "react-icons/bs";
+import { TbLayoutList } from "react-icons/tb";
 import { JoinArrowIcon } from "./JoinArrowIcon";
 import {
   DndContext,
@@ -1200,43 +1201,97 @@ function CanvasCell({
   const { setNodeRef, isOver } = useDroppable({ id: cellDroppableId(addr) });
   const isTall = (cell.rowSpan ?? 1) > 1;
   const isWide = (cell.colSpan ?? 1) > 1;
+  const isFilled = !!cell.fieldKey;
 
   return (
     <div
       ref={setNodeRef}
       className={
         "flb-slot" +
-        (cell.fieldKey ? " flb-slot-filled" : " flb-slot-empty") +
+        (isFilled ? " flb-slot-filled" : " flb-slot-empty") +
         (isTall ? " flb-slot-tall" : "") +
         (isWide ? " flb-slot-wide" : "") +
         (isOver ? " flb-slot-over" : "")
       }
     >
-      {cell.fieldKey ? (
-        <PlacedChip addr={addr} cell={cell} fieldByKey={fieldByKey} onRemove={onRemove} />
+      {isFilled ? (
+        <PlacedChip addr={addr} cell={cell} fieldByKey={fieldByKey} />
       ) : (
         <AnchorPoint />
       )}
-      {isTall && (
+      {/* All per-field actions grouped into ONE centred pill (Rick, 2026-06-01):
+          uniform circular buttons, same size + colour, wrapped in a same-colour
+          pill (a single button reads as one circle, two+ as a pill). Only the
+          actions that apply to THIS cell render — split-row when tall, split-col
+          when wide, put-back (remove) whenever a field is placed. The cluster is
+          centred over the cell; on an empty cell it doesn't render. */}
+      <CellActions
+        canSplitRow={isTall}
+        canSplitCol={isWide}
+        canRemove={isFilled}
+        onSplit={onSplit}
+        onSplitH={onSplitH}
+        onRemove={onRemove}
+      />
+    </div>
+  );
+}
+
+// CellActions — the centred pill of per-field action buttons. Empty if no action
+// applies (so it never paints on a bare empty cell). Each button is a uniform
+// circle; the shared pill wrapper gives them one same-colour border + 3px pad.
+function CellActions({
+  canSplitRow,
+  canSplitCol,
+  canRemove,
+  onSplit,
+  onSplitH,
+  onRemove,
+}: {
+  canSplitRow: boolean;
+  canSplitCol: boolean;
+  canRemove: boolean;
+  onSplit: () => void;
+  onSplitH: () => void;
+  onRemove: () => void;
+}) {
+  if (!canSplitRow && !canSplitCol && !canRemove) return null;
+  // Stop drag from starting when interacting with the actions.
+  const guard = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
+  return (
+    <div className="flb-cell__Actions" onPointerDown={guard}>
+      {canSplitRow && (
         <button
           type="button"
-          className="flb-cell__Split"
-          onClick={onSplit}
-          title="Split this merged cell back into separate rows"
-          aria-label="Split merged cell"
+          className="flb-cell__Action"
+          onClick={(e) => { e.stopPropagation(); onSplit(); }}
+          title="Un-merge rows (split this merged cell back into separate rows)"
+          aria-label="Un-merge rows"
         >
-          ⊟
+          <TbLayoutList aria-hidden="true" />
         </button>
       )}
-      {isWide && (
+      {canSplitCol && (
         <button
           type="button"
-          className="flb-cell__Split flb-cell__Split-h"
-          onClick={onSplitH}
-          title="Split this merged cell back into separate columns"
-          aria-label="Split wide cell"
+          className="flb-cell__Action"
+          onClick={(e) => { e.stopPropagation(); onSplitH(); }}
+          title="Un-merge columns (split this wide cell back into separate columns)"
+          aria-label="Un-merge columns"
         >
-          ⊟
+          {/* same glyph, rotated 90° (.flb-cell__Action_Icon-rot) — column variant. */}
+          <TbLayoutList aria-hidden="true" className="flb-cell__Action_Icon-rot" />
+        </button>
+      )}
+      {canRemove && (
+        <button
+          type="button"
+          className="flb-cell__Action flb-cell__Action-remove"
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          title="Remove from form (return the field to the picker)"
+          aria-label="Remove field from form"
+        >
+          <BsArrowReturnLeft aria-hidden="true" />
         </button>
       )}
     </div>
@@ -1257,12 +1312,10 @@ function PlacedChip({
   addr,
   cell,
   fieldByKey,
-  onRemove,
 }: {
   addr: CellAddr;
   cell: FormCell;
   fieldByKey: Map<string, CoreFieldDescriptor>;
-  onRemove: () => void;
 }) {
   const key = cell.fieldKey!;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -1271,6 +1324,8 @@ function PlacedChip({
   });
   const descriptor = fieldByKey.get(key);
   const isCompulsory = descriptor?.isCompulsory;
+  // The remove ("put back") action now lives in the centred CellActions pill
+  // alongside the un-merge buttons — no inline button on the chip.
   return (
     <div
       ref={setNodeRef}
@@ -1280,8 +1335,7 @@ function PlacedChip({
         (isDragging ? " flb-fieldcard-dragging" : "")
       }
     >
-      {/* Only the grip carries the drag listeners, so the remove button (and
-          future controls) stay clickable without starting a drag. */}
+      {/* Only the grip carries the drag listeners. */}
       <span className="flb-fieldcard__Grip" aria-label="Drag to move" {...listeners} {...attributes}>⠿</span>
       <span className="flb-fieldcard__Main">
         <span className="flb-fieldcard__Label">{descriptor?.label ?? key}</span>
@@ -1290,16 +1344,6 @@ function PlacedChip({
           {isCompulsory ? " · Required" : ""}
         </span>
       </span>
-      <button
-        type="button"
-        className="flb-fieldcard__Remove"
-        title="Remove from form (return to the field picker)"
-        aria-label="Remove field from form"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onRemove(); }}
-      >
-        <BsArrowReturnLeft aria-hidden="true" />
-      </button>
     </div>
   );
 }

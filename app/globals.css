@@ -20881,17 +20881,45 @@ tr.is-editing {
 .flb-slot-tall .flb-fieldcard,
 .flb-slot-tall .flb-anchor { height: 100%; }
 
-/* split (un-merge) handle — top-right corner of a tall cell */
-.flb-cell__Split {
-  position: absolute; top: 6px; right: 6px; z-index: 3;
-  width: 22px; height: 22px; border-radius: var(--radius-full, 999px);
-  border: 1.5px solid var(--accent, #f5c451);
-  background: var(--surface, #fff); color: var(--accent-strong, #b98a00);
-  font-size: 12px; line-height: 1; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12); transition: all 120ms ease;
+/* ── Per-field action cluster (Rick, 2026-06-01) ─────────────────────────────
+   All of a placed field's actions — un-merge rows, un-merge columns, put-back
+   (remove) — grouped into ONE centred pill instead of scattered absolute
+   buttons. Uniform circular buttons, all the same size + colour, no dark border
+   on the icons (they're plain circles). The PILL is the shared wrapper: one
+   button → it reads as a single circle; two+ → a pill that wraps them together,
+   with one same-colour border + 3px padding. Centred over the cell. */
+.flb-cell__Actions {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 4;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px;                         /* the requested 3px pad inside the pill */
+  border-radius: var(--radius-full, 999px);
+  background: var(--surface, #fff);
+  /* pill border is the SAME colour as the buttons (the panel-border token). */
+  border: 1px solid var(--border-panel, #C8C3BB);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 }
-.flb-cell__Split:hover { background: var(--accent-muted, #fff7e6); transform: scale(1.08); }
+/* one uniform circular action button — same size + colour for every action,
+   no dark outline (the pill carries the only border). */
+.flb-cell__Action {
+  flex: 0 0 auto;
+  width: 28px; height: 28px; padding: 0;
+  border: none; border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: var(--ink-subtle, #6b6b73);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+.flb-cell__Action svg { width: 15px; height: 15px; display: block; }
+/* column un-merge uses the same TbLayoutList glyph rotated 90°. */
+.flb-cell__Action_Icon-rot { transform: rotate(90deg); }
+.flb-cell__Action:hover { background: var(--surface-sunken, #EDEAE4); color: var(--ink, #1c1c22); transform: scale(1.08); }
+.flb-cell__Action:focus { outline: none; }
+.flb-cell__Action:focus-visible { outline: 2px solid var(--border-panel, #C8C3BB); outline-offset: 2px; }
+/* the put-back (remove) action goes danger-toned on hover, same circle shape. */
+.flb-cell__Action-remove:hover { background: var(--danger-bg, #fdecec); color: var(--danger, #b91c1c); }
+.flb-cell__Action-remove:focus-visible { outline-color: var(--danger, #b91c1c); }
 
 /* Seam join handle — a BsArrowsCollapse icon on a grey circle (matching the
    "+" add circles), the icon in #FFCC33 orange. Dead-centre on the seam line
@@ -20948,16 +20976,12 @@ tr.is-editing {
   pointer-events: none; z-index: 6;
 }
 
-/* During a ROW drag, the seam + split handles must not intercept the pointer —
+/* During a ROW drag, the seam + action handles must not intercept the pointer —
    otherwise they block dropping a row onto the slot/gap beneath them. */
 .flb-canvas-rowdrag .flb-seam__Join,
 .flb-canvas-rowdrag .flb-grid__HSeam .flb-seam__Join,
-.flb-canvas-rowdrag .flb-cell__Split { pointer-events: none; }
+.flb-canvas-rowdrag .flb-cell__Actions { pointer-events: none; }
 .flb-seam__Join:focus-visible { outline: 2px solid #FFCC33; outline-offset: 2px; }
-
-/* horizontal split handle — top-LEFT of a wide cell (keeps clear of the V-split
-   at top-right when a cell is both tall and wide). */
-.flb-cell__Split-h { left: 6px; right: auto; }
 
 /* anchor point — dashed border + filled circle with + (user spec) */
 .flb-anchor {
@@ -21041,19 +21065,8 @@ tr.is-editing {
   flex: 0 0 auto; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--ink-subtle, #9a9aa2);
 }
-/* remove / place-back button on a placed field — right side, inline */
-.flb-fieldcard__Remove {
-  flex: 0 0 auto; margin-left: 4px;
-  width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
-  border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
-  color: var(--ink-subtle, #9b9b9b); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 120ms ease;
-}
-.flb-fieldcard__Remove svg { width: 13px; height: 13px; }
-.flb-fieldcard__Remove:hover { border-color: var(--danger, #b91c1c); color: var(--danger, #b91c1c); background: var(--danger-bg, #fdecec); }
-.flb-fieldcard__Remove:focus { outline: none; }
-.flb-fieldcard__Remove:focus-visible { outline: 2px solid var(--danger, #b91c1c); outline-offset: 2px; }
+/* (The placed-field remove/put-back button moved into the centred
+   .flb-cell__Actions pill — see that block above.) */
 /* the grip is now the drag affordance (only it carries listeners) */
 .flb-fieldcard-placed .flb-fieldcard__Grip { cursor: grab; }
 .flb-fieldcard-placed .flb-fieldcard__Grip:active { cursor: grabbing; }
@@ -21130,17 +21143,14 @@ tr.is-editing {
    button cluster. */
 .flb-row-handle:focus,
 .flb-row-del:focus,
-.flb-cell__Split:focus,
 .flb-gap__Insert_Btn:focus { outline: none; }
 .flb-row-handle:focus:not(:focus-visible),
 .flb-row-del:focus:not(:focus-visible),
-.flb-cell__Split:focus:not(:focus-visible),
 .flb-gap__Insert_Btn:focus:not(:focus-visible) {
   border-color: var(--border-default, #e5e1da);
 }
 .flb-row-handle:focus-visible,
 .flb-row-del:focus-visible,
-.flb-cell__Split:focus-visible,
 .flb-gap__Insert_Btn:focus-visible {
   outline: 2px solid var(--accent, #1a1a1a); outline-offset: 2px;
 }
