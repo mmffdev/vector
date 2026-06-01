@@ -160,9 +160,9 @@ def main() -> int:
             errors.append(f"  ERROR: '{path}' called at {refs[0]} has no spec entry in {spec_label}")
 
     caller_map: dict[str, list[str]] = {}
-    for path in spec_paths:
+    for path in sorted(spec_paths):
         if path in primary_callers:
-            caller_map[path] = primary_callers[path]
+            caller_map[path] = sorted(primary_callers[path])
 
     dead = [p for p in sorted(spec_paths) if p not in primary_callers and p not in exemptions]
 
