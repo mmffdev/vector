@@ -20909,19 +20909,17 @@ tr.is-editing {
    contrast against busy cells. */
 .flb-seam__Join {
   pointer-events: auto;
-  /* 50% larger than the original 28×32 (Rick, 2026-05-31); sized to fit the
-     +6px-wider, lengthened-shaft glyph (viewBox 24×45) without squash. */
-  width: 48px; height: 88px; padding: 0; border: none; cursor: pointer;
+  /* sized to fit the +8px-bigger, short-shaft + short-head glyph (viewBox 24×17)
+     without squash — height tracks the glyph's aspect (Rick, 2026-06-01). */
+  width: 56px; height: 42px; padding: 0; border: none; cursor: pointer;
   background: transparent;
   display: flex; align-items: center; justify-content: center;
   transition: transform 120ms ease;
 }
-/* glyph keeps the SVG's own aspect (taller viewBox pushes the arrowheads apart
-   via the lengthened connector — see JoinArrowIcon). +6px wider (39→45); height
-   matches the 24×45 viewBox aspect (45 * 45/24 ≈ 84) so the longer shaft spaces
-   the heads apart instead of getting squashed to fit. */
+/* glyph keeps the SVG's own aspect. +8px bigger (45→53 wide); height matches the
+   24×17 viewBox aspect (53 * 17/24 ≈ 38) so the glyph isn't stretched. */
 .flb-seam__Glyph {
-  width: 45px; height: 84px; display: block;
+  width: 53px; height: 38px; display: block;
   /* NORMAL mode: a soft shadow only (the glyph is quiet sand/panel-border, set
      via the SVG's var() fallbacks in JoinArrowIcon). */
   filter: drop-shadow(0 1px 1px rgba(0,0,0,0.12));
