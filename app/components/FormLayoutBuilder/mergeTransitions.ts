@@ -928,27 +928,37 @@ export interface MergeGroup {
   merged: boolean;     // true if the group is held together by a vertical merge
 }
 
-// rowsMergeLinked: do rows `a` (upper) and `b` (the row directly below) share a
-// vertical merge across their boundary? True iff some column in `b` is a
-// tombstone whose owner sits in `a` or above AND that owner's span reaches `b`.
-// Equivalently: some column has a cell at row index `bIdx` that is a tombstone
-// (covered from above). Since a tombstone is always covered by an owner above,
-// any tombstone in row b means a merge crosses the a|b boundary in that column.
-function rowHasTombstone(row: FormRow): boolean {
-  return row.cells.some((c) => isTombstone(c));
+// rowHasVerticalTombstoneFrom: does `row` (at index `rowIndex`) contain a
+// VERTICAL tombstone — a cell covered by an owner in an EARLIER row? Only a
+// vertical merge ties a row to the one above; a HORIZONTAL tombstone (owner in
+// the SAME row, from mergeRight) does NOT. The old code checked `isTombstone`
+// for ANY tombstone, so an H-merged row was wrongly linked to the row above —
+// fusing two different-template bands into one merge-group, which dropped the
+// lower band's drag/delete aside and let merged cells render out of alignment.
+// (Bug origin 2026-06-01: an H-merged 50-50 row above an H-merged 30-30-30 row
+// fused; the 30-30-30 band lost its handle.) A vertical tombstone is identified
+// by its owner id appearing in the SAME COLUMN of a PRIOR row (vOwnerRow walks up
+// the column); a horizontal tombstone's owner is in this same row.
+function rowHasVerticalTombstoneFrom(rows: FormRow[], rowIndex: number): boolean {
+  const row = rows[rowIndex];
+  return row.cells.some((c, ci) => {
+    if (!isTombstone(c)) return false;
+    // vertical iff the owner resolves to an EARLIER row in this column.
+    return vOwnerRow(rows, rowIndex, ci) < rowIndex;
+  });
 }
 
-// mergeGroupsOf partitions rows into consecutive groups. A boundary between row
-// i and i+1 is "linked" iff row i+1 contains a tombstone (a cell covered by a
-// merge from above) — that merge ties the two rows together. Consecutive linked
-// boundaries extend the same group (transitive closure).
+// mergeGroupsOf partitions rows into consecutive groups tied by a VERTICAL merge.
+// A boundary between row i and i+1 is "linked" iff row i+1 contains a vertical
+// tombstone (a cell covered by a merge from a row ABOVE). Horizontal-only merges
+// never link rows. Consecutive linked boundaries extend the same group.
 export function mergeGroupsOf(rows: FormRow[]): MergeGroup[] {
   const groups: MergeGroup[] = [];
   let i = 0;
   while (i < rows.length) {
     let j = i + 1;
-    // extend while the NEXT row is tied to the current group by a merge.
-    while (j < rows.length && rowHasTombstone(rows[j])) j++;
+    // extend while the NEXT row is tied to the current group by a VERTICAL merge.
+    while (j < rows.length && rowHasVerticalTombstoneFrom(rows, j)) j++;
     groups.push({ startRow: i, count: j - i, merged: j - i > 1 });
     i = j;
   }

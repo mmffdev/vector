@@ -371,6 +371,34 @@ describe("mergeGroupsOf", () => {
     rows = mergeDown(rows, { rowIndex: 1, cellIndex: 2 }); // right 1-2
     expect(mergeGroupsOf(rows)).toEqual([{ startRow: 0, count: 3, merged: true }]);
   });
+
+  // Regression (2026-06-01): a HORIZONTAL merge creates a tombstone WITHIN one
+  // row — it must NOT link that row to the row above. Two adjacent rows that are
+  // each independently H-merged stay SEPARATE singleton groups; the old code
+  // keyed on "row has any tombstone" and wrongly fused them (dropping the second
+  // row's drag/delete aside + breaking alignment, esp. across a band boundary).
+  it("does NOT link rows joined only by their own horizontal merges", () => {
+    let rows = [row3(null, null, null), row3(null, null, null)];
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 0 }); // r0: cols 0+1 → tombstone in r0
+    rows = mergeRight(rows, { rowIndex: 1, cellIndex: 0 }); // r1: cols 0+1 → tombstone in r1
+    // both rows have a tombstone, but only HORIZONTAL — they must stay singletons.
+    expect(mergeGroupsOf(rows)).toEqual([
+      { startRow: 0, count: 1, merged: false },
+      { startRow: 1, count: 1, merged: false },
+    ]);
+  });
+
+  it("a row that is BOTH vertically and horizontally merged still links vertically", () => {
+    // r0 owns a vertical merge into r1 (col0), and r1 is also H-merged (col1+2).
+    // The vertical link must still group r0+r1 (the H-merge doesn't cancel it).
+    let rows = [row3("Desc", null, null), row3(null, null, null), row3("x", "y", "z")];
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 }); // col0 r0→r1 (vertical)
+    rows = mergeRight(rows, { rowIndex: 1, cellIndex: 1 }); // r1 cols1+2 (horizontal)
+    expect(mergeGroupsOf(rows)).toEqual([
+      { startRow: 0, count: 2, merged: true },
+      { startRow: 2, count: 1, merged: false },
+    ]);
+  });
 });
 
 describe("moveGroup (no fracture)", () => {
