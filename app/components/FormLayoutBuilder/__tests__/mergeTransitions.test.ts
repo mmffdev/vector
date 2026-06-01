@@ -115,6 +115,46 @@ describe("mergeDown", () => {
     const rows = [row3("A", "B", "C"), row1(null)];
     expect(mergeDown(rows, { rowIndex: 0, cellIndex: 0 })).toBe(rows);
   });
+
+  // Regression (2026-06-01): merging an empty cell DOWN into a row whose target
+  // column is the LEFT owner of a 1×N HORIZONTAL merge must split that wide cell —
+  // the vertical merge claims only the left column; the wide cell's OTHER columns
+  // revive to standalone empties. Bug was: those columns kept absorbedBy = the
+  // old (now-tombstoned) owner, so the renderer skipped them and they VANISHED.
+  // User: "the double span r12c1+2 was cut in half… it should have created a new
+  // cell at r12c2; when the double was split to allow the merge in c1, c2 vanished."
+  it("splitting a wide cell to allow a vertical merge revives the orphaned column", () => {
+    // r1 col0 is a 1×2 wide cell (cols 0+1 merged). r0 col0 empty above it.
+    let rows = [row3(null, null, null), row3(null, null, null), row3(null, null, null)];
+    rows = mergeRight(rows, { rowIndex: 1, cellIndex: 0 }); // r1: 1×2 wide at col0
+    expect(effectiveColSpan(rows[1].cells[0])).toBe(2);
+
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 }); // pull col0 down into it
+
+    const newOwnerId = rows[0].cells[0].id;
+    // col0: new vertical owner (rowSpan 2), col0 of r1 is its tombstone, NOT wide.
+    expect(effectiveRowSpan(rows[0].cells[0])).toBe(2);
+    expect(effectiveColSpan(rows[0].cells[0])).toBe(1); // took the field, not the width
+    expect(rows[1].cells[0].absorbedBy).toBe(newOwnerId);
+    expect(effectiveColSpan(rows[1].cells[0])).toBe(1);
+    // col1 of r1 — the wide cell's former H-tombstone — is REVIVED, not a hole.
+    expect(isTombstone(rows[1].cells[1])).toBe(false);
+    expect(rows[1].cells[1].fieldKey).toBeNull();
+    expect(rows[1].cells[1].absorbedBy).toBeUndefined();
+  });
+
+  it("wide cell carrying a field: vertical merge keeps the field, revives col1", () => {
+    // r1 col0 (a field) widened to 1×2; empty above merges down and pulls the
+    // field up into the new owner; col1 still revives empty.
+    let rows = [row3(null, null, null), row3("colour", null, null), row3(null, null, null)];
+    rows = mergeRight(rows, { rowIndex: 1, cellIndex: 0 }); // colour grows to 1×2
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 });
+
+    expect(rows[0].cells[0].fieldKey).toBe("colour"); // field migrated up
+    expect(effectiveColSpan(rows[0].cells[0])).toBe(1);
+    expect(isTombstone(rows[1].cells[1])).toBe(false); // col1 revived (no hole)
+    expect(rows[1].cells[1].fieldKey).toBeNull();
+  });
 });
 
 // ── splitCell (inverse of merge) ─────────────────────────────────────────────

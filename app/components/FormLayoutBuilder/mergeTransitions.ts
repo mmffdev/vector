@@ -697,9 +697,19 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
     if (lowerCell && !isTombstone(lowerCell)) {
       const newSpan = effectiveRowSpan(lowerCell) + 1;
       const newOwnerId = clicked.id;
+      // If the cell being absorbed is itself a HORIZONTAL owner (colSpan > 1),
+      // the vertical merge only claims its left column — its other columns must
+      // be SPLIT OFF and revived to standalone empty cells. Without this, those
+      // columns keep absorbedBy = the old owner id, which is now a vertical
+      // tombstone, so the renderer skips them and they vanish (the "r12c2
+      // disappeared after merging the wide cell's left column" bug, 2026-06-01).
+      const lowerOwnerId = lowerCell.id;
+      const lowerColSpan = effectiveColSpan(lowerCell);
+      const lowerTmplSpans = TEMPLATE_SPANS[lowerRow.template] ?? [];
       return rows.map((row, ri) => {
         if (ri === addr.rowIndex) {
           // empty cell becomes owner: carries the lower cell's field + new span.
+          // (It takes ONLY the lower cell's field, not its width — colSpan stays 1.)
           return {
             ...row,
             cells: row.cells.map((c, ci) =>
@@ -710,15 +720,22 @@ export function mergeDown(rows: FormRow[], addr: CellAddr): FormRow[] {
           };
         }
         if (ri === addr.rowIndex + 1) {
-          // former owner becomes a tombstone of the new owner; any deeper
-          // tombstones get repointed to the new owner id.
           return {
             ...row,
-            cells: row.cells.map((c, ci) =>
-              ci === addr.cellIndex
-                ? { id: c.id, fieldKey: null, span: c.span, absorbedBy: newOwnerId }
-                : c,
-            ),
+            cells: row.cells.map((c, ci) => {
+              // former owner's LEFT column becomes a tombstone of the new owner,
+              // shedding any horizontal colSpan marker.
+              if (ci === addr.cellIndex) {
+                return { id: c.id, fieldKey: null, span: c.span, absorbedBy: newOwnerId };
+              }
+              // the absorbed wide cell's OTHER columns (its H-tombstones) revive
+              // to standalone empty cells at their template width.
+              if (lowerColSpan > 1 && c.absorbedBy === lowerOwnerId) {
+                const { absorbedBy: _drop, ...rest } = c;
+                return { ...rest, fieldKey: null, span: lowerTmplSpans[ci] ?? c.span };
+              }
+              return c;
+            }),
           };
         }
         // repoint deeper tombstones that belonged to the old owner.
