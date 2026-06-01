@@ -125,6 +125,13 @@ export function FormLayoutRenderer({
         // alignment. One grid for the whole same-template run = columns always
         // align (no inter-band gaps).
         const rowTracks = `repeat(${band.subRowCount}, minmax(72px, auto))`;
+        // Per-band micro layout: each template column's width in micro-tracks, and
+        // the cumulative micro-START line of each column (1-based grid line). A
+        // cell at column c starts at line microStart[c]+1 and spans the summed
+        // micro-widths of the columns it covers (colSpan).
+        const microW = templateMicro(band);
+        const microStart: number[] = [];
+        microW.reduce((acc, w, i) => { microStart[i] = acc; return acc + w; }, 0);
         return (
          <React.Fragment key={band.rows[0].id}>
           <div className="flb-grid__Band" data-template={band.rows[0].template}>
@@ -143,7 +150,7 @@ export function FormLayoutRenderer({
             <div
               className="flb-grid__Band_Cells"
               style={{
-                gridTemplateColumns: bandColumnTracks(band),
+                gridTemplateColumns: bandColumnTracks(),
                 gridTemplateRows: rowTracks,
               }}
               data-subrows={band.subRowCount}
@@ -190,7 +197,13 @@ export function FormLayoutRenderer({
                       data-pole-left={poleLeft ? "true" : undefined}
                       data-pole-right={poleRight ? "true" : undefined}
                       style={{
-                        gridColumn: `${cellIndex + 1} / span ${colSpan}`,
+                        // Place on the master micro-grid: start at this column's
+                        // cumulative micro-line; span the summed micro-widths of the
+                        // template columns this cell covers (colSpan). Boundaries
+                        // thus land on shared gridlines across every row/template.
+                        gridColumn: `${(microStart[cellIndex] ?? cellIndex) + 1} / span ${microW
+                          .slice(cellIndex, cellIndex + colSpan)
+                          .reduce((a, b) => a + b, 0) || 1}`,
                         gridRow: `${localRow + 1} / span ${span}`,
                       }}
                     >
@@ -244,13 +257,33 @@ export function FormLayoutRenderer({
   );
 }
 
-// bandColumnTracks derives the band's column tracks from the CANONICAL template
-// spans (not row[0]'s cells, which a horizontal merge may have widened). Fixed
-// tracks mean a horizontally-merged cell just spans tracks via grid-column —
-// keeping every row's columns aligned. Falls back to the row's own spans if the
-// template isn't in the table (defensive).
-function bandColumnTracks(band: Band): string {
-  const tmplSpans = TEMPLATE_SPANS[band.rows[0].template];
-  const spans = tmplSpans ?? band.rows[0].cells.map((c) => c.span);
-  return spans.map((s) => `${s}fr`).join(" ");
+// ── Master micro-column grid ────────────────────────────────────────────────
+// Every band renders on the SAME fine grid of MICRO_BASE equal columns, so a
+// cell boundary lands on the same x in EVERY row regardless of its template —
+// e.g. a 25% boundary in a 25/25/50 row lines up with the 25% boundary in a
+// 50/25/25 row (Rick, 2026-06-01: "both should align to a shared grid"). 60 is
+// the magic base: every template percentage maps to a whole number of micro-
+// tracks — 25→15, 30→18, 33⅓→20, 50→30, 70→42, 75→45, 100→60.
+const MICRO_BASE = 60;
+
+// microWidths converts a template's percentage spans to integer micro-track
+// counts on the MICRO_BASE grid. The "33" spans are the 100/3 thirds, so they
+// resolve to MICRO_BASE/3 exactly (20) rather than round(33% · 60)=20 — same
+// here, but the explicit third keeps the sum exact at any base.
+function microWidths(spans: number[]): number[] {
+  return spans.map((s) => (s === 33 ? MICRO_BASE / 3 : Math.round((s / 100) * MICRO_BASE)));
+}
+
+// templateMicro returns the per-template-column micro widths for a band (from the
+// canonical template spans, NOT row[0]'s cells which an H-merge may have widened).
+function templateMicro(band: Band): number[] {
+  const spans = TEMPLATE_SPANS[band.rows[0].template] ?? band.rows[0].cells.map((c) => c.span);
+  return microWidths(spans);
+}
+
+// bandColumnTracks: the master micro-grid, identical for every band, so column
+// boundaries are shared across all rows/templates. A cell spans the micro-tracks
+// of the template columns it covers (see micro placement in the cell loop).
+function bandColumnTracks(): string {
+  return `repeat(${MICRO_BASE}, 1fr)`;
 }
