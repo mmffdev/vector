@@ -29,11 +29,16 @@ The dashboard supervises four components (tunnel, backend, frontend, docs) and r
 
 ## Logs
 
-- App log: `~/Library/Logs/MMFFVectorLauncher/launcher.jsonl` (10 MB rotation, 7-day retention)
-- Tunnel: `/tmp/mmff-tunnel.log`
-- Backend: `/tmp/mmff-server.log`
-- Frontend: `/tmp/mmff-next.log`
-- Docs: `/tmp/mmff-docs.log` (JSONL, one record per stdout/stderr line, truncated each spawn)
+A single JSONL stream carries everything; each record is tagged by component (`tag`: `tunnel` / `backend` / `frontend` / `docs`), so there are no separate per-component log files.
+
+- App log: `~/Library/Application Support/MMFFVectorLauncher/logs/launcher.jsonl` (rotated by size; archives gzipped as `launcher.<ts>.jsonl.gz` in the same dir, 7-day retention reaper)
+- Repo mirror: `local-assets/launcher/logs/launcher.jsonl` — hard-link of the live log so you can `tail -f` from inside the repo
+
+Tail the live stream filtered to one component, e.g.:
+
+```bash
+tail -f local-assets/launcher/logs/launcher.jsonl | grep '"tag":"tunnel"'
+```
 
 ## Coexistence with existing tooling
 

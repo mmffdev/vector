@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-05-30 01:48:15
+**Generated:** 2026-05-31 01:50:16
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -35,7 +35,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/scope
-2 file(s) · key: p_scope_workItemsForm_dataGridConfig.tsx, page.tsx
+4 file(s) · key: page.tsx, GridExecution.tsx, scopeColumns.tsx
 Purpose: _(unset)_
 
 ### app/(user)/user-management
@@ -51,7 +51,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/work-items
-3 file(s) · key: p_workItems_dataGridConfig.tsx, page.tsx, layout.tsx
+2 file(s) · key: page.tsx, layout.tsx
 Purpose: _(unset)_
 
 ### app/(user)/workspace-admin/artefacts
@@ -63,15 +63,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/ArtefactInlineForm
-7 file(s) · key: EditCustomFields.tsx, ArtefactInlineForm.tsx, useParentCandidates.ts
+7 file(s) · key: ArtefactInlineForm.tsx, EditCustomFields.tsx, useParentCandidates.ts
 Purpose: _(unset)_
 
 ### app/components/CustomFields
-4 file(s) · key: TypeBindingsPicker.tsx, CustomFieldEditForm.tsx, CustomFieldFlyout.tsx
-Purpose: _(unset)_
-
-### app/components/DataGrid
-6 file(s) · key: useRowFlyout.ts, p_DataGrid.tsx, useColumnManager.ts
+4 file(s) · key: CustomFieldEditForm.tsx, TypeBindingsPicker.tsx, CustomFieldsPageBody.tsx
 Purpose: _(unset)_
 
 ### app/components/FlowBoard
@@ -98,6 +94,14 @@ Purpose: _(unset)_
 2 file(s) · key: WipSettingsModal.tsx, WipGearButton.tsx
 Purpose: _(unset)_
 
+### app/components/FormLayoutBuilder
+7 file(s) · key: FormLayoutRuntime.tsx, FormBuilderShell.tsx, PreviewDataPicker.tsx
+Purpose: _(unset)_
+
+### app/components/Grid
+8 file(s) · key: Grid__Forms.tsx, Grid__Tree.tsx, Grid__Head.tsx
+Purpose: _(unset)_
+
 ### app/components/MapRelationship3D
 2 file(s) · key: index.tsx, types.ts
 Purpose: _(unset)_
@@ -107,7 +111,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/ObjectTreeV2/adapters
-3 file(s) · key: workItemsAdapter.tsx, customFieldsAdapter.tsx, types.ts
+3 file(s) · key: customFieldsAdapter.tsx, workItemsAdapter.tsx, types.ts
 Purpose: _(unset)_
 
 ### app/components/ObjectTreeV2/hooks
@@ -163,7 +167,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/lib
-22 file(s) · key: shareableParams.ts, fieldsApi.ts, api.ts
+23 file(s) · key: formLayoutsApi.ts, shareableParams.ts, fieldsApi.ts
 Purpose: _(unset)_
 
 ### app/lib/__tests__
@@ -262,6 +266,8 @@ Purpose: _(unset)_
 - app/api/dev/security-audits
 - app/api/dev/services
 - app/change-password
+- app/components/DataContainer
+- app/components/Grid/__tests__
 - app/components/ObjectTree
 - app/components/ObjectTreeV2/__tests__
 - app/components/ObjectTreeV2/configs
@@ -368,7 +374,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-21 file(s) · key: columns_fourth_wave_test.go, handler.go, service.go
+23 file(s) · key: handler_test.go, handler.go, dto.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
@@ -441,6 +447,10 @@ Purpose: _(unset)_
 
 ### backend/internal/flows
 10 file(s) · key: types.go, sql.go, service.go
+Purpose: _(unset)_
+
+### backend/internal/formlayouts
+6 file(s) · key: service.go, service_test.go, handler.go
 Purpose: _(unset)_
 
 ### backend/internal/geo
@@ -592,7 +602,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/sentinel
-12 file(s) · key: resolver.go, handler_test.go, handler.go
+12 file(s) · key: clamp_sql_test.go, clamp_sql.go, ctx.go
 Purpose: _(unset)_
 
 ### backend/internal/shared/topology
@@ -635,6 +645,10 @@ Purpose: _(unset)_
 2 file(s) · key: service.go, handler.go
 Purpose: _(unset)_
 
+### backend/internal/vectorfields
+4 file(s) · key: service.go, sql.go, types.go
+Purpose: _(unset)_
+
 ### backend/internal/webhooks
 5 file(s) · key: worker.go, sql.go, service.go
 Purpose: _(unset)_
@@ -662,7 +676,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/scripts
-64 file(s) · key: lint_custom_field_prefix.py, lint_savedviews_writer_only.py, lint_savedviews_context_free.
+64 file(s) · key: lint_scope_literals.py, lint_custom_field_prefix.py, lint_savedviews_writer_only.py
 Purpose: _(unset)_
 
 ### dev/scripts/backup/lib
@@ -703,7 +717,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/reports
-1074 file(s) · key: 20260530-003807-addressables.json, 20260530-003536-addressables.json, 20260530-001531-addr
+1091 file(s) · key: 20260531-013650-addressables.json, 20260531-011447-addressables.json, 20260530-214540-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -761,11 +775,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-157 file(s) · key: 163_archive_resolved_custom_field_rows.sql, 162_artefacts_fourth_wave_core_columns.sql, 16
+164 file(s) · key: 170_backfill_vector_fields_from_legacy.sql, 169_vector_fields_context.sql, 168_vector_fiel
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-92 file(s) · key: 163_archive_resolved_custom_field_rows_DOWN.sql, 162_artefacts_fourth_wave_core_columns_DO
+99 file(s) · key: 170_backfill_vector_fields_from_legacy_DOWN.sql, 169_vector_fields_context_DOWN.sql, 168_v
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/merge_plan
@@ -783,7 +797,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs
-78 file(s) · key: c_tech_debt.md, c_c_lsp_mcp.md, c_infra_index.md
+79 file(s) · key: c_tech_debt.md, c_c_datagrid.md, c_c_lsp_mcp.md
 Purpose: _(unset)_
 
 ### docs/Database
@@ -791,7 +805,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/Security/Sentinel
-5 file(s) · key: sentinel_docs.md, sentinel_revision_history.md, sentinel_tech_debt.md
+5 file(s) · key: sentinel_tech_debt.md, sentinel_docs.md, sentinel_revision_history.md
 Purpose: _(unset)_
 
 ### docs/Varlock
@@ -803,10 +817,10 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/superpowers/plans
-20 file(s) · key: 2026-05-29-objecttree-inline-flyouts.md, 2026-05-29-milestones-page.md, 2026-05-28-objectt
+21 file(s) · key: 2026-05-31-vector-fields-3layer.md, 2026-05-29-objecttree-inline-flyouts.md, 2026-05-29-mi
 Purpose: _(unset)_
 
 ### docs/superpowers/specs
-16 file(s) · key: 2026-05-29-objecttree-inline-flyouts-design.md, 2026-05-29-milestones-page-design.md, 2026
+20 file(s) · key: 2026-05-31-vector-fields-3layer-design.md, 2026-05-30-unified-field-model-design.md, 2026-
 Purpose: _(unset)_
 

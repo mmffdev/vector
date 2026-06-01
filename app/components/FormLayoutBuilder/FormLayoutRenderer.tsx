@@ -23,8 +23,8 @@ import {
   isTombstone,
   effectiveRowSpan,
   effectiveColSpan,
-  dominantVSeams,
-  dominantHSeams,
+  seamsFor,
+  hSeamsFor,
   poleEdgesFor,
   mergeGroupsOf,
   type Band,
@@ -85,23 +85,24 @@ export function FormLayoutRenderer({
   // per-group drag/delete aside. A group never crosses a band (a merge can't
   // cross a template change), so each group lies fully within one band.
   const groups = React.useMemo(() => mergeGroupsOf(rows), [rows]);
-  // Vertical mergeable seams keyed "rowIndex:colIndex" for O(1) lookup. We use
-  // the DOMINANT set: when several seams compete over one empty band at the same
-  // boundary, only the WIDEST owner's handle survives, so the joiner lands in the
-  // centre of the widest cell — never stranded on a narrow column next to it
-  // (golden rule, dominantVSeams).
+  // Vertical mergeable seams keyed "rowIndex:colIndex" for O(1) lookup. The join
+  // HANDLE appears wherever a valid edge-merge exists — the SAME raw set the
+  // barber poles use (2026-06-01: handles and poles must agree; every valid
+  // merge on any of a cell's 4 edges is offered). The old "dominant" filter is
+  // retired here because it hid valid merge handles while their poles still
+  // showed (e.g. a tall filled cell beside a wide empty cell).
   const seamSet = React.useMemo(() => {
     if (!renderSeamJoin) return null;
     const s = new Set<string>();
-    for (const seam of dominantVSeams(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
+    for (const seam of seamsFor(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
     return s;
   }, [rows, renderSeamJoin]);
-  // Horizontal mergeable seams keyed "rowIndex:colIndex" (the LEFT cell) — the
-  // dominant set keeps only the TALLEST owner per competing run.
+  // Horizontal mergeable seams keyed "rowIndex:colIndex" (the LEFT cell) — raw
+  // set, same as the poles (see seamSet above).
   const hSeamSet = React.useMemo(() => {
     if (!renderHSeamJoin) return null;
     const s = new Set<string>();
-    for (const seam of dominantHSeams(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
+    for (const seam of hSeamsFor(rows)) s.add(`${seam.rowIndex}:${seam.colIndex}`);
     return s;
   }, [rows, renderHSeamJoin]);
   // Barber-pole edges: every mergeable boundary draws a stripe on BOTH cells it

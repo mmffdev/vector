@@ -15,6 +15,7 @@ import {
   DPOP_ANON_KEY,
   ensureAnyActiveKeypair,
   ensureKeypair,
+  pruneStaleKeys,
   reparentAnonKeypair,
 } from "@/app/lib/dpop";
 
@@ -161,7 +162,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // no-op. Fire-and-forget — proof minting on subsequent requests
     // works either way because the in-memory cache holds the same
     // CryptoKey reference; reparent only changes the IDB key.
-    void reparentAnonKeypair(res.user.id);
+    //
+    // TD-SEC-DPOP-STALE-KEY (2026-05-31) — after reparent, prune every
+    // OTHER keypair from IDB so an orphan from a prior un-cleaned session
+    // can't be picked up by ensureAnyActiveKeypair on the next tab
+    // refocus and sign /auth/refresh with the wrong key (which the
+    // backend's cnf.jkt binding check rejects → revoke-all → logged out /
+    // blank page). Chained after reparent so the surviving record is the
+    // one we just bound. Fire-and-forget — a prune failure only means a
+    // stale key lingers one more cycle, never a broken session.
+    void reparentAnonKeypair(res.user.id).then(() => pruneStaleKeys(res.user.id));
   }, []);
 
   const refresh = useCallback(async () => {

@@ -30,6 +30,7 @@ import {
   type DPoPKeyRecord,
   deleteKeyRecord,
   listAllRecords,
+  pruneKeysExcept,
   readKeyRecord,
   reparentKeyRecord,
   writeKeyRecord,
@@ -94,15 +95,40 @@ export async function ensureAnyActiveKeypair(): Promise<void> {
   if (_activeRecord) return;
   const records = await listAllRecords();
   if (records.length > 0) {
-    // Prefer a real-user record over the anon one (a leftover anon
-    // record from an interrupted login flow should fall through to
-    // regeneration on the next ensureKeypair call).
-    const real = records.find((r) => r.userId !== DPOP_ANON_KEY);
-    await setActive(real ?? records[0]);
+    // TD-SEC-DPOP-STALE-KEY (2026-05-31) — pick the MOST RECENT real-user
+    // record by createdAt, not an arbitrary Array.find. When IDB holds an
+    // orphaned keypair from a prior un-cleaned session alongside the
+    // freshly-bound one, find() could return the orphan; signing
+    // /auth/refresh with it fails the backend cnf.jkt binding check and
+    // revokes every session (logged-out / blank-page-on-refocus bug). The
+    // freshly-bound key is always the newest, so newest-wins selects the
+    // key whose jkt the current session was actually stamped with.
+    //
+    // Anon records are still de-prioritised: a leftover anon from an
+    // interrupted login should never beat a real-user key. We only fall
+    // back to anon (or the newest overall) when no real-user record exists.
+    const real = records
+      .filter((r) => r.userId !== DPOP_ANON_KEY)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const newestOverall = records
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    await setActive(real[0] ?? newestOverall);
     return;
   }
   const fresh = await generateAndStore(DPOP_ANON_KEY);
   if (fresh) await setActive(fresh);
+}
+
+// pruneStaleKeys deletes every persisted keypair EXCEPT the one bound to
+// keepUserId. TD-SEC-DPOP-STALE-KEY (2026-05-31). AuthContext.applyLogin
+// calls this once identity is confirmed (login / refresh response carries
+// the real userId), so the store converges to exactly one record per
+// browser and the orphan-accumulation that caused the refocus-logout bug
+// cannot build up. No-op on unsupported / IDB-unavailable browsers.
+export async function pruneStaleKeys(keepUserId: string): Promise<void> {
+  if (!isDPoPSupported()) return;
+  await pruneKeysExcept(keepUserId);
 }
 
 // reparentAnonKeypair migrates the pre-login anonymous record under

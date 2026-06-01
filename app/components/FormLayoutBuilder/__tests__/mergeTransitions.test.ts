@@ -326,11 +326,56 @@ describe("unmergeGroup (delete handle = un-merge, keep rows)", () => {
 
 // ── horizontal merge (join cells across columns in one row) ──────────────────
 
+// ── Symmetric edge-merge rule (2026-06-01) ──────────────────────────────────
+// User rule: for EACH of a cell's 4 edges, a merge is offered iff (a) the two
+// regions across that edge have EQUAL extent along the shared edge (clean
+// rectangle, no L-shape) AND (b) together they hold ≤1 field. Same test on all
+// four sides — filled/empty and which side the field is on don't matter.
+// Verified against the real saved Risk draft (realDraftFixture.json).
+describe("symmetric edge-merge (real draft fixture)", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const draft = require("./realDraftFixture.json") as { rows: FormRow[] };
+  const rows = draft.rows;
+
+  it("Error 3: empty|Colour (filled on RIGHT) offers a horizontal merge", () => {
+    // r6: empty | empty | colour → col1↔col2 must be offered.
+    expect(hSeamsFor(rows).some((s) => s.rowIndex === 6 && s.colIndex === 1)).toBe(true);
+  });
+
+  it("Error 1: Sprint (tall 3×1) offers a vertical merge into the empty below", () => {
+    // sprint bottoms at row 9; row 10 col0 empty → a valid seam exists. The
+    // renderer now draws the join HANDLE from the raw seamsFor set (same set the
+    // poles use), so handle and poles agree — no more poles-without-handle.
+    expect(seamsFor(rows).some((s) => s.rowIndex === 9 && s.colIndex === 0)).toBe(true);
+  });
+
+  it("Error 2/4: a wide 1×2 cell offers a vertical merge into the equal-width empty below", () => {
+    // is_blocked[1x2] at r8c1 over empty[1x2] at r9c1 → V merge offered.
+    expect(seamsFor(rows).some((s) => s.rowIndex === 8 && s.colIndex === 1)).toBe(true);
+  });
+
+  it("Error 3 EXECUTION: clicking empty|Colour actually merges (field moves into the block)", () => {
+    // The seam is keyed at the LEFT (empty) cell r6 col1; clicking calls
+    // mergeRight there. The result must be a 1×2 block whose owner carries
+    // Colour's field, with the right cell tombstoned to it.
+    const out = mergeRight(rows, { rowIndex: 6, cellIndex: 1 });
+    expect(out).not.toBe(rows); // a merge happened (not a no-op)
+    const owner = out[6].cells[1];
+    expect(effectiveColSpan(owner)).toBe(2);
+    expect(owner.fieldKey).toBe("colour"); // the field occupies the merged block
+    expect(out[6].cells[2].fieldKey).toBeNull();
+    expect(out[6].cells[2].absorbedBy).toBe(owner.id);
+  });
+});
+
 describe("hSeamsFor + mergeRight", () => {
-  it("offers a horizontal seam only where the RIGHT cell is empty", () => {
-    // [A][empty][C] → only the seam between col0 and col1 (right cell empty).
+  it("offers a horizontal seam where EITHER side is the filled owner (or both empty)", () => {
+    // [A][empty][C] → A→right (filled left) AND empty←C? no, C has its own right
+    // edge. col0↔col1 (A|empty) and col1↔col2 (empty|C) both offered.
     const rows = [row3("A", null, "C")];
-    expect(hSeamsFor(rows)).toEqual([{ rowIndex: 0, colIndex: 0 }]);
+    const h = hSeamsFor(rows);
+    expect(h.some((s) => s.colIndex === 0)).toBe(true); // A | empty
+    expect(h.some((s) => s.colIndex === 1)).toBe(true); // empty | C  (filled on right)
   });
 
   it("merges right: owner colSpan grows, width sums, right cell tombstoned", () => {

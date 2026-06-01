@@ -11,6 +11,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -454,6 +455,25 @@ type LoginResult struct {
 // production handlers always pass a non-empty thumbprint and would
 // have already 401'd the request in the middleware-equivalent
 // pre-handler check if the proof failed to parse.
+// mfaDevBypass reports whether the MFA challenge step should be skipped.
+// It fails CLOSED: returns true ONLY when BACKEND_ENV is an explicit,
+// recognised non-production value (dev/development/staging/local/test) AND
+// the operator has opted in with MFA_DEV_BYPASS=true. Any unset, unknown,
+// or production-ish env returns false, so MFA stays enforced by default and
+// in production no value of MFA_DEV_BYPASS can disable it. Purpose: unblock
+// Playwright / local dev where the second factor isn't exercised. The MFA
+// implementation itself is untouched and remains fully enforced in prod.
+func mfaDevBypass() bool {
+	if strings.ToLower(strings.TrimSpace(os.Getenv("MFA_DEV_BYPASS"))) != "true" {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("BACKEND_ENV"))) {
+	case "dev", "development", "staging", "local", "test":
+		return true
+	}
+	return false
+}
+
 func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua, dpopJKT string) (*LoginResult, error) {
 	u, err := s.FindUserByEmail(ctx, emailIn)
 	if err != nil {
@@ -481,13 +501,20 @@ func (s *Service) Login(ctx context.Context, emailIn, password, ip, ua, dpopJKT 
 	// complete: return a short-lived challenge token instead of a full
 	// session. The caller must POST /auth/mfa/verify to exchange it.
 	// No refresh cookie, no session row, no OnLogin hooks at this stage.
-	if u.MFAEnrolled {
+	if u.MFAEnrolled && !mfaDevBypass() {
 		challengeToken, cerr := SignChallengeToken(u.ID)
 		if cerr != nil {
 			return nil, cerr
 		}
 		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_challenge_issued", IPAddress: &ip})
 		return &LoginResult{User: u, MFARequired: true, MFAChallengeToken: challengeToken}, nil
+	}
+	if u.MFAEnrolled && mfaDevBypass() {
+		// MFA challenge skipped: BACKEND_ENV is an explicit non-prod value
+		// AND MFA_DEV_BYPASS=true. Falls through to the normal session-issuing
+		// path below. Fails closed — see mfaDevBypass. Audited so the bypass
+		// is never silent. NEVER active in production.
+		s.Audit.Log(ctx, audit.Entry{UserID: &u.ID, SubscriptionID: &u.SubscriptionID, Action: "auth.mfa_dev_bypass", IPAddress: &ip})
 	}
 
 	// PLA-0053 / story 00575: attach the user's active workspace to the

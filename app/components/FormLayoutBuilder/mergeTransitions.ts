@@ -381,27 +381,57 @@ function hOwnerOf(rows: FormRow[], rowIndex: number, colIndex: number): number |
 // the cell to its right is an empty target to absorb. Multi-row (rowSpan>1)
 // cells are NOT horizontally mergeable (keeps the rectangle clean) — only span-1
 // rows participate.
+// hSeamsFor — the SYMMETRIC horizontal-merge rule (2026-06-01). For each
+// vertical boundary between column `c` and `c+1`, a merge is offered iff the two
+// rectangles meeting at the boundary have EQUAL HEIGHT aligned at this row
+// (clean rectangle, no L-shape) AND together hold ≤1 field. Filled/empty and
+// which side the field is on do NOT matter — the field (if any) occupies the
+// merged block. This unifies the old "filled-left → empty-right only" case with
+// its mirror (empty-left ← filled-right, e.g. an empty cell merging with a
+// Colour field to its right). Seam is keyed once, at the LEFT rectangle's right
+// edge on its top row.
 export function hSeamsFor(rows: FormRow[]): HSeam[] {
   const seams: HSeam[] = [];
   rows.forEach((row, rowIndex) => {
     for (let c = 0; c < row.cells.length - 1; c++) {
-      // resolve the rectangle owner of this position (V-owner row, then H-owner
-      // col) so a tall cell can also grow right (building a 2×2 block).
-      const oRow = vOwnerRow(rows, rowIndex, c);
-      const oCol = hOwnerOf(rows, oRow, c);
-      if (oCol == null) continue;
-      const ownerCell = rows[oRow].cells[oCol];
-      const rSpan = effectiveRowSpan(ownerCell);
-      const rightEdge = rightEdgeColOf(ownerCell, oCol);
-      // seam offered once, at the rectangle's RIGHT edge on its TOP row.
-      if (rightEdge !== c || oRow !== rowIndex) continue;
+      // LEFT rectangle owner at this boundary column.
+      const lRow = vOwnerRow(rows, rowIndex, c);
+      const lCol = hOwnerOf(rows, lRow, c);
+      if (lCol == null) continue;
+      const leftCell = rows[lRow].cells[lCol];
+      const lTop = lRow;
+      const lHeight = effectiveRowSpan(leftCell);
+      const rightEdge = rightEdgeColOf(leftCell, lCol);
+      // offer once, at the left rectangle's RIGHT edge on its TOP row.
+      if (rightEdge !== c || lTop !== rowIndex) continue;
       const newCol = rightEdge + 1;
-      // the right strip [oRow..oRow+rSpan-1][newCol] must be empty and TILE the
-      // owner's height — one tall empty cell, several 1×1s, or any mix (a tall
-      // cell can grow right into an equally-tall empty cell).
-      if (emptyColStripAbsorbWidth(rows, oRow, newCol, rSpan) > 0) {
-        seams.push({ rowIndex, colIndex: c });
+      if (newCol >= row.cells.length) continue;
+
+      // The right region must tile the left rectangle's height into a clean
+      // rectangle, two ways:
+      //   (a) EMPTY strip — one tall empty cell, several 1×1 empties, or any mix
+      //       summing to lHeight (the classic "grow into empty" case, incl. the
+      //       2-tall cell growing right into two stacked 1×1 empties → 2×2). The
+      //       union has ≤1 field automatically (right side empty).
+      //   (b) a SINGLE filled owner of EQUAL height aligned at this row (the
+      //       mirror case: an empty cell merging with a Colour field to its
+      //       right). Union ≤1 field is enforced explicitly.
+      const emptyTiles = emptyColStripAbsorbWidth(rows, lRow, newCol, lHeight) > 0;
+      let ok = emptyTiles;
+      if (!ok) {
+        const rRow = vOwnerRow(rows, rowIndex, newCol);
+        const rCol = hOwnerOf(rows, rRow, newCol);
+        if (rCol != null) {
+          const rightCell = rows[rRow].cells[rCol];
+          const equalHeightAligned =
+            rRow === rowIndex && rCol === newCol && effectiveRowSpan(rightCell) === lHeight;
+          const unionFields = (leftCell.fieldKey != null ? 1 : 0) + (rightCell.fieldKey != null ? 1 : 0);
+          ok = equalHeightAligned && unionFields <= 1;
+        }
       }
+      if (!ok) continue;
+
+      seams.push({ rowIndex, colIndex: c });
     }
   });
   return seams;
@@ -482,32 +512,76 @@ export function mergeRight(rows: FormRow[], addr: CellAddr): FormRow[] {
   const cSpan = effectiveColSpan(ownerCell);
   const newCol = ownerCol + cSpan; // first column of the strip to absorb
 
-  // the right strip [ownerRow..ownerRow+rSpan-1] × [newCol] must be empty and
-  // TILE the owner's height — one tall empty cell, several 1×1s, or any mix (a
-  // tall cell can grow right into an equally-tall empty cell). 0 = not mergeable.
-  if (emptyColStripAbsorbWidth(rows, ownerRow, newCol, rSpan) === 0) return rows;
   // same template across every absorbed row (a merge never crosses a template).
   for (let dr = 0; dr < rSpan; dr++) {
     if (rows[ownerRow + dr]?.template !== rows[ownerRow].template) return rows;
   }
-  // the new column's display width (the absorbed strip's left tile span).
-  const absorbedWidth = rows[ownerRow].cells[newCol]?.span ?? 0;
 
-  return rows.map((r, ri) => {
-    if (ri < ownerRow || ri > ownerRow + rSpan - 1) return r;
-    return {
-      ...r,
-      cells: r.cells.map((cell, ci) => {
-        if (ri === ownerRow && ci === ownerCol) {
-          return { ...cell, colSpan: cSpan + 1, span: cell.span + absorbedWidth };
-        }
-        if (ci === newCol) {
-          return { id: cell.id, fieldKey: null, span: cell.span, absorbedBy: ownerCell.id };
-        }
-        return cell;
-      }),
-    };
-  });
+  // Determine the field that occupies the merged block: at most one of the two
+  // sides may carry a field (2026-06-01 rule). If the LEFT (this owner) is empty
+  // and the RIGHT is the filled side, the field migrates LEFT into the owner
+  // position so the block reads as that field — "filled left or right doesn't
+  // matter, the field occupies the merge".
+  const emptyTilesWidth = emptyColStripAbsorbWidth(rows, ownerRow, newCol, rSpan);
+
+  // Case A — RIGHT strip is empty (classic grow-right). Owner keeps its field.
+  if (emptyTilesWidth > 0) {
+    const absorbedWidth = rows[ownerRow].cells[newCol]?.span ?? 0;
+    return rows.map((r, ri) => {
+      if (ri < ownerRow || ri > ownerRow + rSpan - 1) return r;
+      return {
+        ...r,
+        cells: r.cells.map((cell, ci) => {
+          if (ri === ownerRow && ci === ownerCol) {
+            return { ...cell, colSpan: cSpan + 1, span: cell.span + absorbedWidth };
+          }
+          if (ci === newCol) {
+            return { id: cell.id, fieldKey: null, span: cell.span, absorbedBy: ownerCell.id };
+          }
+          return cell;
+        }),
+      };
+    });
+  }
+
+  // Case B — LEFT (owner) is EMPTY and the RIGHT is a single filled owner of
+  // EQUAL height aligned at this row. Merge so the LEFT position owns the block
+  // and carries the RIGHT's field; the right cell tombstones to the left owner.
+  // (This is the empty|Colour case — clicking the handle keyed at the empty left
+  // cell must pull Colour's field into the 1×2 block.)
+  if (ownerCell.fieldKey == null) {
+    const rRow = vOwnerRow(rows, ownerRow, newCol);
+    const rCol = hOwnerOf(rows, rRow, newCol);
+    if (rCol == null) return rows;
+    const rightCell = rows[rRow].cells[rCol];
+    const equalHeightAligned =
+      rRow === ownerRow && rCol === newCol && effectiveRowSpan(rightCell) === rSpan;
+    if (!equalHeightAligned || rightCell.fieldKey == null) return rows;
+    const rightWidth = rightCell.span ?? 0;
+    return rows.map((r, ri) => {
+      if (ri < ownerRow || ri > ownerRow + rSpan - 1) return r;
+      return {
+        ...r,
+        cells: r.cells.map((cell, ci) => {
+          if (ri === ownerRow && ci === ownerCol) {
+            // left position becomes the owner, carrying the right's field.
+            return {
+              ...cell,
+              fieldKey: rightCell.fieldKey,
+              colSpan: cSpan + 1,
+              span: cell.span + rightWidth,
+            };
+          }
+          if (ci === newCol) {
+            return { id: cell.id, fieldKey: null, span: cell.span, absorbedBy: ownerCell.id };
+          }
+          return cell;
+        }),
+      };
+    });
+  }
+
+  return rows;
 }
 
 // splitCellH collapses the owner rectangle's COLUMNS back to 1 (a 2×2 → 2×1

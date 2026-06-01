@@ -148,6 +148,47 @@ export async function deleteKeyRecord(userId: string): Promise<void> {
   await tx("readwrite", (s) => s.delete(userId));
 }
 
+// pruneKeysExcept deletes every keypair record in the store EXCEPT the
+// one keyed by keepUserId. TD-SEC-DPOP-STALE-KEY (2026-05-31).
+//
+// Why this exists: the store is keyed by userId and only ever deleted
+// one-at-a-time (logout, reparent). A session that ends WITHOUT a clean
+// logout — tab close, crash, a backend-forced revoke, or the
+// put-succeeds-delete-fails branch in reparentKeyRecord — leaves its
+// keypair orphaned in IDB. ensureAnyActiveKeypair then picks an arbitrary
+// real-user record on the next bootstrap; when it picks an orphan whose
+// jkt was never bound to the current session, /auth/refresh fails the
+// backend's cnf.jkt binding check and revokes ALL sessions (logout / blank
+// page on tab refocus). Keeping exactly one record per browser closes the
+// accumulation at the source. Single readwrite transaction so a concurrent
+// reader never sees a half-pruned store.
+export async function pruneKeysExcept(keepUserId: string): Promise<void> {
+  await new Promise<void>((resolve) => {
+    openDB().then((db) => {
+      if (!db) {
+        resolve();
+        return;
+      }
+      let store: IDBObjectStore;
+      try {
+        store = db.transaction(STORE, "readwrite").objectStore(STORE);
+      } catch {
+        resolve();
+        return;
+      }
+      const keysReq = store.getAllKeys();
+      keysReq.onsuccess = () => {
+        const keys = (keysReq.result as IDBValidKey[]) ?? [];
+        for (const k of keys) {
+          if (k !== keepUserId) store.delete(k);
+        }
+        resolve();
+      };
+      keysReq.onerror = () => resolve();
+    });
+  });
+}
+
 // listAllRecords returns every keypair record currently stored. Used
 // by ensureAnyActiveKeypair on page bootstrap when we know the user
 // has a live session (session_alive cookie set) but haven't yet

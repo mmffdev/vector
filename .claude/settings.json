@@ -134,7 +134,20 @@
       "Skill(report)",
       "Skill(report:*)",
       "Bash(echo \"handovers/objecttreev2_filterchips.md\" > \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector/.claude/active_handover.txt\")",
-      "Edit(/.claude/skills/report/**)"
+      "Edit(/.claude/skills/report/**)",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "Workflow(deep-research)",
+      "WebFetch(domain:developer.salesforce.com)",
+      "WebFetch(domain:thejiraguy.com)",
+      "WebFetch(domain:martinfowler.com)",
+      "WebFetch(domain:www.sitepoint.com)",
+      "WebFetch(domain:cirra.ai)",
+      "WebFetch(domain:patents.google.com)",
+      "WebFetch(domain:laraveldaily.com)",
+      "WebFetch(domain:v-checha.medium.com)",
+      "WebFetch(domain:www.servicenow.com)",
+      "WebFetch(domain:developers.asana.com)"
     ],
     "additionalDirectories": [
       "/Users/rick/.claude",
