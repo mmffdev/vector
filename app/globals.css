@@ -21193,7 +21193,8 @@ tr.is-editing {
 .flb-templates__Btn .flb-glyph { width: 40px; height: 26px; gap: 3px; }
 .flb-templates__Btn .flb-glyph__Cell { border-radius: 3px; }
 .flb-glyph { display: grid; gap: 2px; width: 28px; height: 14px; }
-.flb-glyph__Cell { background: var(--ink-subtle, #b8b2a6); border-radius: 2px; }
+/* black template-glyph blocks (Rick, 2026-06-01) — was grey --ink-subtle. */
+.flb-glyph__Cell { background: var(--ink, #1c1c22); border-radius: 2px; }
 
 /* buttons */
 .flb-btn {
