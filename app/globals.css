@@ -20722,12 +20722,15 @@ tr.is-editing {
 
 .flb-row-del {
   width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
-  border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
-  color: var(--ink-subtle, #9b9b9b); font-size: 16px; line-height: 1; cursor: pointer;
+  /* black circle, white icon, gentle drop shadow — matches the action pill
+     buttons + target cells (Rick, 2026-06-01). */
+  border: none; background: var(--ink, #1c1c22);
+  color: var(--surface, #fff); font-size: 16px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.16);
   transition: all 120ms ease;
 }
-.flb-row-del:hover { border-color: var(--danger, #b91c1c); color: var(--danger, #b91c1c); background: var(--danger-bg, #fdecec); }
+.flb-row-del:hover { background: var(--danger, #b91c1c); color: var(--surface, #fff); }
 
 /* shared grid (FormLayoutRenderer) — each contiguous same-template RUN is one
    CSS grid (columns × one row-track per row) so EVERY column aligns whether or
@@ -21105,12 +21108,15 @@ tr.is-editing {
 .flb-row-aside-dragging { opacity: 0.4; }
 .flb-row-handle {
   width: 24px; height: 24px; border-radius: var(--radius-full, 999px);
-  border: 1px solid var(--border-default, #e5e1da); background: var(--surface, #fff);
-  color: var(--ink-subtle, #9b9b9b); font-size: 13px; line-height: 1; cursor: grab;
+  /* black circle, white icon, gentle drop shadow — matches the row delete +
+     action pill buttons + target cells (Rick, 2026-06-01). */
+  border: none; background: var(--ink, #1c1c22);
+  color: var(--surface, #fff); font-size: 13px; line-height: 1; cursor: grab;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.16);
   transition: all 120ms ease; touch-action: none;
 }
-.flb-row-handle:hover { border-color: var(--accent, #1a1a1a); color: var(--accent, #1a1a1a); }
+.flb-row-handle:hover { background: #000; color: var(--surface, #fff); }
 .flb-row-handle:active { cursor: grabbing; }
 
 /* Remove the sticky black outline buttons keep after a MOUSE click — show a
