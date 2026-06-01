@@ -20967,7 +20967,10 @@ tr.is-editing {
   border: 1.5px dashed var(--border-default, #cfcabf);
   border-radius: var(--radius-md, 8px);
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  transition: border-color 120ms ease;
+  /* gentle drop shadow — same as the action pill + join arrows, so every target
+     cell (empty or filled) lifts off the canvas the same way (Rick, 2026-06-01). */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.16);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .flb-slot-over .flb-anchor { border-color: var(--accent, #1a1a1a); }
 /* The empty drop-target keeps its FULL dashed border on all four edges, poled
@@ -21002,8 +21005,12 @@ tr.is-editing {
 .flb-fieldcard:active { cursor: grabbing; }
 /* compulsory / required → strong accent bar */
 .flb-fieldcard-req { border-left-color: var(--accent-strong, #1f2557); }
-/* placed on canvas (its own slot) — fills the slot height, centred content */
-.flb-fieldcard-placed { height: 100%; flex-direction: row; }
+/* placed on canvas (its own slot) — fills the slot height, centred content. The
+   same gentle drop shadow as the empty target / pill / arrows, so a FILLED target
+   cell lifts off the canvas identically (Rick, 2026-06-01). Scoped to -placed so
+   the sidebar picker cards keep their own faint shadow. */
+.flb-fieldcard-placed { height: 100%; flex-direction: row; box-shadow: 0 2px 8px rgba(0,0,0,0.16); }
+.flb-fieldcard-placed:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.16); }
 /* already-on-form chip in the sidebar — greyed, not draggable */
 .flb-fieldcard-onform {
   opacity: 0.55; cursor: default; background: var(--surface-sunken, #f6f4f0);
