@@ -20616,11 +20616,14 @@ tr.is-editing {
   flex: 1 1 auto;
   display: grid;
   /* The field-selector rail is pinned to the COMBINED width of the app's two
-     left rails (primary scope rail + secondary sidebar) so the overlay feels
-     continuous with the app shell — the logo (already pinned) AND the canvas
-     start land on the same x as the main site, with no jump when the overlay
-     mounts or the title swaps. 44 + 240 = 284px. */
-  grid-template-columns: calc(var(--scope-rail-w, 44px) + var(--sidebar-width, 240px)) 1fr;
+     left rails so the overlay feels continuous with the app shell — the logo
+     (already pinned) AND the canvas start land on the same x as the main site,
+     with no jump when the overlay mounts or the title swaps. The rails live on
+     .rd-shell (a SIBLING, not an ancestor) so its tokens aren't in scope here;
+     mirror their values: --rd-rail-w 100px (rail-1) + --rail-2-w 240px (rail-2)
+     = 340px. (Rick, 2026-06-01: was 284px from a stale 44px rail-1 assumption;
+     rail-1 is actually 100px — restore the original combined-rail width.) */
+  grid-template-columns: 340px 1fr;
   min-height: 0;
 }
 
@@ -21012,8 +21015,21 @@ tr.is-editing {
    same gentle drop shadow as the empty target / pill / arrows, so a FILLED target
    cell lifts off the canvas identically (Rick, 2026-06-01). Scoped to -placed so
    the sidebar picker cards keep their own faint shadow. */
-.flb-fieldcard-placed { height: 100%; flex-direction: row; box-shadow: 0 2px 8px rgba(0,0,0,0.16); }
-.flb-fieldcard-placed:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.16); }
+.flb-fieldcard-placed {
+  height: 100%; flex-direction: row;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.16);
+  /* A filled target reads as BLACK-bordered (Rick, 2026-06-01): all four borders
+     go --ink, keeping the thick left accent. Only the LEFT corners are rounded
+     (the accent bar rounds cleanly); top-right + bottom-right stay SQUARE. */
+  border-color: var(--ink, #1c1c22);
+  border-left-color: var(--ink, #1c1c22);
+  border-radius: 5px 0 0 5px;
+}
+.flb-fieldcard-placed:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.16);
+  border-color: var(--ink, #1c1c22);
+  border-left-color: var(--ink, #1c1c22);
+}
 /* already-on-form chip in the sidebar — greyed, not draggable */
 .flb-fieldcard-onform {
   opacity: 0.55; cursor: default; background: var(--surface-sunken, #f6f4f0);
