@@ -20765,54 +20765,39 @@ tr.is-editing {
 .flb-preview-grid .flb-grid__Band_Cells { gap: var(--space-5, 20px); }
 
 /* one cell wrapper (positioned in the band grid; may span sub-rows) */
-.flb-grid__Cell { position: relative; min-height: 0; }
+/* NORMAL mode: a plain cell — no pole backgrounds, no padding gutter. The
+   renderer still emits data-pole-* attributes, but in normal use NOTHING consumes
+   them (the whole barber-pole apparatus + the padding that reserved room for it
+   live under .flb-debug-poles below). */
+.flb-grid__Cell { position: relative; min-height: 0; box-sizing: border-box; }
 
-/* ── Barber-pole borders (mergeable-seam edges) ──────────────────────────────
-   A 5px diagonal orange/black stripe on each edge that faces a mergeable
-   neighbour, so the two sides of a seam point at each other ("these can join").
-   Painted as up to four stacked background-image layers on the cell wrapper —
-   one per poled edge — gated by the renderer's data-pole-* flags (which already
-   apply the grid-perimeter suppression rules). The field content (.flb-slot)
-   insets (stripe + --flb-pole-gap clearance) on any poled edge so it sits
-   clearly INSIDE the barber frame with breathing room — the dashed drop-target
-   border never sits under/beside the stripe.
-   --flb-pole is the shared diagonal-stripe paint (10px orange / 10px near-black,
-   −45°). Each edge layer is a thin slice of it positioned to that edge. */
-.flb-grid__Cell {
+/* ── DEBUG MODE — barber-pole borders (mergeable-seam edges) ─────────────────
+   Gated ENTIRELY on .flb-debug-poles (Rick, 2026-06-01: "debug the page" brings
+   the whole system back). Add the class on an ancestor (the builder shell) to
+   restore (a) the per-cell padding gutter that reserves room for the stripes and
+   (b) the full pole system: a 5px diagonal stripe on each edge facing a mergeable
+   neighbour, painted as up to four stacked background-image layers on the cell
+   wrapper, one per poled edge, gated by the renderer's data-pole-* flags. The
+   field content (.flb-slot) insets via the wrapper padding so it sits clearly
+   inside the barber frame. Two tones: sandy (--pole-sand-on) / white "can-merge",
+   and a thinner red/white "blocked" pole on every non-mergeable edge. */
+.flb-debug-poles .flb-grid__Cell {
   --flb-pole-w: 5px;
   /* clear gap between the stripe and the inset field, so the dashed corner
      curves inside the clear band rather than under the pole. */
   --flb-pole-gap: 4px;
-  /* TWO presentation modes for the merge poles (Rick, 2026-06-01):
-       • NORMAL (default) — quiet. The "can-merge" pole is the sandy
-         --pole-sand-on tone / white instead of loud yellow/black, and the
-         "blocked" pole is --pole-sand-off (transparent) → HIDDEN. So in normal
-         use you see a subtle sandy stripe only on mergeable edges, nothing on the
-         rest.
-       • DEBUG (add .flb-debug-poles on an ancestor) — the original bright scheme:
-         yellow/black can-merge, red/white blocked, so every edge's merge state is
-         legible while diagnosing the merge logic.
-     The variables default to the NORMAL palette here and are overridden by the
-     debug class below. */
-  /* Quiet-mode pole tones — named so the on/off states are explicit and tunable
-     in one place. ON = the sandy stripe colour; OFF = transparent (hidden). */
+  /* named on/off tones — sandy can-merge, red/white blocked (debug only). */
   --pole-sand-on: #EDEAE4;
-  --pole-sand-off: transparent;
-  /* "can merge" pole — NORMAL: sandy / white, −45°, 10px/10px stripes. */
+  /* "can merge" pole — sandy / white, −45°, 10px/10px stripes. */
   --flb-pole: repeating-linear-gradient(-45deg, var(--pole-sand-on) 0 10px, #ffffff 10px 20px);
-  /* "blocked" pole — NORMAL: the OFF tone, painted as a flat gradient so it's a
-     valid background-image layer (a bare colour keyword is NOT a valid
-     background-image, which would break the layer). --pole-sand-off:transparent
-     ⇒ nothing visible on non-mergeable edges. */
-  --flb-blocked: linear-gradient(var(--pole-sand-off), var(--pole-sand-off));
+  /* "blocked" pole — red / white, same angle + stripe size as the can-merge pole;
+     shown on every edge that is NOT a merge candidate. */
+  --flb-blocked: repeating-linear-gradient(-45deg, #e23b3b 0 10px, #ffffff 10px 20px);
 
-  /* PER-EDGE SWITCH. Each edge is its own background layer whose PAINT is a
-     variable that defaults to the red/white BLOCKED pole and is swapped to the
-     yellow/black "can-merge" pole by the edge's data-pole-* attr below. All four
-     layers are ALWAYS present, so this is a true per-edge switch — no combination
-     enumeration. The blocked pole is thinner (--flb-blocked-w) than the merge
-     pole (--flb-pole-w) so the two read as distinct weights; both paint at the
-     border-box outer edge. */
+  /* PER-EDGE SWITCH. Each edge is its own background layer whose PAINT defaults
+     to the BLOCKED pole and is swapped to the can-merge pole by the edge's
+     data-pole-* attr below. All four layers are always present → a true per-edge
+     switch, no combination enumeration. */
   --flb-blocked-w: 5px;
   --edge-top: var(--flb-blocked);
   --edge-bottom: var(--flb-blocked);
@@ -20832,43 +20817,18 @@ tr.is-editing {
     100% var(--edge-top-w), 100% var(--edge-bottom-w),
     var(--edge-left-w) 100%, var(--edge-right-w) 100%;
   background-position: top center, bottom center, left center, right center;
-}
-/* The switch: a poled edge swaps that edge's layer paint to the barber-pole and
-   its weight to the (thicker) pole width. Single-attr rules, they compose freely
-   — a cell poled on N edges gets the merge pole on exactly those N, the red/white
-   blocked pole on the rest. */
-.flb-grid__Cell[data-pole-top]    { --edge-top: var(--flb-pole);    --edge-top-w: var(--flb-pole-w); }
-.flb-grid__Cell[data-pole-bottom] { --edge-bottom: var(--flb-pole); --edge-bottom-w: var(--flb-pole-w); }
-.flb-grid__Cell[data-pole-left]   { --edge-left: var(--flb-pole);   --edge-left-w: var(--flb-pole-w); }
-.flb-grid__Cell[data-pole-right]  { --edge-right: var(--flb-pole);  --edge-right-w: var(--flb-pole-w); }
 
-/* DEBUG MODE — bright diagnostic poles. Add .flb-debug-poles on an ancestor (the
-   builder shell) to restore the loud yellow/black can-merge + red/white blocked
-   scheme used while debugging the merge logic. Normal use leaves it off → the
-   quiet sandy/white can-merge pole + hidden blocked pole defined above. */
-.flb-debug-poles .flb-grid__Cell {
-  --flb-pole: repeating-linear-gradient(-45deg, #FFCC33 0 10px, #1c1c22 10px 20px);
-  --flb-blocked: repeating-linear-gradient(-45deg, #e23b3b 0 10px, #ffffff 10px 20px);
-}
-/* inset the field content so it sits INSIDE the (potential) barber frame. We pad
-   the CELL WRAPPER (not margin the slot): the slot is height:100%, so a margin
-   would overflow the cell and hide the pole — padding shrinks the slot's box.
-   box-sizing:border-box + the pole painted as a background on the wrapper means
-   the stripe shows in the padding band, with the inset slot clear of it. A FILLED
-   cell shows its pole too (the opaque slot no longer covers the edge).
-
-   CRITICAL: the gutter is UNIFORM ON ALL FOUR EDGES, ALWAYS — not gated by
-   data-pole-*. A conditional per-edge inset made cells with a pole on some edges
-   shrink only on those edges, so neighbours without a pole sat at a different
-   interior size and the cells visibly shifted as poles appeared/disappeared
-   (merge candidates change every drag). A constant all-side gutter keeps every
-   cell's interior box identical regardless of which edges happen to be poled, so
-   nothing moves. The pole is still painted only on poled edges (backgrounds
-   above); the gutter just reserves the space on every edge unconditionally. */
-.flb-grid__Cell {
-  box-sizing: border-box;
+  /* The padding gutter that reserves room for the stripes — UNIFORM ON ALL FOUR
+     EDGES so cells don't shift as poles appear/disappear. Debug-only: in normal
+     mode the cell has no padding at all. */
   padding: calc(var(--flb-pole-w) + var(--flb-pole-gap));
 }
+/* The switch: a poled edge swaps that edge's layer paint to the can-merge pole
+   and its weight to the (thicker) pole width. Debug-only. */
+.flb-debug-poles .flb-grid__Cell[data-pole-top]    { --edge-top: var(--flb-pole);    --edge-top-w: var(--flb-pole-w); }
+.flb-debug-poles .flb-grid__Cell[data-pole-bottom] { --edge-bottom: var(--flb-pole); --edge-bottom-w: var(--flb-pole-w); }
+.flb-debug-poles .flb-grid__Cell[data-pole-left]   { --edge-left: var(--flb-pole);   --edge-left-w: var(--flb-pole-w); }
+.flb-debug-poles .flb-grid__Cell[data-pole-right]  { --edge-right: var(--flb-pole);  --edge-right-w: var(--flb-pole-w); }
 
 /* slot (one cell) */
 .flb-slot {
