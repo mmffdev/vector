@@ -321,27 +321,54 @@ export function poleEdgesFor(rows: FormRow[]): Map<string, Set<PoleEdge>> {
     set.add(edge);
   };
 
-  // vertical seams → upper BOTTOM + lower TOP
+  // vertical seams → upper BOTTOM + lower TOP. When the upper owner is WIDE
+  // (colSpan > 1) it merges down into a strip of empty tiles that spans its full
+  // width — each tile must pole its TOP, not just the leftmost (else the wide
+  // cell's bottom is yellow while the right tiles below stay blocked/red). Walk
+  // the lower row across the owner's columns and pole every distinct owner once.
   for (const seam of seamsFor(rows)) {
     const upper = ownerOf(rows, seam.rowIndex, seam.colIndex);
     if (upper) add(upper.rowIndex, upper.cellIndex, "bottom");
-    // the lower cell sits at (r+1, c); resolve its owner so a wide lower target
-    // poles once at its left column.
     const lowerRow = seam.rowIndex + 1;
-    const lowerOwner = ownerOf(rows, lowerRow, seam.colIndex);
-    if (lowerOwner) add(lowerOwner.rowIndex, lowerOwner.cellIndex, "top");
+    const upWidth = upper
+      ? effectiveColSpan(rows[upper.rowIndex].cells[upper.cellIndex])
+      : 1;
+    const upLeftCol = upper ? upper.cellIndex : seam.colIndex;
+    const seenLower = new Set<string>();
+    for (let dc = 0; dc < upWidth; dc++) {
+      const lowerOwner = ownerOf(rows, lowerRow, upLeftCol + dc);
+      if (!lowerOwner) continue;
+      const k = `${lowerOwner.rowIndex}:${lowerOwner.cellIndex}`;
+      if (seenLower.has(k)) continue;
+      seenLower.add(k);
+      add(lowerOwner.rowIndex, lowerOwner.cellIndex, "top");
+    }
   }
 
-  // horizontal seams → left RIGHT + right LEFT
+  // horizontal seams → left RIGHT + right LEFT. Mirror of the vertical case: a
+  // TALL left owner (rowSpan > 1) merges right into a strip of empty tiles
+  // spanning its full HEIGHT — each tile must pole its LEFT (else the tall cell's
+  // right edge is yellow while the lower tiles to its right stay blocked/red, the
+  // "red pole on the right lower" report). Walk the right column down the left
+  // owner's rows and pole every distinct owner once.
   for (const seam of hSeamsFor(rows)) {
     const leftRow = vOwnerRow(rows, seam.rowIndex, seam.colIndex);
     const leftCol = hOwnerOf(rows, leftRow, seam.colIndex);
     if (leftCol != null) add(leftRow, leftCol, "right");
-    // the right cell sits at (r, c+1); resolve its owner.
+    const leftHeight =
+      leftCol != null ? effectiveRowSpan(rows[leftRow].cells[leftCol]) : 1;
+    const leftTopRow = leftCol != null ? leftRow : seam.rowIndex;
     const rightCol0 = seam.colIndex + 1;
-    const rRow = vOwnerRow(rows, seam.rowIndex, rightCol0);
-    const rCol = hOwnerOf(rows, rRow, rightCol0);
-    if (rCol != null) add(rRow, rCol, "left");
+    const seenRight = new Set<string>();
+    for (let dr = 0; dr < leftHeight; dr++) {
+      const rRow = vOwnerRow(rows, leftTopRow + dr, rightCol0);
+      const rCol = hOwnerOf(rows, rRow, rightCol0);
+      if (rCol == null) continue;
+      const k = `${rRow}:${rCol}`;
+      if (seenRight.has(k)) continue;
+      seenRight.add(k);
+      add(rRow, rCol, "left");
+    }
   }
 
   return edges;

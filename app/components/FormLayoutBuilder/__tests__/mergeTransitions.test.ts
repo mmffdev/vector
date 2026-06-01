@@ -21,6 +21,7 @@ import {
   effectiveRowSpan,
   effectiveColSpan,
   isTombstone,
+  poleEdgesFor,
 } from "../mergeTransitions";
 
 // ── builders ──────────────────────────────────────────────────────────────
@@ -154,6 +155,46 @@ describe("mergeDown", () => {
     expect(effectiveColSpan(rows[0].cells[0])).toBe(1);
     expect(isTombstone(rows[1].cells[1])).toBe(false); // col1 revived (no hole)
     expect(rows[1].cells[1].fieldKey).toBeNull();
+  });
+});
+
+// ── barber-pole symmetry across a multi-row / multi-col owner edge ────────────
+//
+// Regression (2026-06-01): a poled boundary must be painted on BOTH cells it
+// joins, on EVERY tile along that boundary. A TALL cell merging right (or a WIDE
+// cell merging down) into a strip of separate 1×1 empties poled only the FIRST
+// tile of the strip — so the tall cell's right edge read yellow while the lower
+// neighbour's left edge stayed red ("red pole on the right lower"). poleEdgesFor
+// must now mark the matching edge of every owner along the shared boundary.
+describe("poleEdgesFor — symmetric across a tall/wide owner edge", () => {
+  const has = (
+    edges: Map<string, Set<"top" | "right" | "bottom" | "left">>,
+    r: number,
+    c: number,
+    e: "top" | "right" | "bottom" | "left",
+  ) => edges.get(`${r}:${c}`)?.has(e) ?? false;
+
+  it("tall left cell merging right → LEFT pole on every right tile it spans", () => {
+    // col0 tall (rows 0-1) beside two separate empty col1 cells → a 2×2 right
+    // merge is offered, so both right tiles (rows 0 & 1, col1) must pole LEFT to
+    // face the tall cell's RIGHT pole.
+    let rows = [row3(null, null, null), row3(null, null, null), row3(null, null, null)];
+    rows = mergeDown(rows, { rowIndex: 0, cellIndex: 0 }); // col0 tall rows 0-1
+    const edges = poleEdgesFor(rows);
+    expect(has(edges, 0, 0, "right")).toBe(true); // tall cell right edge
+    expect(has(edges, 0, 1, "left")).toBe(true); // upper right tile
+    expect(has(edges, 1, 1, "left")).toBe(true); // LOWER right tile — was missing
+  });
+
+  it("wide upper cell merging down → TOP pole on every lower tile it spans", () => {
+    // col0 wide (1×2) above two separate empty cells → a 2×2 down merge; both
+    // lower tiles (cols 0 & 1, row 1) must pole TOP to face the wide cell BOTTOM.
+    let rows = [row3(null, null, null), row3(null, null, null), row3(null, null, null)];
+    rows = mergeRight(rows, { rowIndex: 0, cellIndex: 0 }); // row0 col0 wide 1×2
+    const edges = poleEdgesFor(rows);
+    expect(has(edges, 0, 0, "bottom")).toBe(true); // wide cell bottom edge
+    expect(has(edges, 1, 0, "top")).toBe(true); // lower-left tile
+    expect(has(edges, 1, 1, "top")).toBe(true); // lower-RIGHT tile under the wide cell
   });
 });
 
