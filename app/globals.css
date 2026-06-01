@@ -20863,7 +20863,9 @@ tr.is-editing {
      circles (page bg), so each control reads as a white circle on black. */
   background: var(--ink, #1c1c22);
   border: none;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  /* gentle drop shadow — soft + diffuse so the pill lifts off the cell without
+     a hard edge. */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
 }
 /* "Drop Here" hint inside the pill on an empty cell — sits to the LEFT of any
    button; the pill stays centred and grows to wrap label + button(s). A little
