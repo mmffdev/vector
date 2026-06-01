@@ -36,6 +36,7 @@ Default-exempt directories (the saga + the library admin surface):
     backend/internal/portfoliomodels/**           (the adoption saga)
     backend/internal/libraryreleases/**           (release-notification handler)
     backend/internal/errorsreport/**              (error_codes lookup — adoption-adjacent)
+    backend/internal/erd/**                       (dev-only schema introspection)
 
 Per-file exemption ledger lives at
 `dev/registries/lint_portfolio_library_read_exemptions.json`. The ledger
@@ -76,6 +77,7 @@ DEFAULT_EXEMPT_DIRS: tuple[str, ...] = (
     "backend/internal/portfoliomodels",
     "backend/internal/libraryreleases",
     "backend/internal/errorsreport",
+    "backend/internal/erd",
 )
 
 # Default-exempt individual files. Library-releases poll loop and badge

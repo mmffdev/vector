@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Lint public-helper-allowlist: structural rule for PLA-0039 / Story 00523.
 
-Rule: every file that calls `apiV2(` (the customer-public surface at
+Rule: every production file that calls `apiV2(` (the customer-public surface at
 `/samantha/v2`) MUST be listed in
 `dev/registries/public_helper_allowlist.json` (`allowed_paths`).
 
 `apiV2()` is the helper for the public, deprecation-bound, billed customer
 API. Internal app features must NOT silently leak into that surface — they
-go through `apiSite()` (BFF, /_site) instead. This lint is the one-line
-ratchet that catches a new `apiV2` call before it lands.
+go through `apiSite()` (BFF, /_site) instead. Test files are ignored because
+they often define `apiV2: vi.fn()` module mocks rather than production calls.
+This lint is the one-line ratchet that catches a new `apiV2` call before it
+lands.
 
 Every new entry to `allowed_paths` is a vetted decision:
   • The route exists in the OpenAPI v2 spec.
@@ -57,6 +59,8 @@ def scan() -> list[pathlib.Path]:
         for ext in ("*.tsx", "*.ts"):
             for path in base.rglob(ext):
                 if "node_modules" in path.parts or ".next" in path.parts:
+                    continue
+                if "__tests__" in path.parts:
                     continue
                 if path.name.endswith(".d.ts"):
                     continue

@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-05-31 01:50:16
+**Generated:** 2026-06-01 22:04:12
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -95,7 +95,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/FormLayoutBuilder
-7 file(s) · key: FormLayoutRuntime.tsx, FormBuilderShell.tsx, PreviewDataPicker.tsx
+10 file(s) · key: FormLayoutRenderer.tsx, mergeTransitions.ts, FormBuilderShell.tsx
+Purpose: _(unset)_
+
+### app/components/FormLayoutBuilder/__tests__
+4 file(s) · key: mergeTransitions.test.ts, undoRedo.test.ts, bandLayout.test.tsx
 Purpose: _(unset)_
 
 ### app/components/Grid
@@ -151,7 +155,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/contexts
-12 file(s) · key: DomRegistryContext.tsx, NavPrefsContext.tsx, AuthContext.tsx
+12 file(s) · key: AuthContext.tsx, DomRegistryContext.tsx, NavPrefsContext.tsx
 Purpose: _(unset)_
 
 ### app/featuretests/__tests__
@@ -167,11 +171,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/lib
-23 file(s) · key: formLayoutsApi.ts, shareableParams.ts, fieldsApi.ts
+23 file(s) · key: formLayoutsApi.ts, dpop.ts, dpopStore.ts
 Purpose: _(unset)_
 
 ### app/lib/__tests__
-6 file(s) · key: api-session-codes.test.ts, dpop.test.ts, wsClose.test.ts
+6 file(s) · key: dpop.test.ts, api-session-codes.test.ts, wsClose.test.ts
 Purpose: _(unset)_
 
 ### app/login
@@ -240,6 +244,7 @@ Purpose: _(unset)_
 - app/(user)/workspace-admin/cost-centres
 - app/(user)/workspace-admin/custom-fields
 - app/(user)/workspace-admin/custom-fields/[id]
+- app/(user)/workspace-admin/custom-fields/form-designer
 - app/(user)/workspace-admin/flow-states
 - app/(user)/workspace-admin/flow-states-v2
 - app/(user)/workspace-admin/portfolio-model
@@ -450,7 +455,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/formlayouts
-6 file(s) · key: service.go, service_test.go, handler.go
+6 file(s) · key: types.go, handler.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/geo
@@ -717,7 +722,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/reports
-1091 file(s) · key: 20260531-013650-addressables.json, 20260531-011447-addressables.json, 20260530-214540-addr
+1123 file(s) · key: 20260601-174642-addressables.json, 20260601-174140-addressables.json, 20260601-172835-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -775,11 +780,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-164 file(s) · key: 170_backfill_vector_fields_from_legacy.sql, 169_vector_fields_context.sql, 168_vector_fiel
+165 file(s) · key: 171_form_designer_page.sql, 170_backfill_vector_fields_from_legacy.sql, 169_vector_fields_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-99 file(s) · key: 170_backfill_vector_fields_from_legacy_DOWN.sql, 169_vector_fields_context_DOWN.sql, 168_v
+100 file(s) · key: 171_form_designer_page_DOWN.sql, 170_backfill_vector_fields_from_legacy_DOWN.sql, 169_vect
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/merge_plan
@@ -793,7 +798,7 @@ Purpose: _(unset)_
 ## Documentation indexes
 
 ### .
-12 file(s) · key: Vector_Scope.md, Vector_Scope_Done.md, AGENTS.md
+12 file(s) · key: BACKLOG.md, Vector_Scope.md, Vector_Scope_Done.md
 Purpose: _(unset)_
 
 ### docs
@@ -821,6 +826,6 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/superpowers/specs
-20 file(s) · key: 2026-05-31-vector-fields-3layer-design.md, 2026-05-30-unified-field-model-design.md, 2026-
+21 file(s) · key: 2026-05-31-flb-vertical-merge-design.md, 2026-05-31-vector-fields-3layer-design.md, 2026-0
 Purpose: _(unset)_
 
