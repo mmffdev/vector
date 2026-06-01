@@ -20929,9 +20929,10 @@ tr.is-editing {
    aspect (53 * 21/24 ≈ 46) so the glyph isn't stretched. */
 .flb-seam__Glyph {
   width: 53px; height: 46px; display: block;
-  /* NORMAL mode: a soft shadow only (the glyph is quiet sand/panel-border, set
-     via the SVG's var() fallbacks in JoinArrowIcon). */
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.12));
+  /* NORMAL mode: a gentle drop shadow matching the action pill (Rick,
+     2026-06-01) — drop-shadow (not box-shadow) so it follows the arrow outline,
+     not its bounding box. */
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.16));
 }
 .flb-seam__Glyph-h { transform: rotate(90deg); } /* horizontal join variant */
 .flb-seam__Join:hover { transform: scale(1.14); }
