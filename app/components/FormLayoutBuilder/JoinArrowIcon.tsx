@@ -12,6 +12,13 @@
 // each end. Shaft now spans y=11→34 (23px) inside a 0→45 viewBox; arrowhead
 // geometry (point↔shoulder spread) is identical top and bottom. The rendered
 // glyph is also +6px wider (see .flb-seam__Glyph in globals.css).
+//
+// COLOUR is CSS-driven (Rick, 2026-06-01) so the glyph has two modes:
+//   • NORMAL — quiet: 1px panel-border (#C8C3BB) outline, sandy site-bg
+//     (--surface-sunken #EDEAE4) fill. The defaults in the var() fallbacks.
+//   • DEBUG — bright gold (#FFCC33) / near-black (#1c1c22), via .flb-debug-poles
+//     overriding --flb-arrow-fill / --flb-arrow-stroke / --flb-arrow-stroke-w in
+//     globals.css.
 import React from "react";
 
 export function JoinArrowIcon({ className }: { className?: string }) {
@@ -38,9 +45,9 @@ export function JoinArrowIcon({ className }: { className?: string }) {
           L3 11
           Z
         "
-        fill="#FFCC33"
-        stroke="#1c1c22"
-        strokeWidth="1.5"
+        fill="var(--flb-arrow-fill, #EDEAE4)"
+        stroke="var(--flb-arrow-stroke, #C8C3BB)"
+        strokeWidth="var(--flb-arrow-stroke-w, 1)"
         strokeLinejoin="round"
         strokeLinecap="round"
       />

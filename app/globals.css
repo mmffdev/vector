@@ -20783,11 +20783,21 @@ tr.is-editing {
   /* clear gap between the stripe and the inset field, so the dashed corner
      curves inside the clear band rather than under the pole. */
   --flb-pole-gap: 4px;
-  /* "can merge" pole — yellow / near-black, −45°, 10px/10px stripes, 5px wide. */
-  --flb-pole: repeating-linear-gradient(-45deg, #FFCC33 0 10px, #1c1c22 10px 20px);
-  /* "blocked" pole — red / white, SAME angle + stripe size as the yellow pole,
-     3px wide. Shown on any edge that is NOT a merge candidate. */
-  --flb-blocked: repeating-linear-gradient(-45deg, #e23b3b 0 10px, #ffffff 10px 20px);
+  /* TWO presentation modes for the merge poles (Rick, 2026-06-01):
+       • NORMAL (default) — quiet. The "can-merge" pole is the site sand bg
+         (--surface-sunken #EDEAE4) / white instead of loud yellow/black, and the
+         "blocked" red/white pole is HIDDEN entirely (transparent). So in normal
+         use you see a subtle sandy stripe only on mergeable edges, nothing on the
+         rest.
+       • DEBUG (add .flb-debug-poles on an ancestor) — the original bright scheme:
+         yellow/black can-merge, red/white blocked, so every edge's merge state is
+         legible while diagnosing the merge logic.
+     The variables default to the NORMAL palette here and are overridden by the
+     debug class below. */
+  /* "can merge" pole — NORMAL: sandy site bg / white, −45°, 10px/10px stripes. */
+  --flb-pole: repeating-linear-gradient(-45deg, var(--surface-sunken, #EDEAE4) 0 10px, #ffffff 10px 20px);
+  /* "blocked" pole — NORMAL: hidden (no stripe on non-mergeable edges). */
+  --flb-blocked: none;
 
   /* PER-EDGE SWITCH. Each edge is its own background layer whose PAINT is a
      variable that defaults to the red/white BLOCKED pole and is swapped to the
@@ -20824,6 +20834,15 @@ tr.is-editing {
 .flb-grid__Cell[data-pole-bottom] { --edge-bottom: var(--flb-pole); --edge-bottom-w: var(--flb-pole-w); }
 .flb-grid__Cell[data-pole-left]   { --edge-left: var(--flb-pole);   --edge-left-w: var(--flb-pole-w); }
 .flb-grid__Cell[data-pole-right]  { --edge-right: var(--flb-pole);  --edge-right-w: var(--flb-pole-w); }
+
+/* DEBUG MODE — bright diagnostic poles. Add .flb-debug-poles on an ancestor (the
+   builder shell) to restore the loud yellow/black can-merge + red/white blocked
+   scheme used while debugging the merge logic. Normal use leaves it off → the
+   quiet sandy/white can-merge pole + hidden blocked pole defined above. */
+.flb-debug-poles .flb-grid__Cell {
+  --flb-pole: repeating-linear-gradient(-45deg, #FFCC33 0 10px, #1c1c22 10px 20px);
+  --flb-blocked: repeating-linear-gradient(-45deg, #e23b3b 0 10px, #ffffff 10px 20px);
+}
 /* inset the field content so it sits INSIDE the (potential) barber frame. We pad
    the CELL WRAPPER (not margin the slot): the slot is height:100%, so a margin
    would overflow the cell and hide the pole — padding shrinks the slot's box.
@@ -20898,10 +20917,20 @@ tr.is-editing {
    the heads apart instead of getting squashed to fit. */
 .flb-seam__Glyph {
   width: 45px; height: 84px; display: block;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.28));
+  /* NORMAL mode: a soft shadow only (the glyph is quiet sand/panel-border, set
+     via the SVG's var() fallbacks in JoinArrowIcon). */
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.12));
 }
 .flb-seam__Glyph-h { transform: rotate(90deg); } /* horizontal join variant */
 .flb-seam__Join:hover { transform: scale(1.14); }
+/* DEBUG mode — bright gold/black glyph with the stronger shadow, matching the
+   bright debug poles. */
+.flb-debug-poles .flb-seam__Glyph {
+  --flb-arrow-fill: #FFCC33;
+  --flb-arrow-stroke: #1c1c22;
+  --flb-arrow-stroke-w: 1.5;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.28));
+}
 
 /* HORIZONTAL seam — same handle on the cell's RIGHT edge, centred in the 12px
    column-gap (drop the zero-width wrapper 6px right to land dead-centre between

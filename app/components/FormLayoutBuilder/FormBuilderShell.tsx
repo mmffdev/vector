@@ -188,6 +188,11 @@ export function FormBuilderShell({
   // Add-custom-field overlay: when true, the create form mounts above the
   // canvas with the current artefact type force-bound (lockedTypeId).
   const [addFieldOpen, setAddFieldOpen] = useState(false);
+  // Debug poles: NORMAL mode (default) draws the quiet sandy/white merge pole +
+  // hides the blocked pole; DEBUG mode restores the bright yellow/black + red/white
+  // diagnostic scheme. Toggled in the header; applied via .flb-debug-poles on the
+  // overlay root (see globals.css). Off by default — bright poles are a dev aid.
+  const [debugPoles, setDebugPoles] = useState(false);
 
   // Live clock for the title sub-line — ticks every second to mirror the
   // rail-2 node block's date line exactly (see formatNow above).
@@ -437,7 +442,12 @@ export function FormBuilderShell({
   }, [previewing, state]);
 
   return (
-    <div className="flb-overlay" role="dialog" aria-modal="true" aria-label="Form layout builder">
+    <div
+      className={"flb-overlay" + (debugPoles ? " flb-debug-poles" : "")}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Form layout builder"
+    >
       <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <header className="flb-overlay__Bar">
           {/* Vector logo — pinned to the EXACT same screen position as the
@@ -497,6 +507,17 @@ export function FormBuilderShell({
                 </select>
               </label>
             )}
+            <button
+              type="button"
+              className={"flb-btn flb-btn-ghost" + (debugPoles ? " flb-btn-active" : "")}
+              onClick={() => setDebugPoles((d) => !d)}
+              aria-pressed={debugPoles}
+              title={debugPoles
+                ? "Debug poles ON — bright merge guides. Click for normal (quiet) poles."
+                : "Show debug merge poles (bright yellow/black + red/white guides)"}
+            >
+              {debugPoles ? "Debug poles: on" : "Debug poles"}
+            </button>
             <button
               type="button"
               className="flb-btn flb-btn-icon"
