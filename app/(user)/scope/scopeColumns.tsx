@@ -37,10 +37,28 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-function IdCell({ row }: { row: ScopeNode }) {
+// IdCell — the type badge is the OTV2 form trigger: clicking it opens the
+// inline edit flyout for that row (onOpenForm). The ID text stays plain.
+function IdCell({
+  row,
+  onOpenForm,
+}: {
+  row: ScopeNode;
+  onOpenForm?: (id: string) => void;
+}) {
   return (
     <span className="grid__Cell_Id">
-      <TypeBadge type={row.type} />
+      <button
+        type="button"
+        className="grid__Cell_TypeBadgeBtn"
+        aria-label={`Edit ${row.id}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenForm?.(row.id);
+        }}
+      >
+        <TypeBadge type={row.type} />
+      </button>
       <span className="grid__Cell_IdText">{row.id}</span>
     </span>
   );
@@ -93,20 +111,22 @@ function OwnerPill({ name }: { name: string }) {
   return <span className="grid__Cell_OwnerPill">{name}</span>;
 }
 
-// Column descriptors. The caret + indentation live in the skin; renderCell
-// returns content only. The Summary column is the flex column (defaultWidth
-// null) and is the PRIMARY column (index 0 would be ID — but the caret renders
-// in the first column, so ID carries the caret). Keep ID first to match the
-// old layout; the skin puts the caret in column 0 (ID) and indentation via the
-// _Children padding, so the tree reads left-to-right exactly as before.
-export const scopeColumns: GridColumn<ScopeNode>[] = [
+// Column descriptors as a FACTORY so the type-badge form-trigger can close over
+// the page's onOpenForm. The caret + indentation live in the skin (the primary
+// cell's TreeLines SVG); renderCell returns content only. The ID column is
+// primary (index 0) — it carries the caret + rails; the type badge in it is the
+// OTV2 form trigger.
+export function makeScopeColumns(
+  onOpenForm: (id: string) => void,
+): GridColumn<ScopeNode>[] {
+  return [
   {
     id: "id",
     label: "ID",
     defaultWidth: 160,
     sortable: true,
     resizable: true,
-    renderCell: (r) => <IdCell row={r} />,
+    renderCell: (r) => <IdCell row={r} onOpenForm={onOpenForm} />,
   },
   {
     id: "summary",
@@ -163,4 +183,5 @@ export const scopeColumns: GridColumn<ScopeNode>[] = [
     resizable: true,
     renderCell: (r) => r.due ?? "—",
   },
-];
+  ];
+}

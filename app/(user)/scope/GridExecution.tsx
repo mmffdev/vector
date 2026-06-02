@@ -26,9 +26,8 @@ import { useCallback, useMemo, useState } from "react";
 import { GridTree } from "@/app/components/Grid/Grid__Tree";
 import { GridTreeForms } from "@/app/components/Grid/Grid__Tree_Forms";
 import { useTree } from "@/app/components/Grid/useTree";
-import type { TreeNode } from "@/app/components/Grid/types";
 import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
-import { scopeColumns } from "./scopeColumns";
+import { makeScopeColumns } from "./scopeColumns";
 import {
   fetchScopeRoots,
   fetchScopeChildren,
@@ -95,15 +94,15 @@ export function GridExecution() {
     tree.refresh();
   }, [tree]);
 
-  // Row click → toggle the flyout-below for that node. The caret (child
-  // expansion) is handled inside the skin; this is the DETAIL open-state, a
-  // separate axis (a row can be expanded AND have its form open).
-  const handleSelect = useCallback(
-    (node: TreeNode<ScopeNode>) => {
-      setOpenDetailId((cur) => (cur === node.id ? null : node.id));
-    },
-    [],
-  );
+  // OTV2 form trigger: clicking a row's type badge toggles the inline edit
+  // flyout below it (single-open). Separate axis from caret expansion.
+  const openForm = useCallback((id: string) => {
+    setOpenDetailId((cur) => (cur === id ? null : id));
+  }, []);
+
+  // Columns close over the form-open trigger so the type badge can open the
+  // flyout (OTV2 parity). Memoised so the column identity is stable.
+  const columns = useMemo(() => makeScopeColumns(openForm), [openForm]);
 
   return (
     <GridTree<ScopeNode>
@@ -112,7 +111,7 @@ export function GridExecution() {
       badge="01"
       actionBar={actionBar}
       tree={tree}
-      columns={scopeColumns}
+      columns={columns}
       defaultSort={null}
       loadingStyle="barberpole"
       dnd={{ resourceType: "work_item", getDescendants: () => [] }}
@@ -126,7 +125,6 @@ export function GridExecution() {
       ]}
       accentOf={(r) => r.colour}
       selectedId={openDetailId}
-      onSelect={handleSelect}
       openDetailId={openDetailId}
       renderRowDetail={(node) => (
         <GridTreeForms

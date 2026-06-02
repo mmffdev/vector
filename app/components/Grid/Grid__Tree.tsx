@@ -25,7 +25,7 @@ import { useMemo, useRef, useState } from "react";
 import { useColumnManager } from "./useColumnManager";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
 import { GridTreeHead } from "./Grid__Tree_Head";
-import { GridTreeBranch } from "./Grid__Tree_Branch";
+import { GridTreeRow } from "./Grid__Tree_Row";
 import { GridTreePagination } from "./Grid__Tree_Pagination";
 import {
   GridTreeActionBar,
@@ -117,7 +117,8 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   } = props;
 
   const hasDnd = !!dnd;
-  const hasStripe = !!accentOf;
+  const accentFn: ((row: TRow) => string | null) | undefined = accentOf;
+  const hasStripe = !!accentFn;
   const hasSelection = !!selection;
   const hasCog = !!cogMenu;
 
@@ -338,24 +339,40 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
       />
 
       <div className="grid__Tree_Rows" role="rowgroup">
-        {tree.nodes.length === 0
+        {tree.flatNodes.length === 0
           ? empty ?? null
-          : tree.nodes.map((node) => (
-              <GridTreeBranch
-                key={node.id}
-                node={node}
-                columns={columns}
-                gridTemplateColumns={cm.gridTemplateColumns}
-                selectedId={selectedId}
-                onSelect={onSelect}
-                loadingStyle={loadingStyle}
-                accentOf={hasStripe ? undefined : accentOf}
-                renderRowDetail={renderRowDetail}
-                openDetailId={openDetailId}
-                renderLeadControls={renderLeadControls}
-                registerRowRef={cm.registerBodyRow}
-              />
-            ))}
+          : tree.flatNodes.map((node) => {
+              const detailOpen = openDetailId === node.id;
+              // The cast works around a TS flow-narrowing quirk inside this
+              // map closure (the generic memo()-cast on GridTreeRow confuses
+              // control-flow analysis so accentFn reads as non-callable even
+              // after the `&& accentFn` guard). Logic is guarded; runtime safe.
+              const rowAccent: string | null =
+                hasStripe || !accentFn
+                  ? null
+                  : (accentFn as (r: TRow) => string | null)(node.row);
+              return (
+                <div className="grid__Tree_RowGroup" key={node.id} role="presentation">
+                  <GridTreeRow
+                    node={node}
+                    columns={columns}
+                    gridTemplateColumns={cm.gridTemplateColumns}
+                    leadControls={renderLeadControls?.(node)}
+                    selected={selectedId === node.id}
+                    onSelect={onSelect}
+                    loadingStyle={loadingStyle}
+                    formOpen={detailOpen}
+                    accent={rowAccent}
+                    registerRowRef={cm.registerBodyRow}
+                  />
+                  {detailOpen && renderRowDetail ? (
+                    <div className="grid__Tree_Branch_Detail" role="presentation">
+                      {renderRowDetail(node)}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
       </div>
 
       <GridTreePagination tree={tree} />

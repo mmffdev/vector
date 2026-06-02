@@ -13,6 +13,7 @@
 // The skin (Grid__Tree) decides which rows render; this just paints one.
 
 import { memo } from "react";
+import { GridTreeLines } from "./Grid__Tree_Lines";
 import type { GridColumn, GridLoadingStyle, TreeNode } from "./types";
 
 export interface GridTreeRowProps<TRow> {
@@ -69,23 +70,43 @@ function GridTreeRowInner<TRow>({
     >
       {leadControls}
       {columns.map((col, i) => (
-        <div className="grid__Tree_Cell" role="cell" key={col.id}>
-          {i === 0 && node.hasChildren ? (
-            <button
-              type="button"
-              className="grid__Tree_Caret"
-              data-expanded={node.expanded}
-              aria-label={node.expanded ? "Collapse" : "Expand"}
-              aria-expanded={node.expanded}
-              onClick={(e) => {
-                e.stopPropagation();
-                node.toggle();
-              }}
-            >
-              <span className="grid__Tree_CaretGlyph" aria-hidden="true" />
-            </button>
-          ) : i === 0 ? (
-            <span className="grid__Tree_CaretSpacer" aria-hidden="true" />
+        <div
+          className={
+            i === 0 ? "grid__Tree_Cell grid__Tree_Cell--primary" : "grid__Tree_Cell"
+          }
+          role="cell"
+          key={col.id}
+        >
+          {i === 0 ? (
+            // Primary cell — the ONLY place that indents. The TreeLines SVG
+            // (width = depth × step) provides the indent + ├└│ rails; the caret
+            // sits right after it. Lead columns are outside this cell, so they
+            // never shift with depth (ResourceTree model).
+            <>
+              <GridTreeLines
+                depth={node.depth}
+                isLast={node.isLast}
+                hasVisibleChildren={node.hasVisibleChildren}
+                continuations={node.continuations}
+              />
+              {node.hasChildren ? (
+                <button
+                  type="button"
+                  className="grid__Tree_Caret"
+                  data-expanded={node.expanded}
+                  aria-label={node.expanded ? "Collapse" : "Expand"}
+                  aria-expanded={node.expanded}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    node.toggle();
+                  }}
+                >
+                  <span className="grid__Tree_CaretGlyph" aria-hidden="true" />
+                </button>
+              ) : (
+                <span className="grid__Tree_CaretSpacer" aria-hidden="true" />
+              )}
+            </>
           ) : null}
           {col.renderCell
             ? col.renderCell(node.row, i === 0 ? node : undefined)

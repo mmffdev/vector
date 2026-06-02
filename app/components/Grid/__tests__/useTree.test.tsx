@@ -87,7 +87,7 @@ describe("useTree", () => {
     expect(result.current.currentPage).toBe(0);
   });
 
-  it("renders roots as a nested node model with no geometry fields", async () => {
+  it("renders roots with tree geometry (depth/isLast/continuations)", async () => {
     const { fn: roots } = makeRoots([r("A", 2), r("B")]);
     const { fn: kids } = makeFetch({});
     const { result } = await renderTree(opts(roots, kids));
@@ -98,9 +98,39 @@ describe("useTree", () => {
     expect(a.expanded).toBe(false);
     expect(a.children).toEqual([]);
     expect(b.hasChildren).toBe(false); // kids=0 → leaf
-    expect(a).not.toHaveProperty("depth");
-    expect(a).not.toHaveProperty("isLast");
-    expect(a).not.toHaveProperty("continuations");
+    // Roots: depth 0, no ancestor continuations; B is the last root.
+    expect(a.depth).toBe(0);
+    expect(a.isLast).toBe(false);
+    expect(a.continuations).toEqual([]);
+    expect(b.depth).toBe(0);
+    expect(b.isLast).toBe(true);
+  });
+
+  it("threads depth/isLast/continuations through lazy-loaded children", async () => {
+    // A (not last, has 2 kids) + Z (last root). Expand A → A1 (not last) +
+    // A2 (last). A2 must carry continuations=[true] (A continues below) + isLast.
+    const { fn: roots } = makeRoots([r("A", 2), r("Z")]);
+    const { fn: kids } = makeFetch({ A: [r("A1"), r("A2")] });
+    const { result } = await renderTree(opts(roots, kids));
+
+    act(() => result.current.nodes[0].toggle());
+    await waitFor(() => expect(result.current.nodes[0].children).toHaveLength(2));
+
+    const [a1, a2] = result.current.nodes[0].children;
+    expect(a1.depth).toBe(1);
+    expect(a1.isLast).toBe(false);
+    expect(a1.continuations).toEqual([true]); // parent A is not the last root
+    expect(a2.depth).toBe(1);
+    expect(a2.isLast).toBe(true); // last child → elbow
+    expect(a2.continuations).toEqual([true]);
+
+    // flatNodes is the visible list in render order: A, A1, A2, Z.
+    expect(result.current.flatNodes.map((n) => n.id)).toEqual([
+      "A",
+      "A1",
+      "A2",
+      "Z",
+    ]);
   });
 
   it("lazy-fetches children on first expand and nests them under the parent", async () => {

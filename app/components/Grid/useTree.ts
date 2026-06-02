@@ -210,16 +210,29 @@ export function useTree<TRow>(
     [expandable, rowIdOf, fetchChildren, expandedIds, childrenById],
   );
 
-  // Build the NESTED node tree (roots → visible descendants). No depth, no
-  // isLast, no continuations — DOM nesting + CSS draw the connectors.
+  // Build the NESTED node tree (roots → visible descendants), threading the
+  // tree geometry the skin needs to indent IN-CELL (ResourceTree model):
+  //   • depth          — nesting level (roots = 0)
+  //   • isLast         — last among its siblings (└ vs ├)
+  //   • continuations  — per-ancestor │ through-line flags (root→parent)
+  // The skin renders a FLAT list (flatNodes) so lead columns stay fixed; only
+  // the primary cell's SVG indents.
   const nodes = useMemo<TreeNode<TRow>[]>(() => {
-    const build = (siblings: TRow[]): TreeNode<TRow>[] =>
-      siblings.map((row) => {
+    const build = (
+      siblings: TRow[],
+      depth: number,
+      ancestorContinuations: boolean[],
+    ): TreeNode<TRow>[] =>
+      siblings.map((row, idx) => {
         const id = rowIdOf(row);
         const hasChildren = expandable && getChildrenCount(row) > 0;
         const expanded = expandable && expandedIds.has(id);
+        const isLast = idx === siblings.length - 1;
         const kids = expanded ? childrenById.get(id) ?? [] : [];
-        const childNodes = kids.length > 0 ? build(kids) : [];
+        // Children's ancestor-continuations = our ancestors + (we continue).
+        const childCont = [...ancestorContinuations, !isLast];
+        const childNodes =
+          kids.length > 0 ? build(kids, depth + 1, childCont) : [];
         return {
           row,
           id,
@@ -229,9 +242,12 @@ export function useTree<TRow>(
           loading: loadingIds.has(id),
           children: childNodes,
           toggle: () => toggle(row),
+          depth,
+          isLast,
+          continuations: ancestorContinuations,
         };
       });
-    return build(roots);
+    return build(roots, 0, []);
   }, [
     roots,
     expandable,
@@ -242,6 +258,20 @@ export function useTree<TRow>(
     rowIdOf,
     toggle,
   ]);
+
+  // Flatten the visible tree depth-first into render order. This is what the
+  // skin maps over — flat rows, geometry carried per node.
+  const flatNodes = useMemo<TreeNode<TRow>[]>(() => {
+    const acc: TreeNode<TRow>[] = [];
+    const walk = (ns: TreeNode<TRow>[]) => {
+      for (const n of ns) {
+        acc.push(n);
+        if (n.children.length) walk(n.children);
+      }
+    };
+    walk(nodes);
+    return acc;
+  }, [nodes]);
 
   // Every expandable row currently KNOWN — roots plus every already-fetched
   // child subtree — reporting children_count > 0. This is the universe the
@@ -312,6 +342,7 @@ export function useTree<TRow>(
 
   return {
     nodes,
+    flatNodes,
     loadingIds,
     reset,
     expandAll,

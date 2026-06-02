@@ -38,6 +38,18 @@ export interface TreeNode<TRow> {
   children: TreeNode<TRow>[];
   /** Toggle expansion (lazy-fetches children on first expand). */
   toggle: () => void;
+
+  // ── Tree geometry (ResourceTree model) — drives the in-cell indent + rails ──
+  /** Nesting depth from the roots (roots = 0). */
+  depth: number;
+  /** This node is the last among its siblings (└ vs ├). */
+  isLast: boolean;
+  /**
+   * For each ANCESTOR level, true if that ancestor has more siblings below this
+   * subtree — i.e. a │ through-line must be drawn at that level. Length =
+   * depth (one flag per ancestor, ordered root→parent).
+   */
+  continuations: boolean[];
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -87,6 +99,13 @@ export interface UseTreeOptions<TRow> {
 export interface UseTreeResult<TRow> {
   /** Roots + expanded descendants as a NESTED node tree, in render order. */
   nodes: TreeNode<TRow>[];
+  /**
+   * The same visible nodes FLATTENED in render order (depth-first), each
+   * carrying its geometry (depth / isLast / continuations). The skin renders
+   * these as flat rows so lead columns stay fixed and only the primary cell
+   * indents. Replaces the old DOM-nested Branch rendering.
+   */
+  flatNodes: TreeNode<TRow>[];
   /** Row ids whose children fetch is currently in flight. */
   loadingIds: Set<string>;
   /** Drop all expansion + child caches — call when roots refetch. */

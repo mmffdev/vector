@@ -21798,6 +21798,12 @@ tr.is-editing {
   display: flex;
   flex-direction: column;
 }
+/* Flat-row group: the row + its optional detail flyout below. Passthrough — no
+   indent here (indent lives inside the primary cell), so lead columns stay
+   fixed regardless of depth. */
+.grid__Tree_RowGroup {
+  display: contents;
+}
 .grid__Tree_Row {
   display: grid;
   align-items: center;
@@ -21827,6 +21833,39 @@ tr.is-editing {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Primary (first) cell — hosts the indent SVG + caret + badge/id. Zero internal
+   gap so the SVG butts straight against the caret: that makes consecutive caret
+   centres step by exactly the SVG indent step, so a single CARET_OFFSET lands
+   the rail dead-centre on the parent caret at EVERY depth. overflow:visible so
+   the horizontal ├/└ stub (which overflows the indent SVG toward the badge) is
+   not clipped. */
+.grid__Tree_Cell--primary {
+  gap: 0;
+  overflow: visible;
+}
+
+/* ── Tree connector SVG (in-cell indent + ├└│ rails) ──────────────────────────
+   Lives inside the primary cell. Its width (depth × step) IS the indent, so
+   only the primary cell content shifts — lead columns never move. */
+.grid__Tree_Lines {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Type-badge button wrapper — the OTV2 form trigger. Resets button chrome so
+   the badge looks identical to a span. */
+.grid__Cell_TypeBadgeBtn {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  outline: none;
+}
+.grid__Cell_TypeBadgeBtn:focus-visible .grid__Cell_TypeBadge {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2563eb) 50%, transparent);
 }
 
 /* ── Caret (expand toggle) ───────────────────────────────────────────────── */
@@ -21887,43 +21926,14 @@ tr.is-editing {
 }
 .grid__Tree_DragGrip:active { cursor: grabbing; }
 
-/* ══ The connector system — 3 rules, zero JS. ════════════════════════════════
-   A Branch wraps a row + (optionally) its detail flyout + its children. The
-   rail is painted by the CHILDREN container's direct Branch children:
-     • ::before  → the elbow (└) every child gets.
-     • :not(:last-child)::after → the through-drop (├ tail + ancestor carry)
-       that only non-last siblings get. A non-last Branch's ::after spans its
-       WHOLE subtree height, so ancestor through-lines are free.
-   Last child → only ::before (└). Non-last → ::before + ::after (├). The
-   detail flyout sits inside its own Branch (grid__Tree_Branch_Detail), NOT in
-   _Children, so it never matches these selectors → never grows an elbow nor
-   shifts a sibling's :last-child. */
-.grid__Tree_Branch { position: relative; }
-.grid__Tree_Branch_Children { padding-left: var(--tree-step); }
-.grid__Tree_Branch_Children > .grid__Tree_Branch::before {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  left: calc(var(--tree-rail-inset) - var(--tree-step));
-  top: 0;
-  height: var(--tree-mid);
-  width: calc(var(--tree-step) - var(--tree-rail-inset));
-  border-left: 1px solid var(--tree-connector);
-  border-bottom: 1px solid var(--tree-connector);
-}
-.grid__Tree_Branch_Children > .grid__Tree_Branch:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  left: calc(var(--tree-rail-inset) - var(--tree-step));
-  top: var(--tree-mid);
-  bottom: 0;
-  border-left: 1px solid var(--tree-connector);
-}
+/* The old CSS-border connector system (Branch ::before/::after rails off DOM
+   nesting) is GONE — connectors are now drawn by the in-cell TreeLines SVG
+   (Grid__Tree_Lines), which lets the lead columns stay fixed while only the
+   primary cell indents (ResourceTree model). */
 
 /* Detail flyout row (the expandable-flyout extension payload) — sits directly
-   below its node's row, inside the same Branch. Full-bleed; the host
-   (Grid__Forms → ArtefactInlineForm) owns its inner chrome. */
+   below its node's row in the flat row group. Full-bleed; the host
+   (Grid__Tree_Forms → ArtefactInlineForm) owns its inner chrome. */
 .grid__Tree_Branch_Detail {
   position: relative;
   border-bottom: 1px solid var(--border);
