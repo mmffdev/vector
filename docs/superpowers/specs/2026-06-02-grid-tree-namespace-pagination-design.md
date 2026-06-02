@@ -1,31 +1,38 @@
-# Grid__Tree namespace sweep + root pagination
+# Grid__Tree complete system: namespace sweep + title band + frame decoupling + root pagination
 
 **Date:** 2026-06-02
 **Status:** Approved (design) — ready for implementation plan
-**Surface:** `app/components/Grid/` (the headless-core + styled-skin tree primitive) and its sole consumer `app/(user)/scope/`.
+**Surface:** `app/components/Grid/` (the headless-core + styled-skin tree primitive), `app/components/DataContainer/`, and the consumer `app/(user)/scope/`.
 
 ## Problem
 
-The `/scope` page renders the work-item hierarchy on the new Grid primitive. Two gaps against the intended contract — *"the tree owns its header (columns), data rows, and pagination"*:
+The `/scope` page renders the work-item hierarchy on the new Grid primitive. The intended contract — *"the frame is a dumb container; the tree owns its own title, header (columns), data rows, forms, and pagination"* — is only partly realised. Four gaps:
 
-1. **No pagination.** Roots load once via a hardcoded `{ limit: 200, offset: 0 }` and all render. The wire already returns `total` on the roots path, but `fetchScopeRoots` discards it. This does not scale and does not match the target structure.
-2. **Inconsistent namespace.** The tree's owned members are split-brained in CSS and component naming: some are correctly `grid__Tree_*` (Caret, Cell, Row, ExpandAll, DragGrip), others are loose `grid__*` siblings of the root block (`grid__Head*`, `grid__Body`, `grid__Branch*`, `grid__Forms`). Per the project CSS convention (`root-block__Container_Child_leaf`), everything the `Grid__Tree` block owns should be `grid__Tree_*`.
+1. **No pagination.** Roots load once via a hardcoded `{ limit: 200, offset: 0 }` and all render. The wire already returns `total` on the roots path, but `fetchScopeRoots` discards it.
+2. **Inconsistent namespace.** The tree's owned members are split-brained: some are correctly `grid__Tree_*` (Caret, Cell, Row, ExpandAll, DragGrip), others are loose `grid__*` siblings of the root block (`grid__Head*`, `grid__Body`, `grid__Branch*`, `grid__Forms`). Per the CSS convention (`root-block__Container_Child_leaf`), everything the `Grid__Tree` block owns should be `grid__Tree_*`.
+3. **No tree title band.** The tree has no title space of its own; today's `subtitle`/`subDescription` (the data-view identity, "Tree" + the server-driven-parentage line) live in the frame's header band, mixed with the page title.
+4. **Frame coupled to content via a render-prop.** `DataContainer` uses a `setHeader` render-prop: content pushes header strings *up* into the frame. The frame should be a plain container with its own props; content should not plumb the frame's header.
 
 ## Target structure
 
 ```
-DataContainer                         ← dumb frame (title/sub-section band, unchanged)
-└─ Grid__Tree   <div class="grid">    ← the data-view; owns all its bands
-   ├─ Grid__Tree_Head   .grid__Tree_Head           ← columns
-   ├─ Grid__Tree_Rows   .grid__Tree_Rows           ← Grid__Tree_Branch recursion
-   │  ├─ Grid__Tree_Branch  .grid__Tree_Branch
-   │  │  ├─ Grid__Tree_Row  .grid__Tree_Row
-   │  │  └─ Grid__Tree_Forms .grid__Tree_Forms      ← row flyout (renderRowDetail)
-   │  └─ …
-   └─ Grid__Tree_Pagination  .grid__Tree_Pagination ← NEW, third sibling
+ScopePage (page.tsx) — wires two layers INDEPENDENTLY, side by side:
+
+DataContainer   <div class="data-container">          ← dumb container; OWN title/description props
+├─ data-container__TitlePanel   (title + description) ← page identity ("Scope" + hierarchy line)
+└─ data-container__Viewport
+   └─ GridExecution → Grid__Tree  <div class="grid">  ← data-view; OWN title/subtitle + data props
+      ├─ Grid__Tree_Title       .grid__Tree_Title       ← NEW (tree identity: "Tree" + parentage line)
+      ├─ Grid__Tree_Head        .grid__Tree_Head        ← columns
+      ├─ Grid__Tree_Rows        .grid__Tree_Rows        ← Grid__Tree_Branch recursion
+      │  ├─ Grid__Tree_Branch   .grid__Tree_Branch
+      │  │  ├─ Grid__Tree_Row   .grid__Tree_Row
+      │  │  └─ Grid__Tree_Forms .grid__Tree_Forms        ← row flyout (renderRowDetail)
+      │  └─ …
+      └─ Grid__Tree_Pagination  .grid__Tree_Pagination   ← NEW (fed by useTree)
 ```
 
-The **frame** (`DataContainer`) stays dumb. The **tree** (`Grid__Tree`) owns and renders all three of its bands — header, rows, pagination — as siblings inside its own `<div class="grid">`.
+**Wiring principle:** the frame and the tree are wired **independently** by the page. `DataContainer` receives `title`/`description` as plain props and renders its title panel. `Grid__Tree` receives its own `title`/`subtitle` (+ all data props) directly. **Nothing passes through the frame** — `setHeader` / `onHeader` / the render-prop are deleted. The frame is just a container.
 
 ## Decisions (locked)
 
@@ -34,11 +41,14 @@ The **frame** (`DataContainer`) stays dumb. The **tree** (`Grid__Tree`) owns and
 | Pagination axis | **Roots only.** Children stay fully-loaded-on-expand (existing lazy machine untouched). |
 | Page UX | **Append-default (`load more`) + page-jump.** |
 | Jump semantics | **Jump replaces the window** (reset expansion + child caches, load that page fresh). Load-more appends + preserves expansion. |
-| State home | **Folded into `useTree`** — the hook owns the paged root window. |
+| Pagination state home | **Folded into `useTree`** — the hook owns the paged root window. |
 | Namespace sweep depth | **All tree-owned members** → `grid__Tree_*`. No loose `grid__*` leaves remain. |
 | Pagination wiring | **Inside `Grid__Tree`, fed by `useTree`** (no new consumer props). |
+| Tree title band | **`Grid__Tree_Title`**, first child of `<div class="grid">`, above `Grid__Tree_Head`. Carries the tree's `title` + `subtitle`. |
+| Title/header wiring | **Frame and tree take their own props independently.** Frame: `title`+`description`. Tree: `title`+`subtitle`. No `setHeader`/`onHeader` plumbing; no pass-through. |
+| Frame children | **Plain children** (`<DataContainer title=… description=…>{children}</DataContainer>`). Render-prop deleted. |
 | Page size | **100** (tunable per-consumer via `pageSize` option). |
-| Sequencing | **Sweep first** (pure rename commit), **then pagination** (logic commit). |
+| Sequencing | **Sweep → frame/title → pagination** (three commits, each one concern). |
 
 ---
 
@@ -70,20 +80,37 @@ Pure rename across three planes. Behaviour identical. Self-contained: only `Grid
 | `grid__Branch`, `grid__Branch_Children`, `grid__Branch_Detail` | `grid__Tree_Branch*` (same leaves) |
 | `grid__Forms` | `grid__Tree_Forms` |
 
-Already correct, untouched: `grid__Tree_Caret`, `grid__Tree_CaretGlyph`, `grid__Tree_CaretSpacer`, `grid__Tree_Cell`, `grid__Tree_DragGrip`, `grid__Tree_ExpandAll`, `grid__Tree_ExpandAllGlyph`, `grid__Tree_Row`.
+Already correct, untouched: `grid__Tree_Caret*`, `grid__Tree_Cell`, `grid__Tree_DragGrip`, `grid__Tree_ExpandAll*`, `grid__Tree_Row`.
 
 ### Import sites
 
-- `GridExecution.tsx` — external: `GridForms→GridTreeForms` import + JSX.
-- Internal cross-refs within `Grid/` (Grid__Tree imports Head/Branch; Branch imports Row).
+`GridExecution.tsx` (external: `GridForms→GridTreeForms`) + internal cross-refs within `Grid/`.
 
 ### Commit discipline
 
-The `git mv` renames pre-stage entries. Per the **INSPECT-INDEX hard rule**, run `git diff --cached --stat` and read it in full before committing; unstage anything beyond the sweep. The sweep is **its own commit**, behaviour-neutral, easy to review/revert.
+`git mv` pre-stages entries. Per the **INSPECT-INDEX hard rule**, run `git diff --cached --stat` and read it in full before committing; unstage anything beyond the sweep. The sweep is **its own commit**, behaviour-neutral.
 
 ---
 
-## Part 2 — Root pagination folded into `useTree`
+## Part 2 — Frame decoupling + `Grid__Tree_Title` band
+
+### DataContainer becomes a plain container
+
+- **Remove** the `setHeader` render-prop machinery: the `DataContainerHeader` state, `setHeader` callback, and the function-as-children signature.
+- **Add** plain props: `title?: string`, `description?: string`, plus normal `children: React.ReactNode`.
+- Renders `data-container__TitlePanel` (title + description) above `data-container__Viewport`. Drops the old four-field `data-container__Header` block (subtitle/subDescription move to the tree).
+- `page.tsx`: `<DataContainer title="Scope" description="…"><GridExecution/></DataContainer>`.
+
+### Grid__Tree gains its own title props + band
+
+- **New props on `GridTreeProps`:** `title?: string`, `subtitle?: string`.
+- **New band `Grid__Tree_Title`** rendered as the **first** child inside `<div class="grid">`, above `Grid__Tree_Head`. Renders `title` (e.g. "Tree") + `subtitle` (e.g. "Server-driven parentage via the audited POST read-gateway…").
+- New CSS under `grid__Tree_Title*` in `app/globals.css`. Section titles via `<Panel>`-equivalent / no raw `<h2>` per `lint:h2-panel-only` — confirm the band uses the sanctioned title element, not a bare `<h2>`.
+- `GridExecution` passes `title`/`subtitle` straight into `<Grid__Tree>`; its old `onHeader` prop and the `useEffect` that called it are **deleted**.
+
+---
+
+## Part 3 — Root pagination folded into `useTree`
 
 ### Signature change
 
@@ -97,62 +124,60 @@ fetchRoots: (page: { limit: number; offset: number })
 pageSize?: number; // default 100
 ```
 
-`fetchScopeRoots` is adjusted to return `{ rows, total }` (surfacing the `total` already on the wire that it currently discards).
+`fetchScopeRoots` is adjusted to return `{ rows, total }` (surfacing the `total` already on the wire it currently discards).
 
 ### New internal state
 
-`roots: TRow[]` (the accumulated/replaced window), `offset: number`, `total: number`, `rootsLoading: boolean`. The hook self-loads page 0 on mount (replacing `GridExecution`'s `loadRoots` effect).
+`roots: TRow[]` (accumulated/replaced window), `offset`, `total`, `rootsLoading`. The hook self-loads page 0 on mount (replacing `GridExecution`'s `loadRoots` effect).
 
 ### New actions (`UseTreeResult`)
 
-- **`loadMore()`** — fetches the next window `{ limit: pageSize, offset: loadedCount }`, **appends** rows to `roots`. Preserves all expansion + child caches.
-- **`jumpToPage(n)`** — calls the existing `reset()` (drops expansion + child caches), sets `offset = n × pageSize`, fetches `{ limit: pageSize, offset }`, **replaces** `roots` with that single page.
+- **`loadMore()`** — fetches `{ limit: pageSize, offset: loadedCount }`, **appends** rows to `roots`. Preserves all expansion + child caches.
+- **`jumpToPage(n)`** — calls existing `reset()` (drops expansion + child caches), sets `offset = n × pageSize`, fetches that page, **replaces** `roots`.
 - **`refresh()`** — re-load from offset 0 with a reset. Replaces `GridExecution.refreshAfterMutation`'s `reset()` + `loadRoots()` pair.
 
 ### New derived values (exposed)
 
 `total`, `loadedCount` (= `roots.length`), `pageSize`, `hasMore` (= `loadedCount < total`), `currentPage` (= `offset / pageSize`; meaningful right after a jump), `rootsLoading`.
 
-### Consumer simplification (`GridExecution`)
+### Grid__Tree_Pagination band
 
-- Delete the `roots` `useState` and `loadRoots` `useCallback`/effect.
-- `useTreeScope` passes `fetchRoots: fetchScopeRoots` and `pageSize: 100` into `useTree`.
-- `refreshAfterMutation` → `tree.refresh()`.
+Presentational component, **third sibling** inside `<div class="grid">`, after `Grid__Tree_Rows`. Reads off the `tree` result `Grid__Tree` already holds — **no new consumer props**.
 
----
-
-## Part 3 — `Grid__Tree_Pagination` (new band)
-
-Presentational component, rendered as the **third sibling** inside `<div class="grid">`, after `Grid__Tree_Rows`. Reads off the `tree` result `Grid__Tree` already holds — **no new props from the consumer**.
-
-Layout:
 - **Left** — "Showing {loadedCount} of {total}".
 - **Centre** — `[Load more]` `<button>`; disabled when `!hasMore`; barber-pole while `rootsLoading`.
-- **Right** — page-jump: `‹ Page {currentPage+1} of {ceil(total/pageSize)} ›` with prev/next buttons + a direct page-number input → `jumpToPage(n)`.
+- **Right** — page-jump: `‹ Page {currentPage+1} of {ceil(total/pageSize)} ›` with prev/next + page-number input → `jumpToPage(n)`.
 
-**Accessibility (WCAG 2.2 AA, per `docs/c_accessibility.md`):** real `<button>` elements, `aria-label`s on prev/next, the jump input has an associated label, target sizes met, visible focus.
+**Accessibility (WCAG 2.2 AA, `docs/c_accessibility.md`):** real `<button>`s, `aria-label`s on prev/next, labelled jump input, target sizes met, visible focus.
 
-New CSS lives under `grid__Tree_Pagination*` in `app/globals.css`.
+### Consumer simplification (`GridExecution`)
+
+- Delete the `roots` `useState`, `loadRoots`, and the `onHeader` effect.
+- `useTreeScope` passes `fetchRoots: fetchScopeRoots`, `pageSize: 100`.
+- `refreshAfterMutation` → `tree.refresh()`.
 
 ---
 
 ## Testing
 
-`useTree` tests gain:
-- Page-0 self-load on mount.
-- `loadMore` appends the next window **and preserves expansion** of already-expanded roots.
-- `jumpToPage` resets expansion/child caches **and replaces** the window.
-- `hasMore` / `total` / `loadedCount` / `currentPage` derivation across load-more and jump.
-- `refresh` re-loads from offset 0 with a clean reset.
+`useTree` tests gain: page-0 self-load; `loadMore` appends **and preserves expansion**; `jumpToPage` resets **and replaces**; `hasMore`/`total`/`loadedCount`/`currentPage` derivation; `refresh` clean re-load.
 
-The sweep is covered by existing tests passing unchanged post-rename (behaviour-neutral).
+`DataContainer` test: renders title panel from props, children in viewport, no render-prop.
+
+The sweep + title band are covered by existing `/scope` tests passing post-change (sweep is behaviour-neutral; title band is additive).
 
 ## Tech debt
 
-**`TD-GRID-CHILD-PAGINATION` (S2).** Children remain unpaginated — a node with N children loads all N on expand. This is the deferred axis from the "roots only" decision. **Trigger:** a node exceeds ~200 children in real data, or a child fetch is observably slow. **Pay-down:** extend `fetchChildren` to a paged child query (`{ parentId, page }`) + a per-subtree "load more children" row; needs server support for `total` on the children path (today the children path deliberately omits `total`).
+**`TD-GRID-CHILD-PAGINATION` (S2).** Children remain unpaginated — a node with N children loads all N on expand. Deferred axis from the "roots only" decision. **Trigger:** a node exceeds ~200 children in real data, or a child fetch is observably slow. **Pay-down:** paged child query (`{ parentId, page }`) + per-subtree "load more children" row; needs server `total` on the children path (today deliberately omitted).
 
 ## Out of scope (explicit)
 
-- Splitting the `DataContainer` header band into distinct `<title panel>` + `<sub section panel>` — a separate frame-structure change, not part of this work.
-- Child-level pagination (see TD above).
+- Child-level pagination (see TD).
 - Virtualisation of the rows band.
+- Any change to the `workItems.query` backend contract beyond reading the `total` it already returns.
+
+## Sequencing (three commits)
+
+1. **Sweep** — pure rename (files, components, CSS). Behaviour-neutral.
+2. **Frame + title** — DataContainer → plain container; `Grid__Tree_Title` band; rewire `page.tsx` + `GridExecution` props; delete `setHeader`/`onHeader`.
+3. **Pagination** — `useTree` paging; `Grid__Tree_Pagination`; consumer simplification.
