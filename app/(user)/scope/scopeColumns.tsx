@@ -46,22 +46,45 @@ function IdCell({ row }: { row: ScopeNode }) {
   );
 }
 
-function StatusPills({ status }: { status: string }) {
-  const stages = ["T", "I", "D", "C"];
+// Flow-state chevron ribbon — reuses OTV2's wi-flow-row CSS verbatim (the
+// clip-path chevron pills already live in globals.css). The /scope status is a
+// single glyph (T/I/D/C); we render the canonical 4-stage ladder and fill the
+// active one with its --code/--active modifier so the ribbon reads identically
+// to the work-items grid. Non-interactive here (display only) — aria-disabled.
+const FLOW_STAGES: { glyph: string; code: string; label: string }[] = [
+  { glyph: "T", code: "todo", label: "To Do" },
+  { glyph: "I", code: "doing", label: "In Progress" },
+  { glyph: "D", code: "doing", label: "Doing" },
+  { glyph: "C", code: "completed", label: "Done" },
+];
+
+function FlowRow({ status }: { status: string }) {
   return (
-    <span className="grid__Cell_StatusPills">
-      {stages.map((s) => (
-        <span
-          key={s}
-          className={
-            s === status
-              ? "grid__Cell_StatusPill grid__Cell_StatusPill--active"
-              : "grid__Cell_StatusPill"
-          }
-        >
-          {s}
-        </span>
-      ))}
+    <span className="wi-flow-row wi-flow-row--derived" role="group" aria-label="Status">
+      {FLOW_STAGES.map((s, i) => {
+        const active = s.glyph === status;
+        const cls = [
+          "wi-flow-row__btn",
+          `wi-flow-row__btn--code-${s.code}`,
+          active ? "wi-flow-row__btn--active" : "",
+          active ? `wi-flow-row__btn--active-${s.code}` : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+        return (
+          <button
+            key={`${s.glyph}-${i}`}
+            type="button"
+            className={cls}
+            aria-pressed={active}
+            aria-disabled="true"
+            aria-label={s.label}
+            title={s.label}
+          >
+            <span className="wi-flow-row__btn_Label">{s.glyph}</span>
+          </button>
+        );
+      })}
     </span>
   );
 }
@@ -98,7 +121,7 @@ export const scopeColumns: GridColumn<ScopeNode>[] = [
     defaultWidth: 220,
     sortable: true,
     resizable: true,
-    renderCell: (r) => <StatusPills status={r.status} />,
+    renderCell: (r) => <FlowRow status={r.status} />,
   },
   {
     id: "points",
