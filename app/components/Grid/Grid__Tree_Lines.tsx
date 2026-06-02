@@ -25,7 +25,7 @@ const CARET_OFFSET = 24;
 // Horizontal ├/└ stub length past its rail vertical — reaches under this row's
 // own caret and on toward the badge (longer = closer to the badge). Tuned so the
 // tee/elbow sits just under the badge.
-const STUB_EXTEND = 29;
+const STUB_EXTEND = 34;
 
 export interface GridTreeLinesProps {
   depth: number;
