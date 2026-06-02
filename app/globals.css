@@ -21497,6 +21497,30 @@ tr.is-editing {
   color: var(--ink);
 }
 
+/* ── Title band ──────────────────────────────────────────────────────────────
+   The tree's OWN title space — the first band inside the grid, above the
+   column head. Carries the data-view identity (title + sub-line), distinct
+   from the frame's page title (data-container__TitlePanel). */
+.grid__Tree_Title {
+  flex: 0 0 auto;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.grid__Tree_Title_Heading {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #5c5c5c);
+  margin: 0;
+}
+.grid__Tree_Title_Sub {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+  margin: 2px 0 0;
+}
+
 /* ── Header band ─────────────────────────────────────────────────────────── */
 .grid__Tree_Head {
   display: grid;
@@ -21811,16 +21835,16 @@ tr.is-editing {
   min-width: 0;
 }
 
-/* ── DataContainer (Layer 1) — dumb frame: header band + zero-padding viewport.
-   Renders four header strings pushed UP by the content via render-prop; the
-   viewport is empty and owns nothing else. */
+/* ── DataContainer (Layer 1) — dumb frame: page title panel + zero-padding
+   viewport. Takes its own title/description props; the content is plain
+   children. The tree's own title lives in grid__Tree_Title, not here. */
 .data-container {
   display: flex;
   flex-direction: column;
   min-height: 0;
   height: 100%;
 }
-.data-container__Header {
+.data-container__TitlePanel {
   flex: 0 0 auto;
   padding: var(--space-4, 16px) var(--space-5, 20px);
   border-bottom: 1px solid var(--border);
@@ -21835,19 +21859,6 @@ tr.is-editing {
 .data-container__Description {
   font-size: 13px;
   color: var(--text-secondary, #5c5c5c);
-  margin: 2px 0 0;
-}
-.data-container__SubTitle {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-secondary, #5c5c5c);
-  margin: 8px 0 0;
-}
-.data-container__SubDescription {
-  font-size: 12px;
-  color: var(--text-tertiary, #9ca3af);
   margin: 2px 0 0;
 }
 .data-container__Viewport {

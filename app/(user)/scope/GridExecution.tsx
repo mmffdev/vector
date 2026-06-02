@@ -14,8 +14,10 @@
 //                            TRUE direct children via workItems.query({parentId}).
 //   • openDetailId         — which row currently has its flyout-below open
 //                            (the expandable extension's open-state).
-//   • onHeader             — pushes the four header strings UP into the
-//                            <DataContainer> band once, on mount.
+//
+// The tree's OWN title (title + subtitle) is passed straight into <GridTree>;
+// the page-level title lives on <DataContainer> in page.tsx. Neither passes
+// through the other — the frame and the tree are wired independently.
 //
 // What it does NOT own: the look (Grid__Tree), the connectors (CSS), the tree
 // state machine (useTree), or the form body (Grid__Tree_Forms / ArtefactInlineForm).
@@ -25,7 +27,6 @@ import { GridTree } from "@/app/components/Grid/Grid__Tree";
 import { GridTreeForms } from "@/app/components/Grid/Grid__Tree_Forms";
 import { useTree } from "@/app/components/Grid/useTree";
 import type { TreeNode } from "@/app/components/Grid/types";
-import type { DataContainerHeader } from "@/app/components/DataContainer/DataContainer";
 import { scopeColumns } from "./scopeColumns";
 import {
   fetchScopeRoots,
@@ -47,27 +48,9 @@ function useTreeScope(roots: ScopeNode[]) {
   });
 }
 
-export interface GridExecutionProps {
-  /** Push header strings up into the DataContainer band. */
-  onHeader: (h: DataContainerHeader) => void;
-}
-
-export function GridExecution({ onHeader }: GridExecutionProps) {
+export function GridExecution() {
   const [roots, setRoots] = useState<ScopeNode[]>([]);
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
-
-  // Header band — set once. The frame holds it; this assembler is the only
-  // thing that knows the page's identity.
-  useEffect(() => {
-    onHeader({
-      title: "Scope",
-      description:
-        "The work-item hierarchy for this workspace — parent → child, collapsed by default.",
-      subtitle: "Tree",
-      subDescription:
-        "Server-driven parentage via the audited POST read-gateway. Expand a row to load its true children.",
-    });
-  }, [onHeader]);
 
   // Roots loader — the canopy. Hoisted so a post-mutation refresh can re-run it.
   // tree.reset() drops every expansion + child cache so the reloaded roots
@@ -110,6 +93,8 @@ export function GridExecution({ onHeader }: GridExecutionProps) {
 
   return (
     <GridTree<ScopeNode>
+      title="Tree"
+      subtitle="Server-driven parentage via the audited POST read-gateway. Expand a row to load its true children."
       tree={tree}
       columns={scopeColumns}
       defaultSort={null}

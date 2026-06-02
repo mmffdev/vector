@@ -36,6 +36,14 @@ import type {
 } from "./types";
 
 export interface GridTreeProps<TRow> {
+  /**
+   * The tree's own title (the data-view identity, e.g. "Tree"). Rendered in
+   * the Grid__Tree_Title band, above the column head — the tree owns its own
+   * title space; the frame (DataContainer) owns only the page title.
+   */
+  title?: string;
+  /** Sub-line under the tree title (e.g. how parentage is resolved). */
+  subtitle?: string;
   /** The headless core, already constructed by the consumer via useTree(). */
   tree: UseTreeResult<TRow>;
   columns: GridColumn<TRow>[];
@@ -64,6 +72,8 @@ const DRAG_COL_PX = 28;
 
 export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const {
+    title,
+    subtitle,
     tree,
     columns,
     defaultSort,
@@ -127,8 +137,20 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
       )
     : undefined;
 
+  const hasTitle = title != null || subtitle != null;
+
   return (
     <div className="grid" ref={cm.containerRef}>
+      {hasTitle && (
+        <div className="grid__Tree_Title">
+          {title != null && (
+            <h2 className="grid__Tree_Title_Heading">{title}</h2>
+          )}
+          {subtitle != null && (
+            <p className="grid__Tree_Title_Sub">{subtitle}</p>
+          )}
+        </div>
+      )}
       <GridTreeHead
         columns={columns}
         gridTemplateColumns={cm.gridTemplateColumns}

@@ -3,11 +3,12 @@
 // /scope — the work-item hierarchy, rendered on the new Grid primitive.
 //
 // Three layers, top to bottom:
-//   • <DataContainer>  (Layer 1) — the dumb frame: header band + zero-padding
-//                       viewport. Knows nothing about trees.
+//   • <DataContainer>  (Layer 1) — the dumb frame: page title panel + zero-
+//                       padding viewport. Takes its own title/description; the
+//                       content is plain children. Knows nothing about trees.
 //   • <GridExecution>  (Layer 2) — the per-page assembler: wires useTree() +
 //                       Grid__Tree + the /scope columns + the expandable-flyout
-//                       extension. Pushes the header strings UP via setHeader.
+//                       extension. Passes the tree's own title into <GridTree>.
 //   • the primitive    (Layer 3) — useTree() (headless core) + Grid__Tree
 //                       (canonical skin) + the pure-CSS connector system.
 //
@@ -35,8 +36,11 @@ export default function ScopePage() {
         flyout-below. {full}
       </PageDescription>
 
-      <DataContainer>
-        {(setHeader) => <GridExecution onHeader={setHeader} />}
+      <DataContainer
+        title="Scope"
+        description="The work-item hierarchy for this workspace — parent → child, collapsed by default."
+      >
+        <GridExecution />
       </DataContainer>
     </PageContent>
   );
