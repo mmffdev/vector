@@ -13,8 +13,28 @@
 import type { GridColumn } from "@/app/components/Grid/types";
 import type { ScopeNode } from "./scopeTreeData";
 
+// Prefix → OTV2 gray-ramp tier. Strategic types sit at the dark end, execution
+// types lighten down the ladder (Epic → Story/Defect → Task). Unknown prefixes
+// fall to the mid "story" gray so a new type still reads as a badge.
+const TIER_BY_PREFIX: Record<string, string> = {
+  TH: "strategy-top", // Theme
+  IN: "strategy-mid", // Initiative
+  FE: "strategy-bottom", // Feature
+  EP: "epic",
+  US: "story",
+  ST: "story",
+  DE: "defect",
+  TA: "task",
+  TK: "task",
+};
+
 function TypeBadge({ type }: { type: string }) {
-  return <span className="grid__Cell_TypeBadge">{type}</span>;
+  const tier = TIER_BY_PREFIX[type] ?? "story";
+  return (
+    <span className="grid__Cell_TypeBadge" data-tier={tier}>
+      {type}
+    </span>
+  );
 }
 
 function IdCell({ row }: { row: ScopeNode }) {
