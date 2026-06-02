@@ -42,6 +42,8 @@ interface DependencyMapMeta {
 
 type DependencyBucketKey = "requires" | "unlocks" | "parallel";
 
+type DependencyBucketForms = Record<DependencyBucketKey, DependencyBucketForm>;
+
 interface DependencyCandidate {
   id: string;
   formattedId: string;
@@ -60,6 +62,14 @@ interface WireDependencyCandidate {
   topology_node_id: string | null;
 }
 
+interface DependencyBucketForm {
+  selectedNodeId: string;
+  selectedTypeId: string;
+  search: string;
+  candidateOptions: DependencyCandidate[];
+  selectedCandidateIds: Set<string>;
+}
+
 const EMPTY_BUCKETS: Record<DependencyBucketKey, DependencyCandidate[]> = {
   requires: [],
   unlocks: [],
@@ -71,6 +81,32 @@ function emptyBucketSelections(): Record<DependencyBucketKey, Set<string>> {
     requires: new Set(),
     unlocks: new Set(),
     parallel: new Set(),
+  };
+}
+
+function emptyBucketForms(nodeId: string): DependencyBucketForms {
+  return {
+    requires: {
+      selectedNodeId: nodeId,
+      selectedTypeId: "",
+      search: "",
+      candidateOptions: [],
+      selectedCandidateIds: new Set(),
+    },
+    unlocks: {
+      selectedNodeId: nodeId,
+      selectedTypeId: "",
+      search: "",
+      candidateOptions: [],
+      selectedCandidateIds: new Set(),
+    },
+    parallel: {
+      selectedNodeId: nodeId,
+      selectedTypeId: "",
+      search: "",
+      candidateOptions: [],
+      selectedCandidateIds: new Set(),
+    },
   };
 }
 
@@ -102,6 +138,12 @@ const BUCKETS: Array<{
     icon: <TbArrowsShuffle aria-hidden="true" />,
     placeholder: "Add parallel artefact...",
   },
+];
+
+const CANVAS_BUCKET_ORDER: DependencyBucketKey[] = [
+  "requires",
+  "parallel",
+  "unlocks",
 ];
 
 function formatArtefactId(artefact: ArtefactDetail): string {
@@ -146,6 +188,9 @@ export function DependencyMapOverlay({
   const [selectedBucketItemIds, setSelectedBucketItemIds] = useState<
     Record<DependencyBucketKey, Set<string>>
   >(emptyBucketSelections);
+  const [canvasForms, setCanvasForms] = useState<DependencyBucketForms>(() =>
+    emptyBucketForms(nodeId ?? ""),
+  );
 
   const meta = useMemo<DependencyMapMeta>(
     () => ({
@@ -170,7 +215,7 @@ export function DependencyMapOverlay({
     [artefact, artefactTitle, formattedId, nodeId, nodeName],
   );
 
-  const addCandidatesToBucket = (
+  const appendCandidatesToBucket = (
     bucketKey: DependencyBucketKey,
     candidates: DependencyCandidate[],
   ) => {
@@ -185,7 +230,58 @@ export function DependencyMapOverlay({
         ],
       };
     });
+  };
+
+  const addCandidatesToBucket = (
+    bucketKey: DependencyBucketKey,
+    candidates: DependencyCandidate[],
+  ) => {
+    appendCandidatesToBucket(bucketKey, candidates);
     setSelectedCandidateIds(new Set());
+  };
+
+  const addCanvasCandidatesToBucket = (bucketKey: DependencyBucketKey) => {
+    const form = canvasForms[bucketKey];
+    const candidates = form.candidateOptions.filter((candidate) =>
+      form.selectedCandidateIds.has(candidate.id),
+    );
+    if (candidates.length === 0) return;
+    appendCandidatesToBucket(bucketKey, candidates);
+    setCanvasForms((prev) => ({
+      ...prev,
+      [bucketKey]: {
+        ...prev[bucketKey],
+        selectedCandidateIds: new Set(),
+      },
+    }));
+  };
+
+  const patchCanvasForm = (
+    bucketKey: DependencyBucketKey,
+    patch: Partial<Omit<DependencyBucketForm, "selectedCandidateIds">>,
+  ) => {
+    setCanvasForms((prev) => ({
+      ...prev,
+      [bucketKey]: {
+        ...prev[bucketKey],
+        ...patch,
+      },
+    }));
+  };
+
+  const toggleCanvasCandidate = (bucketKey: DependencyBucketKey, id: string) => {
+    setCanvasForms((prev) => {
+      const nextSelected = new Set(prev[bucketKey].selectedCandidateIds);
+      if (nextSelected.has(id)) nextSelected.delete(id);
+      else nextSelected.add(id);
+      return {
+        ...prev,
+        [bucketKey]: {
+          ...prev[bucketKey],
+          selectedCandidateIds: nextSelected,
+        },
+      };
+    });
   };
 
   const toggleBucketItem = (bucketKey: DependencyBucketKey, id: string) => {
@@ -247,6 +343,91 @@ export function DependencyMapOverlay({
     };
   }, [artefact.id, search, selectedNodeId, selectedTypeId, typeOptions]);
 
+  const canvasFormQuerySignature = useMemo(
+    () =>
+      JSON.stringify(
+        CANVAS_BUCKET_ORDER.map((bucketKey) => {
+          const form = canvasForms[bucketKey];
+          return [
+            bucketKey,
+            form.selectedNodeId,
+            form.selectedTypeId,
+            form.search,
+          ];
+        }),
+      ),
+    [canvasForms],
+  );
+
+  useEffect(() => {
+    let alive = true;
+    const byTypeId = new Map(typeOptions.map((type) => [type.value, type.label]));
+    Promise.all(
+      CANVAS_BUCKET_ORDER.map(async (bucketKey) => {
+        const form = canvasForms[bucketKey];
+        const body: WorkItemQueryBody = { page: { limit: 40, offset: 0 } };
+        if (form.selectedTypeId) {
+          body.filters = { itemTypeId: [form.selectedTypeId] };
+        }
+        const result = await workItems.query(body);
+        const needle = form.search.trim().toLowerCase();
+        const options = (result.items as WireDependencyCandidate[])
+          .filter((item) => item.id !== artefact.id)
+          .filter(
+            (item) =>
+              !form.selectedNodeId ||
+              item.topology_node_id === form.selectedNodeId,
+          )
+          .map((item) => ({
+            id: item.id,
+            formattedId: `${item.type_prefix}-${item.key_num}`,
+            title: item.title || "(untitled)",
+            typeLabel: byTypeId.get(item.artefact_type_id) ?? item.item_type,
+            nodeId: item.topology_node_id,
+          }))
+          .filter((item) => {
+            if (!needle) return true;
+            return (
+              item.formattedId.toLowerCase().includes(needle) ||
+              item.title.toLowerCase().includes(needle) ||
+              item.typeLabel.toLowerCase().includes(needle)
+            );
+          })
+          .slice(0, 9);
+        return { bucketKey, options };
+      }),
+    )
+      .then((results) => {
+        if (!alive) return;
+        setCanvasForms((prev) => {
+          const next = { ...prev };
+          results.forEach(({ bucketKey, options }) => {
+            next[bucketKey] = {
+              ...next[bucketKey],
+              candidateOptions: options,
+            };
+          });
+          return next;
+        });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setCanvasForms((prev) => {
+          const next = { ...prev };
+          CANVAS_BUCKET_ORDER.forEach((bucketKey) => {
+            next[bucketKey] = {
+              ...next[bucketKey],
+              candidateOptions: [],
+            };
+          });
+          return next;
+        });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [artefact.id, canvasFormQuerySignature, typeOptions]);
+
   const selectedCandidates = useMemo(() => {
     return candidateOptions.filter((candidate) =>
       selectedCandidateIds.has(candidate.id),
@@ -304,6 +485,158 @@ export function DependencyMapOverlay({
       </label>
       );
     });
+  };
+
+  const renderCanvasForm = (bucketKey: DependencyBucketKey) => {
+    const bucket = BUCKETS.find((item) => item.key === bucketKey) ?? BUCKETS[0];
+    const form = canvasForms[bucketKey];
+    const selectedCandidates = form.candidateOptions.filter((candidate) =>
+      form.selectedCandidateIds.has(candidate.id),
+    );
+
+    return (
+      <section className="dependency-composer__Form dependency-map__StateForm">
+        <div className="dependency-composer__Filters">
+          <select
+            className="form__select dependency-composer__Select"
+            value={form.selectedNodeId}
+            onChange={(event) =>
+              patchCanvasForm(bucketKey, { selectedNodeId: event.target.value })
+            }
+            aria-label={`${bucket.title} canvas node filter`}
+          >
+            <option value="">All visible nodes</option>
+            {sentinel_grants.map((grant) => (
+              <option key={grant.node_id} value={grant.node_id}>
+                {grantLabel(grant)}
+              </option>
+            ))}
+          </select>
+          <select
+            className="form__select dependency-composer__Select"
+            value={form.selectedTypeId}
+            onChange={(event) =>
+              patchCanvasForm(bucketKey, { selectedTypeId: event.target.value })
+            }
+            aria-label={`${bucket.title} canvas type filter`}
+          >
+            <option value="">All types</option>
+            {typeOptions.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="dependency-composer__SearchRail">
+          <span className="dependency-composer__SearchIcon" aria-hidden="true">
+            <TbSearch />
+          </span>
+          <input
+            type="search"
+            className="dependency-composer__SearchInput"
+            value={form.search}
+            onChange={(event) =>
+              patchCanvasForm(bucketKey, { search: event.target.value })
+            }
+            placeholder={bucket.placeholder}
+            aria-label={`${bucket.title} canvas artefact search`}
+          />
+        </div>
+
+        <div className="dependency-composer__Results">
+          <div className="dependency-composer__ResultGroup">
+            <span className="dependency-composer__ResultLabel">Artefacts</span>
+            {form.candidateOptions.length === 0 ? (
+              <div className="dependency-composer__ResultEmpty">
+                No artefacts found
+              </div>
+            ) : (
+              form.candidateOptions.map((candidate) => {
+                const selected = form.selectedCandidateIds.has(candidate.id);
+                return (
+                  <label
+                    key={candidate.id}
+                    className={
+                      selected
+                        ? "dependency-composer__ResultRow is-selected"
+                        : "dependency-composer__ResultRow"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      className="dependency-composer__ResultCheckbox"
+                      checked={selected}
+                      onChange={() => toggleCanvasCandidate(bucketKey, candidate.id)}
+                      aria-label={`Select ${candidate.formattedId}`}
+                    />
+                    <span className="dependency-composer__ResultCode">
+                      {candidate.formattedId}
+                    </span>
+                    <span className="dependency-composer__ResultTitle">
+                      {candidate.title}
+                    </span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn--primary btn--sm dependency-composer__AddBtn"
+          onClick={() => addCanvasCandidatesToBucket(bucketKey)}
+          disabled={selectedCandidates.length === 0}
+        >
+          <TbCheck aria-hidden="true" />
+          Add selected to {bucket.title}
+        </button>
+      </section>
+    );
+  };
+
+  const renderCanvasBucket = (bucketKey: DependencyBucketKey) => {
+    const bucket = BUCKETS.find((item) => item.key === bucketKey) ?? BUCKETS[0];
+    const items = buckets[bucketKey];
+
+    return (
+      <section className="dependency-map__StateBox" key={bucketKey}>
+        <div className="dependency-composer__BucketHead">
+          <span className="dependency-composer__BucketTitle">
+            {bucket.icon}
+            {bucket.title}
+            <span className="dependency-composer__Count">{items.length}</span>
+          </span>
+          <p className="dependency-composer__BucketHelper">{bucket.helper}</p>
+        </div>
+
+        <div
+          className={`dependency-map__FlowChevron dependency-map__FlowChevron--${bucketKey}`}
+          aria-hidden="true"
+        >
+          <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--top" />
+          <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--bottom" />
+          <span className="dependency-map__FlowChevron_Icon">{bucket.icon}</span>
+        </div>
+
+        {renderCanvasForm(bucketKey)}
+
+        <div className="dependency-composer__BucketRows">
+          {renderBucketRows(bucketKey, items)}
+        </div>
+        <button
+          type="button"
+          className="btn btn--secondary btn--sm dependency-composer__BucketAction"
+          onClick={() => removeSelectedFromBucket(bucketKey)}
+          disabled={selectedBucketItemIds[bucketKey].size === 0}
+        >
+          <TbX aria-hidden="true" />
+          Remove Artefact
+        </button>
+      </section>
+    );
   };
 
   useEffect(() => {
@@ -525,8 +858,31 @@ export function DependencyMapOverlay({
         </div>
       }
     >
-      <div className="fullscreen-canvas-overlay__Canvas_Empty dependency-map__CanvasPlaceholder">
-        <p>{meta.formattedId} is loaded as the root artefact.</p>
+      <div className="dependency-map__Canvas">
+        <section className="dependency-map__TargetCard">
+          <span className="dependency-map__TargetEyebrow">
+            Planning dependencies for
+          </span>
+          <div className="dependency-map__TargetMain">
+            <input
+              type="checkbox"
+              className="dependency-composer__ResultCheckbox"
+              readOnly
+              aria-label={`${meta.formattedId} is the dependency map target`}
+            />
+            <strong className="dependency-map__TargetCode">
+              {meta.formattedId}
+            </strong>
+            <span className="dependency-map__TargetTitle">{meta.title}</span>
+            <span className="dependency-map__TargetStatus">
+              {meta.flowStateName}
+            </span>
+          </div>
+        </section>
+
+        <div className="dependency-map__StateGrid">
+          {CANVAS_BUCKET_ORDER.map((bucketKey) => renderCanvasBucket(bucketKey))}
+        </div>
       </div>
     </FullscreenCanvasOverlay>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 export interface FullscreenCanvasOverlayStatus {
@@ -47,6 +48,9 @@ export function FullscreenCanvasOverlay({
   rootData,
   canvasData,
 }: FullscreenCanvasOverlayProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const hasSidebar = Boolean(sidebar);
+
   return (
     <div
       className="fullscreen-canvas-overlay"
@@ -56,13 +60,22 @@ export function FullscreenCanvasOverlay({
       {...dataAttributes(rootData)}
     >
       <header className="fullscreen-canvas-overlay__Bar">
-        <span className="fullscreen-canvas-overlay__Bar_Brand" aria-hidden="true">
+        <button
+          type="button"
+          className="fullscreen-canvas-overlay__Bar_Brand"
+          onClick={() => {
+            if (hasSidebar) setSidebarOpen((open) => !open);
+          }}
+          disabled={!hasSidebar}
+          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          aria-pressed={sidebarOpen}
+        >
           <img
             src="/logo-vector.png"
             alt="Vector"
             className="fullscreen-canvas-overlay__Bar_Brand_Logo"
           />
-        </span>
+        </button>
         <div className="fullscreen-canvas-overlay__Bar_Title">
           <span className="fullscreen-canvas-overlay__Bar_Title_Main">
             {title}
@@ -91,10 +104,17 @@ export function FullscreenCanvasOverlay({
         </div>
       </header>
 
-      <div className="fullscreen-canvas-overlay__Body">
+      <div
+        className={
+          sidebarOpen && hasSidebar
+            ? "fullscreen-canvas-overlay__Body has-sidebar-open"
+            : "fullscreen-canvas-overlay__Body"
+        }
+      >
         {sidebar ? (
           <aside
             className="fullscreen-canvas-overlay__Sidebar"
+            aria-hidden={!sidebarOpen}
             aria-label={`${ariaLabel} sidebar`}
           >
             {sidebar}

@@ -21491,6 +21491,14 @@ tr.is-editing {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.fullscreen-canvas-overlay__Bar_Brand:disabled {
+  cursor: default;
 }
 
 .fullscreen-canvas-overlay__Bar_Brand_Logo {
@@ -21606,19 +21614,31 @@ tr.is-editing {
 .fullscreen-canvas-overlay__Body {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 560px 1fr;
+  grid-template-columns: 0 1fr;
   min-height: 0;
+  transition: grid-template-columns 160ms ease;
+}
+
+.fullscreen-canvas-overlay__Body.has-sidebar-open {
+  grid-template-columns: 560px 1fr;
 }
 
 .fullscreen-canvas-overlay__Sidebar {
-  border-right: 1px solid var(--border-default);
+  border-right: 0;
   background: transparent;
-  overflow-y: auto;
-  padding: var(--space-4);
+  overflow: hidden;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   position: relative;
+  min-width: 0;
+}
+
+.fullscreen-canvas-overlay__Body.has-sidebar-open .fullscreen-canvas-overlay__Sidebar {
+  border-right: 1px solid var(--border-default);
+  overflow-y: auto;
+  padding: var(--space-4);
 }
 
 .fullscreen-canvas-overlay__Sidebar_Section_Head {
@@ -21655,7 +21675,7 @@ tr.is-editing {
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  background: var(--surface-sunken);
+  background: var(--surface);
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -22019,8 +22039,230 @@ tr.is-editing {
   font-weight: 650;
 }
 
-.dependency-map__CanvasPlaceholder {
+.dependency-map__Canvas {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-7);
   min-height: 100%;
+  min-width: 1120px;
+}
+
+.dependency-map__TargetCard {
+  align-self: center;
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--space-3);
+}
+
+.dependency-map__TargetEyebrow {
+  color: var(--ink-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.dependency-map__TargetMain {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dependency-map__TargetCode {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.dependency-map__TargetTitle {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-map__TargetStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-sunken));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+  padding: 0 var(--space-3);
+}
+
+.dependency-map__StateGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(320px, 1fr));
+  gap: 40px;
+  align-items: start;
+}
+
+.dependency-map__StateBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.dependency-map__StateForm {
+  min-width: 0;
+}
+
+.dependency-map__FlowChevron {
+  --dependency-map-chevron-cycle: 56.568542px;
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  width: 100%;
+  height: 60px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  background: var(--surface);
+}
+
+.dependency-map__FlowChevron_Row {
+  display: block;
+  min-width: 100%;
+  background-color: var(--surface);
+  background-size:
+    var(--dependency-map-chevron-cycle)
+    var(--dependency-map-chevron-cycle);
+  animation: dependency-map-flow-chevron 2s linear infinite;
+}
+
+.dependency-map__FlowChevron_Row--top {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface-sunken) 0,
+    var(--surface-sunken) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron_Row--bottom {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--surface-sunken) 0,
+    var(--surface-sunken) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row {
+  animation-name: dependency-map-flow-chevron-reverse;
+}
+
+.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row--top {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--surface-sunken) 0,
+    var(--surface-sunken) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row--bottom {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface-sunken) 0,
+    var(--surface-sunken) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row {
+  animation-name: dependency-map-flow-chevron-up;
+}
+
+.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row--top {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--surface-sunken) 0,
+    var(--surface-sunken) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row--bottom {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--surface-sunken) 0,
+    var(--surface-sunken) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron_Icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.dependency-map__FlowChevron_Icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes dependency-map-flow-chevron {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: var(--dependency-map-chevron-cycle) 0;
+  }
+}
+
+@keyframes dependency-map-flow-chevron-reverse {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: calc(-1 * var(--dependency-map-chevron-cycle)) 0;
+  }
+}
+
+@keyframes dependency-map-flow-chevron-up {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 calc(-1 * var(--dependency-map-chevron-cycle));
+  }
 }
 
 /* Form Layout Builder — Save-as-Draft (secondary) + Discard (danger) buttons */
