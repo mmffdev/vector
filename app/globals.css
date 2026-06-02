@@ -21521,6 +21521,61 @@ tr.is-editing {
   margin: 2px 0 0;
 }
 
+/* ── Action band ──────────────────────────────────────────────────────────────
+   The tree's action affordances — create-new (radial pick-one), search, and a
+   host filter slot. Between the title and the column head. Layout ported from
+   OTV2's .tree_accordion-dense__actionbar (flex row, search markup, right
+   spacer), re-homed under grid__Tree_ActionBar*. */
+.grid__Tree_ActionBar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 9px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.grid__Tree_ActionBar_Create {
+  flex: 0 0 auto;
+}
+.grid__Tree_ActionBar_Search {
+  flex: 0 1 320px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.grid__Tree_ActionBar_SearchIcon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  color: var(--ink-subtle, var(--text-tertiary, #9ca3af));
+  pointer-events: none;
+}
+.grid__Tree_ActionBar_SearchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft, var(--surface));
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.grid__Tree_ActionBar_SearchInput::placeholder {
+  color: var(--ink-subtle, var(--text-tertiary, #9ca3af));
+}
+.grid__Tree_ActionBar_SearchInput:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 1px;
+  border-color: var(--accent, #2563eb);
+}
+.grid__Tree_ActionBar_Spacer {
+  flex: 1 1 auto;
+}
+
 /* ── Header band ─────────────────────────────────────────────────────────── */
 .grid__Tree_Head {
   display: grid;

@@ -22,11 +22,12 @@
 // What it does NOT own: the look (Grid__Tree), the connectors (CSS), the tree
 // state machine (useTree), or the form body (Grid__Tree_Forms / ArtefactInlineForm).
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { GridTree } from "@/app/components/Grid/Grid__Tree";
 import { GridTreeForms } from "@/app/components/Grid/Grid__Tree_Forms";
 import { useTree } from "@/app/components/Grid/useTree";
 import type { TreeNode } from "@/app/components/Grid/types";
+import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
 import { scopeColumns } from "./scopeColumns";
 import {
   fetchScopeRoots,
@@ -52,11 +53,37 @@ function useTreeScope() {
 
 export function GridExecution() {
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   // The headless core. It self-loads root page 0 on mount and owns the paged
   // window (loadMore / jumpToPage / refresh). expandable:true → full caret/
   // lazy-load machine; children_count decides the caret before any fetch.
   const tree = useTreeScope();
+
+  // Creatable work-scope artefact types → one radial pill each. Sourced from
+  // the artefact-type catalogue (current, not OTV2's stale SQL).
+  const createTypes = useChipTypeOptions("work");
+  const actionBar = useMemo(
+    () => ({
+      ariaLabel: "Work item actions",
+      create: {
+        label: "Create new",
+        types: createTypes.map((t) => ({ id: t.value, label: t.label })),
+        // Part 4b will open a create flyout for the picked type; for now the
+        // radial pick is wired but the create form is not yet built.
+        onCreate: (typeId: string) => {
+          // eslint-disable-next-line no-console
+          console.log("[scope] create type picked:", typeId);
+        },
+      },
+      search: {
+        placeholder: "Search work items…",
+        value: search,
+        onChange: setSearch,
+      },
+    }),
+    [createTypes, search],
+  );
 
   const closeDetail = useCallback(() => setOpenDetailId(null), []);
 
@@ -81,6 +108,7 @@ export function GridExecution() {
     <GridTree<ScopeNode>
       title="Tree"
       subtitle="Server-driven parentage via the audited POST read-gateway. Expand a row to load its true children."
+      actionBar={actionBar}
       tree={tree}
       columns={scopeColumns}
       defaultSort={null}

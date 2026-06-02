@@ -27,6 +27,10 @@ import { useResourceRank } from "@/app/hooks/useResourceRank";
 import { GridTreeHead } from "./Grid__Tree_Head";
 import { GridTreeBranch } from "./Grid__Tree_Branch";
 import { GridTreePagination } from "./Grid__Tree_Pagination";
+import {
+  GridTreeActionBar,
+  type GridTreeActionBarConfig,
+} from "./Grid__Tree_ActionBar";
 import type {
   GridColumn,
   GridDnD,
@@ -45,6 +49,11 @@ export interface GridTreeProps<TRow> {
   title?: string;
   /** Sub-line under the tree title (e.g. how parentage is resolved). */
   subtitle?: string;
+  /**
+   * Action band (search + create-new radial + filter slot), rendered between
+   * the title and the column head. Omit → no action bar.
+   */
+  actionBar?: GridTreeActionBarConfig;
   /** The headless core, already constructed by the consumer via useTree(). */
   tree: UseTreeResult<TRow>;
   columns: GridColumn<TRow>[];
@@ -75,6 +84,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const {
     title,
     subtitle,
+    actionBar,
     tree,
     columns,
     defaultSort,
@@ -152,6 +162,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
           )}
         </div>
       )}
+      {actionBar && <GridTreeActionBar {...actionBar} />}
       <GridTreeHead
         columns={columns}
         gridTemplateColumns={cm.gridTemplateColumns}
