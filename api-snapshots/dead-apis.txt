@@ -68,9 +68,14 @@
 /sentinel/boot
 /sentinel/focus
 /tenant-settings
+/timeboxes/milestones
 /timeboxes/milestones/{id}
+/timeboxes/releases
+/timeboxes/releases/bulk-create
 /timeboxes/releases/columns
 /timeboxes/releases/{id}
+/timeboxes/sprints
+/timeboxes/sprints/bulk-create
 /timeboxes/sprints/columns
 /timeboxes/sprints/{id}
 /timeboxes/sprints/{id}/close
