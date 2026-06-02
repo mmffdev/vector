@@ -2,26 +2,29 @@
 
 // /scope — the work-item hierarchy, rendered on the new Grid primitive.
 //
-// Three layers, top to bottom:
-//   • <DataContainer>  (Layer 1) — the dumb frame: page title panel + zero-
-//                       padding viewport. Takes its own title/description; the
-//                       content is plain children. Knows nothing about trees.
-//   • <GridExecution>  (Layer 2) — the per-page assembler: wires useTree() +
-//                       Grid__Tree + the /scope columns + the expandable-flyout
-//                       extension. Passes the tree's own title into <GridTree>.
-//   • the primitive    (Layer 3) — useTree() (headless core) + Grid__Tree
-//                       (canonical skin) + the pure-CSS connector system.
+// Layers, top to bottom:
+//   • <Panel>          — the card + MAIN HEADER (title + help hex + addressable),
+//                        the same primitive OTV2 uses. The .panel:has(.grid) CSS
+//                        rule gives it the bordered, 10px-radius, overflow-hidden
+//                        card so the grid's bands run edge to edge and the
+//                        pagination footer clips to the rounded corners.
+//                        (TEMP: the tree is wrapped in <Panel> while the card +
+//                        main header are retrofitted into Grid__Tree itself;
+//                        once that lands this wrapper is removed.)
+//   • <GridExecution>  — the per-page assembler: wires useTree() + Grid__Tree +
+//                        the /scope columns + the expandable-flyout extension.
+//   • the primitive    — useTree() (headless core) + Grid__Tree (canonical skin)
+//                        + the pure-CSS connector system.
 //
 // Parentage is SERVER-DRIVEN through the audited POST read-gateway
 // (workItems.query — roots with no parentId, true children by parentId, all
-// workspace-clamped by Sentinel). This replaces the old <DataGrid> + the
-// client-side nestWindow() reconstruction that broke the tree connectors.
+// workspace-clamped by Sentinel).
 
 import React from "react";
 import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
-import { DataContainer } from "@/app/components/DataContainer/DataContainer";
+import Panel from "@/app/components/Panel";
 import { GridExecution } from "./GridExecution";
 
 export default function ScopePage() {
@@ -36,12 +39,13 @@ export default function ScopePage() {
         flyout-below. {full}
       </PageDescription>
 
-      <DataContainer
+      <Panel
+        name="scope_grid_tree"
         title="Scope"
         description="The work-item hierarchy for this workspace — parent → child, collapsed by default."
       >
         <GridExecution />
-      </DataContainer>
+      </Panel>
     </PageContent>
   );
 }

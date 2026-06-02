@@ -108,6 +108,7 @@ export function GridExecution() {
     <GridTree<ScopeNode>
       title="Tree"
       subtitle="Server-driven parentage via the audited POST read-gateway. Expand a row to load its true children."
+      badge="01"
       actionBar={actionBar}
       tree={tree}
       columns={scopeColumns}

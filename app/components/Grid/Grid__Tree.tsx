@@ -49,6 +49,8 @@ export interface GridTreeProps<TRow> {
   title?: string;
   /** Sub-line under the tree title (e.g. how parentage is resolved). */
   subtitle?: string;
+  /** Optional badge block (the OTV2 num block) shown left of the title. */
+  badge?: string;
   /**
    * Action band (search + create-new radial + filter slot), rendered between
    * the title and the column head. Omit → no action bar.
@@ -84,6 +86,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const {
     title,
     subtitle,
+    badge,
     actionBar,
     tree,
     columns,
@@ -148,18 +151,25 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
       )
     : undefined;
 
-  const hasTitle = title != null || subtitle != null;
+  const hasTitle = title != null || subtitle != null || badge != null;
 
   return (
     <div className="grid" ref={cm.containerRef}>
       {hasTitle && (
         <div className="grid__Tree_Title">
-          {title != null && (
-            <h2 className="grid__Tree_Title_Heading">{title}</h2>
+          {badge != null && (
+            <span className="grid__Tree_Title_Badge" aria-hidden="true">
+              {badge}
+            </span>
           )}
-          {subtitle != null && (
-            <p className="grid__Tree_Title_Sub">{subtitle}</p>
-          )}
+          <div className="grid__Tree_Title_Body">
+            {title != null && (
+              <h3 className="grid__Tree_Title_Heading">{title}</h3>
+            )}
+            {subtitle != null && (
+              <p className="grid__Tree_Title_Sub">{subtitle}</p>
+            )}
+          </div>
         </div>
       )}
       {actionBar && <GridTreeActionBar {...actionBar} />}
