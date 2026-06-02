@@ -1,6 +1,6 @@
 "use client";
 
-// Grid__Row — one rendered data row of the canonical skin.
+// Grid__Tree_Row — one rendered data row of the canonical skin.
 //
 // A pure presentation component: a CSS-grid row sharing the column template
 // supplied by useColumnManager (via gridTemplateColumns), with a caret in the
@@ -15,7 +15,7 @@
 import { memo } from "react";
 import type { GridColumn, GridLoadingStyle, TreeNode } from "./types";
 
-export interface GridRowProps<TRow> {
+export interface GridTreeRowProps<TRow> {
   node: TreeNode<TRow>;
   columns: GridColumn<TRow>[];
   gridTemplateColumns: string;
@@ -31,7 +31,7 @@ export interface GridRowProps<TRow> {
   registerRowRef?: (id: string, el: HTMLDivElement | null) => void;
 }
 
-function GridRowInner<TRow>({
+function GridTreeRowInner<TRow>({
   node,
   columns,
   gridTemplateColumns,
@@ -42,7 +42,7 @@ function GridRowInner<TRow>({
   formOpen,
   accent,
   registerRowRef,
-}: GridRowProps<TRow>) {
+}: GridTreeRowProps<TRow>) {
   const stripe = loadingStyle === "barberpole" && formOpen;
   const cls = [
     "grid__Tree_Row",
@@ -96,4 +96,4 @@ function GridRowInner<TRow>({
   );
 }
 
-export const GridRow = memo(GridRowInner) as typeof GridRowInner;
+export const GridTreeRow = memo(GridTreeRowInner) as typeof GridTreeRowInner;

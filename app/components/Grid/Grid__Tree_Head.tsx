@@ -1,6 +1,6 @@
 "use client";
 
-// Grid__Head — the column header band of the canonical skin.
+// Grid__Tree_Head — the column header band of the canonical skin.
 //
 // Consumes useColumnManager.getHeaderProps for sort + resize wiring; renders
 // the expand-all / collapse-all control in the lead column when the tree is
@@ -12,7 +12,7 @@
 import type { GridColumn, SortDir } from "./types";
 import type { HeaderProps } from "./useColumnManager";
 
-export interface GridHeadProps<TRow> {
+export interface GridTreeHeadProps<TRow> {
   columns: GridColumn<TRow>[];
   gridTemplateColumns: string;
   getHeaderProps: (col: GridColumn<TRow>) => HeaderProps;
@@ -33,18 +33,18 @@ function sortGlyph(dir: SortDir | undefined): string {
   return "";
 }
 
-export function GridHead<TRow>({
+export function GridTreeHead<TRow>({
   columns,
   gridTemplateColumns,
   getHeaderProps,
   headerRowRef,
   leadControls,
   primaryControl,
-}: GridHeadProps<TRow>) {
+}: GridTreeHeadProps<TRow>) {
   return (
     <div
       ref={headerRowRef}
-      className="grid__Head"
+      className="grid__Tree_Head"
       style={{ gridTemplateColumns }}
       role="row"
     >
@@ -54,7 +54,7 @@ export function GridHead<TRow>({
         return (
           <div
             key={col.id}
-            className="grid__Head_Cell"
+            className="grid__Tree_Head_Cell"
             role="columnheader"
             data-sort={hp["data-sort"]}
             data-sortable={hp["data-sortable"]}
@@ -69,20 +69,20 @@ export function GridHead<TRow>({
             {i === 0 && primaryControl ? primaryControl : null}
             <button
               type="button"
-              className="grid__Head_Label"
+              className="grid__Tree_Head_Label"
               onClick={hp.onClick}
               disabled={!hp["data-sortable"]}
             >
               {col.renderHeader ? col.renderHeader() : col.label}
               {hp["data-sort"] ? (
-                <span className="grid__Head_SortGlyph" aria-hidden="true">
+                <span className="grid__Tree_Head_SortGlyph" aria-hidden="true">
                   {sortGlyph(hp["data-sort"])}
                 </span>
               ) : null}
             </button>
             {hp["data-resizable"] ? (
               <span
-                className="grid__Head_Resize"
+                className="grid__Tree_Head_Resize"
                 role="separator"
                 aria-orientation="vertical"
                 aria-label={`Resize ${col.label}`}

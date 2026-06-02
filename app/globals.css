@@ -21474,7 +21474,7 @@ tr.is-editing {
    The canonical skin for the headless useTree() core. Owns the tree's entire
    look in ONE place; every extension inherits it (NCY). The ├ / └ / through-
    line connectors are drawn with PURE CSS BORDERS off real DOM nesting
-   (.grid__Branch_Children > .grid__Branch) + :last-child — NOT JS geometry.
+   (.grid__Tree_Branch_Children > .grid__Tree_Branch) + :last-child — NOT JS geometry.
    This block is what fixes the /scope connector bug: depth / isLast /
    continuations[] are gone; :last-child carries everything. Change a constant
    below and every grid in the app re-flows with zero JS edits.
@@ -21498,7 +21498,7 @@ tr.is-editing {
 }
 
 /* ── Header band ─────────────────────────────────────────────────────────── */
-.grid__Head {
+.grid__Tree_Head {
   display: grid;
   align-items: stretch;
   position: sticky;
@@ -21508,12 +21508,12 @@ tr.is-editing {
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
-.grid__Head_Lead {
+.grid__Tree_Head_Lead {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.grid__Head_Cell {
+.grid__Tree_Head_Cell {
   position: relative;
   display: flex;
   align-items: center;
@@ -21522,7 +21522,7 @@ tr.is-editing {
   padding: 0 8px;
   height: var(--tree-row-h);
 }
-.grid__Head_Label {
+.grid__Tree_Head_Label {
   flex: 1;
   min-width: 0;
   display: inline-flex;
@@ -21544,11 +21544,11 @@ tr.is-editing {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.grid__Head_Cell[data-sortable="true"] .grid__Head_Label { cursor: pointer; }
-.grid__Head_Cell[data-sortable="true"] .grid__Head_Label:hover { color: var(--ink); }
-.grid__Head_SortGlyph { font-size: 9px; line-height: 1; color: var(--accent, #2563eb); }
+.grid__Tree_Head_Cell[data-sortable="true"] .grid__Tree_Head_Label { cursor: pointer; }
+.grid__Tree_Head_Cell[data-sortable="true"] .grid__Tree_Head_Label:hover { color: var(--ink); }
+.grid__Tree_Head_SortGlyph { font-size: 9px; line-height: 1; color: var(--accent, #2563eb); }
 /* Resize gutter — a thin hit-area pinned to the cell's right edge. */
-.grid__Head_Resize {
+.grid__Tree_Head_Resize {
   position: absolute;
   top: 0;
   right: -3px;
@@ -21557,7 +21557,7 @@ tr.is-editing {
   cursor: col-resize;
   z-index: 1;
 }
-.grid__Head_Resize::after {
+.grid__Tree_Head_Resize::after {
   content: "";
   position: absolute;
   top: 25%;
@@ -21567,10 +21567,10 @@ tr.is-editing {
   height: 50%;
   background: var(--border);
 }
-.grid__Head_Resize:hover::after { background: var(--accent, #2563eb); height: 100%; top: 0; }
+.grid__Tree_Head_Resize:hover::after { background: var(--accent, #2563eb); height: 100%; top: 0; }
 
 /* ── Body + rows ─────────────────────────────────────────────────────────── */
-.grid__Body {
+.grid__Tree_Rows {
   display: flex;
   flex-direction: column;
 }
@@ -21669,12 +21669,12 @@ tr.is-editing {
        that only non-last siblings get. A non-last Branch's ::after spans its
        WHOLE subtree height, so ancestor through-lines are free.
    Last child → only ::before (└). Non-last → ::before + ::after (├). The
-   detail flyout sits inside its own Branch (grid__Branch_Detail), NOT in
+   detail flyout sits inside its own Branch (grid__Tree_Branch_Detail), NOT in
    _Children, so it never matches these selectors → never grows an elbow nor
    shifts a sibling's :last-child. */
-.grid__Branch { position: relative; }
-.grid__Branch_Children { padding-left: var(--tree-step); }
-.grid__Branch_Children > .grid__Branch::before {
+.grid__Tree_Branch { position: relative; }
+.grid__Tree_Branch_Children { padding-left: var(--tree-step); }
+.grid__Tree_Branch_Children > .grid__Tree_Branch::before {
   content: "";
   position: absolute;
   pointer-events: none;
@@ -21685,7 +21685,7 @@ tr.is-editing {
   border-left: 1px solid var(--tree-connector);
   border-bottom: 1px solid var(--tree-connector);
 }
-.grid__Branch_Children > .grid__Branch:not(:last-child)::after {
+.grid__Tree_Branch_Children > .grid__Tree_Branch:not(:last-child)::after {
   content: "";
   position: absolute;
   pointer-events: none;
@@ -21698,7 +21698,7 @@ tr.is-editing {
 /* Detail flyout row (the expandable-flyout extension payload) — sits directly
    below its node's row, inside the same Branch. Full-bleed; the host
    (Grid__Forms → ArtefactInlineForm) owns its inner chrome. */
-.grid__Branch_Detail {
+.grid__Tree_Branch_Detail {
   position: relative;
   border-bottom: 1px solid var(--border);
   background: var(--surface);

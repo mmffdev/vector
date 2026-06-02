@@ -5,7 +5,7 @@
 // set, retyped to GridColumn<ScopeNode>.
 //
 // KEY CHANGE: the primary (Summary) cell no longer draws SVG tree-lines or its
-// own expander. The skin (Grid__Row) renders the caret in the primary cell and
+// own expander. The skin (Grid__Tree_Row) renders the caret in the primary cell and
 // the CSS-border connector system draws ├/└ off DOM nesting. So SummaryCell is
 // now just the label — the whole PrimaryCellTreeLines / PrimaryCellExpander
 // import (the connector-bug surface) is gone.

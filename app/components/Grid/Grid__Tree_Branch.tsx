@@ -1,31 +1,31 @@
 "use client";
 
-// Grid__Branch — the recursive tree-node renderer. THIS is where the
+// Grid__Tree_Branch — the recursive tree-node renderer. THIS is where the
 // connector bug is actually fixed.
 //
 // Each node renders as:
 //
-//   <div .grid__Branch>
-//     <Grid__Row/>                         ← the node's own row
+//   <div .grid__Tree_Branch>
+//     <Grid__Tree_Row/>                         ← the node's own row
 //     [renderRowDetail(node)]              ← optional flyout-below (extension)
-//     <div .grid__Branch_Children>         ← only when expanded w/ children
-//       <Grid__Branch/> * n                ← recursion
+//     <div .grid__Tree_Branch_Children>         ← only when expanded w/ children
+//       <Grid__Tree_Branch/> * n                ← recursion
 //     </div>
 //   </div>
 //
 // The ├ / └ / through-line connectors are drawn ENTIRELY by CSS off this DOM
-// shape (`.grid__Branch_Children > .grid__Branch::before` = elbow,
+// shape (`.grid__Tree_Branch_Children > .grid__Tree_Branch::before` = elbow,
 // `:not(:last-child)::after` = through-drop). There is NO depth, isLast, or
 // continuations[] anywhere — :last-child + real nesting carry all of it. The
 // detail/form node sits BETWEEN the row and _Children, inside this Branch, so
-// it never becomes a `.grid__Branch_Children > .grid__Branch` and thus never
+// it never becomes a `.grid__Tree_Branch_Children > .grid__Tree_Branch` and thus never
 // grows an elbow or disturbs a sibling's :last-child.
 
 import { memo } from "react";
-import { GridRow } from "./Grid__Row";
+import { GridTreeRow } from "./Grid__Tree_Row";
 import type { GridColumn, GridLoadingStyle, TreeNode } from "./types";
 
-export interface GridBranchProps<TRow> {
+export interface GridTreeBranchProps<TRow> {
   node: TreeNode<TRow>;
   columns: GridColumn<TRow>[];
   gridTemplateColumns: string;
@@ -42,7 +42,7 @@ export interface GridBranchProps<TRow> {
   registerRowRef?: (id: string, el: HTMLDivElement | null) => void;
 }
 
-function GridBranchInner<TRow>(props: GridBranchProps<TRow>) {
+function GridTreeBranchInner<TRow>(props: GridTreeBranchProps<TRow>) {
   const {
     node,
     columns,
@@ -60,8 +60,8 @@ function GridBranchInner<TRow>(props: GridBranchProps<TRow>) {
   const detailOpen = openDetailId === node.id;
 
   return (
-    <div className="grid__Branch" role="presentation">
-      <GridRow
+    <div className="grid__Tree_Branch" role="presentation">
+      <GridTreeRow
         node={node}
         columns={columns}
         gridTemplateColumns={gridTemplateColumns}
@@ -75,15 +75,15 @@ function GridBranchInner<TRow>(props: GridBranchProps<TRow>) {
       />
 
       {detailOpen && renderRowDetail ? (
-        <div className="grid__Branch_Detail" role="presentation">
+        <div className="grid__Tree_Branch_Detail" role="presentation">
           {renderRowDetail(node)}
         </div>
       ) : null}
 
       {node.hasVisibleChildren ? (
-        <div className="grid__Branch_Children" role="presentation">
+        <div className="grid__Tree_Branch_Children" role="presentation">
           {node.children.map((child) => (
-            <GridBranch
+            <GridTreeBranch
               key={child.id}
               {...props}
               node={child}
@@ -95,4 +95,4 @@ function GridBranchInner<TRow>(props: GridBranchProps<TRow>) {
   );
 }
 
-export const GridBranch = memo(GridBranchInner) as typeof GridBranchInner;
+export const GridTreeBranch = memo(GridTreeBranchInner) as typeof GridTreeBranchInner;

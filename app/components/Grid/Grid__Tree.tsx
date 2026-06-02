@@ -9,8 +9,8 @@
 // What it wires:
 //   • useColumnManager  → the shared gridTemplateColumns (header + every row),
 //                         drag-resize, sort.
-//   • Grid__Head        → labels / sort / resize gutters / expand-all control.
-//   • Grid__Branch * n  → the recursive body; CSS draws the ├ └ connectors off
+//   • Grid__Tree_Head        → labels / sort / resize gutters / expand-all control.
+//   • Grid__Tree_Branch * n  → the recursive body; CSS draws the ├ └ connectors off
 //                         its DOM nesting (no JS geometry — the bug fix).
 //
 // Props are CAPABILITIES, never restyling hooks:
@@ -24,8 +24,8 @@
 import { useMemo } from "react";
 import { useColumnManager } from "./useColumnManager";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
-import { GridHead } from "./Grid__Head";
-import { GridBranch } from "./Grid__Branch";
+import { GridTreeHead } from "./Grid__Tree_Head";
+import { GridTreeBranch } from "./Grid__Tree_Branch";
 import type {
   GridColumn,
   GridDnD,
@@ -58,7 +58,7 @@ export interface GridTreeProps<TRow> {
 
 // Lead control tracks rendered before the user columns: [expand-all][drag].
 // Width must match the header's lead cells so columns line up. Caret lives in
-// the primary cell (Grid__Row), so the lead column here is just the drag grip
+// the primary cell (Grid__Tree_Row), so the lead column here is just the drag grip
 // when dnd is wired; otherwise nothing.
 const DRAG_COL_PX = 28;
 
@@ -129,7 +129,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
 
   return (
     <div className="grid" ref={cm.containerRef}>
-      <GridHead
+      <GridTreeHead
         columns={columns}
         gridTemplateColumns={cm.gridTemplateColumns}
         getHeaderProps={cm.getHeaderProps}
@@ -137,16 +137,16 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
         primaryControl={expandAllControl}
         leadControls={
           hasDnd ? (
-            <div className="grid__Head_Lead" role="columnheader" />
+            <div className="grid__Tree_Head_Lead" role="columnheader" />
           ) : null
         }
       />
 
-      <div className="grid__Body" role="rowgroup">
+      <div className="grid__Tree_Rows" role="rowgroup">
         {tree.nodes.length === 0
           ? empty ?? null
           : tree.nodes.map((node) => (
-              <GridBranch
+              <GridTreeBranch
                 key={node.id}
                 node={node}
                 columns={columns}

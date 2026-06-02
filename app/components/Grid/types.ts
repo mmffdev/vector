@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 // Tree node — the headless render model
 //
 // useTree returns a NESTED list of these (roots → children → …) so the skin
-// can render Grid__Branch recursively and let CSS draw the connectors. A node
+// can render Grid__Tree_Branch recursively and let CSS draw the connectors. A node
 // is a pure projection of (row + expansion/cache state); it holds NO geometry.
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ export interface TreeNode<TRow> {
   /**
    * Already-fetched, currently-visible children, as nested TreeNodes. Empty
    * when collapsed or childless. The skin renders these inside this node's
-   * own Grid__Branch_Children so the CSS connector selectors match.
+   * own Grid__Tree_Branch_Children so the CSS connector selectors match.
    */
   children: TreeNode<TRow>[];
   /** Toggle expansion (lazy-fetches children on first expand). */
@@ -86,7 +86,7 @@ export interface UseTreeResult<TRow> {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Column descriptor — consumed by the skin's Grid__Head + Grid__Row.
+// Column descriptor — consumed by the skin's Grid__Tree_Head + Grid__Tree_Row.
 // (Carried over from DataGridColumn, minus the tree-geometry second arg: the
 // primary cell renderer receives the node, which exposes expanded/toggle.)
 // ────────────────────────────────────────────────────────────────────────────

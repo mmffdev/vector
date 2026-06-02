@@ -18,11 +18,11 @@
 //                            <DataContainer> band once, on mount.
 //
 // What it does NOT own: the look (Grid__Tree), the connectors (CSS), the tree
-// state machine (useTree), or the form body (Grid__Forms / ArtefactInlineForm).
+// state machine (useTree), or the form body (Grid__Tree_Forms / ArtefactInlineForm).
 
 import { useCallback, useEffect, useState } from "react";
 import { GridTree } from "@/app/components/Grid/Grid__Tree";
-import { GridForms } from "@/app/components/Grid/Grid__Forms";
+import { GridTreeForms } from "@/app/components/Grid/Grid__Tree_Forms";
 import { useTree } from "@/app/components/Grid/useTree";
 import type { TreeNode } from "@/app/components/Grid/types";
 import type { DataContainerHeader } from "@/app/components/DataContainer/DataContainer";
@@ -120,7 +120,7 @@ export function GridExecution({ onHeader }: GridExecutionProps) {
       onSelect={handleSelect}
       openDetailId={openDetailId}
       renderRowDetail={(node) => (
-        <GridForms
+        <GridTreeForms
           artefactId={node.row.uuid}
           resourceUrl="/work-items"
           scope="work"

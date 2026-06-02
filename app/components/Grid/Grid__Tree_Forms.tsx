@@ -1,9 +1,9 @@
 "use client";
 
-// Grid__Forms — the payload of the reference extension (expandable rows with
+// Grid__Tree_Forms — the payload of the reference extension (expandable rows with
 // flyout-below). A thin host that renders the EXISTING ArtefactInlineForm (the
 // always-editable, auto-saving edit surface OTV2 uses) inside a tree row's
-// detail slot. Grid__Branch places it in grid__Branch_Detail — between the row
+// detail slot. Grid__Tree_Branch places it in grid__Tree_Branch_Detail — between the row
 // and its _Children — so it never grows an elbow or disturbs a sibling's
 // :last-child connector.
 //
@@ -17,7 +17,7 @@
 import { ArtefactInlineForm } from "@/app/components/ArtefactInlineForm/ArtefactInlineForm";
 import type { ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 
-export interface GridFormsProps {
+export interface GridTreeFormsProps {
   /** UUID of the artefact to edit. */
   artefactId: string;
   /** Backend resource prefix — "/work-items" | "/portfolio-items". */
@@ -34,7 +34,7 @@ export interface GridFormsProps {
   onNavigate?: (artefactId: string) => void;
 }
 
-export function GridForms({
+export function GridTreeForms({
   artefactId,
   resourceUrl,
   scope,
@@ -43,9 +43,9 @@ export function GridForms({
   onDuplicate,
   onDelete,
   onNavigate,
-}: GridFormsProps) {
+}: GridTreeFormsProps) {
   return (
-    <div className="grid__Forms">
+    <div className="grid__Tree_Forms">
       <ArtefactInlineForm
         artefactId={artefactId}
         resourceUrl={resourceUrl}
