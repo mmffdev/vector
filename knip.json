@@ -18,7 +18,12 @@
     "**/*.test.{ts,tsx}",
     "**/*.spec.{ts,tsx,mjs}",
     "app/**/__tests__/**/*.{ts,tsx}",
-    "app/sentinel/**"
+    "app/sentinel/**",
+
+    "app/lib/apiSite/index.ts",
+    "app/lib/api.ts",
+    "app/lib/*Api.ts",
+    "app/store/shared/types.ts"
   ],
   "project": [
     "app/**/*.{ts,tsx}",
@@ -42,6 +47,7 @@
     "build/**",
     "dev/tests/playwright/playwright*.config.ts"
   ],
+  "ignoreExportsUsedInFile": true,
   "ignoreDependencies": [
     "@types/.*"
   ],
