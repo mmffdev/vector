@@ -173,3 +173,23 @@ export interface GridDnD<TRow> {
 // loading row paint the diagonal-stripe keyframe (grid__Tree_Row--formOpen).
 // Omitted → no stripe. There is deliberately no Grid__BarberPole component.
 export type GridLoadingStyle = "barberpole";
+
+// ────────────────────────────────────────────────────────────────────────────
+// Lead-column capabilities (OTV2 parity): type-stripe, selection, cog menu.
+// Each is opt-in; the drag handle is wired via GridDnD. Order of the rendered
+// lead tracks is always: stripe → selection → drag → cog → user columns.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Multi-select checkbox column. State is consumer-owned. */
+export interface GridSelection {
+  selectedIds: Set<string>;
+  onSelectionChange: (next: Set<string>) => void;
+}
+
+/** One row-actions menu entry under the cog. */
+export interface GridMenuItem {
+  key: string;
+  label: string;
+  onSelect: () => void;
+  disabled?: boolean;
+}

@@ -54,6 +54,7 @@ function useTreeScope() {
 export function GridExecution() {
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   // The headless core. It self-loads root page 0 on mount and owns the paged
   // window (loadMore / jumpToPage / refresh). expandable:true → full caret/
@@ -115,6 +116,14 @@ export function GridExecution() {
       defaultSort={null}
       loadingStyle="barberpole"
       dnd={{ resourceType: "work_item", getDescendants: () => [] }}
+      selection={{ selectedIds, onSelectionChange: setSelectedIds }}
+      cogMenu={(row) => [
+        {
+          key: "open",
+          label: "Open",
+          onSelect: () => setOpenDetailId(row.id),
+        },
+      ]}
       accentOf={(r) => r.colour}
       selectedId={openDetailId}
       onSelect={handleSelect}
