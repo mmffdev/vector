@@ -18,14 +18,15 @@
 // align the rail on every level's caret.
 export const TREE_STEP = 24;
 export const TREE_ROW_H = 30; // row height (matches --tree-row-h)
-// Depth-0 caret centre = cell left-padding (16) + half caret (8) = 24. A child's
-// rail vertical at (depth-1)*step + CARET_OFFSET then lands on the parent caret
-// centre (24, 48, 72, …) at EVERY level.
-const CARET_OFFSET = 24;
+// Base x for the rail verticals. Caret centres sit at 24, 48, 72, … (cell
+// left-pad 16 + half caret 8, then +step per level). The verticals are nudged
+// +5px past the caret centre so the whole rail (│ through-lines, ├└ downstrokes,
+// child drop-stub) sits under the BADGE column rather than the caret.
+const CARET_OFFSET = 29;
 // Horizontal ├/└ stub length past its rail vertical — reaches under this row's
 // own caret and on toward the badge (longer = closer to the badge). Tuned so the
 // tee/elbow sits just under the badge.
-const STUB_EXTEND = 34;
+const STUB_EXTEND = 29;
 
 export interface GridTreeLinesProps {
   depth: number;
