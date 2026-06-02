@@ -21638,11 +21638,6 @@ tr.is-editing {
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
-.grid__Tree_Head_Lead {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 .grid__Tree_Head_Cell {
   position: relative;
   display: flex;
@@ -22014,30 +22009,6 @@ tr.is-editing {
 .grid__Cell_TypeBadge[data-tier="story"]           { background: #8a8a8a; color: #fff; }
 .grid__Cell_TypeBadge[data-tier="defect"]          { background: #8a8a8a; color: #fff; }
 .grid__Cell_TypeBadge[data-tier="task"]            { background: #a8a8a8; color: #1a1a1a; }
-.grid__Cell_StatusPills {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.grid__Cell_StatusPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 18px;
-  border: 1px solid var(--border-row, rgba(0, 0, 0, 0.12));
-  border-radius: 3px;
-  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
-  font-size: 11px;
-  color: var(--ink-muted, #777);
-  background: transparent;
-}
-.grid__Cell_StatusPill--active {
-  background: var(--accent-muted, #c7d2fe);
-  border-color: var(--accent, #6366f1);
-  color: var(--accent, #4338ca);
-  font-weight: 700;
-}
 .grid__Cell_OwnerPill {
   display: inline-flex;
   align-items: center;
