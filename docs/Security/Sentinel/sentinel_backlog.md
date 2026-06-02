@@ -421,7 +421,7 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
   3. Alice's JWT + forged `?meg=<bob_node_id>` → 403 `application/problem+json` with `type: "/errors/sentinel/focus-not-in-tenant"`.
 - ✅ Spec runs under `npm run test:sentinel:e2e` (config: `dev/tests/playwright/playwright.sentinel.config.ts`).
 - ⏸ RED until two-tenant fixtures are seeded (`claude-sentinel-a@mmffdev.com` in tenant A, `claude-sentinel-b@mmffdev.com` in tenant B, both with `password` per the project's Playwright fixture convention; never reuse the human gadmin/padmin/user accounts per the CLAUDE.md HARD RULE). Each tenant needs ≥1 work-item to make the list-overlap assertion meaningful.
-- ⏸ GREEN expected when fixtures land + the deeper subtree-aware SQL clamp (S26) is in place. Until then the spec failure IS the procurement signal: "two-tenant isolation cannot be proven yet."
+- ⏸ GREEN expected when fixtures land + the consumer-side topology SQL application (S26) is in place. Until then the spec failure IS the procurement signal: "two-tenant isolation cannot be proven yet."
 
 **Status.** Completed 2026-05-24 (spec written; GREEN pending fixture seed + S26).
 
@@ -474,17 +474,17 @@ from Sentinel. Two Sentinel surface extensions were absorbed:
 
 ---
 
-### S26 — Subtree-aware SQL clamp + per-package integration tests (carved from S21)
+### S26 — Consumer-side topology SQL application + per-package integration tests (carved from S21)
 
-**Intent.** Layer 2 of the clamp contract: handlers don't just read the clamp, they USE its `AllowedSubtreeIDs` in WHERE clauses so a single SQL query physically cannot return rows outside the requesting user's scope.
+**Intent.** Layer 2 of the clamp contract: handlers don't just read the clamp, they USE its `AllowedSubtreeIDs` in consumer-owned WHERE clauses so a single SQL query physically cannot return rows outside the requesting user's scope.
 
-**Why this is its own story.** S21 closed the structural contract (every artefact reader sits in a package that consults Sentinel). S26 closes the SQL contract (every artefact-listing query filters by `topology_node_id = ANY(clamp.AllowedSubtreeIDs)`). The latter is a deeper, per-handler refactor — at least 6 packages, new SQL clauses, per-package integration tests with a real subtree fixture — and is best done as its own initiative once the legacy contexts are deleted (S22) and the cross-tenant e2e (S23) is in place to pin the regression boundary.
+**Why this is its own story.** S21 closed the structural contract (every artefact reader sits in a package that consults Sentinel). S26 closes the SQL contract: row-owning packages apply the request clamp to their own trusted topology-node column, e.g. `a.artefacts_id_topology_node = ANY(clamp.AllowedSubtreeIDs)`. Sentinel stays table-agnostic; `backend/internal/topologyclamp` is the consumer-side adapter.
 
 **Acceptance Criteria.**
-- Every list/get handler in artefactitems, artefactitemsv2, artefacttypes, artefactpriorities, portfoliomodels, flows applies `clamp.AllowedSubtreeIDs` to its SQL `WHERE` clause. Where the table has no `topology_node_id`, the clamp is applied via a JOIN to the parent artefact's topology node.
-- Per-package integration test: handler with valid JWT + focus inside subtree returns subtree rows only; with focus outside the user's grants returns 403 (Sentinel middleware) OR an empty result (SQL clamp) — both are SOC2-acceptable.
+- Every list/get handler that returns topology-owned rows applies `clamp.AllowedSubtreeIDs` to its SQL `WHERE` clause via a trusted topology-node column. Catalogue/admin surfaces with no topology-node ownership remain workspace/tenant clamped rather than Sentinel-subtree clamped.
+- Per-package integration test: handler with valid JWT + focus inside subtree returns subtree rows only; with focus outside the user's grants returns 403 (Sentinel middleware) OR an empty result (consumer-side SQL filter) — both are SOC2-acceptable.
 - Existing handler tests stay GREEN.
-- A new section in [`sentinel_docs.md`](sentinel_docs.md) documents the subtree-clamp SQL convention (the canonical `WHERE node_id = ANY($N::uuid[])` pattern), so future handlers don't reinvent it.
+- A new section in [`sentinel_docs.md`](sentinel_docs.md) documents the consumer-side SQL convention (`topologyclamp.SubtreeClause(ctx, "<trusted topology column>", ...)`), so future handlers don't reinvent it or put row-table knowledge back into Sentinel.
 
 **Status.** pending.
 

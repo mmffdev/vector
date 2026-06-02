@@ -6,7 +6,9 @@ import { artefactTypesApi, type ArtefactType } from "@/app/lib/artefactTypesApi"
 import { PARENT_PREFIX_MAP, type ParentOption } from "./types";
 
 interface UseParentCandidatesParams {
+  artefactId?: string | null;
   typePrefix: string | null;
+  resourceUrl?: string;
   // Kept for back-compat / call sites that still pass it, but no longer
   // used to pick a single endpoint — the hook now always queries BOTH
   // scopes when the allowed-parent map crosses the work↔strategy
@@ -78,9 +80,21 @@ function resolveAllowedTypes(
   );
 }
 
+function pickBundle(resourceUrl?: string) {
+  if (resourceUrl?.includes("/portfolio-items")) return portfolioItems;
+  return workItems;
+}
+
+function addUniqueOption(list: ParentOption[], opt: ParentOption): void {
+  if (list.some((existing) => existing.id === opt.id)) return;
+  list.push(opt);
+}
+
 export function useParentCandidates({
+  artefactId,
   typePrefix,
   workspaceId,
+  resourceUrl,
 }: UseParentCandidatesParams): UseParentCandidatesResult {
   const [strategic, setStrategic] = useState<ParentOption[]>([]);
   const [execution, setExecution] = useState<ParentOption[]>([]);
@@ -109,13 +123,9 @@ export function useParentCandidates({
           return;
         }
         const allowedTypes = resolveAllowedTypes(editing, types);
-        if (allowedTypes.length === 0) {
-          if (!cancelled) {
-            setStrategic([]);
-            setExecution([]);
-          }
-          return;
-        }
+        const typeByPrefix = new Map(
+          types.map((t) => [t.prefix.toUpperCase(), t]),
+        );
 
         // Partition by scope so each id is routed to the endpoint that
         // can actually return it. apiSite() forwards ?meg= on GETs so
@@ -131,10 +141,46 @@ export function useParentCandidates({
           })).catch(() => ({ scope: t.scope, resp: { items: [] as unknown[] } }));
         };
 
-        const results = await Promise.all(allowedTypes.map(runQuery));
+        const [results, ancestorResult] = await Promise.all([
+          Promise.all(allowedTypes.map(runQuery)),
+          artefactId
+            ? pickBundle(resourceUrl)
+                .listAncestors(artefactId)
+                .catch(() => ({ ancestors: [] as unknown[] }))
+            : Promise.resolve({ ancestors: [] as unknown[] }),
+        ]);
 
         const strat: ParentOption[] = [];
         const exec: ParentOption[] = [];
+        const ancestors =
+          (ancestorResult as { ancestors?: unknown[] }).ancestors ?? [];
+        const immediateParent = ancestors[0] as
+          | {
+              id?: unknown;
+              type_prefix?: unknown;
+              key_num?: unknown;
+              title?: unknown;
+            }
+          | undefined;
+        if (
+          immediateParent &&
+          typeof immediateParent.id === "string" &&
+          typeof immediateParent.type_prefix === "string" &&
+          typeof immediateParent.key_num === "number" &&
+          typeof immediateParent.title === "string"
+        ) {
+          const opt: ParentOption = {
+            id: immediateParent.id,
+            prefix: immediateParent.type_prefix,
+            key_num: immediateParent.key_num,
+            label: `${immediateParent.type_prefix}-${immediateParent.key_num} — ${immediateParent.title}`,
+          };
+          const parentType = typeByPrefix.get(
+            immediateParent.type_prefix.toUpperCase(),
+          );
+          if (parentType?.scope === "strategy") addUniqueOption(strat, opt);
+          else addUniqueOption(exec, opt);
+        }
         for (const { scope: typeScope, resp } of results) {
           const r = resp as { items?: unknown[] };
           for (const raw of r.items ?? []) {
@@ -150,8 +196,8 @@ export function useParentCandidates({
               key_num: item.key_num,
               label: `${item.type_prefix}-${item.key_num} — ${item.title}`,
             };
-            if (typeScope === "strategy") strat.push(opt);
-            else exec.push(opt);
+            if (typeScope === "strategy") addUniqueOption(strat, opt);
+            else addUniqueOption(exec, opt);
           }
         }
         const cmp = (a: ParentOption, b: ParentOption) => {
@@ -175,7 +221,7 @@ export function useParentCandidates({
     })();
 
     return () => { cancelled = true; };
-  }, [typePrefix, workspaceId]);
+  }, [artefactId, typePrefix, workspaceId, resourceUrl]);
 
   // Back-compat flat list — strategic above execution, each internally
   // sorted, matches the visual order of the grouped renderer.

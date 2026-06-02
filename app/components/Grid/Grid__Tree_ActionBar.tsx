@@ -9,21 +9,22 @@
 // .tree_accordion-dense__actionbar (search markup, flex row, right-spacer) but
 // re-homed under grid__Tree_ActionBar* so the tree owns its own band.
 //
-// Create-new uses the project's RadialPillMenu (the "fan-out pick-one" the
-// design system already ships) rather than a native <select>: the create
-// button is the anchor; clicking fans one pill per creatable artefact type
-// around it; picking fires onCreate(typeId). The consumer decides what create
-// means (open a flyout, quick-create, …) — this band only raises the intent.
+// Create-new uses the same <NavigationPie> primitive as the work-items Type
+// filter: the create button is the anchor; clicking opens one segmented wedge
+// per creatable artefact type; picking fires onCreate(typeId). The consumer
+// decides what create means (open a flyout, quick-create, …) — this band only
+// raises the intent.
 
-import { useRef, useState } from "react";
 import { MdAdd, MdSearch } from "react-icons/md";
-import RadialPillMenu from "@/app/components/RadialPillMenu/p_RadialPillMenu";
+import NavigationPie from "@/app/components/NavigationPie";
+
+const CREATE_PIE_SELECTED: string[] = [];
 
 export interface GridTreeActionBarCreate {
   /** Label on the create button (e.g. "Create new"). */
   label: string;
   /** Creatable artefact types — one radial pill each. */
-  types: ReadonlyArray<{ id: string; label: string }>;
+  types: ReadonlyArray<{ id: string; label: string; color?: string }>;
   /** Fired when the user picks a type from the radial. */
   onCreate: (typeId: string) => void;
 }
@@ -51,9 +52,6 @@ export function GridTreeActionBar({
   search,
   filterChips,
 }: GridTreeActionBarConfig) {
-  const createBtnRef = useRef<HTMLButtonElement>(null);
-  const [radialOpen, setRadialOpen] = useState(false);
-
   return (
     <div
       className="grid__Tree_ActionBar"
@@ -61,32 +59,22 @@ export function GridTreeActionBar({
       aria-label={ariaLabel}
     >
       {create && create.types.length > 0 && (
-        <>
-          <button
-            ref={createBtnRef}
-            type="button"
-            className={
-              "btn grid__Tree_ActionBar_Create" +
-              (radialOpen ? " btn--active" : "")
-            }
-            aria-haspopup="dialog"
-            aria-expanded={radialOpen}
-            onClick={() => setRadialOpen((o) => !o)}
-          >
-            <span className="btn__icon">
-              <MdAdd size={14} />
-            </span>
-            <span>{create.label}</span>
-          </button>
-          <RadialPillMenu
-            open={radialOpen}
-            anchor={createBtnRef.current}
-            ariaLabel="Pick a type to create"
-            items={create.types.map((t) => ({ id: t.id, label: t.label }))}
-            onPick={(id) => create.onCreate(id)}
-            onClose={() => setRadialOpen(false)}
-          />
-        </>
+        <NavigationPie
+          label={create.label}
+          icon={<MdAdd size={14} />}
+          options={create.types.map((t) => ({
+            value: t.id,
+            label: t.label,
+            color: t.color,
+          }))}
+          selected={CREATE_PIE_SELECTED}
+          onChange={(next) => {
+            const picked = next[next.length - 1];
+            if (picked) create.onCreate(picked);
+          }}
+          chipClassName="grid__Tree_ActionBar_Create"
+          closeOnPick
+        />
       )}
 
       {search && (

@@ -85,9 +85,26 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
+func orgNodeID(r *http.Request) string {
+	return r.URL.Query().Get("org_node_id")
+}
+
+func requireOrgNodeID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	nodeID := strings.TrimSpace(orgNodeID(r))
+	if nodeID == "" {
+		httperr.Write(w, r, http.StatusBadRequest, "org_node_id query parameter is required")
+		return "", false
+	}
+	if _, err := uuid.Parse(nodeID); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "org_node_id must be a UUID")
+		return "", false
+	}
+	return nodeID, true
+}
+
 // guardInherited — slice 5B mirror of timeboxsprints.guardInherited.
 func (h *Handler) guardInherited(w http.ResponseWriter, r *http.Request, wsID, releaseID string) bool {
-	viewingNodeID := r.URL.Query().Get("org_node_id")
+	viewingNodeID := orgNodeID(r)
 	if viewingNodeID == "" {
 		return true
 	}
@@ -115,12 +132,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	nodeID, ok := requireOrgNodeID(w, r)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
 
 	var f ListFilters
-	if v := q.Get("org_node_id"); v != "" {
-		f.OrgNodeID = &v
-	}
+	f.OrgNodeID = &nodeID
 	if v := q.Get("status"); v != "" {
 		f.Status = &v
 	}
@@ -198,6 +217,9 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
 
 	release, err := h.svc.Get(r.Context(), wsID, id)
@@ -220,6 +242,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	nodeID, ok := requireOrgNodeID(w, r)
+	if !ok {
+		return
+	}
 	user := auth.UserFromCtx(r.Context())
 
 	var body struct {
@@ -233,6 +259,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	if body.OrgNodeID == nil || strings.TrimSpace(*body.OrgNodeID) != nodeID {
+		httperr.WriteValidation(w, r, []httperr.Violation{
+			{Field: "timeboxes_releases_id_topology_node", Message: "must match org_node_id"},
+		})
 		return
 	}
 
@@ -274,6 +306,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -354,6 +389,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
 	if !h.guardInherited(w, r, wsID, id) {
 		return
@@ -377,6 +415,10 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 // BulkCreate handles POST /api/v2/timeboxes/releases/bulk-create
 func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
+	if !ok {
+		return
+	}
+	nodeID, ok := requireOrgNodeID(w, r)
 	if !ok {
 		return
 	}
@@ -407,6 +449,12 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 
 	inputs := make([]CreateReleaseInput, len(body.Releases))
 	for i, rel := range body.Releases {
+		if rel.OrgNodeID == nil || strings.TrimSpace(*rel.OrgNodeID) != nodeID {
+			httperr.WriteValidation(w, r, []httperr.Violation{
+				{Field: "releases", Message: "each release topology node must match org_node_id"},
+			})
+			return
+		}
 		inputs[i] = CreateReleaseInput{
 			SubscriptionID:     user.SubscriptionID.String(),
 			WorkspaceID:        wsID,

@@ -16,21 +16,31 @@ export function FlowStatePillRow({
   // derived from the children (work flows up), so manual edits are
   // rejected backend-side too (ErrParentFlowStateDerived → 409).
   derived = false,
+  readOnly = false,
+  readOnlyTitle,
 }: {
   currentId: string;
   currentCode: string;
   states: WorkItemFlowState[];
   onCommit: (id: string) => void;
   derived?: boolean;
+  readOnly?: boolean;
+  readOnlyTitle?: string;
 }) {
   if (states.length === 0) return null;
+
+  const locked = derived || readOnly;
 
   return (
     <span
       className={"wi-flow-row" + (derived ? " wi-flow-row--derived" : "")}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
-      title={derived ? "Derived from children — change a child's state to update this row" : undefined}
+      title={
+        derived
+          ? "Derived from children — change a child's state to update this row"
+          : readOnlyTitle
+      }
     >
       {states.map((s) => {
         const isActive = s.id === currentId;
@@ -80,13 +90,13 @@ export function FlowStatePillRow({
             className={className}
             style={style}
             aria-pressed={isActive}
-            aria-disabled={derived || isActive ? true : undefined}
+            aria-disabled={locked || isActive ? true : undefined}
             aria-label={s.name}
             title={s.name}
             // Derived rows can't be edited (cascade owns the state) —
             // drop the handler so the click does nothing AND the cursor
             // doesn't read as actionable.
-            onClick={derived || isActive ? undefined : () => onCommit(s.id)}
+            onClick={locked || isActive ? undefined : () => onCommit(s.id)}
           >
             {/* Letter is wrapped so it can sit ABOVE the ::before fill
                 layer. Without this it renders as a bare text node which

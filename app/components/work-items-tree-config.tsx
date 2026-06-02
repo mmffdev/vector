@@ -12,7 +12,14 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { MdTune, MdOutlineCheckBox, MdOutlinePerson, MdFlag } from "react-icons/md";
+import {
+  MdTune,
+  MdOutlineCheckBox,
+  MdOutlinePerson,
+  MdFlag,
+  MdEvent,
+  MdNewReleases,
+} from "react-icons/md";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { notify } from "@/app/lib/toast";
 import { useUserPreference } from "@/app/hooks/useUserPreference";
@@ -882,6 +889,10 @@ export interface WorkItemsFilterChipsProps {
    *  slot the grid does so they share state without colliding with a
    *  sibling tree on the same route. */
   urlPrefix?: string;
+  typeSelectionMode?: "multi" | "single";
+  typeSelected?: string[];
+  typeLabel?: string;
+  typeCloseOnPick?: boolean;
 }
 
 export function WorkItemsFilterChips({
@@ -889,6 +900,10 @@ export function WorkItemsFilterChips({
   typeOptions = [],
   priorityOptions = [],
   urlPrefix,
+  typeSelectionMode = "multi",
+  typeSelected,
+  typeLabel = "Type",
+  typeCloseOnPick = false,
 }: WorkItemsFilterChipsProps) {
   const { sentinel_user: user } = useSentinel();
   const { filters, hasAny, setFilter, clearAll } = useWorkItemsFilters(prefKey, undefined, urlPrefix);
@@ -898,11 +913,13 @@ export function WorkItemsFilterChips({
   return (
     <>
       <NavigationPie
-        label="Type"
+        label={typeLabel}
         icon={<MdTune size={14} />}
         options={typeOptions}
-        selected={filters.type}
+        selected={typeSelected ?? filters.type}
         onChange={(v) => setFilter("type", v)}
+        selectionMode={typeSelectionMode}
+        closeOnPick={typeCloseOnPick}
       />
       <NavigationPie
         label="Status"
@@ -918,6 +935,28 @@ export function WorkItemsFilterChips({
         selected={filters.priority}
         onChange={(v) => setFilter("priority", v)}
       />
+      <button
+        type="button"
+        className="btn navigation-pie__Chip navigation-pie__Chip-triggerless"
+        aria-disabled="true"
+        title="Sprint filter coming soon"
+      >
+        <span className="navigation-pie__Chip_icon">
+          <MdEvent size={14} />
+        </span>
+        <span className="navigation-pie__Chip_label">Sprint</span>
+      </button>
+      <button
+        type="button"
+        className="btn navigation-pie__Chip navigation-pie__Chip-triggerless"
+        aria-disabled="true"
+        title="Release filter coming soon"
+      >
+        <span className="navigation-pie__Chip_icon">
+          <MdNewReleases size={14} />
+        </span>
+        <span className="navigation-pie__Chip_label">Release</span>
+      </button>
       <button
         type="button"
         className={
@@ -956,6 +995,7 @@ export interface UseWorkItemsWindowResult {
   loadingWindow: boolean;
   refetchWindow: () => Promise<void>;
   patchAndApply: (id: string, body: Record<string, unknown>) => void;
+  applyLocalPatch: (id: string, body: Record<string, unknown>) => void;
   fetchChildren: (parentId: string) => Promise<WorkItem[]>;
 }
 
@@ -1071,15 +1111,19 @@ export function useArtefactItemsWindow(
 
   useEffect(() => { void refetchWindow(); }, [refetchWindow]);
 
-  const patchAndApply = useCallback(
+  const applyLocalPatch = useCallback(
     (id: string, body: Record<string, unknown>) => {
       setWindowRoots((prev) =>
         prev.map((r) => (r.id === id ? ({ ...r, ...body } as WorkItem) : r)),
       );
-      // Mirror the optimistic patch into child rows too. ResourceTree
-      // keeps expanded children in its own state; without this hook the
-      // host can't see/update them.
       onLocalPatch?.(id, body);
+    },
+    [onLocalPatch],
+  );
+
+  const patchAndApply = useCallback(
+    (id: string, body: Record<string, unknown>) => {
+      applyLocalPatch(id, body);
       apiSite<WorkItem>(`${resourceUrl}/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
@@ -1131,7 +1175,7 @@ export function useArtefactItemsWindow(
           // unrelated patch failures don't gain a regression here.
         });
     },
-    [resourceUrl, onPatched, refetchWindow, onLocalPatch, onCascadeRefresh],
+    [resourceUrl, onPatched, refetchWindow, applyLocalPatch, onCascadeRefresh],
   );
 
   const fetchChildren = useCallback(async (parentId: string) => {
@@ -1141,7 +1185,7 @@ export function useArtefactItemsWindow(
     return res.items;
   }, [resourceUrl]);
 
-  return { windowRoots, total, loadingWindow, refetchWindow, patchAndApply, fetchChildren };
+  return { windowRoots, total, loadingWindow, refetchWindow, patchAndApply, applyLocalPatch, fetchChildren };
 }
 
 // useWorkItemsWindow — back-compat shim for existing call-sites that haven't

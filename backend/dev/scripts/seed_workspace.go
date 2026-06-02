@@ -110,7 +110,7 @@ func main() {
 	}
 	slug := toSlug(name)
 
-	// Insert workspace on mmff_vector.
+	// Insert workspace on vector_artefacts.
 	workspaceID := uuid.New()
 	var insertedName string
 	if err := vectorPool.QueryRow(ctx, `

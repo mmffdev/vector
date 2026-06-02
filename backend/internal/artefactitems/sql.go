@@ -175,17 +175,10 @@ const sqlCountWorkItemsTemplate = `
 	`
 
 // sqlWorkItemColumnsListTemplate is the LIST-path column projection. It
-// is identical to sqlWorkItemColumns EXCEPT that the children_count
-// scalar subquery carries a %s slot for an additional AND-clause. The
-// List handler uses this slot to align children_count with the
-// item_type_id filter so a parent whose only children are of types
-// excluded from the row-level filter reports 0 — the frontend expander
-// gates on children_count, so a 0 hides the expander (matches the
-// hidden children).
-//
-// Get / ListChildren keep using the static sqlWorkItemColumns — those
-// paths don't carry a row-level type filter, so "all children" remains
-// the correct count.
+// is identical to sqlWorkItemColumns except that the children_count scalar
+// subquery carries a reserved %s slot for future structural child gates.
+// Item-type filters deliberately do not use that slot: they choose primary
+// rows, while expansion still reveals the row's real descendants.
 const sqlWorkItemColumnsListTemplate = `
 	a.artefacts_id::text,
 	a.artefacts_id_subscription::text,
@@ -298,10 +291,8 @@ const sqlWorkItemColumnsListTemplate = `
 	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id`
 
 // sqlListWorkItemsTemplate is the paged data query. %s slots (in order):
-//   - childExtra: extra AND-clause for the children_count subquery so
-//     it can mirror the row-level item_type_id allow-list. Empty when
-//     no item_type filter is in play. Wrapped by the caller in the form
-//     `\n  AND <expr>`.
+//   - childExtra: reserved extra AND-clause for the children_count subquery.
+//     It is empty today; item_type_id does not gate structural descendants.
 //   - extraWhere: row-level WHERE additions (sentinel clamp, scope clamp,
 //     item_type, flow_state, priority, sprint, owner, workspace).
 //   - orderBy: column + direction string.
@@ -436,10 +427,7 @@ const sqlListChildWorkItemsTemplate = `
 const sqlSummariseTotalTemplate = `
 		SELECT
 			COUNT(*) AS total,
-			COUNT(*) FILTER (
-				WHERE (fs.flows_states_kind = 'todo' OR fs.flows_states_id IS NULL)
-				  AND a.artefacts_updated_at < NOW() - INTERVAL '14 days'
-			) AS blocked
+			COUNT(*) FILTER (WHERE a.artefacts_is_blocked IS TRUE) AS blocked
 		FROM artefacts a
 		JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
 		LEFT JOIN flows_states fs ON fs.flows_states_id = a.artefacts_id_flow_state
@@ -915,8 +903,9 @@ const sqlBulkSetFlowState = `UPDATE artefacts SET artefacts_id_flow_state=$1::uu
 //
 // $1 = artefact_type_id (uuid)
 // $2 = subscription_id (uuid) — defence-in-depth: the type id is already
-//      tenant-private (gen_random_uuid), but cross-tenant scans should
-//      never come back even on an enumerating UUID.
+//
+//	tenant-private (gen_random_uuid), but cross-tenant scans should
+//	never come back even on an enumerating UUID.
 const sqlListFieldsForType = `
 		SELECT fl.artefacts_fields_library_id::text,
 		       fl.artefacts_fields_library_field_name,

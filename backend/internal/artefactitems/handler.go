@@ -687,6 +687,7 @@ func (h *Handler) Query(w http.ResponseWriter, r *http.Request) {
 
 	// ── Roots path: no ParentID → top-level list with the page window. ──
 	f := Filters{Limit: 50}
+	q := r.URL.Query()
 	if req.Page != nil && req.Page.Limit > 0 {
 		f.Limit = req.Page.Limit
 		if req.Page.Offset >= 0 {
@@ -741,6 +742,30 @@ func (h *Handler) Query(w http.ResponseWriter, r *http.Request) {
 				f.SprintID = &v
 			}
 		}
+	}
+	// ?meg= is the canonical live topology focus. Query is a POST read-gateway,
+	// so the parent/body stays audited while the active node rides in the URL
+	// exactly like List. Setting ScopeNodeID here is still only a narrow hint:
+	// the service fast-paths when it matches Sentinel's request clamp, otherwise
+	// it re-validates and intersects with the clamp.
+	megVal := q.Get("meg")
+	if megVal == "" {
+		megVal = q.Get("scope")
+	}
+	if megVal != "" {
+		if _, perr := uuid.Parse(megVal); perr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid scope"}`))
+			return
+		}
+		f.ScopeNodeID = &megVal
+		actor := auth.UserFromCtx(r.Context())
+		userIDStr := actor.ID.String()
+		f.ActorUserID = &userIDStr
+		f.ActorRoleID = actor.RoleID
+	}
+	if v := q.Get("scope_dir"); v == "ascend" || v == "descend" {
+		f.ScopeDirection = v
 	}
 
 	// Workspace clamp from sentinel ctx — EXACTLY as List does. When
@@ -1082,10 +1107,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 type patchWorkItemReq struct {
-	Title       *string         `json:"title,omitempty"`
-	Description *string         `json:"description,omitempty"`
-	Status      *string         `json:"status,omitempty"`
-	FlowStateID *string         `json:"flow_state_id,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	FlowStateID *string `json:"flow_state_id,omitempty"`
 	// PLA-0055 / story 00595+00597 — priority is now a UUID FK.
 	PriorityID  *string         `json:"priority_id,omitempty"`
 	StoryPoints *int            `json:"story_points,omitempty"`
@@ -1096,19 +1121,19 @@ type patchWorkItemReq struct {
 	// to NULL (omitted for IsBlocked which is a strict bool). The
 	// handler decodes them like SprintID/DueDate, then the service
 	// translates "" → NULL and non-empty → UPDATE.
-	Colour           *string         `json:"colour,omitempty"`
-	IsBlocked        *bool           `json:"is_blocked,omitempty"`
-	BlockedReason    *string         `json:"blocked_reason,omitempty"`
-	ReleaseID        *string         `json:"release_id,omitempty"`
-	MilestoneID      *string         `json:"milestone_id,omitempty"`
-	OwnedByUserID    *string         `json:"owned_by_user_id,omitempty"`
-	ParentArtefactID *string         `json:"parent_artefact_id,omitempty"`
-	TopologyNodeID   *string         `json:"topology_node_id,omitempty"`
+	Colour           *string `json:"colour,omitempty"`
+	IsBlocked        *bool   `json:"is_blocked,omitempty"`
+	BlockedReason    *string `json:"blocked_reason,omitempty"`
+	ReleaseID        *string `json:"release_id,omitempty"`
+	MilestoneID      *string `json:"milestone_id,omitempty"`
+	OwnedByUserID    *string `json:"owned_by_user_id,omitempty"`
+	ParentArtefactID *string `json:"parent_artefact_id,omitempty"`
+	TopologyNodeID   *string `json:"topology_node_id,omitempty"`
 	// DescriptionDoc — TipTap (ProseMirror) JSON. RawMessage so we
 	// don't decode it; pass-through to the service which writes it
 	// verbatim into the JSONB column. nil = field absent; "null" or
 	// "{}" = clear to NULL; any other JSON = store as-is.
-	DescriptionDoc   json.RawMessage `json:"description_doc,omitempty"`
+	DescriptionDoc json.RawMessage `json:"description_doc,omitempty"`
 	// Core-field demotion (mig 147) — 18 new first-class columns.
 	// Three-state on *string (absent / "" ⇒ clear / non-empty ⇒
 	// write). *bool tri-state. *int tri-state (no clear-to-NULL —
@@ -1241,7 +1266,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		AuthorUserID:     u.ID,
 		// Required for the topology.CanReadScope gate the service runs
 		// when TopologyNodeID is non-nil. Mirrors CreateWorkItem's wiring.
-		ActorRoleID:      u.RoleID,
+		ActorRoleID: u.RoleID,
 		// Core-field demotion (mig 147).
 		DefectSeverity:           req.DefectSeverity,
 		DefectStatus:             req.DefectStatus,

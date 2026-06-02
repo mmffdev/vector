@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
@@ -34,18 +36,37 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
+func orgNodeID(r *http.Request) string {
+	return r.URL.Query().Get("org_node_id")
+}
+
+func requireOrgNodeID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	nodeID := strings.TrimSpace(orgNodeID(r))
+	if nodeID == "" {
+		httperr.Write(w, r, http.StatusBadRequest, "org_node_id query parameter is required")
+		return "", false
+	}
+	if _, err := uuid.Parse(nodeID); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "org_node_id must be a UUID")
+		return "", false
+	}
+	return nodeID, true
+}
+
 // List handles GET /_site/timeboxes/milestones
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
 		return
 	}
+	nodeID, ok := requireOrgNodeID(w, r)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
 
 	var f ListFilters
-	if v := q.Get("org_node_id"); v != "" {
-		f.OrgNodeID = &v
-	}
+	f.OrgNodeID = &nodeID
 	if v := q.Get("status"); v != "" {
 		f.Status = &v
 	}
@@ -67,6 +88,9 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -91,6 +115,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	nodeID, ok := requireOrgNodeID(w, r)
+	if !ok {
+		return
+	}
 	user := auth.UserFromCtx(r.Context())
 
 	var body struct {
@@ -103,6 +131,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	if body.OrgNodeID == nil || strings.TrimSpace(*body.OrgNodeID) != nodeID {
+		httperr.WriteValidation(w, r, []httperr.Violation{
+			{Field: "timeboxes_milestones_id_topology_node", Message: "must match org_node_id"},
+		})
 		return
 	}
 
@@ -138,6 +172,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -187,6 +224,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")

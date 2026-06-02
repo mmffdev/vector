@@ -37,7 +37,26 @@
   display: flex;
   align-items: center;
   height: 100%;
-  padding-left: 30px;
+  padding: 0 30px; /* 30px left and right */
+}
+.rd-statusbar__Container_Right {
+  position: fixed; /* position relative to viewport */
+  right: 30px; /* 30px from viewport right edge */
+  bottom: calc(var(--rd-statusbar-h) / 2); /* vertically centre in the statusbar */
+  transform: translateY(50%);
+  display: flex;
+  align-items: center;
+  z-index: 1000;
+}
+.rd-statusbar__Container_Right_inner {
+  display: flex;
+  align-items: center;
+}
+.rd-statusbar__Datetime {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--ink-muted);
+  white-space: nowrap;
 }
 .rd-statusbar__Container_Items {
   list-style: none;

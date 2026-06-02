@@ -2,16 +2,16 @@
 
 > **HARD RULE — NO ASSUMPTIONS:** before any psql query, schema lookup, or "the table is probably called X" claim, you MUST read this doc to confirm which pool serves the feature and which database that pool connects to. Memory: [`feedback_never_assume_database`](../.claude/memory/feedback_never_assume_database.md). Source-of-truth wiring: [`backend/cmd/server/main.go`](../backend/cmd/server/main.go).
 
-> **POST-CUTOVER STATUS (Pillar 3 step 1, 2026-05-26):** `vector_artefacts` is now the PRIMARY tenant DB and absorbs every former `mmff_vector` table. `mmff_vector` is a write-mute zombie — its `pool` variable is still wired into `main.go` so the DB stays connect-able for emergency reads, but NO backend service issues SQL against it. Pillar 3 step 2 drops the 16 FDW foreign tables in vector_artefacts; Pillar 3 step 3 drops the `mmff_vector` database itself.
+> **POST-CUTOVER STATUS (Pillar 3 complete, 2026-05-26):** `vector_artefacts` is the only live tenant DB and absorbs every former `mmff_vector` table. `mmff_vector` was dropped; only historical snapshots such as `mmff_vector_snapshot_20260525` may exist for inspection.
 
-The Vector backend connects to two tenant Postgres databases via separate `pgxpool.Pool` variables in `main.go`. Every Go service in `backend/internal/<name>` takes `servicePool` (vaPool when available, mmff_vector fallback for legacy envs) through `NewService(...)`. This doc maps every pool, every database, and every service that talks to it.
+The Vector backend connects to one tenant Postgres database plus the read-only library spine. Every Go service in `backend/internal/<name>` takes `servicePool` / `vaPool` through `NewService(...)`, and both tenant pool slots point at `vector_artefacts` in dev. This doc maps every pool, every database, and every service that talks to it.
 
 ## Pools at a glance
 
 | Pool variable | Database name | Env vars on `dev` | Purpose |
 |---|---|---|---|
 | `vaPool` (alias `servicePool` when wired) | `vector_artefacts` | `VECTOR_ARTEFACTS_DB_URL` (full DSN) or `VA_DB_HOST` / `VA_DB_PORT=5435` / `VA_DB_NAME=vector_artefacts` / `VA_DB_USER=mmff_dev` | **PRIMARY tenant DB.** All 71 tables: artefact substrate (artefacts, artefacts_types, artefacts_fields_*, flows, timeboxes_*, search outbox, webhooks, topology_nodes, audit_logs, errors_events, library_releases_acknowledgements, master_record_*) AND the 37 ex-mmff_v tables merged in Pillar 2 (users, users_sessions, users_password_resets, users_roles*, users_permissions, users_nav_*, users_notifications*, users_mentions, users_tab_order, users_reauth_nonces, dpop_jti_cache, admin_api_keys, pages, pages_tags, pages_addressables, pages_help, pages_access_version, users_roles_pages, users_custom_pages, users_custom_page_views, master_record_workspaces, users_roles_workspaces, subscriptions, subscriptions_sequence, subscriptions_stakeholders, cost_centres, csp_reports, notifications_outbox, vector_icons, library_help_defaults, page_entity_refs). |
-| `pool` | `mmff_vector` | `DB_HOST`, `DB_PORT=5435`, `DB_NAME=mmff_vector`, `DB_USER=mmff_dev` | **ZOMBIE — will be dropped in Pillar 3 step 3.** Connect-able but NO ACTIVE BACKEND CODE issues SQL against this DB. The pool variable is still declared + deferred-close in `main.go` so the connection stays warm (defensive against partial rollback scenarios) but no `*NewService(pool, …)*` call in main.go consumes it after the Pillar 3 step 1 repoint. |
+| `pool` | `vector_artefacts` | `DB_HOST`, `DB_PORT=5435`, `DB_NAME=vector_artefacts`, `DB_USER=mmff_dev` | Legacy variable name only. Post-refactor, this pool points at the same live tenant DB as `vaPool`; do not infer an `mmff_vector` database from the variable name. |
 | `libPools.RO` / `libPools.RW` | `mmff_library` | `LIBRARY_DB_HOST`, `LIBRARY_DB_PORT=5435`, `LIBRARY_DB_NAME=mmff_library`, `LIBRARY_DB_USER=mmff_dev` | Read-only library spine + ack flow. Catalogue lookups for portfolio adoption and library releases. Unchanged by Pillar 3. |
 | `devPool` | `mmff_dev` | `MMFF_DEV_DB_URL` | `dev_reports` — every `<report>` output: SY003 (substrate inventory), PLA### (plans), COD### (audits), RES### (research), RET### (retros), SEC### (security). Sole accessor: `backend/internal/devreports/`. Wired in `backend/cmd/server/main.go`. Unchanged by Pillar 3. |
 
@@ -112,7 +112,7 @@ Unchanged by Pillar 3.
 
 ## Cross-references
 
-- Schema golden source for `mmff_vector` (zombie) → [`c_schema.md`](c_schema.md).
+- Historical frozen source for retired `mmff_vector` migrations → [`../db/mmff_vector/schema/README.md`](../db/mmff_vector/schema/README.md).
 - vector_artefacts cutover plan → [`c_c_vector_artefacts_backfill.md`](c_c_vector_artefacts_backfill.md).
 - Library bundle fetch contract → [`c_c_librarydb_fetch.md`](c_c_librarydb_fetch.md).
 - Tenant isolation invariants → [`c_schema.md`](c_schema.md) (tenant-id sections).

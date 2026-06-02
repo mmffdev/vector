@@ -93,15 +93,31 @@ func requireWorkspaceID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return wsID, true
 }
 
+func orgNodeID(r *http.Request) string {
+	return r.URL.Query().Get("org_node_id")
+}
+
+func requireOrgNodeID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	nodeID := strings.TrimSpace(orgNodeID(r))
+	if nodeID == "" {
+		httperr.Write(w, r, http.StatusBadRequest, "org_node_id query parameter is required")
+		return "", false
+	}
+	if _, err := uuid.Parse(nodeID); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "org_node_id must be a UUID")
+		return "", false
+	}
+	return nodeID, true
+}
+
 // guardInherited runs the slice-5B write-side check: if the caller is
 // viewing the sprint via heartbeat inheritance (pinned to an ancestor
 // of the org_node_id query param, with scope_propagation flagged), the
 // write is rejected with 409. Returns true when the request can proceed.
-// When org_node_id is absent or the topology dep is nil, the check is a
-// no-op and the request proceeds (back-compat for callers not yet
-// passing the viewing-node param).
+// Handlers require org_node_id before this helper runs; the empty-node
+// branch is retained only as a defensive no-op for direct unit callers.
 func (h *Handler) guardInherited(w http.ResponseWriter, r *http.Request, wsID, sprintID string) bool {
-	viewingNodeID := r.URL.Query().Get("org_node_id")
+	viewingNodeID := orgNodeID(r)
 	if viewingNodeID == "" {
 		return true
 	}
@@ -134,12 +150,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	nodeID, ok := requireOrgNodeID(w, r)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
 
 	var f ListFilters
-	if v := q.Get("org_node_id"); v != "" {
-		f.OrgNodeID = &v
-	}
+	f.OrgNodeID = &nodeID
 	if v := q.Get("status"); v != "" {
 		f.Status = &v
 	}
@@ -226,6 +244,9 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
 
 	sprint, err := h.svc.Get(r.Context(), wsID, id)
@@ -248,6 +269,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	nodeID, ok := requireOrgNodeID(w, r)
+	if !ok {
+		return
+	}
 	user := auth.UserFromCtx(r.Context())
 
 	var body struct {
@@ -261,6 +286,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		return
+	}
+	if body.OrgNodeID == nil || strings.TrimSpace(*body.OrgNodeID) != nodeID {
+		httperr.WriteValidation(w, r, []httperr.Violation{
+			{Field: "timeboxes_sprints_id_topology_node", Message: "must match org_node_id"},
+		})
 		return
 	}
 
@@ -306,6 +337,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -384,6 +418,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
 	if !h.guardInherited(w, r, wsID, id) {
 		return
@@ -408,6 +445,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -438,6 +478,9 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if _, ok := requireOrgNodeID(w, r); !ok {
+		return
+	}
 	id := chi.URLParam(r, "id")
 	if !h.guardInherited(w, r, wsID, id) {
 		return
@@ -463,6 +506,10 @@ func (h *Handler) Close(w http.ResponseWriter, r *http.Request) {
 // BulkCreate handles POST /api/v2/timeboxes/sprints/bulk-create
 func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 	wsID, ok := requireWorkspaceID(w, r)
+	if !ok {
+		return
+	}
+	nodeID, ok := requireOrgNodeID(w, r)
 	if !ok {
 		return
 	}
@@ -493,6 +540,12 @@ func (h *Handler) BulkCreate(w http.ResponseWriter, r *http.Request) {
 
 	inputs := make([]CreateSprintInput, len(body.Sprints))
 	for i, s := range body.Sprints {
+		if s.OrgNodeID == nil || strings.TrimSpace(*s.OrgNodeID) != nodeID {
+			httperr.WriteValidation(w, r, []httperr.Violation{
+				{Field: "sprints", Message: "each sprint topology node must match org_node_id"},
+			})
+			return
+		}
 		inputs[i] = CreateSprintInput{
 			SubscriptionID:    user.SubscriptionID.String(),
 			WorkspaceID:       wsID,

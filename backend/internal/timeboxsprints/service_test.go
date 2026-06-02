@@ -83,6 +83,10 @@ func newIDs() (subID, wsID, orgNodeID string) {
 
 // baseInput builds a CreateSprintInput with sensible defaults.
 func baseInput(subID, wsID string, orgNodeID *string, name, start, end string) timeboxsprints.CreateSprintInput {
+	if orgNodeID == nil {
+		defaultNode := uuid.NewSHA1(uuid.NameSpaceOID, []byte(wsID+":test-node")).String()
+		orgNodeID = &defaultNode
+	}
 	return timeboxsprints.CreateSprintInput{
 		SubscriptionID:    subID,
 		WorkspaceID:       wsID,
@@ -188,10 +192,10 @@ func TestList(t *testing.T) {
 func TestListExcludesArchived(t *testing.T) {
 	pool := openVAPool(t)
 	svc := timeboxsprints.NewService(pool)
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
-	in := baseInput(sub, ws, nil, "Planned Sprint", "2032-01-01", "2032-01-14")
+	in := baseInput(sub, ws, &org, "Planned Sprint", "2032-01-01", "2032-01-14")
 	s, err := svc.Create(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -200,7 +204,7 @@ func TestListExcludesArchived(t *testing.T) {
 	_, _ = pool.Exec(context.Background(),
 		`UPDATE timeboxes_sprints SET timeboxes_sprints_archived_at = now() WHERE timeboxes_sprints_id = $1`, s.ID)
 
-	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{})
+	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{OrgNodeID: &org})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -356,10 +360,10 @@ func TestDeleteLifecycleGuard(t *testing.T) {
 func TestDeletePlanned(t *testing.T) {
 	pool := openVAPool(t)
 	svc := timeboxsprints.NewService(pool)
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
-	in := baseInput(sub, ws, nil, "Planned Sprint", "2038-05-01", "2038-05-14")
+	in := baseInput(sub, ws, &org, "Planned Sprint", "2038-05-01", "2038-05-14")
 	s, err := svc.Create(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -370,7 +374,7 @@ func TestDeletePlanned(t *testing.T) {
 	}
 
 	// Should be gone from List.
-	sprints, _ := svc.List(context.Background(), ws, timeboxsprints.ListFilters{})
+	sprints, _ := svc.List(context.Background(), ws, timeboxsprints.ListFilters{OrgNodeID: &org})
 	for _, sp := range sprints {
 		if sp.ID == s.ID {
 			t.Error("deleted sprint should not appear in List")
@@ -404,14 +408,34 @@ func TestValidationRejectsInvalidDates(t *testing.T) {
 	}
 }
 
-// TestNilOrgNodeAdjacency verifies adjacency works for workspace-level sprints (no org_node_id).
-func TestNilOrgNodeAdjacency(t *testing.T) {
+// TestValidationRejectsMissingOrgNode verifies node scope is mandatory.
+func TestValidationRejectsMissingOrgNode(t *testing.T) {
+	pool := openVAPool(t)
+	svc := timeboxsprints.NewService(pool)
+	sub, ws, _ := newIDs()
+
+	in := timeboxsprints.CreateSprintInput{
+		SubscriptionID:    sub,
+		WorkspaceID:       ws,
+		SprintName:        "Sprint",
+		SprintCadenceDays: 14,
+		SprintDateStart:   "2039-02-01",
+		SprintDateEnd:     "2039-02-14",
+	}
+	_, err := svc.Create(context.Background(), in)
+	if err == nil {
+		t.Fatal("expected error for missing org_node_id")
+	}
+}
+
+// TestDefaultTestOrgNodeAdjacency verifies adjacency works for node-pinned sprints.
+func TestDefaultTestOrgNodeAdjacency(t *testing.T) {
 	pool := openVAPool(t)
 	svc := timeboxsprints.NewService(pool)
 	sub, ws, _ := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
-	// First sprint with no org_node.
+	// baseInput's nil test helper resolves to a stable node for this workspace.
 	in := baseInput(sub, ws, nil, "WS Sprint 1", "2040-01-01", "2040-01-14")
 	if _, err := svc.Create(context.Background(), in); err != nil {
 		t.Fatalf("Create WS Sprint 1: %v", err)
@@ -527,9 +551,9 @@ func TestBulkCreateSuccess(t *testing.T) {
 func TestListReturnsEmptySlice(t *testing.T) {
 	pool := openVAPool(t)
 	svc := timeboxsprints.NewService(pool)
-	_, ws, _ := newIDs()
+	_, ws, org := newIDs()
 
-	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{})
+	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{OrgNodeID: &org})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -755,10 +779,10 @@ func TestDeleteNotFound(t *testing.T) {
 func TestListFilterByStatus(t *testing.T) {
 	pool := openVAPool(t)
 	svc := timeboxsprints.NewService(pool)
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
-	in := baseInput(sub, ws, nil, "Planned Sprint", "2055-01-01", "2055-01-14")
+	in := baseInput(sub, ws, &org, "Planned Sprint", "2055-01-01", "2055-01-14")
 	s, err := svc.Create(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -768,7 +792,7 @@ func TestListFilterByStatus(t *testing.T) {
 		`UPDATE timeboxes_sprints SET timeboxes_sprints_status = 'active' WHERE timeboxes_sprints_id = $1`, s.ID)
 
 	status := "active"
-	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{Status: &status})
+	sprints, err := svc.List(context.Background(), ws, timeboxsprints.ListFilters{OrgNodeID: &org, Status: &status})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}

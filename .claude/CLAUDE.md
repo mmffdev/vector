@@ -134,7 +134,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 On every session start, read these files silently before responding to the user:
 
 1. [`context/USER.md`](../context/USER.md) (~3 KB cap) — durable user profile + working style.
-2. [`context/MEMORY.md`](../context/MEMORY.md) (~10 KB cap) — curated working memory: HARD RULES, active mode, collaboration baseline, workflow rules, CSS conventions, test surface.
+2. [`context/MEMORY.md`](../context/MEMORY.md) (~15 KB cap) — curated working memory: HARD RULES, active mode, collaboration baseline, workflow rules, CSS conventions, test surface.
 
 These are the **frozen snapshot** — loaded once per session. Mid-session writes persist to disk but take effect next session (prefix-cache friendly).
 
@@ -144,7 +144,7 @@ Auto-memory in `~/.claude/projects/.../memory/` is divergent legacy — IGNORE i
 
 ### Memory Budget
 
-- `context/MEMORY.md` ≤ **10,000 chars** — raised from the Hermes default to fit Vector's HARD RULES + load-bearing safety surface.
+- `context/MEMORY.md` ≤ **15,000 chars** — raised 2026-06-02 to fit Vector's HARD RULES + load-bearing safety surface.
 - `context/USER.md` ≤ **3,000 chars**.
 - Before writing, check `wc -c <file>`. If over cap, consolidate existing entries before adding.
 
@@ -154,7 +154,7 @@ When the user says "remember this", "note that", "update memory", "save this", o
 
 1. Read `context/MEMORY.md` in full.
 2. Dedup: scan for substring match — if the fact already exists, update in place; don't append.
-3. Check `wc -c < context/MEMORY.md` — if over 10,000 chars, consolidate before adding.
+3. Check `wc -c < context/MEMORY.md` — if over 15,000 chars, consolidate before adding.
 4. Add under the appropriate section (`## Active Threads`, `## Environment Notes`, `## Pending Decisions`, etc.).
 5. For **forget about**: confirm with the user before deleting.
 6. After writing: "Saved — will be active from next session."

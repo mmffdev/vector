@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mmffdev/vector-backend/internal/sentinel"
+	"github.com/mmffdev/vector-backend/internal/topologyclamp"
 )
 
 const defaultLimit = 20
@@ -80,7 +80,7 @@ func (s *Service) Search(ctx context.Context, q Query) ([]Result, error) {
 	// user with a narrow ?meg= focus would still see hits from
 	// outside their scope. When no clamp is on ctx (admin / dev), the
 	// fragment is empty and the workspace clamp alone narrows reads.
-	subtreeFilter, args, _ := sentinel.SubtreeClause(ctx, "a", args, n)
+	subtreeFilter, args, _ := topologyclamp.SubtreeClause(ctx, "a.artefacts_id_topology_node", args, n)
 
 	sql := fmt.Sprintf(`
 		SELECT

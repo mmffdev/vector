@@ -18,7 +18,7 @@ help:
 	@echo "make build          — compile only, no run"
 	@echo "make kill           — kill anything on :$(SRV_PORT)"
 	@echo "make install-air    — install the air binary into GOPATH/bin"
-	@echo "make test-db-reset  — drop & recreate test mmff_vector + mmff_library, replay migrations 001..N"
+	@echo "make test-db-reset  — drop & recreate test vector_artefacts + mmff_library, replay migrations 001..N"
 
 # Live-reload. air recompiles on .go save and restarts in-place.
 # The launcher invokes this as `make dev` from BackendManager.
@@ -47,7 +47,7 @@ install-air:
 	fi
 
 # Drop and recreate the test cluster's databases, then replay every
-# top-level migration in db/mmff_vector/schema/ and db/mmff_library/schema/. Idempotent:
+# top-level migration in db/vector_artefacts/schema/ and db/mmff_library/schema/. Idempotent:
 # running it twice produces identical state (DROP IF EXISTS + CREATE,
 # then a fresh schema_migrations replay from 001..N).
 #
@@ -75,6 +75,6 @@ test-db-reset:
 	 PGPASSWORD="$$DB_PASS" $(PSQL) -h "$$DB_HOST" -p "$$DB_PORT" -U "$$DB_USER" -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $$DB_NAME OWNER $$DB_USER;"  || exit 1; \
 	 PGPASSWORD="$$DB_PASS" $(PSQL) -h "$$DB_HOST" -p "$$DB_PORT" -U "$$DB_USER" -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $$LIB_NAME OWNER $$DB_USER;" || exit 1; \
 	 PGPASSWORD="$$DB_PASS" $(PSQL) -h "$$DB_HOST" -p "$$DB_PORT" -U "$$DB_USER" -d "$$LIB_NAME" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS schema_migrations (filename TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now()); INSERT INTO schema_migrations (filename) VALUES ('001_init_library.sql') ON CONFLICT DO NOTHING;" >/dev/null || exit 1
-	@echo "→ replaying migrations from db/mmff_vector/schema and db/mmff_library/schema"
+	@echo "→ replaying migrations from db/vector_artefacts/schema and db/mmff_library/schema"
 	@go run ./cmd/migrate -env "$(TEST_ENV)" -dir "$(CURDIR)/.." -db both
 	@echo "✓ test-db-reset done"

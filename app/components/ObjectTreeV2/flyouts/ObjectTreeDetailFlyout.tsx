@@ -80,7 +80,7 @@ export interface DetailFlyoutBodyProps {
    * what's in the patch; the parent forwards it to the data hook so the
    * row updates optimistically.
    */
-  onSaved?: (patch: Record<string, unknown>) => void;
+  onSaved?: (patch: Record<string, unknown>, savedRow?: unknown) => void;
 }
 
 /**
@@ -111,7 +111,7 @@ export interface ObjectTreeDetailFlyoutProps<TBody extends DetailFlyoutBodyProps
    * Forwarded to the body's onSaved. Parent uses this to thread the
    * patch into the data hook's optimistic update path.
    */
-  onSaved?: (patch: Record<string, unknown>) => void;
+  onSaved?: (patch: Record<string, unknown>, savedRow?: unknown) => void;
 }
 
 // ── Implementation ───────────────────────────────────────────────────────────

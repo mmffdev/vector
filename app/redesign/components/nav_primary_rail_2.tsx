@@ -20,21 +20,6 @@ function useActiveGrantFromSentinel(): { activeGrant: SentinelGrant | null; relo
   return { activeGrant, reload: sentinel_reload };
 }
 
-function formatNow(d: Date): string {
-  const date = d.toLocaleDateString(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  const time = d.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  return `${date} · ${time}`;
-}
-
 // Dev pages live under /dev/* and intentionally do NOT show the global
 // bookmark bucket — the dev tab catalogue owns its own rail-2 contents.
 // Every other rail-2 surface (section, scope, account) shows the bucket
@@ -97,14 +82,15 @@ function RailSkeleton({ now }: { now: Date }) {
 }
 
 function RailHeader({ title, now }: { title: string | null | undefined; now: Date }) {
-  // Rail-2 title MUST show the focused topology-node name (Sentinel scope
-  // label) — never the page/section title. When no node is focused (boot,
-  // no grants, per-user pages like account-settings), render an empty
-  // <h3> so the band keeps its height but carries no fallback text.
+  // The rail-2 header no longer shows the focused node or the
+  // live date/time. The node prefix and clock have moved to the
+  // main title and the footer respectively. Keep an empty h3 so
+  // the header band preserves its height.
+  void title;
+  void now;
   return (
     <div className="rail-2__header header-band">
-      <h3 className="rail-2__title">{title ?? ""}</h3>
-      <p className="rail-2__date" aria-live="off">{formatNow(now)}</p>
+      <h3 className="rail-2__title">{""}</h3>
     </div>
   );
 }

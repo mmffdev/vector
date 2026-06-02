@@ -119,6 +119,13 @@ func (s *Service) Get(ctx context.Context, workspaceID, releaseID string) (*Rele
 // List returns non-archived releases for a workspace, ordered by start
 // date ASC. Slice 5B — same opt-in ancestor-walk as timeboxsprints.List.
 func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) ([]*Release, error) {
+	if f.OrgNodeID == nil || strings.TrimSpace(*f.OrgNodeID) == "" {
+		return nil, ErrInvalidInput
+	}
+	if _, err := uuid.Parse(*f.OrgNodeID); err != nil {
+		return nil, ErrInvalidInput
+	}
+
 	var ancestors []topology.Node
 	if f.OrgNodeID != nil && f.SubscriptionID != nil && s.topo != nil {
 		subUUID, perr := uuid.Parse(*f.SubscriptionID)
@@ -419,6 +426,9 @@ func validateCreateInput(in CreateReleaseInput) error {
 	if strings.TrimSpace(in.ReleaseName) == "" {
 		return fmt.Errorf("%w: release_name is required", ErrInvalidInput)
 	}
+	if in.OrgNodeID == nil || strings.TrimSpace(*in.OrgNodeID) == "" {
+		return fmt.Errorf("%w: timeboxes_releases_id_topology_node is required", ErrInvalidInput)
+	}
 	if in.ReleaseCadenceDays < 0 {
 		return fmt.Errorf("%w: release_cadence_days must be non-negative", ErrInvalidInput)
 	}
@@ -441,6 +451,9 @@ func validateCreateInput(in CreateReleaseInput) error {
 	}
 	if _, err := uuid.Parse(in.WorkspaceID); err != nil {
 		return fmt.Errorf("%w: invalid workspace_id", ErrInvalidInput)
+	}
+	if _, err := uuid.Parse(*in.OrgNodeID); err != nil {
+		return fmt.Errorf("%w: invalid timeboxes_releases_id_topology_node", ErrInvalidInput)
 	}
 	return nil
 }

@@ -1,6 +1,6 @@
 # Sentinel — System Documentation
 
-> **Status:** **Closed 2026-05-24** — PLA062 frontend + backend lint contract delivered (S01–S24). Two follow-ups carved out and tracked in [`sentinel_tech_debt.md`](sentinel_tech_debt.md): **S26** (subtree-aware SQL clamp + per-package integration tests) and **TD-SENT-AUTH-EXTRACT** (credential-flow lift from `AuthContext.tsx` into `app/lib/auth.ts`). S25 (delete `topology.ClampMiddleware`) is the last numbered story remaining.
+> **Status:** **Closed 2026-05-24** — PLA062 frontend + backend lint contract delivered (S01–S24). Follow-ups are tracked in [`sentinel_tech_debt.md`](sentinel_tech_debt.md): the SQL application of the subtree clamp now lives in consumer-side `backend/internal/topologyclamp`, and **TD-SENT-AUTH-EXTRACT** remains the credential-flow lift from `AuthContext.tsx` into `app/lib/auth.ts`.
 > **Spec source:** [PLA062 on Dev → Reporting → Plan tab](/dev/reporting?type=plan).
 > **Purpose of this file:** The synopsis, the I/O, the reason, the process, the requirements, the outputs. Read this first if you're new to Sentinel.
 
@@ -11,7 +11,7 @@
 Sentinel is the **single source of truth** for who-the-user-is, which-tenant-they're-in, and which-topology-node-they're-focused-on. It collapses what used to be four overlapping React contexts (`AuthContext`, `ScopeContext`, `TenantContext`, the original read-only `Sentinel`, plus the `scopeReloadRegistry` escape hatch — 1,039 LOC + ~190 consumer call sites) into one surface:
 
 - **Frontend:** `app/sentinel/` — one provider (`SentinelProvider`), one hook (`useSentinel()`), one namespaced state bag (`sentinel_user`, `sentinel_tenant`, `sentinel_role`, `sentinel_grants`, `sentinel_focus_node`, `sentinel_scope_up`, `sentinel_scope_down`, `sentinel_workspace_in_sync`, …) and action methods (`sentinel_switch_tenant`, `sentinel_switch_workspace`, `sentinel_set_focus`, `sentinel_set_default_focus`, `sentinel_set_home_follow_mode`, `sentinel_set_settings`, `sentinel_can`, `sentinel_reload`).
-- **Backend:** `backend/internal/sentinel/` — a Go middleware mounted in front of every `/_site/admin/*` and `/samantha/v2/*` route. Reads the JWT, resolves the workspace (claim → first-live fallback, gated by `HasActiveRole`), resolves the focus node, calls the recursive-CTE subtree resolver, attaches a `sentinel.Clamp` struct (carrying `WorkspaceID`, `FocusNodeID`, `AllowedSubtreeIDs`) to the request context. Downstream handlers MUST read the clamp via `sentinel.FromCtx(ctx)` / `sentinel.WorkspaceIDFromCtx(ctx)`; bypassing it is lint-banned. The same package exposes the writer surface for per-user Sentinel preferences (`PUT /sentinel/focus`); the toggle for Pinned/Follow lives on `PUT /me/home-location-follow-mode`. As of 2026-05-24 `sentinel_set_focus(nodeId)` and `sentinel_set_default_focus(nodeId)` are end-to-end durable (see `sentinel_revision_history.md`).
+- **Backend:** `backend/internal/sentinel/` — a Go middleware mounted in front of every `/_site/admin/*` and `/samantha/v2/*` route. Reads the JWT, resolves the workspace (claim → first-live fallback, gated by `HasActiveRole`), resolves the focus node, calls the recursive-CTE subtree resolver, attaches a `sentinel.Clamp` struct (carrying `WorkspaceID`, `FocusNodeID`, `AllowedSubtreeIDs`) to the request context. Downstream handlers MUST read the clamp via `sentinel.FromCtx(ctx)` / `sentinel.WorkspaceIDFromCtx(ctx)`; bypassing it is lint-banned. Sentinel does **not** know artefact types, portfolio layers, or row table names. Row-owning services apply the clamp to their own SQL through `backend/internal/topologyclamp`. The same package exposes the writer surface for per-user Sentinel preferences (`PUT /sentinel/focus`); the toggle for Pinned/Follow lives on `PUT /me/home-location-follow-mode`. As of 2026-05-24 `sentinel_set_focus(nodeId)` and `sentinel_set_default_focus(nodeId)` are end-to-end durable (see `sentinel_revision_history.md`).
 - **Tests:** three RED-GREEN tiers — `sentinel.unit` (23 cases in `app/sentinel/__tests__/sentinel_provider.test.tsx` + 6 in `backend/internal/sentinel/handler_test.go` + 9 in `middleware_test.go`), `sentinel.page.<route>`, `sentinel.e2e` (`e2e/sentinel_cross_tenant_isolation.spec.mjs`) — runnable all-at-once or sliced by tag.
 
 ---
@@ -51,6 +51,7 @@ Sentinel's contract with the rest of the Vector site, expressed as inputs (what 
 | **`URL ?meg=<node_id>`** | Written on every `sentinel_set_focus`, on boot, on workspace switch | Sharable scope identity. Cleared on login transition so saved home wins. |
 | **`sentinel.FromCtx(ctx)`** (BE) | `*Clamp` — `WorkspaceID`, `FocusNodeID`, `AllowedSubtreeIDs`, `TenantID` | Every artefact-touching handler in `backend/internal/{artefactitems,artefactpriorities,artefacttypes,portfoliomodels,flows,workitems,risks,…}/`. Bypass is lint-banned by `backend/internal/lintchecks/sentinel_clamp_test.go`. |
 | **`sentinel.WorkspaceIDFromCtx(ctx)`** (BE) | `string` | Drop-in facade for handlers that need only the workspace id. |
+| **`topologyclamp.SubtreeClause(ctx, column, ...)`** (BE) | SQL fragment + args | Consumer-side adapter. Row-owning packages pass their own trusted topology-node column, for example `a.artefacts_id_topology_node`, so Sentinel stays table-agnostic. |
 | **`PUT /sentinel/focus`** | `{ focus_node_id: <uuid>\|null } → 204` (`401`/`400`/`403` problem+json on error) | Frontend `putFocus` helper; called by `sentinel_set_focus` (only when in Follow mode) and `sentinel_set_default_focus` (always). Server re-validates grant via `GrantOnNode` (recursive-CTE descend-inheritance). |
 | **`PUT /me/home-location-follow-mode`** | `{ follow: <bool> } → 204` | `sentinel_set_home_follow_mode` toggle on `/user/account-settings`. |
 | **`POST /sentinel/switch-tenant`** | `{ tenant_id } → SentinelBootPayload` | `sentinel_switch_tenant`; re-mints JWT for new tenant, returns the full boot payload (atomic reducer apply). |
@@ -67,6 +68,30 @@ Sentinel's contract with the rest of the Vector site, expressed as inputs (what 
 Procurement / SOC2 / defence / finance buyers ask: **"Show me the single source of truth for which tenant a request is scoped to."** Today's answer depends on which of four React hooks the consumer asks (with 17 places reading the raw JWT claim and bypassing the resolved grant entirely). That is unshippable.
 
 Sentinel makes the answer one sentence: "Every protected request passes through `sentinel.Middleware`; every frontend page reads from `useSentinel()`; both are pinned by `lint:sentinel-clamp-required` (Go) and `lint:no-direct-workspace-id` + `lint:no-old-context-imports` (TS). Cross-tenant data leaks are blocked by `e2e/sentinel_cross_tenant_isolation.spec.mjs`."
+
+## SQL Application
+
+Sentinel's backend output is a context clamp, not an artefact query builder. The clamp contains tenant, user, role, workspace, focus node, direction flags, and `AllowedSubtreeIDs`. It does not know whether a consumer is reading work items, portfolio items, search results, or any future topology-owned table.
+
+Packages that own rows with a topology-node column apply the clamp themselves:
+
+```go
+subtreeFilter, args, n := topologyclamp.SubtreeClause(
+    ctx,
+    "a.artefacts_id_topology_node",
+    args,
+    n,
+)
+```
+
+`topologyclamp` imports Sentinel, reads `sentinel.FromCtx(ctx)`, and turns `AllowedSubtreeIDs` into a SQL predicate. Its four states are:
+
+- no Sentinel middleware or deliberate post-write bypass: no SQL fragment
+- resolved non-empty subtree: `<trusted topology column> = ANY($N::uuid[])`
+- resolved empty subtree: `AND FALSE`
+- legacy caller-supplied node lists: intersect with `topologyclamp.ApplyClampToIDs`, never widen
+
+The caller must pass a hardcoded, trusted SQL column/expression. Never pass request input as the column name. For artefacts this is currently `a.artefacts_id_topology_node`; another row-owning package may use a different column without changing Sentinel.
 
 ## Process — RED-GREEN-driven, hard-cut, zero tech debt
 
@@ -98,13 +123,14 @@ No story is "done" until: test GREEN + commit landed + PLA062 strikethrough appl
 ## Outputs
 
 - `app/sentinel/` — frontend surface (provider, hook, types, API client, scope picker, login-transition reboot effect).
-- `backend/internal/sentinel/` — backend middleware + ctx accessor + Resolver interface + `Handler.PutFocus` + ProblemJSON error catalogue + recursive-CTE subtree SQL.
+- `backend/internal/sentinel/` — backend middleware + ctx accessor + Resolver interface + `Handler.PutFocus` + ProblemJSON error catalogue + recursive-CTE subtree resolution.
+- `backend/internal/topologyclamp/` — consumer-side adapter that applies `sentinel.Clamp.AllowedSubtreeIDs` to trusted topology-node SQL columns.
 - `backend/internal/users/prefs.go` — `Handler.SetHomeLocationFollowMode` (PUT /me/home-location-follow-mode), the per-user toggle for Pinned/Follow mode.
 - `db/mmff_vector/schema/243_users_default_focus_node_id.sql` + `244_users_home_location_follow_mode.sql` — persistent home-location substrate columns.
 - `app/components/HomeLocationSection.tsx` — UI for the Home Location dropdown + Pinned/Follow toggle on `/user/account-settings`.
 - `dev/scripts/lint_no_direct_workspace_id.py`, `lint_no_old_context_imports.py` — frontend ratchets.
 - `backend/internal/lintchecks/sentinel_clamp_test.go` — backend ratchet.
-- `e2e/sentinel_cross_tenant_isolation.spec.mjs` — cross-tenant proof (RED at S23 close; GREEN gated on two-tenant fixture seed + S26 SQL clamp). The original brief mentioned two sibling specs (`sentinel_workspace_switch_atomicity.spec.mjs`, `sentinel_focus_clamp.spec.mjs`); both their behavioural contracts are covered by the `sentinel.unit` Cases 2 + 4a/b/c + 10 in `app/sentinel/__tests__/sentinel_provider.test.tsx` (which exercise the same atomicity + precedence properties without needing a browser session), so neither e2e spec was added separately.
+- `e2e/sentinel_cross_tenant_isolation.spec.mjs` — cross-tenant proof (RED at S23 close; GREEN gated on two-tenant fixture seed + consumer-side SQL application of the Sentinel clamp). The original brief mentioned two sibling specs (`sentinel_workspace_switch_atomicity.spec.mjs`, `sentinel_focus_clamp.spec.mjs`); both their behavioural contracts are covered by the `sentinel.unit` Cases 2 + 4a/b/c + 10 in `app/sentinel/__tests__/sentinel_provider.test.tsx` (which exercise the same atomicity + precedence properties without needing a browser session), so neither e2e spec was added separately.
 - This documentation tree: `sentinel_docs.md` (this file), [`sentinel_backlog.md`](sentinel_backlog.md), [`sentinel_tests_log.md`](sentinel_tests_log.md), [`sentinel_tech_debt.md`](sentinel_tech_debt.md), [`sentinel_revision_history.md`](sentinel_revision_history.md).
 
 ## What replaces what

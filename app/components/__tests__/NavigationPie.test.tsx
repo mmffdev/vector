@@ -125,4 +125,36 @@ describe("<NavigationPie>", () => {
     );
     expect(document.querySelector(".navigation-pie__Chip_count")?.textContent).toBe("2");
   });
+
+  it("can close after one wedge pick for action-button use", () => {
+    const onChange = vi.fn();
+    render(
+      <NavigationPie
+        label="Create new"
+        options={STATUSES}
+        selected={[]}
+        onChange={onChange}
+        closeOnPick
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Create new/i }));
+    fireEvent.click(screen.getByRole("option", { name: "Done" }));
+    expect(onChange).toHaveBeenCalledWith(["done"]);
+    expect(document.querySelector(".navigation-pie__Pop")).toBeNull();
+  });
+
+  it("lets callers append a chip class without losing the shared chip class", () => {
+    render(
+      <NavigationPie
+        label="Create new"
+        options={STATUSES}
+        selected={[]}
+        onChange={() => {}}
+        chipClassName="grid__Tree_ActionBar_Create"
+      />,
+    );
+    const button = screen.getByRole("button", { name: /Create new/i });
+    expect(button.classList.contains("navigation-pie__Chip")).toBe(true);
+    expect(button.classList.contains("grid__Tree_ActionBar_Create")).toBe(true);
+  });
 });

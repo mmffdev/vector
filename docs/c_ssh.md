@@ -32,7 +32,7 @@ This is the Plesk-provisioned user for file uploads to the webspace. **Not** for
 Host mmffdev-pg
   HostName mmffdev.com
   User root
-  LocalForward 5434 localhost:5432   # Postgres (mmff_vector)
+  LocalForward 5434 localhost:5432   # Postgres (vector_artefacts / mmff_library)
   LocalForward 8081 localhost:8081   # Adminer
   LocalForward 8083 localhost:8083   # API Reference docs
   LocalForward 15672 localhost:15672 # RabbitMQ management

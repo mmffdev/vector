@@ -71,16 +71,16 @@ func TestHandlerList(t *testing.T) {
 	svc := timeboxsprints.NewService(pool)
 	h := timeboxsprints.NewHandler(svc)
 
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
 	// Seed one sprint.
-	in := baseInput(sub, ws, nil, "H-Sprint 1", "2045-01-01", "2045-01-14")
+	in := baseInput(sub, ws, &org, "H-Sprint 1", "2045-01-01", "2045-01-14")
 	if _, err := svc.Create(context.Background(), in); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	r := httptest.NewRequest(http.MethodGet, "/api/v2/timeboxes/sprints?workspace_id="+ws, nil)
+	r := httptest.NewRequest(http.MethodGet, "/api/v2/timeboxes/sprints?workspace_id="+ws+"&org_node_id="+org, nil)
 	r = withAuth(r, sub, ws)
 	w := httptest.NewRecorder()
 
@@ -107,8 +107,8 @@ func TestHandlerGetNotFound(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
-	r := httptest.NewRequest(http.MethodGet, "/api/v2/timeboxes/sprints/not-a-uuid?workspace_id="+ws, nil)
+	sub, ws, org := newIDs()
+	r := httptest.NewRequest(http.MethodGet, "/api/v2/timeboxes/sprints/not-a-uuid?workspace_id="+ws+"&org_node_id="+org, nil)
 	r = withAuth(r, sub, ws)
 	r = routeWith(r, "id", "00000000-0000-0000-0000-000000000000")
 	w := httptest.NewRecorder()
@@ -124,16 +124,17 @@ func TestHandlerCreate(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
 	payload := map[string]any{
-		"timeboxes_sprints_name":          "H-Create Sprint",
-		"timeboxes_sprints_cadence_days":  14,
-		"timeboxes_sprints_date_start":    "2046-01-01",
-		"timeboxes_sprints_date_end":      "2046-01-14",
+		"timeboxes_sprints_name":             "H-Create Sprint",
+		"timeboxes_sprints_cadence_days":     14,
+		"timeboxes_sprints_date_start":       "2046-01-01",
+		"timeboxes_sprints_date_end":         "2046-01-14",
+		"timeboxes_sprints_id_topology_node": org,
 	}
-	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws, body(payload))
+	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws+"&org_node_id="+org, body(payload))
 	r = withAuth(r, sub, ws)
 	w := httptest.NewRecorder()
 
@@ -148,8 +149,8 @@ func TestHandlerCreateInvalidBody(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
-	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws,
+	sub, ws, org := newIDs()
+	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws+"&org_node_id="+org,
 		bytes.NewBufferString("not json"))
 	r = withAuth(r, sub, ws)
 	w := httptest.NewRecorder()
@@ -165,15 +166,16 @@ func TestHandlerCreateValidationError(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	// Empty timeboxes_sprints_name triggers ErrInvalidInput → 422.
 	payload := map[string]any{
-		"timeboxes_sprints_name":          "",
-		"timeboxes_sprints_cadence_days":  14,
-		"timeboxes_sprints_date_start":    "2047-01-01",
-		"timeboxes_sprints_date_end":      "2047-01-14",
+		"timeboxes_sprints_name":             "",
+		"timeboxes_sprints_cadence_days":     14,
+		"timeboxes_sprints_date_start":       "2047-01-01",
+		"timeboxes_sprints_date_end":         "2047-01-14",
+		"timeboxes_sprints_id_topology_node": org,
 	}
-	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws, body(payload))
+	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints?workspace_id="+ws+"&org_node_id="+org, body(payload))
 	r = withAuth(r, sub, ws)
 	w := httptest.NewRecorder()
 
@@ -188,8 +190,8 @@ func TestHandlerDeleteNotFound(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
-	r := httptest.NewRequest(http.MethodDelete, "/api/v2/timeboxes/sprints/unknown?workspace_id="+ws, nil)
+	sub, ws, org := newIDs()
+	r := httptest.NewRequest(http.MethodDelete, "/api/v2/timeboxes/sprints/unknown?workspace_id="+ws+"&org_node_id="+org, nil)
 	r = withAuth(r, sub, ws)
 	r = routeWith(r, "id", "00000000-0000-0000-0000-000000000000")
 	w := httptest.NewRecorder()
@@ -206,10 +208,10 @@ func TestHandlerDeleteLifecycle(t *testing.T) {
 	svc := timeboxsprints.NewService(pool)
 	h := timeboxsprints.NewHandler(svc)
 
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
-	in := baseInput(sub, ws, nil, "Active Sprint Delete", "2048-01-01", "2048-01-14")
+	in := baseInput(sub, ws, &org, "Active Sprint Delete", "2048-01-01", "2048-01-14")
 	s, err := svc.Create(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -217,7 +219,7 @@ func TestHandlerDeleteLifecycle(t *testing.T) {
 	_, _ = pool.Exec(context.Background(),
 		`UPDATE timeboxes_sprints SET timeboxes_sprints_status = 'active' WHERE timeboxes_sprints_id = $1`, s.ID)
 
-	r := httptest.NewRequest(http.MethodDelete, "/api/v2/timeboxes/sprints/"+s.ID+"?workspace_id="+ws, nil)
+	r := httptest.NewRequest(http.MethodDelete, "/api/v2/timeboxes/sprints/"+s.ID+"?workspace_id="+ws+"&org_node_id="+org, nil)
 	r = withAuth(r, sub, ws)
 	r = routeWith(r, "id", s.ID)
 	w := httptest.NewRecorder()
@@ -233,16 +235,16 @@ func TestHandlerBulkCreate(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	t.Cleanup(cleanup(pool, ws))
 
 	payload := map[string]any{
 		"sprints": []map[string]any{
-			{"timeboxes_sprints_name": "Bulk-1", "timeboxes_sprints_cadence_days": 14, "timeboxes_sprints_date_start": "2049-01-01", "timeboxes_sprints_date_end": "2049-01-14"},
-			{"timeboxes_sprints_name": "Bulk-2", "timeboxes_sprints_cadence_days": 14, "timeboxes_sprints_date_start": "2049-01-15", "timeboxes_sprints_date_end": "2049-01-28"},
+			{"timeboxes_sprints_name": "Bulk-1", "timeboxes_sprints_cadence_days": 14, "timeboxes_sprints_date_start": "2049-01-01", "timeboxes_sprints_date_end": "2049-01-14", "timeboxes_sprints_id_topology_node": org},
+			{"timeboxes_sprints_name": "Bulk-2", "timeboxes_sprints_cadence_days": 14, "timeboxes_sprints_date_start": "2049-01-15", "timeboxes_sprints_date_end": "2049-01-28", "timeboxes_sprints_id_topology_node": org},
 		},
 	}
-	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints/bulk-create?workspace_id="+ws, body(payload))
+	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints/bulk-create?workspace_id="+ws+"&org_node_id="+org, body(payload))
 	r = withAuth(r, sub, ws)
 	w := httptest.NewRecorder()
 
@@ -268,9 +270,9 @@ func TestHandlerBulkCreateEmptyBody(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	payload := map[string]any{"sprints": []any{}}
-	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints/bulk-create?workspace_id="+ws, body(payload))
+	r := httptest.NewRequest(http.MethodPost, "/api/v2/timeboxes/sprints/bulk-create?workspace_id="+ws+"&org_node_id="+org, body(payload))
 	r = withAuth(r, sub, ws)
 	w := httptest.NewRecorder()
 
@@ -285,10 +287,10 @@ func TestHandlerUpdateNotFound(t *testing.T) {
 	pool := openVAPool(t)
 	h := timeboxsprints.NewHandler(timeboxsprints.NewService(pool))
 
-	sub, ws, _ := newIDs()
+	sub, ws, org := newIDs()
 	newName := "Renamed"
 	payload := map[string]any{"timeboxes_sprints_name": newName}
-	r := httptest.NewRequest(http.MethodPut, "/api/v2/timeboxes/sprints/unknown?workspace_id="+ws, body(payload))
+	r := httptest.NewRequest(http.MethodPut, "/api/v2/timeboxes/sprints/unknown?workspace_id="+ws+"&org_node_id="+org, body(payload))
 	r = withAuth(r, sub, ws)
 	r = routeWith(r, "id", "00000000-0000-0000-0000-000000000000")
 	w := httptest.NewRecorder()

@@ -51,6 +51,15 @@ interface NavigationPieProps {
   options: NavigationPieOption[];
   selected: string[];
   onChange: (next: string[]) => void;
+  /** Extra class for the trigger chip. Keeps callers on the shared pie
+   *  geometry while letting an existing action bar own its button slot. */
+  chipClassName?: string;
+  /** Pick-one callers such as create actions close after the wedge click;
+   *  filter chips omit this so users can multi-select several wedges. */
+  closeOnPick?: boolean;
+  /** Multi-select by default. Single-select callers replace the selected
+   *  value with the picked wedge and do not toggle it off. */
+  selectionMode?: "multi" | "single";
   /** Outer radius in px. Default 90. */
   radius?: number;
   /** Inner hub radius in px. Default 26 — kept proportional to the
@@ -146,6 +155,9 @@ export default function NavigationPie({
   options,
   selected,
   onChange,
+  chipClassName,
+  closeOnPick = false,
+  selectionMode = "multi",
   radius = 90,
   innerRadius = 26,
 }: NavigationPieProps) {
@@ -201,12 +213,16 @@ export default function NavigationPie({
 
   const toggle = useCallback(
     (value: string) => {
+      if (selectionMode === "single") {
+        onChange([value]);
+        return;
+      }
       const next = selected.includes(value)
         ? selected.filter((v) => v !== value)
         : [...selected, value];
       onChange(next);
     },
-    [selected, onChange],
+    [selectionMode, selected, onChange],
   );
 
   // Lazy router. Only acquired when the user clicks a wedge that carries
@@ -229,8 +245,9 @@ export default function NavigationPie({
         return;
       }
       toggle(opt.value);
+      if (closeOnPick) close();
     },
-    [toggle, close],
+    [toggle, close, closeOnPick],
   );
 
   const handleChipClick = useCallback(() => {
@@ -299,6 +316,7 @@ export default function NavigationPie({
         type="button"
         className={
           "btn navigation-pie__Chip" +
+          (chipClassName ? ` ${chipClassName}` : "") +
           (active ? " navigation-pie__Chip-active" : "") +
           (open ? " navigation-pie__Chip-open" : "")
         }

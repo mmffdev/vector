@@ -6,7 +6,7 @@ Curated `psql` queries that worked. Append a new entry any time a non-trivial qu
 
 **Skip rule:** trivial lookups (`\dt`, `SELECT * FROM small_table`), exploratory one-offs that didn't answer anything.
 
-**DB discipline:** every entry MUST name the DB and pool — `mmff_vector` (pool), `vector_artefacts` (vaPool), `mmff_library` (libPools). This doubles as the "Never assume a database" record. See [`c_c_db_routing.md`](c_c_db_routing.md).
+**DB discipline:** every entry MUST name the DB and pool - `vector_artefacts` (tenant pool / vaPool), `mmff_library` (libPools), or `mmff_dev` (dev reports). This doubles as the "Never assume a database" record. See [`c_c_db_routing.md`](c_c_db_routing.md).
 
 ---
 
@@ -14,7 +14,7 @@ Curated `psql` queries that worked. Append a new entry any time a non-trivial qu
 
 ```markdown
 ### <question this query answers>
-**DB:** <mmff_vector | vector_artefacts | mmff_library> (<pool name>)
+**DB:** <vector_artefacts | mmff_library | mmff_dev> (<pool name>)
 **Use when:** <one-line trigger>
 **Gotcha:** <the thing that would trip up next-time-me — soft-archive col, NULL handling, tenant scope, etc.>
 ```sql
@@ -67,7 +67,7 @@ SELECT a.workspace_id           AS a_ws,
 ### Bulk-assign every artefact in a scope to one user
 **DB:** vector_artefacts (vaPool)
 **Use when:** seeding ownership on rows that came in with `owned_by_user_id = NULL` (typical ETL state) so the Owner column renders something visible.
-**Gotcha:** join through `artefacts_types` to filter by `artefacts_types_scope` ('strategy' for portfolio-items, 'work' for work-items). Do NOT touch `created_by_user_id` — that's audit history, not assignment. Wrap in BEGIN/COMMIT; the user-id is in `mmff_vector.users` even though the write target is `vector_artefacts.artefacts`.
+**Gotcha:** join through `artefacts_types` to filter by `artefacts_types_scope` ('strategy' for portfolio-items, 'work' for work-items). Do NOT touch `created_by_user_id` - that's audit history, not assignment. Wrap in BEGIN/COMMIT; the user-id is in `vector_artefacts.users`.
 ```sql
 BEGIN;
 UPDATE artefacts a
@@ -82,7 +82,7 @@ COMMIT;
 
 ---
 
-## work-items / objects (mmff_vector / pool)
+## work-items / objects (vector_artefacts / tenant pool)
 
 _no entries yet_
 
@@ -94,21 +94,21 @@ _no entries yet_
 
 ---
 
-## roles / permissions (mmff_vector / pool)
+## roles / permissions (vector_artefacts / tenant pool)
 
 _no entries yet_
 
 ---
 
-## auth / DPoP replay cache (mmff_vector / pool)
+## auth / DPoP replay cache (vector_artefacts / tenant pool)
 
 ### Confirm ON CONFLICT DO NOTHING + RETURNING xmax behaves as jti_cache.go expects
-**DB:** mmff_vector (pool — via tunnel `:5435`)
+**DB:** vector_artefacts (tenant pool - via tunnel `:5435`)
 **Use when:** verifying the Postgres-backed DPoP replay-cache shape after touching migration 212 or `jti_cache.go`. The `MarkAndCheck` implementation relies on pgx returning `ErrNoRows` from `QueryRow` when `ON CONFLICT DO NOTHING` fires — confirm here that the wire shape matches.
 **Gotcha:** the duplicate insert returns **zero rows** (not a row with non-zero xmax). pgx scans this as `ErrNoRows`, which `jti_cache.go` translates to `ErrJTIReplay`. If a future Postgres version changes this so the conflict path returns a row with `xmax != 0`, the defensive `if xmax != 0` guard in `jti_cache.go` catches it. Verified 2026-05-18 on PG 18.
 ```bash
 PGPASSWORD=68H9m2ncJJeKGvwKqQ3zMVzLjF0o4LPi /opt/homebrew/Cellar/libpq/18.3/bin/psql \
-  -h localhost -p 5435 -U mmff_dev -d mmff_vector <<'SQL'
+  -h localhost -p 5435 -U mmff_dev -d vector_artefacts <<'SQL'
 INSERT INTO dpop_jti_cache (jti, expires_at) VALUES ('probe-1', NOW() + INTERVAL '60 seconds')
 ON CONFLICT (jti) DO NOTHING RETURNING xmax;  -- expect 1 row, xmax=0
 INSERT INTO dpop_jti_cache (jti, expires_at) VALUES ('probe-1', NOW() + INTERVAL '60 seconds')
@@ -166,7 +166,7 @@ SELECT pg_stat_statements_reset();
 ## performance / bloat (any DB)
 
 ### One-shot bloat audit — is pg_repack worth installing?
-**DB:** any (run on each — `mmff_vector`, `vector_artefacts`, `mmff_library`)
+**DB:** any (run on each - `vector_artefacts`, `mmff_library`, `mmff_dev` when relevant)
 **Use when:** deciding whether table/index bloat is a real problem before reaching for `pg_repack`, `VACUUM FULL`, or `CLUSTER`. Answers "do I have bloat worth the install?" in 30 seconds.
 **Gotcha:** uses `pgstattuple` extension — install with `CREATE EXTENSION IF NOT EXISTS pgstattuple;` (needs superuser). `pgstattuple()` is slow on big tables (full scan); `pgstattuple_approx()` is fast but less accurate — prefer approx for the first sweep. Thresholds: <20% dead-tuple ratio = autovacuum coping; 20-40% = monitor; >40% = pg_repack candidate. Indexes bloat differently — separate query below.
 ```sql
@@ -206,7 +206,7 @@ SELECT schemaname || '.' || indexrelname                AS index,
 ## migrations / schema introspection
 
 ### List the N most recently applied migrations
-**DB:** mmff_vector (pool) — same shape works on vector_artefacts and mmff_library, each has its own `schema_migrations`
+**DB:** vector_artefacts (tenant pool) - same shape works on mmff_library, each has its own `schema_migrations`
 **Use when:** "what's the latest migration?", checking if a migration applied, debugging "did my migration run?"
 **Gotcha:** the column is `filename` (not `version` — that's a Rails/Knex-ism that doesn't apply here). The PK is `filename`, ordered by `applied_at`. Schema is just two cols: `filename text PK, applied_at timestamptz default now()`.
 ```sql
@@ -221,7 +221,7 @@ LIMIT 5;
 ## nav / pages_tags
 
 ### Which nav tags are admin-menu (hidden from primary rail)?
-**DB:** mmff_vector (pool)
+**DB:** vector_artefacts (tenant pool)
 **Use when:** auditing why a tag appears on rail 1 vs the avatar admin menu. ShellContext + UserAvatarMenu both branch on `pages_tags_is_admin_menu` — TRUE = avatar menu only, FALSE = primary rail.
 **Gotcha:** the column prefix is `pages_tags_*` (RF1.4.4 style); don't confuse with `pages_*` columns on the `pages` table. Ten tag rows total — four user-facing buckets, four admin surfaces, plus `notifications` and `avatar_menu`.
 ```sql

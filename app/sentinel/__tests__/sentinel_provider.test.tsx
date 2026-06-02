@@ -1021,16 +1021,12 @@ describe("sentinel.unit.SentinelProvider", () => {
   });
 
   // -------------------------------------------------------------------
-  // Case 18 — Login transition clears stale url_focus
+  // Case 18 — Auth transition preserves explicit URL focus
   // -------------------------------------------------------------------
-  // Symptom from dev 2026-05-24: padmin saves Home Location = Insurance.
-  // Logs out. Logs back in. Pre-login URL still carries
-  // ?meg=<retail-banking> from earlier nav. Sentinel boots, parses
-  // url_focus = retail-banking, and resolveFocusNode() returns retail-
-  // banking because URL beats user default. Insurance is forgotten until
-  // the user manually wipes ?meg=.
-  // Fix: on the auth-user-id transition, dispatch set_url_focus → null
-  // so user.default_focus_node_id wins on first post-login render.
+  // Refresh/share-link contract: if the address bar carries ?meg=<node>,
+  // that is the user's current read intent. Sentinel preserves it through
+  // auth bootstrap and the backend re-validates it against the request clamp.
+  // Bare post-login URLs still fall back to the user's saved home.
 
   function FocusProbe() {
     const s = useSentinel();
@@ -1042,14 +1038,14 @@ describe("sentinel.unit.SentinelProvider", () => {
     return <span data-testid="workspace-in-sync">{String(s.sentinel_workspace_in_sync)}</span>;
   }
 
-  it("Case 18 — login transition clears stale url_focus so user's saved home wins", async () => {
-    // Pre-seed window.location.search with a stale meg.
-    const stale = "11111111-aaaa-bbbb-cccc-111111111111";
+  it("Case 18 — auth transition preserves explicit URL focus for refresh/share-link", async () => {
+    // Pre-seed window.location.search with an explicit focus.
+    const urlFocus = "11111111-aaaa-bbbb-cccc-111111111111";
     const orig = window.location;
     Object.defineProperty(window, "location", {
       configurable: true,
       writable: true,
-      value: { ...orig, search: `?meg=${stale}` },
+      value: { ...orig, search: `?meg=${urlFocus}` },
     });
 
     globalThis.fetch = vi.fn(async (url: any) => {
@@ -1103,7 +1099,7 @@ describe("sentinel.unit.SentinelProvider", () => {
       return render(<App userId={null} />);
     }) as any;
 
-    // Pre-login: Sentinel sniffed url_focus = stale.
+    // Pre-login: Sentinel sniffed url_focus from the URL.
     // (boot failed because no auth in this state — focus_node may be null
     // but the url_focus IS set internally.)
 
@@ -1112,8 +1108,9 @@ describe("sentinel.unit.SentinelProvider", () => {
       rerender(<App userId={FIXTURE_USER_A.id} />);
     });
 
-    // After re-boot, the stored user default wins, not the stale URL meg.
-    expect(screen.getByTestId("resolved-focus").textContent).toBe(FIXTURE_USER_DEFAULT_FOCUS);
+    // After re-boot, explicit URL focus wins so refresh/share-link keeps
+    // the user's selected node.
+    expect(screen.getByTestId("resolved-focus").textContent).toBe(urlFocus);
 
     // Restore window.location for subsequent tests.
     Object.defineProperty(window, "location", { configurable: true, writable: true, value: orig });
@@ -1665,6 +1662,12 @@ describe("sentinel.unit.SentinelProvider", () => {
     // effect actually CALLS — via a spy. That's the canonical signal:
     // pathname change → replaceState gets called with the new URL.
     const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+    const origLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: { ...origLocation, href: "http://localhost/dashboard", search: "", pathname: "/dashboard" },
+    });
 
     // Mock usePathname to return a controllable value. The mock lives
     // in a closure so the test can flip the returned pathname between
@@ -1784,6 +1787,7 @@ describe("sentinel.unit.SentinelProvider", () => {
 
     // Clean up.
     replaceStateSpy.mockRestore();
+    Object.defineProperty(window, "location", { configurable: true, writable: true, value: origLocation });
     vi.doUnmock("next/navigation");
     vi.resetModules();
   });

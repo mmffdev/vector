@@ -7,7 +7,6 @@ import {
   milestones,
   lookups,
   workItems,
-  type Timebox,
   type Milestone,
   type UserInScope,
 } from "@/app/lib/apiSite";
@@ -21,6 +20,12 @@ import { useArtefactInline } from "./useArtefactInline";
 import { useParentCandidates } from "./useParentCandidates";
 import { EditCustomFields } from "./EditCustomFields";
 import type { ArtefactInlineFormProps } from "./types";
+import {
+  resolveWorkspaceId,
+  nodeRelativeTimeboxParams,
+  timeboxOptions,
+  type TimeboxOption,
+} from "./timeboxOptions";
 
 interface FlowStateLite {
   id: string;
@@ -57,8 +62,17 @@ export function ArtefactInlineForm({
   onNavigate,
   isDuplicate,
 }: ArtefactInlineFormProps) {
-  const { sentinel_focus_node: activeScopeNodeId, sentinel_user } = useSentinel();
-  const workspaceId = sentinel_user?.workspace_id || null;
+  const {
+    sentinel_focus_node: activeScopeNodeId,
+    sentinel_grants,
+    sentinel_user,
+  } = useSentinel();
+  const workspaceId = resolveWorkspaceId(
+    sentinel_user?.tenant_id,
+    sentinel_user?.workspace_id,
+    sentinel_grants,
+    activeScopeNodeId,
+  );
   const { artefact, loading, error, patch } = useArtefactInline({
     artefactId,
     resourceUrl,
@@ -99,18 +113,21 @@ export function ArtefactInlineForm({
   const { nodes: topologyNodes } = useScopedTopologyNodes();
   const [flowStates, setFlowStates] = useState<FlowStateLite[]>([]);
   const [users, setUsers] = useState<UserInScope[]>([]);
-  const [sprintList, setSprintList] = useState<Timebox[]>([]);
-  const [releaseList, setReleaseList] = useState<Timebox[]>([]);
+  const [sprintList, setSprintList] = useState<TimeboxOption[]>([]);
+  const [releaseList, setReleaseList] = useState<TimeboxOption[]>([]);
   const [milestoneList, setMilestoneList] = useState<Milestone[]>([]);
 
   const { strategic: parentStrategic, execution: parentExecution } = useParentCandidates({
+    artefactId,
     typePrefix: artefact?.type_prefix ?? null,
+    resourceUrl,
     scope,
     workspaceId,
   });
 
   useEffect(() => {
-    if (!artefact || !workspaceId) return;
+    if (!artefact || !workspaceId || !activeScopeNodeId) return;
+    const timeboxParams = nodeRelativeTimeboxParams(workspaceId, activeScopeNodeId);
     let cancelled = false;
     (async () => {
       try {
@@ -127,15 +144,15 @@ export function ArtefactInlineForm({
           // {items,total} (matching ObjectTreeV2's contract). Milestones
           // are still on the legacy {milestones,count} shape; cutover for
           // those is a later slice if/when milestones move to V2.
-          sprints.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
-          releases.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
-          milestones.list(`workspace_id=${workspaceId}`).catch(() => ({ milestones: [] as Milestone[], count: 0 })),
+          sprints.list(timeboxParams).catch(() => ({ items: [] as unknown[] })),
+          releases.list(timeboxParams).catch(() => ({ items: [] as unknown[] })),
+          milestones.list(timeboxParams).catch(() => ({ milestones: [] as Milestone[], count: 0 })),
         ]);
         if (cancelled) return;
         setFlowStates(((fs as { flow_states: unknown[] }).flow_states ?? []) as FlowStateLite[]);
         setUsers((us as { users: UserInScope[] }).users ?? []);
-        setSprintList((sp as { items?: Timebox[] }).items ?? []);
-        setReleaseList((rel as { items?: Timebox[] }).items ?? []);
+        setSprintList(timeboxOptions(sp, "sprint"));
+        setReleaseList(timeboxOptions(rel, "release"));
         setMilestoneList((ms as { milestones: Milestone[] }).milestones ?? []);
       } catch {
         // Falls through to empty dropdowns; individual catches above
@@ -143,7 +160,7 @@ export function ArtefactInlineForm({
       }
     })();
     return () => { cancelled = true; };
-  }, [artefact?.id, workspaceId]);
+  }, [artefact?.id, workspaceId, activeScopeNodeId]);
 
   if (loading && !artefact) {
     return (

@@ -24,14 +24,14 @@
 
 ## Active entries
 
-### TD-SENT-CLAMP-SQL — Subtree-aware SQL clamp on synchronous user reads (MOSTLY RESOLVED 2026-05-24)
+### TD-SENT-CLAMP-SQL — Consumer-side subtree SQL application on synchronous user reads (MOSTLY RESOLVED 2026-05-24)
 
 **Severity.** S2 → S3 (most surfaces wired; one async-worker gap remains).
 **Trigger.** First cross-tenant compromise audit, OR procurement evidence request asking for "show me the SQL that filters by subtree", OR fixture seed + Playwright RED→GREEN flip on S23.
 **Discovered by.** S21 (carved out mid-build with user approval); paid down across S26 phase 1 + phase 2a.
 **Standard-ref.** NIST 800-53 AC-4 (information flow enforcement) — handler-level workspace gate (`sentinel.WorkspaceIDFromCtx`) satisfies AC-3; AC-4's data-flow control is now layer-2-wired on the synchronous user-read surface.
-**Resolution (synchronous reads).** S26 shipped `sentinel.SubtreeClause` + `sentinel.ApplyClampToIDs` in `backend/internal/sentinel/clamp_sql.go` (4 unit tests GREEN). Wired into:
-- `artefactitems/service.go` — `ListWorkItems`, `ListFacets`, `SummariseWorkItems` (mandatory SQL clause splice); `getWorkItemImpl` (post-SELECT filter on the static SELECT). The legacy `?scope=` URL further-narrowing path now intersects with the Sentinel clamp via `ApplyClampToIDs` so a hostile caller can't widen scope by passing an ancestor node.
+**Resolution (synchronous reads).** S26 shipped request-clamp SQL helpers, now housed in consumer-side `backend/internal/topologyclamp/clamp_sql.go`, with Sentinel itself only exposing the clamp via context. Wired into:
+- `artefactitems/service.go` — `ListWorkItems`, `ListFacets`, `SummariseWorkItems` (mandatory SQL clause splice); `getWorkItemImpl` (post-SELECT filter on the static SELECT). The legacy `?scope=` URL further-narrowing path now intersects with the Sentinel clamp via `topologyclamp.ApplyClampToIDs` so a hostile caller can't widen scope by passing an ancestor node.
 - `search/service.go` `Search` — mandatory clause splice on the full-text query, so search hits are bounded to the requesting user's subtree.
 
 **Audit-survey findings (S26 phase 2 — what was checked).**
@@ -46,7 +46,7 @@ Five other packages were investigated for SQL artefact reads; none turned out to
 Both need the **recipient's** clamp (or the indexing-pass-time tenant), propagated separately from the request context. New TD entry below.
 **Pay-down plan (this entry).** None — closed for the synchronous-read surface.
 
-**Hardening 2026-05-30 — empty-subtree fail-CLOSED (`SubtreeResolved` flag).** Audit of the clamp helpers found an asymmetric fail-OPEN: every call site keyed the clamp off `len(c.AllowedSubtreeIDs) > 0`, so a *resolved-but-empty* subtree (a caller with a valid clamp that reaches zero nodes) emitted **no** WHERE clause and fell through to a workspace-wide read — fail-open, the wrong default for a Trust-No-One / server-is-the-gate surface (NIST AC-4, SOC 2 CC6.1). Root cause: the empty slice was overloaded across three distinct states — (1) no middleware in the chain, (3) resolved-to-zero-nodes, (4) deliberate `WithBypassedSubtreeClamp` post-write read — and only state 3 should fail closed. Fix: added `Clamp.SubtreeResolved bool` (`backend/internal/sentinel/types.go`), set `true` only on the middleware success path (`middleware.go` step 7) and `false` on bypass (`ctx.go` `WithBypassedSubtreeClamp`). Rewrote both helpers (`clamp_sql.go`) to four-state logic: `!SubtreeResolved` → no-op (states 1+4); `SubtreeResolved && len==0` → `AND FALSE` / empty ID set (state 3, fail-closed); else → `= ANY(...)` / intersection (state 2). The single-row read `getWorkItemImpl` (`artefactitems/service.go`) was the fifth site — rewrote its post-SELECT membership check off `SubtreeResolved` so state 3 → `ErrNotFound` and the bypass stays a no-op. New unit tests in `clamp_sql_test.go` pin states 3 + 4 for both helpers; `go build`/`vet`/`test ./internal/sentinel/...` + `./internal/artefactitems/...` GREEN. **Provably safe today** — `sentinel.Middleware` rejects every zero-ID path before the clamp is built (`ErrFocusNotInTenant`/`ErrFocusNoAccess` → 403) and `ResolveSubtree` always seeds the focus node, so state 3 is currently unreachable; this is defence-in-depth so the contract holds by construction if a future middleware change ever lets an empty resolution through. No residual debt.
+**Hardening 2026-05-30 — empty-subtree fail-CLOSED (`SubtreeResolved` flag).** Audit of the clamp helpers found an asymmetric fail-OPEN: every call site keyed the clamp off `len(c.AllowedSubtreeIDs) > 0`, so a *resolved-but-empty* subtree (a caller with a valid clamp that reaches zero nodes) emitted **no** WHERE clause and fell through to a workspace-wide read — fail-open, the wrong default for a Trust-No-One / server-is-the-gate surface (NIST AC-4, SOC 2 CC6.1). Root cause: the empty slice was overloaded across three distinct states — (1) no middleware in the chain, (3) resolved-to-zero-nodes, (4) deliberate `WithBypassedSubtreeClamp` post-write read — and only state 3 should fail closed. Fix: added `Clamp.SubtreeResolved bool` (`backend/internal/sentinel/types.go`), set `true` only on the middleware success path (`middleware.go` step 7) and `false` on bypass (`ctx.go` `WithBypassedSubtreeClamp`). The consumer-side `topologyclamp` helpers apply the four-state logic: `!SubtreeResolved` → no-op (states 1+4); `SubtreeResolved && len==0` → `AND FALSE` / empty ID set (state 3, fail-closed); else → `= ANY(...)` / intersection (state 2). The single-row read `getWorkItemImpl` (`artefactitems/service.go`) was the fifth site — rewrote its post-SELECT membership check off `SubtreeResolved` so state 3 → `ErrNotFound` and the bypass stays a no-op. Unit tests in `topologyclamp/clamp_sql_test.go` pin states 3 + 4 for both helpers; `go build`/`vet`/`test ./internal/sentinel/...` + `./internal/artefactitems/...` GREEN. **Provably safe today** — `sentinel.Middleware` rejects every zero-ID path before the clamp is built (`ErrFocusNotInTenant`/`ErrFocusNoAccess` → 403) and `ResolveSubtree` always seeds the focus node, so state 3 is currently unreachable; this is defence-in-depth so the contract holds by construction if a future middleware change ever lets an empty resolution through. No residual debt.
 
 ### TD-SENT-CLAMP-ASYNC — Subtree clamp on async worker / mention-render paths
 
@@ -81,6 +81,16 @@ Open — separate initiative, not numbered under PLA062.
 **Pay-down plan.** Open — separate initiative, not numbered under PLA062.
 
 ---
+
+### TD-SENT-LINT-TABLE-NAMES — Sentinel clamp ratchet misses live `artefacts*` names
+
+**Severity.** S3 (detector coverage gap; current core artefact reads are clamped by direct code).
+**Trigger.** A new artefact-touching package/table read is added and the lint is relied on to catch missing Sentinel clamp / `topologyclamp.SubtreeClause` usage.
+**Discovered by.** 2026-06-02 hierarchy + Sentinel review for `/scope`.
+**Standard-ref.** SOC 2 CC6.1 / NIST 800-53 AC-3 and AC-4 — this is a preventive-control coverage issue, not a currently observed data leak.
+**Description.** `backend/internal/lintchecks/sentinel_clamp_test.go` describes "artefacts*" coverage, but its regex still matches the older singular names (`artefact_items`, `artefact_types`, `artefact_priorities`, etc.). The live tenant substrate now uses prefixed names such as `artefacts`, `artefacts_types`, and `artefacts_fields_values`, so a future package could touch those tables without tripping this structural ratchet. The main synchronous read surfaces (`artefactitems`, `search`) already call Sentinel directly; the gap is in the detector's future-change coverage.
+**Compensating control.** Core artefact services are manually wired to `topologyclamp.SubtreeClause`, `topologyclamp.ApplyClampToIDs`, and single-row post-filtering; Sentinel tech-debt entry `TD-SENT-CLAMP-SQL` documents the synchronous-read audit. Code review should continue to grep live `artefacts*` table names until the ratchet is widened.
+**Pay-down plan.** Update the lint regex and fixture tests to cover both legacy singular `artefact_*` names and live prefixed `artefacts*` names; add fixtures for `FROM artefacts`, `JOIN artefacts_types`, and `artefacts_fields_values`. Run the lint package and the Sentinel/artefactitems tests.
 
 ---
 

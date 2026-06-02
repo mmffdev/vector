@@ -10,7 +10,7 @@ Outstanding-release notifications from `mmff_library` to gadmins, with per-subsc
 - `library_release_actions` — `release_id` → release, `action_key` ∈ {`upgrade_model`,`review_terminology`,`enable_flag`,`dismissed`}, `label`, `payload` jsonb, `sort_order`.
 - `library_release_log` — append-only audit of publishes/edits (`mmff_library_publish` INSERT-only).
 
-`mmff_vector`:
+`vector_artefacts`:
 
 - `library_acknowledgements` — pk `(subscription_id, release_id)`. App-enforced cross-DB ref to `library_releases.id`; no Postgres FK. Carries `acknowledged_by` (user id) + `action_taken` + `acknowledged_at`. Migration `db/schema/021_library_acknowledgements.sql`.
 

@@ -17,8 +17,9 @@ export interface ArtefactInlineFormProps {
   // Collapse the form. Pure UX — no save flush needed since auto-save
   // on blur is already flushed.
   onClose: () => void;
-  // Mirror PATCH into the host's tree row optimistically.
-  onSaved?: (body: Record<string, unknown>) => void;
+  // Mirror PATCH into the host's tree row optimistically. The second argument
+  // is the canonical row returned by the backend after the save.
+  onSaved?: (body: Record<string, unknown>, artefact?: ArtefactDetail) => void;
 
   // ── Action-bar handlers ────────────────────────────────────────────
   // Each receives the loaded ArtefactDetail so the host has every id +
@@ -75,8 +76,11 @@ export interface ArtefactDetail {
   priority_id: string;
   story_points: number | null;
   sprint_id: string | null;
+  sprint?: { id: string; alias: string } | null;
   parent_id: string | null;
+  parent?: { id: string; type_prefix: string; key_num: number; title: string } | null;
   owner_id: string;
+  owner?: { id: string; display_name: string; avatar_url: string | null } | null;
   due_date: string | null;
   created_by: string;
   created_at: string;

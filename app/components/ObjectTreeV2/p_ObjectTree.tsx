@@ -14,7 +14,6 @@ import {
   milestones,
   lookups,
   workItems as workItemsLookup,
-  type Timebox,
   type Milestone,
   type UserInScope,
 } from "@/app/lib/apiSite";
@@ -50,6 +49,13 @@ function docToPlainText(node: JSONContent | null | undefined): string {
   return parts.join(node.type === "doc" ? "\n" : "");
 }
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
+import { artefactDetailToTreeRowPatch } from "@/app/components/ArtefactInlineForm/rowPatch";
+import {
+  resolveWorkspaceId,
+  nodeRelativeTimeboxParams,
+  timeboxOptions,
+  type TimeboxOption,
+} from "@/app/components/ArtefactInlineForm/timeboxOptions";
 // Slice 4 — PARENT_PREFIX_MAP no longer imported here. The reparent
 // legality rule moves into a per-domain rules module so V2's shell
 // doesn't know about artefact type prefixes. Only the ArtefactDetail
@@ -485,7 +491,12 @@ export default function ObjectTree<T = WorkItem>({
   // Active topology scope. Used by duplicateArtefact to pin the clone
   // when the source artefact had no topology_node_id of its own
   // (apiSite() only auto-forwards ?meg= on GETs, not POSTs).
-  const { sentinel_focus_node: activeScopeNodeId, sentinel_user, sentinel_can } = useSentinel();
+  const {
+    sentinel_focus_node: activeScopeNodeId,
+    sentinel_grants,
+    sentinel_user,
+    sentinel_can,
+  } = useSentinel();
 
   // Slice 4.5 — column-picker state. Hook MUST be called every render
   // (rules of hooks); we feed it an empty-catalogue sentinel when the
@@ -596,7 +607,12 @@ export default function ObjectTree<T = WorkItem>({
   // for the active workspace, and parent candidates for the chosen type's
   // prefix. All fetches are tolerant — one failing source doesn't poison
   // the others; the dropdown falls back to "— None —" only.
-  const workspaceId = sentinel_user?.workspace_id || null;
+  const workspaceId = resolveWorkspaceId(
+    sentinel_user?.tenant_id,
+    sentinel_user?.workspace_id,
+    sentinel_grants,
+    activeScopeNodeId,
+  );
   const { types: typeCatalogue } = useArtefactTypeCatalogue();
   const selectedType = useMemo(
     () => typeCatalogue.find((x) => x.id === actionTypeId) ?? null,
@@ -627,8 +643,8 @@ export default function ObjectTree<T = WorkItem>({
     Array<{ id: string; name: string; flow_position?: number }>
   >([]);
   const [createUsers, setCreateUsers] = useState<UserInScope[]>([]);
-  const [createSprints, setCreateSprints] = useState<Timebox[]>([]);
-  const [createReleases, setCreateReleases] = useState<Timebox[]>([]);
+  const [createSprints, setCreateSprints] = useState<TimeboxOption[]>([]);
+  const [createReleases, setCreateReleases] = useState<TimeboxOption[]>([]);
   const [createMilestones, setCreateMilestones] = useState<Milestone[]>([]);
 
   const {
@@ -709,12 +725,12 @@ export default function ObjectTree<T = WorkItem>({
   }, [isRisk, actionTypeId]);
 
   // Fetch the per-type catalogues whenever the user arms a new type.
-  // Topology / users / sprints / releases / milestones are workspace-wide
-  // so they don't strictly need to refetch on actionTypeId change, but
-  // doing so on the first open keeps the data fresh without burning a
-  // call on closed state. Flow states ARE per-type so they must refetch.
+  // Timeboxes are node-relative, so the active Sentinel focus participates
+  // in the fetch key. Doing the fetch on first open keeps data fresh without
+  // burning a call on closed state. Flow states ARE per-type so they refetch.
   useEffect(() => {
-    if (!actionTypeId || !workspaceId) return;
+    if (!actionTypeId || !workspaceId || !activeScopeNodeId) return;
+    const timeboxParams = nodeRelativeTimeboxParams(workspaceId, activeScopeNodeId);
     let cancelled = false;
     (async () => {
       try {
@@ -723,10 +739,10 @@ export default function ObjectTree<T = WorkItem>({
             .listFlowStates(`artefact_type_id=${encodeURIComponent(actionTypeId)}`)
             .catch(() => ({ flow_states: [] as unknown[] })),
           lookups.usersInScope().catch(() => ({ users: [] as UserInScope[], count: 0 })),
-          sprints.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
-          releases.list(`workspace_id=${workspaceId}`).catch(() => ({ items: [] as Timebox[] })),
+          sprints.list(timeboxParams).catch(() => ({ items: [] as unknown[] })),
+          releases.list(timeboxParams).catch(() => ({ items: [] as unknown[] })),
           milestones
-            .list(`workspace_id=${workspaceId}`)
+            .list(timeboxParams)
             .catch(() => ({ milestones: [] as Milestone[], count: 0 })),
         ]);
         if (cancelled) return;
@@ -738,8 +754,8 @@ export default function ObjectTree<T = WorkItem>({
           }>,
         );
         setCreateUsers((us as { users: UserInScope[] }).users ?? []);
-        setCreateSprints((sp as { items?: Timebox[] }).items ?? []);
-        setCreateReleases((rel as { items?: Timebox[] }).items ?? []);
+        setCreateSprints(timeboxOptions(sp, "sprint"));
+        setCreateReleases(timeboxOptions(rel, "release"));
         setCreateMilestones((ms as { milestones: Milestone[] }).milestones ?? []);
       } catch {
         // Falls through — individual catches above mean any one source
@@ -749,7 +765,7 @@ export default function ObjectTree<T = WorkItem>({
     return () => {
       cancelled = true;
     };
-  }, [actionTypeId, workspaceId]);
+  }, [actionTypeId, workspaceId, activeScopeNodeId]);
 
   // Controlled state for the create form. Reset whenever the user arms
   // a different type (or cancels), so a half-filled form doesn't bleed
@@ -922,7 +938,7 @@ export default function ObjectTree<T = WorkItem>({
   // WorkItem-built filterQuery built from filters.type/status/priority/owner_id.
   const effectiveFilterQuery = adapter ? adapterFilterQuery : filterQuery;
 
-  const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
+  const { windowRoots, total, loadingWindow, patchAndApply, applyLocalPatch, fetchChildren, refetchWindow } =
     useObjectTreeWindow<WorkItem>({
       resourceUrl,
       pageSize,
@@ -1986,7 +2002,7 @@ export default function ObjectTree<T = WorkItem>({
                         ?.label_override ??
                       createTopologyNodes.find((n) => n.id === activeScopeNodeId)?.name ??
                       "active node"
-                    : "workspace-wide"}
+                    : "no active node"}
                 </strong>
               </span>
             </p>
@@ -2051,6 +2067,7 @@ export default function ObjectTree<T = WorkItem>({
       onDuplicate: (artefact: ArtefactDetail) => void;
       onDelete: (artefact: ArtefactDetail) => void;
       isDuplicate: boolean;
+      onSaved?: (body: Record<string, unknown>, artefact?: ArtefactDetail) => void;
     }) => (
       <ArtefactInlineForm
         artefactId={props.rowId}
@@ -2072,8 +2089,12 @@ export default function ObjectTree<T = WorkItem>({
       openId={openInlineFormId}
       Body={ArtefactBody}
       onClose={closeInlineForm}
-      onSaved={(body) => {
-        if (openInlineFormId) patchAndApply(openInlineFormId, body);
+      onSaved={(body, artefact) => {
+        if (!openInlineFormId) return;
+        patchAndApply(openInlineFormId, body);
+        if (artefact) {
+          applyLocalPatch(openInlineFormId, artefactDetailToTreeRowPatch(artefact as ArtefactDetail));
+        }
       }}
       bodyProps={{
         resourceUrl,

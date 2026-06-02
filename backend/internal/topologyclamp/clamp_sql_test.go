@@ -1,31 +1,22 @@
-package sentinel
+package topologyclamp
 
 import (
 	"context"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 )
 
-// PLA062 S26 — SubtreeClause + ApplyClampToIDs unit tests.
-//
-// The clamp is the load-bearing procurement contract: a handler MUST
-// see the SQL fragment + args when the middleware attached a Clamp,
-// and MUST see a no-op when no clamp is present (admin / dev paths).
-//
-// PLA062 S26 hardening — the helpers now distinguish FOUR states via
-// Clamp.SubtreeResolved, not two:
-//   - State 1 no middleware            (SubtreeResolved=false)       -> no-op
-//   - State 2 resolved >=1 node        (true, len>0)                 -> = ANY
-//   - State 3 resolved empty set       (true, len==0)                -> AND FALSE / empty slice (fail CLOSED)
-//   - State 4 deliberate bypass        (false, AllowedSubtreeIDs=nil)-> no-op
-// States 1 and 4 share SubtreeResolved=false; state 3 is the fail-open
-// hole this pins shut.
+// The clamp adapter pins the four-state Sentinel contract:
+//   - no middleware -> no-op
+//   - resolved >=1 node -> = ANY
+//   - resolved empty set -> fail closed
+//   - deliberate bypass -> no-op
 
-// State 1 — no middleware attached a clamp: no clause, no arg advance.
 func TestSubtreeClause_NoClampReturnsEmpty(t *testing.T) {
 	args := []any{"sub-id"}
-	frag, out, n := SubtreeClause(context.Background(), "a", args, 2)
+	frag, out, n := SubtreeClause(context.Background(), "a.artefacts_id_topology_node", args, 2)
 	if frag != "" {
 		t.Errorf("frag = %q, want empty (no clamp on ctx)", frag)
 	}
@@ -37,19 +28,16 @@ func TestSubtreeClause_NoClampReturnsEmpty(t *testing.T) {
 	}
 }
 
-// State 4 — deliberate bypass (WithBypassedSubtreeClamp clears
-// SubtreeResolved): must stay a no-op so post-write reads return the row.
 func TestSubtreeClause_BypassReturnsEmpty(t *testing.T) {
-	// Seed a fully-resolved clamp, then bypass it.
-	base := withClamp(context.Background(), Clamp{
+	base := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
 		TenantID:          uuid.New(),
 		UserID:            uuid.New(),
 		AllowedSubtreeIDs: []uuid.UUID{uuid.New()},
 		SubtreeResolved:   true,
 	})
-	ctx := WithBypassedSubtreeClamp(base)
+	ctx := sentinel.WithBypassedSubtreeClamp(base)
 	args := []any{"sub-id"}
-	frag, out, n := SubtreeClause(ctx, "a", args, 2)
+	frag, out, n := SubtreeClause(ctx, "a.artefacts_id_topology_node", args, 2)
 	if frag != "" {
 		t.Errorf("frag = %q, want empty (bypassed clamp)", frag)
 	}
@@ -61,17 +49,15 @@ func TestSubtreeClause_BypassReturnsEmpty(t *testing.T) {
 	}
 }
 
-// State 3 — middleware resolved an EMPTY set: fail CLOSED with " AND FALSE",
-// args and nextIdx unchanged. This is the fail-open hole being closed.
 func TestSubtreeClause_ResolvedEmptyFailsClosed(t *testing.T) {
-	ctx := TestingWithClamp(context.Background(), Clamp{
+	ctx := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
 		TenantID:          uuid.New(),
 		UserID:            uuid.New(),
 		AllowedSubtreeIDs: []uuid.UUID{},
 		SubtreeResolved:   true,
 	})
 	args := []any{"sub-id", "scope"}
-	frag, out, n := SubtreeClause(ctx, "a", args, 3)
+	frag, out, n := SubtreeClause(ctx, "a.artefacts_id_topology_node", args, 3)
 	if frag != " AND FALSE" {
 		t.Errorf("frag = %q, want %q (resolved-empty must fail closed)", frag, " AND FALSE")
 	}
@@ -86,14 +72,14 @@ func TestSubtreeClause_ResolvedEmptyFailsClosed(t *testing.T) {
 func TestSubtreeClause_ClampPresentSplicesFragment(t *testing.T) {
 	id1 := uuid.New()
 	id2 := uuid.New()
-	ctx := withClamp(context.Background(), Clamp{
+	ctx := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
 		TenantID:          uuid.New(),
 		UserID:            uuid.New(),
 		AllowedSubtreeIDs: []uuid.UUID{id1, id2},
 		SubtreeResolved:   true,
 	})
 	args := []any{"sub-id", "scope"}
-	frag, out, n := SubtreeClause(ctx, "a", args, 3)
+	frag, out, n := SubtreeClause(ctx, "a.artefacts_id_topology_node", args, 3)
 	want := " AND a.artefacts_id_topology_node = ANY($3::uuid[])"
 	if frag != want {
 		t.Errorf("frag = %q, want %q", frag, want)
@@ -113,7 +99,20 @@ func TestSubtreeClause_ClampPresentSplicesFragment(t *testing.T) {
 	}
 }
 
-// State 1 — no middleware: caller list passes through unchanged.
+func TestSubtreeClause_UsesCallerColumn(t *testing.T) {
+	ctx := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
+		TenantID:          uuid.New(),
+		UserID:            uuid.New(),
+		AllowedSubtreeIDs: []uuid.UUID{uuid.New()},
+		SubtreeResolved:   true,
+	})
+	frag, _, _ := SubtreeClause(ctx, "n.topology_nodes_id", nil, 1)
+	want := " AND n.topology_nodes_id = ANY($1::uuid[])"
+	if frag != want {
+		t.Errorf("frag = %q, want %q", frag, want)
+	}
+}
+
 func TestApplyClampToIDs_NoClampReturnsCallerListUnchanged(t *testing.T) {
 	caller := []uuid.UUID{uuid.New(), uuid.New()}
 	out := ApplyClampToIDs(context.Background(), caller)
@@ -122,15 +121,14 @@ func TestApplyClampToIDs_NoClampReturnsCallerListUnchanged(t *testing.T) {
 	}
 }
 
-// State 4 — deliberate bypass: caller list passes through unchanged.
 func TestApplyClampToIDs_BypassReturnsCallerListUnchanged(t *testing.T) {
-	base := withClamp(context.Background(), Clamp{
+	base := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
 		TenantID:          uuid.New(),
 		UserID:            uuid.New(),
 		AllowedSubtreeIDs: []uuid.UUID{uuid.New()},
 		SubtreeResolved:   true,
 	})
-	ctx := WithBypassedSubtreeClamp(base)
+	ctx := sentinel.WithBypassedSubtreeClamp(base)
 	caller := []uuid.UUID{uuid.New(), uuid.New()}
 	out := ApplyClampToIDs(ctx, caller)
 	if len(out) != 2 || out[0] != caller[0] || out[1] != caller[1] {
@@ -138,10 +136,8 @@ func TestApplyClampToIDs_BypassReturnsCallerListUnchanged(t *testing.T) {
 	}
 }
 
-// State 3 — middleware resolved an EMPTY set: intersection is empty,
-// caller list must NOT pass through. Fail CLOSED.
 func TestApplyClampToIDs_ResolvedEmptyReturnsEmpty(t *testing.T) {
-	ctx := TestingWithClamp(context.Background(), Clamp{
+	ctx := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
 		TenantID:          uuid.New(),
 		UserID:            uuid.New(),
 		AllowedSubtreeIDs: []uuid.UUID{},
@@ -154,13 +150,11 @@ func TestApplyClampToIDs_ResolvedEmptyReturnsEmpty(t *testing.T) {
 	}
 }
 
-// State 2 — resolved >=1 node: intersection of caller list and clamp.
 func TestApplyClampToIDs_IntersectsWithClamp(t *testing.T) {
 	a := uuid.New()
 	b := uuid.New()
 	c := uuid.New()
-	// Clamp permits {a, b}. Caller asks for {b, c}. Result: {b}.
-	ctx := withClamp(context.Background(), Clamp{
+	ctx := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
 		TenantID:          uuid.New(),
 		UserID:            uuid.New(),
 		AllowedSubtreeIDs: []uuid.UUID{a, b},
@@ -172,11 +166,10 @@ func TestApplyClampToIDs_IntersectsWithClamp(t *testing.T) {
 	}
 }
 
-// State 2 with nil caller list — the clamp itself is the narrowing.
 func TestApplyClampToIDs_NilCallerReturnsClampList(t *testing.T) {
 	a := uuid.New()
 	b := uuid.New()
-	ctx := withClamp(context.Background(), Clamp{
+	ctx := sentinel.TestingWithClamp(context.Background(), sentinel.Clamp{
 		TenantID:          uuid.New(),
 		UserID:            uuid.New(),
 		AllowedSubtreeIDs: []uuid.UUID{a, b},

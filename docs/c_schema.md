@@ -82,10 +82,10 @@ If you find drift, re-run the snapshot at the bottom of this file and update.
 ## Engine
 
 - **Postgres 16** in Docker container `mmff-ops-postgres` on `mmffdev.com`.
-- **Database:** `mmff_vector`.
+- **Database:** `vector_artefacts`.
 - **App role:** `mmff_dev`. Password in `backend/.env.dev` (`DB_PASSWORD`).
 - **Local access:** SSH tunnel `localhost:5435` → server `:5432` (dev env; see active marker in [`/.claude/CLAUDE.md`](../.claude/CLAUDE.md)). See [c_postgresql.md](c_postgresql.md).
-- **Schema migrations:** `db/mmff_vector/schema/NNN_*.sql`, applied in number order. Each file wraps its DDL in `BEGIN; … COMMIT;`.
+- **Schema migrations:** `db/vector_artefacts/schema/NNN_*.sql`, applied in number order. Each file wraps its DDL in `BEGIN; ... COMMIT;`.
 
 ## Invariants that span tables
 
@@ -966,14 +966,14 @@ When the schema drifts, regenerate columns + FKs from the live DB and update thi
 
 ```bash
 # Columns
-PGPASSWORD=… /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d mmff_vector -At -F '|' -c "
+PGPASSWORD=... /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d vector_artefacts -At -F '|' -c "
 SELECT table_name, column_name, data_type, is_nullable, column_default
 FROM information_schema.columns
 WHERE table_schema='public'
 ORDER BY table_name, ordinal_position;"
 
 # Foreign keys + delete rules
-PGPASSWORD=… /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d mmff_vector -At -F '|' -c "
+PGPASSWORD=... /opt/homebrew/opt/libpq/bin/psql -h localhost -p 5435 -U mmff_dev -d vector_artefacts -At -F '|' -c "
 SELECT tc.table_name, kcu.column_name, ccu.table_name AS ref_table, ccu.column_name AS ref_column, rc.delete_rule
 FROM information_schema.table_constraints tc
 JOIN information_schema.key_column_usage kcu USING (constraint_schema, constraint_name)

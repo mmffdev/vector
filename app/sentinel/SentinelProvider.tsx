@@ -110,17 +110,7 @@ type Action =
 function reducer(state: InternalState, action: Action): InternalState {
   switch (action.type) {
     case "boot_loaded": {
-      const p = action.payload;
-      return {
-        ...state,
-        user: p.user,
-        tenant: p.tenant,
-        grants: p.grants,
-        permissions: new Set(p.user.permissions),
-        tenant_root: p.tenant_root,
-        settings: p.settings ?? state.settings,
-        loading: false,
-      };
+      return stateWithBootPayload(state, action.payload);
     }
     case "set_focus":
       return { ...state, focus_override: action.nodeId };
@@ -155,6 +145,19 @@ function reducer(state: InternalState, action: Action): InternalState {
     case "loading_done":
       return { ...state, loading: false };
   }
+}
+
+function stateWithBootPayload(state: InternalState, payload: SentinelBootPayload): InternalState {
+  return {
+    ...state,
+    user: payload.user,
+    tenant: payload.tenant,
+    grants: payload.grants,
+    permissions: new Set(payload.user.permissions),
+    tenant_root: payload.tenant_root,
+    settings: payload.settings ?? state.settings,
+    loading: false,
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -253,10 +256,14 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   // a never-had-a-session state, not another fetchBoot attempt.
   const hasBootedRef = useRef(false);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (baseState?: InternalState) => {
     dispatch({ type: "loading_start" });
     try {
       const payload = await fetchBoot();
+      const nextState = stateWithBootPayload(baseState ?? stateRef.current, payload);
+      if (typeof window !== "undefined" && !parseMegFromURL(window.location.search)) {
+        replaceMegInURL(resolveFocusNode(nextState));
+      }
       dispatch({ type: "boot_loaded", payload });
       hasBootedRef.current = true;
     } catch (err) {
@@ -364,15 +371,14 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     // Only fire when transitioning to a NEW authenticated user. Skip on
     // logout (next is null) and on re-renders with the same user.
     if (authUserId && authUserId !== prev) {
-      // Clear ALL session-scoped focus state so the freshly-loaded
-      // user.default_focus_node_id wins on first post-login render.
-      // This is the architecturally correct behaviour per the user's
-      // 2026-05-24 directive: "when the user logs in, it fetches the
-      // meg string as part of login as part of the users profile, this
-      // way meg is not stale."
+      // Clear session-only focus overrides so the freshly-loaded identity owns
+      // the next focus. Preserve an explicit URL ?meg= on refresh/share-link:
+      // the URL is the user's current read intent and the backend re-validates
+      // it against Sentinel. Bare post-login URLs still fall back to the user's
+      // saved home / workspace root.
       //
-      //   - url_focus: cleared so a stale pre-login ?meg= doesn't beat
-      //     the user's saved home.
+      //   - url_focus: preserved only when the address bar currently carries
+      //     an allowlisted ?meg=.
       //   - focus_override: cleared so a prior session's rail-click
       //     pin doesn't survive logout.
       //
@@ -380,9 +386,17 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       // focus (= user's default home / workspace root) on the next render,
       // so sharing and bookmarking still work correctly — the URL just becomes a
       // per-session presentation artefact, not a source of truth.
-      dispatch({ type: "set_url_focus", nodeId: null });
+      const urlFocus = typeof window !== "undefined" ? parseMegFromURL(window.location.search) : null;
+      dispatch({ type: "set_url_focus", nodeId: urlFocus });
       dispatch({ type: "set_focus", nodeId: null });
-      void reload();
+      const clearedState = {
+        ...stateRef.current,
+        url_focus: urlFocus,
+        focus_override: null,
+      };
+      stateRef.current = clearedState;
+      if (!urlFocus) replaceMegInURL(null);
+      void reload(clearedState);
     }
   }, [authUserId, reload]);
 

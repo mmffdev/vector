@@ -27,11 +27,13 @@ export interface GridTreeFormsProps {
   /** Collapse the flyout (host clears openDetailId). */
   onClose: () => void;
   /** Optimistic mirror of a PATCH into the host's tree row. */
-  onSaved?: (body: Record<string, unknown>) => void;
+  onSaved?: (body: Record<string, unknown>, artefact?: ArtefactDetail) => void;
   /** Action-bar pass-throughs — host owns what each does. */
   onDuplicate?: (artefact: ArtefactDetail) => void;
+  onDependencies?: (artefact: ArtefactDetail) => void;
   onDelete?: (artefact: ArtefactDetail) => void;
   onNavigate?: (artefactId: string) => void;
+  isDuplicate?: boolean;
 }
 
 export function GridTreeForms({
@@ -41,8 +43,10 @@ export function GridTreeForms({
   onClose,
   onSaved,
   onDuplicate,
+  onDependencies,
   onDelete,
   onNavigate,
+  isDuplicate,
 }: GridTreeFormsProps) {
   return (
     <div className="grid__Tree_Forms">
@@ -53,8 +57,10 @@ export function GridTreeForms({
         onClose={onClose}
         onSaved={onSaved}
         onDuplicate={onDuplicate}
+        onDependencies={onDependencies}
         onDelete={onDelete}
         onNavigate={onNavigate}
+        isDuplicate={isDuplicate}
       />
     </div>
   );

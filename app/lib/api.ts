@@ -151,9 +151,20 @@ export function setScopeDirection(d: "descend" | "ascend"): void {
 }
 
 function withForwardedMeg(path: string, method: string): string {
-  if (method !== "GET") return path;
   if (typeof window === "undefined") return path;
-  if (!/(^|\/)(work-items|portfolio-items)(\?|\/|$)/.test(path)) return path;
+  // The focus node (?meg=, written by SentinelProvider.setFocus on every scope
+  // change) is forwarded on GET reads AND on the POST read-gateways
+  // (/work-items/query, /portfolio-items/query) — those are reads that happen
+  // to use POST so the audited body carries no id in the URL. The backend's
+  // List/Query handlers read ?meg= as the live NARROW node and re-validate it
+  // against the Sentinel clamp. Timebox reads also receive ?meg= so node-relative
+  // timebox dropdowns cannot silently degrade to workspace-wide reads. ALL OTHER
+  // non-GET requests (create/patch/delete, which mutate by id and take scope from
+  // the clamp/body) stay meg-free.
+  const isReadGatewayPost =
+    method === "POST" && /(^|\/)(work-items|portfolio-items)\/query(\?|$)/.test(path);
+  if (method !== "GET" && !isReadGatewayPost) return path;
+  if (!/(^|\/)(work-items|portfolio-items|timeboxes)(\?|\/|$)/.test(path)) return path;
   if (path.includes("meg=") || path.includes("scope=")) return path;
   try {
     // `meg` (named after Rick's daughter Megan, PLA-0053) is the

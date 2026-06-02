@@ -240,6 +240,24 @@ describe("useTree", () => {
     expect(calls.A).toBe(1);
   });
 
+  it("updates a visible root or cached child without resetting expansion", async () => {
+    const { fn: roots } = makeRoots([r("A", 1), r("B")]);
+    const { fn: kids } = makeFetch({ A: [r("A1")] });
+    const { result } = await renderTree(opts(roots, kids));
+
+    act(() => result.current.nodes[0].toggle());
+    await waitFor(() => expect(result.current.nodes[0].children).toHaveLength(1));
+
+    act(() => {
+      result.current.updateRow("A", (row) => ({ ...row, kids: 2 }));
+      result.current.updateRow("A1", (row) => ({ ...row, id: "A1", kids: 3 }));
+    });
+
+    expect(result.current.nodes[0].row.kids).toBe(2);
+    expect(result.current.nodes[0].expanded).toBe(true);
+    expect(result.current.nodes[0].children[0].row.kids).toBe(3);
+  });
+
   it("reset drops all expansion and cache", async () => {
     const { fn: roots } = makeRoots([r("A", 1)]);
     const { fn: kids, calls } = makeFetch({ A: [r("A1")] });
@@ -343,5 +361,35 @@ describe("useTree", () => {
     act(() => result.current.nodes[0].toggle());
     await waitFor(() => expect(result.current.nodes[0].children).toHaveLength(1));
     expect(kidCalls.A).toBe(1);
+  });
+
+  it("refreshPreservingExpansion reloads visible data without collapsing expanded rows", async () => {
+    const all = [r("A", 1), r("B", 1)];
+    const childMap = {
+      A: [r("A1")],
+      B: [r("B1")],
+    };
+    const { fn: roots, calls } = makeRoots(all);
+    const { fn: kids, calls: kidCalls } = makeFetch(childMap);
+    const { result } = await renderTree(opts(roots, kids));
+
+    act(() => result.current.nodes[0].toggle());
+    await waitFor(() => expect(result.current.nodes[0].children).toHaveLength(1));
+    act(() => result.current.nodes[1].toggle());
+    await waitFor(() => expect(result.current.nodes[1].children).toHaveLength(1));
+
+    childMap.A = [];
+    childMap.B = [r("B1"), r("A1")];
+
+    act(() => result.current.refreshPreservingExpansion());
+    await waitFor(() => expect(result.current.nodes[1].children).toHaveLength(2));
+
+    expect(calls.at(-1)).toEqual({ limit: 100, offset: 0 });
+    expect(result.current.nodes[0].expanded).toBe(true);
+    expect(result.current.nodes[1].expanded).toBe(true);
+    expect(result.current.nodes[0].children.map((n) => n.id)).toEqual([]);
+    expect(result.current.nodes[1].children.map((n) => n.id)).toEqual(["B1", "A1"]);
+    expect(kidCalls.A).toBe(2);
+    expect(kidCalls.B).toBe(2);
   });
 });

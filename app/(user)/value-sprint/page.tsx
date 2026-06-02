@@ -509,15 +509,19 @@ export default function ValueSprint() {
   // case a stale render somehow fires through.
   const setSprintStatus = useCallback(
     async (target: "planned" | "active" | "completed") => {
-      if (!panelSprint) return;
+      if (!panelSprint || !workspaceId || !activeNodeId) return;
+      const scopeParams = new URLSearchParams({
+        workspace_id: workspaceId,
+        org_node_id: activeNodeId,
+      }).toString();
       const current = panelSprint.timeboxes_sprints_status ?? "";
       if (current === target) return;
       try {
         if (current === "planned" && target === "active") {
-          await sprintsApi.start(panelSprint.timeboxes_sprints_id);
+          await sprintsApi.start(panelSprint.timeboxes_sprints_id, scopeParams);
           notify.success("Sprint started.");
         } else if (current === "active" && target === "completed") {
-          await sprintsApi.close(panelSprint.timeboxes_sprints_id);
+          await sprintsApi.close(panelSprint.timeboxes_sprints_id, scopeParams);
           notify.success("Sprint completed.");
         } else {
           notify.error(
@@ -530,7 +534,7 @@ export default function ValueSprint() {
         notify.apiError(err as ApiError, "Failed to change sprint status.");
       }
     },
-    [panelSprint, refetch],
+    [panelSprint, workspaceId, activeNodeId, refetch],
   );
 
   // Slice 5 — per-row action buttons. "Add to Sprint" assigns the row

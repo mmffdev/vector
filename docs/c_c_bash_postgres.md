@@ -7,7 +7,7 @@ Verified Postgres command lines. All paths respect the repo's space-in-path; `pg
 
 ## Preconditions (every command below)
 
-- SSH tunnel is up: `nc -z localhost 5434` → "succeeded".
+- SSH tunnel is up: `nc -z localhost 5435` -> "succeeded" for dev.
 - `backend/.env.local` has `DB_PASSWORD=…` on its own line.
 - macOS: `/opt/homebrew/opt/libpq/bin/` exists.
 
@@ -20,7 +20,7 @@ Canonical `<backupsql>` block lives in [c_db-backup.md](c_db-backup.md). Single 
 ```bash
 PW=$(grep '^DB_PASSWORD' backend/.env.local | cut -d= -f2-) \
   && PGPASSWORD="$PW" /opt/homebrew/opt/libpq/bin/psql \
-       -h localhost -p 5434 -U mmff_dev -d mmff_vector \
+       -h localhost -p 5435 -U mmff_dev -d vector_artefacts \
        -c 'SELECT 1;'
 ```
 
@@ -31,9 +31,9 @@ Returns one row (`?column? | 1`) on success. Use for "is the tunnel actually ser
 ```bash
 PW=$(grep '^DB_PASSWORD' backend/.env.local | cut -d= -f2-) \
   && PGPASSWORD="$PW" /opt/homebrew/opt/libpq/bin/psql \
-       -h localhost -p 5434 -U mmff_dev -d mmff_vector \
+       -h localhost -p 5435 -U mmff_dev -d vector_artefacts \
        -v ON_ERROR_STOP=1 \
-       -f "db/mmff_vector/schema/00N_name.sql"
+       -f "db/vector_artefacts/schema/00N_name.sql"
 ```
 
 `ON_ERROR_STOP=1` is mandatory — without it `psql` keeps running after a failing statement and leaves the DB half-migrated.
@@ -43,7 +43,7 @@ PW=$(grep '^DB_PASSWORD' backend/.env.local | cut -d= -f2-) \
 If SSH'd into the server itself and the tunnel isn't applicable:
 
 ```bash
-docker exec -i mmff-ops-postgres psql -U mmff_dev -d mmff_vector -v ON_ERROR_STOP=1 < db/mmff_vector/schema/00N_name.sql
+docker exec -i mmff-ops-postgres psql -U mmff_dev -d vector_artefacts -v ON_ERROR_STOP=1 < db/vector_artefacts/schema/00N_name.sql
 ```
 
 Container name `mmff-ops-postgres` is fixed by Compose; confirm with `docker ps` before assuming.

@@ -13,6 +13,7 @@
 // The skin (Grid__Tree) decides which rows render; this just paints one.
 
 import { memo } from "react";
+import type { HTMLAttributes } from "react";
 import { GridTreeLines } from "./Grid__Tree_Lines";
 import type { GridColumn, GridLoadingStyle, TreeNode } from "./types";
 
@@ -29,6 +30,12 @@ export interface GridTreeRowProps<TRow> {
   formOpen?: boolean;
   /** Per-row accent colour → drawn as the left border via --row-accent. */
   accent?: string | null;
+  /** Stable DOM anchor for deep-linking / scroll-to-row behaviours. */
+  anchorId?: string;
+  /** Drag/drop row props from useResourceRank; merged onto the row root. */
+  rankRowProps?: HTMLAttributes<HTMLDivElement> & {
+    "data-rank-row-id"?: string;
+  };
   registerRowRef?: (id: string, el: HTMLDivElement | null) => void;
 }
 
@@ -42,11 +49,14 @@ function GridTreeRowInner<TRow>({
   loadingStyle,
   formOpen,
   accent,
+  anchorId,
+  rankRowProps,
   registerRowRef,
 }: GridTreeRowProps<TRow>) {
   const stripe = loadingStyle === "barberpole" && formOpen;
   const cls = [
     "grid__Tree_Row",
+    rankRowProps?.className ?? "",
     selected ? "grid__Tree_Row--selected" : "",
     stripe ? "grid__Tree_Row--formOpen" : "",
     node.hasChildren ? "grid__Tree_Row--parent" : "",
@@ -56,6 +66,8 @@ function GridTreeRowInner<TRow>({
 
   return (
     <div
+      {...rankRowProps}
+      id={anchorId}
       ref={registerRowRef ? (el) => registerRowRef(node.id, el) : undefined}
       className={cls}
       style={
@@ -65,6 +77,7 @@ function GridTreeRowInner<TRow>({
         } as React.CSSProperties
       }
       data-row-id={node.id}
+      data-row-anchor={anchorId}
       role="row"
       onClick={onSelect ? () => onSelect(node) : undefined}
     >

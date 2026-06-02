@@ -28,6 +28,7 @@ export function useTree<TRow>(
     rowIdOf,
     getChildrenCount,
     fetchChildren,
+    autoLoad = true,
     expandable = true,
   } = opts;
 
@@ -71,16 +72,26 @@ export function useTree<TRow>(
   // ── Root window loaders ────────────────────────────────────────────────────
   // One private primitive fetches a page and either APPENDS it (loadMore —
   // keeps expansion) or REPLACES the window (jump / refresh / mount — the
-  // caller resets expansion first). The rootsInFlightRef guard stops a second
-  // loadMore landing before the first resolves from double-appending.
+  // caller resets expansion first).
+  //
+  // The in-flight guard blocks only a duplicate APPEND (a second loadMore before
+  // the first resolves would double-append). A REPLACE is AUTHORITATIVE — it
+  // must never be dropped: a scope-change refresh that lands while the mount
+  // load is still in flight has to win, or the grid keeps the stale/empty
+  // pre-change result (the empty-grid-on-scope-change bug). Replace always
+  // proceeds; the last replace's setRoots wins.
   const loadPage = useCallback(
-    async (pageOffset: number, mode: "append" | "replace") => {
-      if (rootsInFlightRef.current) return;
+    async (
+      pageOffset: number,
+      mode: "append" | "replace",
+      limit = pageSize,
+    ) => {
+      if (mode === "append" && rootsInFlightRef.current) return;
       rootsInFlightRef.current = true;
       setRootsLoading(true);
       try {
         const { rows, total: t } = await fetchRoots({
-          limit: pageSize,
+          limit,
           offset: pageOffset,
         });
         setTotal(t);
@@ -123,11 +134,96 @@ export function useTree<TRow>(
     void loadPage(0, "replace");
   }, [reset, loadPage]);
 
-  // Mount — load page 0. Runs once (fetchRoots/pageSize are stable per consumer).
+  const refreshPreservingExpansion = useCallback(() => {
+    const expandedSnapshot = new Set(expandedIds);
+    const rowById = new Map<string, TRow>();
+    const collect = (rows: TRow[]) => {
+      for (const row of rows) {
+        const id = rowIdOf(row);
+        rowById.set(id, row);
+        const children = childrenById.get(id);
+        if (children) collect(children);
+      }
+    };
+    collect(roots);
+
+    const expandedRows = Array.from(expandedSnapshot)
+      .map((id) => ({ id, row: rowById.get(id) }))
+      .filter((entry): entry is { id: string; row: TRow } => !!entry.row);
+
+    const visibleRootLimit = Math.max(pageSize, roots.length || pageSize);
+
+    void (async () => {
+      await loadPage(offset, "replace", visibleRootLimit);
+      if (expandedRows.length === 0) return;
+
+      setLoadingIds((prev) => {
+        const next = new Set(prev);
+        for (const { id } of expandedRows) next.add(id);
+        return next;
+      });
+
+      await Promise.all(
+        expandedRows.map(async ({ id, row }) => {
+          try {
+            const kids = await fetchChildren(row);
+            setChildrenById((prev) => new Map(prev).set(id, kids));
+          } catch {
+            /* Keep the previous cache; the next preserve-refresh can retry. */
+          } finally {
+            setLoadingIds((prev) => {
+              const next = new Set(prev);
+              next.delete(id);
+              return next;
+            });
+          }
+        }),
+      );
+    })();
+  }, [
+    childrenById,
+    expandedIds,
+    fetchChildren,
+    loadPage,
+    offset,
+    pageSize,
+    roots,
+    rowIdOf,
+  ]);
+
+  const updateRow = useCallback(
+    (id: string, updater: (row: TRow) => TRow) => {
+      const patchRows = (rows: TRow[]) => {
+        let changed = false;
+        const next = rows.map((row) => {
+          if (rowIdOf(row) !== id) return row;
+          changed = true;
+          return updater(row);
+        });
+        return changed ? next : rows;
+      };
+
+      setRoots((prev) => patchRows(prev));
+      setChildrenById((prev) => {
+        let changed = false;
+        const next = new Map<string, TRow[]>();
+        for (const [parentId, rows] of prev) {
+          const patched = patchRows(rows);
+          if (patched !== rows) changed = true;
+          next.set(parentId, patched);
+        }
+        return changed ? next : prev;
+      });
+    },
+    [rowIdOf],
+  );
+
+  // Mount — load page 0 unless a scope-aware consumer wants to wait for an
+  // external clamp (for example Sentinel focus) before the first read.
   useEffect(() => {
+    if (!autoLoad) return;
     void loadPage(0, "replace");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoLoad, loadPage]);
 
   // Fetch + cache one row's children (idempotent). Shared by toggle (lazy
   // expand) and the expand-all cascade. Mutates the childrenById cache, which
@@ -361,5 +457,7 @@ export function useTree<TRow>(
     loadMore,
     jumpToPage,
     refresh,
+    refreshPreservingExpansion,
+    updateRow,
   };
 }

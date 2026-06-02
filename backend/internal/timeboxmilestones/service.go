@@ -59,6 +59,13 @@ func (s *Service) Get(ctx context.Context, workspaceID, milestoneID string) (*Mi
 // List returns non-archived milestones for a workspace, ordered by target
 // date then position.
 func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) ([]*Milestone, error) {
+	if f.OrgNodeID == nil || strings.TrimSpace(*f.OrgNodeID) == "" {
+		return nil, ErrInvalidInput
+	}
+	if _, err := uuid.Parse(*f.OrgNodeID); err != nil {
+		return nil, ErrInvalidInput
+	}
+
 	args := []any{workspaceID}
 	conds := []string{
 		"timeboxes_milestones_id_workspace = $1",
@@ -171,6 +178,9 @@ func validateCreateInput(in CreateMilestoneInput) error {
 	if strings.TrimSpace(in.MilestoneName) == "" {
 		return fmt.Errorf("%w: timeboxes_milestones_name is required", ErrInvalidInput)
 	}
+	if in.OrgNodeID == nil || strings.TrimSpace(*in.OrgNodeID) == "" {
+		return fmt.Errorf("%w: timeboxes_milestones_id_topology_node is required", ErrInvalidInput)
+	}
 	if in.MilestoneDateTarget == "" {
 		return fmt.Errorf("%w: timeboxes_milestones_date_target is required", ErrInvalidInput)
 	}
@@ -182,6 +192,9 @@ func validateCreateInput(in CreateMilestoneInput) error {
 	}
 	if _, err := uuid.Parse(in.WorkspaceID); err != nil {
 		return fmt.Errorf("%w: invalid workspace_id", ErrInvalidInput)
+	}
+	if _, err := uuid.Parse(*in.OrgNodeID); err != nil {
+		return fmt.Errorf("%w: invalid timeboxes_milestones_id_topology_node", ErrInvalidInput)
 	}
 	return nil
 }

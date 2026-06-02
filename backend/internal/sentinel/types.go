@@ -47,10 +47,39 @@ import (
 // resolved an empty set" (true + empty -> the SQL helpers fail CLOSED).
 // Without this flag the helpers cannot tell a deliberate bypass (state 4)
 // apart from a regression that produced an empty allowed-set (state 3),
-// and would fail OPEN on the latter. See clamp_sql.go for the full
-// four-state contract. Set true only at Middleware Step 7 (success path);
-// cleared by WithBypassedSubtreeClamp; false-by-default on the
-// no-middleware (admin/dev) path.
+// and would fail OPEN on the latter. Consumer-side topology clamp
+// adapters use this flag for their four-state contract. Set true only
+// at Middleware Step 7 (success path); cleared by WithBypassedSubtreeClamp;
+// false-by-default on the no-middleware (admin/dev) path.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// SEPARATION OF CONCERNS — Sentinel owns the CLAMP, not artefact data.
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Sentinel resolves and owns ONLY the topology scope: TenantID, WorkspaceID,
+// FocusNodeID, AllowedSubtreeIDs. It deliberately knows NOTHING about artefact
+// table names or columns. The old sentinel.clamp_sql.go (which embedded the
+// SQL fragment) was DELETED and re-homed as a consumer-side adapter:
+//
+//     backend/internal/topologyclamp/clamp_sql.go
+//
+// A row-owning package applies the clamp by handing topologyclamp its OWN
+// trusted topology column; topologyclamp reads sentinel.FromCtx(ctx).
+// AllowedSubtreeIDs and emits the SQL fragment:
+//
+//     mandatory, args, n := topologyclamp.SubtreeClause(
+//         ctx, "a.artefacts_id_topology_node", args, n)
+//
+// HARD RULE — EVERY artefact READ PATH MUST CLAMP. A list/children/query that
+// filters only by subscription + parent_id (and skips SubtreeClause) LEAKS
+// out-of-scope artefacts into its wire payload — a SERVER-IS-THE-GATE breach —
+// AND those rows then 404 at GetWorkItem (which DOES clamp), so the two
+// endpoints disagree on what exists. Origin: 2026-06-02 — artefactitems
+// ListChildren was the one read path missing the clamp; the /scope tree's
+// lazy-loaded children over-returned (25 vs the 6 in scope) and the inline
+// edit form 404'd on every out-of-scope row. Fix: ListChildren now calls
+// SubtreeClause exactly like ListWorkItems / ListByScope. When you add a new
+// read, mirror the existing clamped queries — never a bare subscription filter.
 type Clamp struct {
 	TenantID          uuid.UUID
 	UserID            uuid.UUID

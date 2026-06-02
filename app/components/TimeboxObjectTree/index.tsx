@@ -426,6 +426,14 @@ function TimeboxObjectTreeInner({
   const bulkConfig = useMemo(() => buildBulkConfig(kind), [kind]);
   const handleBulkSubmit = useCallback(
     async (payloadRows: Array<Record<string, unknown>>) => {
+      if (!orgNodeId) {
+        notify.error("Select a topology node before creating timeboxes.");
+        return;
+      }
+      const params = new URLSearchParams({
+        workspace_id: workspaceId,
+        org_node_id: orgNodeId,
+      }).toString();
       try {
         if (kind === "milestone") {
           // No bulk endpoint on the milestone backend — POST each row to
@@ -433,7 +441,7 @@ function TimeboxObjectTreeInner({
           // this is always a single row in practice.
           for (const row of payloadRows) {
             await apiSite(
-              `${cfg.apiBase}?workspace_id=${workspaceId}`,
+              `${cfg.apiBase}?${params}`,
               {
                 method: "POST",
                 body: JSON.stringify(row),
@@ -442,7 +450,7 @@ function TimeboxObjectTreeInner({
           }
         } else {
           await apiSite(
-            `${cfg.apiBase}/bulk-create?workspace_id=${workspaceId}`,
+            `${cfg.apiBase}/bulk-create?${params}`,
             {
               method: "POST",
               body: JSON.stringify({ [bulkConfig.listKey]: payloadRows }),
@@ -460,7 +468,7 @@ function TimeboxObjectTreeInner({
         notify.apiError(e as ApiError, `Failed to bulk-create ${kind}s`);
       }
     },
-    [cfg.apiBase, cfg.namePrefix, workspaceId, kind, bulkConfig.listKey, reload],
+    [cfg.apiBase, cfg.namePrefix, workspaceId, orgNodeId, kind, bulkConfig.listKey, reload],
   );
 
   // Single create — placeholder that opens an empty inline form (rowId="new")
@@ -545,7 +553,7 @@ function TimeboxObjectTreeInner({
               : bulkConfig
           }
           payloadContext={{
-            [`${p}_id_topology_node`]: orgNodeId ?? null,
+            [`${p}_id_topology_node`]: orgNodeId,
           }}
           nextNumber={nextNumber}
           startAnchor={lastEndDate}

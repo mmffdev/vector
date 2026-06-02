@@ -152,6 +152,13 @@ func (s *Service) Get(ctx context.Context, workspaceID, sprintID string) (*Sprin
 // origin="inherited" plus FromNodeID/Name for rows walked in from an
 // ancestor.
 func (s *Service) List(ctx context.Context, workspaceID string, f ListFilters) ([]*Sprint, error) {
+	if f.OrgNodeID == nil || strings.TrimSpace(*f.OrgNodeID) == "" {
+		return nil, ErrInvalidInput
+	}
+	if _, err := uuid.Parse(*f.OrgNodeID); err != nil {
+		return nil, ErrInvalidInput
+	}
+
 	// Resolve ancestor chain when the request opts in.
 	var ancestors []topology.Node
 	if f.OrgNodeID != nil && f.SubscriptionID != nil && s.topo != nil {
@@ -548,7 +555,8 @@ func (s *Service) checkAdjacency(ctx context.Context, workspaceID string, orgNod
 	var args []any
 
 	if orgNodeID == nil {
-		// No org_node — only check workspace-level sprints with no org_node.
+		// Defensive legacy branch for historical rows; new writes require
+		// a topology node before reaching adjacency.
 		q = sqlSelectLastSprintEndDateRoot
 		args = []any{workspaceID}
 	} else {
@@ -588,6 +596,9 @@ func validateCreateInput(in CreateSprintInput) error {
 	if strings.TrimSpace(in.SprintName) == "" {
 		return fmt.Errorf("%w: sprint_name is required", ErrInvalidInput)
 	}
+	if in.OrgNodeID == nil || strings.TrimSpace(*in.OrgNodeID) == "" {
+		return fmt.Errorf("%w: timeboxes_sprints_id_topology_node is required", ErrInvalidInput)
+	}
 	if in.SprintCadenceDays <= 0 {
 		return fmt.Errorf("%w: sprint_cadence_days must be positive", ErrInvalidInput)
 	}
@@ -610,6 +621,9 @@ func validateCreateInput(in CreateSprintInput) error {
 	}
 	if _, err := uuid.Parse(in.WorkspaceID); err != nil {
 		return fmt.Errorf("%w: invalid workspace_id", ErrInvalidInput)
+	}
+	if _, err := uuid.Parse(*in.OrgNodeID); err != nil {
+		return fmt.Errorf("%w: invalid timeboxes_sprints_id_topology_node", ErrInvalidInput)
 	}
 	return nil
 }

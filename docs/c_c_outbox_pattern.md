@@ -57,7 +57,7 @@ Non-negotiables:
 - **Trigger:** `artefacts_search_enqueue` fires on `INSERT OR UPDATE OF title, description`, inserts an outbox row (`ON CONFLICT DO NOTHING` collapses bursts), and `pg_notify('search_index_queue', NEW.id)`.
 - **Worker:** [`backend/internal/searchworker/worker.go`](../backend/internal/searchworker/worker.go) — drains via `FOR UPDATE SKIP LOCKED`, at-least-once, max 5 attempts.
 - **Read shape:** `artefacts.search_index` (TSVECTOR) + `artefacts.content_embedding` (pgvector(768)).
-- **Read site:** [`backend/internal/search/service.go`](../backend/internal/search/service.go) — sentinel clamp re-applied at request time via `sentinel.SubtreeClause(ctx, "a", args, n)`.
+- **Read site:** [`backend/internal/search/service.go`](../backend/internal/search/service.go) — Sentinel clamp re-applied at request time via `topologyclamp.SubtreeClause(ctx, "a.artefacts_id_topology_node", args, n)`.
 
 ### 2. Notifications v2 — `notifications_outbox_v2`
 

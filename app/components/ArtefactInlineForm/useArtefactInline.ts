@@ -9,7 +9,7 @@ import type { ArtefactDetail } from "./types";
 interface UseArtefactInlineParams {
   artefactId: string | null;
   resourceUrl: string; // "/work-items" | "/portfolio-items"
-  onSaved?: (body: Record<string, unknown>) => void;
+  onSaved?: (body: Record<string, unknown>, artefact?: ArtefactDetail) => void;
 }
 
 interface UseArtefactInlineResult {
@@ -71,7 +71,7 @@ export function useArtefactInline({
       try {
         const updated = (await bundle.patch(artefactId, body)) as ArtefactDetail;
         setArtefact(updated);
-        onSaved?.(body);
+        onSaved?.(body, updated);
       } catch (e: unknown) {
         // 409 parent_flow_state_derived — the flow-state cascade guard
         // rejected this manual write because the row has live children.

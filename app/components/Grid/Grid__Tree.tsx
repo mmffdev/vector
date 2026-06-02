@@ -21,17 +21,22 @@
 //     (e.g. ArtefactInlineForm) BELOW its own row. openDetailId drives which.
 //   • accentOf                  → per-row colour accent (left border).
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useColumnManager } from "./useColumnManager";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
 import { GridTreeHead } from "./Grid__Tree_Head";
 import { GridTreeRow } from "./Grid__Tree_Row";
+import { TREE_STEP } from "./Grid__Tree_Lines";
 import { GridTreePagination } from "./Grid__Tree_Pagination";
 import {
   GridTreeActionBar,
   type GridTreeActionBarConfig,
 } from "./Grid__Tree_ActionBar";
 import { GridTreeCog } from "./Grid__Tree_Cog";
+import {
+  GridTreeStatsPanel,
+  type GridTreeStatsPanelConfig,
+} from "./Grid__Tree_StatsPanel";
 import type {
   GridColumn,
   GridDnD,
@@ -59,6 +64,8 @@ export interface GridTreeProps<TRow> {
    * the title and the column head. Omit → no action bar.
    */
   actionBar?: GridTreeActionBarConfig;
+  /** Optional stat band rendered between title and action bar. */
+  statsPanel?: GridTreeStatsPanelConfig;
   /** The headless core, already constructed by the consumer via useTree(). */
   tree: UseTreeResult<TRow>;
   columns: GridColumn<TRow>[];
@@ -82,6 +89,8 @@ export interface GridTreeProps<TRow> {
   openDetailId?: string | null;
   selectedId?: string | null;
   onSelect?: (node: TreeNode<TRow>) => void;
+  /** Optional stable DOM anchor per row, e.g. scope-TA-1234. */
+  rowAnchorOf?: (node: TreeNode<TRow>) => string;
   /** Empty-state node when there are zero roots. */
   empty?: React.ReactNode;
 }
@@ -101,6 +110,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     subtitle,
     badge,
     actionBar,
+    statsPanel,
     tree,
     columns,
     defaultSort,
@@ -113,6 +123,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     openDetailId,
     selectedId,
     onSelect,
+    rowAnchorOf,
     empty,
   } = props;
 
@@ -121,6 +132,10 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const hasStripe = !!accentFn;
   const hasSelection = !!selection;
   const hasCog = !!cogMenu;
+  const dndRowIdOf = useCallback(
+    (node: TreeNode<TRow>) => dnd?.rowIdOf?.(node.row) ?? node.id,
+    [dnd],
+  );
 
   // Which row's cog menu is open (single-open, OTV2 model).
   const [cogOpenId, setCogOpenId] = useState<string | null>(null);
@@ -139,17 +154,42 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     return w;
   }, [hasStripe, hasSelection, hasDnd, hasCog]);
 
-  const cm = useColumnManager<TRow>({ columns, defaultSort, leadWidths });
+  // The primary (first) column hosts the indent SVG, so as rows nest deeper its
+  // content needs more room or the id text clips. Grow the primary column's
+  // width by the deepest visible indent (maxDepth × step) so it always fits.
+  const maxDepth = useMemo(
+    () => tree.flatNodes.reduce((m, n) => (n.depth > m ? n.depth : m), 0),
+    [tree.flatNodes],
+  );
+  const indentAllowance = maxDepth * TREE_STEP;
+  const columnsWithIndent = useMemo(() => {
+    if (indentAllowance <= 0 || columns.length === 0) return columns;
+    const [first, ...rest] = columns;
+    // Only grow a FIXED-width primary column; if it's the flex column leave it.
+    if (first.defaultWidth == null) return columns;
+    return [
+      { ...first, defaultWidth: first.defaultWidth + indentAllowance },
+      ...rest,
+    ];
+  }, [columns, indentAllowance]);
+
+  const cm = useColumnManager<TRow>({
+    columns: columnsWithIndent,
+    defaultSort,
+    leadWidths,
+  });
 
   const rank = useResourceRank({
     resourceType: dnd?.resourceType ?? "__noop__",
+    onMoved: dnd?.onMoved,
+    onError: dnd?.onError,
     canReparent: dnd?.canReparent,
     onReparent: dnd?.onReparent,
     getCandidateIds: dnd?.getCandidateIds,
     getDescendants: dnd
       ? (id) => {
           // getDescendants on dnd takes a row; resolve via the node tree.
-          const node = findNode(tree.nodes, id);
+          const node = tree.flatNodes.find((n) => dndRowIdOf(n) === id);
           return node && dnd.getDescendants ? dnd.getDescendants(node.row) : [];
         }
       : undefined,
@@ -244,7 +284,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
                 <span
                   className="grid__Tree_DragGrip"
                   aria-hidden="true"
-                  {...rank.handleProps(node.id)}
+                  {...rank.handleProps(dndRowIdOf(node))}
                 >
                   ⋮⋮
                 </span>
@@ -328,6 +368,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
           </div>
         </div>
       )}
+      {statsPanel && <GridTreeStatsPanel {...statsPanel} />}
       {actionBar && <GridTreeActionBar {...actionBar} />}
       <GridTreeHead
         columns={columns}
@@ -348,7 +389,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
               // control-flow analysis so accentFn reads as non-callable even
               // after the `&& accentFn` guard). Logic is guarded; runtime safe.
               const rowAccent: string | null =
-                hasStripe || !accentFn
+                !hasStripe || !accentFn
                   ? null
                   : (accentFn as (r: TRow) => string | null)(node.row);
               return (
@@ -363,6 +404,8 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
                     loadingStyle={loadingStyle}
                     formOpen={detailOpen}
                     accent={rowAccent}
+                    anchorId={rowAnchorOf?.(node)}
+                    rankRowProps={hasDnd ? rank.rowProps(dndRowIdOf(node)) : undefined}
                     registerRowRef={cm.registerBodyRow}
                   />
                   {detailOpen && renderRowDetail ? (
@@ -378,16 +421,4 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
       <GridTreePagination tree={tree} />
     </div>
   );
-}
-
-function findNode<TRow>(
-  nodes: TreeNode<TRow>[],
-  id: string,
-): TreeNode<TRow> | null {
-  for (const n of nodes) {
-    if (n.id === id) return n;
-    const hit = findNode(n.children, id);
-    if (hit) return hit;
-  }
-  return null;
 }

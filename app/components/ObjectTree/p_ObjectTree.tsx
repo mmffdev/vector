@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { workItems as workItemsApi, portfolioItems as portfolioItemsApi } from "@/app/lib/apiSite";
 import { useSentinel } from "@/app/sentinel";
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
+import { artefactDetailToTreeRowPatch } from "@/app/components/ArtefactInlineForm/rowPatch";
 import { PARENT_PREFIX_MAP, type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import BulkActionBar from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
@@ -229,7 +230,7 @@ export default function ObjectTree({
   // field of legal drop targets the moment a drag starts.
   const getVisibleIdsRef = useRef<(() => string[]) | null>(null);
 
-  const { windowRoots, total, loadingWindow, patchAndApply, fetchChildren, refetchWindow } =
+  const { windowRoots, total, loadingWindow, patchAndApply, applyLocalPatch, fetchChildren, refetchWindow } =
     useArtefactItemsWindow({
       resourceUrl,
       pageSize,
@@ -952,8 +953,12 @@ export default function ObjectTree({
       resourceUrl={resourceUrl}
       scope={config.scope ?? "work"}
       onClose={closeInlineForm}
-      onSaved={(body) => {
-        if (openInlineFormId) patchAndApply(openInlineFormId, body);
+      onSaved={(body, artefact) => {
+        if (!openInlineFormId) return;
+        patchAndApply(openInlineFormId, body);
+        if (artefact) {
+          applyLocalPatch(openInlineFormId, artefactDetailToTreeRowPatch(artefact));
+        }
       }}
       onNavigate={(id) => {
         setOpenInlineFormId(id);

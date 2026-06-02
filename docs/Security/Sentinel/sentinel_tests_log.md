@@ -382,7 +382,7 @@ ok  	github.com/mmffdev/vector-backend/internal/lintchecks	0.381s
 
 **Scope.** Emptied `sentinelClampAllowlist` in `backend/internal/lintchecks/sentinel_clamp_test.go`. All 6 previously-allowlisted packages (artefactitems, artefactitemsv2, artefacttypes, artefactpriorities, portfoliomodels, flows) already read `sentinel.WorkspaceIDFromCtx` via the S05 absorption commit — the lint now passes without any package exemption.
 
-**Layer 2 carved out to S26.** The deeper SQL-clamp work (apply `AllowedSubtreeIDs` to WHERE clauses + per-package integration tests) is a multi-session refactor and is its own story.
+**Layer 2 carved out to S26.** The deeper consumer-side SQL application work (apply `AllowedSubtreeIDs` to WHERE clauses + per-package integration tests) is a multi-session refactor and is its own story.
 
 **Commit.** `61e9532a` (2026-05-24): feat(sentinel): S21 — empty sentinel-clamp allowlist; carve subtree-SQL layer to S26 [PLA062 S21].
 
@@ -432,7 +432,7 @@ OK    285 file(s) checked, 9 exempt
 
 **GREEN gates.**
 1. Two-tenant dev seed fixture (subscription_id A + B, one user per, one work-item per).
-2. S26 subtree-aware SQL clamp (already carved out from S21) so the cross-tenant probe actually returns 403, not an empty result.
+2. S26 consumer-side topology SQL application (already carved out from S21) so the cross-tenant probe actually returns 403, not an empty result.
 
 **Commit.** `7e411939` (2026-05-24): test(sentinel): S23 — RED cross-tenant isolation Playwright spec [PLA062 S23].
 
@@ -475,4 +475,3 @@ ok  (sentinel-clamp-required) — empty allowlist passes
 **Final grep result.** Zero CODE matches for the deleted symbols across backend/. Comments (sentinel migration narrative + one artefactitems doc-comment) preserved as audit-trail.
 
 **Commit.** `42d08d91` (2026-05-24): feat(sentinel): S25 — delete topology.ClampMiddleware + WorkspaceClampMiddleware [PLA062 S25]. PLA062 closes end-to-end.
-

@@ -64,7 +64,7 @@ PAYLOAD=$(echo "$TOKEN" | cut -d. -f2); PADDED=$(echo "$PAYLOAD" | awk '{ for(i=
 SID=$(echo "$PAYLOAD$PADDED" | base64 -d 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('sid',''))")
 echo "JWT sid: $SID"
 PGPASSWORD=68H9m2ncJJeKGvwKqQ3zMVzLjF0o4LPi /opt/homebrew/Cellar/libpq/18.3/bin/psql \
-  -h localhost -p 5435 -U mmff_dev -d mmff_vector \
+  -h localhost -p 5435 -U mmff_dev -d vector_artefacts \
   -c "SELECT users_sessions_id, users_sessions_revoked FROM users_sessions WHERE users_sessions_id = '$SID';"
 # Then test refresh rotation:
 curl -s -b /tmp/cookies.txt -X POST "http://localhost:$PORT/auth/refresh" | python3 -m json.tool
@@ -101,7 +101,7 @@ rm -f "$JAR"
 
 See [`c_c_db_routing.md`](c_c_db_routing.md) for which DB hosts which tables; this section captures the **command shape**, not the routing.
 
-### Run a one-shot psql query against `mmff_vector` (dev, via tunnel `:5435`)
+### Run a one-shot psql query against `vector_artefacts` (dev, via tunnel `:5435`)
 **Use when:** any ad-hoc query against the main DB while backend is on dev env
 **Gotcha:**
 - `psql` is NOT on PATH in the Claude bash shell — use the full libpq path `/opt/homebrew/opt/libpq/bin/psql`. Plain `psql` errors with `command not found`.
@@ -115,9 +115,9 @@ PGPASSWORD="$DB_PASSWORD" /opt/homebrew/opt/libpq/bin/psql \
   -c "SELECT 1;"
 ```
 
-### Run a one-shot psql query against `vector_artefacts` (vaPool, dev)
-**Use when:** querying the cutover substrate — `artefact_types`, `artefacts`, `flows`, `field_library`, `timebox_*`
-**Gotcha:** vaPool uses a **separate** set of env vars — `VA_DB_HOST/VA_DB_PORT/VA_DB_USER/VA_DB_PASSWORD/VA_DB_NAME`. Easy to use `DB_*` by reflex and silently hit `mmff_vector` instead. The `va_psql` helper in `cross_db_canary.sh` does this correctly.
+### Run a one-shot psql query against `vector_artefacts` via VA_* (dev)
+**Use when:** explicitly testing the VA_* env var path. `DB_*` and `VA_*` both point at `vector_artefacts` post-refactor.
+**Gotcha:** If these diverge on dev, treat it as a config bug unless you are deliberately inspecting a restored historical snapshot.
 ```bash
 set -a; source backend/.env.dev; set +a
 PGPASSWORD="$VA_DB_PASSWORD" /opt/homebrew/opt/libpq/bin/psql \

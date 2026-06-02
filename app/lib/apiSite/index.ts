@@ -80,6 +80,12 @@ export interface WorkItemQueryResult {
   total?: number;
 }
 
+export interface WorkItemsSummary {
+  total: number;
+  blocked: number;
+  by_type: Record<string, number>;
+}
+
 // Pages: app/login/page.tsx, app/login/reset/page.tsx, app/login/reset/confirm/page.tsx,
 //        app/change-password/page.tsx, app/contexts/AuthContext.tsx
 // ─── Auth  (/auth) ───────────────────────────────────────────────────────────
@@ -818,7 +824,9 @@ export const workItems = {
     apiSite<unknown>("/work-items/bulk", { method: "POST", body: JSON.stringify(data) }),
 
   summary: (params?: string) =>
-    apiSite<unknown>(params ? `/work-items/summary?${params}` : "/work-items/summary"),
+    apiSite<WorkItemsSummary>(
+      params ? `/work-items/summary?${params}` : "/work-items/summary",
+    ),
 
   listFlowStates: (params: string) =>
     apiSite<{ flow_states: unknown[] }>(`/work-items/flow-states?${params}`),
@@ -861,7 +869,9 @@ export const portfolioItems = {
     apiSite<unknown>("/portfolio-items/bulk", { method: "POST", body: JSON.stringify(data) }),
 
   summary: (params?: string) =>
-    apiSite<unknown>(params ? `/portfolio-items/summary?${params}` : "/portfolio-items/summary"),
+    apiSite<WorkItemsSummary>(
+      params ? `/portfolio-items/summary?${params}` : "/portfolio-items/summary",
+    ),
 
   listFlowStates: (params: string) =>
     apiSite<{ flow_states: unknown[] }>(`/portfolio-items/flow-states?${params}`),
@@ -918,59 +928,67 @@ export interface Timebox {
 // `{releases}` keys removed from the wire; legacy useTimebox +
 // ArtefactInlineForm updated in slice 6.3b.
 
+function scopedTimeboxPath(base: string, params: string): string {
+  const parsed = new URLSearchParams(params);
+  if (!parsed.get("workspace_id") || !parsed.get("org_node_id")) {
+    throw new Error("timebox API calls require workspace_id and org_node_id");
+  }
+  return `${base}?${params}`;
+}
+
 export const sprints = {
-  list: (params?: string) =>
-    apiSite<{ items: Timebox[]; total: number }>(params ? `/timeboxes/sprints?${params}` : "/timeboxes/sprints/"),
+  list: (params: string) =>
+    apiSite<{ items: Timebox[]; total: number }>(scopedTimeboxPath("/timeboxes/sprints", params)),
 
-  get: (id: ID) =>
-    apiSite<Timebox>(`/timeboxes/sprints/${id}`),
+  get: (id: ID, params: string) =>
+    apiSite<Timebox>(scopedTimeboxPath(`/timeboxes/sprints/${id}`, params)),
 
-  create: (data: unknown) =>
-    apiSite<Timebox>("/timeboxes/sprints/", { method: "POST", body: JSON.stringify(data) }),
+  create: (data: unknown, params: string) =>
+    apiSite<Timebox>(scopedTimeboxPath("/timeboxes/sprints", params), { method: "POST", body: JSON.stringify(data) }),
 
-  bulkCreate: (data: unknown) =>
-    apiSite<{ items: Timebox[]; total: number }>("/timeboxes/sprints/bulk-create", {
+  bulkCreate: (data: unknown, params: string) =>
+    apiSite<{ items: Timebox[]; total: number }>(scopedTimeboxPath("/timeboxes/sprints/bulk-create", params), {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: ID, data: unknown) =>
-    apiSite<Timebox>(`/timeboxes/sprints/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  update: (id: ID, data: unknown, params: string) =>
+    apiSite<Timebox>(scopedTimeboxPath(`/timeboxes/sprints/${id}`, params), { method: "PUT", body: JSON.stringify(data) }),
 
-  delete: (id: ID) =>
-    apiSite<void>(`/timeboxes/sprints/${id}`, { method: "DELETE" }),
+  delete: (id: ID, params: string) =>
+    apiSite<void>(scopedTimeboxPath(`/timeboxes/sprints/${id}`, params), { method: "DELETE" }),
 
-  start: (id: ID) =>
-    apiSite<void>(`/timeboxes/sprints/${id}/start`, { method: "POST" }),
+  start: (id: ID, params: string) =>
+    apiSite<void>(scopedTimeboxPath(`/timeboxes/sprints/${id}/start`, params), { method: "POST" }),
 
-  close: (id: ID) =>
-    apiSite<void>(`/timeboxes/sprints/${id}/close`, { method: "POST" }),
+  close: (id: ID, params: string) =>
+    apiSite<void>(scopedTimeboxPath(`/timeboxes/sprints/${id}/close`, params), { method: "POST" }),
 };
 
 // Pages: app/components/TimeboxManager.tsx, app/hooks/useTimebox.ts
 // ─── Timeboxes — Releases  (/timeboxes/releases) ─────────────────────────────
 
 export const releases = {
-  list: (params?: string) =>
-    apiSite<{ items: Timebox[]; total: number }>(params ? `/timeboxes/releases?${params}` : "/timeboxes/releases/"),
+  list: (params: string) =>
+    apiSite<{ items: Timebox[]; total: number }>(scopedTimeboxPath("/timeboxes/releases", params)),
 
-  get: (id: ID) =>
-    apiSite<Timebox>(`/timeboxes/releases/${id}`),
+  get: (id: ID, params: string) =>
+    apiSite<Timebox>(scopedTimeboxPath(`/timeboxes/releases/${id}`, params)),
 
-  create: (data: unknown) =>
-    apiSite<Timebox>("/timeboxes/releases/", { method: "POST", body: JSON.stringify(data) }),
+  create: (data: unknown, params: string) =>
+    apiSite<Timebox>(scopedTimeboxPath("/timeboxes/releases", params), { method: "POST", body: JSON.stringify(data) }),
 
-  bulkCreate: (data: unknown) =>
-    apiSite<{ items: Timebox[]; total: number }>("/timeboxes/releases/bulk-create", {
+  bulkCreate: (data: unknown, params: string) =>
+    apiSite<{ items: Timebox[]; total: number }>(scopedTimeboxPath("/timeboxes/releases/bulk-create", params), {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: ID, data: unknown) =>
-    apiSite<Timebox>(`/timeboxes/releases/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  update: (id: ID, data: unknown, params: string) =>
+    apiSite<Timebox>(scopedTimeboxPath(`/timeboxes/releases/${id}`, params), { method: "PUT", body: JSON.stringify(data) }),
 
-  delete: (id: ID) =>
-    apiSite<void>(`/timeboxes/releases/${id}`, { method: "DELETE" }),
+  delete: (id: ID, params: string) =>
+    apiSite<void>(scopedTimeboxPath(`/timeboxes/releases/${id}`, params), { method: "DELETE" }),
 };
 
 // Pages: app/components/ArtefactInlineForm/* (form Milestone dropdown)
@@ -997,21 +1015,20 @@ export interface Milestone {
 }
 
 export const milestones = {
-  list: (params?: string) =>
-    apiSite<{ milestones: Milestone[]; count: number }>(
-      params ? `/timeboxes/milestones?${params}` : "/timeboxes/milestones/",
-    ),
+  list: (params: string) =>
+    apiSite<{ milestones: Milestone[]; count: number }>(scopedTimeboxPath("/timeboxes/milestones", params)),
 
-  get: (id: ID) => apiSite<Milestone>(`/timeboxes/milestones/${id}`),
+  get: (id: ID, params: string) =>
+    apiSite<Milestone>(scopedTimeboxPath(`/timeboxes/milestones/${id}`, params)),
 
-  create: (data: unknown) =>
-    apiSite<Milestone>("/timeboxes/milestones/", { method: "POST", body: JSON.stringify(data) }),
+  create: (data: unknown, params: string) =>
+    apiSite<Milestone>(scopedTimeboxPath("/timeboxes/milestones", params), { method: "POST", body: JSON.stringify(data) }),
 
-  update: (id: ID, data: unknown) =>
-    apiSite<Milestone>(`/timeboxes/milestones/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  update: (id: ID, data: unknown, params: string) =>
+    apiSite<Milestone>(scopedTimeboxPath(`/timeboxes/milestones/${id}`, params), { method: "PATCH", body: JSON.stringify(data) }),
 
-  delete: (id: ID) =>
-    apiSite<void>(`/timeboxes/milestones/${id}`, { method: "DELETE" }),
+  delete: (id: ID, params: string) =>
+    apiSite<void>(scopedTimeboxPath(`/timeboxes/milestones/${id}`, params), { method: "DELETE" }),
 };
 
 // Pages: app/components/ArtefactInlineForm/* (Owner dropdown)

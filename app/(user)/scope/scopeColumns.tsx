@@ -11,6 +11,8 @@
 // import (the connector-bug surface) is gone.
 
 import type { GridColumn } from "@/app/components/Grid/types";
+import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
+import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import type { ScopeNode } from "./scopeTreeData";
 
 // Prefix → OTV2 gray-ramp tier. Strategic types sit at the dark end, execution
@@ -37,8 +39,9 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// IdCell — the type badge is the OTV2 form trigger: clicking it opens the
-// inline edit flyout for that row (onOpenForm). The ID text stays plain.
+// IdCell — the type badge and the artefact ID both open the inline edit flyout
+// for that row (onOpenForm). The ID is rendered as a link-styled button so
+// keyboard and pointer users get the same affordance.
 function IdCell({
   row,
   onOpenForm,
@@ -59,51 +62,50 @@ function IdCell({
       >
         <TypeBadge type={row.type} />
       </button>
-      <span className="grid__Cell_IdText">{row.id}</span>
+      <button
+        type="button"
+        className="grid__Cell_IdText grid__Cell_IdText--link"
+        aria-label={`Edit ${row.id}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenForm?.(row.id);
+        }}
+      >
+        {row.id}
+      </button>
     </span>
   );
 }
 
-// Flow-state chevron ribbon — reuses OTV2's wi-flow-row CSS verbatim (the
-// clip-path chevron pills already live in globals.css). The /scope status is a
-// single glyph (T/I/D/C); we render the canonical 4-stage ladder and fill the
-// active one with its --code/--active modifier so the ribbon reads identically
-// to the work-items grid. Non-interactive here (display only) — aria-disabled.
-const FLOW_STAGES: { glyph: string; code: string; label: string }[] = [
-  { glyph: "T", code: "todo", label: "To Do" },
-  { glyph: "I", code: "doing", label: "In Progress" },
-  { glyph: "D", code: "doing", label: "Doing" },
-  { glyph: "C", code: "completed", label: "Done" },
-];
+function StatusCell({
+  row,
+  flowStatesByType,
+}: {
+  row: ScopeNode;
+  flowStatesByType?: Map<string, WorkItemFlowState[]>;
+}) {
+  const states = flowStatesByType?.get(row.artefactTypeId) ?? [];
+  const renderedStates =
+    states.length > 0
+      ? states
+      : [
+          {
+            id: row.flowStateId,
+            flow_position: 0,
+            name: row.flowStateName || row.flowStateCode || "Status",
+            canonical_code: row.flowStateCode || "backlog",
+            artefact_type_id: row.artefactTypeId,
+          },
+        ];
 
-function FlowRow({ status }: { status: string }) {
   return (
-    <span className="wi-flow-row wi-flow-row--derived" role="group" aria-label="Status">
-      {FLOW_STAGES.map((s, i) => {
-        const active = s.glyph === status;
-        const cls = [
-          "wi-flow-row__btn",
-          `wi-flow-row__btn--code-${s.code}`,
-          active ? "wi-flow-row__btn--active" : "",
-          active ? `wi-flow-row__btn--active-${s.code}` : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        return (
-          <button
-            key={`${s.glyph}-${i}`}
-            type="button"
-            className={cls}
-            aria-pressed={active}
-            aria-disabled="true"
-            aria-label={s.label}
-            title={s.label}
-          >
-            <span className="wi-flow-row__btn_Label">{s.glyph}</span>
-          </button>
-        );
-      })}
-    </span>
+    <FlowStatePillRow
+      currentId={row.flowStateId}
+      currentCode={row.flowStateCode}
+      states={renderedStates}
+      onCommit={() => {}}
+      readOnly
+    />
   );
 }
 
@@ -118,6 +120,7 @@ function OwnerPill({ name }: { name: string }) {
 // OTV2 form trigger.
 export function makeScopeColumns(
   onOpenForm: (id: string) => void,
+  flowStatesByType: Map<string, WorkItemFlowState[]>,
 ): GridColumn<ScopeNode>[] {
   return [
   {
@@ -141,7 +144,9 @@ export function makeScopeColumns(
     defaultWidth: 220,
     sortable: true,
     resizable: true,
-    renderCell: (r) => <FlowRow status={r.status} />,
+    renderCell: (r) => (
+      <StatusCell row={r} flowStatesByType={flowStatesByType} />
+    ),
   },
   {
     id: "points",

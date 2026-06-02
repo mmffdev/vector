@@ -1,0 +1,35 @@
+import type { ArtefactDetail } from "./types";
+
+export function artefactDetailToTreeRowPatch(artefact: ArtefactDetail): Record<string, unknown> {
+  return {
+    id: artefact.id,
+    key_num: artefact.key_num,
+    item_type: artefact.item_type,
+    type_prefix: artefact.type_prefix,
+    artefact_type_id: artefact.artefact_type_id,
+    title: artefact.title,
+    description: artefact.description,
+    description_doc: artefact.description_doc,
+    status: artefact.status,
+    flow_state_id: artefact.flow_state_id,
+    flow_state_name: artefact.flow_state_name,
+    flow_state_code: artefact.flow_state_code,
+    priority_id: artefact.priority_id,
+    story_points: artefact.story_points,
+    sprint_id: artefact.sprint_id,
+    sprint: artefact.sprint ?? null,
+    parent_id: artefact.parent_id,
+    parent: artefact.parent ?? null,
+    owner_id: artefact.owner_id,
+    owner: artefact.owner ?? null,
+    due_date: artefact.due_date,
+    updated_at: artefact.updated_at,
+    children_count: artefact.children_count,
+    topology_node_id: artefact.topology_node_id,
+    colour: artefact.colour,
+    is_blocked: artefact.is_blocked,
+    blocked_reason: artefact.blocked_reason,
+    release_id: artefact.release_id,
+    milestone_id: artefact.milestone_id,
+  };
+}

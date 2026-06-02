@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/notifications/rules"
 	"github.com/mmffdev/vector-backend/internal/sentinel"
+	"github.com/mmffdev/vector-backend/internal/topologyclamp"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
 
@@ -206,7 +207,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	// When the clamp is absent (admin / dev paths with no middleware),
 	// SubtreeClause returns "" and the read falls back to
 	// subscription-only narrowing — same pre-Sentinel behaviour.
-	if mandatory, mArgs, mNext := sentinel.SubtreeClause(ctx, "a", args, n); mandatory != "" {
+	if mandatory, mArgs, mNext := topologyclamp.SubtreeClause(ctx, "a.artefacts_id_topology_node", args, n); mandatory != "" {
 		extra = append(extra, mandatory[len(" AND "):]) // strip leading " AND "; the joiner adds it back
 		args = mArgs
 		n = mNext
@@ -273,7 +274,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 				return nil, 0, resolveErr
 			}
 			// Intersect with the Sentinel clamp (no-op when clamp absent).
-			ids = sentinel.ApplyClampToIDs(ctx, ids)
+			ids = topologyclamp.ApplyClampToIDs(ctx, ids)
 			extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
 			args = append(args, ids)
 			n++
@@ -295,13 +296,7 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	// any artefact_type whose UUID is in the chip's selection. Rename-
 	// invariant: matching by ID instead of lower(name).
 	//
-	// itemTypeBindIdx captures the $N used for the parent's ItemType clause
-	// so the children_count scalar subquery can reuse the same bind (filter
-	// children by the same allow-list). 0 means "no item_type filter in
-	// play" — children_count stays unfiltered.
-	itemTypeBindIdx := 0
 	if len(filters.ItemType) > 0 {
-		itemTypeBindIdx = n
 		extra = append(extra, fmt.Sprintf("at.artefacts_types_id = ANY($%d::uuid[])", n))
 		args = append(args, filters.ItemType)
 		n++
@@ -363,18 +358,10 @@ func (s *Service) ListWorkItems(ctx context.Context, subscriptionID uuid.UUID, f
 	offsetN := n + 1
 	dataArgs := append(args, lim, filters.Offset)
 
-	// Children-count slot — when an item_type_id allow-list is in play,
-	// mirror it inside the children_count scalar subquery so a parent
-	// whose only children are of excluded types reports 0. The frontend
-	// expander gates on children_count, so 0 hides the expander and the
-	// row no longer pretends to have hidden descendants. Reuses the
-	// parent ItemType bind (itemTypeBindIdx) — no new arg appended.
-	childExtra := ""
-	if itemTypeBindIdx > 0 {
-		childExtra = fmt.Sprintf("\n	   AND child.artefacts_id_artefact_type = ANY($%d::uuid[])", itemTypeBindIdx)
-	}
-
-	dataQ := fmt.Sprintf(sqlListWorkItemsTemplate, childExtra, extraWhere, orderBy, limitN, offsetN)
+	// Children count remains structural. Type filters choose the primary
+	// rows returned by this list; expanding an included row must still reveal
+	// its real descendants, even when those descendants have different types.
+	dataQ := fmt.Sprintf(sqlListWorkItemsTemplate, "", extraWhere, orderBy, limitN, offsetN)
 
 	rows, err := s.vectorArtefactsPool.Query(ctx, dataQ, dataArgs...)
 	if err != nil {
@@ -458,7 +445,7 @@ func (s *Service) ListFacets(
 	}
 
 	// PLA062 S26 — Sentinel mandatory subtree clamp (matches ListWorkItems).
-	if mandatory, mArgs, mNext := sentinel.SubtreeClause(ctx, "a", args, n); mandatory != "" {
+	if mandatory, mArgs, mNext := topologyclamp.SubtreeClause(ctx, "a.artefacts_id_topology_node", args, n); mandatory != "" {
 		extra = append(extra, mandatory[len(" AND "):])
 		args = mArgs
 		n = mNext
@@ -503,7 +490,7 @@ func (s *Service) ListFacets(
 			if resolveErr != nil {
 				return FacetSet{}, resolveErr
 			}
-			ids = sentinel.ApplyClampToIDs(ctx, ids)
+			ids = topologyclamp.ApplyClampToIDs(ctx, ids)
 			extra = append(extra, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
 			args = append(args, ids)
 			n++
@@ -606,7 +593,7 @@ func (s *Service) getWorkItemImpl(ctx context.Context, subscriptionID, id uuid.U
 	// PLA062 S26 — Sentinel mandatory subtree clamp. The list paths
 	// splice the clamp into SQL; single-row reads use a static SELECT
 	// for the existing-id 404 contract, so we post-filter here. This
-	// mirrors the four-state contract of sentinel.SubtreeClause:
+	// mirrors the four-state contract of topologyclamp.SubtreeClause:
 	//   - !SubtreeResolved (no middleware / deliberate bypass): allow.
 	//   - SubtreeResolved && empty (resolved-empty): fail CLOSED → 404.
 	//   - SubtreeResolved && non-empty: membership check.
@@ -673,6 +660,20 @@ func (s *Service) ListChildren(ctx context.Context, subscriptionID uuid.UUID, pa
 	args := []any{subscriptionID, parentID, s.scope}
 	n := 4
 	var extra []string
+
+	// Topology subtree clamp — MUST mirror ListWorkItems / ListByScope. The
+	// row-owning package supplies its trusted topology column; topologyclamp
+	// applies sentinel.FromCtx(ctx).AllowedSubtreeIDs to it. Without this clamp
+	// ListChildren over-returns children whose own topology node is outside the
+	// caller's reachable subtree, leaking out-of-scope artefacts into the list
+	// wire payload (SERVER-IS-THE-GATE) — and those rows then 404 at GetWorkItem
+	// (which DOES clamp). Clamping here makes the children query and the
+	// single-GET agree on what's visible.
+	if mandatory, mArgs, mNext := topologyclamp.SubtreeClause(ctx, "a.artefacts_id_topology_node", args, n); mandatory != "" {
+		extra = append(extra, mandatory[len(" AND "):]) // strip leading " AND "; the joiner re-adds it
+		args = mArgs
+		n = mNext
+	}
 
 	if len(filters.ItemType) > 0 {
 		extra = append(extra, fmt.Sprintf("at.artefacts_types_id = ANY($%d::uuid[])", n))
@@ -750,7 +751,7 @@ func (s *Service) SummariseWorkItems(
 		n++
 	}
 	// PLA062 S26 — Sentinel mandatory subtree clamp.
-	if mandatory, mArgs, mNext := sentinel.SubtreeClause(ctx, "a", args, n); mandatory != "" {
+	if mandatory, mArgs, mNext := topologyclamp.SubtreeClause(ctx, "a.artefacts_id_topology_node", args, n); mandatory != "" {
 		conds = append(conds, mandatory[len(" AND "):])
 		args = mArgs
 		n = mNext
@@ -810,7 +811,7 @@ func (s *Service) SummariseWorkItems(
 			if resolveErr != nil {
 				return out, resolveErr
 			}
-			ids = sentinel.ApplyClampToIDs(ctx, ids)
+			ids = topologyclamp.ApplyClampToIDs(ctx, ids)
 			conds = append(conds, fmt.Sprintf("a.artefacts_id_topology_node = ANY($%d::uuid[])", n))
 			args = append(args, ids)
 			n++
@@ -2833,4 +2834,3 @@ func scanWorkItemRows(rows pgx.Rows) ([]WorkItem, error) {
 	}
 	return out, rows.Err()
 }
-

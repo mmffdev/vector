@@ -17205,8 +17205,8 @@ input[type="reset"] {
 
 /* ─── <NavigationPie> ───────────────────────────────────────────────────────
    Multi-select filter primitive: option segments around the chip as a
-   full-circle pie. White = unselected, --ink (black) = selected. Click
-   toggles immediately; no batched commit.
+   full-circle pie. Resting/locked chips use the sandy surface-sunken
+   fill; white surface is the rollover state.
 */
 .navigation-pie__Chip {
   position: relative;
@@ -17217,7 +17217,7 @@ input[type="reset"] {
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--surface);
+  background: var(--surface-sunken);
   color: var(--ink);
   font: inherit;
   font-size: 13px;
@@ -17225,12 +17225,18 @@ input[type="reset"] {
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 .navigation-pie__Chip:hover {
-  background: var(--surface-hover, color-mix(in srgb, var(--ink) 6%, transparent));
+  background: var(--surface);
 }
 .navigation-pie__Chip-active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
-  color: var(--accent-ink, var(--ink));
+  border-color: var(--border);
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.navigation-pie__Chip-active:hover {
+  background: var(--surface);
+}
+.navigation-pie__Chip-triggerless {
+  cursor: default;
 }
 .navigation-pie__Chip-open {
   /* Arma-radial: when the pie opens, the trigger chip disappears so the
@@ -17243,7 +17249,7 @@ input[type="reset"] {
   display: inline-flex;
 }
 .navigation-pie__Chip-active .navigation-pie__Chip_icon {
-  color: var(--accent);
+  color: var(--ink);
 }
 .navigation-pie__Chip_label {
   white-space: nowrap;
@@ -21444,6 +21450,579 @@ tr.is-editing {
   border-bottom: 1px solid var(--success, #1f7a3d);
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   Fullscreen Canvas Overlay (fullscreen-canvas-overlay__*)
+   Reusable fullscreen shell for node-scoped canvases. Replicates the Form
+   Layout Builder overlay geometry without depending on flb-* classes.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.fullscreen-canvas-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--text-primary);
+  animation: fullscreen-canvas-overlay-in 160ms ease-out;
+}
+
+@keyframes fullscreen-canvas-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fullscreen-canvas-overlay__Bar {
+  flex: 0 0 auto;
+  height: 100px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 var(--space-6) 0 30px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface);
+}
+
+.fullscreen-canvas-overlay__Bar_Brand {
+  flex: 0 0 auto;
+  width: calc(var(--rd-rail-w, 100px) + 16px - 30px);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.fullscreen-canvas-overlay__Bar_Brand_Logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+.fullscreen-canvas-overlay__Bar_Title {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.fullscreen-canvas-overlay__Bar_Title_Main {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.fullscreen-canvas-overlay__Bar_Title_Sub {
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.fullscreen-canvas-overlay__Bar_Status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+
+.fullscreen-canvas-overlay__Bar_Status--unsaved {
+  color: #8a5a00;
+  background: #fff4e0;
+  border-color: #f3d39a;
+}
+
+.fullscreen-canvas-overlay__Bar_Status--draft {
+  color: #1f4e7a;
+  background: #e8f1fb;
+  border-color: #b9d6f2;
+}
+
+.fullscreen-canvas-overlay__Bar_Status--live {
+  color: #1f6b3a;
+  background: #e6f5ec;
+  border-color: #abdcbd;
+}
+
+.fullscreen-canvas-overlay__Bar_Status--new {
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  border-color: var(--border-default);
+}
+
+.fullscreen-canvas-overlay__Bar_Actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.fullscreen-canvas-overlay__Button {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.fullscreen-canvas-overlay__Button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fullscreen-canvas-overlay__Button--ghost {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.fullscreen-canvas-overlay__Button--ghost:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.fullscreen-canvas-overlay__Body {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 560px 1fr;
+  min-height: 0;
+}
+
+.fullscreen-canvas-overlay__Sidebar {
+  border-right: 1px solid var(--border-default);
+  background: transparent;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  position: relative;
+}
+
+.fullscreen-canvas-overlay__Sidebar_Section_Head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.fullscreen-canvas-overlay__Sidebar_Section_Title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.fullscreen-canvas-overlay__Sidebar_Section_Count {
+  font-size: 10px;
+  color: var(--ink-muted);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  padding: 1px 6px;
+}
+
+.fullscreen-canvas-overlay__Sidebar_Section_List {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fullscreen-canvas-overlay__Canvas {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface-sunken);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-canvas-overlay__Canvas_Empty {
+  flex: 1 1 auto;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-strong);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* Dependency Map — relationship composer sidebar */
+.dependency-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.dependency-composer__Mode {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.dependency-composer__ModeBtn {
+  height: 34px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.dependency-composer__ModeBtn:hover,
+.dependency-composer__ModeBtn.is-active {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.dependency-composer__Form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.dependency-composer__Bucket {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-left: 3px solid transparent;
+  padding-left: var(--space-3);
+}
+
+.dependency-composer__Bucket.is-active {
+  border-left-color: var(--accent);
+}
+
+.dependency-composer__BucketHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dependency-composer__BucketTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.dependency-composer__BucketTitle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dependency-composer__Count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.dependency-composer__BucketHelper {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.dependency-composer__Filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.dependency-composer__Select {
+  min-width: 0;
+  height: 34px;
+}
+
+.dependency-composer__SearchRail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.dependency-composer__SearchRail:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.dependency-composer__Token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 150px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.dependency-composer__Token svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-muted);
+}
+
+.dependency-composer__TokenRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.dependency-composer__TokenRemove:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.dependency-composer__SearchIcon {
+  display: inline-flex;
+  color: var(--ink-muted);
+}
+
+.dependency-composer__SearchIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dependency-composer__SearchInput {
+  flex: 1 1 auto;
+  min-width: 80px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.dependency-composer__SearchInput::placeholder {
+  color: var(--ink-muted);
+}
+
+.dependency-composer__AddBtn {
+  align-self: stretch;
+  width: 100%;
+}
+
+.dependency-composer__Results {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.dependency-composer__ResultGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.dependency-composer__ResultLabel {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dependency-composer__ResultRow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 42px;
+  border-top: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 var(--space-3);
+}
+
+.dependency-composer__ResultRow:hover {
+  background: var(--surface-sunken);
+}
+
+.dependency-composer__ResultRow.is-selected {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.dependency-composer__ResultCode {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dependency-composer__ResultTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-composer__ResultCheckbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.dependency-composer__ResultEmpty {
+  min-height: 42px;
+  border-top: 1px solid var(--border-default);
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+}
+
+.dependency-composer__BucketRows {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.dependency-composer__BucketRow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  border-top: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 var(--space-3);
+}
+
+.dependency-composer__BucketRow:hover {
+  background: var(--surface-sunken);
+}
+
+.dependency-composer__BucketRow.is-selected {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.dependency-composer__BucketRow:first-child {
+  border-top: 0;
+}
+
+.dependency-composer__BucketCode {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dependency-composer__BucketRowTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-composer__BucketAction {
+  width: 100%;
+  justify-content: center;
+}
+
+.dependency-composer__BucketEmpty {
+  min-height: 42px;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  padding: 0 var(--space-3);
+}
+
+.dependency-composer__Meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-default);
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.dependency-composer__MetaRow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.dependency-composer__MetaLabel {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.dependency-map__CanvasPlaceholder {
+  min-height: 100%;
+}
+
 /* Form Layout Builder — Save-as-Draft (secondary) + Discard (danger) buttons */
 .flb-btn-secondary {
   background: var(--surface, #fff);
@@ -21568,6 +22147,63 @@ tr.is-editing {
   line-height: 1.3;
   color: var(--ink-muted);
   margin: 0;
+}
+
+/* ── Stats band ───────────────────────────────────────────────────────────────
+   Optional node-wide summary strip. Callers provide clamped counts; the tree
+   owns the visual band so every Grid__Tree consumer gets one shape. */
+.grid__Tree_StatsPanel {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.grid__Tree_StatsPanel_Grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  align-items: stretch;
+  width: 100%;
+}
+.grid__Tree_StatsPanel_Cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 14px 11px;
+  border-right: 1px solid var(--border);
+}
+.grid__Tree_StatsPanel_Cell:last-child {
+  border-right: none;
+}
+.grid__Tree_StatsPanel_Label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ink-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.grid__Tree_StatsPanel_Value {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1;
+}
+.grid__Tree_StatsPanel_Cell--warning .grid__Tree_StatsPanel_Value {
+  color: var(--status-warning);
+}
+.grid__Tree_StatsPanel_Cell--danger .grid__Tree_StatsPanel_Value {
+  color: var(--status-danger);
+}
+.grid__Tree_StatsPanel_Glyph {
+  width: 12px;
+  height: 12px;
+  color: var(--status-warning);
+  flex: 0 0 auto;
 }
 
 /* ── Action band ──────────────────────────────────────────────────────────────
@@ -21846,12 +22482,37 @@ tr.is-editing {
 }
 
 /* ── Tree connector SVG (in-cell indent + ├└│ rails) ──────────────────────────
-   Lives inside the primary cell. Its width (depth × step) IS the indent, so
-   only the primary cell content shifts — lead columns never move. */
-.grid__Tree_Lines {
-  display: block;
+   The WRAP is an in-flow spacer whose width = the indent (depth × step); it sits
+   before the caret so only the primary cell content shifts (lead columns never
+   move). The SVG overlays it absolutely and draws past the spacer's right edge
+   (the badge-touching horizontal + the drop-stub) without affecting layout. */
+.grid__Tree_LinesWrap {
+  position: relative;
   flex-shrink: 0;
+  align-self: stretch;
+}
+.grid__Tree_Lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
   overflow: visible;
+  pointer-events: none;
+  /* Behind the cell content — the rails must never paint over the caret, badge,
+     or id text. The caret/badge/id are lifted above it below. */
+  z-index: 0;
+}
+/* Node dot at the ├/└ junction — reads as the row's tree node. */
+.grid__Tree_LinesNode {
+  fill: var(--tree-connector);
+}
+/* Lift the primary cell's real content above the connector SVG overlay. */
+.grid__Tree_Cell--primary > .grid__Tree_Caret,
+.grid__Tree_Cell--primary > .grid__Tree_CaretSpacer,
+.grid__Tree_Cell--primary > .grid__Cell_Id,
+.grid__Tree_Cell--primary > .grid__Cell_Summary {
+  position: relative;
+  z-index: 1;
 }
 
 /* Type-badge button wrapper — the OTV2 form trigger. Resets button chrome so
@@ -21867,6 +22528,27 @@ tr.is-editing {
 .grid__Cell_TypeBadgeBtn:focus-visible .grid__Cell_TypeBadge {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2563eb) 50%, transparent);
 }
+.grid__Cell_IdText--link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ink-muted);
+}
+.grid__Cell_IdText--link:hover {
+  color: var(--ink);
+  text-decoration-style: solid;
+  text-decoration-color: var(--ink);
+}
+.grid__Cell_IdText--link:focus-visible {
+  outline: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2563eb) 50%, transparent);
+}
 
 /* ── Caret (expand toggle) ───────────────────────────────────────────────── */
 .grid__Tree_Caret {
@@ -21877,7 +22559,12 @@ tr.is-editing {
   width: 16px;
   height: 16px;
   padding: 0;
-  margin: 0;
+  /* Caret nudged 3px right (margin-left:3) while the badge stays put — the 3px
+     is taken back out of margin-right (5→2) so total caret box width is
+     unchanged and the badge/id don't move. The spacer matches so leaf rows
+     align with parents. (margin-right keeps the chevron↔badge gap; flex gap on
+     the cell stays 0 to preserve the connector caret-spacing math.) */
+  margin: 0 8px 0 -3px;
   border: 0;
   background: none;
   cursor: pointer;
@@ -21887,13 +22574,13 @@ tr.is-editing {
 .grid__Tree_CaretGlyph {
   width: 0;
   height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 5px solid currentColor;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid currentColor;
   transition: transform 0.12s ease;
 }
 .grid__Tree_Caret[data-expanded="true"] .grid__Tree_CaretGlyph { transform: rotate(90deg); }
-.grid__Tree_CaretSpacer { flex: 0 0 auto; width: 16px; height: 16px; }
+.grid__Tree_CaretSpacer { flex: 0 0 auto; width: 16px; height: 16px; margin: 0 8px 0 -3px; }
 
 /* Expand-all toggle — lives inside the primary header cell, aligned to carets. */
 .grid__Tree_ExpandAll {
@@ -21926,6 +22613,16 @@ tr.is-editing {
 }
 .grid__Tree_DragGrip:active { cursor: grabbing; }
 
+.drag-row--drop-candidate .grid__Tree_Stripe {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #ccffcc 0,
+    #ccffcc 10px,
+    transparent 10px,
+    transparent 20px
+  );
+}
+
 /* The old CSS-border connector system (Branch ::before/::after rails off DOM
    nesting) is GONE — connectors are now drawn by the in-cell TreeLines SVG
    (Grid__Tree_Lines), which lets the lead columns stay fixed while only the
@@ -21938,6 +22635,22 @@ tr.is-editing {
   position: relative;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  overflow: clip;
+  animation: grid__Tree_detail-in 180ms ease-out both;
+  transform-origin: top center;
+}
+
+@keyframes grid__Tree_detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 /* ══ Barber-pole — the loadingStyle="barberpole" prop, re-homed from the old
@@ -21967,6 +22680,7 @@ tr.is-editing {
   to   { background-position: 28.284px 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .grid__Tree_Branch_Detail { animation: none; }
   .grid__Tree_Row--formOpen,
   .grid__Tree_Row--formOpen:hover { animation: none; }
 }

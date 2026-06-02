@@ -23,6 +23,12 @@ Flag any new query that touches a tenant-scoped table without a `tenant_id` pred
 
 Anti-pattern: `UPDATE users SET role = $1 WHERE id = $2` where `$1` is request body. Correct: verify the caller is `gadmin` server-side before running the update; never trust client-supplied role.
 
+### 2a. Sentinel scope is mandatory on node-relative APIs
+
+Tenant/workspace/topology-node scoped API calls must carry Sentinel context and fail closed when the active topology node is absent. `NULL` topology scope is not a fallback. Node-relative resources such as artefacts, sprints, releases, and milestones must read through the active node (`?meg=` for Sentinel's narrow hint and/or the resource-specific `org_node_id` filter) and must reject writes whose persisted topology-node FK is missing or does not match the request scope.
+
+Anti-pattern: `GET /timeboxes/sprints?workspace_id=...` returning every sprint in the workspace, or `POST /timeboxes/sprints` with `timeboxes_sprints_id_topology_node = null`. Correct: require `org_node_id`, forward the live Sentinel focus, re-validate against the clamp, and persist only node-pinned rows.
+
 ### 3. Passwords and tokens
 
 - Passwords: bcrypt cost 12. Stored in `users.password_hash`. Never logged, never returned in JSON (struct tag `json:"-"`).

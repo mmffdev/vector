@@ -8,6 +8,8 @@
 // state and its own children — never depth, isLast, or continuations[].
 
 import type { ReactNode } from "react";
+import type { ApiError } from "@/app/lib/api";
+import type { MoveResult } from "@/app/hooks/useResourceRank";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Tree node — the headless render model
@@ -88,6 +90,12 @@ export interface UseTreeOptions<TRow> {
    */
   fetchChildren: (row: TRow) => Promise<TRow[]>;
   /**
+   * Whether the hook should load root page 0 on mount. Default true.
+   * Scope-aware consumers can set false and call refresh() once their external
+   * clamp state is ready, preventing an initial unscoped read.
+   */
+  autoLoad?: boolean;
+  /**
    * Master switch. false → flat list: no carets, no fetch, every node is a
    * leaf (the non-expandable skin variant). true → full expand/lazy-load
    * machine. This is the extension seam: capability lives here in the hook,
@@ -136,6 +144,10 @@ export interface UseTreeResult<TRow> {
   jumpToPage: (n: number) => void;
   /** Re-load from offset 0 with a full reset — the post-mutation refresh. */
   refresh: () => void;
+  /** Re-load visible roots + expanded child caches without collapsing rows. */
+  refreshPreservingExpansion: () => void;
+  /** Patch a row in the root window and any fetched child caches without resetting expansion. */
+  updateRow: (id: string, updater: (row: TRow) => TRow) => void;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -178,6 +190,10 @@ export interface GridColumn<TRow> {
 
 export interface GridDnD<TRow> {
   resourceType: string;
+  /** Backend/ranking id for drag-drop. Defaults to the tree node id. */
+  rowIdOf?: (row: TRow) => string;
+  onMoved?: (result: MoveResult) => void;
+  onError?: (err: ApiError) => void;
   canReparent?: (moverId: string, targetId: string) => boolean;
   onReparent?: (
     moverId: string,

@@ -540,7 +540,7 @@ func (h *DevResetHandler) SeedWorkspace(w http.ResponseWriter, r *http.Request) 
 
 	ctx := r.Context()
 
-	// Insert workspace on mmff_vector.
+	// Insert workspace on vector_artefacts.
 	var workspaceID uuid.UUID
 	err := h.VectorPool.QueryRow(ctx, sqlDevSeedWorkspace,
 		u.SubscriptionID,

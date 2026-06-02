@@ -161,6 +161,12 @@ export interface UseObjectTreeWindowResult<T> {
    */
   patchAndApply: (id: string, body: Record<string, unknown>) => void;
   /**
+   * Local-only row patch. Used when another surface already persisted
+   * the change and returned canonical display refs that the tree should
+   * merge without sending a second write.
+   */
+  applyLocalPatch: (id: string, body: Record<string, unknown>) => void;
+  /**
    * Lazy child loader for tree expansion. Returns whatever the server
    * returns under `items` — caller is responsible for merging into its
    * own child cache.
@@ -402,9 +408,8 @@ export function useObjectTreeWindow<T>(
     return () => clearTimeout(t);
   }, [refetchWindow, scopeReady]);
 
-  const patchAndApply = useCallback(
+  const applyLocalPatch = useCallback(
     (id: string, body: Record<string, unknown>) => {
-      // Optimistic: mutate one map entry. Other rows untouched.
       setRowsById((prev) => {
         const existing = prev.get(id);
         if (existing === undefined) return prev;
@@ -414,6 +419,13 @@ export function useObjectTreeWindow<T>(
       });
       // Mirror into out-of-hook caches (expanded children in ResourceTree).
       onLocalPatch?.(id, body);
+    },
+    [onLocalPatch],
+  );
+
+  const patchAndApply = useCallback(
+    (id: string, body: Record<string, unknown>) => {
+      applyLocalPatch(id, body);
 
       apiSite<T>(`${resourceUrl}/${id}`, {
         method: "PATCH",
@@ -449,7 +461,7 @@ export function useObjectTreeWindow<T>(
       cascadeOnFields,
       onPatched,
       refetchWindow,
-      onLocalPatch,
+      applyLocalPatch,
       onCascadeRefresh,
       onPatchError,
     ],
@@ -493,6 +505,7 @@ export function useObjectTreeWindow<T>(
     loadingWindow: effectiveLoading,
     refetchWindow,
     patchAndApply,
+    applyLocalPatch,
     fetchChildren,
   };
 }

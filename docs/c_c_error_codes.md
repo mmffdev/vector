@@ -1,6 +1,6 @@
 # Error codes (cross-cutting system)
 
-Stable, MMFF-authored catalogue of error codes mapped to severity + paired user/dev messages. Lives in `mmff_library.error_codes` (read-only, global). Per-occurrence events are appended to `mmff_vector.error_events` via `reportError(code, context)`.
+Stable, MMFF-authored catalogue of error codes mapped to severity + paired user/dev messages. Lives in `mmff_library.error_codes` (read-only, global). Per-occurrence events are appended to `vector_artefacts.error_events` via `reportError(code, context)`.
 
 ## Schema
 
@@ -13,7 +13,7 @@ Stable, MMFF-authored catalogue of error codes mapped to severity + paired user/
 - `dev_message` TEXT — long, dev-facing; logged but never shown to end users.
 - `created_at` TIMESTAMPTZ.
 
-`mmff_vector.error_events` — per-occurrence append-only log; UPDATE/DELETE rejected by trigger. Carries `subscription_id`, `user_id`, `code` (cross-DB FK by value; LEFT JOIN at read-time), `context` JSONB, `occurred_at`, `request_id`. Full column reference: [`c_schema.md` → `error_events`](c_schema.md#error_events).
+`vector_artefacts.error_events` - per-occurrence append-only log; UPDATE/DELETE rejected by trigger. Carries `subscription_id`, `user_id`, `code` (cross-DB FK by value; LEFT JOIN at read-time), `context` JSONB, `occurred_at`, `request_id`. Full column reference: [`c_schema.md` -> `error_events`](c_schema.md#error_events).
 
 ## Adding a new error code
 
@@ -39,7 +39,7 @@ Stable, MMFF-authored catalogue of error codes mapped to severity + paired user/
 
 ## Reporting from the backend
 
-Backend handlers report an event via `POST /api/errors/report` (the route is owned by card 00007; reference the route, not the file path). The handler resolves the active subscription + user from session and inserts into `mmff_vector.error_events`. Body shape: `{ "code": "ADOPT_BUNDLE_NOT_FOUND", "context": { "handler": "...", "detail": "..." } }`. Keep `context` small (< ~4 KB); link out to logs/traces via `request_id` for blobs. Reporting is fire-and-forget — never let a failed `reportError` mask the original error path.
+Backend handlers report an event via `POST /api/errors/report` (the route is owned by card 00007; reference the route, not the file path). The handler resolves the active subscription + user from session and inserts into `vector_artefacts.error_events`. Body shape: `{ "code": "ADOPT_BUNDLE_NOT_FOUND", "context": { "handler": "...", "detail": "..." } }`. Keep `context` small (< ~4 KB); link out to logs/traces via `request_id` for blobs. Reporting is fire-and-forget - never let a failed `reportError` mask the original error path.
 
 ## Reporting from the frontend
 

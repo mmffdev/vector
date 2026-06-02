@@ -328,15 +328,19 @@ export default function ValueSprintReview() {
   // case a stale render somehow fires through.
   const setSprintStatus = useCallback(
     async (target: "planned" | "active" | "completed") => {
-      if (!panelSprint) return;
+      if (!panelSprint || !workspaceId || !activeNodeId) return;
+      const scopeParams = new URLSearchParams({
+        workspace_id: workspaceId,
+        org_node_id: activeNodeId,
+      }).toString();
       const current = panelSprint.timeboxes_sprints_status ?? "";
       if (current === target) return;
       try {
         if (current === "planned" && target === "active") {
-          await sprintsApi.start(panelSprint.timeboxes_sprints_id);
+          await sprintsApi.start(panelSprint.timeboxes_sprints_id, scopeParams);
           notify.success("Sprint started.");
         } else if (current === "active" && target === "completed") {
-          await sprintsApi.close(panelSprint.timeboxes_sprints_id);
+          await sprintsApi.close(panelSprint.timeboxes_sprints_id, scopeParams);
           notify.success("Sprint completed.");
         } else {
           notify.error(
@@ -349,7 +353,7 @@ export default function ValueSprintReview() {
         notify.apiError(err as ApiError, "Failed to change sprint status.");
       }
     },
-    [panelSprint, refetch],
+    [panelSprint, workspaceId, activeNodeId, refetch],
   );
 
   const subscriptionID = sentinel_tenant?.id ?? null;
