@@ -46,7 +46,21 @@ export interface TreeNode<TRow> {
 // not the primitive — see TD-GRID-PRIMITIVE-GENERICITY).
 // ────────────────────────────────────────────────────────────────────────────
 
+export interface RootPage<TRow> {
+  rows: TRow[];
+  /** Server total across ALL roots (not just this page) — drives hasMore + jump. */
+  total: number;
+}
+
 export interface UseTreeOptions<TRow> {
+  /**
+   * Paged root loader — owns the canopy. Called on mount for page 0, and on
+   * loadMore() / jumpToPage() / refresh(). Returns the page's rows plus the
+   * server total. Typically `workItems.query({ page })` → { rows, total }.
+   */
+  fetchRoots: (page: { limit: number; offset: number }) => Promise<RootPage<TRow>>;
+  /** Roots per page. Default 100. */
+  pageSize?: number;
   /** Stable id for a row. */
   rowIdOf: (row: TRow) => string;
   /**
@@ -83,6 +97,26 @@ export interface UseTreeResult<TRow> {
   collapseAll: () => void;
   /** True when every known expandable row is expanded — drives the header icon. */
   allExpanded: boolean;
+
+  // ── Root pagination (the canopy window the hook owns) ──────────────────────
+  /** Server total across all roots. */
+  total: number;
+  /** Roots currently loaded (the accumulated/replaced window length). */
+  loadedCount: number;
+  /** Roots per page (the resolved pageSize). */
+  pageSize: number;
+  /** loadedCount < total — more roots remain to append. */
+  hasMore: boolean;
+  /** offset / pageSize — meaningful right after a jump. */
+  currentPage: number;
+  /** A root page fetch (mount / loadMore / jump / refresh) is in flight. */
+  rootsLoading: boolean;
+  /** Append the next root page below the current window; preserves expansion. */
+  loadMore: () => void;
+  /** Replace the window with page n (offset = n × pageSize); resets expansion. */
+  jumpToPage: (n: number) => void;
+  /** Re-load from offset 0 with a full reset — the post-mutation refresh. */
+  refresh: () => void;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

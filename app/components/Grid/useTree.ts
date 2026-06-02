@@ -20,10 +20,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TreeNode, UseTreeOptions, UseTreeResult } from "./types";
 
 export function useTree<TRow>(
-  roots: TRow[],
   opts: UseTreeOptions<TRow>,
 ): UseTreeResult<TRow> {
-  const { rowIdOf, getChildrenCount, fetchChildren, expandable = true } = opts;
+  const {
+    fetchRoots,
+    pageSize = 100,
+    rowIdOf,
+    getChildrenCount,
+    fetchChildren,
+    expandable = true,
+  } = opts;
+
+  // ── Root window (the canopy the hook now owns) ─────────────────────────────
+  // roots = the accumulated (loadMore) or replaced (jumpToPage) window.
+  // offset = the window's start; total = the server count across all roots.
+  const [roots, setRoots] = useState<TRow[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [rootsLoading, setRootsLoading] = useState(false);
+  // Guards a concurrent root fetch (mount-effect + a fast loadMore click).
+  const rootsInFlightRef = useRef(false);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   // parentId → its fetched children. Map identity changes on every set so the
@@ -50,6 +66,67 @@ export function useTree<TRow>(
     setLoadingIds(new Set());
     setExpandAllActive(false);
     inFlightRef.current = new Set();
+  }, []);
+
+  // ── Root window loaders ────────────────────────────────────────────────────
+  // One private primitive fetches a page and either APPENDS it (loadMore —
+  // keeps expansion) or REPLACES the window (jump / refresh / mount — the
+  // caller resets expansion first). The rootsInFlightRef guard stops a second
+  // loadMore landing before the first resolves from double-appending.
+  const loadPage = useCallback(
+    async (pageOffset: number, mode: "append" | "replace") => {
+      if (rootsInFlightRef.current) return;
+      rootsInFlightRef.current = true;
+      setRootsLoading(true);
+      try {
+        const { rows, total: t } = await fetchRoots({
+          limit: pageSize,
+          offset: pageOffset,
+        });
+        setTotal(t);
+        // Append keeps the window START where it is (offset unchanged) and
+        // grows the length; replace moves the window to pageOffset. So only a
+        // replace updates offset — this keeps hasMore (offset + length < total)
+        // and currentPage correct in both modes.
+        if (mode === "replace") setOffset(pageOffset);
+        setRoots((prev) => (mode === "append" ? [...prev, ...rows] : rows));
+      } catch {
+        /* leave the window as-is; a retry can re-attempt */
+      } finally {
+        rootsInFlightRef.current = false;
+        setRootsLoading(false);
+      }
+    },
+    [fetchRoots, pageSize],
+  );
+
+  // Append the next page below the current window. offset stays at the window
+  // START; we fetch from loadedCount (roots.length) so consecutive loadMores
+  // walk forward. Expansion + child caches are untouched.
+  const loadMore = useCallback(() => {
+    void loadPage(roots.length, "append");
+  }, [loadPage, roots.length]);
+
+  // Replace the window with page n. reset() first so no expanded subtree points
+  // at a row that's about to leave the window.
+  const jumpToPage = useCallback(
+    (n: number) => {
+      reset();
+      void loadPage(Math.max(0, n) * pageSize, "replace");
+    },
+    [reset, loadPage, pageSize],
+  );
+
+  // Post-mutation refresh — reload from the top with a clean slate.
+  const refresh = useCallback(() => {
+    reset();
+    void loadPage(0, "replace");
+  }, [reset, loadPage]);
+
+  // Mount — load page 0. Runs once (fetchRoots/pageSize are stable per consumer).
+  useEffect(() => {
+    void loadPage(0, "replace");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch + cache one row's children (idempotent). Shared by toggle (lazy
@@ -233,5 +310,25 @@ export function useTree<TRow>(
     if (inFlightRef.current.size === 0) setExpandAllActive(false);
   }, [expandAllActive, expandable, knownExpandable, expandedIds, ensureChildren]);
 
-  return { nodes, loadingIds, reset, expandAll, collapseAll, allExpanded };
+  return {
+    nodes,
+    loadingIds,
+    reset,
+    expandAll,
+    collapseAll,
+    allExpanded,
+    // Root pagination
+    total,
+    loadedCount: roots.length,
+    pageSize,
+    // "Is there a root past the window's END position?" — works for BOTH modes:
+    // append grows roots.length from offset 0; a jump sets offset = n×pageSize
+    // and replaces, so the window's end is offset + length either way.
+    hasMore: offset + roots.length < total,
+    currentPage: pageSize > 0 ? Math.floor(offset / pageSize) : 0,
+    rootsLoading,
+    loadMore,
+    jumpToPage,
+    refresh,
+  };
 }

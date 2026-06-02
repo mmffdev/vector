@@ -22,7 +22,7 @@
 // What it does NOT own: the look (Grid__Tree), the connectors (CSS), the tree
 // state machine (useTree), or the form body (Grid__Tree_Forms / ArtefactInlineForm).
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { GridTree } from "@/app/components/Grid/Grid__Tree";
 import { GridTreeForms } from "@/app/components/Grid/Grid__Tree_Forms";
 import { useTree } from "@/app/components/Grid/useTree";
@@ -36,11 +36,13 @@ import {
 
 // useTree wiring isolated to keep the assembler's JSX declarative.
 // ScopeNode.id is the human id ("US-17357") — stable + unique per row, the
-// React key + the expansion-set key. childrenCount is the authoritative
-// server count; fetchChildren resolves a row's true direct children via the
-// POST gateway (by UUID in the body, never the URL).
-function useTreeScope(roots: ScopeNode[]) {
-  return useTree<ScopeNode>(roots, {
+// React key + the expansion-set key. The hook now OWNS the paged root window:
+// fetchRoots loads a page (the canopy), fetchChildren resolves a row's true
+// direct children via the POST gateway (by UUID in the body, never the URL).
+function useTreeScope() {
+  return useTree<ScopeNode>({
+    fetchRoots: fetchScopeRoots,
+    pageSize: 100,
     rowIdOf: (r) => r.id,
     getChildrenCount: (r) => r.childrenCount,
     fetchChildren: (r) => fetchScopeChildren(r.uuid),
@@ -49,37 +51,21 @@ function useTreeScope(roots: ScopeNode[]) {
 }
 
 export function GridExecution() {
-  const [roots, setRoots] = useState<ScopeNode[]>([]);
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
 
-  // Roots loader — the canopy. Hoisted so a post-mutation refresh can re-run it.
-  // tree.reset() drops every expansion + child cache so the reloaded roots
-  // render clean (no stale expanded subtrees pointing at deleted rows).
-  const loadRoots = useCallback(async () => {
-    const rows = await fetchScopeRoots();
-    setRoots(rows);
-  }, []);
-
-  useEffect(() => {
-    void loadRoots();
-  }, [loadRoots]);
-
-  // The headless core. expandable:true → full caret/lazy-load machine.
-  // fetchChildren receives the ROW (not an id) and returns its true direct
-  // children through the POST gateway; children_count (rowIdOf's sibling on
-  // the wire) decides whether a caret shows before any fetch.
-  const tree = useTreeScope(roots);
+  // The headless core. It self-loads root page 0 on mount and owns the paged
+  // window (loadMore / jumpToPage / refresh). expandable:true → full caret/
+  // lazy-load machine; children_count decides the caret before any fetch.
+  const tree = useTreeScope();
 
   const closeDetail = useCallback(() => setOpenDetailId(null), []);
 
   // After a save/delete in the flyout, the server is the source of truth:
-  // reset the tree and reload roots so the grid reflects the mutation. Not a
-  // hack — it's the correct server-driven refresh (the old DataGrid relied on
-  // a manual page reload, which is exactly the staleness this refactor fixes).
+  // refresh() resets expansion + reloads the canopy from the top so the grid
+  // reflects the mutation. Not a hack — the correct server-driven refresh.
   const refreshAfterMutation = useCallback(() => {
-    tree.reset();
-    void loadRoots();
-  }, [tree, loadRoots]);
+    tree.refresh();
+  }, [tree]);
 
   // Row click → toggle the flyout-below for that node. The caret (child
   // expansion) is handled inside the skin; this is the DETAIL open-state, a

@@ -26,6 +26,7 @@ import { useColumnManager } from "./useColumnManager";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
 import { GridTreeHead } from "./Grid__Tree_Head";
 import { GridTreeBranch } from "./Grid__Tree_Branch";
+import { GridTreePagination } from "./Grid__Tree_Pagination";
 import type {
   GridColumn,
   GridDnD,
@@ -184,6 +185,8 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
               />
             ))}
       </div>
+
+      <GridTreePagination tree={tree} />
     </div>
   );
 }

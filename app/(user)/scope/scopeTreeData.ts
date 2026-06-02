@@ -108,23 +108,18 @@ function rowsOf(res: WorkItemQueryResult): ScopeNode[] {
   return (res.items as WireWorkItem[]).map(mapWire);
 }
 
-export interface FetchRootsOptions {
-  sort?: { columnId: string; dir: "asc" | "desc" } | null;
-}
-
-// Roots — the canopy. Server returns roots-only under the workspace clamp
-// (no ScopeNodeID passed ⇒ parent IS NULL applied). One audited POST.
-export async function fetchScopeRoots(
-  opts: FetchRootsOptions = {},
-): Promise<ScopeNode[]> {
-  const body: Parameters<typeof workItems.query>[0] = {
-    page: { limit: 200, offset: 0 },
-  };
-  if (opts.sort) {
-    const key = SORT_KEY_BY_COLUMN[opts.sort.columnId];
-    if (key) body.sort = { key, dir: opts.sort.dir };
-  }
-  return rowsOf(await workItems.query(body));
+// Roots — the canopy, PAGED. Server returns roots-only under the workspace
+// clamp (no ScopeNodeID passed ⇒ parent IS NULL applied) and the authoritative
+// `total` across all roots. useTree owns the offset/window; this is the loader
+// it calls. One audited POST per page. Shape matches RootPage<ScopeNode>.
+export async function fetchScopeRoots(page: {
+  limit: number;
+  offset: number;
+}): Promise<{ rows: ScopeNode[]; total: number }> {
+  const res = await workItems.query({
+    page: { limit: page.limit, offset: page.offset },
+  });
+  return { rows: rowsOf(res), total: res.total ?? 0 };
 }
 
 // Children — the TRUE direct children of one node, by UUID in the POST body.

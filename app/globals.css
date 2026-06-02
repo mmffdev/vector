@@ -21835,6 +21835,103 @@ tr.is-editing {
   min-width: 0;
 }
 
+/* ── Pagination band ──────────────────────────────────────────────────────────
+   The tree's OWN root-pagination band — the last sibling inside the grid,
+   below the rows. Left = count, centre = load-more (append), right = page-jump
+   (replace). Fed by useTree; no consumer props. */
+.grid__Tree_Pagination {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-secondary, #5c5c5c);
+}
+.grid__Tree_Pagination--loading { opacity: 0.85; }
+.grid__Tree_Pagination_Count {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.grid__Tree_Pagination_More {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+}
+.grid__Tree_Pagination_LoadMore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.grid__Tree_Pagination_LoadMore:hover:not(:disabled) {
+  background: var(--surface-hover, color-mix(in srgb, var(--ink) 4%, var(--surface)));
+  border-color: var(--accent, #2563eb);
+}
+.grid__Tree_Pagination_LoadMore:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.grid__Tree_Pagination_Jump {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.grid__Tree_Pagination_NavBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.grid__Tree_Pagination_NavBtn:hover:not(:disabled) {
+  border-color: var(--accent, #2563eb);
+  color: var(--accent, #2563eb);
+}
+.grid__Tree_Pagination_NavBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.grid__Tree_Pagination_PageLabel {
+  white-space: nowrap;
+  min-width: 0;
+}
+.grid__Tree_Pagination_JumpInput {
+  width: 64px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+.grid__Tree_Pagination_JumpInput:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 1px;
+}
+
 /* ── DataContainer (Layer 1) — dumb frame: page title panel + zero-padding
    viewport. Takes its own title/description props; the content is plain
    children. The tree's own title lives in grid__Tree_Title, not here. */
