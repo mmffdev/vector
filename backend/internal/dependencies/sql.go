@@ -49,3 +49,44 @@ const sqlEdgeColumns = `
 	artefact_dependency_edges_archived_at,
 	artefact_dependency_edges_created_by
 `
+
+// ── Map CRUD ────────────────────────────────────────────────────
+//
+// All writes guard on (subscription_id, workspace_id) so a forged map
+// id from another tenant never matches even before the topology-node
+// scope check runs in the service layer.
+
+const sqlInsertMap = `
+	INSERT INTO artefact_dependency_maps (
+		artefact_dependency_maps_id_subscription,
+		artefact_dependency_maps_id_workspace,
+		artefact_dependency_maps_id_topology_node,
+		artefact_dependency_maps_id_root_artefact,
+		artefact_dependency_maps_name,
+		artefact_dependency_maps_created_by
+	) VALUES ($1, $2, $3, $4, $5, $6)
+	RETURNING` + sqlMapColumns
+
+const sqlGetMapByID = `
+	SELECT` + sqlMapColumns + `
+	  FROM artefact_dependency_maps
+	 WHERE artefact_dependency_maps_id           = $1
+	   AND artefact_dependency_maps_id_workspace = $2`
+
+const sqlUpdateMapName = `
+	UPDATE artefact_dependency_maps
+	   SET artefact_dependency_maps_name       = $1,
+	       artefact_dependency_maps_updated_at = now()
+	 WHERE artefact_dependency_maps_id           = $2
+	   AND artefact_dependency_maps_id_workspace = $3
+	   AND artefact_dependency_maps_archived_at IS NULL
+	 RETURNING` + sqlMapColumns
+
+const sqlArchiveMap = `
+	UPDATE artefact_dependency_maps
+	   SET artefact_dependency_maps_archived_at = now(),
+	       artefact_dependency_maps_updated_at  = now()
+	 WHERE artefact_dependency_maps_id           = $1
+	   AND artefact_dependency_maps_id_workspace = $2
+	   AND artefact_dependency_maps_archived_at IS NULL
+	 RETURNING` + sqlMapColumns

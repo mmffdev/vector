@@ -2356,13 +2356,14 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: empty `service_test.go` + `handler_test.go` scaffolds exist and pass.
   - Plan: PLA074
   > Last checked: 2026-06-03 — package landed with handler/service/sql/types + 2 test files; `NewService(vaPool)` wired in main.go matching the live artefactpriorities pattern (deviation from literal AC — sentinel is read from request ctx, not constructor-injected; polymorphicRefs not needed since edges aren't polymorphic refs); schema sanity via `VerifySchema(ctx)` called at boot with `log.Fatalf` on miss; `go build ./...` clean; `go test ./internal/dependencies/...` PASS.
-- **B23.1.5 [P2] 🔵 IN FLIGHT** — Map CRUD endpoints — create / rename / archive. Sentinel-gated map management surface.
+- ✅ ~~**B23.1.5 [P2]** — Map CRUD endpoints — create / rename / archive. Sentinel-gated map management surface.~~
   - AC: `POST /_site/dependencies/maps` returns 201 + map row; rejects 403 if caller can't write at `topology_node_id`.
   - AC: `PATCH /_site/dependencies/maps/{id}` renames; Sentinel-deny returns 403; 404 on archived map.
   - AC: `POST /_site/dependencies/maps/{id}/archive` sets `archived_at`; idempotent.
   - AC: handler tests cover allow/deny matrix for the three Sentinel-relevant roles.
   - AC: Scalar/openapi entry added for each route.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — three handlers + service methods landed; topology scope checked via `nodeInScope(c, …)` against `AllowedSubtreeIDs` (fail-closed when nil); rename rejects 404 on archived; archive is idempotent (re-call returns existing row); 14 handler tests cover allow/deny for user/padmin/gadmin + 401/404/422 mappings; openapi entry auto-synced by the api:sync pre-commit hook.
 - **B23.1.6 [P2] 🔵 IN FLIGHT** — Edge insert with cycle guard + uniqueness enforcement. The core write path; correctness rules live here.
   - AC: `POST /_site/dependencies/edges` creates edge; writes `artefact_dependency_edge_events` row in same tx.
   - AC: insert refuses 422 on self-loop (`from_id == to_id`).
