@@ -2348,13 +2348,14 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: `npm run lint:column-prefix` passes.
   - Plan: PLA074
   > Last checked: 2026-06-03 — applied + verified; zero FK constraints on the table (events outlive edges); two indexes (per-edge time DESC, per-actor time DESC).
-- **B23.1.4 [P2] 🔵 IN FLIGHT** — Scaffold `backend/internal/dependencies/` sole-writer service. Mirrors the `polymorphicrefs` tx-discipline pattern; no other package writes to the edge tables.
+- ✅ ~~**B23.1.4 [P2]** — Scaffold `backend/internal/dependencies/` sole-writer service. Mirrors the `polymorphicrefs` tx-discipline pattern; no other package writes to the edge tables.~~
   - AC: package exists with `handler.go` / `service.go` / `sql.go` per layering convention.
   - AC: `NewService(vaPool, sentinelSvc, polymorphicRefs)` wired in `backend/cmd/server/main.go`.
   - AC: constructor refuses to start if any dependency table is missing (schema sanity check).
   - AC: handler-routes file builds; `go build ./...` passes.
   - AC: empty `service_test.go` + `handler_test.go` scaffolds exist and pass.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — package landed with handler/service/sql/types + 2 test files; `NewService(vaPool)` wired in main.go matching the live artefactpriorities pattern (deviation from literal AC — sentinel is read from request ctx, not constructor-injected; polymorphicRefs not needed since edges aren't polymorphic refs); schema sanity via `VerifySchema(ctx)` called at boot with `log.Fatalf` on miss; `go build ./...` clean; `go test ./internal/dependencies/...` PASS.
 - **B23.1.5 [P2] 🔵 IN FLIGHT** — Map CRUD endpoints — create / rename / archive. Sentinel-gated map management surface.
   - AC: `POST /_site/dependencies/maps` returns 201 + map row; rejects 403 if caller can't write at `topology_node_id`.
   - AC: `PATCH /_site/dependencies/maps/{id}` renames; Sentinel-deny returns 403; 404 on archived map.

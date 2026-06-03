@@ -81,6 +81,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/artefactitems"
 	"github.com/mmffdev/vector-backend/internal/artefactpriorities"
 	"github.com/mmffdev/vector-backend/internal/costcentres"
+	"github.com/mmffdev/vector-backend/internal/dependencies"
 	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/flowboard"
 	"github.com/mmffdev/vector-backend/internal/transport"
@@ -956,6 +957,16 @@ func main() {
 	workspacesSvc.WithArtefactTypeSeeder(artefactTypesSvc)
 	artefactTypesH := artefacttypes.NewHandler(artefactTypesSvc)
 	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))
+
+	// PLA074 / B23.1.4 — artefact dependency maps. Sole-writer service
+	// against vector_artefacts (migs 173–175); Sentinel is read from
+	// request context. VerifySchema fails fast if the migrations were
+	// never applied; method bodies land in B23.1.5+.
+	dependenciesSvc := dependencies.NewService(vaPool)
+	if err := dependenciesSvc.VerifySchema(context.Background()); err != nil {
+		log.Fatalf("dependencies: %v", err)
+	}
+	dependenciesH := dependencies.NewHandler(dependenciesSvc)
 
 	// B20.4.3 — cost_centres moved to vector_artefacts in Pillar 3 step 1
 	// (subscription-scoped finance reference data; FK target of
@@ -2070,6 +2081,16 @@ func main() {
 		r.Use(authSvc.RequireFreshPassword)
 		r.Use(sentinelMW)
 		artefactPrioritiesH.Mount(r)
+	})
+
+	// PLA074 / B23 — artefact dependency maps. Same auth + sentinel
+	// chain as /artefact-priorities; route bodies land story by story
+	// (Mount is a no-op scaffold in B23.1.4).
+	r.Route("/dependencies", func(r chi.Router) {
+		r.Use(authSvc.RequireAuth)
+		r.Use(authSvc.RequireFreshPassword)
+		r.Use(sentinelMW)
+		dependenciesH.Mount(r)
 	})
 
 	// ---- /portfolio-models ----
