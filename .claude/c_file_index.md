@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-06-01 22:04:12
+**Generated:** 2026-06-03 01:22:26
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -35,7 +35,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/scope
-4 file(s) · key: page.tsx, GridExecution.tsx, scopeColumns.tsx
+4 file(s) · key: GridExecution.tsx, scopeColumns.tsx, scopeTreeData.ts
 Purpose: _(unset)_
 
 ### app/(user)/user-management
@@ -59,11 +59,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components
-75 file(s) · key: ResourceTree.tsx, work-items-tree-config.tsx, NavigationPie.tsx
+76 file(s) · key: work-items-tree-config.tsx, NavigationPie.tsx, FlowStatePillRow.tsx
 Purpose: _(unset)_
 
 ### app/components/ArtefactInlineForm
-7 file(s) · key: ArtefactInlineForm.tsx, EditCustomFields.tsx, useParentCandidates.ts
+9 file(s) · key: ArtefactInlineForm.tsx, timeboxOptions.ts, rowPatch.ts
 Purpose: _(unset)_
 
 ### app/components/CustomFields
@@ -83,7 +83,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/FlowBoard/columns
-2 file(s) · key: BoardColumn.tsx, BoardColumnHeader.tsx
+2 file(s) · key: BoardColumnHeader.tsx, BoardColumn.tsx
 Purpose: _(unset)_
 
 ### app/components/FlowBoard/hooks
@@ -95,15 +95,15 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/FormLayoutBuilder
-10 file(s) · key: FormLayoutRenderer.tsx, mergeTransitions.ts, FormBuilderShell.tsx
+10 file(s) · key: FormBuilderShell.tsx, mergeTransitions.ts, FormLayoutRuntime.tsx
 Purpose: _(unset)_
 
 ### app/components/FormLayoutBuilder/__tests__
-4 file(s) · key: mergeTransitions.test.ts, undoRedo.test.ts, bandLayout.test.tsx
+4 file(s) · key: undoRedo.test.ts, mergeTransitions.test.ts, bandLayout.test.tsx
 Purpose: _(unset)_
 
 ### app/components/Grid
-8 file(s) · key: Grid__Forms.tsx, Grid__Tree.tsx, Grid__Head.tsx
+12 file(s) · key: Grid__Tree.tsx, Grid__Tree_StatsPanel.tsx, Grid__Tree_Forms.tsx
 Purpose: _(unset)_
 
 ### app/components/MapRelationship3D
@@ -131,7 +131,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/RichTextField
-3 file(s) · key: RichTextField.tsx, RichTextToolbar.tsx, index.tsx
+3 file(s) · key: index.tsx, RichTextField.tsx, RichTextToolbar.tsx
 Purpose: _(unset)_
 
 ### app/components/SavedViews
@@ -143,7 +143,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/__tests__
-8 file(s) · key: AddressDevtool.sentinel.test.tsx, p_ObjectTree.test.tsx, BulkActionBar.test.tsx
+8 file(s) · key: NavigationPie.test.tsx, AddressDevtool.sentinel.test.tsx, p_ObjectTree.test.tsx
 Purpose: _(unset)_
 
 ### app/components/flow-rules
@@ -163,7 +163,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/hooks
-17 file(s) · key: useResourceRank.ts, useNextSprint.ts, useStepUpAction.ts
+17 file(s) · key: usePageTitle.ts, useResourceRank.ts, useNextSprint.ts
 Purpose: _(unset)_
 
 ### app/hooks/__tests__
@@ -171,7 +171,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/lib
-23 file(s) · key: formLayoutsApi.ts, dpop.ts, dpopStore.ts
+24 file(s) · key: artefactTypeGroups.ts, api.ts, formLayoutsApi.ts
 Purpose: _(unset)_
 
 ### app/lib/__tests__
@@ -187,7 +187,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/redesign/components
-9 file(s) · key: RedesignShell.tsx, StatusBarBottom.tsx, nav_primary_rail_2.tsx
+9 file(s) · key: nav_primary_rail_2.tsx, StatusBarBottom.tsx, RedesignTopBar.tsx
 Purpose: _(unset)_
 
 ### app/sentinel
@@ -203,8 +203,10 @@ Purpose: _(unset)_
 - app/(overlay)/topology
 - app/(user)/admin
 - app/(user)/admin/roles
+- app/(user)/artefacts
 - app/(user)/backlog
 - app/(user)/dashboard
+- app/(user)/dependencies
 - app/(user)/dev/[tab]
 - app/(user)/dev/library
 - app/(user)/favourites
@@ -272,6 +274,8 @@ Purpose: _(unset)_
 - app/api/dev/services
 - app/change-password
 - app/components/DataContainer
+- app/components/DependencyMap
+- app/components/FullscreenCanvasOverlay
 - app/components/Grid/__tests__
 - app/components/ObjectTree
 - app/components/ObjectTreeV2/__tests__
@@ -379,7 +383,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-23 file(s) · key: handler_test.go, handler.go, dto.go
+23 file(s) · key: sql.go, service.go, handler.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
@@ -495,7 +499,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/nav
-9 file(s) · key: sql.go, service_test.go, service.go
+9 file(s) · key: catalog.go, sql.go, service_test.go
 Purpose: _(unset)_
 
 ### backend/internal/notifications
@@ -567,7 +571,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/portfoliomodels
-35 file(s) · key: cross_db_canary_test.go, adopt_va_only_test.go, adopt_test.go
+35 file(s) · key: dev_reset.go, cross_db_canary_test.go, adopt_va_only_test.go
 Purpose: _(unset)_
 
 ### backend/internal/ranking
@@ -607,7 +611,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/sentinel
-12 file(s) · key: clamp_sql_test.go, clamp_sql.go, ctx.go
+10 file(s) · key: types.go, ctx.go, middleware.go
 Purpose: _(unset)_
 
 ### backend/internal/shared/topology
@@ -619,19 +623,23 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/timeboxmilestones
-4 file(s) · key: handler.go, service.go, sql.go
+4 file(s) · key: service.go, handler.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/timeboxreleases
-5 file(s) · key: sql.go, handler.go, columns.go
+5 file(s) · key: service.go, handler.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/timeboxsprints
-8 file(s) · key: sql.go, handler.go, columns.go
+8 file(s) · key: handler_test.go, service.go, handler.go
 Purpose: _(unset)_
 
 ### backend/internal/topology
 9 file(s) · key: service.go, sql.go, commands.go
+Purpose: _(unset)_
+
+### backend/internal/topologyclamp
+2 file(s) · key: clamp_sql_test.go, clamp_sql.go
 Purpose: _(unset)_
 
 ### backend/internal/transport
@@ -681,7 +689,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/scripts
-64 file(s) · key: lint_scope_literals.py, lint_custom_field_prefix.py, lint_savedviews_writer_only.py
+64 file(s) · key: check_callers.py, lint_public_helper_allowlist.py, lint_portfolio_library_read.py
 Purpose: _(unset)_
 
 ### dev/scripts/backup/lib
@@ -722,7 +730,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/reports
-1123 file(s) · key: 20260601-174642-addressables.json, 20260601-174140-addressables.json, 20260601-172835-addr
+1146 file(s) · key: 20260602-204515-addressables.json, 20260602-165200-addressables.json, 20260602-101824-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -780,11 +788,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-165 file(s) · key: 171_form_designer_page.sql, 170_backfill_vector_fields_from_legacy.sql, 169_vector_fields_
+166 file(s) · key: 172_value_artefacts_nav_pages.sql, 171_form_designer_page.sql, 170_backfill_vector_fields_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-100 file(s) · key: 171_form_designer_page_DOWN.sql, 170_backfill_vector_fields_from_legacy_DOWN.sql, 169_vect
+101 file(s) · key: 172_value_artefacts_nav_pages_DOWN.sql, 171_form_designer_page_DOWN.sql, 170_backfill_vect
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/merge_plan
@@ -798,11 +806,11 @@ Purpose: _(unset)_
 ## Documentation indexes
 
 ### .
-12 file(s) · key: BACKLOG.md, Vector_Scope.md, Vector_Scope_Done.md
+12 file(s) · key: AGENTS.md, BACKLOG.md, Vector_Scope.md
 Purpose: _(unset)_
 
 ### docs
-79 file(s) · key: c_tech_debt.md, c_c_datagrid.md, c_c_lsp_mcp.md
+79 file(s) · key: c_sql_cookbook.md, c_bash_cookbook.md, c_schema.md
 Purpose: _(unset)_
 
 ### docs/Database
@@ -810,7 +818,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/Security/Sentinel
-5 file(s) · key: sentinel_tech_debt.md, sentinel_docs.md, sentinel_revision_history.md
+5 file(s) · key: sentinel_revision_history.md, sentinel_tests_log.md, sentinel_backlog.md
 Purpose: _(unset)_
 
 ### docs/Varlock
@@ -826,6 +834,6 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/superpowers/specs
-21 file(s) · key: 2026-05-31-flb-vertical-merge-design.md, 2026-05-31-vector-fields-3layer-design.md, 2026-0
+22 file(s) · key: 2026-06-02-grid-tree-namespace-pagination-design.md, 2026-05-31-flb-vertical-merge-design.
 Purpose: _(unset)_
 
