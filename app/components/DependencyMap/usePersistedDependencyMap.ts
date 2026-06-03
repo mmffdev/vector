@@ -54,10 +54,19 @@ const EMPTY: PersistedBuckets = { requires: [], parallel: [], unlocks: [] };
 
 interface UsePersistedDependencyMapParams {
   /**
-   * The dependency-map UUID the user is composing into. When null
-   * the hook is dormant — caller falls back to ephemeral state.
+   * Explicit map id (from `?mid=` URL param). When null, the hook
+   * auto-resolves a default map for `topologyNodeId` — uses the
+   * first existing map under that node, or POSTs a new one named
+   * "Default dependencies" on miss.
    */
-  mapId: string | null;
+  mapIdOverride?: string | null;
+  /**
+   * Topology node the focused artefact lives under. Used for
+   * auto-resolution when `mapIdOverride` is absent. When null AND
+   * no override, the hook is dormant (caller falls back to
+   * ephemeral state — no scope to write into).
+   */
+  topologyNodeId: string | null;
   /** UUID of the artefact the canvas is focused on. */
   focusedArtefactId: string;
 }
@@ -69,6 +78,8 @@ interface UsePersistedDependencyMapResult {
   isLoading: boolean;
   /** Most recent error message; cleared on the next successful op. */
   error: string | null;
+  /** The resolved map id (auto-created or override). Null while resolving / dormant. */
+  mapId: string | null;
   /** Hydrated buckets — populated after the initial fetch. */
   buckets: PersistedBuckets;
   /**
@@ -142,15 +153,63 @@ function projectionToBuckets(p: DependencyBucketProjection): PersistedBuckets {
 export function usePersistedDependencyMap(
   params: UsePersistedDependencyMapParams,
 ): UsePersistedDependencyMapResult {
-  const { mapId, focusedArtefactId } = params;
-  const isPersisted = Boolean(mapId);
+  const { mapIdOverride = null, topologyNodeId, focusedArtefactId } = params;
 
+  // mapId is resolved asynchronously: explicit override wins; else
+  // the hook lists maps under topologyNodeId and either picks the
+  // first or POSTs a new one named "Default dependencies".
+  const [mapId, setMapId] = useState<string | null>(mapIdOverride ?? null);
   const [buckets, setBuckets] = useState<PersistedBuckets>(EMPTY);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Tracks the most recent (mapId, focusedArtefactId) the buckets
-  // belong to so stale fetches don't overwrite a newer hydration.
   const stateForRef = useRef<string>("");
+
+  // Re-sync local mapId when the override prop flips externally.
+  useEffect(() => {
+    if (mapIdOverride && mapIdOverride !== mapId) {
+      setMapId(mapIdOverride);
+    }
+  }, [mapIdOverride, mapId]);
+
+  // Auto-resolve mapId when no override is supplied.
+  useEffect(() => {
+    if (mapIdOverride) return; // override wins
+    if (!topologyNodeId) {
+      setMapId(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const existing = await dependencies.maps.list(topologyNodeId);
+        if (!alive) return;
+        if (existing.length > 0) {
+          setMapId(existing[0].id);
+          return;
+        }
+        // No map yet — auto-create a default. Idempotent in spirit:
+        // a second concurrent open would race here but the unique-
+        // index on (workspace, node, name) is not enforced today, so
+        // two "Default dependencies" maps may exist. Acceptable
+        // tradeoff for v1; a named map-picker UX is the next iter.
+        const created = await dependencies.maps.create({
+          topology_node_id: topologyNodeId,
+          name: "Default dependencies",
+        });
+        if (!alive) return;
+        setMapId(created.id);
+      } catch (e) {
+        if (!alive) return;
+        setError(toMessage(e));
+        setMapId(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [mapIdOverride, topologyNodeId]);
+
+  const isPersisted = Boolean(mapId);
 
   const fetchBuckets = useCallback(async () => {
     if (!mapId || !focusedArtefactId) return;
@@ -159,16 +218,12 @@ export function usePersistedDependencyMap(
     setError(null);
     try {
       const payload = await dependencies.edges.list(mapId, focusedArtefactId);
-      // Drop stale results if the inputs changed mid-flight.
       if (stateForRef.current !== stateKey) {
         stateForRef.current = stateKey;
       }
       setBuckets(projectionToBuckets(payload));
     } catch (e) {
       setError(toMessage(e));
-      // On hydration failure, fall back to empty buckets rather than
-      // stale ones — the composer should never display data from a
-      // previous (focused, map) pair after a failed reload.
       setBuckets(EMPTY);
     } finally {
       setIsLoading(false);
@@ -181,8 +236,6 @@ export function usePersistedDependencyMap(
       stateForRef.current = "";
       return;
     }
-    // Fire and forget — `fetchBuckets` swallows its own errors into
-    // the `error` state field.
     void fetchBuckets();
   }, [isPersisted, fetchBuckets]);
 
@@ -280,6 +333,7 @@ export function usePersistedDependencyMap(
     isPersisted,
     isLoading,
     error,
+    mapId,
     buckets,
     addToBucket,
     removeFromBucket,

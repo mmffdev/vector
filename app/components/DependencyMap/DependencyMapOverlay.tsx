@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -37,6 +38,7 @@ import {
 import { useSentinel } from "@/app/sentinel";
 import type { SentinelGrant } from "@/app/sentinel/types";
 import { usePersistedDependencyMap } from "@/app/components/DependencyMap/usePersistedDependencyMap";
+import { notify } from "@/app/lib/toast";
 
 export interface DependencyMapOverlayProps {
   artefact: ArtefactDetail;
@@ -367,25 +369,19 @@ export function DependencyMapOverlay({
   onClose,
   mapId = null,
 }: DependencyMapOverlayProps) {
-  // PLA074 / B23.2.4 — persistence wire. When `mapId` is present
-  // (page passes it from `?mid=`), the hook GETs the three-bucket
-  // projection from /_site/dependencies/edges on mount and exposes
-  // add/remove handlers that POST to the backend. The composer's
-  // existing ephemeral `buckets` state below remains the source of
-  // truth for the legacy preview path; the persisted state is a
-  // parallel signal until the composer's full state model is
-  // rewritten on top of the hook. The hook's return is intentionally
-  // read into a side-effecting void so React's effect cascade hydrates
-  // the persisted state — composer rendering integration is a follow-up
-  // (deferred per Vector_Scope.md B23.2.4 note).
-  const persisted = usePersistedDependencyMap({
-    mapId,
-    focusedArtefactId: artefact.id,
-  });
-  void persisted;
   const { sentinel_focus_node, sentinel_grants, sentinel_user } = useSentinel();
   const { types: artefactTypes } = useArtefactTypeCatalogue();
   const nodeId = artefact.topology_node_id ?? sentinel_focus_node ?? null;
+
+  // PLA074 — persistence wire. The hook auto-resolves a default map
+  // for `nodeId` (lists; takes first; POSTs a new one named "Default
+  // dependencies" on miss). When `mapId` is supplied as a prop (via
+  // `?mid=` URL param), that wins as an override.
+  const persisted = usePersistedDependencyMap({
+    mapIdOverride: mapId,
+    topologyNodeId: nodeId,
+    focusedArtefactId: artefact.id,
+  });
   const nodeGrant =
     nodeId == null
       ? null
@@ -422,6 +418,13 @@ export function DependencyMapOverlay({
   }, [typeOptionGroups]);
   const [activeBucket, setActiveBucket] =
     useState<DependencyBucketKey>("requires");
+  // PLA074 / B23.2.5 — the dependency-map page hosts two views in the
+  // same canvas slot: the bucket composer (default) and a visualisation
+  // map. The header action button toggles between them; label reflects
+  // the destination, not the current state.
+  const [viewMode, setViewMode] = useState<"editor" | "map">("editor");
+  void viewMode;
+  void setViewMode;
   const [filtersSeeded, setFiltersSeeded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>(defaultNodeId);
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
@@ -453,11 +456,150 @@ export function DependencyMapOverlay({
     [artefact, artefactTitle, formattedId, nodeId],
   );
 
-  const addCandidatesToBucket = (
+  // PLA074 — surface persistence errors as toasts so cycle / 409
+  // / out-of-scope rejections show up to the user instead of failing
+  // silently. The hook clears `error` on the next successful op.
+  const lastErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    const msg = persisted.error;
+    if (msg && msg !== lastErrorRef.current) {
+      lastErrorRef.current = msg;
+      notify.error(`Dependency map: ${msg}`);
+    } else if (!msg) {
+      lastErrorRef.current = null;
+    }
+  }, [persisted.error]);
+
+  // PLA074 — hydration cache: artefact_id → DependencyCandidate.
+  // Persisted edges arrive as bare uuids; we lazily fetch the
+  // matching artefact detail via /work-items/{id} to build a
+  // render-shaped row. Cache is keyed by id so repeat fetches
+  // (e.g. after add → reload) reuse what we already have.
+  const [hydrationCache, setHydrationCache] = useState<
+    Record<string, DependencyCandidate>
+  >({});
+  const typeLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of artefactTypes) map.set(t.id, t.name);
+    return map;
+  }, [artefactTypes]);
+
+  // When persisted is active, gather every artefact_id appearing
+  // across the three buckets and fetch any we haven't cached yet.
+  useEffect(() => {
+    if (!persisted.isPersisted) return;
+    const needed = new Set<string>();
+    for (const key of CANVAS_BUCKET_ORDER) {
+      for (const row of persisted.buckets[key]) {
+        if (!hydrationCache[row.artefact_id]) needed.add(row.artefact_id);
+      }
+    }
+    if (needed.size === 0) return;
+    let alive = true;
+    (async () => {
+      const fetched: Record<string, DependencyCandidate> = {};
+      await Promise.all(
+        Array.from(needed).map(async (id) => {
+          try {
+            const detail = (await workItems.get(id)) as ArtefactDetail;
+            if (!alive) return;
+            fetched[id] = {
+              id: detail.id,
+              formattedId: `${detail.type_prefix}-${detail.key_num}`,
+              title: detail.title || "(untitled)",
+              typeLabel:
+                typeLabelById.get(detail.artefact_type_id) ?? detail.item_type,
+              nodeId: detail.topology_node_id,
+              description: (detail.description ?? "").trim(),
+              sprintId: detail.sprint_id,
+              sprintLabel: detail.sprint?.alias ?? null,
+              releaseId: detail.release_id,
+              milestoneId: detail.milestone_id,
+            };
+          } catch {
+            // Skip — row will display as redacted until the next
+            // attempt. Caller will see error on next add/remove.
+          }
+        }),
+      );
+      if (!alive) return;
+      if (Object.keys(fetched).length > 0) {
+        setHydrationCache((prev) => ({ ...prev, ...fetched }));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [persisted.isPersisted, persisted.buckets, hydrationCache, typeLabelById]);
+
+  // Build the effective bucket display: persisted (hydrated) when
+  // active, else the legacy ephemeral state. Each persisted row
+  // carries its edge_id under a private field so remove handlers
+  // can look it up without a re-query.
+  type BucketDisplayItem = DependencyCandidate & { __edgeId?: string };
+  const effectiveBuckets = useMemo<
+    Record<DependencyBucketKey, BucketDisplayItem[]>
+  >(() => {
+    if (!persisted.isPersisted) return buckets;
+    const build = (
+      key: DependencyBucketKey,
+    ): BucketDisplayItem[] =>
+      persisted.buckets[key]
+        .map<BucketDisplayItem | null>((row) => {
+          const hydrated = hydrationCache[row.artefact_id];
+          if (!hydrated) {
+            // Placeholder row while hydration is in flight — id
+            // matches so remove still works.
+            return {
+              id: row.artefact_id,
+              formattedId: "…",
+              title: "Loading…",
+              typeLabel: "",
+              nodeId: null,
+              description: "",
+              sprintId: null,
+              sprintLabel: null,
+              releaseId: null,
+              milestoneId: null,
+              __edgeId: row.edge_id,
+            };
+          }
+          return { ...hydrated, __edgeId: row.edge_id };
+        })
+        .filter((row): row is BucketDisplayItem => row != null);
+    return {
+      requires: build("requires"),
+      parallel: build("parallel"),
+      unlocks: build("unlocks"),
+    };
+  }, [persisted.isPersisted, persisted.buckets, hydrationCache, buckets]);
+
+  const addCandidatesToBucket = async (
     bucketKey: DependencyBucketKey,
     candidates: DependencyCandidate[],
   ) => {
     if (candidates.length === 0) return;
+    if (persisted.isPersisted) {
+      // Server-side dedupe is the authority; we still trim against
+      // the current display set so the optimistic add doesn't
+      // double-render. Errors surface via persisted.error → toast.
+      const existing = new Set(
+        effectiveBuckets[bucketKey].map((item) => item.id),
+      );
+      const fresh = candidates.filter((c) => !existing.has(c.id));
+      // Seed the hydration cache so the optimistic row renders the
+      // candidate title immediately instead of "Loading…".
+      setHydrationCache((prev) => {
+        const next = { ...prev };
+        for (const c of fresh) next[c.id] = c;
+        return next;
+      });
+      for (const c of fresh) {
+        await persisted.addToBucket(c.id, bucketKey);
+      }
+      setSelectedCandidateIds(new Set());
+      return;
+    }
     setBuckets((prev) => {
       const existing = new Set(prev[bucketKey].map((item) => item.id));
       return {
@@ -480,9 +622,28 @@ export function DependencyMapOverlay({
     });
   };
 
-  const removeSelectedFromBucket = (bucketKey: DependencyBucketKey) => {
+  const removeSelectedFromBucket = async (bucketKey: DependencyBucketKey) => {
     const selectedIds = selectedBucketItemIds[bucketKey];
     if (selectedIds.size === 0) return;
+    if (persisted.isPersisted) {
+      // Map selected artefact_ids → edge_ids via the display list,
+      // then archive each. Edge archive is idempotent on the
+      // backend so concurrent retries are safe.
+      const targetEdges: string[] = [];
+      for (const item of effectiveBuckets[bucketKey]) {
+        if (selectedIds.has(item.id) && item.__edgeId) {
+          targetEdges.push(item.__edgeId);
+        }
+      }
+      for (const edgeId of targetEdges) {
+        await persisted.removeFromBucket(edgeId, bucketKey);
+      }
+      setSelectedBucketItemIds((prev) => ({
+        ...prev,
+        [bucketKey]: new Set(),
+      }));
+      return;
+    }
     setBuckets((prev) => ({
       ...prev,
       [bucketKey]: prev[bucketKey].filter((item) => !selectedIds.has(item.id)),
@@ -855,7 +1016,7 @@ export function DependencyMapOverlay({
 
   const renderCanvasBucket = (bucketKey: DependencyBucketKey) => {
     const bucket = BUCKETS.find((item) => item.key === bucketKey) ?? BUCKETS[0];
-    const items = buckets[bucketKey];
+    const items = effectiveBuckets[bucketKey];
     const isActive = bucketKey === activeBucket;
 
     return (
@@ -918,17 +1079,31 @@ export function DependencyMapOverlay({
         ariaLabel: "Canvas state: blank",
       }}
       onClose={onClose}
+      actions={
+        <button
+          type="button"
+          className="fullscreen-canvas-overlay__Button fullscreen-canvas-overlay__Button--ghost"
+          onClick={() =>
+            setViewMode((mode) => (mode === "editor" ? "map" : "editor"))
+          }
+          aria-pressed={viewMode === "map"}
+        >
+          {viewMode === "editor" ? "View Map" : "Editor"}
+        </button>
+      }
       rootData={{
         "artefact-id": meta.artefactId,
         "artefact-code": meta.formattedId,
         "artefact-type-id": meta.artefactTypeId,
         "topology-node-id": meta.nodeId,
+        "view-mode": viewMode,
       }}
       canvasData={{
         "map-root-artefact-id": meta.artefactId,
         "map-root-artefact-code": meta.formattedId,
         "map-root-title": meta.title,
         "map-root-node-id": meta.nodeId,
+        "view-mode": viewMode,
       }}
       sidebar={
         <div className="dependency-composer">
@@ -1143,9 +1318,19 @@ export function DependencyMapOverlay({
       }
     >
       <div className="dependency-map__Canvas">
-        <div className="dependency-map__StateGrid">
-          {CANVAS_BUCKET_ORDER.map((bucketKey) => renderCanvasBucket(bucketKey))}
-        </div>
+        {viewMode === "editor" ? (
+          <div className="dependency-map__StateGrid">
+            {CANVAS_BUCKET_ORDER.map((bucketKey) =>
+              renderCanvasBucket(bucketKey),
+            )}
+          </div>
+        ) : (
+          <div
+            className="dependency-map__MapSurface"
+            role="region"
+            aria-label="Dependency visualisation map"
+          />
+        )}
       </div>
     </FullscreenCanvasOverlay>
   );
