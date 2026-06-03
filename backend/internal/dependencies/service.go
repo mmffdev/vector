@@ -444,3 +444,143 @@ func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
+
+// ── Edge archive (B23.1.7) ──────────────────────────────────────
+
+// ArchiveEdge soft-deletes one edge. Idempotent: a second call
+// against an already-archived row returns the existing row with
+// no new audit event written (call count stays correct without
+// surprise extra rows in the audit log).
+//
+// Scope check: edge's parent map must be in caller's workspace AND
+// the map's topology_node must be in caller's AllowedSubtreeIDs.
+// Endpoint visibility is intentionally NOT re-checked — once an
+// edge exists in a scope the caller can write to, archiving it does
+// not leak information about the endpoints (the response is just
+// the edge row, which the caller could already read).
+func (s *Service) ArchiveEdge(ctx context.Context, edgeID uuid.UUID) (Edge, error) {
+	if err := s.requirePool(); err != nil {
+		return Edge{}, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.WorkspaceID == uuid.Nil || c.TenantID == uuid.Nil {
+		return Edge{}, ErrEndpointNotInScope
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Read edge + parent map's topology_node together so the scope
+	// check runs without a second round trip.
+	var (
+		e          Edge
+		kindRaw    string
+		mapNodeID  uuid.UUID
+	)
+	err = tx.QueryRow(ctx, sqlGetEdgeForArchive, edgeID, c.WorkspaceID).Scan(
+		&e.ID,
+		&e.MapID,
+		&e.FromArtefactID,
+		&e.ToArtefactID,
+		&kindRaw,
+		&e.CreatedAt,
+		&e.UpdatedAt,
+		&e.ArchivedAt,
+		&e.CreatedBy,
+		&mapNodeID,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Edge{}, ErrNotFound
+	}
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: load edge: %w", err)
+	}
+	e.Kind = EdgeKind(kindRaw)
+	if !nodeInScope(c, mapNodeID) {
+		return Edge{}, ErrEndpointNotInScope
+	}
+
+	// Idempotent: already archived → return existing row, skip the
+	// audit-event write so a re-call doesn't accumulate rows.
+	if e.ArchivedAt != nil {
+		return e, nil
+	}
+
+	updated, err := scanEdge(tx.QueryRow(ctx, sqlArchiveEdge, edgeID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Lost a race with another archive — return what's now in the DB.
+		// Commit the (empty) tx so the readback can see the new state.
+		if err := tx.Commit(ctx); err != nil {
+			return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: commit (race): %w", err)
+		}
+		return s.readEdge(ctx, edgeID)
+	}
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: update: %w", err)
+	}
+
+	// Same-tx audit event.
+	var createdBy any
+	if c.UserID != uuid.Nil {
+		createdBy = c.UserID
+	}
+	scopeSnapshot, err := json.Marshal(map[string]any{
+		"subscription_id": c.TenantID,
+		"workspace_id":    c.WorkspaceID,
+		"focus_node_id":   c.FocusNodeID,
+		"role":            c.Role,
+	})
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: marshal scope: %w", err)
+	}
+	eventPayload, err := json.Marshal(map[string]any{
+		"map_id":           updated.MapID,
+		"from_artefact_id": updated.FromArtefactID,
+		"to_artefact_id":   updated.ToArtefactID,
+		"kind":             string(updated.Kind),
+	})
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: marshal payload: %w", err)
+	}
+	if _, err := tx.Exec(ctx, sqlInsertEdgeEvent,
+		edgeID,
+		"archived",
+		createdBy,
+		string(scopeSnapshot),
+		string(eventPayload),
+	); err != nil {
+		return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: insert audit: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Edge{}, fmt.Errorf("dependencies.ArchiveEdge: commit: %w", err)
+	}
+	return updated, nil
+}
+
+// readEdge is the simple read used by ArchiveEdge's race-recovery
+// path. Workspace-clamped via the join in sqlGetEdgeForArchive.
+func (s *Service) readEdge(ctx context.Context, edgeID uuid.UUID) (Edge, error) {
+	c := sentinel.FromCtx(ctx)
+	var (
+		e         Edge
+		kindRaw   string
+		mapNodeID uuid.UUID
+	)
+	err := s.pool.QueryRow(ctx, sqlGetEdgeForArchive, edgeID, c.WorkspaceID).Scan(
+		&e.ID, &e.MapID, &e.FromArtefactID, &e.ToArtefactID, &kindRaw,
+		&e.CreatedAt, &e.UpdatedAt, &e.ArchivedAt, &e.CreatedBy,
+		&mapNodeID,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Edge{}, ErrNotFound
+	}
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.readEdge: %w", err)
+	}
+	e.Kind = EdgeKind(kindRaw)
+	return e, nil
+}

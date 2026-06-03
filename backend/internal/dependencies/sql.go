@@ -166,3 +166,28 @@ const sqlInsertEdgeEvent = `
 		artefact_dependency_edge_events_sentinel_scope_snapshot,
 		artefact_dependency_edge_events_payload
 	) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)`
+
+// ── Edge archive (B23.1.7) ──────────────────────────────────────
+
+// sqlGetEdgeForArchive returns one edge row joined to its parent map
+// for the workspace clamp + topology scope check. Read inside the
+// archive tx so the scope check runs on a stable snapshot.
+const sqlGetEdgeForArchive = `
+	SELECT` + sqlEdgeColumns + `,
+	       m.artefact_dependency_maps_id_topology_node
+	  FROM artefact_dependency_edges  e
+	  JOIN artefact_dependency_maps   m ON m.artefact_dependency_maps_id = e.artefact_dependency_edges_id_map
+	 WHERE e.artefact_dependency_edges_id    = $1
+	   AND m.artefact_dependency_maps_id_workspace = $2`
+
+// sqlArchiveEdge soft-deletes one edge. Returns the post-update row.
+// Restricted to live (non-archived) edges so a second call against
+// an already-archived row returns 0 rows (caller branches on
+// pgx.ErrNoRows for the idempotent re-read path).
+const sqlArchiveEdge = `
+	UPDATE artefact_dependency_edges
+	   SET artefact_dependency_edges_archived_at = now(),
+	       artefact_dependency_edges_updated_at  = now()
+	 WHERE artefact_dependency_edges_id = $1
+	   AND artefact_dependency_edges_archived_at IS NULL
+	 RETURNING` + sqlEdgeColumns

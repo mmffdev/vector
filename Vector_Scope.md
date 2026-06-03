@@ -2373,12 +2373,13 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: Go test `TestEdgeInsert_CycleRejected` covers a 3-node cycle attempt.
   - Plan: PLA074
   > Last checked: 2026-06-03 — CreateEdge tx wraps SELECT FOR UPDATE on parent map + visibility check (sqlCountVisibleArtefacts, both endpoints must be in caller's AllowedSubtreeIDs) + recursive-CTE cycle check (sqlCycleWouldFormFromTo) + INSERT + same-tx audit-event write (sentinel clamp snapshot + edge facets as jsonb); SQLSTATE 23505 mapped to ErrDuplicateEdge → 409; handler error matrix test covers all 6 paths + 401; live-DB Tier-B tests TestEdgeInsert_CycleRejected (3-node cycle, 2-cycle reverse, no-false-positive shortcut) + TestEdgeInsert_UniquenessAndAudit (directed dup + cross-kind canonical + audit row) PASS against dev `vector_artefacts`.
-- **B23.1.7 [P2] 🔵 IN FLIGHT** — Edge archive endpoint. Soft-delete a relationship with audit trail.
+- ✅ ~~**B23.1.7 [P2]** — Edge archive endpoint. Soft-delete a relationship with audit trail.~~
   - AC: `POST /_site/dependencies/edges/{id}/archive` sets `archived_at`; writes audit event.
   - AC: idempotent — second call returns 200 without writing a second event.
   - AC: 403 if caller lacks visibility on either endpoint.
   - AC: handler test covers the deny path.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — ArchiveEdge tx reads edge+parent map's topology_node via JOIN for a single round-trip; scope re-checked via `nodeInScope`; idempotent path returns the existing row WITHOUT writing a second audit event (early return when archived_at non-nil); race-recovery branch via tx.Commit + readEdge if the UPDATE returns no rows due to a concurrent archive; 5 handler tests cover 401 / 200 happy / 200×2 idempotent / 403 deny / 404 missing / 422 bad-uuid.
 - **B23.1.8 [P2] 🔵 IN FLIGHT** — `dependency-impact` preflight endpoint + 409 on archive. Block archive of load-bearing artefacts with a structured impact payload.
   - AC: `GET /_site/work-items/{id}/dependency-impact` returns `{ impacted_maps: [{ map_id, map_name, edges }], total_edges }`.
   - AC: `ArchiveWorkItem` at `backend/internal/artefactitems/service.go:2040` calls the dependencies service; if `total_edges > 0`, returns `http.StatusConflict` with code `dependency_impact` and the impact payload as body.

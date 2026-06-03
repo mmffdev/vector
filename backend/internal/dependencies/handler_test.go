@@ -29,7 +29,8 @@ type fakeService struct {
 	renameFn     func(ctx context.Context, id uuid.UUID, in RenameMapInput) (Map, error)
 	archiveFn    func(ctx context.Context, id uuid.UUID) (Map, error)
 	getFn        func(ctx context.Context, id uuid.UUID) (Map, error)
-	createEdgeFn func(ctx context.Context, in CreateEdgeInput) (Edge, error)
+	createEdgeFn  func(ctx context.Context, in CreateEdgeInput) (Edge, error)
+	archiveEdgeFn func(ctx context.Context, id uuid.UUID) (Edge, error)
 }
 
 func (f *fakeService) CreateMap(ctx context.Context, in CreateMapInput) (Map, error) {
@@ -65,6 +66,13 @@ func (f *fakeService) CreateEdge(ctx context.Context, in CreateEdgeInput) (Edge,
 		return Edge{}, errors.New("CreateEdge not configured")
 	}
 	return f.createEdgeFn(ctx, in)
+}
+
+func (f *fakeService) ArchiveEdge(ctx context.Context, id uuid.UUID) (Edge, error) {
+	if f.archiveEdgeFn == nil {
+		return Edge{}, errors.New("ArchiveEdge not configured")
+	}
+	return f.archiveEdgeFn(ctx, id)
 }
 
 // mountForTest wires the handler under /_site/dependencies on a chi
@@ -517,6 +525,110 @@ func TestCreateEdge_BadJSON(t *testing.T) {
 	req := authedReq(t, http.MethodPost, "/_site/dependencies/edges", "user", nil)
 	req.Body = io.NopCloser(strings.NewReader("not json"))
 	req.Header.Set("Content-Type", "application/json")
+	status, _ := run(srv, req)
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", status)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ArchiveEdge — handler-level error mapping + idempotency.
+// ─────────────────────────────────────────────────────────────────
+
+func TestArchiveEdge_Unauthenticated(t *testing.T) {
+	t.Parallel()
+	srv := mountForTest(&fakeService{})
+	req := httptest.NewRequest(http.MethodPost,
+		"/_site/dependencies/edges/"+uuid.New().String()+"/archive", nil)
+	status, _ := run(srv, req)
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", status)
+	}
+}
+
+func TestArchiveEdge_HappyPath(t *testing.T) {
+	t.Parallel()
+	now := mustParse("2026-06-03T00:00:00Z")
+	id := uuid.New()
+	svc := &fakeService{
+		archiveEdgeFn: func(ctx context.Context, eid uuid.UUID) (Edge, error) {
+			return Edge{ID: eid, ArchivedAt: &now, Kind: EdgeKindFinishToStart}, nil
+		},
+	}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodPost, "/_site/dependencies/edges/"+id.String()+"/archive", "user", nil)
+	status, body := run(srv, req)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, body)
+	}
+	var got Edge
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.ArchivedAt == nil {
+		t.Error("expected archived_at populated")
+	}
+}
+
+func TestArchiveEdge_Idempotent(t *testing.T) {
+	t.Parallel()
+	now := mustParse("2026-06-03T00:00:00Z")
+	id := uuid.New()
+	calls := 0
+	svc := &fakeService{
+		archiveEdgeFn: func(ctx context.Context, eid uuid.UUID) (Edge, error) {
+			calls++
+			return Edge{ID: eid, ArchivedAt: &now}, nil
+		},
+	}
+	srv := mountForTest(svc)
+	for i := 0; i < 2; i++ {
+		req := authedReq(t, http.MethodPost,
+			"/_site/dependencies/edges/"+id.String()+"/archive", "user", nil)
+		status, _ := run(srv, req)
+		if status != http.StatusOK {
+			t.Fatalf("call %d: status = %d, want 200", i+1, status)
+		}
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d, want 2", calls)
+	}
+}
+
+func TestArchiveEdge_DenyMatrix(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name       string
+		err        error
+		wantStatus int
+	}{
+		{"out_of_scope", ErrEndpointNotInScope, http.StatusForbidden},
+		{"missing", ErrNotFound, http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			svc := &fakeService{
+				archiveEdgeFn: func(ctx context.Context, eid uuid.UUID) (Edge, error) {
+					return Edge{}, tc.err
+				},
+			}
+			srv := mountForTest(svc)
+			req := authedReq(t, http.MethodPost,
+				"/_site/dependencies/edges/"+uuid.New().String()+"/archive", "user", nil)
+			status, _ := run(srv, req)
+			if status != tc.wantStatus {
+				t.Fatalf("status = %d, want %d", status, tc.wantStatus)
+			}
+		})
+	}
+}
+
+func TestArchiveEdge_BadID(t *testing.T) {
+	t.Parallel()
+	srv := mountForTest(&fakeService{})
+	req := authedReq(t, http.MethodPost, "/_site/dependencies/edges/not-a-uuid/archive", "user", nil)
 	status, _ := run(srv, req)
 	if status != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want 422", status)

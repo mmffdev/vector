@@ -24,6 +24,7 @@ type serviceIface interface {
 	ArchiveMap(ctx context.Context, mapID uuid.UUID) (Map, error)
 	GetMap(ctx context.Context, mapID uuid.UUID) (Map, error)
 	CreateEdge(ctx context.Context, in CreateEdgeInput) (Edge, error)
+	ArchiveEdge(ctx context.Context, edgeID uuid.UUID) (Edge, error)
 }
 
 // Handler hangs the dependencies HTTP surface off the chi router.
@@ -58,6 +59,7 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Patch("/maps/{id}", h.RenameMap)
 	r.Post("/maps/{id}/archive", h.ArchiveMap)
 	r.Post("/edges", h.CreateEdge)
+	r.Post("/edges/{id}/archive", h.ArchiveEdge)
 }
 
 // CreateMap handles POST /_site/dependencies/maps.
@@ -160,6 +162,30 @@ func (h *Handler) CreateEdge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, out)
+}
+
+// ArchiveEdge handles POST /_site/dependencies/edges/{id}/archive.
+// 200 + Edge on success (whether just archived now or already
+// archived — idempotent); 404 missing or wrong workspace; 403 if
+// the edge's parent map's topology owner is outside caller clamp.
+func (h *Handler) ArchiveEdge(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	edgeID, ok := parseUUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
+	out, err := h.svc.ArchiveEdge(r.Context(), edgeID)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // ── helpers ──────────────────────────────────────────────────────
