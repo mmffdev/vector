@@ -349,3 +349,17 @@ B4.8	ListByType CreateBinding handler artefacts_types_fields_position joined lib
 B4.9	UpdateBinding DeleteBinding PATCH sparse position required default_value non-negative DELETE 204 hard-delete archived_at unaffected handler_test PLA071
 B4.10	artefactTypeFieldsApi.ts frontend client list create patch archive apiSite TypeFieldBinding joined WorkspaceField tsc noEmit fetch PLA071
 B4.11	per-type fields management page UI typeId fields PageDescription Table picker raw-h2 h2-panel-only dnd-kit debounce inline-edit required default_value optimistic revert Manage-fields button work-items new type risk PLA071
+B23.1.1	migration 173 artefact_dependency_maps table vector_artefacts topology subscription workspace topology_node root_artefact master_record_workspaces topology_nodes lint:column-prefix schema_migrations container PLA074
+B23.1.2	migration 174 artefact_dependency_edges kind finish_to_start parallel id_from_artefact id_to_artefact pair_low pair_high id_map unique partial index archived_at CHECK self-loop RESTRICT canonical PLA074
+B23.1.3	migration 175 artefact_dependency_edge_events audit append-only id_edge event_kind id_actor_user sentinel_scope_snapshot occurred_at payload jsonb history defence finance PLA074
+B23.1.4	backend internal dependencies service handler service.go sql.go NewService vaPool sentinelSvc polymorphicRefs main.go constructor schema scaffold sole-writer PLA074
+B23.1.5	dependencies maps POST PATCH rename archive 201 403 topology_node_id Sentinel-deny 404 archived idempotent handler-tests Scalar openapi CRUD PLA074
+B23.1.6	dependencies edges POST insert cycle guard uniqueness 422 self-loop 409 duplicate partial-unique-index finish_to_start recursive CTE FOR UPDATE lock visibility TestEdgeInsert_CycleRejected PLA074
+B23.1.7	dependencies edges archive POST archived_at audit event idempotent visibility handler-test deny PLA074
+B23.1.8	dependency-impact work-items preflight impacted_maps total_edges ArchiveWorkItem StatusConflict TestArchiveWorkItem_BlockedByDependencies toast Scalar PLA074
+B23.2.1	dependencies maps list topology_node_id Sentinel detail edges focused_artefact_id requires parallel unlocks composer TestEdgesList_ProjectsThreeBuckets Scalar projection PLA074
+B23.2.2	dependencies candidates focused_artefact_id map_id bucket excludes already-linked named-map Sentinel TestCandidateSearch_ExcludesAlreadyLinked Scalar server-side PLA074
+B23.2.3	apiSite dependencies.ts client maps edges candidates impact tsc noEmit withForwardedMeg scope-hint typed-methods PLA074
+B23.2.4	DependencyMapOverlay persistent edges hydrate three-buckets wire payload ephemeral candidate dropdown server-side optimistic toast Playwright dependency_map_persistence round-trip PLA074
+B23.3.1	transitive-impact dependencies artefact_id downstream upstream depth recursive CTE finish_to_start redacts redacted_count TestTransitiveImpact_RedactsAcrossClamp Scalar reachability PLA074
+B23.4.1	c_c_dependencies.md docs system Sentinel sole-writer audit narrative archive preflight CLAUDE.md index TD-DEP-CPM-DURATION estimate_days TD-DEP-FORWARD-MEG-AUDIT meg corollary PLA074

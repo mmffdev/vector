@@ -1,8 +1,8 @@
 # Vector — Product Scope & Feature Tracker
 
 **Created:** 2026-05-08
-**Last updated:** 2026-05-28 — Added B4.6–B4.11 (PLA071): type-scoped custom-field bindings — new backend package `artefacttypefields` + Fields-tab UI on the artefact-types admin page. 6 stories × 13pt total (~6–7 solo days). Closes the gap where `artefacts_types_fields` schema exists and the artefact form reads it, but no admin surface writes to it.
-**Doc version:** 2.69 (2026-05-28 — B4.6–B4.11 added from PLA071, type-scoped field bindings.)
+**Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
+**Doc version:** 2.70 (2026-06-03 — B23 added from PLA074, edge-first dependency maps.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -65,6 +65,7 @@
 - [B20. User Access Rights &amp; Navigation Control](#b20-user-access-rights--navigation-control)
 - [B21. Artefact-Items Substrate (PLA-0037)](#b21-artefact-items-substrate-pla-0037)
 - [B22. Transport Segregation via Shared Service Core (PLA-0039)](#b22-transport-segregation-via-shared-service-core-pla-0039)
+- [B23. Artefact Dependency Maps (PLA074)](#b23-artefact-dependency-maps-pla074) 🔵 IN FLIGHT
 
 **CUT — Substrate Cutover** *(collapse mmff_vector into vector_artefacts; 8 soft FKs → real FKs; procurement narrative)*
 
@@ -2313,6 +2314,123 @@ Standalone Kanban board whose columns are the **custom flow_states of the select
   - AC: `<update> -c FlowBoard` inserts a Dev → Components article with TOC entry.
   - AC: Three TD entries opened in `docs/c_tech_debt.md`: `TD-FLOWBOARD-EXIT-RULES` (S2), `TD-FLOWBOARD-CARD-PREFS-UI` (S3), `TD-FLOWBOARD-WIP-AUDIT` (S2).
   - Plan: PLA066
+
+---
+
+## B23. Artefact Dependency Maps (PLA074) 🔵 IN FLIGHT
+
+User-authored dependency maps with three buckets (Requires First / In Parallel / Unlocks Next) over a focused target artefact. Edge-first persistence replaces the prototype React-only composer at `app/components/DependencyMap/DependencyMapOverlay.tsx` with three tables in `vector_artefacts` (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`) and a Sentinel-gated sole-writer service at `backend/internal/dependencies/`. Directed `finish_to_start` edges encode Requires/Unlocks from a single row; non-directional `parallel` edges use canonical `pair_low`/`pair_high` for uniqueness. Cycle guard via recursive CTE under `FOR UPDATE`; cross-kind uniqueness prevents the same pair from holding two relationships per map. Archive of a load-bearing artefact returns 409 `dependency_impact` with `impacted_maps[]`. Reachability ships in Phase 2 as a recursive-CTE projection with cross-clamp redaction; CPM is deferred via `TD-DEP-CPM-DURATION`. The manual `artefacts_is_blocked` flag is explicitly out of scope — it stays a user-set toggle and is not coupled to the graph. Research: [R058](dev/research/R058.json). Plan: PLA074.
+
+### B23.1 Phase 0 — Schema + sole-writer service + edge CRUD + preflight
+
+- ✅ ~~**B23.1.1 [P2]** — Migration 173: `artefact_dependency_maps` table. New container for named, topology-scoped dependency maps.~~
+  - AC: migration `173_artefact_dependency_maps.sql` applies clean against `vector_artefacts`.
+  - AC: columns include `artefact_dependency_maps_id` (PK uuid), `..._id_subscription`, `..._id_workspace`, `..._id_topology_node`, `..._id_root_artefact` (nullable), `..._name`, created/updated/archived metadata.
+  - AC: FKs exist to `master_record_workspaces`, `topology_nodes`, `artefacts` (root, nullable).
+  - AC: `lint:column-prefix` registry entry added; `npm run lint:column-prefix` passes.
+  - AC: `schema_migrations` row exists for 173 after apply.
+  - Plan: PLA074
+  > Last checked: 2026-06-03 — applied + verified; 3 FKs (workspace CASCADE, topology_node CASCADE, root_artefact SET NULL); column-prefix lint clean.
+- ✅ ~~**B23.1.2 [P2]** — Migration 174: `artefact_dependency_edges` table with uniqueness + canonical pair. Source-of-truth row per relationship inside a map.~~
+  - AC: migration `174_artefact_dependency_edges.sql` applies clean.
+  - AC: all `artefact_dependency_edges_*`-prefixed columns including `kind` enum (`finish_to_start`, `parallel`), `id_from_artefact`, `id_to_artefact`, `pair_low`, `pair_high`, `id_map`, archived metadata.
+  - AC: three partial unique indexes — directed pair (kind=f2s), parallel pair, cross-kind canonical pair — all scoped `WHERE archived_at IS NULL`.
+  - AC: CHECK constraint rejects `from_id = to_id`; CHECK constraint enforces `pair_low < pair_high`.
+  - AC: FKs to `artefact_dependency_maps` and `artefacts` with ON DELETE RESTRICT.
+  - AC: `npm run lint:column-prefix` passes.
+  - Plan: PLA074
+  > Last checked: 2026-06-03 — applied + verified; pair_low/pair_high as GENERATED STORED of LEAST/GREATEST; 3 partial unique indexes (directed/parallel/cross-kind); RESTRICT on all 3 FKs; both self-loop and pair-ordered CHECKs present.
+- ✅ ~~**B23.1.3 [P2]** — Migration 175: `artefact_dependency_edge_events` audit table. Append-only edge mutation log for defence/finance audit narrative.~~
+  - AC: migration `175_artefact_dependency_edge_events.sql` applies clean.
+  - AC: `artefact_dependency_edge_events_*` columns including `id_edge`, `event_kind`, `id_actor_user`, `sentinel_scope_snapshot` (jsonb), `occurred_at`, `payload` (jsonb).
+  - AC: no cascade FK on `id_edge` — events outlive their edge.
+  - AC: index on `(id_edge, occurred_at DESC)` for per-edge history scans.
+  - AC: `npm run lint:column-prefix` passes.
+  - Plan: PLA074
+  > Last checked: 2026-06-03 — applied + verified; zero FK constraints on the table (events outlive edges); two indexes (per-edge time DESC, per-actor time DESC).
+- **B23.1.4 [P2] 🔵 IN FLIGHT** — Scaffold `backend/internal/dependencies/` sole-writer service. Mirrors the `polymorphicrefs` tx-discipline pattern; no other package writes to the edge tables.
+  - AC: package exists with `handler.go` / `service.go` / `sql.go` per layering convention.
+  - AC: `NewService(vaPool, sentinelSvc, polymorphicRefs)` wired in `backend/cmd/server/main.go`.
+  - AC: constructor refuses to start if any dependency table is missing (schema sanity check).
+  - AC: handler-routes file builds; `go build ./...` passes.
+  - AC: empty `service_test.go` + `handler_test.go` scaffolds exist and pass.
+  - Plan: PLA074
+- **B23.1.5 [P2] 🔵 IN FLIGHT** — Map CRUD endpoints — create / rename / archive. Sentinel-gated map management surface.
+  - AC: `POST /_site/dependencies/maps` returns 201 + map row; rejects 403 if caller can't write at `topology_node_id`.
+  - AC: `PATCH /_site/dependencies/maps/{id}` renames; Sentinel-deny returns 403; 404 on archived map.
+  - AC: `POST /_site/dependencies/maps/{id}/archive` sets `archived_at`; idempotent.
+  - AC: handler tests cover allow/deny matrix for the three Sentinel-relevant roles.
+  - AC: Scalar/openapi entry added for each route.
+  - Plan: PLA074
+- **B23.1.6 [P2] 🔵 IN FLIGHT** — Edge insert with cycle guard + uniqueness enforcement. The core write path; correctness rules live here.
+  - AC: `POST /_site/dependencies/edges` creates edge; writes `artefact_dependency_edge_events` row in same tx.
+  - AC: insert refuses 422 on self-loop (`from_id == to_id`).
+  - AC: insert refuses 409 on duplicate per partial unique index (any kind).
+  - AC: insert refuses 422 on cycle for `finish_to_start` — recursive CTE under `FOR UPDATE` lock on the map.
+  - AC: insert refuses 403 if either endpoint not visible to caller via Sentinel.
+  - AC: Go test `TestEdgeInsert_CycleRejected` covers a 3-node cycle attempt.
+  - Plan: PLA074
+- **B23.1.7 [P2] 🔵 IN FLIGHT** — Edge archive endpoint. Soft-delete a relationship with audit trail.
+  - AC: `POST /_site/dependencies/edges/{id}/archive` sets `archived_at`; writes audit event.
+  - AC: idempotent — second call returns 200 without writing a second event.
+  - AC: 403 if caller lacks visibility on either endpoint.
+  - AC: handler test covers the deny path.
+  - Plan: PLA074
+- **B23.1.8 [P2] 🔵 IN FLIGHT** — `dependency-impact` preflight endpoint + 409 on archive. Block archive of load-bearing artefacts with a structured impact payload.
+  - AC: `GET /_site/work-items/{id}/dependency-impact` returns `{ impacted_maps: [{ map_id, map_name, edges }], total_edges }`.
+  - AC: `ArchiveWorkItem` at `backend/internal/artefactitems/service.go:2040` calls the dependencies service; if `total_edges > 0`, returns `http.StatusConflict` with code `dependency_impact` and the impact payload as body.
+  - AC: Go test `TestArchiveWorkItem_BlockedByDependencies` seeds an edge, attempts archive, asserts 409 + payload.
+  - AC: frontend archive caller surfaces the 409 with a toast listing impacted map names.
+  - AC: Scalar/openapi entry added.
+  - Plan: PLA074
+
+### B23.2 Phase 1 — Read endpoints + composer wire-up
+
+- **B23.2.1 [P2] 🔵 IN FLIGHT** — Read endpoints — list maps, three-bucket edge projection. The composer's read surface.
+  - AC: `GET /_site/dependencies/maps?topology_node_id=...` returns 200 + array; Sentinel filters server-side.
+  - AC: `GET /_site/dependencies/maps/{id}` returns detail + edge count.
+  - AC: `GET /_site/dependencies/edges?focused_artefact_id=...&map_id=...` returns `{ requires, parallel, unlocks }` shaped for direct composer consumption.
+  - AC: Go test `TestEdgesList_ProjectsThreeBuckets` seeds Story 2→3→5 + Story 3→8 and asserts the three-bucket projection when focused on Story 3.
+  - AC: Scalar/openapi entries added.
+  - Plan: PLA074
+- **B23.2.2 [P2] 🔵 IN FLIGHT** — Server-side candidate exclusion. Close the multi-state-add loophole at the backend, not in React.
+  - AC: `GET /_site/dependencies/candidates?focused_artefact_id=...&map_id=...&bucket=...&q=...` excludes any artefact already linked to the focused target in the named map, regardless of bucket.
+  - AC: Sentinel filters candidates to those the caller can see.
+  - AC: Go test `TestCandidateSearch_ExcludesAlreadyLinked` verifies exclusion across all three buckets.
+  - AC: Scalar/openapi entry added.
+  - Plan: PLA074
+- **B23.2.3 [P2] 🔵 IN FLIGHT** — Frontend `apiSite/dependencies.ts` client. Typed wire client for every dependencies endpoint.
+  - AC: new module exports typed methods: `maps.list/get/create/rename/archive`, `edges.list/create/archive`, `candidates.search`, `impact.get`.
+  - AC: re-exported from `app/lib/apiSite/index.ts`.
+  - AC: `npx tsc --noEmit` passes.
+  - AC: client respects `withForwardedMeg` for scope hint.
+  - Plan: PLA074
+- **B23.2.4 [P2] 🔵 IN FLIGHT** — Wire `DependencyMapOverlay` to persistent edges. Replace ephemeral React state with the backend round-trip.
+  - AC: on open, the overlay GETs the active map's edges via the new client and hydrates the three buckets from the wire payload — no ephemeral seed.
+  - AC: add/remove fires an immediate `POST` / archive; optimistic update reverts and toasts on failure.
+  - AC: candidate dropdown calls the server-side candidate endpoint (no client-side exclusion list).
+  - AC: closing the overlay and reopening it on the same artefact shows the same edges (round-trip test).
+  - AC: Playwright test `dependency_map_persistence.spec.ts` covers add → close → reopen → assert.
+  - Plan: PLA074
+
+### B23.3 Phase 2 — Transitive reachability
+
+- **B23.3.1 [P2] 🔵 IN FLIGHT** — Transitive reachability endpoint. The CPM-shaped value we can deliver honestly without duration semantics.
+  - AC: `GET /_site/dependencies/{artefact_id}/transitive-impact` returns `{ downstream: [{ artefact_id, depth }], upstream: [{ artefact_id, depth }] }`.
+  - AC: computation is a recursive CTE over directed `finish_to_start` edges across all maps.
+  - AC: response redacts artefact ids the caller can't see; replaces with a `redacted_count` field.
+  - AC: Go test `TestTransitiveImpact_RedactsAcrossClamp` seeds a cross-clamp chain and asserts redaction.
+  - AC: Scalar/openapi entry added.
+  - Plan: PLA074
+
+### B23.4 Docs + tech-debt placement
+
+- **B23.4.1 [P2] 🔵 IN FLIGHT** — Docs + tech-debt placement. Close the loop with system docs and the deferred-CPM marker.
+  - AC: `docs/c_c_dependencies.md` written: system synopsis, table shape, Sentinel discipline, sole-writer rule, audit narrative, archive preflight contract.
+  - AC: `.claude/CLAUDE.md` index gets a one-line entry pointing at the new doc.
+  - AC: `docs/c_tech_debt.md` gains `TD-DEP-CPM-DURATION` (S2, trigger: "open when calibrated points-to-days factor exists OR a new `artefacts_estimate_days` field lands").
+  - AC: `docs/c_tech_debt.md` gains `TD-DEP-FORWARD-MEG-AUDIT` if any client call site is found passing `?meg=` for edge scoping (per HARD RULE — corollary).
+  - Plan: PLA074
 
 ---
 
