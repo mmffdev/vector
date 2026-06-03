@@ -435,6 +435,209 @@ func TestEdgesList_ProjectsThreeBuckets(t *testing.T) {
 	}
 }
 
+// TestCandidateSearch_ExcludesAlreadyLinked — AC-named regression
+// for the candidate-exclusion server-side filter (B23.2.2). Seeds a
+// map with one edge per bucket kind on the focused artefact, then
+// asks the search to return candidates; asserts that NONE of the
+// already-linked endpoints appear in the result, regardless of
+// which bucket they were linked through.
+func TestCandidateSearch_ExcludesAlreadyLinked(t *testing.T) {
+	pool := openTestPool(t)
+	ctx := context.Background()
+	subID, wsID, nodeID, ids := findFourArtefactsInNode(t, ctx, pool)
+	focused, linkedReq, linkedPar, linkedUnl := ids[0], ids[1], ids[2], ids[3]
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var mapID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		INSERT INTO artefact_dependency_maps (
+		    artefact_dependency_maps_id_subscription,
+		    artefact_dependency_maps_id_workspace,
+		    artefact_dependency_maps_id_topology_node,
+		    artefact_dependency_maps_name
+		) VALUES ($1, $2, $3, $4)
+		RETURNING artefact_dependency_maps_id
+	`, subID, wsID, nodeID, "TestCandidateSearch_ExcludesAlreadyLinked").Scan(&mapID)
+	if err != nil {
+		t.Fatalf("insert test map: %v", err)
+	}
+	// Seed one edge per logical bucket on the focused artefact:
+	//   linkedReq → focused   (Requires First)
+	//   focused   → linkedUnl (Unlocks Next)
+	//   focused   ↔ linkedPar (Parallel)
+	for _, edge := range []struct {
+		from, to uuid.UUID
+		kind     string
+	}{
+		{linkedReq, focused, "finish_to_start"},
+		{focused, linkedUnl, "finish_to_start"},
+		{focused, linkedPar, "parallel"},
+	} {
+		if _, err := tx.Exec(ctx, sqlInsertEdge,
+			mapID, edge.from, edge.to, edge.kind, nil,
+		); err != nil {
+			t.Fatalf("insert %s->%s (%s): %v", edge.from, edge.to, edge.kind, err)
+		}
+	}
+
+	// Query candidates inside the tx. The candidate SQL excludes
+	// the focused artefact + everything already linked across all
+	// three buckets.
+	subtree := []uuid.UUID{nodeID}
+	rows, err := tx.Query(ctx, sqlCandidateSearch,
+		subID, subtree, mapID, focused, "", 50,
+	)
+	if err != nil {
+		t.Fatalf("candidate search: %v", err)
+	}
+	defer rows.Close()
+	got := map[uuid.UUID]bool{}
+	for rows.Next() {
+		var id, atypeID, tnodeID uuid.UUID
+		var title string
+		var keynum int
+		if err := rows.Scan(&id, &atypeID, &tnodeID, &title, &keynum); err != nil {
+			t.Fatalf("scan candidate: %v", err)
+		}
+		got[id] = true
+	}
+
+	// Negative assertions — none of the linked endpoints surface.
+	excluded := map[string]uuid.UUID{
+		"focused":         focused,
+		"linked_requires": linkedReq,
+		"linked_unlocks":  linkedUnl,
+		"linked_parallel": linkedPar,
+	}
+	for name, id := range excluded {
+		if got[id] {
+			t.Errorf("candidate result included %s (%s) — exclusion failed", name, id)
+		}
+	}
+}
+
+// TestTransitiveImpact_RedactsAcrossClamp — AC-named regression for
+// the cross-clamp redaction (B23.3.1). Seeds a chain that crosses a
+// topology boundary: artefact in node A → artefact in node B. Asks
+// the downstream walk with a clamp that includes ONLY node A and
+// asserts the cross-clamp endpoint is NOT in the visible array AND
+// IS counted in redacted_count.
+func TestTransitiveImpact_RedactsAcrossClamp(t *testing.T) {
+	pool := openTestPool(t)
+	ctx := context.Background()
+
+	// Find two distinct topology nodes that each hold at least one
+	// artefact, both in the same subscription so the seed FK is happy.
+	var (
+		subA, nodeA, artA uuid.UUID
+		nodeB, artB       uuid.UUID
+	)
+	err := pool.QueryRow(ctx, `
+		WITH live_nodes AS (
+		    SELECT n.topology_nodes_id,
+		           n.topology_nodes_id_subscription,
+		           a.artefacts_id
+		      FROM topology_nodes n
+		      JOIN artefacts a
+		        ON a.artefacts_id_topology_node = n.topology_nodes_id
+		       AND a.artefacts_archived_at IS NULL
+		     WHERE n.topology_nodes_archived_at IS NULL
+		)
+		SELECT a.topology_nodes_id_subscription,
+		       a.topology_nodes_id, a.artefacts_id,
+		       b.topology_nodes_id, b.artefacts_id
+		  FROM live_nodes a
+		  JOIN live_nodes b
+		    ON b.topology_nodes_id_subscription = a.topology_nodes_id_subscription
+		   AND b.topology_nodes_id <> a.topology_nodes_id
+		 LIMIT 1
+	`).Scan(&subA, &nodeA, &artA, &nodeB, &artB)
+	if err != nil {
+		t.Skipf("no two distinct topology nodes with artefacts in the same subscription: %v", err)
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Resolve nodeA's workspace so the map FK is valid.
+	var wsA uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		SELECT topology_nodes_id_workspace
+		  FROM topology_nodes
+		 WHERE topology_nodes_id = $1
+	`, nodeA).Scan(&wsA); err != nil {
+		t.Fatalf("resolve workspace for nodeA: %v", err)
+	}
+
+	// Seed a map under nodeA and a cross-clamp edge artA → artB.
+	var mapID uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO artefact_dependency_maps (
+		    artefact_dependency_maps_id_subscription,
+		    artefact_dependency_maps_id_workspace,
+		    artefact_dependency_maps_id_topology_node,
+		    artefact_dependency_maps_name
+		) VALUES ($1, $2, $3, $4)
+		RETURNING artefact_dependency_maps_id
+	`, subA, wsA, nodeA, "TestTransitiveImpact_RedactsAcrossClamp").Scan(&mapID); err != nil {
+		t.Fatalf("insert test map: %v", err)
+	}
+	if _, err := tx.Exec(ctx, sqlInsertEdge,
+		mapID, artA, artB, "finish_to_start", nil,
+	); err != nil {
+		t.Fatalf("insert cross-clamp edge: %v", err)
+	}
+
+	// Walk downstream from artA with a clamp that ONLY contains nodeA.
+	// artB is in nodeB → it should appear with visible=FALSE and the
+	// service layer would fold it into redacted_count.
+	clamp := []uuid.UUID{nodeA}
+	rows, err := tx.Query(ctx, sqlReachabilityDownstream,
+		artA, subA, clamp, reachabilityDepthCap,
+	)
+	if err != nil {
+		t.Fatalf("downstream walk: %v", err)
+	}
+	defer rows.Close()
+
+	visible := []uuid.UUID{}
+	redacted := 0
+	for rows.Next() {
+		var node uuid.UUID
+		var depth int
+		var isVisible bool
+		if err := rows.Scan(&node, &depth, &isVisible); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if isVisible {
+			visible = append(visible, node)
+		} else {
+			redacted++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+
+	// artB MUST NOT appear in visible — clamp excludes nodeB.
+	for _, v := range visible {
+		if v == artB {
+			t.Errorf("artB leaked into visible[] despite clamp = [nodeA]; redaction broken")
+		}
+	}
+	if redacted < 1 {
+		t.Errorf("redacted = %d, want >=1 (artB should be redacted across the clamp boundary)", redacted)
+	}
+}
+
 // containsAll tests set-equality regardless of order — bucket SQL
 // returns rows in created_at order which would be flaky to pin
 // directly across SQL runs.

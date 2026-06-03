@@ -1580,3 +1580,21 @@ export const topologyMembers = {
       `/topology/${encodeURIComponent(nodeId)}/members`
     ),
 };
+
+// PLA074 / B23.2.3 — artefact dependency maps client. Module lives in
+// its own file (app/lib/apiSite/dependencies.ts) so it can grow
+// without inflating this barrel; re-exported here so existing
+// `import { dependencies } from "@/app/lib/apiSite"` callers work.
+export {
+  dependencies,
+  type DependencyMap,
+  type DependencyEdge,
+  type DependencyEdgeKind,
+  type DependencyBucketEdge,
+  type DependencyBucketProjection,
+  type DependencyCandidate,
+  type DependencyImpactReport,
+  type DependencyImpactConflict,
+  type DependencyReachableNode,
+  type DependencyTransitiveImpactReport,
+} from "@/app/lib/apiSite/dependencies";

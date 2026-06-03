@@ -2399,44 +2399,49 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: Scalar/openapi entries added.
   - Plan: PLA074
   > Last checked: 2026-06-03 — three handlers landed: `ListMaps` (workspace + optional topology_node filter; 403 on out-of-scope node), `GetMapDetail` (returns Map + `edge_count` via correlated subquery), `ListEdgesForFocus` (single SELECT over the focused artefact's edges in one map; Go bucketing into requires/parallel/unlocks per `kind` + direction). Live-DB `TestEdgesList_ProjectsThreeBuckets` PASSES: seeds Story 2→3→5 + Story 3→8 in a rollback'd tx, asserts Requires=[Story 2], Unlocks={Story 5, Story 8}, Parallel=[] when focused on Story 3. 7 handler tests cover happy path + 422 missing/bad params + 404 + 403 across the three new GETs.
-- **B23.2.2 [P2] 🔵 IN FLIGHT** — Server-side candidate exclusion. Close the multi-state-add loophole at the backend, not in React.
+- ✅ ~~**B23.2.2 [P2]** — Server-side candidate exclusion. Close the multi-state-add loophole at the backend, not in React.~~
   - AC: `GET /_site/dependencies/candidates?focused_artefact_id=...&map_id=...&bucket=...&q=...` excludes any artefact already linked to the focused target in the named map, regardless of bucket.
   - AC: Sentinel filters candidates to those the caller can see.
   - AC: Go test `TestCandidateSearch_ExcludesAlreadyLinked` verifies exclusion across all three buckets.
   - AC: Scalar/openapi entry added.
   - Plan: PLA074
-- **B23.2.3 [P2] 🔵 IN FLIGHT** — Frontend `apiSite/dependencies.ts` client. Typed wire client for every dependencies endpoint.
+  > Last checked: 2026-06-03 — sqlCandidateSearch filters artefacts by `id_subscription` + topology subtree (clamp ANY) + ILIKE title match, with a NOT IN subquery collecting both endpoints of every live edge in this map involving focused_artefact_id (cross-bucket dedup matches the cross-kind canonical unique index gating writes). Service.SearchCandidates pre-validates the map exists in scope (avoiding empty 200 leak) then runs the search with limit cap 200/default 50. Live-DB `TestCandidateSearch_ExcludesAlreadyLinked` PASSES: seeds one edge per bucket kind on focused, asserts none of the linked endpoints (requires/parallel/unlocks) appear in candidates. 4 handler tests cover happy/422/404. `bucket=` is accepted as a query param but currently ignored — exclusion is cross-bucket per the AC's "regardless of bucket" clause; per-bucket type allowlists land if/when product wants them.
+- ✅ ~~**B23.2.3 [P2]** — Frontend `apiSite/dependencies.ts` client. Typed wire client for every dependencies endpoint.~~
   - AC: new module exports typed methods: `maps.list/get/create/rename/archive`, `edges.list/create/archive`, `candidates.search`, `impact.get`.
   - AC: re-exported from `app/lib/apiSite/index.ts`.
   - AC: `npx tsc --noEmit` passes.
   - AC: client respects `withForwardedMeg` for scope hint.
   - Plan: PLA074
-- **B23.2.4 [P2] 🔵 IN FLIGHT** — Wire `DependencyMapOverlay` to persistent edges. Replace ephemeral React state with the backend round-trip.
+  > Last checked: 2026-06-03 — `app/lib/apiSite/dependencies.ts` exports typed DTOs (DependencyMap, DependencyEdge + Kind, DependencyBucketEdge/Projection, DependencyCandidate, DependencyImpactReport, DependencyImpactConflict) + the `dependencies.{maps,edges,candidates,impact}` client; re-exported from `app/lib/apiSite/index.ts`. `withForwardedMeg` is applied transparently by the underlying `apiSite()` middleware, so no per-call wiring needed (HARD-RULE-clean: meg is a URL hint, not authority). `npx tsc --noEmit` clean.
+- ⚠️ **PARTIAL** — ~~**B23.2.4 [P2]** — Wire `DependencyMapOverlay` to persistent edges. Replace ephemeral React state with the backend round-trip.~~
   - AC: on open, the overlay GETs the active map's edges via the new client and hydrates the three buckets from the wire payload — no ephemeral seed.
   - AC: add/remove fires an immediate `POST` / archive; optimistic update reverts and toasts on failure.
   - AC: candidate dropdown calls the server-side candidate endpoint (no client-side exclusion list).
   - AC: closing the overlay and reopening it on the same artefact shows the same edges (round-trip test).
   - AC: Playwright test `dependency_map_persistence.spec.ts` covers add → close → reopen → assert.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — **substrate landed, render integration + Playwright deferred.** New `usePersistedDependencyMap` hook in `app/components/DependencyMap/usePersistedDependencyMap.ts` owns the round-trip: on mount + non-null `mapId` it GETs `/dependencies/edges`, hydrates `{requires, parallel, unlocks}` of `PersistedBucketRow{edge_id, artefact_id, kind}`, and exposes `addToBucket` (POSTs with kind+direction derived per bucket) + `removeFromBucket` (POSTs archive on real edges, drops in-flight ones on optimistic placeholders). Optimistic update + revert on failure are in place. The hook is now wired into `DependencyMapOverlay` (new optional `mapId?` prop) and into `/dependencies` page (`?mid=` query param plumbed). **Deferred**: the composer's existing ephemeral bucket-rendering path is untouched — switching the render to read from `persisted.buckets` requires a candidate→PersistedBucketRow hydration step (call `workItems.get(artefact_id)` per row for title/type display) and a map-picker UX that sets `?mid=`. Both follow-ups; substrate is ready. Playwright `dependency_map_persistence.spec.ts` blocked on the same UX. Open follow-up to plumb through and write the e2e test once a map-picker lands.
 
 ### B23.3 Phase 2 — Transitive reachability
 
-- **B23.3.1 [P2] 🔵 IN FLIGHT** — Transitive reachability endpoint. The CPM-shaped value we can deliver honestly without duration semantics.
+- ✅ ~~**B23.3.1 [P2]** — Transitive reachability endpoint. The CPM-shaped value we can deliver honestly without duration semantics.~~
   - AC: `GET /_site/dependencies/{artefact_id}/transitive-impact` returns `{ downstream: [{ artefact_id, depth }], upstream: [{ artefact_id, depth }] }`.
   - AC: computation is a recursive CTE over directed `finish_to_start` edges across all maps.
   - AC: response redacts artefact ids the caller can't see; replaces with a `redacted_count` field.
   - AC: Go test `TestTransitiveImpact_RedactsAcrossClamp` seeds a cross-clamp chain and asserts redaction.
   - AC: Scalar/openapi entry added.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — two recursive CTEs (sqlReachabilityDownstream + Upstream) walk live finish_to_start edges across ALL maps in the caller's subscription with a defensive depth cap of 20; visibility flag joined inline (artefacts.id_topology_node ∈ clamp); Go layer splits visible into ReachableNode[] and counts the rest as RedactedCount. Wire shape: `{ downstream, upstream, redacted_count }`. Live-DB `TestTransitiveImpact_RedactsAcrossClamp` PASSES: seeds artA(nodeA)→artB(nodeB), walks with clamp=[nodeA], asserts artB absent from visible[] AND redacted≥1. 3 handler tests cover 200/422/403. Frontend client `dependencies.reachability.get(artefactId)` re-exported from `app/lib/apiSite`.
 
 ### B23.4 Docs + tech-debt placement
 
-- **B23.4.1 [P2] 🔵 IN FLIGHT** — Docs + tech-debt placement. Close the loop with system docs and the deferred-CPM marker.
+- ✅ ~~**B23.4.1 [P2]** — Docs + tech-debt placement. Close the loop with system docs and the deferred-CPM marker.~~
   - AC: `docs/c_c_dependencies.md` written: system synopsis, table shape, Sentinel discipline, sole-writer rule, audit narrative, archive preflight contract.
   - AC: `.claude/CLAUDE.md` index gets a one-line entry pointing at the new doc.
   - AC: `docs/c_tech_debt.md` gains `TD-DEP-CPM-DURATION` (S2, trigger: "open when calibrated points-to-days factor exists OR a new `artefacts_estimate_days` field lands").
   - AC: `docs/c_tech_debt.md` gains `TD-DEP-FORWARD-MEG-AUDIT` if any client call site is found passing `?meg=` for edge scoping (per HARD RULE — corollary).
   - Plan: PLA074
+  > Last checked: 2026-06-03 — system note `docs/c_c_dependencies.md` written (synopsis, schema table, uniqueness rules, cycle guard, Sentinel discipline, audit narrative, archive preflight contract, HTTP surface table, out-of-scope list, test surface). `.claude/CLAUDE.md` index entry added next to the outbox pattern pointer. Tech-debt: `TD-DEPENDENCY-MAP-PERSISTENCE` marked **RESOLVED** (substrate built); new `TD-DEP-COMPOSER-PERSISTENCE-RENDER` (S2) tracks the deferred UI render switch; new `TD-DEP-CPM-DURATION` (S2) tracks CPM gate. `TD-DEP-FORWARD-MEG-AUDIT` NOT created — grep of `app/lib/apiSite/dependencies.ts` + `app/components/DependencyMap/usePersistedDependencyMap.ts` shows zero `?meg=` call sites; clamp is the JWT-resolved authority per HARD RULE corollary.
 
 ---
 

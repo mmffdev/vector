@@ -35,6 +35,8 @@ type fakeService struct {
 	listMapsFn    func(ctx context.Context, nodeID uuid.UUID) ([]Map, error)
 	getDetailFn   func(ctx context.Context, mapID uuid.UUID) (Map, error)
 	bucketsFn     func(ctx context.Context, mapID, focusedID uuid.UUID) (BucketProjection, error)
+	candidatesFn  func(ctx context.Context, in CandidateSearchInput) ([]Candidate, error)
+	transitiveFn  func(ctx context.Context, artefactID uuid.UUID) (TransitiveImpactReport, error)
 }
 
 func (f *fakeService) CreateMap(ctx context.Context, in CreateMapInput) (Map, error) {
@@ -105,6 +107,20 @@ func (f *fakeService) EdgesForFocusedArtefact(ctx context.Context, mapID, focuse
 		return BucketProjection{}, errors.New("EdgesForFocusedArtefact not configured")
 	}
 	return f.bucketsFn(ctx, mapID, focusedID)
+}
+
+func (f *fakeService) SearchCandidates(ctx context.Context, in CandidateSearchInput) ([]Candidate, error) {
+	if f.candidatesFn == nil {
+		return nil, errors.New("SearchCandidates not configured")
+	}
+	return f.candidatesFn(ctx, in)
+}
+
+func (f *fakeService) TransitiveImpact(ctx context.Context, artefactID uuid.UUID) (TransitiveImpactReport, error) {
+	if f.transitiveFn == nil {
+		return TransitiveImpactReport{}, errors.New("TransitiveImpact not configured")
+	}
+	return f.transitiveFn(ctx, artefactID)
 }
 
 // mountForTest wires the handler under /_site/dependencies on a chi
@@ -805,6 +821,134 @@ func TestListEdgesForFocus_MissingParams(t *testing.T) {
 				t.Fatalf("%s: status = %d, want 422", c.name, status)
 			}
 		})
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Candidate search (B23.2.2) — handler-level error mapping.
+// ─────────────────────────────────────────────────────────────────
+
+func TestSearchCandidates_HappyPath(t *testing.T) {
+	t.Parallel()
+	want := []Candidate{
+		{ID: uuid.New(), Title: "Story 12", KeyNum: 12},
+		{ID: uuid.New(), Title: "Story 13", KeyNum: 13},
+	}
+	svc := &fakeService{
+		candidatesFn: func(ctx context.Context, in CandidateSearchInput) ([]Candidate, error) {
+			return want, nil
+		},
+	}
+	srv := mountForTest(svc)
+	url := "/_site/dependencies/candidates?map_id=" + uuid.New().String() +
+		"&focused_artefact_id=" + uuid.New().String() + "&q=story"
+	req := authedReq(t, http.MethodGet, url, "user", nil)
+	status, body := run(srv, req)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, body)
+	}
+	var got []Candidate
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("got %d candidates, want 2", len(got))
+	}
+}
+
+func TestSearchCandidates_MissingParams(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ name, url string }{
+		{"none", "/_site/dependencies/candidates"},
+		{"only_map", "/_site/dependencies/candidates?map_id=" + uuid.New().String()},
+		{"bad_map", "/_site/dependencies/candidates?map_id=nope&focused_artefact_id=" + uuid.New().String()},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			srv := mountForTest(&fakeService{})
+			req := authedReq(t, http.MethodGet, c.url, "user", nil)
+			status, _ := run(srv, req)
+			if status != http.StatusUnprocessableEntity {
+				t.Fatalf("%s: status = %d, want 422", c.name, status)
+			}
+		})
+	}
+}
+
+func TestSearchCandidates_MapNotFound(t *testing.T) {
+	t.Parallel()
+	svc := &fakeService{
+		candidatesFn: func(ctx context.Context, in CandidateSearchInput) ([]Candidate, error) {
+			return nil, ErrNotFound
+		},
+	}
+	srv := mountForTest(svc)
+	url := "/_site/dependencies/candidates?map_id=" + uuid.New().String() +
+		"&focused_artefact_id=" + uuid.New().String()
+	req := authedReq(t, http.MethodGet, url, "user", nil)
+	status, _ := run(srv, req)
+	if status != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", status)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Transitive reachability (B23.3.1) — handler-level.
+// ─────────────────────────────────────────────────────────────────
+
+func TestTransitiveImpact_HappyPath(t *testing.T) {
+	t.Parallel()
+	a, b, c := uuid.New(), uuid.New(), uuid.New()
+	svc := &fakeService{
+		transitiveFn: func(ctx context.Context, _ uuid.UUID) (TransitiveImpactReport, error) {
+			return TransitiveImpactReport{
+				Downstream: []ReachableNode{{ArtefactID: a, Depth: 1}, {ArtefactID: b, Depth: 2}},
+				Upstream:   []ReachableNode{{ArtefactID: c, Depth: 1}},
+				RedactedCount: 3,
+			}, nil
+		},
+	}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodGet,
+		"/_site/dependencies/"+uuid.New().String()+"/transitive-impact", "user", nil)
+	status, body := run(srv, req)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, body)
+	}
+	var got TransitiveImpactReport
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got.Downstream) != 2 || len(got.Upstream) != 1 || got.RedactedCount != 3 {
+		t.Errorf("report = %+v, want 2 down / 1 up / 3 redacted", got)
+	}
+}
+
+func TestTransitiveImpact_BadUUID(t *testing.T) {
+	t.Parallel()
+	srv := mountForTest(&fakeService{})
+	req := authedReq(t, http.MethodGet, "/_site/dependencies/not-a-uuid/transitive-impact", "user", nil)
+	status, _ := run(srv, req)
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", status)
+	}
+}
+
+func TestTransitiveImpact_OutOfScope(t *testing.T) {
+	t.Parallel()
+	svc := &fakeService{
+		transitiveFn: func(ctx context.Context, _ uuid.UUID) (TransitiveImpactReport, error) {
+			return TransitiveImpactReport{}, ErrEndpointNotInScope
+		},
+	}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodGet,
+		"/_site/dependencies/"+uuid.New().String()+"/transitive-impact", "user", nil)
+	status, _ := run(srv, req)
+	if status != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", status)
 	}
 }
 

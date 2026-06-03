@@ -30,6 +30,8 @@ type serviceIface interface {
 	ListMaps(ctx context.Context, nodeID uuid.UUID) ([]Map, error)
 	GetMapDetail(ctx context.Context, mapID uuid.UUID) (Map, error)
 	EdgesForFocusedArtefact(ctx context.Context, mapID, focusedArtefactID uuid.UUID) (BucketProjection, error)
+	SearchCandidates(ctx context.Context, in CandidateSearchInput) ([]Candidate, error)
+	TransitiveImpact(ctx context.Context, artefactID uuid.UUID) (TransitiveImpactReport, error)
 }
 
 // Handler hangs the dependencies HTTP surface off the chi router.
@@ -68,6 +70,8 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Get("/edges", h.ListEdgesForFocus)
 	r.Post("/edges", h.CreateEdge)
 	r.Post("/edges/{id}/archive", h.ArchiveEdge)
+	r.Get("/candidates", h.SearchCandidates)
+	r.Get("/{id}/transitive-impact", h.TransitiveImpact)
 }
 
 // CreateMap handles POST /_site/dependencies/maps.
@@ -285,6 +289,83 @@ func (h *Handler) ListEdgesForFocus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// TransitiveImpact handles GET /_site/dependencies/{id}/transitive-impact.
+// Returns visible downstream + upstream chains plus a redacted_count
+// for nodes the caller can't see. 401 no auth, 422 bad uuid,
+// 403 caller has no resolved Sentinel scope.
+func (h *Handler) TransitiveImpact(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	artefactID, ok := parseUUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
+	out, err := h.svc.TransitiveImpact(r.Context(), artefactID)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// SearchCandidates handles GET /_site/dependencies/candidates
+// ?focused_artefact_id=...&map_id=...&q=...&limit=...
+//
+// Returns a list of artefacts the caller can see that are NOT
+// already linked to the focused artefact in the named map. Used by
+// the composer's candidate dropdown — server-side exclusion is the
+// authoritative source, the React state mirror is defence-in-depth.
+func (h *Handler) SearchCandidates(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	q := r.URL.Query()
+	rawMap := q.Get("map_id")
+	rawFocus := q.Get("focused_artefact_id")
+	if rawMap == "" || rawFocus == "" {
+		httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestMissingFields)
+		return
+	}
+	mapID, err := uuid.Parse(rawMap)
+	if err != nil {
+		httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestBadRequest)
+		return
+	}
+	focusedID, err := uuid.Parse(rawFocus)
+	if err != nil {
+		httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestBadRequest)
+		return
+	}
+	limit := 0
+	if raw := q.Get("limit"); raw != "" {
+		// Soft parse — bad input falls back to the service default
+		// rather than 422, since limit is non-critical.
+		if v, err := parsePositiveInt(raw); err == nil {
+			limit = v
+		}
+	}
+	out, err := h.svc.SearchCandidates(r.Context(), CandidateSearchInput{
+		FocusedArtefactID: focusedID,
+		MapID:             mapID,
+		Query:             q.Get("q"),
+		Limit:             limit,
+	})
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 // ImpactForArtefact handles GET /_site/work-items/{id}/dependency-impact.
 // Mounted from main.go on the /_site/work-items route group, NOT on
 // /_site/dependencies (URL lives under work-items by AC; the logic
@@ -380,4 +461,21 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+// parsePositiveInt returns n>0 or an error. Used by query-param
+// limit parsing — keeps the handler tight and lets bad input fall
+// back to the service default rather than 422.
+func parsePositiveInt(s string) (int, error) {
+	n := 0
+	for _, ch := range s {
+		if ch < '0' || ch > '9' {
+			return 0, errors.New("not a positive int")
+		}
+		n = n*10 + int(ch-'0')
+	}
+	if n == 0 {
+		return 0, errors.New("zero")
+	}
+	return n, nil
 }

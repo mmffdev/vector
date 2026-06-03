@@ -14,6 +14,10 @@ export default function DependenciesPage() {
   const searchParams = useSearchParams();
   const artefactId = searchParams.get("ash");
   const meg = searchParams.get("meg");
+  // PLA074 / B23.2.4 — `?mid=` opts the composer into persistence
+  // mode. Absent → ephemeral preview (legacy). A map-picker UX that
+  // sets/clears this param is deferred to a follow-up story.
+  const mapId = searchParams.get("mid");
   const [artefact, setArtefact] = useState<ArtefactDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,5 +83,11 @@ export default function DependenciesPage() {
     );
   }
 
-  return <DependencyMapOverlay artefact={artefact} onClose={close} />;
+  return (
+    <DependencyMapOverlay
+      artefact={artefact}
+      onClose={close}
+      mapId={mapId}
+    />
+  );
 }

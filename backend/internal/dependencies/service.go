@@ -721,6 +721,78 @@ func (s *Service) EdgesForFocusedArtefact(ctx context.Context, mapID, focusedArt
 	return out, nil
 }
 
+// ── Candidate search (B23.2.2) ──────────────────────────────────
+
+// CandidateSearchInput parameterises the candidate query — kept as
+// a struct so future filters (bucket-specific type allowlists, etc.)
+// land additively.
+type CandidateSearchInput struct {
+	FocusedArtefactID uuid.UUID
+	MapID             uuid.UUID
+	Query             string
+	Limit             int
+}
+
+// SearchCandidates returns artefacts in the caller's scope that are
+// NOT already linked to the focused artefact in the named map.
+//
+// Server-side exclusion closes the multi-state-add loophole: even if
+// the composer's React state forgets to filter, the backend never
+// surfaces an artefact already in `requires`/`unlocks`/`parallel`
+// for this (focused, map) pair. The cross-bucket dedup matches the
+// cross-kind canonical unique index that gates writes.
+func (s *Service) SearchCandidates(ctx context.Context, in CandidateSearchInput) ([]Candidate, error) {
+	if err := s.requirePool(); err != nil {
+		return nil, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.WorkspaceID == uuid.Nil || c.TenantID == uuid.Nil {
+		return nil, ErrEndpointNotInScope
+	}
+	if in.MapID == uuid.Nil || in.FocusedArtefactID == uuid.Nil {
+		return nil, ErrInvalidInput
+	}
+	if len(c.AllowedSubtreeIDs) == 0 {
+		return nil, ErrEndpointNotInScope
+	}
+
+	// Resolve map first — confirms the caller can read this map and
+	// gets us a 404 (rather than an empty 200) on a forged id.
+	if _, err := s.GetMap(ctx, in.MapID); err != nil {
+		return nil, err
+	}
+
+	limit := in.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx, sqlCandidateSearch,
+		c.TenantID,
+		c.AllowedSubtreeIDs,
+		in.MapID,
+		in.FocusedArtefactID,
+		in.Query,
+		limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("dependencies.SearchCandidates: %w", err)
+	}
+	defer rows.Close()
+
+	out := []Candidate{}
+	for rows.Next() {
+		var c Candidate
+		if err := rows.Scan(&c.ID, &c.ArtefactTypeID, &c.TopologyNodeID, &c.Title, &c.KeyNum); err != nil {
+			return nil, fmt.Errorf("dependencies.SearchCandidates: scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("dependencies.SearchCandidates: rows: %w", err)
+	}
+	return out, nil
+}
+
 // ── dependency-impact preflight (B23.1.8) ───────────────────────
 
 // ImpactForArtefact returns the maps that have at least one live edge
@@ -761,6 +833,94 @@ func (s *Service) ImpactForArtefact(ctx context.Context, artefactID, workspaceID
 		return ImpactReport{}, fmt.Errorf("dependencies.ImpactForArtefact: rows: %w", err)
 	}
 	return out, nil
+}
+
+// ── Transitive reachability (B23.3.1) ───────────────────────────
+
+// reachabilityDepthCap bounds the recursive CTE walks. Defensive —
+// the CTE terminates naturally on a clean acyclic graph, but a
+// corrupted state (cycle slipped past insert-time checks) would
+// otherwise spin. 20 hops covers realistic dependency chains.
+const reachabilityDepthCap = 20
+
+// TransitiveImpact walks the directed finish_to_start edges in both
+// directions from artefactID across every live map in the caller's
+// subscription. Result is split into the two visible-node arrays
+// (downstream + upstream) plus a `redacted_count` summary of any
+// rows in either chain the caller is not Sentinel-cleared to see.
+//
+// Cross-clamp redaction is the v1 leak-prevention pattern: the SQL
+// returns the full reachability set joined to artefacts for the
+// visibility flag, the Go layer splits visible from invisible and
+// reports the count. A future story can swap in workspace-aware
+// redaction (per-workspace counts) once the UX needs it.
+func (s *Service) TransitiveImpact(ctx context.Context, artefactID uuid.UUID) (TransitiveImpactReport, error) {
+	if err := s.requirePool(); err != nil {
+		return TransitiveImpactReport{}, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.TenantID == uuid.Nil {
+		return TransitiveImpactReport{}, ErrEndpointNotInScope
+	}
+	if artefactID == uuid.Nil {
+		return TransitiveImpactReport{}, ErrInvalidInput
+	}
+	if len(c.AllowedSubtreeIDs) == 0 {
+		return TransitiveImpactReport{}, ErrEndpointNotInScope
+	}
+
+	down, downRedacted, err := s.walkReachability(ctx, sqlReachabilityDownstream, artefactID, c)
+	if err != nil {
+		return TransitiveImpactReport{}, fmt.Errorf("dependencies.TransitiveImpact: downstream: %w", err)
+	}
+	up, upRedacted, err := s.walkReachability(ctx, sqlReachabilityUpstream, artefactID, c)
+	if err != nil {
+		return TransitiveImpactReport{}, fmt.Errorf("dependencies.TransitiveImpact: upstream: %w", err)
+	}
+	return TransitiveImpactReport{
+		Downstream:    down,
+		Upstream:      up,
+		RedactedCount: downRedacted + upRedacted,
+	}, nil
+}
+
+// walkReachability runs one of the two reachability CTEs and splits
+// visible from redacted rows. visible = caller can see the artefact's
+// topology node (or the artefact itself is missing from the index,
+// which is treated as redacted-by-default fail-closed).
+func (s *Service) walkReachability(ctx context.Context, query string, artefactID uuid.UUID, c sentinel.Clamp) ([]ReachableNode, int, error) {
+	rows, err := s.pool.Query(ctx, query,
+		artefactID,
+		c.TenantID,
+		c.AllowedSubtreeIDs,
+		reachabilityDepthCap,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	visible := []ReachableNode{}
+	redacted := 0
+	for rows.Next() {
+		var (
+			node    uuid.UUID
+			depth   int
+			isVisible bool
+		)
+		if err := rows.Scan(&node, &depth, &isVisible); err != nil {
+			return nil, 0, fmt.Errorf("scan: %w", err)
+		}
+		if isVisible {
+			visible = append(visible, ReachableNode{ArtefactID: node, Depth: depth})
+		} else {
+			redacted++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("rows: %w", err)
+	}
+	return visible, redacted, nil
 }
 
 // readEdge is the simple read used by ArchiveEdge's race-recovery

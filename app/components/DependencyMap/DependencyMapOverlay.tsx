@@ -2,11 +2,8 @@
 
 import {
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -26,37 +23,44 @@ import {
   type OrderedArtefactTypeGroup,
 } from "@/app/lib/artefactTypeGroups";
 import type { ArtefactType } from "@/app/lib/artefactTypesApi";
-import { workItems, type WorkItemQueryBody } from "@/app/lib/apiSite";
+import {
+  milestones as milestonesApi,
+  releases as releasesApi,
+  sprints as sprintsApi,
+  workItems,
+  type WorkItemQueryBody,
+} from "@/app/lib/apiSite";
+import {
+  nodeRelativeTimeboxParams,
+  resolveWorkspaceId,
+} from "@/app/components/ArtefactInlineForm/timeboxOptions";
 import { useSentinel } from "@/app/sentinel";
 import type { SentinelGrant } from "@/app/sentinel/types";
+import { usePersistedDependencyMap } from "@/app/components/DependencyMap/usePersistedDependencyMap";
 
 export interface DependencyMapOverlayProps {
   artefact: ArtefactDetail;
   onClose: () => void;
+  /**
+   * PLA074 / B23.2.4 — when supplied, the composer wires its bucket
+   * state to the backend dependencies service via
+   * `usePersistedDependencyMap`. Without it, the composer falls back
+   * to ephemeral React-only buckets (the legacy preview path).
+   * Plumbed in by `app/(user)/dependencies/page.tsx` from a `?mid=`
+   * URL param once a map-picker UX lands.
+   */
+  mapId?: string | null;
 }
 
 interface DependencyMapMeta {
   artefactId: string;
   formattedId: string;
   title: string;
-  itemType: string;
-  typePrefix: string;
-  keyNum: number;
   artefactTypeId: string;
   nodeId: string | null;
-  nodeName: string;
-  parentId: string | null;
-  parentLabel: string | null;
-  flowStateId: string;
-  flowStateName: string;
-  flowStateCode: string;
-  ownerName: string;
 }
 
 type DependencyBucketKey = "requires" | "unlocks" | "parallel";
-type DependencyCanvasVersion = "v1" | "v2";
-
-type DependencyBucketForms = Record<DependencyBucketKey, DependencyBucketForm>;
 
 interface DependencyCandidate {
   id: string;
@@ -64,6 +68,11 @@ interface DependencyCandidate {
   title: string;
   typeLabel: string;
   nodeId: string | null;
+  description: string;
+  sprintId: string | null;
+  sprintLabel: string | null;
+  releaseId: string | null;
+  milestoneId: string | null;
 }
 
 interface WireDependencyCandidate {
@@ -74,6 +83,15 @@ interface WireDependencyCandidate {
   item_type: string;
   artefact_type_id: string;
   topology_node_id: string | null;
+  description: string | null;
+  // Wire shape pinned by backend/internal/artefactitems/types.go: sprint_id
+  // is the FK string; the nested `sprint` object carries the alias when the
+  // sprint row resolves. SQL aliases the columns as sprint_ref_id /
+  // sprint_ref_alias internally — those are NOT the JSON keys.
+  sprint_id: string | null;
+  sprint: { id: string; alias: string } | null;
+  release_id: string | null;
+  milestone_id: string | null;
 }
 
 interface DependencyCandidateQuery {
@@ -81,16 +99,30 @@ interface DependencyCandidateQuery {
   search: string;
   selectedNodeId: string;
   selectedTypeId: string;
+  selectedSprintId: string;
+  selectedReleaseId: string;
+  selectedMilestoneId: string;
   sentinelGrants: readonly SentinelGrant[];
   typeOptions: DependencyTypeOption[];
 }
 
-interface DependencyBucketForm {
-  selectedNodeId: string;
-  selectedTypeId: string;
-  search: string;
-  candidateOptions: DependencyCandidate[];
-  selectedCandidateIds: Set<string>;
+interface TimeboxOption {
+  value: string;
+  label: string;
+  isCurrent: boolean;
+}
+
+const TIMEBOX_NONE = "__none__";
+
+function isCurrentInRange(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): boolean {
+  if (!start && !end) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  const afterStart = start ? today >= start : true;
+  const beforeEnd = end ? today <= end : true;
+  return afterStart && beforeEnd;
 }
 
 interface DependencyTypeOption {
@@ -121,32 +153,10 @@ function emptyBucketSelections(): Record<DependencyBucketKey, Set<string>> {
   };
 }
 
-function emptyBucketForms(nodeId: string, typeId = ""): DependencyBucketForms {
-  return {
-    requires: {
-      selectedNodeId: nodeId,
-      selectedTypeId: typeId,
-      search: "",
-      candidateOptions: [],
-      selectedCandidateIds: new Set(),
-    },
-    unlocks: {
-      selectedNodeId: nodeId,
-      selectedTypeId: typeId,
-      search: "",
-      candidateOptions: [],
-      selectedCandidateIds: new Set(),
-    },
-    parallel: {
-      selectedNodeId: nodeId,
-      selectedTypeId: typeId,
-      search: "",
-      candidateOptions: [],
-      selectedCandidateIds: new Set(),
-    },
-  };
-}
-
+// Ordered left-to-right by the logical dependency flow: things that
+// must finish first → things that can run alongside → things that
+// unlock after. The mode tabs in the sidebar and the chevron lanes
+// in the canvas both iterate this in order, so they always agree.
 const BUCKETS: Array<{
   key: DependencyBucketKey;
   title: string;
@@ -162,41 +172,26 @@ const BUCKETS: Array<{
     placeholder: "Add prerequisite...",
   },
   {
-    key: "unlocks",
-    title: "Unlocks Next",
-    helper: "Starts once this is done",
-    icon: <TbArrowRight aria-hidden="true" />,
-    placeholder: "Add dependent...",
-  },
-  {
     key: "parallel",
     title: "In Parallel",
     helper: "No gating, runs alongside",
     icon: <TbArrowsShuffle aria-hidden="true" />,
     placeholder: "Add parallel artefact...",
   },
+  {
+    key: "unlocks",
+    title: "Unlocks Next",
+    helper: "Starts once this is done",
+    icon: <TbArrowRight aria-hidden="true" />,
+    placeholder: "Add dependent...",
+  },
 ];
 
-const CANVAS_BUCKET_ORDER: DependencyBucketKey[] = [
-  "requires",
-  "parallel",
-  "unlocks",
-];
+const CANVAS_BUCKET_ORDER: DependencyBucketKey[] = BUCKETS.map((b) => b.key);
 
 const DEPENDENCY_EXCLUDED_WORK_SLOTS = new Set(["wrk_task"]);
 const DEPENDENCY_WORK_ITEM_SLOT = "wrk_story";
 const DEPENDENCY_QUERY_LIMIT = 80;
-const MAP_NODE_HEIGHT = 34;
-const MAP_TARGET_HEIGHT = 34;
-const MAP_NODE_GAP = 20;
-const MAP_PARALLEL_MAX_COLUMNS = 1;
-const MAP_CARD_INSET = 40;
-const MAP_START_Y = 40;
-
-interface DependencyMapFrame {
-  width: number;
-  height: number;
-}
 
 function formatArtefactId(artefact: ArtefactDetail): string {
   return `${artefact.type_prefix}-${artefact.key_num}`;
@@ -261,17 +256,54 @@ function dependencyCandidateBody(selectedTypeId: string): WorkItemQueryBody {
   const body: WorkItemQueryBody = {
     page: { limit: DEPENDENCY_QUERY_LIMIT, offset: 0 },
   };
-  if (selectedTypeId) {
-    body.filters = { itemTypeId: [selectedTypeId] };
-  }
+  if (selectedTypeId) body.filters = { itemTypeId: [selectedTypeId] };
   return body;
 }
+
+// Three AND-chained timebox filters. ANY (empty string) means the filter
+// doesn't contribute; specific id means equality; TIMEBOX_NONE means the
+// dimension must be null. A row passes only when EVERY active dimension
+// matches — ANY dimensions are skipped. When all three are ANY, the row
+// passes by default.
+function matchTimeboxDimension(
+  candidateValue: string | null,
+  selected: string,
+): boolean {
+  // Selected is empty string when the dropdown is on ANY — the caller
+  // should already have short-circuited on that, but we guard anyway so a
+  // stale empty value can't reject every row.
+  if (!selected) return true;
+  if (selected === TIMEBOX_NONE) return candidateValue == null;
+  return candidateValue === selected;
+}
+
+function passesTimeboxFilters(
+  candidate: DependencyCandidate,
+  selectedSprintId: string,
+  selectedReleaseId: string,
+  selectedMilestoneId: string,
+): boolean {
+  if (selectedSprintId && !matchTimeboxDimension(candidate.sprintId, selectedSprintId)) {
+    return false;
+  }
+  if (selectedReleaseId && !matchTimeboxDimension(candidate.releaseId, selectedReleaseId)) {
+    return false;
+  }
+  if (selectedMilestoneId && !matchTimeboxDimension(candidate.milestoneId, selectedMilestoneId)) {
+    return false;
+  }
+  return true;
+}
+
 
 async function fetchDependencyCandidates({
   artefactId,
   search,
   selectedNodeId,
   selectedTypeId,
+  selectedSprintId,
+  selectedReleaseId,
+  selectedMilestoneId,
   sentinelGrants,
   typeOptions,
 }: DependencyCandidateQuery): Promise<DependencyCandidate[]> {
@@ -300,13 +332,26 @@ async function fetchDependencyCandidates({
       seen.add(item.id);
       return true;
     })
-    .map((item) => ({
+    .map<DependencyCandidate>((item) => ({
       id: item.id,
       formattedId: `${item.type_prefix}-${item.key_num}`,
       title: item.title || "(untitled)",
       typeLabel: byTypeId.get(item.artefact_type_id) ?? item.item_type,
       nodeId: item.topology_node_id,
+      description: (item.description ?? "").trim(),
+      sprintId: item.sprint_id,
+      sprintLabel: item.sprint?.alias ?? null,
+      releaseId: item.release_id,
+      milestoneId: item.milestone_id,
     }))
+    .filter((candidate) =>
+      passesTimeboxFilters(
+        candidate,
+        selectedSprintId,
+        selectedReleaseId,
+        selectedMilestoneId,
+      ),
+    )
     .filter((item) => {
       if (!needle) return true;
       return (
@@ -320,8 +365,25 @@ async function fetchDependencyCandidates({
 export function DependencyMapOverlay({
   artefact,
   onClose,
+  mapId = null,
 }: DependencyMapOverlayProps) {
-  const { sentinel_focus_node, sentinel_grants } = useSentinel();
+  // PLA074 / B23.2.4 — persistence wire. When `mapId` is present
+  // (page passes it from `?mid=`), the hook GETs the three-bucket
+  // projection from /_site/dependencies/edges on mount and exposes
+  // add/remove handlers that POST to the backend. The composer's
+  // existing ephemeral `buckets` state below remains the source of
+  // truth for the legacy preview path; the persisted state is a
+  // parallel signal until the composer's full state model is
+  // rewritten on top of the hook. The hook's return is intentionally
+  // read into a side-effecting void so React's effect cascade hydrates
+  // the persisted state — composer rendering integration is a follow-up
+  // (deferred per Vector_Scope.md B23.2.4 note).
+  const persisted = usePersistedDependencyMap({
+    mapId,
+    focusedArtefactId: artefact.id,
+  });
+  void persisted;
+  const { sentinel_focus_node, sentinel_grants, sentinel_user } = useSentinel();
   const { types: artefactTypes } = useArtefactTypeCatalogue();
   const nodeId = artefact.topology_node_id ?? sentinel_focus_node ?? null;
   const nodeGrant =
@@ -358,13 +420,17 @@ export function DependencyMapOverlay({
       ""
     );
   }, [typeOptionGroups]);
-  const [canvasVersion, setCanvasVersion] =
-    useState<DependencyCanvasVersion>("v1");
   const [activeBucket, setActiveBucket] =
     useState<DependencyBucketKey>("requires");
   const [filtersSeeded, setFiltersSeeded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>(defaultNodeId);
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
+  const [selectedSprintId, setSelectedSprintId] = useState<string>("");
+  const [selectedReleaseId, setSelectedReleaseId] = useState<string>("");
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string>("");
+  const [sprintOptions, setSprintOptions] = useState<TimeboxOption[]>([]);
+  const [releaseOptions, setReleaseOptions] = useState<TimeboxOption[]>([]);
+  const [milestoneOptions, setMilestoneOptions] = useState<TimeboxOption[]>([]);
   const [search, setSearch] = useState("");
   const [candidateOptions, setCandidateOptions] = useState<DependencyCandidate[]>([]);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(
@@ -372,54 +438,27 @@ export function DependencyMapOverlay({
   );
   const [buckets, setBuckets] =
     useState<Record<DependencyBucketKey, DependencyCandidate[]>>(emptyBuckets);
-  const [v2Buckets, setV2Buckets] =
-    useState<Record<DependencyBucketKey, DependencyCandidate[]>>(emptyBuckets);
   const [selectedBucketItemIds, setSelectedBucketItemIds] = useState<
     Record<DependencyBucketKey, Set<string>>
   >(emptyBucketSelections);
-  const [v2SelectedBucketItemIds, setV2SelectedBucketItemIds] = useState<
-    Record<DependencyBucketKey, Set<string>>
-  >(emptyBucketSelections);
-  const [canvasForms, setCanvasForms] = useState<DependencyBucketForms>(() =>
-    emptyBucketForms(defaultNodeId),
-  );
-  const [mapFrame, setMapFrame] = useState<DependencyMapFrame>({
-    width: 1800,
-    height: 720,
-  });
-  const mapViewportRef = useRef<HTMLElement>(null);
 
   const meta = useMemo<DependencyMapMeta>(
     () => ({
       artefactId: artefact.id,
       formattedId,
       title: artefactTitle,
-      itemType: artefact.item_type,
-      typePrefix: artefact.type_prefix,
-      keyNum: artefact.key_num,
       artefactTypeId: artefact.artefact_type_id,
       nodeId,
-      nodeName,
-      parentId: artefact.parent_id,
-      parentLabel: artefact.parent
-        ? `${artefact.parent.type_prefix}-${artefact.parent.key_num} — ${artefact.parent.title}`
-        : null,
-      flowStateId: artefact.flow_state_id,
-      flowStateName: artefact.flow_state_name,
-      flowStateCode: artefact.flow_state_code,
-      ownerName: artefact.owner?.display_name ?? "Unassigned",
     }),
-    [artefact, artefactTitle, formattedId, nodeId, nodeName],
+    [artefact, artefactTitle, formattedId, nodeId],
   );
 
-  const appendCandidatesToBucket = (
+  const addCandidatesToBucket = (
     bucketKey: DependencyBucketKey,
     candidates: DependencyCandidate[],
-    version: DependencyCanvasVersion = canvasVersion,
   ) => {
     if (candidates.length === 0) return;
-    const setTargetBuckets = version === "v2" ? setV2Buckets : setBuckets;
-    setTargetBuckets((prev) => {
+    setBuckets((prev) => {
       const existing = new Set(prev[bucketKey].map((item) => item.id));
       return {
         ...prev,
@@ -429,68 +468,11 @@ export function DependencyMapOverlay({
         ],
       };
     });
-  };
-
-  const addCandidatesToBucket = (
-    bucketKey: DependencyBucketKey,
-    candidates: DependencyCandidate[],
-  ) => {
-    appendCandidatesToBucket(bucketKey, candidates, canvasVersion);
     setSelectedCandidateIds(new Set());
   };
 
-  const addCanvasCandidatesToBucket = (bucketKey: DependencyBucketKey) => {
-    const form = canvasForms[bucketKey];
-    const candidates = form.candidateOptions.filter((candidate) =>
-      form.selectedCandidateIds.has(candidate.id),
-    );
-    if (candidates.length === 0) return;
-    appendCandidatesToBucket(bucketKey, candidates, "v1");
-    setCanvasForms((prev) => ({
-      ...prev,
-      [bucketKey]: {
-        ...prev[bucketKey],
-        selectedCandidateIds: new Set(),
-      },
-    }));
-  };
-
-  const patchCanvasForm = (
-    bucketKey: DependencyBucketKey,
-    patch: Partial<Omit<DependencyBucketForm, "selectedCandidateIds">>,
-  ) => {
-    setCanvasForms((prev) => ({
-      ...prev,
-      [bucketKey]: {
-        ...prev[bucketKey],
-        ...patch,
-      },
-    }));
-  };
-
-  const toggleCanvasCandidate = (bucketKey: DependencyBucketKey, id: string) => {
-    setCanvasForms((prev) => {
-      const nextSelected = new Set(prev[bucketKey].selectedCandidateIds);
-      if (nextSelected.has(id)) nextSelected.delete(id);
-      else nextSelected.add(id);
-      return {
-        ...prev,
-        [bucketKey]: {
-          ...prev[bucketKey],
-          selectedCandidateIds: nextSelected,
-        },
-      };
-    });
-  };
-
-  const toggleBucketItem = (
-    bucketKey: DependencyBucketKey,
-    id: string,
-    version: DependencyCanvasVersion = canvasVersion,
-  ) => {
-    const setSelected =
-      version === "v2" ? setV2SelectedBucketItemIds : setSelectedBucketItemIds;
-    setSelected((prev) => {
+  const toggleBucketItem = (bucketKey: DependencyBucketKey, id: string) => {
+    setSelectedBucketItemIds((prev) => {
       const nextSet = new Set(prev[bucketKey]);
       if (nextSet.has(id)) nextSet.delete(id);
       else nextSet.add(id);
@@ -498,22 +480,14 @@ export function DependencyMapOverlay({
     });
   };
 
-  const removeSelectedFromBucket = (
-    bucketKey: DependencyBucketKey,
-    version: DependencyCanvasVersion = canvasVersion,
-  ) => {
-    const selectedMap =
-      version === "v2" ? v2SelectedBucketItemIds : selectedBucketItemIds;
-    const selectedIds = selectedMap[bucketKey];
+  const removeSelectedFromBucket = (bucketKey: DependencyBucketKey) => {
+    const selectedIds = selectedBucketItemIds[bucketKey];
     if (selectedIds.size === 0) return;
-    const setTargetBuckets = version === "v2" ? setV2Buckets : setBuckets;
-    const setSelected =
-      version === "v2" ? setV2SelectedBucketItemIds : setSelectedBucketItemIds;
-    setTargetBuckets((prev) => ({
+    setBuckets((prev) => ({
       ...prev,
       [bucketKey]: prev[bucketKey].filter((item) => !selectedIds.has(item.id)),
     }));
-    setSelected((prev) => ({ ...prev, [bucketKey]: new Set() }));
+    setSelectedBucketItemIds((prev) => ({ ...prev, [bucketKey]: new Set() }));
   };
 
   useEffect(() => {
@@ -521,7 +495,6 @@ export function DependencyMapOverlay({
     if (!defaultNodeId || !defaultTypeId) return;
     setSelectedNodeId(defaultNodeId);
     setSelectedTypeId(defaultTypeId);
-    setCanvasForms(emptyBucketForms(defaultNodeId, defaultTypeId));
     setFiltersSeeded(true);
   }, [defaultNodeId, defaultTypeId, filtersSeeded]);
 
@@ -536,6 +509,9 @@ export function DependencyMapOverlay({
       search,
       selectedNodeId,
       selectedTypeId,
+      selectedSprintId,
+      selectedReleaseId,
+      selectedMilestoneId,
       sentinelGrants: sentinel_grants,
       typeOptions,
     })
@@ -554,86 +530,150 @@ export function DependencyMapOverlay({
     search,
     selectedNodeId,
     selectedTypeId,
+    selectedSprintId,
+    selectedReleaseId,
+    selectedMilestoneId,
     filtersSeeded,
     sentinel_grants,
     typeOptions,
   ]);
 
-  const canvasFormQuerySignature = useMemo(
+  // The timebox endpoints key off the tenant id, NOT the grant's
+  // workspace_id — even though the param is named `workspace_id` on the
+  // wire (legacy contract pinned by `resolveWorkspaceId` in
+  // ArtefactInlineForm/timeboxOptions.ts). Resolving via the shared helper
+  // keeps the dependency-map composer aligned with the inline-form fetch.
+  const timeboxWorkspaceId = useMemo(
     () =>
-      JSON.stringify(
-        CANVAS_BUCKET_ORDER.map((bucketKey) => {
-          const form = canvasForms[bucketKey];
-          return [
-            bucketKey,
-            form.selectedNodeId,
-            form.selectedTypeId,
-            form.search,
-          ];
-        }),
+      resolveWorkspaceId(
+        sentinel_user?.tenant_id,
+        sentinel_user?.workspace_id,
+        sentinel_grants,
+        selectedNodeId || sentinel_focus_node,
       ),
-    [canvasForms],
+    [sentinel_user, sentinel_grants, selectedNodeId, sentinel_focus_node],
   );
 
   useEffect(() => {
-    if (!filtersSeeded) return;
+    if (!timeboxWorkspaceId || !selectedNodeId) {
+      setSprintOptions([]);
+      setReleaseOptions([]);
+      setMilestoneOptions([]);
+      return;
+    }
     let alive = true;
-    Promise.all(
-      CANVAS_BUCKET_ORDER.map(async (bucketKey) => {
-        const form = canvasForms[bucketKey];
-        const options = await fetchDependencyCandidates({
-          artefactId: artefact.id,
-          search: form.search,
-          selectedNodeId: form.selectedNodeId,
-          selectedTypeId: form.selectedTypeId,
-          sentinelGrants: sentinel_grants,
-          typeOptions,
-        });
-        return { bucketKey, options };
-      }),
-    )
-      .then((results) => {
-        if (!alive) return;
-        setCanvasForms((prev) => {
-          const next = { ...prev };
-          results.forEach(({ bucketKey, options }) => {
-            next[bucketKey] = {
-              ...next[bucketKey],
-              candidateOptions: options,
+    const params = nodeRelativeTimeboxParams(timeboxWorkspaceId, selectedNodeId);
+    Promise.all([
+      sprintsApi.list(params).catch(() => ({ items: [] })),
+      releasesApi.list(params).catch(() => ({ items: [] })),
+      milestonesApi.list(params).catch(() => ({ milestones: [] })),
+    ]).then(([sprintsRes, releasesRes, milestonesRes]) => {
+      if (!alive) return;
+      const sprintItems = (sprintsRes as { items: unknown[] }).items ?? [];
+      const releaseItems = (releasesRes as { items: unknown[] }).items ?? [];
+      const milestoneItems =
+        (milestonesRes as { milestones: unknown[] }).milestones ?? [];
+      setSprintOptions(
+        sprintItems
+          .map((raw) => {
+            const row = raw as Record<string, unknown>;
+            const id = row.timeboxes_sprints_id;
+            const name = row.timeboxes_sprints_name;
+            if (typeof id !== "string" || typeof name !== "string") return null;
+            const suffix = row.timeboxes_sprints_suffix;
+            const label =
+              typeof suffix === "string" && suffix.trim()
+                ? `${name} - ${suffix.trim()}`
+                : name;
+            return {
+              value: id,
+              label,
+              isCurrent: isCurrentInRange(
+                row.timeboxes_sprints_date_start as string | null,
+                row.timeboxes_sprints_date_end as string | null,
+              ),
             };
-          });
-          return next;
-        });
-      })
-      .catch(() => {
-        if (!alive) return;
-        setCanvasForms((prev) => {
-          const next = { ...prev };
-          CANVAS_BUCKET_ORDER.forEach((bucketKey) => {
-            next[bucketKey] = {
-              ...next[bucketKey],
-              candidateOptions: [],
+          })
+          .filter((opt): opt is TimeboxOption => opt !== null),
+      );
+      setReleaseOptions(
+        releaseItems
+          .map((raw) => {
+            const row = raw as Record<string, unknown>;
+            const id = row.timeboxes_releases_id;
+            const name = row.timeboxes_releases_name;
+            if (typeof id !== "string" || typeof name !== "string") return null;
+            const suffix = row.timeboxes_releases_suffix;
+            const label =
+              typeof suffix === "string" && suffix.trim()
+                ? `${name} - ${suffix.trim()}`
+                : name;
+            return {
+              value: id,
+              label,
+              isCurrent: isCurrentInRange(
+                row.timeboxes_releases_date_start as string | null,
+                row.timeboxes_releases_date_end as string | null,
+              ),
             };
-          });
-          return next;
-        });
-      });
+          })
+          .filter((opt): opt is TimeboxOption => opt !== null),
+      );
+      setMilestoneOptions(
+        milestoneItems
+          .map((raw) => {
+            const row = raw as Record<string, unknown>;
+            const id = row.timeboxes_milestones_id;
+            const name = row.timeboxes_milestones_name;
+            if (typeof id !== "string" || typeof name !== "string") return null;
+            // Milestones are point-in-time markers — no "current window".
+            return { value: id, label: name, isCurrent: false };
+          })
+          .filter((opt): opt is TimeboxOption => opt !== null),
+      );
+    });
     return () => {
       alive = false;
     };
-  }, [
-    artefact.id,
-    canvasFormQuerySignature,
-    filtersSeeded,
-    sentinel_grants,
-    typeOptions,
-  ]);
+  }, [timeboxWorkspaceId, selectedNodeId]);
+
+  // Drop stale timebox selections whenever the node scope shifts — a
+  // sprint/release/milestone id is only meaningful within its source node.
+  useEffect(() => {
+    setSelectedSprintId("");
+    setSelectedReleaseId("");
+    setSelectedMilestoneId("");
+  }, [selectedNodeId]);
 
   const selectedCandidates = useMemo(() => {
     return candidateOptions.filter((candidate) =>
       selectedCandidateIds.has(candidate.id),
     );
   }, [candidateOptions, selectedCandidateIds]);
+
+  // Backend currently denormalises only the sprint alias on each work item
+  // (sprint: { id, alias }). Release and milestone come back as IDs only,
+  // so look up the human name client-side from the catalogs we already
+  // fetch for the dropdowns. Names resolve when the candidate's timebox
+  // belongs to the selected node; when it doesn't (or no node is picked)
+  // we fall back to "Assigned" so the user still knows the field is set.
+  // Proper fix is backend denormalisation — flagged for follow-up.
+  const releaseLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    releaseOptions.forEach((option) => map.set(option.value, option.label));
+    return map;
+  }, [releaseOptions]);
+  const milestoneLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    milestoneOptions.forEach((option) => map.set(option.value, option.label));
+    return map;
+  }, [milestoneOptions]);
+  const labelForReleaseId = (id: string | null) =>
+    id == null ? "—" : releaseLabelById.get(id) ?? "Assigned";
+  const labelForMilestoneId = (id: string | null) =>
+    id == null ? "—" : milestoneLabelById.get(id) ?? "Assigned";
+  const pillClass = (assigned: boolean) =>
+    `dependency-composer__ResultPill ${assigned ? "is-assigned" : "is-unassigned"}`;
   const activeBucketConfig =
     BUCKETS.find((bucket) => bucket.key === activeBucket) ?? BUCKETS[0];
 
@@ -661,39 +701,59 @@ export function DependencyMapOverlay({
     });
   };
 
-  const renderTargetCard = (placement: "canvas" | "sidebar") => (
-    <section
-      className={
-        placement === "sidebar"
-          ? "dependency-map__TargetCard dependency-map__TargetCard--sidebar"
-          : "dependency-map__TargetCard"
-      }
-    >
-      <span className="dependency-map__TargetEyebrow">
-        Planning dependencies for
-      </span>
-      <div className="dependency-map__TargetMain">
-        <input
-          type="checkbox"
-          className="dependency-composer__ResultCheckbox"
-          readOnly
-          aria-label={`${meta.formattedId} is the dependency map target`}
-        />
-        <strong className="dependency-map__TargetCode">
-          {meta.formattedId}
-        </strong>
-        <span className="dependency-map__TargetTitle">{meta.title}</span>
-        <span className="dependency-map__TargetStatus">
-          {meta.flowStateName}
+  const renderTargetCard = () => {
+    const description = (artefact.description ?? "").trim();
+    return (
+      <section className="dependency-map__TargetCard">
+        <span className="dependency-map__TargetEyebrow">
+          Planning dependencies for
         </span>
-      </div>
-    </section>
-  );
+        <div className="dependency-map__TargetBody">
+          <span className="dependency-composer__ResultHead">
+            <span className="dependency-composer__ResultCode">
+              {meta.formattedId}
+            </span>
+            <span className="dependency-composer__ResultTitle">
+              {meta.title}
+            </span>
+          </span>
+          <span className="dependency-composer__ResultDescription">
+            {description || "No description"}
+          </span>
+          <span className="dependency-composer__ResultMeta">
+            <span className={pillClass(artefact.sprint?.alias != null)}>
+              <span className="dependency-composer__ResultPill_Label">
+                Sprint
+              </span>
+              <span className="dependency-composer__ResultPill_Value">
+                {artefact.sprint?.alias ?? "—"}
+              </span>
+            </span>
+            <span className={pillClass(artefact.release_id != null)}>
+              <span className="dependency-composer__ResultPill_Label">
+                Release
+              </span>
+              <span className="dependency-composer__ResultPill_Value">
+                {labelForReleaseId(artefact.release_id)}
+              </span>
+            </span>
+            <span className={pillClass(artefact.milestone_id != null)}>
+              <span className="dependency-composer__ResultPill_Label">
+                Milestone
+              </span>
+              <span className="dependency-composer__ResultPill_Value">
+                {labelForMilestoneId(artefact.milestone_id)}
+              </span>
+            </span>
+          </span>
+        </div>
+      </section>
+    );
+  };
 
   const renderBucketRows = (
     bucketKey: DependencyBucketKey,
     items: DependencyCandidate[],
-    version: DependencyCanvasVersion = canvasVersion,
   ) => {
     if (items.length === 0) {
       return (
@@ -703,160 +763,100 @@ export function DependencyMapOverlay({
       );
     }
 
-    const selectedMap =
-      version === "v2" ? v2SelectedBucketItemIds : selectedBucketItemIds;
-    const selectedIds = selectedMap[bucketKey];
+    const selectedIds = selectedBucketItemIds[bucketKey];
     return items.map((item) => {
       const selected = selectedIds.has(item.id);
       return (
-      <label
-        className={
-          selected
-            ? "dependency-composer__BucketRow is-selected"
-            : "dependency-composer__BucketRow"
-        }
-        key={item.id}
-      >
-        <input
-          type="checkbox"
-          className="dependency-composer__ResultCheckbox"
-          checked={selected}
-          onChange={() => toggleBucketItem(bucketKey, item.id, version)}
-          aria-label={`Select ${item.formattedId}`}
-        />
-        <span className="dependency-composer__BucketCode">
-          {item.formattedId}
-        </span>
-        <span className="dependency-composer__BucketRowTitle">
-          {item.title}
-        </span>
-      </label>
+        <button
+          key={item.id}
+          type="button"
+          className={
+            selected
+              ? "dependency-composer__BucketRow is-selected"
+              : "dependency-composer__BucketRow"
+          }
+          onClick={() => toggleBucketItem(bucketKey, item.id)}
+          aria-pressed={selected}
+          aria-label={`${selected ? "Deselect" : "Select"} ${item.formattedId}`}
+        >
+          <span className="dependency-composer__ResultHead">
+            <span className="dependency-composer__BucketCode">
+              {item.formattedId}
+            </span>
+            <span className="dependency-composer__BucketRowTitle">
+              {item.title}
+            </span>
+          </span>
+          <span className="dependency-composer__ResultDescription">
+            {item.description || "No description"}
+          </span>
+          <span className="dependency-composer__ResultMeta">
+            <span className={pillClass(item.sprintLabel != null)}>
+              <span className="dependency-composer__ResultPill_Label">
+                Sprint
+              </span>
+              <span className="dependency-composer__ResultPill_Value">
+                {item.sprintLabel ?? "—"}
+              </span>
+            </span>
+            <span className={pillClass(item.releaseId != null)}>
+              <span className="dependency-composer__ResultPill_Label">
+                Release
+              </span>
+              <span className="dependency-composer__ResultPill_Value">
+                {labelForReleaseId(item.releaseId)}
+              </span>
+            </span>
+            <span className={pillClass(item.milestoneId != null)}>
+              <span className="dependency-composer__ResultPill_Label">
+                Milestone
+              </span>
+              <span className="dependency-composer__ResultPill_Value">
+                {labelForMilestoneId(item.milestoneId)}
+              </span>
+            </span>
+          </span>
+        </button>
       );
     });
   };
 
-  const renderCanvasForm = (bucketKey: DependencyBucketKey) => {
-    const bucket = BUCKETS.find((item) => item.key === bucketKey) ?? BUCKETS[0];
-    const form = canvasForms[bucketKey];
-    const selectedCandidates = form.candidateOptions.filter((candidate) =>
-      form.selectedCandidateIds.has(candidate.id),
+  // Shared chevron block — used both by the canvas lanes (`renderCanvasBucket`
+  // below) and by the mode tabs in the sidebar so they animate the same way.
+  // `withIcon` is opt-in: canvas lanes show the icon badge; mode tabs hide it
+  // because the button itself overlays a centred label pill.
+  const renderFlowChevron = (
+    bucketKey: DependencyBucketKey,
+    options: { isActive: boolean; withIcon: boolean; icon?: ReactNode },
+  ) => {
+    const isParallel = bucketKey === "parallel";
+    const rows = (
+      <>
+        <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--top" />
+        <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--bottom" />
+      </>
     );
-
     return (
-      <section className="dependency-composer__Form dependency-map__StateForm">
-        <div className="dependency-composer__Filters">
-          <select
-            className="form__select dependency-composer__Select"
-            value={form.selectedNodeId}
-            onChange={(event) =>
-              patchCanvasForm(bucketKey, { selectedNodeId: event.target.value })
-            }
-            aria-label={`${bucket.title} canvas node filter`}
-          >
-            <option value="">All visible nodes</option>
-            {sentinel_grants.map((grant) => (
-              <option key={grant.node_id} value={grant.node_id}>
-                {grantLabel(grant)}
-              </option>
-            ))}
-          </select>
-          <select
-            className="form__select dependency-composer__Select"
-            value={form.selectedTypeId}
-            onChange={(event) =>
-              patchCanvasForm(bucketKey, { selectedTypeId: event.target.value })
-            }
-            aria-label={`${bucket.title} canvas type filter`}
-          >
-            {renderTypeSelectOptions()}
-          </select>
-        </div>
-
-        <div className="dependency-composer__SearchRail">
-          <span className="dependency-composer__SearchIcon" aria-hidden="true">
-            <TbSearch />
-          </span>
-          <input
-            type="search"
-            className="dependency-composer__SearchInput"
-            value={form.search}
-            onChange={(event) =>
-              patchCanvasForm(bucketKey, { search: event.target.value })
-            }
-            placeholder={bucket.placeholder}
-            aria-label={`${bucket.title} canvas artefact search`}
-          />
-        </div>
-
-        <div className="dependency-composer__Results">
-          <div className="dependency-composer__ResultGroup">
-            <span className="dependency-composer__ResultLabel">Artefacts</span>
-            {form.candidateOptions.length === 0 ? (
-              <div className="dependency-composer__ResultEmpty">
-                No artefacts found
-              </div>
-            ) : (
-              form.candidateOptions.map((candidate) => {
-                const selected = form.selectedCandidateIds.has(candidate.id);
-                return (
-                  <label
-                    key={candidate.id}
-                    className={
-                      selected
-                        ? "dependency-composer__ResultRow is-selected"
-                        : "dependency-composer__ResultRow"
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      className="dependency-composer__ResultCheckbox"
-                      checked={selected}
-                      onChange={() => toggleCanvasCandidate(bucketKey, candidate.id)}
-                      aria-label={`Select ${candidate.formattedId}`}
-                    />
-                    <span className="dependency-composer__ResultCode">
-                      {candidate.formattedId}
-                    </span>
-                    <span className="dependency-composer__ResultTitle">
-                      {candidate.title}
-                    </span>
-                  </label>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="btn btn--primary btn--sm dependency-composer__AddBtn"
-          onClick={() => addCanvasCandidatesToBucket(bucketKey)}
-          disabled={selectedCandidates.length === 0}
-        >
-          <TbCheck aria-hidden="true" />
-          Add selected to {bucket.title}
-        </button>
-      </section>
+      <div
+        className={`dependency-map__FlowChevron dependency-map__FlowChevron--${bucketKey}${options.isActive ? " is-active" : ""}`}
+        aria-hidden="true"
+      >
+        {isParallel ? (
+          <div className="dependency-map__FlowChevron_Pair">{rows}</div>
+        ) : (
+          rows
+        )}
+        {options.withIcon && options.icon ? (
+          <span className="dependency-map__FlowChevron_Icon">{options.icon}</span>
+        ) : null}
+      </div>
     );
   };
 
-  const renderCanvasBucket = (
-    bucketKey: DependencyBucketKey,
-    options?: {
-      showForm?: boolean;
-      showHelper?: boolean;
-      showPayload?: boolean;
-      version?: DependencyCanvasVersion;
-    },
-  ) => {
-    const version = options?.version ?? "v1";
-    const showForm = options?.showForm ?? true;
-    const showHelper = options?.showHelper ?? true;
-    const showPayload = options?.showPayload ?? true;
+  const renderCanvasBucket = (bucketKey: DependencyBucketKey) => {
     const bucket = BUCKETS.find((item) => item.key === bucketKey) ?? BUCKETS[0];
-    const items = version === "v2" ? v2Buckets[bucketKey] : buckets[bucketKey];
-    const selectedMap =
-      version === "v2" ? v2SelectedBucketItemIds : selectedBucketItemIds;
+    const items = buckets[bucketKey];
+    const isActive = bucketKey === activeBucket;
 
     return (
       <section className="dependency-map__StateBox" key={bucketKey}>
@@ -866,227 +866,27 @@ export function DependencyMapOverlay({
             {bucket.title}
             <span className="dependency-composer__Count">{items.length}</span>
           </span>
-          {showHelper ? (
-            <p className="dependency-composer__BucketHelper">{bucket.helper}</p>
-          ) : null}
+          <p className="dependency-composer__BucketHelper">{bucket.helper}</p>
         </div>
 
-        <div
-          className={`dependency-map__FlowChevron dependency-map__FlowChevron--${bucketKey}`}
-          aria-hidden="true"
+        {renderFlowChevron(bucketKey, {
+          isActive,
+          withIcon: true,
+          icon: bucket.icon,
+        })}
+
+        <div className="dependency-composer__BucketRows">
+          {renderBucketRows(bucketKey, items)}
+        </div>
+        <button
+          type="button"
+          className="btn btn--secondary btn--sm dependency-composer__BucketAction"
+          onClick={() => removeSelectedFromBucket(bucketKey)}
+          disabled={selectedBucketItemIds[bucketKey].size === 0}
         >
-          <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--top" />
-          <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--bottom" />
-          <span className="dependency-map__FlowChevron_Icon">{bucket.icon}</span>
-        </div>
-
-        {showForm ? renderCanvasForm(bucketKey) : null}
-
-        {showPayload ? (
-          <>
-            <div className="dependency-composer__BucketRows">
-              {renderBucketRows(bucketKey, items, version)}
-            </div>
-            <button
-              type="button"
-              className="btn btn--secondary btn--sm dependency-composer__BucketAction"
-              onClick={() => removeSelectedFromBucket(bucketKey, version)}
-              disabled={selectedMap[bucketKey].size === 0}
-            >
-              <TbX aria-hidden="true" />
-              Remove Artefact
-            </button>
-          </>
-        ) : null}
-      </section>
-    );
-  };
-
-  const renderV2MapCard = (
-    item: DependencyCandidate,
-    x: number,
-    y: number,
-    width: number,
-    tone: "requires" | "unlocks" | "parallel",
-  ) => (
-    <div
-      key={item.id}
-      className={`dependency-map__MapCard dependency-map__MapCard--${tone}`}
-      style={
-        {
-          "--dependency-map-card-left": `${x}px`,
-          "--dependency-map-card-top": `${y}px`,
-          "--dependency-map-card-width": `${width}px`,
-          "--dependency-map-card-height": `${MAP_NODE_HEIGHT}px`,
-        } as CSSProperties
-      }
-      title={`${item.formattedId} ${item.title}`}
-    >
-      <span className="dependency-map__MapCard_Main">
-        <strong className="dependency-map__MapCard_Code">
-          {item.formattedId}
-        </strong>
-        <span className="dependency-map__MapCard_Title">{item.title}</span>
-        <TbX className="dependency-map__MapCard_RemoveIcon" aria-hidden="true" />
-      </span>
-    </div>
-  );
-
-  const renderV2TargetCard = (x: number, y: number, width: number) => (
-    <div
-      className="dependency-map__MapCard dependency-map__MapCard--target"
-      style={
-        {
-          "--dependency-map-card-left": `${x}px`,
-          "--dependency-map-card-top": `${y}px`,
-          "--dependency-map-card-width": `${width}px`,
-          "--dependency-map-card-height": `${MAP_TARGET_HEIGHT}px`,
-        } as CSSProperties
-      }
-      title={`${meta.formattedId} ${meta.title}`}
-    >
-      <span className="dependency-map__MapCard_Main">
-        <strong className="dependency-map__MapCard_Code">
-          {meta.formattedId}
-        </strong>
-        <span className="dependency-map__MapCard_Title">{meta.title}</span>
-        <TbX className="dependency-map__MapCard_RemoveIcon" aria-hidden="true" />
-      </span>
-    </div>
-  );
-
-  const renderDependencyMapV2 = () => {
-    const requires = v2Buckets.requires;
-    const unlocks = v2Buckets.unlocks;
-    const parallel = v2Buckets.parallel;
-    const mapWidth = Math.max(1, mapFrame.width);
-    const bucketColumnWidth = mapWidth / 3;
-    const nodeWidth = Math.max(160, bucketColumnWidth - MAP_CARD_INSET);
-    const targetWidth = nodeWidth;
-    const parallelColumns =
-      parallel.length === 0
-        ? 1
-        : Math.min(MAP_PARALLEL_MAX_COLUMNS, Math.ceil(Math.sqrt(parallel.length)));
-    const parallelRows =
-      parallel.length === 0 ? 0 : Math.ceil(parallel.length / parallelColumns);
-    const parallelGroupHeight =
-      parallelRows === 0
-        ? 0
-        : parallelRows * MAP_NODE_HEIGHT + (parallelRows - 1) * MAP_NODE_GAP;
-    const sideCount = Math.max(requires.length, unlocks.length, 1);
-    const sideGroupHeight =
-      sideCount * MAP_NODE_HEIGHT + (sideCount - 1) * MAP_NODE_GAP;
-    const requiresCenterX = bucketColumnWidth / 2;
-    const parallelCenterX = mapWidth / 2;
-    const unlocksCenterX = mapWidth - bucketColumnWidth / 2;
-    const targetX = parallelCenterX - targetWidth / 2;
-    const targetY = MAP_START_Y;
-    const targetCenterX = targetX + targetWidth / 2;
-    const targetCenterY = targetY + MAP_TARGET_HEIGHT / 2;
-    const requiresX = requiresCenterX - nodeWidth / 2;
-    const unlocksX = unlocksCenterX - nodeWidth / 2;
-    const parallelStartX = parallelCenterX - nodeWidth / 2;
-    const parallelStartY = targetY + MAP_TARGET_HEIGHT + MAP_NODE_GAP;
-    const parallelBottomY =
-      parallelRows === 0
-        ? 0
-        : parallelStartY + parallelGroupHeight + MAP_NODE_GAP * 2;
-    const sideStartY = targetY;
-    const mapHeight = Math.max(
-      parallelBottomY + 80,
-      sideStartY + sideGroupHeight + 80,
-      mapFrame.height,
-    );
-
-    const sideY = (index: number) =>
-      sideStartY + index * (MAP_NODE_HEIGHT + MAP_NODE_GAP);
-    const parallelX = (index: number) =>
-      parallelStartX +
-      (index % parallelColumns) * (nodeWidth + MAP_NODE_GAP);
-    const parallelY = (index: number) =>
-      parallelStartY +
-      Math.floor(index / parallelColumns) * (MAP_NODE_HEIGHT + MAP_NODE_GAP);
-    const requiresLayout = requires.map((item, index) => ({
-      item,
-      x: requiresX,
-      y: sideY(index),
-    }));
-    const unlocksLayout = unlocks.map((item, index) => ({
-      item,
-      x: unlocksX,
-      y: sideY(index),
-    }));
-    const parallelLayout = parallel.map((item, index) => ({
-      item,
-      x: parallelX(index),
-      y: parallelY(index),
-    }));
-    return (
-      <section
-        className="dependency-map__Graph"
-        aria-label="V2 dependency map"
-        ref={mapViewportRef}
-      >
-        <div
-          className="dependency-map__GraphStage"
-          style={
-            {
-              "--dependency-map-stage-width": `${mapWidth}px`,
-              "--dependency-map-stage-height": `${mapHeight}px`,
-              "--dependency-map-stage-left": "0px",
-              "--dependency-map-stage-top": "0px",
-            } as CSSProperties
-          }
-        >
-          <svg
-            className="dependency-map__GraphSvg"
-            viewBox={`0 0 ${mapWidth} ${mapHeight}`}
-            preserveAspectRatio="none"
-            role="img"
-            aria-label={`${meta.formattedId} dependency relationship map`}
-          >
-            <g className="dependency-map__Connectors" aria-hidden="true">
-              {requiresLayout.map(({ item, x, y }) => {
-                const centerY = y + MAP_NODE_HEIGHT / 2;
-                return (
-                  <path
-                    key={`requires-${item.id}`}
-                    d={`M ${x + nodeWidth} ${centerY} C ${x + nodeWidth + 80} ${centerY}, ${targetX - 80} ${targetCenterY}, ${targetX} ${targetCenterY}`}
-                  />
-                );
-              })}
-              {unlocksLayout.map(({ item, x, y }) => {
-                const centerY = y + MAP_NODE_HEIGHT / 2;
-                return (
-                  <path
-                    key={`unlocks-${item.id}`}
-                    d={`M ${targetX + targetWidth} ${targetCenterY} C ${targetX + targetWidth + 80} ${targetCenterY}, ${x - 80} ${centerY}, ${x} ${centerY}`}
-                  />
-                );
-              })}
-              {parallelLayout.map(({ item, x, y }) => {
-                const centerX = x + nodeWidth / 2;
-                return (
-                  <path
-                    key={`parallel-${item.id}`}
-                    d={`M ${targetCenterX} ${targetY + MAP_TARGET_HEIGHT} C ${targetCenterX} ${targetY + MAP_TARGET_HEIGHT + 52}, ${centerX} ${y - 52}, ${centerX} ${y}`}
-                  />
-                );
-              })}
-            </g>
-          </svg>
-
-          {requiresLayout.map(({ item, x, y }) =>
-            renderV2MapCard(item, x, y, nodeWidth, "requires"),
-          )}
-          {unlocksLayout.map(({ item, x, y }) =>
-            renderV2MapCard(item, x, y, nodeWidth, "unlocks"),
-          )}
-          {parallelLayout.map(({ item, x, y }) =>
-            renderV2MapCard(item, x, y, nodeWidth, "parallel"),
-          )}
-          {renderV2TargetCard(targetX, targetY, targetWidth)}
-        </div>
+          <TbX aria-hidden="true" />
+          Remove Artefact
+        </button>
       </section>
     );
   };
@@ -1106,29 +906,6 @@ export function DependencyMapOverlay({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  useLayoutEffect(() => {
-    if (canvasVersion !== "v2") return;
-    const mapViewport = mapViewportRef.current;
-    if (mapViewport == null) return;
-
-    const measureMapFrame = () => {
-      const viewportRect = mapViewport.getBoundingClientRect();
-      setMapFrame({
-        width: viewportRect.width,
-        height: viewportRect.height,
-      });
-    };
-
-    measureMapFrame();
-    const observer = new ResizeObserver(measureMapFrame);
-    observer.observe(mapViewport);
-    window.addEventListener("resize", measureMapFrame);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measureMapFrame);
-    };
-  }, [canvasVersion]);
 
   return (
     <FullscreenCanvasOverlay
@@ -1153,63 +930,38 @@ export function DependencyMapOverlay({
         "map-root-title": meta.title,
         "map-root-node-id": meta.nodeId,
       }}
-      toolbar={
-        <div className="dependency-map__Toolbar">
-          <button
-            type="button"
-            className={
-              canvasVersion === "v1"
-                ? "fullscreen-canvas-overlay__Button is-active"
-                : "fullscreen-canvas-overlay__Button fullscreen-canvas-overlay__Button--ghost"
-            }
-            onClick={() => setCanvasVersion("v1")}
-            aria-pressed={canvasVersion === "v1"}
-          >
-            V1
-          </button>
-          <button
-            type="button"
-            className={
-              canvasVersion === "v2"
-                ? "fullscreen-canvas-overlay__Button is-active"
-                : "fullscreen-canvas-overlay__Button fullscreen-canvas-overlay__Button--ghost"
-            }
-            onClick={() => setCanvasVersion("v2")}
-            aria-pressed={canvasVersion === "v2"}
-          >
-            V2
-          </button>
-        </div>
-      }
       sidebar={
-        <div
-          className={
-            canvasVersion === "v2"
-              ? "dependency-composer is-v2"
-              : "dependency-composer"
-          }
-        >
-          {canvasVersion === "v2" ? renderTargetCard("sidebar") : null}
+        <div className="dependency-composer">
+          {renderTargetCard()}
 
           <nav
             className="dependency-composer__Mode"
             aria-label="Dependency relationship type"
           >
-            {BUCKETS.map((bucket) => (
-              <button
-                key={bucket.key}
-                type="button"
-                className={
-                  activeBucket === bucket.key
-                    ? "dependency-composer__ModeBtn is-active"
-                    : "dependency-composer__ModeBtn"
-                }
-                onClick={() => setActiveBucket(bucket.key)}
-                aria-pressed={activeBucket === bucket.key}
-              >
-                {bucket.title}
-              </button>
-            ))}
+            {BUCKETS.map((bucket) => {
+              const isActive = activeBucket === bucket.key;
+              return (
+                <button
+                  key={bucket.key}
+                  type="button"
+                  className={
+                    isActive
+                      ? "dependency-composer__ModeBtn is-active"
+                      : "dependency-composer__ModeBtn"
+                  }
+                  onClick={() => setActiveBucket(bucket.key)}
+                  aria-pressed={isActive}
+                >
+                  {renderFlowChevron(bucket.key, {
+                    isActive,
+                    withIcon: false,
+                  })}
+                  <span className="dependency-composer__ModeBtn_Label">
+                    {bucket.title}
+                  </span>
+                </button>
+              );
+            })}
           </nav>
 
           <section className="dependency-composer__Form">
@@ -1234,6 +986,60 @@ export function DependencyMapOverlay({
                 aria-label={`${activeBucketConfig.title} type filter`}
               >
                 {renderTypeSelectOptions()}
+              </select>
+            </div>
+
+            <div className="dependency-composer__Filters dependency-composer__Filters--timebox">
+              <select
+                className="form__select dependency-composer__Select"
+                value={selectedSprintId}
+                onChange={(event) => setSelectedSprintId(event.target.value)}
+                disabled={!selectedNodeId}
+                aria-label={`${activeBucketConfig.title} sprint filter`}
+              >
+                <option value="">
+                  {selectedNodeId ? "ANY sprint" : "Sprint (pick a node)"}
+                </option>
+                <option value={TIMEBOX_NONE}>No sprint assigned</option>
+                {sprintOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.isCurrent ? `★ ${option.label}` : option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="form__select dependency-composer__Select"
+                value={selectedReleaseId}
+                onChange={(event) => setSelectedReleaseId(event.target.value)}
+                disabled={!selectedNodeId}
+                aria-label={`${activeBucketConfig.title} release filter`}
+              >
+                <option value="">
+                  {selectedNodeId ? "ANY release" : "Release (pick a node)"}
+                </option>
+                <option value={TIMEBOX_NONE}>No release assigned</option>
+                {releaseOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.isCurrent ? `★ ${option.label}` : option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="form__select dependency-composer__Select"
+                value={selectedMilestoneId}
+                onChange={(event) => setSelectedMilestoneId(event.target.value)}
+                disabled={!selectedNodeId}
+                aria-label={`${activeBucketConfig.title} milestone filter`}
+              >
+                <option value="">
+                  {selectedNodeId ? "ANY milestone" : "Milestone (pick a node)"}
+                </option>
+                <option value={TIMEBOX_NONE}>No milestone assigned</option>
+                {milestoneOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1267,28 +1073,56 @@ export function DependencyMapOverlay({
                   candidateOptions.map((candidate) => {
                     const selected = selectedCandidateIds.has(candidate.id);
                     return (
-                      <label
+                      <button
                         key={candidate.id}
+                        type="button"
                         className={
                           selected
                             ? "dependency-composer__ResultRow is-selected"
                             : "dependency-composer__ResultRow"
                         }
+                        onClick={() => toggleCandidate(candidate.id)}
+                        aria-pressed={selected}
+                        aria-label={`${selected ? "Deselect" : "Select"} ${candidate.formattedId}`}
                       >
-                        <input
-                          type="checkbox"
-                          className="dependency-composer__ResultCheckbox"
-                          checked={selected}
-                          onChange={() => toggleCandidate(candidate.id)}
-                          aria-label={`Select ${candidate.formattedId}`}
-                        />
-                        <span className="dependency-composer__ResultCode">
-                          {candidate.formattedId}
+                        <span className="dependency-composer__ResultHead">
+                          <span className="dependency-composer__ResultCode">
+                            {candidate.formattedId}
+                          </span>
+                          <span className="dependency-composer__ResultTitle">
+                            {candidate.title}
+                          </span>
                         </span>
-                        <span className="dependency-composer__ResultTitle">
-                          {candidate.title}
+                        <span className="dependency-composer__ResultDescription">
+                          {candidate.description || "No description"}
                         </span>
-                      </label>
+                        <span className="dependency-composer__ResultMeta">
+                          <span className={pillClass(candidate.sprintLabel != null)}>
+                            <span className="dependency-composer__ResultPill_Label">
+                              Sprint
+                            </span>
+                            <span className="dependency-composer__ResultPill_Value">
+                              {candidate.sprintLabel ?? "—"}
+                            </span>
+                          </span>
+                          <span className={pillClass(candidate.releaseId != null)}>
+                            <span className="dependency-composer__ResultPill_Label">
+                              Release
+                            </span>
+                            <span className="dependency-composer__ResultPill_Value">
+                              {labelForReleaseId(candidate.releaseId)}
+                            </span>
+                          </span>
+                          <span className={pillClass(candidate.milestoneId != null)}>
+                            <span className="dependency-composer__ResultPill_Label">
+                              Milestone
+                            </span>
+                            <span className="dependency-composer__ResultPill_Value">
+                              {labelForMilestoneId(candidate.milestoneId)}
+                            </span>
+                          </span>
+                        </span>
+                      </button>
                     );
                   })
                 )}
@@ -1305,85 +1139,13 @@ export function DependencyMapOverlay({
               Add selected to {activeBucketConfig.title}
             </button>
           </section>
-
-          {canvasVersion === "v1" ? BUCKETS.map((bucket) => {
-            const items = buckets[bucket.key];
-            const active = bucket.key === activeBucket;
-            return (
-              <section
-                className={
-                  active
-                    ? "dependency-composer__Bucket is-active"
-                    : "dependency-composer__Bucket"
-                }
-                key={bucket.key}
-              >
-                <div className="dependency-composer__BucketHead">
-                  <span className="dependency-composer__BucketTitle">
-                    {bucket.icon}
-                    {bucket.title}
-                    <span className="dependency-composer__Count">
-                      {items.length}
-                    </span>
-                  </span>
-                  <p className="dependency-composer__BucketHelper">
-                    {bucket.helper}
-                  </p>
-                </div>
-
-                <div className="dependency-composer__BucketRows">
-                  {renderBucketRows(bucket.key, items)}
-                </div>
-                <button
-                  type="button"
-                  className="btn btn--secondary btn--sm dependency-composer__BucketAction"
-                  onClick={() => removeSelectedFromBucket(bucket.key)}
-                  disabled={selectedBucketItemIds[bucket.key].size === 0}
-                >
-                  <TbX aria-hidden="true" />
-                  Remove Artefact
-                </button>
-              </section>
-            );
-          }) : null}
-
-          {canvasVersion === "v1" ? <section className="dependency-composer__Meta">
-            <div className="dependency-composer__MetaRow">
-              <span className="dependency-composer__MetaLabel">Node</span>
-              <span>{meta.nodeName}</span>
-            </div>
-            <div className="dependency-composer__MetaRow">
-              <span className="dependency-composer__MetaLabel">Parent</span>
-              <span>{meta.parentLabel ?? "No parent"}</span>
-            </div>
-            <div className="dependency-composer__MetaRow">
-              <span className="dependency-composer__MetaLabel">Owner</span>
-              <span>{meta.ownerName}</span>
-            </div>
-          </section> : null}
         </div>
       }
     >
-      <div
-        className={
-          canvasVersion === "v2"
-            ? "dependency-map__Canvas dependency-map__Canvas--v2"
-            : "dependency-map__Canvas"
-        }
-      >
-        {canvasVersion === "v1" ? renderTargetCard("canvas") : null}
-
+      <div className="dependency-map__Canvas">
         <div className="dependency-map__StateGrid">
-          {CANVAS_BUCKET_ORDER.map((bucketKey) =>
-            renderCanvasBucket(bucketKey, {
-              showForm: canvasVersion === "v1",
-              showHelper: canvasVersion === "v1",
-              showPayload: canvasVersion === "v1",
-              version: canvasVersion,
-            }),
-          )}
+          {CANVAS_BUCKET_ORDER.map((bucketKey) => renderCanvasBucket(bucketKey))}
         </div>
-        {canvasVersion === "v2" ? renderDependencyMapV2() : null}
       </div>
     </FullscreenCanvasOverlay>
   );

@@ -248,6 +248,133 @@ const sqlListBucketProjection = `
 	     OR artefact_dependency_edges_id_to_artefact   = $2)
 	 ORDER BY artefact_dependency_edges_created_at ASC`
 
+// ── Transitive reachability (B23.3.1) ───────────────────────────
+
+// sqlReachabilityDownstream returns every artefact reachable from $1
+// by walking finish_to_start edges forward across ALL live maps in
+// the caller's subscription. Cross-map walk per RES058 §9 — a path
+// can travel through multiple overlapping maps the caller can see.
+//
+// Visibility flag (joined here so the redaction split happens in
+// one round-trip): a.artefacts_id_topology_node = ANY($3) reports
+// whether the row is in the caller's allowed subtree. Out-of-scope
+// rows still appear in the result set so the caller can count them
+// for the redacted_count summary.
+//
+//   $1 = focused artefact id
+//   $2 = subscription id (caller TenantID)
+//   $3 = caller AllowedSubtreeIDs uuid[]
+//   $4 = max depth (defensive cap — recursion stops earlier via UNION
+//        on a clean graph but the cap guards against pathological data)
+const sqlReachabilityDownstream = `
+	WITH RECURSIVE walk(node, depth) AS (
+	    SELECT e.artefact_dependency_edges_id_to_artefact, 1
+	      FROM artefact_dependency_edges e
+	      JOIN artefact_dependency_maps  m ON m.artefact_dependency_maps_id = e.artefact_dependency_edges_id_map
+	     WHERE e.artefact_dependency_edges_id_from_artefact = $1
+	       AND e.artefact_dependency_edges_kind             = 'finish_to_start'
+	       AND e.artefact_dependency_edges_archived_at      IS NULL
+	       AND m.artefact_dependency_maps_archived_at       IS NULL
+	       AND m.artefact_dependency_maps_id_subscription   = $2
+	    UNION
+	    SELECT e.artefact_dependency_edges_id_to_artefact, w.depth + 1
+	      FROM artefact_dependency_edges e
+	      JOIN artefact_dependency_maps  m ON m.artefact_dependency_maps_id = e.artefact_dependency_edges_id_map
+	      JOIN walk w ON w.node = e.artefact_dependency_edges_id_from_artefact
+	     WHERE e.artefact_dependency_edges_kind             = 'finish_to_start'
+	       AND e.artefact_dependency_edges_archived_at      IS NULL
+	       AND m.artefact_dependency_maps_archived_at       IS NULL
+	       AND m.artefact_dependency_maps_id_subscription   = $2
+	       AND w.depth < $4
+	)
+	SELECT w.node,
+	       MIN(w.depth) AS depth,
+	       COALESCE(a.artefacts_id_topology_node = ANY($3::uuid[]), FALSE) AS visible
+	  FROM walk w
+	  LEFT JOIN artefacts a
+	         ON a.artefacts_id              = w.node
+	        AND a.artefacts_id_subscription = $2
+	        AND a.artefacts_archived_at IS NULL
+	 GROUP BY w.node, a.artefacts_id_topology_node
+	 ORDER BY depth ASC, w.node ASC`
+
+// sqlReachabilityUpstream — same walk in the reverse direction
+// (predecessors). Walks from the focused artefact backward along
+// finish_to_start edges. Same visibility join as downstream.
+const sqlReachabilityUpstream = `
+	WITH RECURSIVE walk(node, depth) AS (
+	    SELECT e.artefact_dependency_edges_id_from_artefact, 1
+	      FROM artefact_dependency_edges e
+	      JOIN artefact_dependency_maps  m ON m.artefact_dependency_maps_id = e.artefact_dependency_edges_id_map
+	     WHERE e.artefact_dependency_edges_id_to_artefact   = $1
+	       AND e.artefact_dependency_edges_kind             = 'finish_to_start'
+	       AND e.artefact_dependency_edges_archived_at      IS NULL
+	       AND m.artefact_dependency_maps_archived_at       IS NULL
+	       AND m.artefact_dependency_maps_id_subscription   = $2
+	    UNION
+	    SELECT e.artefact_dependency_edges_id_from_artefact, w.depth + 1
+	      FROM artefact_dependency_edges e
+	      JOIN artefact_dependency_maps  m ON m.artefact_dependency_maps_id = e.artefact_dependency_edges_id_map
+	      JOIN walk w ON w.node = e.artefact_dependency_edges_id_to_artefact
+	     WHERE e.artefact_dependency_edges_kind             = 'finish_to_start'
+	       AND e.artefact_dependency_edges_archived_at      IS NULL
+	       AND m.artefact_dependency_maps_archived_at       IS NULL
+	       AND m.artefact_dependency_maps_id_subscription   = $2
+	       AND w.depth < $4
+	)
+	SELECT w.node,
+	       MIN(w.depth) AS depth,
+	       COALESCE(a.artefacts_id_topology_node = ANY($3::uuid[]), FALSE) AS visible
+	  FROM walk w
+	  LEFT JOIN artefacts a
+	         ON a.artefacts_id              = w.node
+	        AND a.artefacts_id_subscription = $2
+	        AND a.artefacts_archived_at IS NULL
+	 GROUP BY w.node, a.artefacts_id_topology_node
+	 ORDER BY depth ASC, w.node ASC`
+
+// ── Candidate search (B23.2.2) ──────────────────────────────────
+
+// sqlCandidateSearch returns artefacts visible to the caller that are
+// NOT already linked to the focused artefact in the named map. The
+// exclusion subquery walks every live edge in this map where the
+// focused artefact is either endpoint and collects the OTHER
+// endpoint id — those are the artefacts the composer would otherwise
+// allow duplicate-adding into a second bucket.
+//
+//   $1 = subscription id (caller TenantID)
+//   $2 = topology subtree (AllowedSubtreeIDs)
+//   $3 = map id
+//   $4 = focused artefact id (excluded from results + from exclusion set)
+//   $5 = search text (case-insensitive substring on title; empty = match all)
+//   $6 = LIMIT
+const sqlCandidateSearch = `
+	SELECT a.artefacts_id,
+	       a.artefacts_id_artefact_type,
+	       a.artefacts_id_topology_node,
+	       a.artefacts_title,
+	       a.artefacts_number
+	  FROM artefacts a
+	 WHERE a.artefacts_id              <> $4
+	   AND a.artefacts_id_subscription = $1
+	   AND a.artefacts_id_topology_node = ANY($2::uuid[])
+	   AND a.artefacts_archived_at IS NULL
+	   AND ($5 = '' OR a.artefacts_title ILIKE '%' || $5 || '%')
+	   AND a.artefacts_id NOT IN (
+	       SELECT CASE
+	                WHEN e.artefact_dependency_edges_id_from_artefact = $4
+	                THEN e.artefact_dependency_edges_id_to_artefact
+	                ELSE e.artefact_dependency_edges_id_from_artefact
+	              END
+	         FROM artefact_dependency_edges e
+	        WHERE e.artefact_dependency_edges_id_map = $3
+	          AND e.artefact_dependency_edges_archived_at IS NULL
+	          AND ($4 IN (e.artefact_dependency_edges_id_from_artefact,
+	                     e.artefact_dependency_edges_id_to_artefact))
+	   )
+	 ORDER BY a.artefacts_title ASC
+	 LIMIT $6`
+
 // ── dependency-impact preflight (B23.1.8) ───────────────────────
 
 // sqlImpactForArtefact returns one row per dependency map that has

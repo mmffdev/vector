@@ -144,3 +144,36 @@ type BucketProjection struct {
 	Parallel []BucketEdge `json:"parallel"`
 	Unlocks  []BucketEdge `json:"unlocks"`
 }
+
+// Candidate is the per-row wire shape for the candidate search
+// (B23.2.2). Keeps the projection narrow — the composer hydrates
+// detail (sprint, release, milestone, etc.) via /work-items if
+// needed.
+type Candidate struct {
+	ID             uuid.UUID `json:"id"`
+	ArtefactTypeID uuid.UUID `json:"artefact_type_id"`
+	TopologyNodeID uuid.UUID `json:"topology_node_id"`
+	Title          string    `json:"title"`
+	KeyNum         int       `json:"key_num"`
+}
+
+// ReachableNode is one row in the transitive-impact response (B23.3.1).
+// Only artefacts visible to the caller's Sentinel clamp surface here;
+// out-of-scope artefacts are folded into the redacted_count summary.
+type ReachableNode struct {
+	ArtefactID uuid.UUID `json:"artefact_id"`
+	Depth      int       `json:"depth"`
+}
+
+// TransitiveImpactReport is the wire shape for
+// GET /_site/dependencies/{artefact_id}/transitive-impact.
+//
+// `redacted_count` is the cross-clamp leak control: any node in
+// either direction that the caller cannot see is dropped from the
+// arrays and added to the count. The frontend renders something
+// like "+ N more outside your scope" instead of leaking ids.
+type TransitiveImpactReport struct {
+	Downstream    []ReachableNode `json:"downstream"`
+	Upstream      []ReachableNode `json:"upstream"`
+	RedactedCount int             `json:"redacted_count"`
+}
