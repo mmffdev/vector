@@ -2364,7 +2364,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: Scalar/openapi entry added for each route.
   - Plan: PLA074
   > Last checked: 2026-06-03 — three handlers + service methods landed; topology scope checked via `nodeInScope(c, …)` against `AllowedSubtreeIDs` (fail-closed when nil); rename rejects 404 on archived; archive is idempotent (re-call returns existing row); 14 handler tests cover allow/deny for user/padmin/gadmin + 401/404/422 mappings; openapi entry auto-synced by the api:sync pre-commit hook.
-- **B23.1.6 [P2] 🔵 IN FLIGHT** — Edge insert with cycle guard + uniqueness enforcement. The core write path; correctness rules live here.
+- ✅ ~~**B23.1.6 [P2]** — Edge insert with cycle guard + uniqueness enforcement. The core write path; correctness rules live here.~~
   - AC: `POST /_site/dependencies/edges` creates edge; writes `artefact_dependency_edge_events` row in same tx.
   - AC: insert refuses 422 on self-loop (`from_id == to_id`).
   - AC: insert refuses 409 on duplicate per partial unique index (any kind).
@@ -2372,6 +2372,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: insert refuses 403 if either endpoint not visible to caller via Sentinel.
   - AC: Go test `TestEdgeInsert_CycleRejected` covers a 3-node cycle attempt.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — CreateEdge tx wraps SELECT FOR UPDATE on parent map + visibility check (sqlCountVisibleArtefacts, both endpoints must be in caller's AllowedSubtreeIDs) + recursive-CTE cycle check (sqlCycleWouldFormFromTo) + INSERT + same-tx audit-event write (sentinel clamp snapshot + edge facets as jsonb); SQLSTATE 23505 mapped to ErrDuplicateEdge → 409; handler error matrix test covers all 6 paths + 401; live-DB Tier-B tests TestEdgeInsert_CycleRejected (3-node cycle, 2-cycle reverse, no-false-positive shortcut) + TestEdgeInsert_UniquenessAndAudit (directed dup + cross-kind canonical + audit row) PASS against dev `vector_artefacts`.
 - **B23.1.7 [P2] 🔵 IN FLIGHT** — Edge archive endpoint. Soft-delete a relationship with audit trail.
   - AC: `POST /_site/dependencies/edges/{id}/archive` sets `archived_at`; writes audit event.
   - AC: idempotent — second call returns 200 without writing a second event.

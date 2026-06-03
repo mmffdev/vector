@@ -90,3 +90,79 @@ const sqlArchiveMap = `
 	   AND artefact_dependency_maps_id_workspace = $2
 	   AND artefact_dependency_maps_archived_at IS NULL
 	 RETURNING` + sqlMapColumns
+
+// sqlGetMapForUpdate is the workspace-clamped SELECT … FOR UPDATE
+// used by edge insert (B23.1.6) and edge archive (B23.1.7). The
+// row-level lock serialises every concurrent edge mutation against
+// the same map so the cycle check and uniqueness checks run on a
+// stable snapshot.
+const sqlGetMapForUpdate = sqlGetMapByID + `
+	  FOR UPDATE`
+
+// ── Edge insert (B23.1.6) ───────────────────────────────────────
+
+// sqlCountVisibleArtefacts returns how many of the requested artefact
+// ids the caller is permitted to see:
+//   $1 = uuid[] of artefact ids to check
+//   $2 = subscription id (caller TenantID)
+//   $3 = uuid[] of caller AllowedSubtreeIDs (topology node membership)
+//
+// Caller compares result to len($1). Less than the input length means
+// at least one endpoint is invisible — return 403.
+const sqlCountVisibleArtefacts = `
+	SELECT COUNT(*)
+	  FROM artefacts a
+	 WHERE a.artefacts_id              = ANY($1::uuid[])
+	   AND a.artefacts_id_subscription = $2
+	   AND a.artefacts_id_topology_node = ANY($3::uuid[])
+	   AND a.artefacts_archived_at IS NULL`
+
+// sqlCycleWouldFormFromTo answers: if a finish_to_start edge from
+// $2 → $3 were added to map $1, would that close a directed cycle?
+//
+// Walk forward from $3 along live finish_to_start edges in this map;
+// if $2 is reachable, adding $2 → $3 would form a cycle.
+//
+//   $1 = map id
+//   $2 = proposed `from` artefact (target we'd reach back to)
+//   $3 = proposed `to`   artefact (seed of the walk)
+//
+// UNION (not UNION ALL) terminates on a corrupted graph that already
+// has cycles — the recursion stops when no new nodes are produced.
+const sqlCycleWouldFormFromTo = `
+	WITH RECURSIVE reachable(node) AS (
+	    SELECT e.artefact_dependency_edges_id_to_artefact
+	      FROM artefact_dependency_edges e
+	     WHERE e.artefact_dependency_edges_id_map           = $1
+	       AND e.artefact_dependency_edges_kind             = 'finish_to_start'
+	       AND e.artefact_dependency_edges_archived_at      IS NULL
+	       AND e.artefact_dependency_edges_id_from_artefact = $3
+	    UNION
+	    SELECT e.artefact_dependency_edges_id_to_artefact
+	      FROM artefact_dependency_edges e
+	      JOIN reachable r
+	        ON e.artefact_dependency_edges_id_from_artefact = r.node
+	     WHERE e.artefact_dependency_edges_id_map           = $1
+	       AND e.artefact_dependency_edges_kind             = 'finish_to_start'
+	       AND e.artefact_dependency_edges_archived_at      IS NULL
+	)
+	SELECT EXISTS(SELECT 1 FROM reachable WHERE node = $2)`
+
+const sqlInsertEdge = `
+	INSERT INTO artefact_dependency_edges (
+		artefact_dependency_edges_id_map,
+		artefact_dependency_edges_id_from_artefact,
+		artefact_dependency_edges_id_to_artefact,
+		artefact_dependency_edges_kind,
+		artefact_dependency_edges_created_by
+	) VALUES ($1, $2, $3, $4, $5)
+	RETURNING` + sqlEdgeColumns
+
+const sqlInsertEdgeEvent = `
+	INSERT INTO artefact_dependency_edge_events (
+		artefact_dependency_edge_events_id_edge,
+		artefact_dependency_edge_events_event_kind,
+		artefact_dependency_edge_events_id_actor_user,
+		artefact_dependency_edge_events_sentinel_scope_snapshot,
+		artefact_dependency_edge_events_payload
+	) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)`

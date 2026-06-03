@@ -25,10 +25,11 @@ import (
 // (zero, errors.New("not configured")) so a forgotten setup surfaces
 // as a 500 in the response rather than a silent pass.
 type fakeService struct {
-	createFn  func(ctx context.Context, in CreateMapInput) (Map, error)
-	renameFn  func(ctx context.Context, id uuid.UUID, in RenameMapInput) (Map, error)
-	archiveFn func(ctx context.Context, id uuid.UUID) (Map, error)
-	getFn     func(ctx context.Context, id uuid.UUID) (Map, error)
+	createFn     func(ctx context.Context, in CreateMapInput) (Map, error)
+	renameFn     func(ctx context.Context, id uuid.UUID, in RenameMapInput) (Map, error)
+	archiveFn    func(ctx context.Context, id uuid.UUID) (Map, error)
+	getFn        func(ctx context.Context, id uuid.UUID) (Map, error)
+	createEdgeFn func(ctx context.Context, in CreateEdgeInput) (Edge, error)
 }
 
 func (f *fakeService) CreateMap(ctx context.Context, in CreateMapInput) (Map, error) {
@@ -57,6 +58,13 @@ func (f *fakeService) GetMap(ctx context.Context, id uuid.UUID) (Map, error) {
 		return Map{}, errors.New("GetMap not configured")
 	}
 	return f.getFn(ctx, id)
+}
+
+func (f *fakeService) CreateEdge(ctx context.Context, in CreateEdgeInput) (Edge, error) {
+	if f.createEdgeFn == nil {
+		return Edge{}, errors.New("CreateEdge not configured")
+	}
+	return f.createEdgeFn(ctx, in)
 }
 
 // mountForTest wires the handler under /_site/dependencies on a chi
@@ -407,6 +415,111 @@ func TestArchiveMap_NotFound(t *testing.T) {
 	status, _ := run(srv, req)
 	if status != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", status)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CreateEdge — handler-level error mapping.
+// ─────────────────────────────────────────────────────────────────
+
+func TestCreateEdge_Unauthenticated(t *testing.T) {
+	t.Parallel()
+	srv := mountForTest(&fakeService{})
+	req := httptest.NewRequest(http.MethodPost, "/_site/dependencies/edges", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	status, _ := run(srv, req)
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", status)
+	}
+}
+
+func TestCreateEdge_HappyPath(t *testing.T) {
+	t.Parallel()
+	wantID := uuid.New()
+	now := mustParse("2026-06-03T00:00:00Z")
+	svc := &fakeService{
+		createEdgeFn: func(ctx context.Context, in CreateEdgeInput) (Edge, error) {
+			return Edge{
+				ID:             wantID,
+				MapID:          in.MapID,
+				FromArtefactID: in.FromArtefactID,
+				ToArtefactID:   in.ToArtefactID,
+				Kind:           in.Kind,
+				CreatedAt:      now,
+				UpdatedAt:      now,
+			}, nil
+		},
+	}
+	srv := mountForTest(svc)
+	body := CreateEdgeInput{
+		MapID:          uuid.New(),
+		FromArtefactID: uuid.New(),
+		ToArtefactID:   uuid.New(),
+		Kind:           EdgeKindFinishToStart,
+	}
+	req := authedReq(t, http.MethodPost, "/_site/dependencies/edges", "user", body)
+	status, body2 := run(srv, req)
+	if status != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body=%s", status, body2)
+	}
+	var got Edge
+	if err := json.Unmarshal(body2, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.ID != wantID {
+		t.Errorf("id = %s, want %s", got.ID, wantID)
+	}
+}
+
+func TestCreateEdge_ErrorMatrix(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name       string
+		err        error
+		wantStatus int
+	}{
+		{"self_loop", ErrSelfLoop, http.StatusUnprocessableEntity},
+		{"invalid_input", ErrInvalidInput, http.StatusUnprocessableEntity},
+		{"cycle", ErrCycle, http.StatusUnprocessableEntity},
+		{"endpoint_out_of_scope", ErrEndpointNotInScope, http.StatusForbidden},
+		{"duplicate", ErrDuplicateEdge, http.StatusConflict},
+		{"map_not_found", ErrNotFound, http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			svc := &fakeService{
+				createEdgeFn: func(ctx context.Context, in CreateEdgeInput) (Edge, error) {
+					return Edge{}, tc.err
+				},
+			}
+			srv := mountForTest(svc)
+			body := CreateEdgeInput{
+				MapID:          uuid.New(),
+				FromArtefactID: uuid.New(),
+				ToArtefactID:   uuid.New(),
+				Kind:           EdgeKindFinishToStart,
+			}
+			req := authedReq(t, http.MethodPost, "/_site/dependencies/edges", "user", body)
+			status, _ := run(srv, req)
+			if status != tc.wantStatus {
+				t.Fatalf("status = %d, want %d", status, tc.wantStatus)
+			}
+		})
+	}
+}
+
+func TestCreateEdge_BadJSON(t *testing.T) {
+	t.Parallel()
+	svc := &fakeService{}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodPost, "/_site/dependencies/edges", "user", nil)
+	req.Body = io.NopCloser(strings.NewReader("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	status, _ := run(srv, req)
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", status)
 	}
 }
 

@@ -2,12 +2,14 @@ package dependencies
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/mmffdev/vector-backend/internal/sentinel"
@@ -263,4 +265,182 @@ func nodeInScope(c sentinel.Clamp, node uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+// ── Edge insert (B23.1.6) ───────────────────────────────────────
+
+// CreateEdge inserts one edge into a dependency map. Runs entirely
+// inside a tx that holds FOR UPDATE on the parent map row, so the
+// cycle check + uniqueness check + insert + audit are atomic per
+// map. Concurrent inserts against the same map serialise here;
+// inserts across different maps run in parallel.
+//
+// Error vocabulary mirrors the AC:
+//   ErrSelfLoop           — from == to
+//   ErrInvalidInput       — unknown kind
+//   ErrNotFound           — map missing, archived, or wrong workspace
+//   ErrEndpointNotInScope — caller cannot see one or both endpoints
+//   ErrCycle              — finish_to_start would close a directed cycle
+//   ErrDuplicateEdge      — partial unique index violation
+func (s *Service) CreateEdge(ctx context.Context, in CreateEdgeInput) (Edge, error) {
+	if err := s.requirePool(); err != nil {
+		return Edge{}, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.WorkspaceID == uuid.Nil || c.TenantID == uuid.Nil {
+		return Edge{}, ErrEndpointNotInScope
+	}
+	if !in.Kind.IsValid() {
+		return Edge{}, ErrInvalidInput
+	}
+	if in.FromArtefactID == in.ToArtefactID {
+		return Edge{}, ErrSelfLoop
+	}
+	if in.FromArtefactID == uuid.Nil || in.ToArtefactID == uuid.Nil || in.MapID == uuid.Nil {
+		return Edge{}, ErrInvalidInput
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// 1. SELECT … FOR UPDATE the parent map (per-map write serialisation).
+	mapRow, err := scanMap(tx.QueryRow(ctx, sqlGetMapForUpdate, in.MapID, c.WorkspaceID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Edge{}, ErrNotFound
+	}
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: load map: %w", err)
+	}
+	if mapRow.ArchivedAt != nil {
+		return Edge{}, ErrNotFound
+	}
+	if !nodeInScope(c, mapRow.TopologyNodeID) {
+		return Edge{}, ErrEndpointNotInScope
+	}
+
+	// 2. Both endpoints must be visible inside the caller clamp.
+	endpoints := []uuid.UUID{in.FromArtefactID, in.ToArtefactID}
+	if c.AllowedSubtreeIDs == nil || len(c.AllowedSubtreeIDs) == 0 {
+		return Edge{}, ErrEndpointNotInScope
+	}
+	var visible int
+	err = tx.QueryRow(ctx, sqlCountVisibleArtefacts,
+		endpoints, c.TenantID, c.AllowedSubtreeIDs,
+	).Scan(&visible)
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: visibility check: %w", err)
+	}
+	if visible < len(endpoints) {
+		return Edge{}, ErrEndpointNotInScope
+	}
+
+	// 3. Cycle guard for directed kind only. Parallel edges are
+	//    associative and do not participate in DAG semantics
+	//    (RES058 §3 / merged design).
+	if in.Kind == EdgeKindFinishToStart {
+		var wouldCycle bool
+		err = tx.QueryRow(ctx, sqlCycleWouldFormFromTo,
+			in.MapID, in.FromArtefactID, in.ToArtefactID,
+		).Scan(&wouldCycle)
+		if err != nil {
+			return Edge{}, fmt.Errorf("dependencies.CreateEdge: cycle check: %w", err)
+		}
+		if wouldCycle {
+			return Edge{}, ErrCycle
+		}
+	}
+
+	// 4. INSERT the edge row. Uniqueness is enforced by the three
+	//    partial unique indexes; we map the SQLSTATE 23505 violation
+	//    to ErrDuplicateEdge so the handler returns 409 with a
+	//    stable error code.
+	var createdBy any
+	if c.UserID != uuid.Nil {
+		createdBy = c.UserID
+	}
+	edge, err := scanEdge(tx.QueryRow(ctx, sqlInsertEdge,
+		in.MapID,
+		in.FromArtefactID,
+		in.ToArtefactID,
+		string(in.Kind),
+		createdBy,
+	))
+	if isUniqueViolation(err) {
+		return Edge{}, ErrDuplicateEdge
+	}
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: insert: %w", err)
+	}
+
+	// 5. Same-tx audit event. Snapshot the Sentinel clamp into the
+	//    event so forensic queries can answer "from which scope did
+	//    this edge land". Payload carries the edge facets for replay.
+	scopeSnapshot, err := json.Marshal(map[string]any{
+		"subscription_id": c.TenantID,
+		"workspace_id":    c.WorkspaceID,
+		"focus_node_id":   c.FocusNodeID,
+		"role":            c.Role,
+	})
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: marshal scope snapshot: %w", err)
+	}
+	eventPayload, err := json.Marshal(map[string]any{
+		"map_id":            in.MapID,
+		"from_artefact_id":  in.FromArtefactID,
+		"to_artefact_id":    in.ToArtefactID,
+		"kind":              string(in.Kind),
+	})
+	if err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: marshal event payload: %w", err)
+	}
+	if _, err := tx.Exec(ctx, sqlInsertEdgeEvent,
+		edge.ID,
+		"created",
+		createdBy,
+		string(scopeSnapshot),
+		string(eventPayload),
+	); err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: insert audit event: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return Edge{}, fmt.Errorf("dependencies.CreateEdge: commit: %w", err)
+	}
+	return edge, nil
+}
+
+// scanEdge pulls an Edge row out of the canonical sqlEdgeColumns
+// projection. Mirrors scanMap so every read site reads the columns
+// in the same order.
+func scanEdge(row pgx.Row) (Edge, error) {
+	var e Edge
+	var kindRaw string
+	err := row.Scan(
+		&e.ID,
+		&e.MapID,
+		&e.FromArtefactID,
+		&e.ToArtefactID,
+		&kindRaw,
+		&e.CreatedAt,
+		&e.UpdatedAt,
+		&e.ArchivedAt,
+		&e.CreatedBy,
+	)
+	if err != nil {
+		return Edge{}, err
+	}
+	e.Kind = EdgeKind(kindRaw)
+	return e, nil
+}
+
+// isUniqueViolation tests for postgres SQLSTATE 23505 (unique
+// constraint violation). Used to distinguish the duplicate-edge case
+// from generic insert errors so the handler can surface a 409 with a
+// stable error code rather than a 500.
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

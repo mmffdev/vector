@@ -23,6 +23,7 @@ type serviceIface interface {
 	RenameMap(ctx context.Context, mapID uuid.UUID, in RenameMapInput) (Map, error)
 	ArchiveMap(ctx context.Context, mapID uuid.UUID) (Map, error)
 	GetMap(ctx context.Context, mapID uuid.UUID) (Map, error)
+	CreateEdge(ctx context.Context, in CreateEdgeInput) (Edge, error)
 }
 
 // Handler hangs the dependencies HTTP surface off the chi router.
@@ -56,6 +57,7 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Post("/maps", h.CreateMap)
 	r.Patch("/maps/{id}", h.RenameMap)
 	r.Post("/maps/{id}/archive", h.ArchiveMap)
+	r.Post("/edges", h.CreateEdge)
 }
 
 // CreateMap handles POST /_site/dependencies/maps.
@@ -132,6 +134,32 @@ func (h *Handler) ArchiveMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// CreateEdge handles POST /_site/dependencies/edges.
+// 201 + Edge on success; 401 no auth; 422 on bad JSON / unknown kind
+// / self-loop / cycle; 403 if either endpoint is outside the caller
+// clamp; 404 if the map id is missing or archived; 409 on duplicate
+// per any of the three partial unique indexes.
+func (h *Handler) CreateEdge(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	var in CreateEdgeInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestBadRequest)
+		return
+	}
+	out, err := h.svc.CreateEdge(r.Context(), in)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusCreated, out)
 }
 
 // ── helpers ──────────────────────────────────────────────────────
