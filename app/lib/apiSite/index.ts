@@ -80,6 +80,10 @@ export interface WorkItemQueryResult {
   total?: number;
 }
 
+export interface WorkItemQueryOptions {
+  meg?: ID;
+}
+
 export interface WorkItemsSummary {
   total: number;
   blocked: number;
@@ -809,11 +813,16 @@ export const workItems = {
   // Audited POST read-gateway — the canonical read path for the Grid tree.
   // body.parentId set → direct children; absent → roots (with page window).
   // No identifiers in the URL; the server clamp is the authority.
-  query: (body: WorkItemQueryBody) =>
-    apiSite<WorkItemQueryResult>("/work-items/query", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
+  query: (body: WorkItemQueryBody, options?: WorkItemQueryOptions) =>
+    apiSite<WorkItemQueryResult>(
+      options?.meg
+        ? `/work-items/query?meg=${encodeURIComponent(options.meg)}`
+        : "/work-items/query",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    ),
 
   // Parent chain — immediate-parent-first up to topmost ancestor.
   // Slim projection used by ArtefactNodeDiagram.

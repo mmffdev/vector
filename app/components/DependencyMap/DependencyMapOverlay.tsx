@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   TbArrowLeft,
   TbArrowRight,
@@ -12,7 +20,12 @@ import {
 
 import type { ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import { FullscreenCanvasOverlay } from "@/app/components/FullscreenCanvasOverlay/FullscreenCanvasOverlay";
-import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
+import {
+  buildOrderedArtefactTypeGroups,
+  type OrderedArtefactTypeGroup,
+} from "@/app/lib/artefactTypeGroups";
+import type { ArtefactType } from "@/app/lib/artefactTypesApi";
 import { workItems, type WorkItemQueryBody } from "@/app/lib/apiSite";
 import { useSentinel } from "@/app/sentinel";
 import type { SentinelGrant } from "@/app/sentinel/types";
@@ -41,6 +54,7 @@ interface DependencyMapMeta {
 }
 
 type DependencyBucketKey = "requires" | "unlocks" | "parallel";
+type DependencyCanvasVersion = "v1" | "v2";
 
 type DependencyBucketForms = Record<DependencyBucketKey, DependencyBucketForm>;
 
@@ -62,6 +76,15 @@ interface WireDependencyCandidate {
   topology_node_id: string | null;
 }
 
+interface DependencyCandidateQuery {
+  artefactId: string;
+  search: string;
+  selectedNodeId: string;
+  selectedTypeId: string;
+  sentinelGrants: readonly SentinelGrant[];
+  typeOptions: DependencyTypeOption[];
+}
+
 interface DependencyBucketForm {
   selectedNodeId: string;
   selectedTypeId: string;
@@ -70,11 +93,25 @@ interface DependencyBucketForm {
   selectedCandidateIds: Set<string>;
 }
 
-const EMPTY_BUCKETS: Record<DependencyBucketKey, DependencyCandidate[]> = {
-  requires: [],
-  unlocks: [],
-  parallel: [],
-};
+interface DependencyTypeOption {
+  value: string;
+  label: string;
+  slot: string | null;
+  color?: string;
+}
+
+interface DependencyTypeGroup {
+  label: string;
+  options: DependencyTypeOption[];
+}
+
+function emptyBuckets(): Record<DependencyBucketKey, DependencyCandidate[]> {
+  return {
+    requires: [],
+    unlocks: [],
+    parallel: [],
+  };
+}
 
 function emptyBucketSelections(): Record<DependencyBucketKey, Set<string>> {
   return {
@@ -84,25 +121,25 @@ function emptyBucketSelections(): Record<DependencyBucketKey, Set<string>> {
   };
 }
 
-function emptyBucketForms(nodeId: string): DependencyBucketForms {
+function emptyBucketForms(nodeId: string, typeId = ""): DependencyBucketForms {
   return {
     requires: {
       selectedNodeId: nodeId,
-      selectedTypeId: "",
+      selectedTypeId: typeId,
       search: "",
       candidateOptions: [],
       selectedCandidateIds: new Set(),
     },
     unlocks: {
       selectedNodeId: nodeId,
-      selectedTypeId: "",
+      selectedTypeId: typeId,
       search: "",
       candidateOptions: [],
       selectedCandidateIds: new Set(),
     },
     parallel: {
       selectedNodeId: nodeId,
-      selectedTypeId: "",
+      selectedTypeId: typeId,
       search: "",
       candidateOptions: [],
       selectedCandidateIds: new Set(),
@@ -146,6 +183,21 @@ const CANVAS_BUCKET_ORDER: DependencyBucketKey[] = [
   "unlocks",
 ];
 
+const DEPENDENCY_EXCLUDED_WORK_SLOTS = new Set(["wrk_task"]);
+const DEPENDENCY_WORK_ITEM_SLOT = "wrk_story";
+const DEPENDENCY_QUERY_LIMIT = 80;
+const MAP_NODE_HEIGHT = 34;
+const MAP_TARGET_HEIGHT = 34;
+const MAP_NODE_GAP = 20;
+const MAP_PARALLEL_MAX_COLUMNS = 1;
+const MAP_CARD_INSET = 40;
+const MAP_START_Y = 40;
+
+interface DependencyMapFrame {
+  width: number;
+  height: number;
+}
+
 function formatArtefactId(artefact: ArtefactDetail): string {
   return `${artefact.type_prefix}-${artefact.key_num}`;
 }
@@ -154,13 +206,123 @@ function grantLabel(grant: SentinelGrant): string {
   return grant.label_override ?? grant.name ?? grant.node_id;
 }
 
+function toDependencyTypeOption(type: ArtefactType): DependencyTypeOption {
+  return {
+    value: type.id,
+    label: type.name,
+    slot: type.slot,
+    color: type.colour ?? undefined,
+  };
+}
+
+function strategyRootTypeIds(groups: OrderedArtefactTypeGroup[]): Set<string> {
+  const strategyTypes =
+    groups.find((group) => group.key === "strategy")?.types ?? [];
+  const topStrategyIds = new Set<string>();
+  const strategyDepths = strategyTypes
+    .map((type) => type.layer_depth)
+    .filter((depth): depth is number => depth != null);
+
+  if (strategyDepths.length > 0) {
+    const topDepth = Math.min(...strategyDepths);
+    strategyTypes
+      .filter((type) => type.layer_depth === topDepth)
+      .forEach((type) => topStrategyIds.add(type.id));
+  } else if (strategyTypes.length > 0) {
+    const topSortOrder = Math.max(...strategyTypes.map((type) => type.sort_order));
+    strategyTypes
+      .filter((type) => type.sort_order === topSortOrder)
+      .forEach((type) => topStrategyIds.add(type.id));
+  }
+
+  return topStrategyIds;
+}
+
+function buildDependencyTypeGroups(
+  groups: OrderedArtefactTypeGroup[],
+): DependencyTypeGroup[] {
+  const topStrategyIds = strategyRootTypeIds(groups);
+  return groups
+    .map((group) => ({
+      label: group.label,
+      options: group.types
+        .filter((type) => {
+          if (group.key === "execution") {
+            return !DEPENDENCY_EXCLUDED_WORK_SLOTS.has(type.slot ?? "");
+          }
+          return !topStrategyIds.has(type.id);
+        })
+        .map(toDependencyTypeOption),
+    }))
+    .filter((group) => group.options.length > 0);
+}
+
+function dependencyCandidateBody(selectedTypeId: string): WorkItemQueryBody {
+  const body: WorkItemQueryBody = {
+    page: { limit: DEPENDENCY_QUERY_LIMIT, offset: 0 },
+  };
+  if (selectedTypeId) {
+    body.filters = { itemTypeId: [selectedTypeId] };
+  }
+  return body;
+}
+
+async function fetchDependencyCandidates({
+  artefactId,
+  search,
+  selectedNodeId,
+  selectedTypeId,
+  sentinelGrants,
+  typeOptions,
+}: DependencyCandidateQuery): Promise<DependencyCandidate[]> {
+  const selectedNodeIds = selectedNodeId
+    ? [selectedNodeId]
+    : sentinelGrants.map((grant) => grant.node_id);
+  const queryNodeIds =
+    selectedNodeIds.length > 0 ? selectedNodeIds : [undefined];
+  const byTypeId = new Map(typeOptions.map((type) => [type.value, type.label]));
+  const needle = search.trim().toLowerCase();
+  const seen = new Set<string>();
+  const results = await Promise.all(
+    queryNodeIds.map((nodeId) =>
+      workItems.query(
+        dependencyCandidateBody(selectedTypeId),
+        nodeId ? { meg: nodeId } : undefined,
+      ),
+    ),
+  );
+
+  return results
+    .flatMap((result) => result.items as WireDependencyCandidate[])
+    .filter((item) => item.id !== artefactId)
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    })
+    .map((item) => ({
+      id: item.id,
+      formattedId: `${item.type_prefix}-${item.key_num}`,
+      title: item.title || "(untitled)",
+      typeLabel: byTypeId.get(item.artefact_type_id) ?? item.item_type,
+      nodeId: item.topology_node_id,
+    }))
+    .filter((item) => {
+      if (!needle) return true;
+      return (
+        item.formattedId.toLowerCase().includes(needle) ||
+        item.title.toLowerCase().includes(needle) ||
+        item.typeLabel.toLowerCase().includes(needle)
+      );
+    });
+}
+
 export function DependencyMapOverlay({
   artefact,
   onClose,
 }: DependencyMapOverlayProps) {
   const { sentinel_focus_node, sentinel_grants } = useSentinel();
-  const workTypeOptions = useChipTypeOptions("work");
-  const strategyTypeOptions = useChipTypeOptions("strategy");
+  const { types: artefactTypes } = useArtefactTypeCatalogue();
   const nodeId = artefact.topology_node_id ?? sentinel_focus_node ?? null;
   const nodeGrant =
     nodeId == null
@@ -170,13 +332,38 @@ export function DependencyMapOverlay({
   const formattedId = formatArtefactId(artefact);
   const artefactTitle = artefact.title || "(untitled)";
   const pageTitle = `${nodeName} — Dependency Map — ${formattedId} ${artefactTitle}`;
-  const typeOptions = useMemo(
-    () => [...strategyTypeOptions, ...workTypeOptions],
-    [strategyTypeOptions, workTypeOptions],
+  const orderedTypeGroups = useMemo(
+    () => buildOrderedArtefactTypeGroups(artefactTypes),
+    [artefactTypes],
   );
+  const typeOptionGroups = useMemo(
+    () => buildDependencyTypeGroups(orderedTypeGroups),
+    [orderedTypeGroups],
+  );
+  const typeOptions = useMemo(
+    () => typeOptionGroups.flatMap((group) => group.options),
+    [typeOptionGroups],
+  );
+  const defaultNodeId = nodeId ?? sentinel_focus_node ?? "";
+  const defaultTypeId = useMemo(() => {
+    const executionGroup = typeOptionGroups.find(
+      (group) => group.label === "Execution Artefacts",
+    );
+    const executionOptions = executionGroup?.options ?? [];
+    return (
+      executionOptions.find((type) => type.slot === DEPENDENCY_WORK_ITEM_SLOT)
+        ?.value ??
+      executionOptions.find((type) => type.slot == null)?.value ??
+      executionOptions[0]?.value ??
+      ""
+    );
+  }, [typeOptionGroups]);
+  const [canvasVersion, setCanvasVersion] =
+    useState<DependencyCanvasVersion>("v1");
   const [activeBucket, setActiveBucket] =
     useState<DependencyBucketKey>("requires");
-  const [selectedNodeId, setSelectedNodeId] = useState<string>(nodeId ?? "");
+  const [filtersSeeded, setFiltersSeeded] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string>(defaultNodeId);
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
   const [search, setSearch] = useState("");
   const [candidateOptions, setCandidateOptions] = useState<DependencyCandidate[]>([]);
@@ -184,13 +371,23 @@ export function DependencyMapOverlay({
     () => new Set(),
   );
   const [buckets, setBuckets] =
-    useState<Record<DependencyBucketKey, DependencyCandidate[]>>(EMPTY_BUCKETS);
+    useState<Record<DependencyBucketKey, DependencyCandidate[]>>(emptyBuckets);
+  const [v2Buckets, setV2Buckets] =
+    useState<Record<DependencyBucketKey, DependencyCandidate[]>>(emptyBuckets);
   const [selectedBucketItemIds, setSelectedBucketItemIds] = useState<
     Record<DependencyBucketKey, Set<string>>
   >(emptyBucketSelections);
+  const [v2SelectedBucketItemIds, setV2SelectedBucketItemIds] = useState<
+    Record<DependencyBucketKey, Set<string>>
+  >(emptyBucketSelections);
   const [canvasForms, setCanvasForms] = useState<DependencyBucketForms>(() =>
-    emptyBucketForms(nodeId ?? ""),
+    emptyBucketForms(defaultNodeId),
   );
+  const [mapFrame, setMapFrame] = useState<DependencyMapFrame>({
+    width: 1800,
+    height: 720,
+  });
+  const mapViewportRef = useRef<HTMLElement>(null);
 
   const meta = useMemo<DependencyMapMeta>(
     () => ({
@@ -218,9 +415,11 @@ export function DependencyMapOverlay({
   const appendCandidatesToBucket = (
     bucketKey: DependencyBucketKey,
     candidates: DependencyCandidate[],
+    version: DependencyCanvasVersion = canvasVersion,
   ) => {
     if (candidates.length === 0) return;
-    setBuckets((prev) => {
+    const setTargetBuckets = version === "v2" ? setV2Buckets : setBuckets;
+    setTargetBuckets((prev) => {
       const existing = new Set(prev[bucketKey].map((item) => item.id));
       return {
         ...prev,
@@ -236,7 +435,7 @@ export function DependencyMapOverlay({
     bucketKey: DependencyBucketKey,
     candidates: DependencyCandidate[],
   ) => {
-    appendCandidatesToBucket(bucketKey, candidates);
+    appendCandidatesToBucket(bucketKey, candidates, canvasVersion);
     setSelectedCandidateIds(new Set());
   };
 
@@ -246,7 +445,7 @@ export function DependencyMapOverlay({
       form.selectedCandidateIds.has(candidate.id),
     );
     if (candidates.length === 0) return;
-    appendCandidatesToBucket(bucketKey, candidates);
+    appendCandidatesToBucket(bucketKey, candidates, "v1");
     setCanvasForms((prev) => ({
       ...prev,
       [bucketKey]: {
@@ -284,8 +483,14 @@ export function DependencyMapOverlay({
     });
   };
 
-  const toggleBucketItem = (bucketKey: DependencyBucketKey, id: string) => {
-    setSelectedBucketItemIds((prev) => {
+  const toggleBucketItem = (
+    bucketKey: DependencyBucketKey,
+    id: string,
+    version: DependencyCanvasVersion = canvasVersion,
+  ) => {
+    const setSelected =
+      version === "v2" ? setV2SelectedBucketItemIds : setSelectedBucketItemIds;
+    setSelected((prev) => {
       const nextSet = new Set(prev[bucketKey]);
       if (nextSet.has(id)) nextSet.delete(id);
       else nextSet.add(id);
@@ -293,47 +498,50 @@ export function DependencyMapOverlay({
     });
   };
 
-  const removeSelectedFromBucket = (bucketKey: DependencyBucketKey) => {
-    const selectedIds = selectedBucketItemIds[bucketKey];
+  const removeSelectedFromBucket = (
+    bucketKey: DependencyBucketKey,
+    version: DependencyCanvasVersion = canvasVersion,
+  ) => {
+    const selectedMap =
+      version === "v2" ? v2SelectedBucketItemIds : selectedBucketItemIds;
+    const selectedIds = selectedMap[bucketKey];
     if (selectedIds.size === 0) return;
-    setBuckets((prev) => ({
+    const setTargetBuckets = version === "v2" ? setV2Buckets : setBuckets;
+    const setSelected =
+      version === "v2" ? setV2SelectedBucketItemIds : setSelectedBucketItemIds;
+    setTargetBuckets((prev) => ({
       ...prev,
       [bucketKey]: prev[bucketKey].filter((item) => !selectedIds.has(item.id)),
     }));
-    setSelectedBucketItemIds((prev) => ({ ...prev, [bucketKey]: new Set() }));
+    setSelected((prev) => ({ ...prev, [bucketKey]: new Set() }));
   };
 
   useEffect(() => {
-    let alive = true;
-    const body: WorkItemQueryBody = { page: { limit: 40, offset: 0 } };
-    if (selectedTypeId) {
-      body.filters = { itemTypeId: [selectedTypeId] };
+    if (filtersSeeded) return;
+    if (!defaultNodeId || !defaultTypeId) return;
+    setSelectedNodeId(defaultNodeId);
+    setSelectedTypeId(defaultTypeId);
+    setCanvasForms(emptyBucketForms(defaultNodeId, defaultTypeId));
+    setFiltersSeeded(true);
+  }, [defaultNodeId, defaultTypeId, filtersSeeded]);
+
+  useEffect(() => {
+    if (!filtersSeeded) {
+      setCandidateOptions([]);
+      return;
     }
-    workItems
-      .query(body)
-      .then((result) => {
+    let alive = true;
+    fetchDependencyCandidates({
+      artefactId: artefact.id,
+      search,
+      selectedNodeId,
+      selectedTypeId,
+      sentinelGrants: sentinel_grants,
+      typeOptions,
+    })
+      .then((options) => {
         if (!alive) return;
-        const needle = search.trim().toLowerCase();
-        const byTypeId = new Map(typeOptions.map((type) => [type.value, type.label]));
-        const options = (result.items as WireDependencyCandidate[])
-          .filter((item) => item.id !== artefact.id)
-          .filter((item) => !selectedNodeId || item.topology_node_id === selectedNodeId)
-          .map((item) => ({
-            id: item.id,
-            formattedId: `${item.type_prefix}-${item.key_num}`,
-            title: item.title || "(untitled)",
-            typeLabel: byTypeId.get(item.artefact_type_id) ?? item.item_type,
-            nodeId: item.topology_node_id,
-          }))
-          .filter((item) => {
-            if (!needle) return true;
-            return (
-              item.formattedId.toLowerCase().includes(needle) ||
-              item.title.toLowerCase().includes(needle) ||
-              item.typeLabel.toLowerCase().includes(needle)
-            );
-          });
-        setCandidateOptions(options.slice(0, 12));
+        setCandidateOptions(options);
       })
       .catch(() => {
         if (alive) setCandidateOptions([]);
@@ -341,7 +549,15 @@ export function DependencyMapOverlay({
     return () => {
       alive = false;
     };
-  }, [artefact.id, search, selectedNodeId, selectedTypeId, typeOptions]);
+  }, [
+    artefact.id,
+    search,
+    selectedNodeId,
+    selectedTypeId,
+    filtersSeeded,
+    sentinel_grants,
+    typeOptions,
+  ]);
 
   const canvasFormQuerySignature = useMemo(
     () =>
@@ -360,40 +576,19 @@ export function DependencyMapOverlay({
   );
 
   useEffect(() => {
+    if (!filtersSeeded) return;
     let alive = true;
-    const byTypeId = new Map(typeOptions.map((type) => [type.value, type.label]));
     Promise.all(
       CANVAS_BUCKET_ORDER.map(async (bucketKey) => {
         const form = canvasForms[bucketKey];
-        const body: WorkItemQueryBody = { page: { limit: 40, offset: 0 } };
-        if (form.selectedTypeId) {
-          body.filters = { itemTypeId: [form.selectedTypeId] };
-        }
-        const result = await workItems.query(body);
-        const needle = form.search.trim().toLowerCase();
-        const options = (result.items as WireDependencyCandidate[])
-          .filter((item) => item.id !== artefact.id)
-          .filter(
-            (item) =>
-              !form.selectedNodeId ||
-              item.topology_node_id === form.selectedNodeId,
-          )
-          .map((item) => ({
-            id: item.id,
-            formattedId: `${item.type_prefix}-${item.key_num}`,
-            title: item.title || "(untitled)",
-            typeLabel: byTypeId.get(item.artefact_type_id) ?? item.item_type,
-            nodeId: item.topology_node_id,
-          }))
-          .filter((item) => {
-            if (!needle) return true;
-            return (
-              item.formattedId.toLowerCase().includes(needle) ||
-              item.title.toLowerCase().includes(needle) ||
-              item.typeLabel.toLowerCase().includes(needle)
-            );
-          })
-          .slice(0, 9);
+        const options = await fetchDependencyCandidates({
+          artefactId: artefact.id,
+          search: form.search,
+          selectedNodeId: form.selectedNodeId,
+          selectedTypeId: form.selectedTypeId,
+          sentinelGrants: sentinel_grants,
+          typeOptions,
+        });
         return { bucketKey, options };
       }),
     )
@@ -426,7 +621,13 @@ export function DependencyMapOverlay({
     return () => {
       alive = false;
     };
-  }, [artefact.id, canvasFormQuerySignature, typeOptions]);
+  }, [
+    artefact.id,
+    canvasFormQuerySignature,
+    filtersSeeded,
+    sentinel_grants,
+    typeOptions,
+  ]);
 
   const selectedCandidates = useMemo(() => {
     return candidateOptions.filter((candidate) =>
@@ -435,6 +636,21 @@ export function DependencyMapOverlay({
   }, [candidateOptions, selectedCandidateIds]);
   const activeBucketConfig =
     BUCKETS.find((bucket) => bucket.key === activeBucket) ?? BUCKETS[0];
+
+  const renderTypeSelectOptions = () => (
+    <>
+      <option value="">All types</option>
+      {typeOptionGroups.map((group) => (
+        <optgroup key={group.label} label={group.label}>
+          {group.options.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
 
   const toggleCandidate = (id: string) => {
     setSelectedCandidateIds((prev) => {
@@ -445,19 +661,51 @@ export function DependencyMapOverlay({
     });
   };
 
+  const renderTargetCard = (placement: "canvas" | "sidebar") => (
+    <section
+      className={
+        placement === "sidebar"
+          ? "dependency-map__TargetCard dependency-map__TargetCard--sidebar"
+          : "dependency-map__TargetCard"
+      }
+    >
+      <span className="dependency-map__TargetEyebrow">
+        Planning dependencies for
+      </span>
+      <div className="dependency-map__TargetMain">
+        <input
+          type="checkbox"
+          className="dependency-composer__ResultCheckbox"
+          readOnly
+          aria-label={`${meta.formattedId} is the dependency map target`}
+        />
+        <strong className="dependency-map__TargetCode">
+          {meta.formattedId}
+        </strong>
+        <span className="dependency-map__TargetTitle">{meta.title}</span>
+        <span className="dependency-map__TargetStatus">
+          {meta.flowStateName}
+        </span>
+      </div>
+    </section>
+  );
+
   const renderBucketRows = (
     bucketKey: DependencyBucketKey,
     items: DependencyCandidate[],
+    version: DependencyCanvasVersion = canvasVersion,
   ) => {
     if (items.length === 0) {
       return (
         <span className="dependency-composer__BucketEmpty">
-          No artefacts added
+          Linked Artefacts
         </span>
       );
     }
 
-    const selectedIds = selectedBucketItemIds[bucketKey];
+    const selectedMap =
+      version === "v2" ? v2SelectedBucketItemIds : selectedBucketItemIds;
+    const selectedIds = selectedMap[bucketKey];
     return items.map((item) => {
       const selected = selectedIds.has(item.id);
       return (
@@ -473,7 +721,7 @@ export function DependencyMapOverlay({
           type="checkbox"
           className="dependency-composer__ResultCheckbox"
           checked={selected}
-          onChange={() => toggleBucketItem(bucketKey, item.id)}
+          onChange={() => toggleBucketItem(bucketKey, item.id, version)}
           aria-label={`Select ${item.formattedId}`}
         />
         <span className="dependency-composer__BucketCode">
@@ -520,12 +768,7 @@ export function DependencyMapOverlay({
             }
             aria-label={`${bucket.title} canvas type filter`}
           >
-            <option value="">All types</option>
-            {typeOptions.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
+            {renderTypeSelectOptions()}
           </select>
         </div>
 
@@ -597,9 +840,23 @@ export function DependencyMapOverlay({
     );
   };
 
-  const renderCanvasBucket = (bucketKey: DependencyBucketKey) => {
+  const renderCanvasBucket = (
+    bucketKey: DependencyBucketKey,
+    options?: {
+      showForm?: boolean;
+      showHelper?: boolean;
+      showPayload?: boolean;
+      version?: DependencyCanvasVersion;
+    },
+  ) => {
+    const version = options?.version ?? "v1";
+    const showForm = options?.showForm ?? true;
+    const showHelper = options?.showHelper ?? true;
+    const showPayload = options?.showPayload ?? true;
     const bucket = BUCKETS.find((item) => item.key === bucketKey) ?? BUCKETS[0];
-    const items = buckets[bucketKey];
+    const items = version === "v2" ? v2Buckets[bucketKey] : buckets[bucketKey];
+    const selectedMap =
+      version === "v2" ? v2SelectedBucketItemIds : selectedBucketItemIds;
 
     return (
       <section className="dependency-map__StateBox" key={bucketKey}>
@@ -609,7 +866,9 @@ export function DependencyMapOverlay({
             {bucket.title}
             <span className="dependency-composer__Count">{items.length}</span>
           </span>
-          <p className="dependency-composer__BucketHelper">{bucket.helper}</p>
+          {showHelper ? (
+            <p className="dependency-composer__BucketHelper">{bucket.helper}</p>
+          ) : null}
         </div>
 
         <div
@@ -621,20 +880,213 @@ export function DependencyMapOverlay({
           <span className="dependency-map__FlowChevron_Icon">{bucket.icon}</span>
         </div>
 
-        {renderCanvasForm(bucketKey)}
+        {showForm ? renderCanvasForm(bucketKey) : null}
 
-        <div className="dependency-composer__BucketRows">
-          {renderBucketRows(bucketKey, items)}
-        </div>
-        <button
-          type="button"
-          className="btn btn--secondary btn--sm dependency-composer__BucketAction"
-          onClick={() => removeSelectedFromBucket(bucketKey)}
-          disabled={selectedBucketItemIds[bucketKey].size === 0}
+        {showPayload ? (
+          <>
+            <div className="dependency-composer__BucketRows">
+              {renderBucketRows(bucketKey, items, version)}
+            </div>
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm dependency-composer__BucketAction"
+              onClick={() => removeSelectedFromBucket(bucketKey, version)}
+              disabled={selectedMap[bucketKey].size === 0}
+            >
+              <TbX aria-hidden="true" />
+              Remove Artefact
+            </button>
+          </>
+        ) : null}
+      </section>
+    );
+  };
+
+  const renderV2MapCard = (
+    item: DependencyCandidate,
+    x: number,
+    y: number,
+    width: number,
+    tone: "requires" | "unlocks" | "parallel",
+  ) => (
+    <div
+      key={item.id}
+      className={`dependency-map__MapCard dependency-map__MapCard--${tone}`}
+      style={
+        {
+          "--dependency-map-card-left": `${x}px`,
+          "--dependency-map-card-top": `${y}px`,
+          "--dependency-map-card-width": `${width}px`,
+          "--dependency-map-card-height": `${MAP_NODE_HEIGHT}px`,
+        } as CSSProperties
+      }
+      title={`${item.formattedId} ${item.title}`}
+    >
+      <span className="dependency-map__MapCard_Main">
+        <strong className="dependency-map__MapCard_Code">
+          {item.formattedId}
+        </strong>
+        <span className="dependency-map__MapCard_Title">{item.title}</span>
+        <TbX className="dependency-map__MapCard_RemoveIcon" aria-hidden="true" />
+      </span>
+    </div>
+  );
+
+  const renderV2TargetCard = (x: number, y: number, width: number) => (
+    <div
+      className="dependency-map__MapCard dependency-map__MapCard--target"
+      style={
+        {
+          "--dependency-map-card-left": `${x}px`,
+          "--dependency-map-card-top": `${y}px`,
+          "--dependency-map-card-width": `${width}px`,
+          "--dependency-map-card-height": `${MAP_TARGET_HEIGHT}px`,
+        } as CSSProperties
+      }
+      title={`${meta.formattedId} ${meta.title}`}
+    >
+      <span className="dependency-map__MapCard_Main">
+        <strong className="dependency-map__MapCard_Code">
+          {meta.formattedId}
+        </strong>
+        <span className="dependency-map__MapCard_Title">{meta.title}</span>
+        <TbX className="dependency-map__MapCard_RemoveIcon" aria-hidden="true" />
+      </span>
+    </div>
+  );
+
+  const renderDependencyMapV2 = () => {
+    const requires = v2Buckets.requires;
+    const unlocks = v2Buckets.unlocks;
+    const parallel = v2Buckets.parallel;
+    const mapWidth = Math.max(1, mapFrame.width);
+    const bucketColumnWidth = mapWidth / 3;
+    const nodeWidth = Math.max(160, bucketColumnWidth - MAP_CARD_INSET);
+    const targetWidth = nodeWidth;
+    const parallelColumns =
+      parallel.length === 0
+        ? 1
+        : Math.min(MAP_PARALLEL_MAX_COLUMNS, Math.ceil(Math.sqrt(parallel.length)));
+    const parallelRows =
+      parallel.length === 0 ? 0 : Math.ceil(parallel.length / parallelColumns);
+    const parallelGroupHeight =
+      parallelRows === 0
+        ? 0
+        : parallelRows * MAP_NODE_HEIGHT + (parallelRows - 1) * MAP_NODE_GAP;
+    const sideCount = Math.max(requires.length, unlocks.length, 1);
+    const sideGroupHeight =
+      sideCount * MAP_NODE_HEIGHT + (sideCount - 1) * MAP_NODE_GAP;
+    const requiresCenterX = bucketColumnWidth / 2;
+    const parallelCenterX = mapWidth / 2;
+    const unlocksCenterX = mapWidth - bucketColumnWidth / 2;
+    const targetX = parallelCenterX - targetWidth / 2;
+    const targetY = MAP_START_Y;
+    const targetCenterX = targetX + targetWidth / 2;
+    const targetCenterY = targetY + MAP_TARGET_HEIGHT / 2;
+    const requiresX = requiresCenterX - nodeWidth / 2;
+    const unlocksX = unlocksCenterX - nodeWidth / 2;
+    const parallelStartX = parallelCenterX - nodeWidth / 2;
+    const parallelStartY = targetY + MAP_TARGET_HEIGHT + MAP_NODE_GAP;
+    const parallelBottomY =
+      parallelRows === 0
+        ? 0
+        : parallelStartY + parallelGroupHeight + MAP_NODE_GAP * 2;
+    const sideStartY = targetY;
+    const mapHeight = Math.max(
+      parallelBottomY + 80,
+      sideStartY + sideGroupHeight + 80,
+      mapFrame.height,
+    );
+
+    const sideY = (index: number) =>
+      sideStartY + index * (MAP_NODE_HEIGHT + MAP_NODE_GAP);
+    const parallelX = (index: number) =>
+      parallelStartX +
+      (index % parallelColumns) * (nodeWidth + MAP_NODE_GAP);
+    const parallelY = (index: number) =>
+      parallelStartY +
+      Math.floor(index / parallelColumns) * (MAP_NODE_HEIGHT + MAP_NODE_GAP);
+    const requiresLayout = requires.map((item, index) => ({
+      item,
+      x: requiresX,
+      y: sideY(index),
+    }));
+    const unlocksLayout = unlocks.map((item, index) => ({
+      item,
+      x: unlocksX,
+      y: sideY(index),
+    }));
+    const parallelLayout = parallel.map((item, index) => ({
+      item,
+      x: parallelX(index),
+      y: parallelY(index),
+    }));
+    return (
+      <section
+        className="dependency-map__Graph"
+        aria-label="V2 dependency map"
+        ref={mapViewportRef}
+      >
+        <div
+          className="dependency-map__GraphStage"
+          style={
+            {
+              "--dependency-map-stage-width": `${mapWidth}px`,
+              "--dependency-map-stage-height": `${mapHeight}px`,
+              "--dependency-map-stage-left": "0px",
+              "--dependency-map-stage-top": "0px",
+            } as CSSProperties
+          }
         >
-          <TbX aria-hidden="true" />
-          Remove Artefact
-        </button>
+          <svg
+            className="dependency-map__GraphSvg"
+            viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+            preserveAspectRatio="none"
+            role="img"
+            aria-label={`${meta.formattedId} dependency relationship map`}
+          >
+            <g className="dependency-map__Connectors" aria-hidden="true">
+              {requiresLayout.map(({ item, x, y }) => {
+                const centerY = y + MAP_NODE_HEIGHT / 2;
+                return (
+                  <path
+                    key={`requires-${item.id}`}
+                    d={`M ${x + nodeWidth} ${centerY} C ${x + nodeWidth + 80} ${centerY}, ${targetX - 80} ${targetCenterY}, ${targetX} ${targetCenterY}`}
+                  />
+                );
+              })}
+              {unlocksLayout.map(({ item, x, y }) => {
+                const centerY = y + MAP_NODE_HEIGHT / 2;
+                return (
+                  <path
+                    key={`unlocks-${item.id}`}
+                    d={`M ${targetX + targetWidth} ${targetCenterY} C ${targetX + targetWidth + 80} ${targetCenterY}, ${x - 80} ${centerY}, ${x} ${centerY}`}
+                  />
+                );
+              })}
+              {parallelLayout.map(({ item, x, y }) => {
+                const centerX = x + nodeWidth / 2;
+                return (
+                  <path
+                    key={`parallel-${item.id}`}
+                    d={`M ${targetCenterX} ${targetY + MAP_TARGET_HEIGHT} C ${targetCenterX} ${targetY + MAP_TARGET_HEIGHT + 52}, ${centerX} ${y - 52}, ${centerX} ${y}`}
+                  />
+                );
+              })}
+            </g>
+          </svg>
+
+          {requiresLayout.map(({ item, x, y }) =>
+            renderV2MapCard(item, x, y, nodeWidth, "requires"),
+          )}
+          {unlocksLayout.map(({ item, x, y }) =>
+            renderV2MapCard(item, x, y, nodeWidth, "unlocks"),
+          )}
+          {parallelLayout.map(({ item, x, y }) =>
+            renderV2MapCard(item, x, y, nodeWidth, "parallel"),
+          )}
+          {renderV2TargetCard(targetX, targetY, targetWidth)}
+        </div>
       </section>
     );
   };
@@ -654,6 +1106,29 @@ export function DependencyMapOverlay({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useLayoutEffect(() => {
+    if (canvasVersion !== "v2") return;
+    const mapViewport = mapViewportRef.current;
+    if (mapViewport == null) return;
+
+    const measureMapFrame = () => {
+      const viewportRect = mapViewport.getBoundingClientRect();
+      setMapFrame({
+        width: viewportRect.width,
+        height: viewportRect.height,
+      });
+    };
+
+    measureMapFrame();
+    const observer = new ResizeObserver(measureMapFrame);
+    observer.observe(mapViewport);
+    window.addEventListener("resize", measureMapFrame);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measureMapFrame);
+    };
+  }, [canvasVersion]);
 
   return (
     <FullscreenCanvasOverlay
@@ -678,8 +1153,44 @@ export function DependencyMapOverlay({
         "map-root-title": meta.title,
         "map-root-node-id": meta.nodeId,
       }}
+      toolbar={
+        <div className="dependency-map__Toolbar">
+          <button
+            type="button"
+            className={
+              canvasVersion === "v1"
+                ? "fullscreen-canvas-overlay__Button is-active"
+                : "fullscreen-canvas-overlay__Button fullscreen-canvas-overlay__Button--ghost"
+            }
+            onClick={() => setCanvasVersion("v1")}
+            aria-pressed={canvasVersion === "v1"}
+          >
+            V1
+          </button>
+          <button
+            type="button"
+            className={
+              canvasVersion === "v2"
+                ? "fullscreen-canvas-overlay__Button is-active"
+                : "fullscreen-canvas-overlay__Button fullscreen-canvas-overlay__Button--ghost"
+            }
+            onClick={() => setCanvasVersion("v2")}
+            aria-pressed={canvasVersion === "v2"}
+          >
+            V2
+          </button>
+        </div>
+      }
       sidebar={
-        <div className="dependency-composer">
+        <div
+          className={
+            canvasVersion === "v2"
+              ? "dependency-composer is-v2"
+              : "dependency-composer"
+          }
+        >
+          {canvasVersion === "v2" ? renderTargetCard("sidebar") : null}
+
           <nav
             className="dependency-composer__Mode"
             aria-label="Dependency relationship type"
@@ -722,12 +1233,7 @@ export function DependencyMapOverlay({
                 onChange={(event) => setSelectedTypeId(event.target.value)}
                 aria-label={`${activeBucketConfig.title} type filter`}
               >
-                <option value="">All types</option>
-                {typeOptions.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
+                {renderTypeSelectOptions()}
               </select>
             </div>
 
@@ -800,7 +1306,7 @@ export function DependencyMapOverlay({
             </button>
           </section>
 
-          {BUCKETS.map((bucket) => {
+          {canvasVersion === "v1" ? BUCKETS.map((bucket) => {
             const items = buckets[bucket.key];
             const active = bucket.key === activeBucket;
             return (
@@ -839,9 +1345,9 @@ export function DependencyMapOverlay({
                 </button>
               </section>
             );
-          })}
+          }) : null}
 
-          <section className="dependency-composer__Meta">
+          {canvasVersion === "v1" ? <section className="dependency-composer__Meta">
             <div className="dependency-composer__MetaRow">
               <span className="dependency-composer__MetaLabel">Node</span>
               <span>{meta.nodeName}</span>
@@ -854,35 +1360,30 @@ export function DependencyMapOverlay({
               <span className="dependency-composer__MetaLabel">Owner</span>
               <span>{meta.ownerName}</span>
             </div>
-          </section>
+          </section> : null}
         </div>
       }
     >
-      <div className="dependency-map__Canvas">
-        <section className="dependency-map__TargetCard">
-          <span className="dependency-map__TargetEyebrow">
-            Planning dependencies for
-          </span>
-          <div className="dependency-map__TargetMain">
-            <input
-              type="checkbox"
-              className="dependency-composer__ResultCheckbox"
-              readOnly
-              aria-label={`${meta.formattedId} is the dependency map target`}
-            />
-            <strong className="dependency-map__TargetCode">
-              {meta.formattedId}
-            </strong>
-            <span className="dependency-map__TargetTitle">{meta.title}</span>
-            <span className="dependency-map__TargetStatus">
-              {meta.flowStateName}
-            </span>
-          </div>
-        </section>
+      <div
+        className={
+          canvasVersion === "v2"
+            ? "dependency-map__Canvas dependency-map__Canvas--v2"
+            : "dependency-map__Canvas"
+        }
+      >
+        {canvasVersion === "v1" ? renderTargetCard("canvas") : null}
 
         <div className="dependency-map__StateGrid">
-          {CANVAS_BUCKET_ORDER.map((bucketKey) => renderCanvasBucket(bucketKey))}
+          {CANVAS_BUCKET_ORDER.map((bucketKey) =>
+            renderCanvasBucket(bucketKey, {
+              showForm: canvasVersion === "v1",
+              showHelper: canvasVersion === "v1",
+              showPayload: canvasVersion === "v1",
+              version: canvasVersion,
+            }),
+          )}
         </div>
+        {canvasVersion === "v2" ? renderDependencyMapV2() : null}
       </div>
     </FullscreenCanvasOverlay>
   );

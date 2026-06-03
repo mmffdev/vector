@@ -17,6 +17,7 @@ export interface FullscreenCanvasOverlayProps {
   sidebar?: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
+  toolbar?: ReactNode;
   onClose: () => void;
   closeLabel?: string;
   rootData?: Record<string, string | number | null | undefined>;
@@ -43,6 +44,7 @@ export function FullscreenCanvasOverlay({
   sidebar,
   children,
   actions,
+  toolbar,
   onClose,
   closeLabel = "Close",
   rootData,
@@ -103,6 +105,10 @@ export function FullscreenCanvasOverlay({
           </button>
         </div>
       </header>
+
+      {toolbar ? (
+        <div className="fullscreen-canvas-overlay__Toolbar">{toolbar}</div>
+      ) : null}
 
       <div
         className={

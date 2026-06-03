@@ -21581,6 +21581,18 @@ tr.is-editing {
   gap: var(--space-2);
 }
 
+.fullscreen-canvas-overlay__Toolbar {
+  flex: 0 0 40px;
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-6) 0 30px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface);
+}
+
 .fullscreen-canvas-overlay__Button {
   height: 32px;
   min-width: 32px;
@@ -21609,6 +21621,12 @@ tr.is-editing {
 
 .fullscreen-canvas-overlay__Button--ghost:hover:not(:disabled) {
   background: var(--surface-sunken);
+}
+
+.fullscreen-canvas-overlay__Button.is-active {
+  border-color: var(--ink);
+  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 .fullscreen-canvas-overlay__Body {
@@ -21698,7 +21716,13 @@ tr.is-editing {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+}
+
+.dependency-composer.is-v2 {
+  gap: var(--space-3);
 }
 
 .dependency-composer__Mode {
@@ -21729,7 +21753,12 @@ tr.is-editing {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  min-height: 0;
   width: 100%;
+}
+
+.dependency-composer.is-v2 .dependency-composer__Form {
+  flex: 1 1 auto;
 }
 
 .dependency-composer__Bucket {
@@ -21882,6 +21911,7 @@ tr.is-editing {
 }
 
 .dependency-composer__AddBtn {
+  flex: 0 0 auto;
   align-self: stretch;
   width: 100%;
 }
@@ -21890,7 +21920,15 @@ tr.is-editing {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--surface);
-  overflow: hidden;
+  max-height: 461px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dependency-composer.is-v2 .dependency-composer__Results {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
 }
 
 .dependency-composer__ResultGroup {
@@ -21930,13 +21968,14 @@ tr.is-editing {
 
 .dependency-composer__ResultCode {
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .dependency-composer__ResultTitle {
   min-width: 0;
   overflow: hidden;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -21960,7 +21999,9 @@ tr.is-editing {
 .dependency-composer__BucketRows {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  max-height: 420px;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -21993,13 +22034,14 @@ tr.is-editing {
 
 .dependency-composer__BucketCode {
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .dependency-composer__BucketRowTitle {
   min-width: 0;
   overflow: hidden;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -22014,8 +22056,10 @@ tr.is-editing {
   color: var(--ink-muted);
   display: flex;
   align-items: center;
+  justify-content: center;
   font-size: 13px;
   padding: 0 var(--space-3);
+  text-align: center;
 }
 
 .dependency-composer__Meta {
@@ -22044,8 +22088,26 @@ tr.is-editing {
   flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-7);
+  width: 100%;
   min-height: 100%;
   min-width: 1120px;
+}
+
+.dependency-map__Canvas--v2 {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-7);
+  position: relative;
+  align-content: stretch;
+  justify-content: stretch;
+  justify-items: stretch;
+  overflow: hidden;
+}
+
+.dependency-map__Toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .dependency-map__TargetCard {
@@ -22059,6 +22121,11 @@ tr.is-editing {
   border-radius: var(--radius-md);
   background: var(--surface);
   padding: var(--space-3);
+}
+
+.dependency-map__TargetCard--sidebar {
+  align-self: stretch;
+  width: auto;
 }
 
 .dependency-map__TargetEyebrow {
@@ -22112,6 +22179,119 @@ tr.is-editing {
   grid-template-columns: repeat(3, minmax(320px, 1fr));
   gap: 40px;
   align-items: start;
+  width: 100%;
+}
+
+.dependency-map__Canvas--v2 .dependency-map__StateGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.dependency-map__Graph {
+  width: 100%;
+  align-self: stretch;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.dependency-map__Canvas--v2 .dependency-map__Graph {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  pointer-events: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.dependency-map__GraphStage {
+  position: relative;
+  top: var(--dependency-map-stage-top);
+  left: var(--dependency-map-stage-left);
+  width: var(--dependency-map-stage-width);
+  height: var(--dependency-map-stage-height);
+}
+
+.dependency-map__GraphSvg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.dependency-map__Canvas--v2 .dependency-map__GraphSvg {
+  height: 100%;
+  min-height: 0;
+}
+
+.dependency-map__Connectors path {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.dependency-map__MapCard {
+  position: absolute;
+  top: var(--dependency-map-card-top);
+  left: var(--dependency-map-card-left);
+  box-sizing: border-box;
+  display: grid;
+  align-items: center;
+  width: var(--dependency-map-card-width);
+  height: var(--dependency-map-card-height);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  padding: 0 var(--space-3);
+  color: var(--ink);
+}
+
+.dependency-map__MapCard--target {
+  border: 1px solid var(--ink);
+  background: var(--surface);
+}
+
+.dependency-map__MapCard_Main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dependency-map__MapCard_Code {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.dependency-map__MapCard_Title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-map__MapCard_RemoveIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-muted);
+  stroke-width: 2;
 }
 
 .dependency-map__StateBox {
@@ -22193,6 +22373,11 @@ tr.is-editing {
 
 .dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row {
   animation-name: dependency-map-flow-chevron-up;
+}
+
+.dependency-map__FlowChevron--parallel {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: none;
 }
 
 .dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row--top {
