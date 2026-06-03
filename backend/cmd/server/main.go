@@ -968,6 +968,18 @@ func main() {
 	}
 	dependenciesH := dependencies.NewHandler(dependenciesSvc)
 
+	// PLA074 / B23.1.8 — wire the archive preflight into the
+	// artefactitems v2 work-items handler. The adapter converts the
+	// dependencies.MapImpact rows into the artefactitems.ImpactedMap
+	// wire shape so the import direction stays one-way (artefactitems
+	// does NOT import dependencies). When vaPool is nil the legacy
+	// nil-pool workItemsV2H above is created without the preflight
+	// — Archive simply skips the check, matching pre-B23 behaviour.
+	if vaPool != nil {
+		workItemsV2H.WithDependencyPreflight(depsArchivePreflight{svc: dependenciesSvc})
+		portfolioItemsV2H.WithDependencyPreflight(depsArchivePreflight{svc: dependenciesSvc})
+	}
+
 	// B20.4.3 — cost_centres moved to vector_artefacts in Pillar 3 step 1
 	// (subscription-scoped finance reference data; FK target of
 	// users.cost_centre_id, which also lives in vector_artefacts now).
@@ -1931,8 +1943,19 @@ func main() {
 			r.With(writeLimit17, userWriteLimiter).Put("/{id}/field-values", h.UpsertFieldValues)
 			r.With(writeLimit17, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
 		}
-		r.Route("/work-items", func(r chi.Router) { mountArtefactSite(r, workItemsV2H) })
-		r.Route("/portfolio-items", func(r chi.Router) { mountArtefactSite(r, portfolioItemsV2H) })
+		r.Route("/work-items", func(r chi.Router) {
+			mountArtefactSite(r, workItemsV2H)
+			// PLA074 / B23.1.8 — dependency-impact preflight. Lives
+			// under /work-items by AC; the handler is owned by the
+			// dependencies package because the read targets the edge
+			// tables. Same auth + sentinel chain as the parent route
+			// group above (applied by mountArtefactSite).
+			r.Get("/{id}/dependency-impact", dependenciesH.ImpactForArtefact)
+		})
+		r.Route("/portfolio-items", func(r chi.Router) {
+			mountArtefactSite(r, portfolioItemsV2H)
+			r.Get("/{id}/dependency-impact", dependenciesH.ImpactForArtefact)
+		})
 		// PLA-0052 Story 10 — Risk summary endpoint. Severity × likelihood
 		// aggregator for the /risk page header. Reuses workItemsV2H (scope=work)
 		// since Risk is a work-scope artefact type. Public surface (/samantha/v2)
@@ -2726,4 +2749,30 @@ type savedViewsWSAdminAdapter struct {
 
 func (a *savedViewsWSAdminAdapter) HasWorkspaceAdmin(ctx context.Context, userID, _ uuid.UUID) (bool, error) {
 	return a.resolver.Has(ctx, userID, permissions.WorkspaceArchive)
+}
+
+// depsArchivePreflight is the seam between artefactitems.Handler.Archive
+// and dependencies.Service.ImpactForArtefact (PLA074 / B23.1.8). It
+// satisfies artefactitems.DependencyImpactQuerier by translating the
+// dependencies wire shape into the artefactitems shape — that one-way
+// conversion lets artefactitems stay independent of the dependencies
+// package (no import cycle).
+type depsArchivePreflight struct {
+	svc *dependencies.Service
+}
+
+func (a depsArchivePreflight) ArtefactDependencyImpact(ctx context.Context, artefactID, workspaceID uuid.UUID) ([]artefactitems.ImpactedMap, error) {
+	report, err := a.svc.ImpactForArtefact(ctx, artefactID, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]artefactitems.ImpactedMap, len(report.ImpactedMaps))
+	for i, m := range report.ImpactedMaps {
+		out[i] = artefactitems.ImpactedMap{
+			MapID:     m.MapID,
+			MapName:   m.MapName,
+			EdgeCount: m.Edges,
+		}
+	}
+	return out, nil
 }

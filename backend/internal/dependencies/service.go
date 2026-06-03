@@ -561,6 +561,48 @@ func (s *Service) ArchiveEdge(ctx context.Context, edgeID uuid.UUID) (Edge, erro
 	return updated, nil
 }
 
+// ── dependency-impact preflight (B23.1.8) ───────────────────────
+
+// ImpactForArtefact returns the maps that have at least one live edge
+// involving artefactID, scoped to the caller's workspace. Used both
+// by the standalone GET /work-items/{id}/dependency-impact endpoint
+// and by the archive preflight in artefactitems.ArchiveWorkItem.
+//
+// workspaceID MUST be the caller's resolved workspace; passing a
+// different workspace would leak cross-tenant map names. The HTTP
+// handler reads it from sentinel.FromCtx; the archive-preflight
+// adapter does the same before delegating here.
+//
+// Returns an empty ImpactReport (TotalEdges==0, ImpactedMaps==[])
+// when no edges exist — the caller's "safe to archive" signal.
+func (s *Service) ImpactForArtefact(ctx context.Context, artefactID, workspaceID uuid.UUID) (ImpactReport, error) {
+	if err := s.requirePool(); err != nil {
+		return ImpactReport{}, err
+	}
+	if artefactID == uuid.Nil || workspaceID == uuid.Nil {
+		return ImpactReport{}, ErrInvalidInput
+	}
+	rows, err := s.pool.Query(ctx, sqlImpactForArtefact, artefactID, workspaceID)
+	if err != nil {
+		return ImpactReport{}, fmt.Errorf("dependencies.ImpactForArtefact: query: %w", err)
+	}
+	defer rows.Close()
+
+	out := ImpactReport{ImpactedMaps: []MapImpact{}}
+	for rows.Next() {
+		var m MapImpact
+		if err := rows.Scan(&m.MapID, &m.MapName, &m.Edges); err != nil {
+			return ImpactReport{}, fmt.Errorf("dependencies.ImpactForArtefact: scan: %w", err)
+		}
+		out.ImpactedMaps = append(out.ImpactedMaps, m)
+		out.TotalEdges += m.Edges
+	}
+	if err := rows.Err(); err != nil {
+		return ImpactReport{}, fmt.Errorf("dependencies.ImpactForArtefact: rows: %w", err)
+	}
+	return out, nil
+}
+
 // readEdge is the simple read used by ArchiveEdge's race-recovery
 // path. Workspace-clamped via the join in sqlGetEdgeForArchive.
 func (s *Service) readEdge(ctx context.Context, edgeID uuid.UUID) (Edge, error) {

@@ -2380,13 +2380,14 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: handler test covers the deny path.
   - Plan: PLA074
   > Last checked: 2026-06-03 — ArchiveEdge tx reads edge+parent map's topology_node via JOIN for a single round-trip; scope re-checked via `nodeInScope`; idempotent path returns the existing row WITHOUT writing a second audit event (early return when archived_at non-nil); race-recovery branch via tx.Commit + readEdge if the UPDATE returns no rows due to a concurrent archive; 5 handler tests cover 401 / 200 happy / 200×2 idempotent / 403 deny / 404 missing / 422 bad-uuid.
-- **B23.1.8 [P2] 🔵 IN FLIGHT** — `dependency-impact` preflight endpoint + 409 on archive. Block archive of load-bearing artefacts with a structured impact payload.
+- ✅ ~~**B23.1.8 [P2]** — `dependency-impact` preflight endpoint + 409 on archive. Block archive of load-bearing artefacts with a structured impact payload.~~
   - AC: `GET /_site/work-items/{id}/dependency-impact` returns `{ impacted_maps: [{ map_id, map_name, edges }], total_edges }`.
   - AC: `ArchiveWorkItem` at `backend/internal/artefactitems/service.go:2040` calls the dependencies service; if `total_edges > 0`, returns `http.StatusConflict` with code `dependency_impact` and the impact payload as body.
   - AC: Go test `TestArchiveWorkItem_BlockedByDependencies` seeds an edge, attempts archive, asserts 409 + payload.
   - AC: frontend archive caller surfaces the 409 with a toast listing impacted map names.
   - AC: Scalar/openapi entry added.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — `dependencies.ImpactForArtefact(ctx, artefactID, workspaceID)` reads workspace-clamped maps via sqlImpactForArtefact (live edges + live maps GROUP BY map ORDER BY edges DESC); GET handler mounted on /_site/work-items/{id}/dependency-impact AND /_site/portfolio-items/{id}/dependency-impact via main.go (handler owned by dependencies pkg, URL lives under work-items by AC). Preflight wired in the **handler** layer (not service) via `artefactitems.DependencyImpactQuerier` interface + `depsArchivePreflight` adapter in main.go — avoids the import cycle the AC's literal "ArchiveWorkItem calls dependencies service" wording would create. 4 tests green: `TestArchiveWorkItem_BlockedByDependencies` (AC-named, asserts 409 + dependency_impact code + impacted_maps[] + summed total_edges), `_PassesPreflight` (empty impact → proceeds), `_PreflightErrorFailsClosed` (DB blip → 500 not silent fall-through), `_NoPreflightUnwired` (back-compat). Frontend toast AC deferred to B23.2.3 (apiSite client + composer wire-up).
 
 ### B23.2 Phase 1 — Read endpoints + composer wire-up
 

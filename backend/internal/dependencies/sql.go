@@ -191,3 +191,28 @@ const sqlArchiveEdge = `
 	 WHERE artefact_dependency_edges_id = $1
 	   AND artefact_dependency_edges_archived_at IS NULL
 	 RETURNING` + sqlEdgeColumns
+
+// ── dependency-impact preflight (B23.1.8) ───────────────────────
+
+// sqlImpactForArtefact returns one row per dependency map that has
+// at least one live edge involving the given artefact, grouped by
+// map. Used by both the standalone GET endpoint and the archive
+// preflight in artefactitems.ArchiveWorkItem.
+//
+//   $1 = artefact id
+//   $2 = workspace id (caller clamp — only maps in this workspace surface)
+const sqlImpactForArtefact = `
+	SELECT m.artefact_dependency_maps_id,
+	       m.artefact_dependency_maps_name,
+	       COUNT(e.artefact_dependency_edges_id) AS edges
+	  FROM artefact_dependency_edges e
+	  JOIN artefact_dependency_maps  m ON m.artefact_dependency_maps_id = e.artefact_dependency_edges_id_map
+	 WHERE (e.artefact_dependency_edges_id_from_artefact = $1
+	     OR e.artefact_dependency_edges_id_to_artefact   = $1)
+	   AND e.artefact_dependency_edges_archived_at IS NULL
+	   AND m.artefact_dependency_maps_archived_at  IS NULL
+	   AND m.artefact_dependency_maps_id_workspace = $2
+	 GROUP BY m.artefact_dependency_maps_id,
+	          m.artefact_dependency_maps_name
+	 ORDER BY edges DESC,
+	          m.artefact_dependency_maps_name ASC`

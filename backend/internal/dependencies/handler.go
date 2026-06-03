@@ -11,6 +11,7 @@ import (
 
 	"github.com/mmffdev/vector-backend/internal/auth"
 	"github.com/mmffdev/vector-backend/internal/httperr"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/usermessages"
 )
 
@@ -25,6 +26,7 @@ type serviceIface interface {
 	GetMap(ctx context.Context, mapID uuid.UUID) (Map, error)
 	CreateEdge(ctx context.Context, in CreateEdgeInput) (Edge, error)
 	ArchiveEdge(ctx context.Context, edgeID uuid.UUID) (Edge, error)
+	ImpactForArtefact(ctx context.Context, artefactID, workspaceID uuid.UUID) (ImpactReport, error)
 }
 
 // Handler hangs the dependencies HTTP surface off the chi router.
@@ -177,6 +179,40 @@ func (h *Handler) ArchiveEdge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := h.svc.ArchiveEdge(r.Context(), edgeID)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// ImpactForArtefact handles GET /_site/work-items/{id}/dependency-impact.
+// Mounted from main.go on the /_site/work-items route group, NOT on
+// /_site/dependencies (URL lives under work-items by AC; the logic
+// lives here because it queries the edge tables this package owns).
+//
+// 200 + ImpactReport on success (empty list + zero TotalEdges when
+// the artefact participates in no live edges); 401 no auth; 422 on
+// bad uuid; 500 only on genuine DB errors. Workspace clamp comes
+// from sentinel.FromCtx so cross-workspace map names never surface.
+func (h *Handler) ImpactForArtefact(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	artefactID, ok := parseUUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
+	wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
+	if !ok {
+		httperr.Write(w, r, http.StatusInternalServerError, "workspace clamp missing")
+		return
+	}
+	out, err := h.svc.ImpactForArtefact(r.Context(), artefactID, wsID)
 	if mapped, ok := mapServiceError(err); ok {
 		httperr.Write(w, r, mapped.status, mapped.msg)
 		return

@@ -1,6 +1,7 @@
 package artefactitems
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -117,13 +118,48 @@ func parseUUIDList(raw string) ([]uuid.UUID, error) {
 
 // Handler exposes the v2 work-items domain over HTTP.
 type Handler struct {
-	svc *Service
+	svc              *Service
+	dependencyImpact DependencyImpactQuerier
 }
 
 // NewHandler creates a Handler backed by the given Service.
 // svc may wrap a nil pool; List returns an empty page in that case.
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+// DependencyImpactQuerier is the cross-package seam the Archive
+// handler uses to ask the dependencies service whether archiving a
+// work item would break a dependency map (B23.1.8 / PLA074).
+//
+// Implemented in main.go by a small adapter over dependencies.Service
+// — keeping the interface defined here avoids an import cycle from
+// dependencies to artefactitems.
+type DependencyImpactQuerier interface {
+	// ArtefactDependencyImpact returns the maps containing live edges
+	// involving artefactID, scoped to workspaceID. Empty result + nil
+	// error means "safe to archive". Any non-nil error short-circuits
+	// the archive (fail closed — don't let a flaky preflight allow
+	// silent breakage of dependency chains).
+	ArtefactDependencyImpact(ctx context.Context, artefactID, workspaceID uuid.UUID) ([]ImpactedMap, error)
+}
+
+// ImpactedMap is the wire shape returned inside the 409 body when
+// archive is blocked. Mirrors dependencies.MapImpact but lives here
+// so the import direction stays one-way.
+type ImpactedMap struct {
+	MapID     uuid.UUID `json:"map_id"`
+	MapName   string    `json:"map_name"`
+	EdgeCount int       `json:"edges"`
+}
+
+// WithDependencyPreflight wires the archive preflight. main.go calls
+// this once after both services are constructed. Optional — when
+// unwired, Archive proceeds without checking (back-compat with envs
+// that don't have the dependency substrate yet).
+func (h *Handler) WithDependencyPreflight(q DependencyImpactQuerier) *Handler {
+	h.dependencyImpact = q
+	return h
 }
 
 // listResponse is the wire shape for GET /api/v2/work-items.
@@ -1370,6 +1406,13 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 }
 
 // Archive handles DELETE /api/v2/work-items/{id}.
+//
+// PLA074 / B23.1.8: when a DependencyImpactQuerier is wired (the
+// canonical prod path), Archive runs a preflight against the
+// dependencies service. If any live edge involves the artefact
+// inside the caller's workspace, returns 409 with a
+// dependency_impact payload — listing the impacted maps so the
+// frontend can render a toast naming what would break.
 func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromCtx(r.Context())
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -1379,6 +1422,43 @@ func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"error":"invalid id"}`))
 		return
 	}
+
+	// PLA074 preflight. Workspace clamp comes from sentinel — never
+	// from the URL or body. When unwired (legacy envs without
+	// dependencies service), we proceed without checking; that's the
+	// pre-B23 baseline behaviour.
+	if h.dependencyImpact != nil {
+		wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
+		if ok {
+			impacted, perr := h.dependencyImpact.ArtefactDependencyImpact(r.Context(), id, wsID)
+			if perr != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"error":"dependency preflight failed"}`))
+				return
+			}
+			if len(impacted) > 0 {
+				total := 0
+				for _, m := range impacted {
+					total += m.EdgeCount
+				}
+				body := struct {
+					Code         string        `json:"code"`
+					ImpactedMaps []ImpactedMap `json:"impacted_maps"`
+					TotalEdges   int           `json:"total_edges"`
+				}{
+					Code:         "dependency_impact",
+					ImpactedMaps: impacted,
+					TotalEdges:   total,
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusConflict)
+				_ = json.NewEncoder(w).Encode(body)
+				return
+			}
+		}
+	}
+
 	if err := h.svc.ArchiveWorkItem(r.Context(), u.SubscriptionID, id); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			w.Header().Set("Content-Type", "application/json")

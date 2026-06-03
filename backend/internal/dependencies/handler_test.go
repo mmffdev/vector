@@ -31,6 +31,7 @@ type fakeService struct {
 	getFn        func(ctx context.Context, id uuid.UUID) (Map, error)
 	createEdgeFn  func(ctx context.Context, in CreateEdgeInput) (Edge, error)
 	archiveEdgeFn func(ctx context.Context, id uuid.UUID) (Edge, error)
+	impactFn      func(ctx context.Context, artefactID, workspaceID uuid.UUID) (ImpactReport, error)
 }
 
 func (f *fakeService) CreateMap(ctx context.Context, in CreateMapInput) (Map, error) {
@@ -73,6 +74,13 @@ func (f *fakeService) ArchiveEdge(ctx context.Context, id uuid.UUID) (Edge, erro
 		return Edge{}, errors.New("ArchiveEdge not configured")
 	}
 	return f.archiveEdgeFn(ctx, id)
+}
+
+func (f *fakeService) ImpactForArtefact(ctx context.Context, artefactID, workspaceID uuid.UUID) (ImpactReport, error) {
+	if f.impactFn == nil {
+		return ImpactReport{}, errors.New("ImpactForArtefact not configured")
+	}
+	return f.impactFn(ctx, artefactID, workspaceID)
 }
 
 // mountForTest wires the handler under /_site/dependencies on a chi
