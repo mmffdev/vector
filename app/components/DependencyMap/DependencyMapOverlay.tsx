@@ -17,7 +17,7 @@ import {
 } from "react-icons/tb";
 
 import type { ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
-import { FullscreenCanvasOverlay } from "@/app/components/FullscreenCanvasOverlay/FullscreenCanvasOverlay";
+import { Canvas } from "@/app/components/Canvas/Canvas";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import {
   buildOrderedArtefactTypeGroups,
@@ -25,6 +25,8 @@ import {
 } from "@/app/lib/artefactTypeGroups";
 import type { ArtefactType } from "@/app/lib/artefactTypesApi";
 import {
+  dependencies as dependenciesApi,
+  type DependencyCandidate as WireDependencyCandidatePersisted,
   milestones as milestonesApi,
   releases as releasesApi,
   sprints as sprintsApi,
@@ -298,6 +300,65 @@ function passesTimeboxFilters(
 }
 
 
+// PLA074 / B23.2.2 — persisted-mode candidate fetch. Calls
+// /_site/dependencies/candidates so the server authoritatively
+// excludes any artefact already linked to the focused target in
+// this map (cross-bucket dedup matches the cross-kind canonical
+// unique index gating writes). The rich projection means no
+// /work-items hydration round-trip is needed for the dropdown.
+async function fetchPersistedCandidates(params: {
+  mapId: string;
+  focusedArtefactId: string;
+  search: string;
+  selectedTypeId: string;
+  selectedSprintId: string;
+  selectedReleaseId: string;
+  selectedMilestoneId: string;
+  typeOptions: DependencyTypeOption[];
+}): Promise<DependencyCandidate[]> {
+  const {
+    mapId,
+    focusedArtefactId,
+    search,
+    selectedTypeId,
+    selectedSprintId,
+    selectedReleaseId,
+    selectedMilestoneId,
+    typeOptions,
+  } = params;
+  const byTypeId = new Map(typeOptions.map((type) => [type.value, type.label]));
+  const rows = await dependenciesApi.candidates.search({
+    map_id: mapId,
+    focused_artefact_id: focusedArtefactId,
+    q: search.trim() || undefined,
+    limit: DEPENDENCY_QUERY_LIMIT,
+  });
+  return rows
+    .filter((row: WireDependencyCandidatePersisted) =>
+      selectedTypeId ? row.artefact_type_id === selectedTypeId : true,
+    )
+    .map<DependencyCandidate>((row: WireDependencyCandidatePersisted) => ({
+      id: row.id,
+      formattedId: `${row.type_prefix}-${row.key_num}`,
+      title: row.title || "(untitled)",
+      typeLabel: byTypeId.get(row.artefact_type_id) ?? row.type_name,
+      nodeId: row.topology_node_id,
+      description: (row.description ?? "").trim(),
+      sprintId: row.sprint_id,
+      sprintLabel: row.sprint_label,
+      releaseId: row.release_id,
+      milestoneId: row.milestone_id,
+    }))
+    .filter((candidate) =>
+      passesTimeboxFilters(
+        candidate,
+        selectedSprintId,
+        selectedReleaseId,
+        selectedMilestoneId,
+      ),
+    );
+}
+
 async function fetchDependencyCandidates({
   artefactId,
   search,
@@ -418,13 +479,6 @@ export function DependencyMapOverlay({
   }, [typeOptionGroups]);
   const [activeBucket, setActiveBucket] =
     useState<DependencyBucketKey>("requires");
-  // PLA074 / B23.2.5 — the dependency-map page hosts two views in the
-  // same canvas slot: the bucket composer (default) and a visualisation
-  // map. The header action button toggles between them; label reflects
-  // the destination, not the current state.
-  const [viewMode, setViewMode] = useState<"editor" | "map">("editor");
-  void viewMode;
-  void setViewMode;
   const [filtersSeeded, setFiltersSeeded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>(defaultNodeId);
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
@@ -665,17 +719,33 @@ export function DependencyMapOverlay({
       return;
     }
     let alive = true;
-    fetchDependencyCandidates({
-      artefactId: artefact.id,
-      search,
-      selectedNodeId,
-      selectedTypeId,
-      selectedSprintId,
-      selectedReleaseId,
-      selectedMilestoneId,
-      sentinelGrants: sentinel_grants,
-      typeOptions,
-    })
+    // PLA074 / B23.2.2 — when persisted is active, hit the
+    // server-side candidate endpoint so cross-bucket exclusion is
+    // authoritative; otherwise fall back to the legacy work-items
+    // query for the ephemeral preview path.
+    const promise = persisted.mapId
+      ? fetchPersistedCandidates({
+          mapId: persisted.mapId,
+          focusedArtefactId: artefact.id,
+          search,
+          selectedTypeId,
+          selectedSprintId,
+          selectedReleaseId,
+          selectedMilestoneId,
+          typeOptions,
+        })
+      : fetchDependencyCandidates({
+          artefactId: artefact.id,
+          search,
+          selectedNodeId,
+          selectedTypeId,
+          selectedSprintId,
+          selectedReleaseId,
+          selectedMilestoneId,
+          sentinelGrants: sentinel_grants,
+          typeOptions,
+        });
+    promise
       .then((options) => {
         if (!alive) return;
         setCandidateOptions(options);
@@ -697,6 +767,12 @@ export function DependencyMapOverlay({
     filtersSeeded,
     sentinel_grants,
     typeOptions,
+    // PLA074 — refetch candidates when the persisted-mapId resolves
+    // or changes: switching from preview → persisted toggles which
+    // endpoint owns the dropdown, and adding/removing an edge needs
+    // a refresh so the just-linked artefact disappears from the list.
+    persisted.mapId,
+    persisted.buckets,
   ]);
 
   // The timebox endpoints key off the tenant id, NOT the grant's
@@ -1069,7 +1145,7 @@ export function DependencyMapOverlay({
   }, [onClose]);
 
   return (
-    <FullscreenCanvasOverlay
+    <Canvas
       ariaLabel="Dependency map"
       title={pageTitle}
       subtitle={meta.title}
@@ -1079,31 +1155,19 @@ export function DependencyMapOverlay({
         ariaLabel: "Canvas state: blank",
       }}
       onClose={onClose}
-      actions={
-        <button
-          type="button"
-          className="fullscreen-canvas-overlay__Button fullscreen-canvas-overlay__Button--ghost"
-          onClick={() =>
-            setViewMode((mode) => (mode === "editor" ? "map" : "editor"))
-          }
-          aria-pressed={viewMode === "map"}
-        >
-          {viewMode === "editor" ? "View Map" : "Editor"}
-        </button>
-      }
+      alternateViewLabel="View Map"
+      primaryViewLabel="Editor"
       rootData={{
         "artefact-id": meta.artefactId,
         "artefact-code": meta.formattedId,
         "artefact-type-id": meta.artefactTypeId,
         "topology-node-id": meta.nodeId,
-        "view-mode": viewMode,
       }}
       canvasData={{
         "map-root-artefact-id": meta.artefactId,
         "map-root-artefact-code": meta.formattedId,
         "map-root-title": meta.title,
         "map-root-node-id": meta.nodeId,
-        "view-mode": viewMode,
       }}
       sidebar={
         <div className="dependency-composer">
@@ -1316,22 +1380,24 @@ export function DependencyMapOverlay({
           </section>
         </div>
       }
-    >
-      <div className="dependency-map__Canvas">
-        {viewMode === "editor" ? (
+      primaryView={
+        <div className="dependency-map__Canvas">
           <div className="dependency-map__StateGrid">
             {CANVAS_BUCKET_ORDER.map((bucketKey) =>
               renderCanvasBucket(bucketKey),
             )}
           </div>
-        ) : (
+        </div>
+      }
+      alternateView={
+        <div className="dependency-map__Canvas">
           <div
             className="dependency-map__MapSurface"
             role="region"
             aria-label="Dependency visualisation map"
           />
-        )}
-      </div>
-    </FullscreenCanvasOverlay>
+        </div>
+      }
+    />
   );
 }

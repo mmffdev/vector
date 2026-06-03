@@ -3093,12 +3093,34 @@ paths:
                     key_num:
                       type: integer
                       format: int32
+                    type_prefix:
+                      type: string
+                    type_slot:
+                      type: string
+                    type_name:
+                      type: string
+                    description:
+                      type: string
+                    sprint_id:
+                      type: string
+                      format: uuid
+                    sprint_label:
+                      type: string
+                    release_id:
+                      type: string
+                      format: uuid
+                    milestone_id:
+                      type: string
+                      format: uuid
                   required:
                   - id
                   - artefact_type_id
                   - topology_node_id
                   - title
                   - key_num
+                  - type_prefix
+                  - type_name
+                  - description
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
         '500':

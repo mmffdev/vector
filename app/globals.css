@@ -29,6 +29,16 @@
   --border-default:    var(--border,    #E5E1DA);
   --border-subtle:     var(--border,    #E5E1DA);
   --accent-primary:    var(--accent,    #1A1A1A);
+
+  /* Vector brand orange. Already in use across the Sentinel barber-pole,
+     value-sprint header band, and the duplicate-mode title head; promoted
+     to a named token so future consumers reference one source of truth
+     instead of repeating the hex. */
+  --orange: #ffcc33;
+  /* Status accents — paired pill background tokens. `bad-red` flags
+     missing/unassigned state; `good-green` flags present/assigned. */
+  --bad-red: #cc0000;
+  --good-green: #66cc00;
 }
 
 /* Dark theme lives in app/styles/primitives.css */
@@ -21451,12 +21461,12 @@ tr.is-editing {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   Fullscreen Canvas Overlay (fullscreen-canvas-overlay__*)
+   Fullscreen Canvas Overlay (canvas__*)
    Reusable fullscreen shell for node-scoped canvases. Replicates the Form
    Layout Builder overlay geometry without depending on flb-* classes.
    ════════════════════════════════════════════════════════════════════════ */
 
-.fullscreen-canvas-overlay {
+.canvas {
   position: fixed;
   inset: 0;
   z-index: 9000;
@@ -21464,15 +21474,15 @@ tr.is-editing {
   flex-direction: column;
   background: var(--surface);
   color: var(--text-primary);
-  animation: fullscreen-canvas-overlay-in 160ms ease-out;
+  animation: canvas-in 160ms ease-out;
 }
 
-@keyframes fullscreen-canvas-overlay-in {
+@keyframes canvas-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-.fullscreen-canvas-overlay__Bar {
+.canvas__Bar {
   flex: 0 0 auto;
   height: 100px;
   box-sizing: border-box;
@@ -21484,31 +21494,24 @@ tr.is-editing {
   background: var(--surface);
 }
 
-.fullscreen-canvas-overlay__Bar_Brand {
+.canvas__Bar_Brand {
   flex: 0 0 auto;
   width: calc(var(--rd-rail-w, 100px) + 16px - 30px);
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
   padding: 0;
 }
 
-.fullscreen-canvas-overlay__Bar_Brand:disabled {
-  cursor: default;
-}
-
-.fullscreen-canvas-overlay__Bar_Brand_Logo {
+.canvas__Bar_Brand_Logo {
   width: 40px;
   height: 40px;
   object-fit: contain;
   display: block;
 }
 
-.fullscreen-canvas-overlay__Bar_Title {
+.canvas__Bar_Title {
   flex: 1 1 auto;
   min-width: 0;
   align-self: stretch;
@@ -21518,7 +21521,7 @@ tr.is-editing {
   gap: 4px;
 }
 
-.fullscreen-canvas-overlay__Bar_Title_Main {
+.canvas__Bar_Title_Main {
   font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
@@ -21529,14 +21532,14 @@ tr.is-editing {
   min-width: 0;
 }
 
-.fullscreen-canvas-overlay__Bar_Title_Sub {
+.canvas__Bar_Title_Sub {
   font-size: 10px;
   line-height: 1.2;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.fullscreen-canvas-overlay__Bar_Status {
+.canvas__Bar_Status {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -21550,38 +21553,38 @@ tr.is-editing {
   border: 1px solid transparent;
 }
 
-.fullscreen-canvas-overlay__Bar_Status--unsaved {
+.canvas__Bar_Status--unsaved {
   color: #8a5a00;
   background: #fff4e0;
   border-color: #f3d39a;
 }
 
-.fullscreen-canvas-overlay__Bar_Status--draft {
+.canvas__Bar_Status--draft {
   color: #1f4e7a;
   background: #e8f1fb;
   border-color: #b9d6f2;
 }
 
-.fullscreen-canvas-overlay__Bar_Status--live {
+.canvas__Bar_Status--live {
   color: #1f6b3a;
   background: #e6f5ec;
   border-color: #abdcbd;
 }
 
-.fullscreen-canvas-overlay__Bar_Status--new {
+.canvas__Bar_Status--new {
   color: var(--text-secondary);
   background: var(--surface-sunken);
   border-color: var(--border-default);
 }
 
-.fullscreen-canvas-overlay__Bar_Actions {
+.canvas__Bar_Actions {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.fullscreen-canvas-overlay__Toolbar {
+.canvas__Toolbar {
   flex: 0 0 40px;
   height: 40px;
   box-sizing: border-box;
@@ -21593,7 +21596,7 @@ tr.is-editing {
   background: var(--surface);
 }
 
-.fullscreen-canvas-overlay__Button {
+.canvas__Button {
   height: 32px;
   min-width: 32px;
   padding: 0 12px;
@@ -21609,27 +21612,27 @@ tr.is-editing {
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.fullscreen-canvas-overlay__Button:disabled {
+.canvas__Button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.fullscreen-canvas-overlay__Button--ghost {
+.canvas__Button--ghost {
   background: transparent;
   color: var(--text-primary);
 }
 
-.fullscreen-canvas-overlay__Button--ghost:hover:not(:disabled) {
+.canvas__Button--ghost:hover:not(:disabled) {
   background: var(--surface-sunken);
 }
 
-.fullscreen-canvas-overlay__Button.is-active {
+.canvas__Button.is-active {
   border-color: var(--ink);
   background: var(--surface-sunken);
   color: var(--ink);
 }
 
-.fullscreen-canvas-overlay__Body {
+.canvas__Body {
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: 0 1fr;
@@ -21637,11 +21640,11 @@ tr.is-editing {
   transition: grid-template-columns 160ms ease;
 }
 
-.fullscreen-canvas-overlay__Body.has-sidebar-open {
+.canvas__Body.has-sidebar-open {
   grid-template-columns: 560px 1fr;
 }
 
-.fullscreen-canvas-overlay__Sidebar {
+.canvas__Sidebar {
   border-right: 0;
   background: transparent;
   overflow: hidden;
@@ -21653,20 +21656,20 @@ tr.is-editing {
   min-width: 0;
 }
 
-.fullscreen-canvas-overlay__Body.has-sidebar-open .fullscreen-canvas-overlay__Sidebar {
+.canvas__Body.has-sidebar-open .canvas__Sidebar {
   border-right: 1px solid var(--border-default);
   overflow-y: auto;
   padding: var(--space-4);
 }
 
-.fullscreen-canvas-overlay__Sidebar_Section_Head {
+.canvas__Sidebar_Section_Head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: var(--space-2);
 }
 
-.fullscreen-canvas-overlay__Sidebar_Section_Title {
+.canvas__Sidebar_Section_Title {
   margin: 0;
   font-size: 12px;
   font-weight: 700;
@@ -21675,7 +21678,7 @@ tr.is-editing {
   color: var(--ink);
 }
 
-.fullscreen-canvas-overlay__Sidebar_Section_Count {
+.canvas__Sidebar_Section_Count {
   font-size: 10px;
   color: var(--ink-muted);
   border: 1px solid var(--border-default);
@@ -21683,13 +21686,13 @@ tr.is-editing {
   padding: 1px 6px;
 }
 
-.fullscreen-canvas-overlay__Sidebar_Section_List {
+.canvas__Sidebar_Section_List {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.fullscreen-canvas-overlay__Canvas {
+.canvas__Surface {
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -21699,7 +21702,7 @@ tr.is-editing {
   flex-direction: column;
 }
 
-.fullscreen-canvas-overlay__Canvas_Empty {
+.canvas__Surface_Empty {
   flex: 1 1 auto;
   min-height: 320px;
   display: flex;
@@ -21721,56 +21724,64 @@ tr.is-editing {
   min-width: 0;
 }
 
-.dependency-composer.is-v2 {
-  gap: var(--space-3);
-}
-
 .dependency-composer__Mode {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
+/* Mode tabs reuse the canvas chevron block as their background so
+ * the sidebar lane mirrors the canvas lane visually. The label sits
+ * on top in a centred pill (same idea as the canvas icon badge),
+ * keeping the title readable over the moving stripes. */
 .dependency-composer__ModeBtn {
-  height: 34px;
-  border: 1px solid var(--border-default);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border: 0;
   border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
+  background: transparent;
   color: var(--ink);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
   font-weight: 650;
+  padding: 0;
+  overflow: hidden;
 }
 
-.dependency-composer__ModeBtn:hover,
-.dependency-composer__ModeBtn.is-active {
-  border-color: var(--accent);
+.dependency-composer__ModeBtn .dependency-map__FlowChevron {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  z-index: 0;
+}
+
+.dependency-composer__ModeBtn_Label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
   background: var(--surface);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--ink) 14%, transparent);
+  white-space: nowrap;
 }
 
 .dependency-composer__Form {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-3);
   min-height: 0;
   width: 100%;
-}
-
-.dependency-composer.is-v2 .dependency-composer__Form {
-  flex: 1 1 auto;
-}
-
-.dependency-composer__Bucket {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  border-left: 3px solid transparent;
-  padding-left: var(--space-3);
-}
-
-.dependency-composer__Bucket.is-active {
-  border-left-color: var(--accent);
 }
 
 .dependency-composer__BucketHead {
@@ -21821,6 +21832,15 @@ tr.is-editing {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
+}
+
+.dependency-composer__Filters--timebox {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dependency-composer__Select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .dependency-composer__Select {
@@ -21917,18 +21937,13 @@ tr.is-editing {
 }
 
 .dependency-composer__Results {
+  flex: 1 1 auto;
+  min-height: 0;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--surface);
-  max-height: 461px;
   overflow-x: hidden;
   overflow-y: auto;
-}
-
-.dependency-composer.is-v2 .dependency-composer__Results {
-  flex: 1 1 auto;
-  max-height: none;
-  min-height: 0;
 }
 
 .dependency-composer__ResultGroup {
@@ -21946,24 +21961,45 @@ tr.is-editing {
 }
 
 .dependency-composer__ResultRow {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  gap: var(--space-2);
-  align-items: center;
-  min-height: 42px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  border: 0;
   border-top: 1px solid var(--border-default);
   background: transparent;
   color: var(--ink);
   cursor: pointer;
-  padding: 0 var(--space-3);
+  padding: var(--space-3);
+  text-align: left;
+  font: inherit;
+  transition: background 120ms ease, color 120ms ease;
 }
 
-.dependency-composer__ResultRow:hover {
+.dependency-composer__ResultRow:hover:not(.is-selected) {
   background: var(--surface-sunken);
 }
 
 .dependency-composer__ResultRow.is-selected {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  background: #000;
+  color: #fff;
+}
+
+/* Row text (code, title, description) inverts to white on the black
+ * selected background. Pills are deliberately left alone — their
+ * assigned-green / unassigned-red state must survive selection so the
+ * status badge keeps reading at a glance. */
+.dependency-composer__ResultRow.is-selected .dependency-composer__ResultCode,
+.dependency-composer__ResultRow.is-selected .dependency-composer__ResultTitle,
+.dependency-composer__ResultRow.is-selected .dependency-composer__ResultDescription {
+  color: #fff;
+}
+
+.dependency-composer__ResultHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
 }
 
 .dependency-composer__ResultCode {
@@ -21978,6 +22014,72 @@ tr.is-editing {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dependency-composer__ResultDescription {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dependency-composer__ResultMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dependency-composer__ResultPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: 11px;
+  line-height: 1;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+/* Assigned (timebox present) → green; unassigned → red. Text colour
+ * is picked per state for WCAG-AA readable contrast: black on green,
+ * white on red. */
+.dependency-composer__ResultPill.is-assigned {
+  background: var(--good-green);
+  border-color: var(--good-green);
+}
+
+.dependency-composer__ResultPill.is-assigned .dependency-composer__ResultPill_Label,
+.dependency-composer__ResultPill.is-assigned .dependency-composer__ResultPill_Value {
+  color: #000;
+}
+
+.dependency-composer__ResultPill.is-unassigned {
+  background: var(--bad-red);
+  border-color: var(--bad-red);
+}
+
+.dependency-composer__ResultPill.is-unassigned .dependency-composer__ResultPill_Label,
+.dependency-composer__ResultPill.is-unassigned .dependency-composer__ResultPill_Value {
+  color: #fff;
+}
+
+.dependency-composer__ResultPill_Label {
+  color: var(--ink-muted);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.dependency-composer__ResultPill_Value {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .dependency-composer__ResultCheckbox {
@@ -22008,24 +22110,34 @@ tr.is-editing {
 }
 
 .dependency-composer__BucketRow {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 42px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  border: 0;
   border-top: 1px solid var(--border-default);
   background: transparent;
   color: var(--ink);
   cursor: pointer;
-  padding: 0 var(--space-3);
+  padding: var(--space-3);
+  text-align: left;
+  font: inherit;
+  transition: background 120ms ease, color 120ms ease;
 }
 
-.dependency-composer__BucketRow:hover {
+.dependency-composer__BucketRow:hover:not(.is-selected) {
   background: var(--surface-sunken);
 }
 
 .dependency-composer__BucketRow.is-selected {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  background: #000;
+  color: #fff;
+}
+
+.dependency-composer__BucketRow.is-selected .dependency-composer__BucketCode,
+.dependency-composer__BucketRow.is-selected .dependency-composer__BucketRowTitle,
+.dependency-composer__BucketRow.is-selected .dependency-composer__ResultDescription {
+  color: #fff;
 }
 
 .dependency-composer__BucketRow:first-child {
@@ -22062,27 +22174,6 @@ tr.is-editing {
   text-align: center;
 }
 
-.dependency-composer__Meta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-default);
-  color: var(--ink-muted);
-  font-size: 12px;
-}
-
-.dependency-composer__MetaRow {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: var(--space-2);
-}
-
-.dependency-composer__MetaLabel {
-  color: var(--ink);
-  font-weight: 650;
-}
-
 .dependency-map__Canvas {
   display: flex;
   flex: 1 1 auto;
@@ -22093,26 +22184,9 @@ tr.is-editing {
   min-width: 1120px;
 }
 
-.dependency-map__Canvas--v2 {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: var(--space-7);
-  position: relative;
-  align-content: stretch;
-  justify-content: stretch;
-  justify-items: stretch;
-  overflow: hidden;
-}
-
-.dependency-map__Toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 .dependency-map__TargetCard {
-  align-self: center;
-  width: min(480px, 100%);
+  align-self: stretch;
+  width: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -22121,11 +22195,6 @@ tr.is-editing {
   border-radius: var(--radius-md);
   background: var(--surface);
   padding: var(--space-3);
-}
-
-.dependency-map__TargetCard--sidebar {
-  align-self: stretch;
-  width: auto;
 }
 
 .dependency-map__TargetEyebrow {
@@ -22137,41 +22206,10 @@ tr.is-editing {
   text-transform: uppercase;
 }
 
-.dependency-map__TargetMain {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.dependency-map__TargetCode {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.dependency-map__TargetTitle {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dependency-map__TargetStatus {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-sunken));
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 650;
-  padding: 0 var(--space-3);
+.dependency-map__TargetBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .dependency-map__StateGrid {
@@ -22182,116 +22220,15 @@ tr.is-editing {
   width: 100%;
 }
 
-.dependency-map__Canvas--v2 .dependency-map__StateGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  position: relative;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.dependency-map__Graph {
+/* Map view (toggled via the header "View Map" button). Empty canvas
+ * placeholder — fills the canvas slot and will host the visualisation
+ * once the rendering pass lands. */
+.dependency-map__MapSurface {
+  flex: 1 1 auto;
   width: 100%;
-  align-self: stretch;
+  min-height: 100%;
   border: 0;
-  border-radius: 0;
-  background: transparent;
-  overflow: hidden;
-}
-
-.dependency-map__Canvas--v2 .dependency-map__Graph {
-  position: relative;
-  z-index: 1;
-  min-height: 0;
-  pointer-events: auto;
-  overflow-x: hidden;
-  overflow-y: auto;
-  touch-action: pan-y;
-  user-select: none;
-}
-
-.dependency-map__GraphStage {
-  position: relative;
-  top: var(--dependency-map-stage-top);
-  left: var(--dependency-map-stage-left);
-  width: var(--dependency-map-stage-width);
-  height: var(--dependency-map-stage-height);
-}
-
-.dependency-map__GraphSvg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-}
-
-.dependency-map__Canvas--v2 .dependency-map__GraphSvg {
-  height: 100%;
-  min-height: 0;
-}
-
-.dependency-map__Connectors path {
-  fill: none;
-  stroke: var(--border-strong);
-  stroke-linecap: round;
-  stroke-width: 2;
-}
-
-.dependency-map__MapCard {
-  position: absolute;
-  top: var(--dependency-map-card-top);
-  left: var(--dependency-map-card-left);
-  box-sizing: border-box;
-  display: grid;
-  align-items: center;
-  width: var(--dependency-map-card-width);
-  height: var(--dependency-map-card-height);
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--radius-full);
-  background: var(--surface-sunken);
-  padding: 0 var(--space-3);
-  color: var(--ink);
-}
-
-.dependency-map__MapCard--target {
-  border: 1px solid var(--ink);
   background: var(--surface);
-}
-
-.dependency-map__MapCard_Main {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.dependency-map__MapCard_Code {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
-.dependency-map__MapCard_Title {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dependency-map__MapCard_RemoveIcon {
-  width: 16px;
-  height: 16px;
-  color: var(--ink-muted);
-  stroke-width: 2;
 }
 
 .dependency-map__StateBox {
@@ -22301,12 +22238,9 @@ tr.is-editing {
   min-width: 0;
 }
 
-.dependency-map__StateForm {
-  min-width: 0;
-}
-
 .dependency-map__FlowChevron {
   --dependency-map-chevron-cycle: 56.568542px;
+  --dependency-map-chevron-stripe: var(--surface-sunken);
   position: relative;
   display: grid;
   grid-template-rows: 1fr 1fr;
@@ -22315,6 +22249,15 @@ tr.is-editing {
   overflow: hidden;
   border: 1px solid var(--border-default);
   background: var(--surface);
+  transition: border-color 160ms ease;
+}
+
+/* Active state — bucket mode tab in the sidebar selects this bucket.
+ * Swaps the chevron stripe and icon colour to the brand orange so the
+ * canvas mirrors the sidebar selection. */
+.dependency-map__FlowChevron.is-active {
+  --dependency-map-chevron-stripe: var(--orange);
+  border-color: var(--orange);
 }
 
 .dependency-map__FlowChevron_Row {
@@ -22330,8 +22273,8 @@ tr.is-editing {
 .dependency-map__FlowChevron_Row--top {
   background-image: repeating-linear-gradient(
     45deg,
-    var(--surface-sunken) 0,
-    var(--surface-sunken) 20px,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
     var(--surface) 20px,
     var(--surface) 40px
   );
@@ -22340,8 +22283,8 @@ tr.is-editing {
 .dependency-map__FlowChevron_Row--bottom {
   background-image: repeating-linear-gradient(
     -45deg,
-    var(--surface-sunken) 0,
-    var(--surface-sunken) 20px,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
     var(--surface) 20px,
     var(--surface) 40px
   );
@@ -22354,8 +22297,8 @@ tr.is-editing {
 .dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row--top {
   background-image: repeating-linear-gradient(
     -45deg,
-    var(--surface-sunken) 0,
-    var(--surface-sunken) 20px,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
     var(--surface) 20px,
     var(--surface) 40px
   );
@@ -22364,42 +22307,63 @@ tr.is-editing {
 .dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row--bottom {
   background-image: repeating-linear-gradient(
     45deg,
-    var(--surface-sunken) 0,
-    var(--surface-sunken) 20px,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
     var(--surface) 20px,
     var(--surface) 40px
   );
 }
 
-.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row {
-  animation-name: dependency-map-flow-chevron-up;
-}
-
+/* Parallel variant — both halves live inside a single Pair wrapper.
+ * The wrapper carries the animation (translateY), so the two halves
+ * are rigidly bonded and can never drift relative to each other. The
+ * wrapper is taller than the visible container by one cycle so the
+ * upward translate never reveals empty space. */
 .dependency-map__FlowChevron--parallel {
-  grid-template-columns: 1fr 1fr;
+  display: block;
+  grid-template-columns: none;
   grid-template-rows: none;
 }
 
-.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row--top {
+.dependency-map__FlowChevron_Pair {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  height: calc(100% + var(--dependency-map-chevron-cycle));
+  animation: dependency-map-flow-chevron-pair 2s linear infinite;
+  will-change: transform;
+}
+
+/* Both halves get the SAME `/` gradient — the right half is then
+ * horizontally mirrored with transform: scaleX(-1) so its rendered
+ * pattern is a literal geometric mirror of the left. This is the
+ * only way to guarantee stripe phase aligns at the central seam:
+ * mirrored gradients on independent half-boxes don't (their 0%
+ * color-stop corners differ); a single gradient flipped does. */
+.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row {
+  animation: none;
+  background-position: 0 0;
+  height: 100%;
   background-image: repeating-linear-gradient(
     -45deg,
-    var(--surface-sunken) 0,
-    var(--surface-sunken) 20px,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
     var(--surface) 20px,
     var(--surface) 40px
   );
 }
 
 .dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row--bottom {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--surface-sunken) 0,
-    var(--surface-sunken) 20px,
-    var(--surface) 20px,
-    var(--surface) 40px
-  );
+  transform: scaleX(-1);
+  transform-origin: center;
 }
 
+/* Icon badge stays neutral (white circle, black border + glyph) in
+ * both default and active states — only the surrounding chevron
+ * stripes change colour, so the badge keeps reading cleanly against
+ * either background. */
 .dependency-map__FlowChevron_Icon {
   position: absolute;
   top: 50%;
@@ -22441,12 +22405,12 @@ tr.is-editing {
   }
 }
 
-@keyframes dependency-map-flow-chevron-up {
+@keyframes dependency-map-flow-chevron-pair {
   from {
-    background-position: 0 0;
+    transform: translateY(0);
   }
   to {
-    background-position: 0 calc(-1 * var(--dependency-map-chevron-cycle));
+    transform: translateY(calc(-1 * var(--dependency-map-chevron-cycle)));
   }
 }
 

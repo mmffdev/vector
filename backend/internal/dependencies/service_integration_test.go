@@ -498,13 +498,25 @@ func TestCandidateSearch_ExcludesAlreadyLinked(t *testing.T) {
 	defer rows.Close()
 	got := map[uuid.UUID]bool{}
 	for rows.Next() {
-		var id, atypeID, tnodeID uuid.UUID
-		var title string
-		var keynum int
-		if err := rows.Scan(&id, &atypeID, &tnodeID, &title, &keynum); err != nil {
+		var c Candidate
+		if err := rows.Scan(
+			&c.ID,
+			&c.ArtefactTypeID,
+			&c.TopologyNodeID,
+			&c.Title,
+			&c.KeyNum,
+			&c.TypePrefix,
+			&c.TypeSlot,
+			&c.TypeName,
+			&c.Description,
+			&c.SprintID,
+			&c.SprintLabel,
+			&c.ReleaseID,
+			&c.MilestoneID,
+		); err != nil {
 			t.Fatalf("scan candidate: %v", err)
 		}
-		got[id] = true
+		got[c.ID] = true
 	}
 
 	// Negative assertions — none of the linked endpoints surface.

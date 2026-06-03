@@ -782,7 +782,21 @@ func (s *Service) SearchCandidates(ctx context.Context, in CandidateSearchInput)
 	out := []Candidate{}
 	for rows.Next() {
 		var c Candidate
-		if err := rows.Scan(&c.ID, &c.ArtefactTypeID, &c.TopologyNodeID, &c.Title, &c.KeyNum); err != nil {
+		if err := rows.Scan(
+			&c.ID,
+			&c.ArtefactTypeID,
+			&c.TopologyNodeID,
+			&c.Title,
+			&c.KeyNum,
+			&c.TypePrefix,
+			&c.TypeSlot,
+			&c.TypeName,
+			&c.Description,
+			&c.SprintID,
+			&c.SprintLabel,
+			&c.ReleaseID,
+			&c.MilestoneID,
+		); err != nil {
 			return nil, fmt.Errorf("dependencies.SearchCandidates: scan: %w", err)
 		}
 		out = append(out, c)

@@ -146,15 +146,24 @@ type BucketProjection struct {
 }
 
 // Candidate is the per-row wire shape for the candidate search
-// (B23.2.2). Keeps the projection narrow — the composer hydrates
-// detail (sprint, release, milestone, etc.) via /work-items if
-// needed.
+// (B23.2.2). Projection mirrors the dependency composer's render
+// shape so it can render the dropdown rows directly without a
+// second /work-items hydration round-trip per artefact.
 type Candidate struct {
-	ID             uuid.UUID `json:"id"`
-	ArtefactTypeID uuid.UUID `json:"artefact_type_id"`
-	TopologyNodeID uuid.UUID `json:"topology_node_id"`
-	Title          string    `json:"title"`
-	KeyNum         int       `json:"key_num"`
+	ID             uuid.UUID  `json:"id"`
+	ArtefactTypeID uuid.UUID  `json:"artefact_type_id"`
+	TopologyNodeID uuid.UUID  `json:"topology_node_id"`
+	Title          string     `json:"title"`
+	KeyNum         int        `json:"key_num"`
+	TypePrefix     string     `json:"type_prefix"`
+	// TypeSlot is null for custom artefact types.
+	TypeSlot       *string    `json:"type_slot"`
+	TypeName       string     `json:"type_name"`
+	Description    string     `json:"description"`
+	SprintID       *uuid.UUID `json:"sprint_id"`
+	SprintLabel    *string    `json:"sprint_label"`
+	ReleaseID      *uuid.UUID `json:"release_id"`
+	MilestoneID    *uuid.UUID `json:"milestone_id"`
 }
 
 // ReachableNode is one row in the transitive-impact response (B23.3.1).

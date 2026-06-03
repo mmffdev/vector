@@ -74,6 +74,14 @@ export interface DependencyCandidate {
   topology_node_id: ID;
   title: string;
   key_num: number;
+  type_prefix: string;
+  type_slot: string | null;
+  type_name: string;
+  description: string;
+  sprint_id: ID | null;
+  sprint_label: string | null;
+  release_id: ID | null;
+  milestone_id: ID | null;
 }
 
 /** Dependency-impact preflight wire shape (B23.1.8). */

@@ -348,13 +348,28 @@ const sqlReachabilityUpstream = `
 //   $4 = focused artefact id (excluded from results + from exclusion set)
 //   $5 = search text (case-insensitive substring on title; empty = match all)
 //   $6 = LIMIT
+//
+// Rich projection mirrors backend/internal/artefactitems/sql.go's
+// list shape so the composer can render directly from one call.
+// artefacts_types JOIN gives type_prefix for the formatted-id badge;
+// timebox columns are direct reads off artefacts. No FlowState /
+// priority joins — the dropdown doesn't render those.
 const sqlCandidateSearch = `
 	SELECT a.artefacts_id,
 	       a.artefacts_id_artefact_type,
 	       a.artefacts_id_topology_node,
 	       a.artefacts_title,
-	       a.artefacts_number
+	       a.artefacts_number,
+	       at.artefacts_types_prefix,
+	       at.artefacts_types_slot,
+	       at.artefacts_types_name,
+	       COALESCE(a.artefacts_description, ''),
+	       a.artefacts_id_timebox_sprint,
+	       a.artefacts_timebox_sprint_label,
+	       a.artefacts_id_timebox_release,
+	       a.artefacts_id_timebox_milestone
 	  FROM artefacts a
+	  JOIN artefacts_types at ON at.artefacts_types_id = a.artefacts_id_artefact_type
 	 WHERE a.artefacts_id              <> $4
 	   AND a.artefacts_id_subscription = $1
 	   AND a.artefacts_id_topology_node = ANY($2::uuid[])
