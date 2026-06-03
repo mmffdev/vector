@@ -192,6 +192,62 @@ const sqlArchiveEdge = `
 	   AND artefact_dependency_edges_archived_at IS NULL
 	 RETURNING` + sqlEdgeColumns
 
+// ── Read endpoints (B23.2.1) ────────────────────────────────────
+
+// sqlListMapsForWorkspaceNode returns live maps for one topology
+// node inside one workspace. Caller supplies the workspace_id from
+// the sentinel clamp; topology_node_id is the URL filter. Ordered
+// by name so the composer renders a stable list.
+const sqlListMapsForWorkspaceNode = `
+	SELECT` + sqlMapColumns + `
+	  FROM artefact_dependency_maps
+	 WHERE artefact_dependency_maps_id_workspace     = $1
+	   AND artefact_dependency_maps_id_topology_node = $2
+	   AND artefact_dependency_maps_archived_at      IS NULL
+	 ORDER BY artefact_dependency_maps_name ASC`
+
+// sqlListMapsForWorkspace is the same query without the topology
+// filter — used when the caller wants every map they can see in
+// the workspace (cross-node aggregate read).
+const sqlListMapsForWorkspace = `
+	SELECT` + sqlMapColumns + `
+	  FROM artefact_dependency_maps
+	 WHERE artefact_dependency_maps_id_workspace = $1
+	   AND artefact_dependency_maps_archived_at  IS NULL
+	 ORDER BY artefact_dependency_maps_name ASC`
+
+// sqlGetMapWithEdgeCount augments the standard map row read with a
+// COUNT of live edges. Used by GET /maps/{id} so the composer can
+// render the "X edges" badge without a second round-trip.
+const sqlGetMapWithEdgeCount = `
+	SELECT` + sqlMapColumns + `,
+	       (
+	           SELECT COUNT(*)
+	             FROM artefact_dependency_edges e
+	            WHERE e.artefact_dependency_edges_id_map      = m.artefact_dependency_maps_id
+	              AND e.artefact_dependency_edges_archived_at IS NULL
+	       ) AS edge_count
+	  FROM artefact_dependency_maps m
+	 WHERE m.artefact_dependency_maps_id           = $1
+	   AND m.artefact_dependency_maps_id_workspace = $2`
+
+// sqlListBucketProjection returns every live edge in one map that
+// touches the focused artefact. Caller sorts into the three buckets
+// (requires / parallel / unlocks) in Go from kind + side. One round
+// trip vs three: the composer expects all three buckets together,
+// so a single scan over the map's edges is cheaper.
+//
+//   $1 = map id
+//   $2 = focused artefact id
+const sqlListBucketProjection = `
+	SELECT` + sqlEdgeColumns + `
+	  FROM artefact_dependency_edges
+	 WHERE artefact_dependency_edges_id_map = $1
+	   AND artefact_dependency_edges_archived_at IS NULL
+	   AND (artefact_dependency_edges_id_from_artefact = $2
+	     OR artefact_dependency_edges_id_to_artefact   = $2)
+	 ORDER BY artefact_dependency_edges_created_at ASC`
+
 // ── dependency-impact preflight (B23.1.8) ───────────────────────
 
 // sqlImpactForArtefact returns one row per dependency map that has

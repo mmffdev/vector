@@ -27,6 +27,9 @@ type serviceIface interface {
 	CreateEdge(ctx context.Context, in CreateEdgeInput) (Edge, error)
 	ArchiveEdge(ctx context.Context, edgeID uuid.UUID) (Edge, error)
 	ImpactForArtefact(ctx context.Context, artefactID, workspaceID uuid.UUID) (ImpactReport, error)
+	ListMaps(ctx context.Context, nodeID uuid.UUID) ([]Map, error)
+	GetMapDetail(ctx context.Context, mapID uuid.UUID) (Map, error)
+	EdgesForFocusedArtefact(ctx context.Context, mapID, focusedArtefactID uuid.UUID) (BucketProjection, error)
 }
 
 // Handler hangs the dependencies HTTP surface off the chi router.
@@ -57,9 +60,12 @@ func newHandlerWithIface(s serviceIface) *Handler { return &Handler{svc: s} }
 // from main.go inside the /_site/dependencies route group after the
 // auth + sentinel middleware chain.
 func (h *Handler) Mount(r chi.Router) {
+	r.Get("/maps", h.ListMaps)
 	r.Post("/maps", h.CreateMap)
+	r.Get("/maps/{id}", h.GetMapDetail)
 	r.Patch("/maps/{id}", h.RenameMap)
 	r.Post("/maps/{id}/archive", h.ArchiveMap)
+	r.Get("/edges", h.ListEdgesForFocus)
 	r.Post("/edges", h.CreateEdge)
 	r.Post("/edges/{id}/archive", h.ArchiveEdge)
 }
@@ -179,6 +185,95 @@ func (h *Handler) ArchiveEdge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := h.svc.ArchiveEdge(r.Context(), edgeID)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// ListMaps handles GET /_site/dependencies/maps?topology_node_id=...
+// Sentinel-clamped to caller's workspace; topology_node_id is an
+// optional filter. Returns 200 + array (possibly empty); 403 when
+// the requested topology_node_id is outside the caller clamp.
+func (h *Handler) ListMaps(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	var nodeID uuid.UUID
+	if raw := r.URL.Query().Get("topology_node_id"); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestBadRequest)
+			return
+		}
+		nodeID = parsed
+	}
+	out, err := h.svc.ListMaps(r.Context(), nodeID)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// GetMapDetail handles GET /_site/dependencies/maps/{id}.
+// Returns the map row + live edge count; 404 missing/wrong workspace;
+// 403 when topology owner is outside caller clamp.
+func (h *Handler) GetMapDetail(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	mapID, ok := parseUUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
+	out, err := h.svc.GetMapDetail(r.Context(), mapID)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// ListEdgesForFocus handles GET /_site/dependencies/edges?focused_artefact_id=...&map_id=...
+// Returns the three-bucket projection shaped for direct composer
+// consumption: { requires, parallel, unlocks } where each entry is
+// { edge_id, artefact_id, kind }. 422 on missing/bad query params,
+// 403 on out-of-scope map, 404 on missing map.
+func (h *Handler) ListEdgesForFocus(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	rawMap := r.URL.Query().Get("map_id")
+	rawFocus := r.URL.Query().Get("focused_artefact_id")
+	if rawMap == "" || rawFocus == "" {
+		httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestMissingFields)
+		return
+	}
+	mapID, err := uuid.Parse(rawMap)
+	if err != nil {
+		httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestBadRequest)
+		return
+	}
+	focusedID, err := uuid.Parse(rawFocus)
+	if err != nil {
+		httperr.Write(w, r, http.StatusUnprocessableEntity, usermessages.RequestBadRequest)
+		return
+	}
+	out, err := h.svc.EdgesForFocusedArtefact(r.Context(), mapID, focusedID)
 	if mapped, ok := mapServiceError(err); ok {
 		httperr.Write(w, r, mapped.status, mapped.msg)
 		return

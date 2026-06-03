@@ -3146,6 +3146,73 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+      - dependencies
+      summary: GET /dependencies/edges
+      operationId: getDependenciesEdges
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: dependenciesH.ListEdgesForFocus
+        file: backend/internal/dependencies/handler.go
+      parameters:
+      - name: focused_artefact_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: map_id
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requires:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: BucketEdge
+                  parallel:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: BucketEdge
+                  unlocks:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: BucketEdge
+                required:
+                - requires
+                - parallel
+                - unlocks
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /dependencies/edges/{id}/archive:
     post:
       tags:
@@ -3319,6 +3386,91 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+      - dependencies
+      summary: GET /dependencies/maps
+      operationId: getDependenciesMaps
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: dependenciesH.ListMaps
+        file: backend/internal/dependencies/handler.go
+      parameters:
+      - name: topology_node_id
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    subscription_id:
+                      type: string
+                      format: uuid
+                    workspace_id:
+                      type: string
+                      format: uuid
+                    topology_node_id:
+                      type: string
+                      format: uuid
+                    root_artefact_id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+                    archived_at:
+                      type: string
+                      format: date-time
+                    created_by:
+                      type: string
+                      format: uuid
+                    edge_count:
+                      type: integer
+                      format: int32
+                  required:
+                  - id
+                  - subscription_id
+                  - workspace_id
+                  - topology_node_id
+                  - name
+                  - created_at
+                  - updated_at
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /dependencies/maps/{id}:
     patch:
       tags:
@@ -3406,6 +3558,87 @@ paths:
                 - updated_at
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: '500 — error codes observed: usermessages.InternalError'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+      - dependencies
+      summary: GET /dependencies/maps/{id}
+      operationId: getDependenciesMapsId
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: dependenciesH.GetMapDetail
+        file: backend/internal/dependencies/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  subscription_id:
+                    type: string
+                    format: uuid
+                  workspace_id:
+                    type: string
+                    format: uuid
+                  topology_node_id:
+                    type: string
+                    format: uuid
+                  root_artefact_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                  archived_at:
+                    type: string
+                    format: date-time
+                  created_by:
+                    type: string
+                    format: uuid
+                  edge_count:
+                    type: integer
+                    format: int32
+                required:
+                - id
+                - subscription_id
+                - workspace_id
+                - topology_node_id
+                - name
+                - created_at
+                - updated_at
         '500':
           description: '500 — error codes observed: usermessages.InternalError'
           content:

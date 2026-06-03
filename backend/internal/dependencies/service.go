@@ -561,6 +561,166 @@ func (s *Service) ArchiveEdge(ctx context.Context, edgeID uuid.UUID) (Edge, erro
 	return updated, nil
 }
 
+// ── Read endpoints (B23.2.1) ────────────────────────────────────
+
+// ListMaps returns live dependency maps in the caller's workspace,
+// optionally filtered to one topology node. nodeID = uuid.Nil means
+// "every map in the workspace" — the cross-node aggregate view.
+// Sentinel filters server-side via the workspace clamp.
+func (s *Service) ListMaps(ctx context.Context, nodeID uuid.UUID) ([]Map, error) {
+	if err := s.requirePool(); err != nil {
+		return nil, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.WorkspaceID == uuid.Nil {
+		return nil, ErrEndpointNotInScope
+	}
+	var (
+		rows pgx.Rows
+		err  error
+	)
+	if nodeID == uuid.Nil {
+		rows, err = s.pool.Query(ctx, sqlListMapsForWorkspace, c.WorkspaceID)
+	} else {
+		// When a topology filter is supplied, additionally validate the
+		// node is in the caller's allowed subtree — otherwise the wire
+		// payload would 200-empty for an out-of-clamp node, leaking
+		// existence info via timing.
+		if !nodeInScope(c, nodeID) {
+			return nil, ErrEndpointNotInScope
+		}
+		rows, err = s.pool.Query(ctx, sqlListMapsForWorkspaceNode, c.WorkspaceID, nodeID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("dependencies.ListMaps: %w", err)
+	}
+	defer rows.Close()
+
+	out := []Map{}
+	for rows.Next() {
+		m, scanErr := scanMap(rows)
+		if scanErr != nil {
+			return nil, fmt.Errorf("dependencies.ListMaps: scan: %w", scanErr)
+		}
+		out = append(out, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("dependencies.ListMaps: rows: %w", err)
+	}
+	return out, nil
+}
+
+// GetMapDetail returns one map with its live edge count populated.
+// Workspace-clamped + topology-scope re-checked so a forged map id
+// from outside the caller's clamp 404s cleanly.
+func (s *Service) GetMapDetail(ctx context.Context, mapID uuid.UUID) (Map, error) {
+	if err := s.requirePool(); err != nil {
+		return Map{}, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.WorkspaceID == uuid.Nil {
+		return Map{}, ErrEndpointNotInScope
+	}
+
+	var m Map
+	err := s.pool.QueryRow(ctx, sqlGetMapWithEdgeCount, mapID, c.WorkspaceID).Scan(
+		&m.ID,
+		&m.SubscriptionID,
+		&m.WorkspaceID,
+		&m.TopologyNodeID,
+		&m.RootArtefactID,
+		&m.Name,
+		&m.CreatedAt,
+		&m.UpdatedAt,
+		&m.ArchivedAt,
+		&m.CreatedBy,
+		&m.EdgeCount,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Map{}, ErrNotFound
+	}
+	if err != nil {
+		return Map{}, fmt.Errorf("dependencies.GetMapDetail: %w", err)
+	}
+	if !nodeInScope(c, m.TopologyNodeID) {
+		return Map{}, ErrEndpointNotInScope
+	}
+	return m, nil
+}
+
+// EdgesForFocusedArtefact returns the three-bucket projection for
+// one (map, focused artefact) pair:
+//
+//   Requires First → directed f2s edges where to == focused
+//                    (related artefact is from)
+//   Unlocks Next   → directed f2s edges where from == focused
+//                    (related artefact is to)
+//   In Parallel    → parallel edges touching focused on either side
+//                    (related artefact is whichever endpoint != focused)
+//
+// One DB round-trip; bucketing happens in Go so the SQL stays small
+// and indexed cleanly via idx_artefact_dependency_edges_map_kind_{to,from}.
+func (s *Service) EdgesForFocusedArtefact(ctx context.Context, mapID, focusedArtefactID uuid.UUID) (BucketProjection, error) {
+	if err := s.requirePool(); err != nil {
+		return BucketProjection{}, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.WorkspaceID == uuid.Nil {
+		return BucketProjection{}, ErrEndpointNotInScope
+	}
+	if mapID == uuid.Nil || focusedArtefactID == uuid.Nil {
+		return BucketProjection{}, ErrInvalidInput
+	}
+	// Map must be in caller's workspace + topology scope.
+	if _, err := s.GetMap(ctx, mapID); err != nil {
+		return BucketProjection{}, err
+	}
+
+	rows, err := s.pool.Query(ctx, sqlListBucketProjection, mapID, focusedArtefactID)
+	if err != nil {
+		return BucketProjection{}, fmt.Errorf("dependencies.EdgesForFocusedArtefact: %w", err)
+	}
+	defer rows.Close()
+
+	out := BucketProjection{
+		Requires: []BucketEdge{},
+		Parallel: []BucketEdge{},
+		Unlocks:  []BucketEdge{},
+	}
+	for rows.Next() {
+		e, scanErr := scanEdge(rows)
+		if scanErr != nil {
+			return BucketProjection{}, fmt.Errorf("dependencies.EdgesForFocusedArtefact: scan: %w", scanErr)
+		}
+		switch e.Kind {
+		case EdgeKindFinishToStart:
+			if e.ToArtefactID == focusedArtefactID {
+				// Predecessor of the focused artefact.
+				out.Requires = append(out.Requires, BucketEdge{
+					EdgeID: e.ID, ArtefactID: e.FromArtefactID, Kind: e.Kind,
+				})
+			} else if e.FromArtefactID == focusedArtefactID {
+				// Successor of the focused artefact.
+				out.Unlocks = append(out.Unlocks, BucketEdge{
+					EdgeID: e.ID, ArtefactID: e.ToArtefactID, Kind: e.Kind,
+				})
+			}
+		case EdgeKindParallel:
+			other := e.ToArtefactID
+			if other == focusedArtefactID {
+				other = e.FromArtefactID
+			}
+			out.Parallel = append(out.Parallel, BucketEdge{
+				EdgeID: e.ID, ArtefactID: other, Kind: e.Kind,
+			})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return BucketProjection{}, fmt.Errorf("dependencies.EdgesForFocusedArtefact: rows: %w", err)
+	}
+	return out, nil
+}
+
 // ── dependency-impact preflight (B23.1.8) ───────────────────────
 
 // ImpactForArtefact returns the maps that have at least one live edge

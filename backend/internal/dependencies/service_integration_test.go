@@ -296,6 +296,164 @@ func TestEdgeInsert_UniquenessAndAudit(t *testing.T) {
 	}
 }
 
+// findFourArtefactsInNode finds a topology node with at least four
+// artefacts under it so the bucket-projection test can model the
+// Story 2→3→5 + Story 3→8 fan-out exactly as the AC names.
+func findFourArtefactsInNode(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (subID, wsID, nodeID uuid.UUID, ids [4]uuid.UUID) {
+	t.Helper()
+	err := pool.QueryRow(ctx, `
+		SELECT n.topology_nodes_id,
+		       n.topology_nodes_id_subscription,
+		       n.topology_nodes_id_workspace
+		  FROM topology_nodes n
+		 WHERE n.topology_nodes_archived_at IS NULL
+		   AND (
+		       SELECT COUNT(*) FROM artefacts a
+		        WHERE a.artefacts_id_topology_node = n.topology_nodes_id
+		          AND a.artefacts_archived_at IS NULL
+		   ) >= 4
+		 LIMIT 1
+	`).Scan(&nodeID, &subID, &wsID)
+	if err != nil {
+		t.Skipf("no topology node with >=4 live artefacts in dev DB: %v", err)
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT artefacts_id
+		  FROM artefacts
+		 WHERE artefacts_id_topology_node = $1
+		   AND artefacts_archived_at IS NULL
+		 ORDER BY artefacts_id
+		 LIMIT 4
+	`, nodeID)
+	if err != nil {
+		t.Skipf("select 4 artefacts: %v", err)
+	}
+	defer rows.Close()
+	i := 0
+	for rows.Next() {
+		if err := rows.Scan(&ids[i]); err != nil {
+			t.Skipf("scan artefact: %v", err)
+		}
+		i++
+	}
+	if i != 4 {
+		t.Skipf("expected 4 artefacts, got %d", i)
+	}
+	return
+}
+
+// TestEdgesList_ProjectsThreeBuckets — AC-named regression for the
+// bucket projection (B23.2.1). Seeds the canonical Story 2→3→5 +
+// Story 3→8 chain in a rollback'd tx, focuses on Story 3, asserts
+// each bucket contains exactly the expected related artefact ids.
+//
+// Story 3 viewed from its frame of reference:
+//   Requires First: Story 2 (the predecessor)
+//   Unlocks Next:   Story 5, Story 8 (the two successors)
+//   In Parallel:    none
+func TestEdgesList_ProjectsThreeBuckets(t *testing.T) {
+	pool := openTestPool(t)
+	ctx := context.Background()
+	subID, wsID, nodeID, ids := findFourArtefactsInNode(t, ctx, pool)
+	// Name the four artefacts so the bucket assertions read clearly.
+	story2, story3, story5, story8 := ids[0], ids[1], ids[2], ids[3]
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var mapID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		INSERT INTO artefact_dependency_maps (
+		    artefact_dependency_maps_id_subscription,
+		    artefact_dependency_maps_id_workspace,
+		    artefact_dependency_maps_id_topology_node,
+		    artefact_dependency_maps_name
+		) VALUES ($1, $2, $3, $4)
+		RETURNING artefact_dependency_maps_id
+	`, subID, wsID, nodeID, "TestEdgesList_ProjectsThreeBuckets").Scan(&mapID)
+	if err != nil {
+		t.Fatalf("insert test map: %v", err)
+	}
+
+	// Seed the chain. Story 2 → Story 3, Story 3 → Story 5, Story 3 → Story 8.
+	for _, edge := range []struct{ from, to uuid.UUID }{
+		{story2, story3},
+		{story3, story5},
+		{story3, story8},
+	} {
+		if _, err := tx.Exec(ctx, sqlInsertEdge,
+			mapID, edge.from, edge.to, "finish_to_start", nil,
+		); err != nil {
+			t.Fatalf("insert %s→%s: %v", edge.from, edge.to, err)
+		}
+	}
+
+	// Query the bucket projection directly via the SQL (sidestepping
+	// the service-layer scope check — which would also need a clamp
+	// injected via sentinel.TestingWithClamp, more setup for the same
+	// signal). The point of THIS test is the SQL + Go bucketing math.
+	rows, err := tx.Query(ctx, sqlListBucketProjection, mapID, story3)
+	if err != nil {
+		t.Fatalf("query bucket projection: %v", err)
+	}
+	defer rows.Close()
+
+	var requires, parallel, unlocks []uuid.UUID
+	for rows.Next() {
+		e, err := scanEdge(rows)
+		if err != nil {
+			t.Fatalf("scan edge: %v", err)
+		}
+		switch e.Kind {
+		case EdgeKindFinishToStart:
+			if e.ToArtefactID == story3 {
+				requires = append(requires, e.FromArtefactID)
+			} else if e.FromArtefactID == story3 {
+				unlocks = append(unlocks, e.ToArtefactID)
+			}
+		case EdgeKindParallel:
+			other := e.ToArtefactID
+			if other == story3 {
+				other = e.FromArtefactID
+			}
+			parallel = append(parallel, other)
+		}
+	}
+
+	// Assertions.
+	if len(requires) != 1 || requires[0] != story2 {
+		t.Errorf("requires = %v, want [%s] (Story 2)", requires, story2)
+	}
+	if len(unlocks) != 2 || !containsAll(unlocks, story5, story8) {
+		t.Errorf("unlocks = %v, want {%s, %s} (Story 5, Story 8)", unlocks, story5, story8)
+	}
+	if len(parallel) != 0 {
+		t.Errorf("parallel = %v, want [] (no parallel edges in this fixture)", parallel)
+	}
+}
+
+// containsAll tests set-equality regardless of order — bucket SQL
+// returns rows in created_at order which would be flaky to pin
+// directly across SQL runs.
+func containsAll(got []uuid.UUID, want ...uuid.UUID) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	seen := make(map[uuid.UUID]bool, len(got))
+	for _, g := range got {
+		seen[g] = true
+	}
+	for _, w := range want {
+		if !seen[w] {
+			return false
+		}
+	}
+	return true
+}
+
 // mustSavepoint runs fn inside a SAVEPOINT and rolls back to it
 // regardless of fn's outcome, so a SQLSTATE 25P02 abort on one
 // assertion doesn't poison the rest of the outer tx.

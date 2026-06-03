@@ -32,6 +32,9 @@ type fakeService struct {
 	createEdgeFn  func(ctx context.Context, in CreateEdgeInput) (Edge, error)
 	archiveEdgeFn func(ctx context.Context, id uuid.UUID) (Edge, error)
 	impactFn      func(ctx context.Context, artefactID, workspaceID uuid.UUID) (ImpactReport, error)
+	listMapsFn    func(ctx context.Context, nodeID uuid.UUID) ([]Map, error)
+	getDetailFn   func(ctx context.Context, mapID uuid.UUID) (Map, error)
+	bucketsFn     func(ctx context.Context, mapID, focusedID uuid.UUID) (BucketProjection, error)
 }
 
 func (f *fakeService) CreateMap(ctx context.Context, in CreateMapInput) (Map, error) {
@@ -81,6 +84,27 @@ func (f *fakeService) ImpactForArtefact(ctx context.Context, artefactID, workspa
 		return ImpactReport{}, errors.New("ImpactForArtefact not configured")
 	}
 	return f.impactFn(ctx, artefactID, workspaceID)
+}
+
+func (f *fakeService) ListMaps(ctx context.Context, nodeID uuid.UUID) ([]Map, error) {
+	if f.listMapsFn == nil {
+		return nil, errors.New("ListMaps not configured")
+	}
+	return f.listMapsFn(ctx, nodeID)
+}
+
+func (f *fakeService) GetMapDetail(ctx context.Context, mapID uuid.UUID) (Map, error) {
+	if f.getDetailFn == nil {
+		return Map{}, errors.New("GetMapDetail not configured")
+	}
+	return f.getDetailFn(ctx, mapID)
+}
+
+func (f *fakeService) EdgesForFocusedArtefact(ctx context.Context, mapID, focusedID uuid.UUID) (BucketProjection, error) {
+	if f.bucketsFn == nil {
+		return BucketProjection{}, errors.New("EdgesForFocusedArtefact not configured")
+	}
+	return f.bucketsFn(ctx, mapID, focusedID)
 }
 
 // mountForTest wires the handler under /_site/dependencies on a chi
@@ -640,6 +664,147 @@ func TestArchiveEdge_BadID(t *testing.T) {
 	status, _ := run(srv, req)
 	if status != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want 422", status)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Read endpoints (B23.2.1) — handler-level error mapping.
+// ─────────────────────────────────────────────────────────────────
+
+func TestListMaps_HappyPath(t *testing.T) {
+	t.Parallel()
+	wantMap := Map{ID: uuid.New(), Name: "Q3 release"}
+	svc := &fakeService{
+		listMapsFn: func(ctx context.Context, nodeID uuid.UUID) ([]Map, error) {
+			return []Map{wantMap}, nil
+		},
+	}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodGet, "/_site/dependencies/maps?topology_node_id="+uuid.New().String(), "user", nil)
+	status, body := run(srv, req)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, body)
+	}
+	var got []Map
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != wantMap.ID {
+		t.Errorf("got = %v, want [%s]", got, wantMap.ID)
+	}
+}
+
+func TestListMaps_BadNodeUUID(t *testing.T) {
+	t.Parallel()
+	srv := mountForTest(&fakeService{})
+	req := authedReq(t, http.MethodGet, "/_site/dependencies/maps?topology_node_id=not-a-uuid", "user", nil)
+	status, _ := run(srv, req)
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", status)
+	}
+}
+
+func TestListMaps_NodeOutOfScope(t *testing.T) {
+	t.Parallel()
+	svc := &fakeService{
+		listMapsFn: func(ctx context.Context, nodeID uuid.UUID) ([]Map, error) {
+			return nil, ErrEndpointNotInScope
+		},
+	}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodGet, "/_site/dependencies/maps?topology_node_id="+uuid.New().String(), "user", nil)
+	status, _ := run(srv, req)
+	if status != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", status)
+	}
+}
+
+func TestGetMapDetail_HappyPath(t *testing.T) {
+	t.Parallel()
+	want := Map{ID: uuid.New(), Name: "x", EdgeCount: 5}
+	svc := &fakeService{
+		getDetailFn: func(ctx context.Context, id uuid.UUID) (Map, error) { return want, nil },
+	}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodGet, "/_site/dependencies/maps/"+want.ID.String(), "user", nil)
+	status, body := run(srv, req)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	var got Map
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.EdgeCount != 5 {
+		t.Errorf("edge_count = %d, want 5", got.EdgeCount)
+	}
+}
+
+func TestGetMapDetail_NotFound(t *testing.T) {
+	t.Parallel()
+	svc := &fakeService{
+		getDetailFn: func(ctx context.Context, id uuid.UUID) (Map, error) {
+			return Map{}, ErrNotFound
+		},
+	}
+	srv := mountForTest(svc)
+	req := authedReq(t, http.MethodGet, "/_site/dependencies/maps/"+uuid.New().String(), "user", nil)
+	status, _ := run(srv, req)
+	if status != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", status)
+	}
+}
+
+func TestListEdgesForFocus_HappyPath(t *testing.T) {
+	t.Parallel()
+	requires := []BucketEdge{{EdgeID: uuid.New(), ArtefactID: uuid.New(), Kind: EdgeKindFinishToStart}}
+	unlocks := []BucketEdge{
+		{EdgeID: uuid.New(), ArtefactID: uuid.New(), Kind: EdgeKindFinishToStart},
+		{EdgeID: uuid.New(), ArtefactID: uuid.New(), Kind: EdgeKindFinishToStart},
+	}
+	svc := &fakeService{
+		bucketsFn: func(ctx context.Context, mapID, focusedID uuid.UUID) (BucketProjection, error) {
+			return BucketProjection{Requires: requires, Parallel: []BucketEdge{}, Unlocks: unlocks}, nil
+		},
+	}
+	srv := mountForTest(svc)
+	url := "/_site/dependencies/edges?map_id=" + uuid.New().String() +
+		"&focused_artefact_id=" + uuid.New().String()
+	req := authedReq(t, http.MethodGet, url, "user", nil)
+	status, body := run(srv, req)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", status, body)
+	}
+	var got BucketProjection
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got.Requires) != 1 || len(got.Unlocks) != 2 || len(got.Parallel) != 0 {
+		t.Errorf("buckets = %+v, want 1 req / 2 unl / 0 par", got)
+	}
+}
+
+func TestListEdgesForFocus_MissingParams(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, url string
+	}{
+		{"no_params", "/_site/dependencies/edges"},
+		{"only_map", "/_site/dependencies/edges?map_id=" + uuid.New().String()},
+		{"only_focus", "/_site/dependencies/edges?focused_artefact_id=" + uuid.New().String()},
+		{"bad_map_uuid", "/_site/dependencies/edges?map_id=nope&focused_artefact_id=" + uuid.New().String()},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			srv := mountForTest(&fakeService{})
+			req := authedReq(t, http.MethodGet, c.url, "user", nil)
+			status, _ := run(srv, req)
+			if status != http.StatusUnprocessableEntity {
+				t.Fatalf("%s: status = %d, want 422", c.name, status)
+			}
+		})
 	}
 }
 

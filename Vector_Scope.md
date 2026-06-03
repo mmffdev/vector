@@ -2391,13 +2391,14 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
 
 ### B23.2 Phase 1 — Read endpoints + composer wire-up
 
-- **B23.2.1 [P2] 🔵 IN FLIGHT** — Read endpoints — list maps, three-bucket edge projection. The composer's read surface.
+- ✅ ~~**B23.2.1 [P2]** — Read endpoints — list maps, three-bucket edge projection. The composer's read surface.~~
   - AC: `GET /_site/dependencies/maps?topology_node_id=...` returns 200 + array; Sentinel filters server-side.
   - AC: `GET /_site/dependencies/maps/{id}` returns detail + edge count.
   - AC: `GET /_site/dependencies/edges?focused_artefact_id=...&map_id=...` returns `{ requires, parallel, unlocks }` shaped for direct composer consumption.
   - AC: Go test `TestEdgesList_ProjectsThreeBuckets` seeds Story 2→3→5 + Story 3→8 and asserts the three-bucket projection when focused on Story 3.
   - AC: Scalar/openapi entries added.
   - Plan: PLA074
+  > Last checked: 2026-06-03 — three handlers landed: `ListMaps` (workspace + optional topology_node filter; 403 on out-of-scope node), `GetMapDetail` (returns Map + `edge_count` via correlated subquery), `ListEdgesForFocus` (single SELECT over the focused artefact's edges in one map; Go bucketing into requires/parallel/unlocks per `kind` + direction). Live-DB `TestEdgesList_ProjectsThreeBuckets` PASSES: seeds Story 2→3→5 + Story 3→8 in a rollback'd tx, asserts Requires=[Story 2], Unlocks={Story 5, Story 8}, Parallel=[] when focused on Story 3. 7 handler tests cover happy path + 422 missing/bad params + 404 + 403 across the three new GETs.
 - **B23.2.2 [P2] 🔵 IN FLIGHT** — Server-side candidate exclusion. Close the multi-state-add loophole at the backend, not in React.
   - AC: `GET /_site/dependencies/candidates?focused_artefact_id=...&map_id=...&bucket=...&q=...` excludes any artefact already linked to the focused target in the named map, regardless of bucket.
   - AC: Sentinel filters candidates to those the caller can see.

@@ -125,3 +125,22 @@ type ImpactReport struct {
 	ImpactedMaps []MapImpact `json:"impacted_maps"`
 	TotalEdges   int         `json:"total_edges"`
 }
+
+// BucketEdge is the per-edge shape inside the three-bucket projection
+// returned by GET /_site/dependencies/edges. The composer joins
+// artefact_id back to /work-items for rendering details.
+type BucketEdge struct {
+	EdgeID     uuid.UUID `json:"edge_id"`
+	ArtefactID uuid.UUID `json:"artefact_id"`
+	Kind       EdgeKind  `json:"kind"`
+}
+
+// BucketProjection is the wire shape returned for the focused
+// artefact + map_id read. Mirrors the composer's
+// DependencyBucketKey vocabulary (`requires` / `parallel` /
+// `unlocks`) so the frontend can consume it without remapping.
+type BucketProjection struct {
+	Requires []BucketEdge `json:"requires"`
+	Parallel []BucketEdge `json:"parallel"`
+	Unlocks  []BucketEdge `json:"unlocks"`
+}
