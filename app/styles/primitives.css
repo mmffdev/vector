@@ -26,7 +26,7 @@
   --buttons-main-border-hover:     var(--buttons-main-ink-hover);
 
   --buttons-main-ink-active:      #f7f7f7;
-  --buttons-main-bg-active:       #be513f;
+  --buttons-main-bg-active:       #5C5C5C;
   --buttons-main-border-active:     var(--buttons-main-bg-active);
 
   --buttons-secondary-ink:        #f7f7f7;
@@ -68,11 +68,13 @@
   --data-headers:                 var(--surface-sunken);
   --data-headers-ink:             var(--ink);
 
-  --grid-tree-row-connector: #be513f;
-  --grid-tree-expander-closed: #be513f;
-  --grid-tree-expander-open: #142424;
+  --grid-tree-header-ink:           #f7f7f7;
+  --grid-tree-header-bg:            #142424;
+  --grid-tree-row-connector:        #5C5C5C;
+  --grid-tree-expander-closed:      #be513f;
+  --grid-tree-expander-open:        #142424;
 
-  /* GRID - FlowStatePillRow*/
+  /* GRID Artefact Rows - FlowStatePillRow*/
   --grid-tree-row-flow-state-btn-ink-normal:  #142424;
   --grid-tree-row-flow-state-btn-bg-normal:   #f7f7f7;
   --grid-tree-row-flow-state-btn-border-normal: #142424;
@@ -82,9 +84,10 @@
   --grid-tree-row-flow-state-btn-border-hover: #142424;
 
   --grid-tree-row-flow-state-btn-ink-active:  #f7f7f7;
-  --grid-tree-row-flow-state-btn-bg-active:   #be513f;
-  --grid-tree-row-flow-state-btn-border-active: #be513f;
+  --grid-tree-row-flow-state-btn-bg-active:   #5C5C5C;
+  --grid-tree-row-flow-state-btn-border-active: #142424;
 
+  --grid-tree-row-colour-btn-border-active: #142424;
   /* ── 1. CANVAS ─────────────────────────────────────────────
      Page surfaces — what everything sits on. */
   --canvas:          #f7f7f7;
@@ -140,11 +143,14 @@
   --status-info-bg:      #E1ECF5;
 
   /* ── 7. TYPE ───────────────────────────────────────────────
-     Typefaces and scale. --font-sans / --font-mono are bound by
-     Next.js in app/layout.tsx (Satoshi local + JetBrains Mono).
-     Display + numeric chain off --font-sans so theme swaps propagate. */
+     Typefaces and scale. --font-sans is bound by Next.js in
+     app/layout.tsx (Archivo). Display / numeric / mono all chain
+     off --font-sans so the site reads as a single family — Vector
+     ships sans-only by design; every existing `var(--font-mono)`
+     rule still resolves, but renders in Archivo. */
   --font-display: var(--font-sans), system-ui, sans-serif;
   --font-numeric: var(--font-sans), system-ui, sans-serif;
+  --font-mono:    var(--font-sans), system-ui, sans-serif;
 
   --text-xs:   11px;  --leading-xs:   16px;
   --text-sm:   13px;  --leading-sm:   20px;
