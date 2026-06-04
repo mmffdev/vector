@@ -90,7 +90,7 @@ function MFASection() {
           <p className="mfa-section__body">Your account is protected with an authenticator app. You&apos;ll be asked for a code each time you sign in.</p>
         </div>
         {!showDisable ? (
-          <button className="btn btn--danger" onClick={() => setShowDisable(true)}>Disable two-factor authentication</button>
+          <button className="btn btn--caution" onClick={() => setShowDisable(true)}>Disable two-factor authentication</button>
         ) : (
           <div className="mfa-section__disable-row">
             <input
@@ -101,7 +101,7 @@ function MFASection() {
               onChange={(e) => setDisablePassword(e.target.value)}
               className="form__input mfa-section__disable-input"
             />
-            <button className="btn btn--danger" onClick={disableMFA} disabled={busy || !disablePassword}>
+            <button className="btn btn--caution" onClick={disableMFA} disabled={busy || !disablePassword}>
               {busy ? "Disabling…" : "Confirm disable"}
             </button>
             <button className="btn btn--ghost" onClick={() => { setShowDisable(false); setDisablePassword(""); }}>Cancel</button>

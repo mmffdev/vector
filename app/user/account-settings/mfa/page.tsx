@@ -216,7 +216,7 @@ export default function MFASettingsPage() {
             {!showDisable ? (
               <button
                 type="button"
-                className="btn btn--danger"
+                className="btn btn--caution"
                 onClick={() => setShowDisable(true)}
               >
                 Disable two-factor authentication
@@ -234,7 +234,7 @@ export default function MFASettingsPage() {
                     className="form__input"
                   />
                   <button
-                    className="btn btn--danger"
+                    className="btn btn--caution"
                     onClick={disableMFA}
                     disabled={busy || !disablePassword}
                   >
