@@ -148,20 +148,6 @@ export const auth = {
     }),
 };
 
-// Pages: app/hooks/useThemePack.ts
-// ─── Me  (/me) ───────────────────────────────────────────────────────────────
-
-export const me = {
-  getThemePack: () =>
-    apiSite<{ theme_pack: string | null }>("/me/theme-pack"),
-
-  setThemePack: (pack: string | null) =>
-    apiSite<void>("/me/theme-pack", {
-      method: "PUT",
-      body: JSON.stringify({ theme_pack: pack }),
-    }),
-};
-
 // Pages: app/contexts/NavPrefsContext.tsx, app/login/page.tsx (start-page redirect),
 //        app/components/SecondaryNavigation.tsx (profile ops)
 // ─── Nav  (/nav) ─────────────────────────────────────────────────────────────

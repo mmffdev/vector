@@ -114,16 +114,6 @@ const sqlSelectUserByIDInTenant = `
 		FROM users WHERE users_id = $1 AND users_id_subscription = $2
 	`
 
-// ── prefs.go (theme pack) ──────────────────────────────────────────────────
-
-// sqlSelectUserThemePack reads the user's selected theme pack id.
-// NULL fallback handled in Go (GetThemePack returns "default").
-const sqlSelectUserThemePack = `SELECT users_theme_pack FROM users WHERE users_id = $1`
-
-// sqlUpdateUserThemePack persists the theme-pack selection. updated_at
-// is bumped for cache-bust on the read side.
-const sqlUpdateUserThemePack = `UPDATE users SET users_theme_pack = $1, users_updated_at = NOW() WHERE users_id = $2`
-
 // sqlSelectUserActiveScope reads the user's last-selected scope node ID.
 const sqlSelectUserActiveScope = `SELECT users_id_active_scope_node FROM users WHERE users_id = $1`
 

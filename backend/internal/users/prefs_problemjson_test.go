@@ -21,20 +21,6 @@ import (
 // never includes these.
 var pgxBleed = regexp.MustCompile(`(?i)(\bERROR:|\bpgconn\b|\brelation\s+"|\bSQLSTATE\b)`)
 
-func TestPrefs_GetThemePack_Unauth_ProblemJSON(t *testing.T) {
-	h := &Handler{}
-	req := httptest.NewRequest("GET", "/me/theme-pack", nil)
-	rec := httptest.NewRecorder()
-	h.GetThemePack(rec, req)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d (body: %s)", rec.Code, rec.Body.String())
-	}
-	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/problem+json") {
-		t.Fatalf("expected Content-Type application/problem+json, got %q", ct)
-	}
-}
-
 func TestPrefs_SetActiveScope_Unauth_ProblemJSON(t *testing.T) {
 	h := &Handler{}
 	req := httptest.NewRequest("PUT", "/me/active-scope", strings.NewReader(`{}`))
@@ -77,9 +63,6 @@ func TestPrefs_ErrorBodies_NeverLeakPGXText(t *testing.T) {
 		name string
 		call func(rec *httptest.ResponseRecorder)
 	}{
-		{"GetThemePack", func(rec *httptest.ResponseRecorder) {
-			h.GetThemePack(rec, httptest.NewRequest("GET", "/me/theme-pack", nil))
-		}},
 		{"SetActiveScope", func(rec *httptest.ResponseRecorder) {
 			h.SetActiveScope(rec, httptest.NewRequest("PUT", "/me/active-scope", strings.NewReader(`{}`)))
 		}},
@@ -91,9 +74,6 @@ func TestPrefs_ErrorBodies_NeverLeakPGXText(t *testing.T) {
 		}},
 		{"DeletePreference", func(rec *httptest.ResponseRecorder) {
 			h.DeletePreference(rec, httptest.NewRequest("DELETE", "/me/preferences/x", nil))
-		}},
-		{"SetThemePack", func(rec *httptest.ResponseRecorder) {
-			h.SetThemePack(rec, httptest.NewRequest("PUT", "/me/theme-pack", strings.NewReader(`{"pack":"x"}`)))
 		}},
 	}
 	for _, c := range cases {

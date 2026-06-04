@@ -1352,9 +1352,6 @@ func main() {
 		r.Use(httprate.LimitByIP(120, time.Minute))
 		r.Use(userWriteLimiter)
 
-		r.Get("/theme-pack", usersH.GetThemePack)
-		r.Put("/theme-pack", usersH.SetThemePack)
-
 		r.Get("/active-scope", usersH.GetActiveScope)
 		r.Put("/active-scope", usersH.SetActiveScope)
 
