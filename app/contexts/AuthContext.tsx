@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
+import { broadcastAuthEvent, coordinatedRefresh } from "@/app/lib/authChannel";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 // DPoP (RFC 9449) keypair lifecycle. Generated before the initial
@@ -126,6 +127,14 @@ export const AuthContext = Ctx;
 let _bootstrapFlight: Promise<void> | null = null;
 let _bootstrapped = false;
 
+// _lastBroadcastTokenAt is bumped whenever this tab receives a "refreshed"
+// broadcast from another tab (listener added in the channel-subscription
+// effect). coordinatedRefresh's freshTokenArrived() compares a snapshot
+// taken before acquiring the lock against the current value: if it changed,
+// a sibling tab rotated the cookie while we queued, so we adopt that token
+// instead of rotating again.
+let _lastBroadcastTokenAt = 0;
+
 // B16.8.7 — session_alive is a UI-only hint cookie (no auth value;
 // HttpOnly=false is fine because it's read by AuthContext on bootstrap
 // to decide whether to attempt /auth/refresh). Secure flag IS required
@@ -176,25 +185,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (refreshInFlight.current) return refreshInFlight.current;
+    // Snapshot the broadcast marker BEFORE we queue for the lock. If a
+    // sibling tab broadcasts a fresh token while we wait, the marker
+    // advances and freshTokenArrived() returns true → we skip the network
+    // refresh and adopt the broadcast token (set by the channel listener).
+    const seenBefore = _lastBroadcastTokenAt;
     const flight = (async () => {
-      try {
-        const res = await apiSite<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
-        applyLogin(res);
-        _bootstrapped = true;
-      } catch (e) {
-        // Only clear user state on REAL auth failures (backend returned 4xx).
-        // Network errors — TypeError("Failed to fetch") during a dev backend
-        // restart, AbortError mid-navigation — are transient: the session in
-        // Postgres is still valid, and the next request will refresh fine.
-        // Nuking state here was the root cause of the air-restart logout
-        // cascade (1006 WS close → refresh() → fetch throws → logged out).
-        if (e instanceof ApiError) {
-          setApiToken(null);
-          setUser(null);
-          clearSessionCookie();
-          _bootstrapped = false;
-        }
-      }
+      await coordinatedRefresh({
+        freshTokenArrived: () => _lastBroadcastTokenAt !== seenBefore,
+        doRefresh: async () => {
+          try {
+            const res = await apiSite<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
+            applyLogin(res);
+            _bootstrapped = true;
+            // Tell sibling tabs the cookie was just rotated and hand them
+            // the new access token so they don't rotate it again.
+            broadcastAuthEvent({ type: "refreshed", accessToken: res.access_token, userId: res.user.id });
+          } catch (e) {
+            // Only clear state on REAL auth failures (backend 4xx). Network
+            // errors are transient (dev backend restart, mid-nav abort);
+            // nuking state here caused the air-restart logout cascade.
+            if (e instanceof ApiError) {
+              setApiToken(null);
+              setUser(null);
+              clearSessionCookie();
+              _bootstrapped = false;
+            }
+          }
+        },
+      });
     })().finally(() => {
       refreshInFlight.current = null;
     });
