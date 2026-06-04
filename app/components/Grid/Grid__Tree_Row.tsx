@@ -14,6 +14,7 @@
 
 import { memo } from "react";
 import type { HTMLAttributes } from "react";
+import { MdOutlineAddBox, MdOutlineIndeterminateCheckBox } from "react-icons/md";
 import { GridTreeLines } from "./Grid__Tree_Lines";
 import type { GridColumn, GridLoadingStyle, TreeNode } from "./types";
 
@@ -91,14 +92,16 @@ function GridTreeRowInner<TRow>({
           key={col.id}
         >
           {i === 0 ? (
-            // Primary cell — the ONLY place that indents. The TreeLines SVG
-            // (width = depth × step) provides the indent + ├└│ rails; the caret
-            // sits right after it. Lead columns are outside this cell, so they
-            // never shift with depth (ResourceTree model).
+            // Primary cell — the indent SVG comes FIRST (width = depth × step),
+            // then the caret, then the badge/id. This indents the caret by
+            // depth × step so child carets sit one step right of their parent.
+            // Connector rails anchor on the CARET centre at each depth and the
+            // elbow tail lands on the child caret's left edge.
             <>
               <GridTreeLines
                 depth={node.depth}
                 isLast={node.isLast}
+                hasChildren={node.hasChildren}
                 hasVisibleChildren={node.hasVisibleChildren}
                 continuations={node.continuations}
               />
@@ -114,7 +117,17 @@ function GridTreeRowInner<TRow>({
                     node.toggle();
                   }}
                 >
-                  <span className="grid__Tree_CaretGlyph" aria-hidden="true" />
+                  {node.expanded ? (
+                    <MdOutlineIndeterminateCheckBox
+                      className="grid__Tree_CaretGlyph"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <MdOutlineAddBox
+                      className="grid__Tree_CaretGlyph"
+                      aria-hidden="true"
+                    />
+                  )}
                 </button>
               ) : (
                 <span className="grid__Tree_CaretSpacer" aria-hidden="true" />

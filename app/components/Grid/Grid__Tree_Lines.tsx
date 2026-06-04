@@ -1,36 +1,52 @@
 "use client";
 
 // Grid__Tree_Lines — the per-row tree connector + indent, drawn as a single
-// inline SVG inside the PRIMARY cell. Copied from ResourceTree's TreeLines so
-// the rails read identically. The SVG's width (depth × STEP) IS the indent —
-// it sits inline before the caret, so only the primary cell content shifts;
-// the lead columns (stripe/checkbox/drag/cog) never move.
+// inline SVG inside the PRIMARY cell. The SVG's width (depth × STEP) IS the
+// indent. The caret is rendered BEFORE this SVG (fixed column at every depth),
+// so only the badge/label content shifts with depth; the +/− boxes stay
+// vertically aligned. Rails anchor on the BADGE column at each depth (Rally
+// pattern) — not the caret — and curve into each child badge from the left.
 //
-// Geometry:
+// Geometry (CONNECTOR_STYLE='hook', the active default — Rally-style curved
+// hooks; each child gets its own quarter-arc from the parent's column out to
+// the badge):
 //   • continuations[i] === true → a │ through-line at ancestor level i (that
 //     ancestor has more siblings below this subtree).
-//   • isLast → this row's own connector is an elbow └; else a tee ├.
+//   • non-last sibling → full through-vertical AT this row's parent column,
+//     plus a quarter-arc branching off at MID and curving right to the badge.
+//   • last sibling → no through-vertical past the curve; the curve descends
+//     from the top to MID-R, arcs through MID, then runs right.
 //   • hasVisibleChildren → a short ↓ stub dropping to the first child's rail.
+//
+// Geometry (CONNECTOR_STYLE='elbow', preserved for potential later use):
+//   • isLast → this row's own connector is an elbow └; else a tee ├.
+//   • horizontal runs from the parent column to stubEndX at MID.
 
-// Indent per depth level. The primary cell has gap:0 (.grid__Tree_Cell--primary)
-// so the indent SVG butts straight against the caret — consecutive caret centres
-// therefore step by exactly TREE_STEP, which is what lets one constant offset
-// align the rail on every level's caret.
+// Indent per depth level. The primary cell renders [indent SVG][caret][badge]
+// (caret sits AFTER the indent), so the caret is indented by depth × TREE_STEP
+// — same per-level offset as the badge column. SVG x=0 is the cell-content
+// start; the caret centre at depth N is at SVG x = N*step + CARET_CENTRE.
 export const TREE_STEP = 28;
-export const TREE_ROW_H = 30; // row height (matches --tree-row-h)
-// Base x for the rail verticals. Caret centres sit at 24, 48, 72, … (cell
-// left-pad 16 + half caret 8, then +step per level); 24 would put the rail
-// dead-centre under the chevron. Set to 33 to position the whole rail (│
-// through-lines, ├└ downstrokes, child drop-stub) relative to the chevron.
-const CARET_OFFSET = 33;
-// Horizontal ├/└ stub length past its rail vertical — reaches under this row's
-// own caret and on toward the badge (longer = closer to the badge). Tuned so the
-// tee/elbow sits just under the badge.
-const STUB_EXTEND = 29;
+export const TREE_ROW_H = 48; // row height (matches --tree-row-h)
+// Connector visual style. 'hook' = Rally-style curved quarter-arcs (active
+// default). 'elbow' = sharp ├/└ tees/elbows (kept available for later use).
+type ConnectorStyle = "hook" | "elbow";
+const CONNECTOR_STYLE: ConnectorStyle = "hook";
+// Quarter-arc radius for the 'hook' style. The curve descends to MID-R, arcs
+// through MID, then runs horizontally to stubEndX.
+const HOOK_RADIUS = 8;
+// Caret centre's x offset within its flex slot. Caret is 16px wide with
+// margin-left: -3 (CSS .grid__Tree_Caret), so its border-box left sits at
+// slot-x = -3 and its visual centre at slot-x = -3 + 8 = 5.
+const CARET_CENTRE = 5;
+// Caret's visual LEFT EDGE within its flex slot (margin-left: -3). The elbow
+// tail ends here so the connector lands on the caret's left middle.
+const CARET_LEFT = -3;
 
 export interface GridTreeLinesProps {
   depth: number;
   isLast: boolean;
+  hasChildren: boolean;
   hasVisibleChildren: boolean;
   continuations: boolean[];
   step?: number;
@@ -40,6 +56,7 @@ export interface GridTreeLinesProps {
 export function GridTreeLines({
   depth,
   isLast,
+  hasChildren,
   hasVisibleChildren,
   continuations,
   step = TREE_STEP,
@@ -52,21 +69,24 @@ export function GridTreeLines({
   if (depth === 0 && !hasVisibleChildren) return null;
 
   const H = rowH;
-  // Vertical centre of the row's CONTENT, nudged 5px up to sit dead-centre on
-  // the badge ((H-1)/2 content-centre, minus 5).
-  const MID = (H - 1) / 2 - 5;
-  // SVG LAYOUT width = the true indent (0 at depth 0, so a root row gets no
-  // indent). The drop-stub at childLineX overflows this box (overflow:visible),
-  // so a root with children still draws its descending vertical without pushing
-  // its own caret right.
+  // Vertical centre of the row. Hook tail lands here = row mid = caret centre
+  // (caret is flex-centred in the cell).
+  const MID = H / 2;
+  // SVG layout width = the indent before the caret (0 at depth 0). The caret
+  // sits AFTER the SVG in flex flow, so the caret column at depth N is at
+  // SVG x = N*step + CARET_CENTRE. Drop-stub overflows past W via overflow:visible.
   const W = depth * step;
-  const lineX = (depth - 1) * step + CARET_OFFSET; // on the PARENT caret centre
-  // The drop-stub / child-elbow anchor sits one level deeper, under THIS row's
-  // own caret — i.e. where this row's children's rail rises to.
-  const childLineX = depth * step + CARET_OFFSET;
-  // Horizontal elbow/tee end — runs to just past this row's own caret toward the
-  // badge so the rail visibly TOUCHES it. Overflows the SVG box (overflow:visible).
-  const stubEndX = lineX + STUB_EXTEND;
+  // Parent caret centre column (this row's incoming rail rises here).
+  const lineX = (depth - 1) * step + CARET_CENTRE;
+  // THIS row's caret centre column — drop-stub descends here into the children.
+  const childLineX = depth * step + CARET_CENTRE;
+  // Elbow tail ends at:
+  //   - branch row (hasChildren): child caret's LEFT EDGE (depth*step - 3)
+  //   - leaf row (no caret): the BADGE's LEFT EDGE, after the invisible
+  //     CaretSpacer's 21px advance, so the connector visibly reaches the
+  //     badge instead of stopping in mid-air.
+  const BADGE_OFFSET = 21; // caret/spacer advance: -3 margin-left + 16 width + 8 margin-right
+  const stubEndX = depth * step + (hasChildren ? CARET_LEFT : BADGE_OFFSET);
 
   const throughPaths: string[] = [];
   const paths: string[] = [];
@@ -79,42 +99,61 @@ export function GridTreeLines({
   const ancestors = continuations.slice(0, -1);
   ancestors.forEach((cont, i) => {
     if (cont) {
-      const x = i * step + CARET_OFFSET;
+      const x = i * step + CARET_CENTRE;
       throughPaths.push(`M${x} 0 L${x} ${H}`);
     }
   });
 
   // This row's own connector (skipped at depth 0, which has no incoming rail).
   // Horizontal runs to stubEndX (touches the badge); vertical sits on the
-  // parent caret centre (lineX).
+  // parent caret centre (lineX). Last child = elbow only (no through-pole
+  // descending past this row); non-last = through-vertical + hook.
   if (depth > 0) {
-    if (isLast) {
-      // └ — down to mid, then right.
-      paths.push(`M${lineX} 0 L${lineX} ${MID} L${stubEndX} ${MID}`);
+    const needThroughVertical = !isLast;
+    if (CONNECTOR_STYLE === "hook") {
+      const R = HOOK_RADIUS;
+      if (needThroughVertical) {
+        paths.push(`M${lineX} 0 L${lineX} ${H}`);
+        paths.push(
+          `M${lineX} ${MID - R} Q${lineX} ${MID} ${lineX + R} ${MID} L${stubEndX} ${MID}`,
+        );
+      } else {
+        // ╰ — descend to MID-R, quarter-arc through MID, then run right.
+        paths.push(
+          `M${lineX} 0 L${lineX} ${MID - R} Q${lineX} ${MID} ${lineX + R} ${MID} L${stubEndX} ${MID}`,
+        );
+      }
     } else {
-      // ├ — full-height vertical + horizontal at mid.
-      paths.push(`M${lineX} 0 L${lineX} ${H}`);
-      paths.push(`M${lineX} ${MID} L${stubEndX} ${MID}`);
+      // 'elbow' style — kept available for later use.
+      if (needThroughVertical) {
+        // ├ — full-height vertical + horizontal at mid.
+        paths.push(`M${lineX} 0 L${lineX} ${H}`);
+        paths.push(`M${lineX} ${MID} L${stubEndX} ${MID}`);
+      } else {
+        // └ — down to mid, then right.
+        paths.push(`M${lineX} 0 L${lineX} ${MID} L${stubEndX} ${MID}`);
+      }
     }
   }
 
-  // Drop-stub: when this row is expanded with children, descend from THIS row's
-  // mid (caret/badge level) to the bottom edge so it meets the first child's
-  // vertical (which starts at the child row's top) — a continuous line from the
-  // parent down into the child, at every level (including depth 0).
+  // Drop-stub: when this row is expanded with children, descend from THIS
+  // row's MID (caret centre Y) to the row bottom. The caret button sits ON
+  // the line — visually the line passes through the caret area rather than
+  // emerging "hard" from its bottom edge.
   if (hasVisibleChildren) {
     paths.push(`M${childLineX} ${MID} L${childLineX} ${H}`);
   }
 
-  // Layout: an in-flow spacer provides the indent width (W); the SVG overlays it
-  // absolutely so its drawing (including the badge-touching horizontal + the
-  // drop-stub, which both overflow past W) never shifts the caret/badge. The
-  // overlay's drawing box is generously wide (DRAW_W) so no path is clipped.
-  const DRAW_W = childLineX + STUB_EXTEND + step;
+  // Layout: an in-flow spacer provides the indent width (W); the SVG overlays
+  // it absolutely so its drawing (drop-stub + tail, which both overflow past W)
+  // never shifts the caret/badge. DRAW_W must cover childLineX (the rightmost
+  // path x) plus a small buffer.
+  const DRAW_W = childLineX + step;
   const allPaths = [...throughPaths, ...paths];
-  // Node dot at the ├/└ junction (where this row's vertical meets its
-  // horizontal). Reads as the tree node for this row. Only on connector rows.
-  const showNode = depth > 0;
+  // Node dot at the ├/└ junction. Only meaningful for sharp-elbow rendering;
+  // in 'hook' mode the curve provides its own visual continuity so the dot is
+  // suppressed.
+  const showNode = depth > 0 && CONNECTOR_STYLE === "elbow";
 
   return (
     <span className="grid__Tree_LinesWrap" style={{ width: `${W}px` }}>
@@ -129,8 +168,8 @@ export function GridTreeLines({
           <path
             key={i}
             d={d}
-            stroke="var(--tree-connector)"
-            strokeWidth="1.25"
+            stroke="var(--grid-tree-row-connector)"
+            strokeWidth="1"
             fill="none"
             strokeLinecap="round"
           />

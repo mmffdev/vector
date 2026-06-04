@@ -22,6 +22,7 @@
 //   • accentOf                  → per-row colour accent (left border).
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { MdOutlineAddBox, MdOutlineIndeterminateCheckBox } from "react-icons/md";
 import { useColumnManager } from "./useColumnManager";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
 import { GridTreeHead } from "./Grid__Tree_Head";
@@ -79,6 +80,15 @@ export interface GridTreeProps<TRow> {
   /** Opt-in per-row cog menu — returns the action items for a row. */
   cogMenu?: (row: TRow) => GridMenuItem[];
   /**
+   * Opt-in per-row ID text — rendered as its OWN fixed-width lead track,
+   * sitting AFTER cog and BEFORE the primary cell (so it lives in front of
+   * the caret). Splits artefact identity from the type badge: the badge stays
+   * in the primary cell, the ID text moves into this dedicated column.
+   */
+  rowIdText?: (row: TRow) => string;
+  /** Click handler for the rowIdText link (e.g. open the row's edit form). */
+  onRowIdClick?: (row: TRow) => void;
+  /**
    * Per-row accent colour. Painted as the 10px type-stripe lead cell (OTV2
    * parity). Falls back to the row's left border when no stripe column shows.
    */
@@ -95,14 +105,22 @@ export interface GridTreeProps<TRow> {
   empty?: React.ReactNode;
 }
 
-// Lead control tracks rendered before the user columns, in OTV2 order:
-// type-stripe → selection → drag → cog. Each has a fixed px width that must
-// match between the header lead cells and every row's lead cells so the CSS
-// grid lines up. The caret lives in the primary (first user) cell, not here.
+// Lead control tracks rendered before the user columns, in order:
+// drag → type-stripe → selection → cog → idText. Each has a fixed px width
+// that must match between the header lead cells and every row's lead cells so
+// the CSS grid lines up. Drag sits first (the row-handle convention), and is
+// sized 50% wider than the other compact controls to be an obvious grab
+// target. The caret lives in the primary (first user) cell, not here.
 const STRIPE_COL_PX = 10;
 const SELECT_COL_PX = 28;
-const DRAG_COL_PX = 28;
+const DRAG_COL_PX = 42;
 const COG_COL_PX = 32;
+// Fixed-px track for the per-row ID text (13px light, matching row body
+// text). MUST be a single shared px value so the header (its own CSS grid)
+// and every body row (each its own CSS grid) line up — "max-content" sizes
+// per-grid and de-aligns the header from the rows. 96px fits up to ~10 chars
+// (e.g. "TA-1234567") with the lead cell's 8px side padding.
+const ID_TEXT_COL_PX = 96;
 
 export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const {
@@ -118,6 +136,8 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     dnd,
     selection,
     cogMenu,
+    rowIdText,
+    onRowIdClick,
     accentOf,
     renderRowDetail,
     openDetailId,
@@ -132,6 +152,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const hasStripe = !!accentFn;
   const hasSelection = !!selection;
   const hasCog = !!cogMenu;
+  const hasIdText = !!rowIdText;
   const dndRowIdOf = useCallback(
     (node: TreeNode<TRow>) => dnd?.rowIdOf?.(node.row) ?? node.id,
     [dnd],
@@ -142,17 +163,21 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   // Shift-click range anchor for selection.
   const lastSelectedRef = useRef<string | null>(null);
 
-  // Lead-column widths in render order: stripe → selection → drag → cog. Only
-  // the enabled ones contribute a track; the render functions below emit cells
-  // in the SAME order so widths and DOM align.
+  // Lead-column widths in render order: drag → stripe → selection → cog →
+  // idText. Only the enabled ones contribute a track; the render functions
+  // below emit cells in the SAME order so widths and DOM align. Drag sits
+  // first (the row-handle convention, oversized for grab affordance); idText
+  // lives LAST so it sits directly before the primary cell (in front of the
+  // caret), shrink-wrapped to its content via "max-content".
   const leadWidths = useMemo(() => {
     const w: number[] = [];
+    if (hasDnd) w.push(DRAG_COL_PX);
     if (hasStripe) w.push(STRIPE_COL_PX);
     if (hasSelection) w.push(SELECT_COL_PX);
-    if (hasDnd) w.push(DRAG_COL_PX);
     if (hasCog) w.push(COG_COL_PX);
+    if (hasIdText) w.push(ID_TEXT_COL_PX);
     return w;
-  }, [hasStripe, hasSelection, hasDnd, hasCog]);
+  }, [hasStripe, hasSelection, hasDnd, hasCog, hasIdText]);
 
   // The primary (first) column hosts the indent SVG, so as rows nest deeper its
   // content needs more room or the id text clips. Grow the primary column's
@@ -201,13 +226,22 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     <button
       type="button"
       className="grid__Tree_ExpandAll"
+      data-expanded={tree.allExpanded}
       aria-label={tree.allExpanded ? "Collapse all" : "Expand all"}
       aria-pressed={tree.allExpanded}
       onClick={() => (tree.allExpanded ? tree.collapseAll() : tree.expandAll())}
     >
-      <span className="grid__Tree_ExpandAllGlyph" aria-hidden="true">
-        {tree.allExpanded ? "▾" : "▸"}
-      </span>
+      {tree.allExpanded ? (
+        <MdOutlineIndeterminateCheckBox
+          className="grid__Tree_ExpandAllGlyph"
+          aria-hidden="true"
+        />
+      ) : (
+        <MdOutlineAddBox
+          className="grid__Tree_ExpandAllGlyph"
+          aria-hidden="true"
+        />
+      )}
     </button>
   );
 
@@ -245,12 +279,23 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     selection.onSelectionChange(next);
   };
 
-  // Lead cells for one row, in OTV2 order: stripe → selection → drag → cog.
-  // Emitted only for enabled capabilities, matching leadWidths above.
+  // Lead cells for one row, in render order: drag → stripe → selection → cog
+  // → idText. Emitted only for enabled capabilities, matching leadWidths above.
   const renderLeadControls =
-    hasStripe || hasSelection || hasDnd || hasCog
+    hasStripe || hasSelection || hasDnd || hasCog || hasIdText
       ? (node: TreeNode<TRow>) => (
           <>
+            {hasDnd && (
+              <div className="grid__Tree_Lead" role="cell">
+                <span
+                  className="grid__Tree_DragGrip"
+                  aria-hidden="true"
+                  {...rank.handleProps(dndRowIdOf(node))}
+                >
+                  ⋮⋮
+                </span>
+              </div>
+            )}
             {hasStripe && (
               <div className="grid__Tree_Lead" role="cell" aria-hidden="true">
                 <span
@@ -279,17 +324,6 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
                 />
               </div>
             )}
-            {hasDnd && (
-              <div className="grid__Tree_Lead" role="cell">
-                <span
-                  className="grid__Tree_DragGrip"
-                  aria-hidden="true"
-                  {...rank.handleProps(dndRowIdOf(node))}
-                >
-                  ⋮⋮
-                </span>
-              </div>
-            )}
             {hasCog && (
               <GridTreeCog
                 rowId={node.id}
@@ -297,6 +331,25 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
                 open={cogOpenId === node.id}
                 onOpenChange={(o) => setCogOpenId(o ? node.id : null)}
               />
+            )}
+            {hasIdText && (
+              <div
+                className="grid__Tree_Lead grid__Tree_IdText"
+                role="cell"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="grid__Cell_IdText grid__Cell_IdText--link"
+                  aria-label={`Edit ${rowIdText!(node.row)}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRowIdClick?.(node.row);
+                  }}
+                >
+                  {rowIdText!(node.row)}
+                </button>
+              </div>
             )}
           </>
         )
@@ -320,8 +373,11 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   };
 
   const headerLeadControls =
-    hasStripe || hasSelection || hasDnd || hasCog ? (
+    hasStripe || hasSelection || hasDnd || hasCog || hasIdText ? (
       <>
+        {hasDnd && (
+          <div className="grid__Tree_Lead" role="columnheader" aria-hidden="true" />
+        )}
         {hasStripe && (
           <div className="grid__Tree_Lead" role="columnheader" aria-hidden="true" />
         )}
@@ -338,11 +394,15 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
             />
           </div>
         )}
-        {hasDnd && (
-          <div className="grid__Tree_Lead" role="columnheader" aria-hidden="true" />
-        )}
         {hasCog && (
           <div className="grid__Tree_Lead" role="columnheader" aria-hidden="true" />
+        )}
+        {hasIdText && (
+          <div
+            className="grid__Tree_Lead grid__Tree_IdText"
+            role="columnheader"
+            aria-hidden="true"
+          />
         )}
       </>
     ) : null;
@@ -360,7 +420,10 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
           )}
           <div className="grid__Tree_Title_Body">
             {title != null && (
-              <h3 className="grid__Tree_Title_Heading">{title}</h3>
+              <h3 className="grid__Tree_Title_Heading">
+                <span className="grid__Tree_Title_Heading_Filter">FILTER</span>{" "}
+                {title}
+              </h3>
             )}
             {subtitle != null && (
               <p className="grid__Tree_Title_Sub">{subtitle}</p>

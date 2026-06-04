@@ -21549,20 +21549,20 @@ tr.is-editing {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
+/* Title badge — decorative square painted with a 5px barber-pole pattern in
+   --ink / --canvas at -45°. No text content; the box is a pure visual marker
+   beside the FILTER title. */
 .grid__Tree_Title_Badge {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  border-radius: 4px;
-  background: var(--ink, #1a1a1a);
-  color: var(--surface, #fff);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ink) 0,
+    var(--ink) 5px,
+    var(--canvas) 5px,
+    var(--canvas) 10px
+  );
 }
 .grid__Tree_Title_Body {
   display: flex;
@@ -21570,12 +21570,19 @@ tr.is-editing {
   gap: 2px;
   min-width: 0;
 }
+/* Tree title — uppercased so the band reads as a section label, prefixed
+   visually with a red "FILTER" word (the title itself stays in ink). */
 .grid__Tree_Title_Heading {
   font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--ink);
   margin: 0;
+}
+.grid__Tree_Title_Heading_Filter {
+  color: #ff0000;
 }
 .grid__Tree_Title_Sub {
   font-size: 13px;
@@ -21591,6 +21598,13 @@ tr.is-editing {
   flex: 0 0 auto;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  /* Freeze the stats band against the top of the scroll container (shell main).
+     Higher z than the head so the head doesn't paint over it once the head
+     also reaches top: 0. The head's top offset (--grid-tree-stats-stick-h)
+     stacks it BELOW the stats so both stay visible. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 .grid__Tree_StatsPanel_Grid {
   display: grid;
@@ -21703,9 +21717,12 @@ tr.is-editing {
   display: grid;
   align-items: stretch;
   position: sticky;
-  top: 0;
+  /* Stack below the (also sticky) stats band so both stay visible on scroll.
+     Default tuned for a 1-row stats grid; override --grid-tree-stats-stick-h
+     on .grid (or a parent) to retune for taller stats configurations. */
+  top: var(--grid-tree-stats-stick-h, 64px);
   z-index: 2;
-  background: var(--surface-sunken);
+  background: var(--grid-tree-header-bg);
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
@@ -21717,7 +21734,7 @@ tr.is-editing {
   min-width: 0;
   padding: 0 16px;
   height: 38px;
-  background: var(--surface-sunken);
+  background: var(--grid-tree-header-bg);
 }
 .grid__Tree_Head_Label {
   flex: 1;
@@ -21731,10 +21748,10 @@ tr.is-editing {
   margin: 0;
   font: inherit;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 300;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink);
+  color: var(--grid-tree-header-ink);
   text-align: left;
   cursor: default;
   overflow: hidden;
@@ -21864,6 +21881,15 @@ tr.is-editing {
   cursor: not-allowed;
 }
 
+/* Per-row ID text — its own fixed-width lead track sitting AFTER cog and
+   BEFORE the primary cell (so it lives in front of the caret). Left-aligned
+   so the mono ID text reads cleanly; the inner button keeps its
+   .grid__Cell_IdText--link typography. */
+.grid__Tree_IdText {
+  justify-content: flex-start;
+  padding: 0 8px;
+}
+
 /* ── Body + rows ─────────────────────────────────────────────────────────── */
 .grid__Tree_Rows {
   display: flex;
@@ -21881,11 +21907,15 @@ tr.is-editing {
   height: var(--tree-row-h);
   border-bottom: 1px solid var(--border);
   /* Per-row colour accent moved off the left border — the artefact colour now
-     lives in its own column as a 60×60 swatch (.grid__Tree_ColourBadge), so
-     the row paints with no leading rail. --row-accent is still propagated for
-     the optional 10px Stripe lead column. */
+     lives in its own column as a clickable block (.grid__Tree_ColourBadgeBtn,
+     sized to match the FlowState block), so the row paints with no leading
+     rail. --row-accent is still propagated for the optional 10px Stripe lead
+     column. */
   background: var(--surface);
   cursor: default;
+  /* Light by default — every body cell inherits this. Parent rows (those
+     with children) bump to 600 via .grid__Tree_Row--parent below. */
+  font-weight: 300;
 }
 .grid__Tree_Row:hover { background: color-mix(in srgb, var(--ink) 6%, var(--surface)); }
 .grid__Tree_Row--selected,
@@ -21914,6 +21944,11 @@ tr.is-editing {
 .grid__Tree_Cell--primary {
   gap: 0;
   overflow: visible;
+  /* Stretch to full row height so the absolutely-positioned connector SVG
+     has top:0 == row-top, keeping MID = rowH/2 vertically centred on the
+     caret. Without this the cell shrinks to content height, offsetting the
+     SVG baseline and landing connector tails below the badge centre. */
+  align-self: stretch;
 }
 
 /* ── Tree connector SVG (in-cell indent + ├└│ rails) ──────────────────────────
@@ -21945,7 +21980,7 @@ tr.is-editing {
 /* Lift the primary cell's real content above the connector SVG overlay. */
 .grid__Tree_Cell--primary > .grid__Tree_Caret,
 .grid__Tree_Cell--primary > .grid__Tree_CaretSpacer,
-.grid__Tree_Cell--primary > .grid__Cell_Id,
+.grid__Tree_Cell--primary > .grid__Cell_TypeBadgeBtn,
 .grid__Tree_Cell--primary > .grid__Cell_Summary {
   position: relative;
   z-index: 1;
@@ -21954,12 +21989,22 @@ tr.is-editing {
 /* Per-artefact colour swatch — 35×35 filled square, rendered in its own
    column (scopeColumns "colour"). Replaces the old --row-accent left
    border; cell stays empty when row.colour is null. */
-.grid__Tree_ColourBadge {
-  display: block;
-  width: 35px;
-  height: 35px;
-  border-radius: 4px;
+.grid__Tree_ColourBadgeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--grid-tree-row-colour-btn-border-active);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
   flex: 0 0 auto;
+}
+.grid__Tree_ColourBadgeBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2563eb) 50%, transparent);
 }
 
 /* Type-badge button wrapper — the OTV2 form trigger. Resets button chrome so
@@ -22016,10 +22061,13 @@ tr.is-editing {
      align with branch rows at every depth. */
   margin: 0 8px 0 -3px;
   border: 0;
-  background: transparent;
+  background: var(--surface);
   cursor: pointer;
   color: var(--grid-tree-expander-closed, #be513f);
   transition: color 0.12s ease;
+}
+.grid__Tree_Row:hover .grid__Tree_Caret {
+  background: color-mix(in srgb, var(--ink) 6%, var(--surface));
 }
 .grid__Tree_Caret:hover { filter: brightness(0.9); }
 .grid__Tree_CaretGlyph {
@@ -22059,7 +22107,8 @@ tr.is-editing {
   color: var(--grid-tree-expander-open, #142424);
 }
 
-/* Drag grip (dnd opt-in). */
+/* Drag grip (dnd opt-in). Oversized vs the other lead controls so the row
+   handle reads as an obvious grab target. */
 .grid__Tree_DragGrip {
   display: inline-flex;
   align-items: center;
@@ -22068,7 +22117,7 @@ tr.is-editing {
   color: var(--text-tertiary, #9ca3af);
   cursor: grab;
   letter-spacing: -2px;
-  font-size: 10px;
+  font-size: 15px;
 }
 .grid__Tree_DragGrip:active { cursor: grabbing; }
 
@@ -22144,29 +22193,35 @@ tr.is-editing {
   .grid__Tree_Row--formOpen:hover { animation: none; }
 }
 
-/* ── Scope cell renderers — salvaged from the old data-grid__cell_* family so
-   the /scope page's badges/pills survive the DataGrid deletion. Used by
-   scopeColumns.tsx; named under grid__Cell_ so they belong to the new
-   primitive's surface, not the dead scaffold. (Per-page cell chrome legit-
-   imately lives in the page layer; the primitive owns row/tree look only.) */
-.grid__Cell_Id {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
+/* ── Scope cell renderers — the badges/links rendered inside Grid__Tree rows
+   by scopeColumns.tsx (used by /scope and /artefacts via GridExecution).
+   Named under grid__Cell_ so they live alongside the Grid primitive's row
+   chrome; per-page cell content stays in the page layer, the primitive owns
+   row/tree look only. */
+/* Artefact ID link — e.g. "TA-12345". 13px light to sit at the same size as
+   the rest of the row text; the dotted underline (set on the --link modifier)
+   carries the "clickable" affordance. Truncates with ellipsis inside its
+   fixed-width lead track. */
 .grid__Cell_IdText {
   font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 300;
   letter-spacing: 0.02em;
   color: var(--ink-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Type badge — OTV2's gray-ramp 2-letter tag (26×18, mono 10/700). The
-   per-artefact colour lives in the left row accent (border-left), matching
-   OTV2's split of "colour → stripe, badge → quiet hierarchy cue". */
+/* Parent-row bump — match the .grid__Tree_Row--parent body-text weight so the
+   ID reads at the same hierarchy as the row's Summary text. Needed because
+   .grid__Cell_IdText sets its own font-weight, blocking inheritance. */
+.grid__Tree_Row--parent .grid__Cell_IdText {
+  font-weight: 600;
+}
+/* Type badge — the 2-letter artefact-type tag (TH/IN/FE/EP/ST/DE/TA/…) that
+   opens the row's edit flyout. 13px light to match the rest of the row text;
+   background colour comes from the gray-ramp data-tier rules below, keyed off
+   the prefix in scopeColumns. */
 .grid__Cell_TypeBadge {
   flex-shrink: 0;
   display: inline-flex;
@@ -22179,8 +22234,8 @@ tr.is-editing {
   color: var(--surface, #fff);
   border-radius: 3px;
   font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 300;
   letter-spacing: 0.02em;
 }
 /* Gray ramp by ladder depth — darkest at the top, lighter on the way down.
@@ -22198,7 +22253,7 @@ tr.is-editing {
   padding: 2px 8px;
   background: var(--surface-sunken, #f3f3f5);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--ink, #111);
 }
 .grid__Cell_Summary {
