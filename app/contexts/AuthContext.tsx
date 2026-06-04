@@ -393,7 +393,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
-    broadcastAuthEvent({ type: "logout" });
+    // NO cross-tab logout broadcast here. hardLogout is the INVOLUNTARY path
+    // (backend-driven: WS idle-close 4002 / session_revoked 4001, or a
+    // terminal-401). Broadcasting logout from here cascaded a single tab's
+    // backend-forced session death into a forced /login redirect in EVERY
+    // tab — "all browsers logged themselves out after a few minutes" with no
+    // user action (regression 2026-06-04). Each tab must validate its OWN
+    // session on its next request: the backend is the gate per tab, and a
+    // sibling tab may still hold a live session (or be able to silently
+    // refresh). Only voluntary logout() — a deliberate user action — fans
+    // out across tabs; involuntary death stays local to the tab that hit it.
     _bootstrapped = false;
     try {
       sessionStorage.setItem("vector.login.reason", reason);

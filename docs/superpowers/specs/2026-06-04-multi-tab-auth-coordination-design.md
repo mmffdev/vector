@@ -89,7 +89,9 @@ When `applyLogin` reparents/prunes the keypair ([`AuthContext.tsx:174`](../../..
 
 ### Logout
 
-On logout/hardLogout in one tab, broadcast `{type: "logout"}`. Other tabs clear local auth state and redirect to `/login`. (Stronger posture: no orphaned authenticated tab after sign-out.)
+Only **voluntary** `logout()` (a deliberate user sign-out) broadcasts `{type: "logout"}`; other tabs then clear local auth state and redirect to `/login` (stronger posture: no orphaned authenticated tab after the user signs out).
+
+**Involuntary `hardLogout()` does NOT broadcast** (corrected 2026-06-04 after a verification finding). `hardLogout` is the backend-driven path — WS idle-close `4002`, `session_revoked` `4001`, or a terminal-401. Broadcasting from it cascaded a single tab's backend-forced session death into a forced `/login` redirect in *every* tab ("all browsers logged themselves out after a few minutes" with no user action). Each tab must validate its **own** session on its next request — the backend is the gate per tab, and a sibling tab may still hold a live session or be able to silently refresh. So involuntary death stays local to the tab that hit it; only a deliberate user action fans out. (For `session_revoked`, the shared session family is dead for all tabs anyway — each discovers that on its own next request, which is the correct fail-closed behavior without a forced cross-tab redirect.) Pinned by `app/contexts/__tests__/AuthContext.no-cascade.test.tsx`.
 
 ---
 
