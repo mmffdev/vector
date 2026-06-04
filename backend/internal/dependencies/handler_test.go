@@ -35,6 +35,7 @@ type fakeService struct {
 	listMapsFn    func(ctx context.Context, nodeID uuid.UUID) ([]Map, error)
 	getDetailFn   func(ctx context.Context, mapID uuid.UUID) (Map, error)
 	bucketsFn     func(ctx context.Context, mapID, focusedID uuid.UUID) (BucketProjection, error)
+	listEdgesForMapFn func(ctx context.Context, mapID uuid.UUID) ([]Edge, error)
 	candidatesFn  func(ctx context.Context, in CandidateSearchInput) ([]Candidate, error)
 	transitiveFn  func(ctx context.Context, artefactID uuid.UUID) (TransitiveImpactReport, error)
 }
@@ -107,6 +108,13 @@ func (f *fakeService) EdgesForFocusedArtefact(ctx context.Context, mapID, focuse
 		return BucketProjection{}, errors.New("EdgesForFocusedArtefact not configured")
 	}
 	return f.bucketsFn(ctx, mapID, focusedID)
+}
+
+func (f *fakeService) ListEdgesForMap(ctx context.Context, mapID uuid.UUID) ([]Edge, error) {
+	if f.listEdgesForMapFn == nil {
+		return nil, errors.New("ListEdgesForMap not configured")
+	}
+	return f.listEdgesForMapFn(ctx, mapID)
 }
 
 func (f *fakeService) SearchCandidates(ctx context.Context, in CandidateSearchInput) ([]Candidate, error) {

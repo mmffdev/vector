@@ -184,6 +184,17 @@ export const dependencies = {
       ),
 
     /**
+     * GET /_site/dependencies/maps/{id}/edges
+     * Returns every live edge in the map (no focused-artefact
+     * narrowing). One round-trip per map — the map-view bulk fetch
+     * uses this so it doesn't have to fan out per (map × artefact).
+     */
+    listForMap: (mapId: ID) =>
+      apiSite<DependencyEdge[]>(
+        `/dependencies/maps/${encodeURIComponent(mapId)}/edges`
+      ),
+
+    /**
      * POST /_site/dependencies/edges — insert with cycle guard.
      * Backend rejects 422 self-loop, 422 cycle, 409 duplicate,
      * 403 endpoint out-of-scope.

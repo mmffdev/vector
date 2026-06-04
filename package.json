@@ -80,6 +80,7 @@
     "3d-force-graph": "^1.80.0",
     "cytoscape": "^3.33.4",
     "cytoscape-dagre": "^2.5.0",
+    "d3-dag": "^1.2.1",
     "dagre": "^0.8.5",
     "framer-motion": "^12.38.0",
     "graphology": "^0.26.0",

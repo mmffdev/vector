@@ -721,6 +721,50 @@ func (s *Service) EdgesForFocusedArtefact(ctx context.Context, mapID, focusedArt
 	return out, nil
 }
 
+// ListEdgesForMap returns every live edge in one dependency map —
+// no focused-artefact filter. Powers the map-view bulk fetch so the
+// frontend can render the whole graph in one round-trip per map
+// instead of fanning out per (map × artefact) pair.
+//
+// Sentinel clamp + workspace gate happen via GetMap() before the
+// edge scan; an out-of-scope map id returns ErrNotFound, never edge
+// data. This preserves the same contract as EdgesForFocusedArtefact
+// without exposing a wider read surface.
+func (s *Service) ListEdgesForMap(ctx context.Context, mapID uuid.UUID) ([]Edge, error) {
+	if err := s.requirePool(); err != nil {
+		return nil, err
+	}
+	c := sentinel.FromCtx(ctx)
+	if c.WorkspaceID == uuid.Nil {
+		return nil, ErrEndpointNotInScope
+	}
+	if mapID == uuid.Nil {
+		return nil, ErrInvalidInput
+	}
+	if _, err := s.GetMap(ctx, mapID); err != nil {
+		return nil, err
+	}
+
+	rows, err := s.pool.Query(ctx, sqlListAllEdgesForMap, mapID)
+	if err != nil {
+		return nil, fmt.Errorf("dependencies.ListEdgesForMap: %w", err)
+	}
+	defer rows.Close()
+
+	out := []Edge{}
+	for rows.Next() {
+		e, scanErr := scanEdge(rows)
+		if scanErr != nil {
+			return nil, fmt.Errorf("dependencies.ListEdgesForMap: scan: %w", scanErr)
+		}
+		out = append(out, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("dependencies.ListEdgesForMap: rows: %w", err)
+	}
+	return out, nil
+}
+
 // ── Candidate search (B23.2.2) ──────────────────────────────────
 
 // CandidateSearchInput parameterises the candidate query — kept as

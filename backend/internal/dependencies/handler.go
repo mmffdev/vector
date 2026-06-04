@@ -30,6 +30,7 @@ type serviceIface interface {
 	ListMaps(ctx context.Context, nodeID uuid.UUID) ([]Map, error)
 	GetMapDetail(ctx context.Context, mapID uuid.UUID) (Map, error)
 	EdgesForFocusedArtefact(ctx context.Context, mapID, focusedArtefactID uuid.UUID) (BucketProjection, error)
+	ListEdgesForMap(ctx context.Context, mapID uuid.UUID) ([]Edge, error)
 	SearchCandidates(ctx context.Context, in CandidateSearchInput) ([]Candidate, error)
 	TransitiveImpact(ctx context.Context, artefactID uuid.UUID) (TransitiveImpactReport, error)
 }
@@ -68,6 +69,7 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Patch("/maps/{id}", h.RenameMap)
 	r.Post("/maps/{id}/archive", h.ArchiveMap)
 	r.Get("/edges", h.ListEdgesForFocus)
+	r.Get("/maps/{id}/edges", h.ListEdgesForMap)
 	r.Post("/edges", h.CreateEdge)
 	r.Post("/edges/{id}/archive", h.ArchiveEdge)
 	r.Get("/candidates", h.SearchCandidates)
@@ -287,6 +289,32 @@ func (h *Handler) ListEdgesForFocus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// ListEdgesForMap handles GET /_site/dependencies/maps/{id}/edges.
+// Returns every live edge in the map (no focused-artefact narrowing)
+// so the map-view can render the whole graph in one round-trip per
+// map instead of fanning out per artefact. Sentinel clamp +
+// workspace gate happen inside the service via GetMap; an
+// out-of-scope map id returns 404, never edge data.
+func (h *Handler) ListEdgesForMap(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth(w, r) {
+		return
+	}
+	mapID, ok := parseUUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
+	edges, err := h.svc.ListEdgesForMap(r.Context(), mapID)
+	if mapped, ok := mapServiceError(err); ok {
+		httperr.Write(w, r, mapped.status, mapped.msg)
+		return
+	}
+	if err != nil {
+		httperr.Write(w, r, http.StatusInternalServerError, usermessages.InternalError)
+		return
+	}
+	writeJSON(w, http.StatusOK, edges)
 }
 
 // TransitiveImpact handles GET /_site/dependencies/{id}/transitive-impact.

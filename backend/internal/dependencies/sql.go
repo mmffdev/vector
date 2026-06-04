@@ -248,6 +248,21 @@ const sqlListBucketProjection = `
 	     OR artefact_dependency_edges_id_to_artefact   = $2)
 	 ORDER BY artefact_dependency_edges_created_at ASC`
 
+// sqlListAllEdgesForMap returns every live edge in a map regardless
+// of which artefact is focused. Powers the map-view bulk fetch:
+// one round-trip per map instead of N (artefacts) × M (maps)
+// per-focus calls. Sentinel clamp is enforced by the service
+// caller's GetMap() workspace check before this runs — the SQL
+// itself trusts the map_id already passed that gate.
+//
+//   $1 = map id
+const sqlListAllEdgesForMap = `
+	SELECT` + sqlEdgeColumns + `
+	  FROM artefact_dependency_edges
+	 WHERE artefact_dependency_edges_id_map = $1
+	   AND artefact_dependency_edges_archived_at IS NULL
+	 ORDER BY artefact_dependency_edges_created_at ASC`
+
 // ── Transitive reachability (B23.3.1) ───────────────────────────
 
 // sqlReachabilityDownstream returns every artefact reachable from $1

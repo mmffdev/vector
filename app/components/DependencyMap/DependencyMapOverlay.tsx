@@ -13,11 +13,17 @@ import {
   TbArrowsShuffle,
   TbCheck,
   TbSearch,
+  TbTargetArrow,
   TbX,
 } from "react-icons/tb";
 
 import type { ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import { Canvas } from "@/app/components/Canvas/Canvas";
+import { MapViewDagre } from "./MapViews/MapViewDagre";
+import { MapViewD3Dag } from "./MapViews/MapViewD3Dag";
+import { MapViewSugiyama } from "./MapViews/MapViewSugiyama";
+import { MapViewCytoscape } from "./MapViews/MapViewCytoscape";
+import type { MapEdge, MapNode } from "./MapViews/types";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import {
   buildOrderedArtefactTypeGroups,
@@ -71,6 +77,7 @@ interface DependencyCandidate {
   formattedId: string;
   title: string;
   typeLabel: string;
+  artefactTypeId: string;
   nodeId: string | null;
   description: string;
   sprintId: string | null;
@@ -342,6 +349,7 @@ async function fetchPersistedCandidates(params: {
       formattedId: `${row.type_prefix}-${row.key_num}`,
       title: row.title || "(untitled)",
       typeLabel: byTypeId.get(row.artefact_type_id) ?? row.type_name,
+      artefactTypeId: row.artefact_type_id,
       nodeId: row.topology_node_id,
       description: (row.description ?? "").trim(),
       sprintId: row.sprint_id,
@@ -400,6 +408,7 @@ async function fetchDependencyCandidates({
       formattedId: `${item.type_prefix}-${item.key_num}`,
       title: item.title || "(untitled)",
       typeLabel: byTypeId.get(item.artefact_type_id) ?? item.item_type,
+      artefactTypeId: item.artefact_type_id,
       nodeId: item.topology_node_id,
       description: (item.description ?? "").trim(),
       sprintId: item.sprint_id,
@@ -426,10 +435,26 @@ async function fetchDependencyCandidates({
 }
 
 export function DependencyMapOverlay({
-  artefact,
+  artefact: artefactProp,
   onClose,
   mapId = null,
 }: DependencyMapOverlayProps) {
+  // Focusing on a candidate (target-arrow button on a bucket card) swaps
+  // the overlay's "target" without unmounting. The prop is the entry
+  // point; `focusedArtefact` shadows it until the user navigates back.
+  // Every read below uses `artefact` (the resolved one), so the rest of
+  // the component is unaware of which path is active.
+  const [focusedArtefact, setFocusedArtefact] = useState<ArtefactDetail | null>(null);
+  const artefact = focusedArtefact ?? artefactProp;
+  const [isFocusFading, setIsFocusFading] = useState(false);
+  // Chain of artefact IDs we've focused into during this overlay
+  // session. The original entry artefact is index 0; each refocus
+  // appends the prior target. Used to exclude every artefact in the
+  // navigation history from the candidate dropdown, so the user
+  // can't reintroduce a node already in the dependency graph (which
+  // would create a cycle, or simply confuse "is this the same X I
+  // already linked?"). Resets only on overlay unmount.
+  const [chainHistory, setChainHistory] = useState<string[]>([]);
   const { sentinel_focus_node, sentinel_grants, sentinel_user } = useSentinel();
   const { types: artefactTypes } = useArtefactTypeCatalogue();
   const nodeId = artefact.topology_node_id ?? sentinel_focus_node ?? null;
@@ -490,6 +515,21 @@ export function DependencyMapOverlay({
   const [milestoneOptions, setMilestoneOptions] = useState<TimeboxOption[]>([]);
   const [search, setSearch] = useState("");
   const [candidateOptions, setCandidateOptions] = useState<DependencyCandidate[]>([]);
+  // Every artefact in the selected topology node — used to render the
+  // "View Map" alternate view so it shows the whole graph rather than
+  // just the target's first-degree neighbours. Distinct from
+  // `candidateOptions` because the map view INCLUDES the target itself
+  // and is independent of the search needle / sprint / release / etc.
+  const [topologyArtefacts, setTopologyArtefacts] = useState<DependencyCandidate[]>([]);
+  // Every edge across every dependency map in the active topology node,
+  // including isolated maps (maps that aren't connected to the current
+  // target). One entry per directed edge with its bucket kind so the
+  // map view can colour the connector per relationship type. V1: each
+  // edge is derived from a map's root projection — leaf-to-leaf edges
+  // that don't touch a root are not yet captured.
+  const [topologyEdges, setTopologyEdges] = useState<
+    Array<{ from: string; to: string; kind: "requires" | "parallel" | "unlocks" }>
+  >([]);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -509,6 +549,22 @@ export function DependencyMapOverlay({
     }),
     [artefact, artefactTitle, formattedId, nodeId],
   );
+
+  // Map-view container width — measured so the journey grid fits the
+  // canvas horizontally (no horizontal scroll until columns get
+  // squeezed below the per-column minimum).
+  const mapSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const [mapSurfaceW, setMapSurfaceW] = useState(0);
+  useEffect(() => {
+    const el = mapSurfaceRef.current;
+    if (!el) return;
+    setMapSurfaceW(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setMapSurfaceW(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // PLA074 — surface persistence errors as toasts so cycle / 409
   // / out-of-scope rejections show up to the user instead of failing
@@ -563,6 +619,7 @@ export function DependencyMapOverlay({
               title: detail.title || "(untitled)",
               typeLabel:
                 typeLabelById.get(detail.artefact_type_id) ?? detail.item_type,
+              artefactTypeId: detail.artefact_type_id,
               nodeId: detail.topology_node_id,
               description: (detail.description ?? "").trim(),
               sprintId: detail.sprint_id,
@@ -609,6 +666,7 @@ export function DependencyMapOverlay({
               formattedId: "…",
               title: "Loading…",
               typeLabel: "",
+              artefactTypeId: "",
               nodeId: null,
               description: "",
               sprintId: null,
@@ -674,6 +732,38 @@ export function DependencyMapOverlay({
       else nextSet.add(id);
       return { ...prev, [bucketKey]: nextSet };
     });
+  };
+
+  // Focus on a bucket-row candidate — fade the current map out, refetch
+  // the candidate as a full ArtefactDetail, swap it in as the new target,
+  // wipe the local ephemeral buckets, then fade back in. The persistence
+  // hook below picks up the new `artefact.id` and refetches the deps map
+  // automatically, so no extra reload is needed.
+  const focusOnCandidate = async (candidateId: string) => {
+    setIsFocusFading(true);
+    // Hold the fade-out long enough for the 250ms opacity transition.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    try {
+      const next = await workItems.get(candidateId);
+      // Record the OUTGOING target before swapping, so it joins the
+      // exclusion set. Without this, refocusing onto B and then back
+      // toward A's neighbour set would offer A as a candidate and let
+      // the user create a cycle.
+      const outgoingTargetId = artefact.id;
+      setChainHistory((prev) =>
+        prev.includes(outgoingTargetId) ? prev : [...prev, outgoingTargetId],
+      );
+      setFocusedArtefact(next as ArtefactDetail);
+      setBuckets(emptyBuckets());
+      setSelectedBucketItemIds(emptyBucketSelections());
+    } catch {
+      // Swallow — if the fetch fails we just don't swap. The fade ends
+      // and the user sees the previous target unchanged.
+    } finally {
+      // tiny pause so the swap commits before fading back in
+      await new Promise((resolve) => setTimeout(resolve, 16));
+      setIsFocusFading(false);
+    }
   };
 
   const removeSelectedFromBucket = async (bucketKey: DependencyBucketKey) => {
@@ -774,6 +864,182 @@ export function DependencyMapOverlay({
     persisted.mapId,
     persisted.buckets,
   ]);
+
+  // Topology-wide fetch for the "View Map" alternate view. Independent
+  // of the timebox filters because the map should show every artefact
+  // in the node, not the filter-narrowed candidate slice. Re-runs when
+  // the active node changes; one wire round-trip per topology.
+  useEffect(() => {
+    if (!selectedNodeId) {
+      setTopologyArtefacts([]);
+      return;
+    }
+    let alive = true;
+    workItems
+      .query(
+        { page: { limit: 200, offset: 0 } },
+        { meg: selectedNodeId },
+      )
+      .then((result) => {
+        if (!alive) return;
+        const items = (result.items as WireDependencyCandidate[]).map(
+          (item): DependencyCandidate => ({
+            id: item.id,
+            formattedId: `${item.type_prefix}-${item.key_num}`,
+            title: item.title || "(untitled)",
+            typeLabel: item.item_type,
+            artefactTypeId: item.artefact_type_id,
+            nodeId: item.topology_node_id,
+            description: (item.description ?? "").trim(),
+            sprintId: item.sprint_id,
+            sprintLabel: item.sprint?.alias ?? null,
+            releaseId: item.release_id,
+            milestoneId: item.milestone_id,
+          }),
+        );
+        setTopologyArtefacts(items);
+      })
+      .catch(() => {
+        if (alive) setTopologyArtefacts([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [selectedNodeId]);
+
+  // Every edge across every dependency map in the topology. Uses
+  // the bulk endpoint `GET /dependencies/maps/{id}/edges` so we get
+  // one round-trip per map instead of fanning out per (map ×
+  // artefact). Independent of `topologyArtefacts` — edges are a
+  // first-class read, and any artefact endpoint outside the current
+  // node gets hydrated by a separate effect below.
+  useEffect(() => {
+    if (!selectedNodeId) {
+      setTopologyEdges([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const maps = await dependenciesApi.maps.list(selectedNodeId);
+        if (!alive || maps.length === 0) {
+          if (alive) setTopologyEdges([]);
+          return;
+        }
+        const edgeBatches = await Promise.all(
+          maps.map((m) =>
+            dependenciesApi.edges.listForMap(m.id).catch(() => []),
+          ),
+        );
+        if (!alive) return;
+        type Edge = {
+          from: string;
+          to: string;
+          kind: "requires" | "parallel" | "unlocks";
+        };
+        const seen = new Set<string>();
+        const acc: Edge[] = [];
+        edgeBatches.flat().forEach((e) => {
+          // Wire kind: `finish_to_start` | `parallel`. Map to the
+          // local triad — `finish_to_start` becomes `requires` (the
+          // dedupe pass in renderMapView collapses both directions
+          // anyway; we only need ONE kind tag for the connector
+          // colour).
+          const kind: Edge["kind"] =
+            e.kind === "parallel" ? "parallel" : "requires";
+          const key = `${e.from_artefact_id}|${e.to_artefact_id}|${kind}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          acc.push({
+            from: e.from_artefact_id,
+            to: e.to_artefact_id,
+            kind,
+          });
+        });
+        setTopologyEdges(acc);
+      } catch {
+        if (alive) setTopologyEdges([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [selectedNodeId]);
+
+  // Cross-node hydration — when an edge endpoint isn't in
+  // `topologyArtefacts` (a predecessor or successor lives in a
+  // different topology node), fetch its metadata via the
+  // work-items endpoint so the map can render the real US-code
+  // instead of a blank stub. Best-effort: failures fall back to a
+  // truncated-uuid label.
+  const [extraArtefacts, setExtraArtefacts] = useState<DependencyCandidate[]>(
+    [],
+  );
+  useEffect(() => {
+    if (topologyEdges.length === 0) {
+      setExtraArtefacts([]);
+      return;
+    }
+    const referenced = new Set<string>();
+    topologyEdges.forEach((e) => {
+      referenced.add(e.from);
+      referenced.add(e.to);
+    });
+    const known = new Set(topologyArtefacts.map((a) => a.id));
+    const missing = Array.from(referenced).filter((id) => !known.has(id));
+    if (missing.length === 0) {
+      setExtraArtefacts([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      const rows = await Promise.all(
+        missing.map((id) => workItems.get(id).catch(() => null)),
+      );
+      if (!alive) return;
+      const shaped: DependencyCandidate[] = [];
+      rows.forEach((row, idx) => {
+        const id = missing[idx];
+        if (!row) {
+          shaped.push({
+            id,
+            formattedId: `?-${id.slice(0, 4)}`,
+            title: "(out of scope)",
+            typeLabel: "",
+            artefactTypeId: "",
+            nodeId: null,
+            description: "",
+            sprintId: null,
+            sprintLabel: null,
+            releaseId: null,
+            milestoneId: null,
+          });
+          return;
+        }
+        const r = row as Partial<WireDependencyCandidate> & { id: string };
+        shaped.push({
+          id: r.id,
+          formattedId:
+            r.type_prefix && r.key_num !== undefined
+              ? `${r.type_prefix}-${r.key_num}`
+              : `?-${r.id.slice(0, 4)}`,
+          title: r.title || "(untitled)",
+          typeLabel: r.item_type ?? "",
+          artefactTypeId: r.artefact_type_id ?? "",
+          nodeId: r.topology_node_id ?? null,
+          description: (r.description ?? "").trim(),
+          sprintId: r.sprint_id ?? null,
+          sprintLabel: r.sprint?.alias ?? null,
+          releaseId: r.release_id ?? null,
+          milestoneId: r.milestone_id ?? null,
+        });
+      });
+      setExtraArtefacts(shaped);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [topologyEdges, topologyArtefacts]);
 
   // The timebox endpoints key off the tenant id, NOT the grant's
   // workspace_id — even though the param is named `workspace_id` on the
@@ -882,11 +1148,33 @@ export function DependencyMapOverlay({
     setSelectedMilestoneId("");
   }, [selectedNodeId]);
 
+  // Every artefact that already appears anywhere in this session's
+  // dependency graph — the original target, every node visited via
+  // refocus, the current target, and everything currently sitting in
+  // any of the three buckets. Candidates filtered by this set so the
+  // user can never link a node that's already in the graph (would be
+  // a cycle, or at best a duplicate of an existing edge).
+  const chainExcludedIds = useMemo(() => {
+    const set = new Set<string>();
+    set.add(artefactProp.id);
+    chainHistory.forEach((id) => set.add(id));
+    set.add(artefact.id);
+    Object.values(effectiveBuckets).forEach((items) => {
+      items.forEach((item) => set.add(item.id));
+    });
+    return set;
+  }, [artefactProp.id, artefact.id, chainHistory, effectiveBuckets]);
+
+  const visibleCandidateOptions = useMemo(
+    () => candidateOptions.filter((c) => !chainExcludedIds.has(c.id)),
+    [candidateOptions, chainExcludedIds],
+  );
+
   const selectedCandidates = useMemo(() => {
-    return candidateOptions.filter((candidate) =>
+    return visibleCandidateOptions.filter((candidate) =>
       selectedCandidateIds.has(candidate.id),
     );
-  }, [candidateOptions, selectedCandidateIds]);
+  }, [visibleCandidateOptions, selectedCandidateIds]);
 
   // Backend currently denormalises only the sprint alias on each work item
   // (sprint: { id, alias }). Release and milestone come back as IDs only,
@@ -1004,56 +1292,68 @@ export function DependencyMapOverlay({
     return items.map((item) => {
       const selected = selectedIds.has(item.id);
       return (
-        <button
+        <div
           key={item.id}
-          type="button"
           className={
             selected
               ? "dependency-composer__BucketRow is-selected"
               : "dependency-composer__BucketRow"
           }
-          onClick={() => toggleBucketItem(bucketKey, item.id)}
-          aria-pressed={selected}
-          aria-label={`${selected ? "Deselect" : "Select"} ${item.formattedId}`}
         >
-          <span className="dependency-composer__ResultHead">
-            <span className="dependency-composer__BucketCode">
-              {item.formattedId}
-            </span>
-            <span className="dependency-composer__BucketRowTitle">
-              {item.title}
-            </span>
-          </span>
-          <span className="dependency-composer__ResultDescription">
-            {item.description || "No description"}
-          </span>
-          <span className="dependency-composer__ResultMeta">
-            <span className={pillClass(item.sprintLabel != null)}>
-              <span className="dependency-composer__ResultPill_Label">
-                Sprint
+          <button
+            type="button"
+            className="dependency-composer__BucketRow_Body"
+            onClick={() => toggleBucketItem(bucketKey, item.id)}
+            aria-pressed={selected}
+            aria-label={`${selected ? "Deselect" : "Select"} ${item.formattedId}`}
+          >
+            <span className="dependency-composer__ResultHead">
+              <span className="dependency-composer__BucketCode">
+                {item.formattedId}
               </span>
-              <span className="dependency-composer__ResultPill_Value">
-                {item.sprintLabel ?? "—"}
+              <span className="dependency-composer__BucketRowTitle">
+                {item.title}
               </span>
             </span>
-            <span className={pillClass(item.releaseId != null)}>
-              <span className="dependency-composer__ResultPill_Label">
-                Release
+            <span className="dependency-composer__ResultDescription">
+              {item.description || "No description"}
+            </span>
+            <span className="dependency-composer__ResultMeta">
+              <span className={pillClass(item.sprintLabel != null)}>
+                <span className="dependency-composer__ResultPill_Label">
+                  Sprint
+                </span>
+                <span className="dependency-composer__ResultPill_Value">
+                  {item.sprintLabel ?? "—"}
+                </span>
               </span>
-              <span className="dependency-composer__ResultPill_Value">
-                {labelForReleaseId(item.releaseId)}
+              <span className={pillClass(item.releaseId != null)}>
+                <span className="dependency-composer__ResultPill_Label">
+                  Release
+                </span>
+                <span className="dependency-composer__ResultPill_Value">
+                  {labelForReleaseId(item.releaseId)}
+                </span>
+              </span>
+              <span className={pillClass(item.milestoneId != null)}>
+                <span className="dependency-composer__ResultPill_Label">
+                  Milestone
+                </span>
+                <span className="dependency-composer__ResultPill_Value">
+                  {labelForMilestoneId(item.milestoneId)}
+                </span>
               </span>
             </span>
-            <span className={pillClass(item.milestoneId != null)}>
-              <span className="dependency-composer__ResultPill_Label">
-                Milestone
-              </span>
-              <span className="dependency-composer__ResultPill_Value">
-                {labelForMilestoneId(item.milestoneId)}
-              </span>
-            </span>
-          </span>
-        </button>
+          </button>
+          <button
+            type="button"
+            className="dependency-composer__BucketRow_Focus"
+            onClick={() => focusOnCandidate(item.id)}
+            aria-label={`Make ${item.formattedId} the new target and rebuild the map around it`}
+          >
+            <TbTargetArrow aria-hidden="true" />
+          </button>
+        </div>
       );
     });
   };
@@ -1066,23 +1366,15 @@ export function DependencyMapOverlay({
     bucketKey: DependencyBucketKey,
     options: { isActive: boolean; withIcon: boolean; icon?: ReactNode },
   ) => {
-    const isParallel = bucketKey === "parallel";
-    const rows = (
-      <>
-        <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--top" />
-        <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--bottom" />
-      </>
-    );
     return (
       <div
         className={`dependency-map__FlowChevron dependency-map__FlowChevron--${bucketKey}${options.isActive ? " is-active" : ""}`}
         aria-hidden="true"
       >
-        {isParallel ? (
-          <div className="dependency-map__FlowChevron_Pair">{rows}</div>
-        ) : (
-          rows
-        )}
+        <div className="dependency-map__FlowChevron_Pair">
+          <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--top" />
+          <span className="dependency-map__FlowChevron_Row dependency-map__FlowChevron_Row--bottom" />
+        </div>
         {options.withIcon && options.icon ? (
           <span className="dependency-map__FlowChevron_Icon">{options.icon}</span>
         ) : null}
@@ -1115,16 +1407,262 @@ export function DependencyMapOverlay({
         <div className="dependency-composer__BucketRows">
           {renderBucketRows(bucketKey, items)}
         </div>
-        <button
-          type="button"
-          className="btn btn--secondary btn--sm dependency-composer__BucketAction"
-          onClick={() => removeSelectedFromBucket(bucketKey)}
-          disabled={selectedBucketItemIds[bucketKey].size === 0}
-        >
-          <TbX aria-hidden="true" />
-          Remove Artefact
-        </button>
+        {selectedBucketItemIds[bucketKey].size > 0 ? (
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm dependency-composer__BucketAction"
+            onClick={() => removeSelectedFromBucket(bucketKey)}
+          >
+            <TbX aria-hidden="true" />
+            Remove Artefact
+          </button>
+        ) : null}
       </section>
+    );
+  };
+
+  // Shared map inputs — derived once and passed to every map view
+  // (journey-rows, dagre, d3-dag, hand-rolled Sugiyama, cytoscape).
+  // Each view consumes the same {nodes, edges} contract so the A/B
+  // comparison is fair (same data, different layout). Tasks are
+  // excluded via `typeOptions`; orphans (no edge) don't appear.
+  const mapInputs = useMemo<{ nodes: MapNode[]; edges: MapEdge[] }>(() => {
+    const inEdges = new Set<string>();
+    topologyEdges.forEach((e) => {
+      inEdges.add(e.from);
+      inEdges.add(e.to);
+    });
+    const allowedTypeIds = new Set(typeOptions.map((t) => t.value));
+    const byId = new Map<string, DependencyCandidate>();
+    topologyArtefacts.forEach((a) => byId.set(a.id, a));
+    extraArtefacts.forEach((a) => byId.set(a.id, a));
+    const nodes: MapNode[] = Array.from(inEdges)
+      .map((id) => byId.get(id))
+      .filter((a): a is DependencyCandidate => Boolean(a))
+      .filter((a) => !a.artefactTypeId || allowedTypeIds.has(a.artefactTypeId))
+      .map((a) => ({ id: a.id, formattedId: a.formattedId, title: a.title }));
+    const nodeIdSet = new Set(nodes.map((n) => n.id));
+    // Dedupe wire's two-copies-per-edge into one entry per (from, to).
+    const edgeMap = new Map<string, MapEdge>();
+    topologyEdges.forEach((e) => {
+      if (e.kind === "parallel") return;
+      if (!nodeIdSet.has(e.from) || !nodeIdSet.has(e.to)) return;
+      const key = `${e.from}|${e.to}`;
+      if (!edgeMap.has(key)) {
+        edgeMap.set(key, {
+          from: e.from,
+          to: e.to,
+          kind: e.kind === "unlocks" ? "unlocks" : "requires",
+        });
+      }
+    });
+    return { nodes, edges: Array.from(edgeMap.values()) };
+  }, [topologyEdges, topologyArtefacts, extraArtefacts, typeOptions]);
+
+  // Journey-enumeration map. Built purely from the edges in the db —
+  // no "focused target" bias. The algorithm: enumerate every simple
+  // path from a source (no incoming forward edge) to a sink (no
+  // outgoing forward edge); each path becomes ONE ROW. Column = step
+  // index along that journey (the node's longest-path depth, so the
+  // same artefact appears at the same column across every row it
+  // shows up in). Branching is visually explicit — an artefact with
+  // four successors produces four rows that share a prefix then
+  // diverge at the next column.
+  //
+  // Forward edges = requires + unlocks. Parallel edges don't carry
+  // precedence and are skipped in the journey graph. Tasks are
+  // dropped (wrk_task slot excluded via typeOptions). Orphans
+  // (nodes in no edge) don't appear.
+  const renderMapView = () => {
+    const ROW_H = 56;
+    const PAD_X = 24;
+    const PAD_Y = 24;
+    const MIN_COL_W = 110;
+    const MAX_JOURNEYS = 200;
+
+    const inEdges = new Set<string>();
+    topologyEdges.forEach((e) => {
+      inEdges.add(e.from);
+      inEdges.add(e.to);
+    });
+
+    // Combined lookup — every artefact in the current node plus any
+    // cross-node endpoints we've hydrated. Type filter excludes
+    // tasks; hydrated entries with no type pass through.
+    const allowedTypeIds = new Set(typeOptions.map((t) => t.value));
+    const byId = new Map<string, DependencyCandidate>();
+    topologyArtefacts.forEach((a) => byId.set(a.id, a));
+    extraArtefacts.forEach((a) => byId.set(a.id, a));
+    const nodes = Array.from(inEdges)
+      .map((id) => byId.get(id))
+      .filter((a): a is DependencyCandidate => Boolean(a))
+      .filter((a) => !a.artefactTypeId || allowedTypeIds.has(a.artefactTypeId));
+    const nodeIdSet = new Set(nodes.map((n) => n.id));
+
+    // Collapse the wire's two-copies-per-directed-edge into one
+    // entry per (from, to). Skip parallel (no precedence) and any
+    // edge whose endpoints aren't yet hydrated (cross-node fetch
+    // still in flight).
+    const edgeMap = new Map<string, { from: string; to: string; kind: "requires" | "unlocks" }>();
+    topologyEdges.forEach((e) => {
+      if (e.kind === "parallel") return;
+      if (!nodeIdSet.has(e.from) || !nodeIdSet.has(e.to)) return;
+      const key = `${e.from}|${e.to}`;
+      if (!edgeMap.has(key)) {
+        edgeMap.set(key, {
+          from: e.from,
+          to: e.to,
+          kind: e.kind === "unlocks" ? "unlocks" : "requires",
+        });
+      }
+    });
+    const forwardEdges = Array.from(edgeMap.values());
+
+    // Forward adjacency + incoming set for source detection.
+    const successors = new Map<string, string[]>();
+    const predecessors = new Map<string, Set<string>>();
+    const incoming = new Set<string>();
+    forwardEdges.forEach((e) => {
+      if (!successors.has(e.from)) successors.set(e.from, []);
+      successors.get(e.from)!.push(e.to);
+      if (!predecessors.has(e.to)) predecessors.set(e.to, new Set());
+      predecessors.get(e.to)!.add(e.from);
+      incoming.add(e.to);
+    });
+
+    // Longest-path depth → column position. Iterative relaxation,
+    // bounded by node-count passes so a pathological cycle (shouldn't
+    // exist; backend cycle-guards writes) can't loop forever.
+    const depth = new Map<string, number>();
+    nodes.forEach((n) => depth.set(n.id, 0));
+    for (let pass = 0; pass < nodes.length; pass++) {
+      let changed = false;
+      for (const node of nodes) {
+        const preds = predecessors.get(node.id);
+        if (!preds || preds.size === 0) continue;
+        let maxPred = -1;
+        preds.forEach((p) => {
+          const d = depth.get(p);
+          if (d !== undefined && d > maxPred) maxPred = d;
+        });
+        if (maxPred < 0) continue;
+        const next = maxPred + 1;
+        if ((depth.get(node.id) ?? 0) < next) {
+          depth.set(node.id, next);
+          changed = true;
+        }
+      }
+      if (!changed) break;
+    }
+
+    // Enumerate all simple source→sink paths.
+    const sources = nodes.filter((n) => !incoming.has(n.id));
+    const journeys: string[][] = [];
+    const dfs = (nodeId: string, path: string[], visited: Set<string>) => {
+      if (journeys.length >= MAX_JOURNEYS) return;
+      const succs = (successors.get(nodeId) ?? []).filter(
+        (s) => !visited.has(s) && nodeIdSet.has(s),
+      );
+      if (succs.length === 0) {
+        journeys.push([...path, nodeId]);
+        return;
+      }
+      visited.add(nodeId);
+      path.push(nodeId);
+      for (const s of succs) dfs(s, path, visited);
+      path.pop();
+      visited.delete(nodeId);
+    };
+    sources.forEach((s) => dfs(s.id, [], new Set()));
+    // Isolated nodes (cycle leftovers or no source reachable) — render
+    // each as a single-step journey so they don't vanish.
+    if (journeys.length === 0 && nodes.length > 0) {
+      nodes.forEach((n) => journeys.push([n.id]));
+    }
+    // Sort journeys: longest first, then by leading id for stability.
+    journeys.sort((a, b) => {
+      if (b.length !== a.length) return b.length - a.length;
+      return a[0].localeCompare(b[0]);
+    });
+
+    const maxDepth = nodes.reduce((m, n) => Math.max(m, depth.get(n.id) ?? 0), 0);
+    const cols = maxDepth + 1;
+    const containerW = Math.max(mapSurfaceW, MIN_COL_W * cols + PAD_X * 2);
+    const usableW = Math.max(containerW - PAD_X * 2, MIN_COL_W);
+    const colW = Math.max(MIN_COL_W, usableW / cols);
+    const innerWidth = PAD_X * 2 + cols * colW;
+    const innerHeight = PAD_Y * 2 + journeys.length * ROW_H;
+
+    const xFor = (col: number) => PAD_X + (col + 0.5) * colW;
+    const yFor = (row: number) => PAD_Y + (row + 0.5) * ROW_H;
+
+    return (
+      <div
+        ref={mapSurfaceRef}
+        className="dependency-map__MapSurface"
+        role="region"
+        aria-label="Dependency visualisation map"
+      >
+        {nodes.length === 0 ? (
+          <p className="dependency-map__MapEmpty">
+            No relationships found in this topology yet. Add a
+            dependency in the editor to see it here.
+          </p>
+        ) : (
+          <div
+            className="dependency-map__MapInner"
+            style={{ width: `${innerWidth}px`, height: `${innerHeight}px` }}
+          >
+            <svg
+              className="dependency-map__MapConnectors"
+              width={innerWidth}
+              height={innerHeight}
+              viewBox={`0 0 ${innerWidth} ${innerHeight}`}
+              aria-hidden="true"
+            >
+              {journeys.flatMap((journey, r) =>
+                journey.slice(0, -1).map((fromId, i) => {
+                  const toId = journey[i + 1];
+                  const edge = forwardEdges.find(
+                    (e) => e.from === fromId && e.to === toId,
+                  );
+                  const kind = edge?.kind ?? "requires";
+                  const x1 = xFor(depth.get(fromId) ?? 0);
+                  const x2 = xFor(depth.get(toId) ?? 0);
+                  const y = yFor(r);
+                  return (
+                    <line
+                      key={`j${r}-step${i}`}
+                      className={`dependency-map__MapConnector dependency-map__MapConnector--${kind}`}
+                      x1={x1}
+                      y1={y}
+                      x2={x2}
+                      y2={y}
+                    />
+                  );
+                }),
+              )}
+            </svg>
+            {journeys.flatMap((journey, r) =>
+              journey.map((nodeId) => {
+                const node = byId.get(nodeId);
+                if (!node) return null;
+                const c = depth.get(nodeId) ?? 0;
+                return (
+                  <div
+                    key={`n${r}-${nodeId}`}
+                    className="dependency-map__MapNode"
+                    style={{ left: `${xFor(c)}px`, top: `${yFor(r)}px` }}
+                    title={`${node.formattedId} ${node.title}`}
+                  >
+                    {node.formattedId}
+                  </div>
+                );
+              }),
+            )}
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -1155,7 +1693,6 @@ export function DependencyMapOverlay({
         ariaLabel: "Canvas state: blank",
       }}
       onClose={onClose}
-      alternateViewLabel="View Map"
       primaryViewLabel="Editor"
       rootData={{
         "artefact-id": meta.artefactId,
@@ -1171,8 +1708,6 @@ export function DependencyMapOverlay({
       }}
       sidebar={
         <div className="dependency-composer">
-          {renderTargetCard()}
-
           <nav
             className="dependency-composer__Mode"
             aria-label="Dependency relationship type"
@@ -1304,12 +1839,12 @@ export function DependencyMapOverlay({
                 <span className="dependency-composer__ResultLabel">
                   Artefacts
                 </span>
-                {candidateOptions.length === 0 ? (
+                {visibleCandidateOptions.length === 0 ? (
                   <div className="dependency-composer__ResultEmpty">
                     No artefacts found
                   </div>
                 ) : (
-                  candidateOptions.map((candidate) => {
+                  visibleCandidateOptions.map((candidate) => {
                     const selected = selectedCandidateIds.has(candidate.id);
                     return (
                       <button
@@ -1382,22 +1917,53 @@ export function DependencyMapOverlay({
       }
       primaryView={
         <div className="dependency-map__Canvas">
-          <div className="dependency-map__StateGrid">
+          <div
+            className={
+              isFocusFading
+                ? "dependency-map__StateGrid is-fading"
+                : "dependency-map__StateGrid"
+            }
+          >
+            <div className="dependency-map__StateGrid_Target">
+              {renderTargetCard()}
+            </div>
             {CANVAS_BUCKET_ORDER.map((bucketKey) =>
               renderCanvasBucket(bucketKey),
             )}
           </div>
         </div>
       }
-      alternateView={
-        <div className="dependency-map__Canvas">
-          <div
-            className="dependency-map__MapSurface"
-            role="region"
-            aria-label="Dependency visualisation map"
-          />
-        </div>
-      }
+      alternateViews={[
+        { key: "journey", label: "Journey Rows", content: renderMapView() },
+        {
+          key: "dagre",
+          label: "Dagre",
+          content: (
+            <MapViewDagre nodes={mapInputs.nodes} edges={mapInputs.edges} />
+          ),
+        },
+        {
+          key: "d3-dag",
+          label: "d3-dag",
+          content: (
+            <MapViewD3Dag nodes={mapInputs.nodes} edges={mapInputs.edges} />
+          ),
+        },
+        {
+          key: "sugiyama",
+          label: "Sugiyama",
+          content: (
+            <MapViewSugiyama nodes={mapInputs.nodes} edges={mapInputs.edges} />
+          ),
+        },
+        {
+          key: "cytoscape",
+          label: "Cytoscape",
+          content: (
+            <MapViewCytoscape nodes={mapInputs.nodes} edges={mapInputs.edges} />
+          ),
+        },
+      ]}
     />
   );
 }

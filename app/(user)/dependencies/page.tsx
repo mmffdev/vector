@@ -6,7 +6,7 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import type { ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import { DependencyMapOverlay } from "@/app/components/DependencyMap/DependencyMapOverlay";
-import { FullscreenCanvasOverlay } from "@/app/components/FullscreenCanvasOverlay/FullscreenCanvasOverlay";
+import { Canvas } from "@/app/components/Canvas/Canvas";
 import { workItems } from "@/app/lib/apiSite";
 
 export default function DependenciesPage() {
@@ -65,7 +65,7 @@ export default function DependenciesPage() {
 
   if (!artefact) {
     return (
-      <FullscreenCanvasOverlay
+      <Canvas
         ariaLabel="Dependency map"
         title="Dependency Map"
         subtitle="Loading artefact metadata"
@@ -75,11 +75,12 @@ export default function DependenciesPage() {
           ariaLabel: "Canvas state: loading",
         }}
         onClose={close}
-      >
-        <div className="fullscreen-canvas-overlay__Canvas_Empty">
-          <p>Loading dependency map...</p>
-        </div>
-      </FullscreenCanvasOverlay>
+        primaryView={
+          <div className="canvas__Surface_Empty">
+            <p>Loading dependency map...</p>
+          </div>
+        }
+      />
     );
   }
 
