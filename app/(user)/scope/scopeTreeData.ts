@@ -45,6 +45,7 @@ export interface ScopeNode {
   due: string | null;
   childrenCount: number; // server children_count — authoritative (drives caret)
   colour: string | null; // per-artefact colour → row accent
+  prio: number | null;
 }
 
 // ── Wire shape (subset of backend WorkItem, verified against types.go) ──────
@@ -64,6 +65,7 @@ interface WireWorkItem {
   due_date: string | null;
   children_count: number;
   colour: string | null;
+  prio: number | null;
 }
 
 // columnId → backend SortKey whitelist. Columns with no server key
@@ -102,6 +104,7 @@ function mapWire(w: WireWorkItem): ScopeNode {
     // not an in-page estimate. >0 ⇒ caret; expanding fetches the real set.
     childrenCount: w.children_count ?? 0,
     colour: w.colour ?? null,
+    prio: w.prio ?? null,
   };
 }
 
