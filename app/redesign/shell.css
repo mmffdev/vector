@@ -11,6 +11,7 @@
   --rd-statusbar-h: 28px;
   --rd-radius-md: 10px;
   --rd-radius-sm: 6px;
+  --rail-2-slide-ms: 200ms;
 
   display: grid;
   grid-template-columns: var(--rd-rail-w) var(--rail-2-w) 1fr;
@@ -18,6 +19,44 @@
   height: 100vh;
   background: var(--canvas);
   color: var(--ink);
+  /* Positioning context for the rail-2 overlay — anchors rail-2 at
+     exactly --rd-rail-w from the left edge, independent of how the
+     grid tracks resolve. */
+  position: relative;
+}
+
+/* Hover zones — each rail is wrapped so it can detect mouse enter/leave
+   independently. The two zones share a debounce timer (RedesignShell),
+   so the mouse can travel rail-1 → rail-2 without the flyout closing.
+   In pinned mode the rail-2 zone occupies the grid column normally; in
+   overlay mode the column collapses to 0 and rail-2 escapes via
+   position:absolute (see .rail-2 rules below). */
+.rd-shell__rail-1-zone {
+  grid-column: 1 / 2;
+  grid-row: 1;
+  position: relative;
+  z-index: 500;
+}
+.rd-shell__rail-2-zone {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  /* No position context here — rail-2 anchors to .rd-shell (the shell
+     root) so its x is always exactly --rd-rail-w from the screen edge,
+     independent of this wrapper's geometry. The zone only exists as a
+     hover detection area in pinned mode + a slot in the grid flow. */
+}
+
+/* Overlay mode — rail-2 grid column collapses to 0 so main reclaims
+   the 240/320px of horizontal real estate. Rail-2 itself escapes the
+   grid via position:absolute (see .rail-2 rules below) and floats over
+   main on hover/focus. The rail-2 zone shrinks to width 0 so it
+   doesn't intercept clicks meant for main content when closed. */
+.rd-shell--rail2-overlay {
+  grid-template-columns: var(--rd-rail-w) 0 1fr;
+}
+.rd-shell--rail2-overlay .rd-shell__rail-2-zone {
+  width: 0;
+  overflow: visible; /* let absolute-positioned rail-2 paint outside */
 }
 
 /* Status bar — full-width chrome pinned to the bottom across all 3 columns */
@@ -107,7 +146,7 @@
    ============================================================ */
 .rail-1 {
   width: var(--rd-rail-w);
-  background: var(--surface);
+  background: var(--canvas);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -115,6 +154,7 @@
   top: 0;
   height: calc(100vh - var(--rd-statusbar-h));
   box-sizing: border-box;
+  z-index: 500;
   overflow: hidden;
 }
 
@@ -205,7 +245,7 @@
   border-radius: var(--rd-radius-md);
   background: transparent;
   border: 0;
-  color: var(--ink-muted);
+  color: var(--nav-rail-ink);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -217,8 +257,8 @@
 }
 .rail-1__nav-btn:hover,
 .rail-1__nav-btn.is-active {
-  background: var(--surface-sunken);
-  color: var(--ink);
+  background: var(--nav-rail-bg-active);
+  color: var(--nav-rail-ink-active);
 }
 .rail-1__nav-btn:focus-visible {
   outline: 2px solid var(--ink);
@@ -257,7 +297,7 @@
   border-radius: var(--rd-radius-md);
   background: transparent;
   border: 0;
-  color: var(--ink-muted);
+  color: var(--nav-rail-ink);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -265,8 +305,8 @@
   transition: background 150ms ease, color 150ms ease;
 }
 .rail-1__util-btn:hover {
-  background: var(--surface-sunken);
-  color: var(--ink);
+  background: var(--nav-rail-bg-active);
+  color: var(--nav-rail-ink-active);
 }
 
 /* Bell + unread-count badge. Position absolutely so the badge sits
@@ -296,9 +336,9 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--nav-rail-ink);
+  color: var(--nav-rail-ink);
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.04em;
@@ -308,12 +348,13 @@
   align-items: center;
   justify-content: center;
   margin-top: 4px;
-  transition: background 150ms ease, border-color 150ms ease;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
-.rail-1__user-btn:hover { background: var(--surface); }
+.rail-1__user-btn:hover,
 .rail-1__user-btn.is-active {
-  background: var(--surface);
-  border-color: var(--ink);
+  background: var(--nav-rail-bg-active);
+  border-color: var(--nav-rail-bg-active);
+  color: var(--nav-rail-ink-active);
 }
 
 /* ============================================================
@@ -430,7 +471,7 @@
    ============================================================ */
 .rail-2 {
   width: var(--rail-2-w);
-  background: var(--surface);
+  background: var(--canvas);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -439,7 +480,62 @@
   min-height: 0;
 }
 
+/* Overlay mode — rail-2 escapes its (collapsed) grid track and anchors
+   directly to .rd-shell (the positioning context) at left = rail-1
+   width. This is geometrically guaranteed: rail-2 always starts at
+   exactly --rd-rail-w from the shell's left edge, never overlapping
+   rail-1. Hidden by default (translated off-screen so it stays in the
+   a11y tree); slides in on .rd-shell--rail2-visible. */
+.rd-shell--rail2-overlay .rail-2 {
+  position: absolute;
+  top: 0;
+  left: var(--rd-rail-w);
+  z-index: 499;
+  transform: translateX(calc(-1 * var(--rail-2-w) - 8px));
+  transition: transform var(--rail-2-slide-ms) ease;
+  box-shadow: 0 0 0 0 transparent;
+}
+.rd-shell--rail2-overlay.rd-shell--rail2-visible .rail-2 {
+  transform: translateX(0);
+  box-shadow: 4px 0 12px -6px rgba(0, 0, 0, 0.18);
+}
+/* Defence in depth — when the flyout is fully off-screen and not the
+   target of a deliberate open (scope / account), suppress pointer
+   events so it can't intercept clicks that should pass through to
+   the main content underneath. */
+.rd-shell--rail2-overlay:not(.rd-shell--rail2-visible) .rail-2 {
+  pointer-events: none;
+}
+
+/* Pin button — sits in the rail-2 header band on the right side. */
+.rail-2__pin {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.rail-2__pin:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+.rail-2__pin[aria-pressed="true"] {
+  color: var(--ink);
+}
+
 .rail-2__header {
+  position: relative; /* anchor for .rail-2__pin */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -498,19 +594,19 @@
   display: flex;
   align-items: center;
   height: 32px;
-  color: var(--ink-muted);
+  color: var(--nav-rail-ink);
   font-size: 13px;
   font-weight: 400;
   transition: background 150ms ease, color 150ms ease;
   cursor: pointer;
 }
 .rail-2__nav-row:hover {
-  background: var(--surface-sunken);
-  color: var(--ink);
+  background: var(--nav-rail-bg-active);
+  color: var(--nav-rail-ink-active);
 }
 .rail-2__nav-row.is-active {
-  background: var(--surface-sunken);
-  color: var(--ink);
+  background: var(--nav-rail-bg-active);
+  color: var(--nav-rail-ink-active);
   font-weight: 500;
 }
 .rail-2__nav-row--skeleton {
@@ -652,7 +748,7 @@
   height: calc(100vh - var(--rd-statusbar-h));
   overflow: hidden;
   min-width: 0;
-  background: #ffffff;
+  background: var(--canvas);
 }
 
 .rd-shell__main_QrAnchor {
@@ -680,7 +776,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 0 30px;
-  background: #ffffff;
+  background: var(--canvas);
 }
 
 .main_title__text {

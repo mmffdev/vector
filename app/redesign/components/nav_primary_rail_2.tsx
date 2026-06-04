@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { MdOutlinePushPin, MdPushPin } from "react-icons/md";
 import { useShell, type ShellPage } from "../ShellContext";
 import { useNavPrefs } from "@/app/contexts/NavPrefsContext";
 import { useSentinel } from "@/app/sentinel";
@@ -88,9 +89,24 @@ function RailHeader({ title, now }: { title: string | null | undefined; now: Dat
   // the header band preserves its height.
   void title;
   void now;
+  const { isRail2Pinned, toggleRail2Pin } = useShell();
   return (
     <div className="rail-2__header header-band">
       <h3 className="rail-2__title">{""}</h3>
+      <button
+        type="button"
+        className="rail-2__pin"
+        onClick={toggleRail2Pin}
+        aria-pressed={isRail2Pinned}
+        aria-label={isRail2Pinned ? "Unpin sidebar (hover to show)" : "Pin sidebar open"}
+        title={isRail2Pinned ? "Unpin sidebar" : "Pin sidebar open"}
+      >
+        {isRail2Pinned ? (
+          <MdPushPin size={16} aria-hidden="true" />
+        ) : (
+          <MdOutlinePushPin size={16} aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }
@@ -311,6 +327,7 @@ function PageRow({
   setRef: (key: string, el: HTMLElement | null) => void;
 }) {
   const { isPinnable, isPageBookmarked, bookmarkPage, unbookmarkPage } = useNavPrefs();
+  const { isRail2Pinned, setRail2Hovered } = useShell();
   const [busy, setBusy] = useState(false);
   const pinnable = isPinnable(page.itemKey);
   const bookmarked = pinnable && isPageBookmarked(page.itemKey);
@@ -330,6 +347,13 @@ function PageRow({
     }
   };
 
+  // When the rail is in flyout mode (not pinned), clicking a page link
+  // closes the overlay so the user lands cleanly on their destination.
+  // Pinned mode keeps the rail open as the user wants it locked in.
+  const onLinkClick = () => {
+    if (!isRail2Pinned) setRail2Hovered(false);
+  };
+
   return (
     <div
       ref={(el) => setRef(page.itemKey, el as HTMLElement | null)}
@@ -339,6 +363,7 @@ function PageRow({
         href={page.href}
         className="rail-2__nav-row_link"
         aria-current={active ? "page" : undefined}
+        onClick={onLinkClick}
       >
         <span className="rail-2__nav-row_icon">
           <NavIcon iconKey={page.icon} />

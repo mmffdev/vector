@@ -154,7 +154,9 @@ describe("<NavigationPie>", () => {
       />,
     );
     const button = screen.getByRole("button", { name: /Create new/i });
-    expect(button.classList.contains("navigation-pie__Chip")).toBe(true);
+    expect(button.classList.contains("btn")).toBe(true);
+    expect(button.classList.contains("btn--primary")).toBe(true);
     expect(button.classList.contains("grid__Tree_ActionBar_Create")).toBe(true);
+    expect(button.getAttribute("data-nav-pie-chip")).toBe("");
   });
 });

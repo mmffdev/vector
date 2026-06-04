@@ -71,6 +71,19 @@ interface ShellState {
   isDebugOpen: boolean;
   toggleDebugOpen: () => void;
   closeDebugPanel: () => void;
+  /**
+   * Rail-2 flyout state — when false, rail-2 collapses to 0 in the grid and
+   * floats as an overlay on hover. When true, rail-2 is pinned open and
+   * occupies its grid column persistently (legacy behaviour). Persisted to
+   * localStorage; TD-RAIL2-PIN-NAVPREFS tracks the backend migration.
+   */
+  isRail2Pinned: boolean;
+  toggleRail2Pin: () => void;
+  /** Transient open state — true while hovering rail-1 or rail-2. */
+  isRail2Hovered: boolean;
+  setRail2Hovered: (open: boolean) => void;
+  /** Derived: rail-2 paints when pinned, hovered, account, or scope is on. */
+  isRail2Visible: boolean;
 }
 
 const ShellContext = createContext<ShellState | null>(null);
@@ -292,6 +305,31 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   const [isScopeOpen, setIsScopeOpen] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
 
+  // Rail-2 pin — persisted to localStorage so the user's choice survives
+  // refresh. Defaults to TRUE (pinned) so rail-2 sits in its grid column
+  // matching the original always-visible layout. Hydrated on mount; the
+  // user can click the pin in rail-2's header to opt in to overlay mode.
+  const [isRail2Pinned, setIsRail2Pinned] = useState<boolean>(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const v = window.localStorage.getItem("vector:rail2:pinned");
+    // Only adopt persisted state if it was explicitly set; absent key
+    // stays pinned (the safe default).
+    if (v === "false") setIsRail2Pinned(false);
+    else if (v === "true") setIsRail2Pinned(true);
+  }, []);
+  const toggleRail2Pin = useCallback(() => {
+    setIsRail2Pinned((v) => {
+      const next = !v;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("vector:rail2:pinned", String(next));
+      }
+      return next;
+    });
+  }, []);
+  const [isRail2Hovered, setIsRail2Hovered] = useState(false);
+  const setRail2Hovered = useCallback((open: boolean) => setIsRail2Hovered(open), []);
+
   useEffect(() => {
     if (urlSection) setManualSectionId(urlSection.id);
   }, [urlSection]);
@@ -313,6 +351,12 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
   const toggleDebugOpen = useCallback(() => setIsDebugOpen((v) => !v), []);
   const closeDebugPanel = useCallback(() => setIsDebugOpen(false), []);
 
+  // Derived: rail-2 paints when explicitly opened (account, scope), pinned,
+  // or hovered. Account/scope force-show because they're a deliberate user
+  // toggle independent of the hover/pin model.
+  const isRail2Visible =
+    isRail2Pinned || isRail2Hovered || isScopeOpen || isAccountActive;
+
   return (
     <ShellContext.Provider
       value={{
@@ -329,6 +373,11 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
         isDebugOpen,
         toggleDebugOpen,
         closeDebugPanel,
+        isRail2Pinned,
+        toggleRail2Pin,
+        isRail2Hovered,
+        setRail2Hovered,
+        isRail2Visible,
       }}
     >
       {children}

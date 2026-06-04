@@ -193,7 +193,7 @@ export default function NavigationPie({
     const onOver = (e: PointerEvent) => {
       const target = e.target as Element | null;
       if (!target) return;
-      const sibling = target.closest?.(".navigation-pie__Chip");
+      const sibling = target.closest?.("[data-nav-pie-chip]");
       if (sibling && sibling !== chipRef.current) close();
     };
 
@@ -253,7 +253,7 @@ export default function NavigationPie({
   const handleChipClick = useCallback(() => {
     if (open) close();
     // Don't open with an empty options list — the chip would hide itself
-    // (via .navigation-pie__Chip-open visibility:hidden) and the pie would
+    // (inline style visibility:hidden when open) and the pie would
     // render zero wedges, leaving an invisible no-op trigger. Stay closed
     // so the user sees the chip and can tell nothing's available yet.
     else if (options.length > 0) {
@@ -314,12 +314,13 @@ export default function NavigationPie({
       <button
         ref={chipRef}
         type="button"
+        data-nav-pie-chip=""
         className={
-          "btn navigation-pie__Chip" +
+          "btn btn--primary" +
           (chipClassName ? ` ${chipClassName}` : "") +
-          (active ? " navigation-pie__Chip-active" : "") +
-          (open ? " navigation-pie__Chip-open" : "")
+          (active ? " is-active" : "")
         }
+        style={open ? { visibility: "hidden" } : undefined}
         onClick={handleChipClick}
         aria-haspopup="listbox"
         aria-expanded={open}
