@@ -60,3 +60,64 @@ export function subscribeAuthEvents(
   ch.addEventListener("message", listener);
   return () => ch.removeEventListener("message", listener);
 }
+
+// Minimal structural type for the slice of navigator.locks we use, so the
+// test can inject a fake. `undefined` here means "use the real
+// navigator.locks"; `null` means "simulate locks unavailable".
+type LockManagerLike = {
+  request: (
+    name: string,
+    opts: { ifAvailable?: boolean } | (() => Promise<void>),
+    cb?: () => Promise<void>,
+  ) => Promise<void>;
+};
+let _locksOverride: LockManagerLike | null | undefined = undefined;
+
+// __setLocksForTest is a test seam. Production never calls it.
+//   undefined → use real navigator.locks
+//   null      → simulate locks unavailable (exercise the fallback)
+//   object    → use the supplied fake
+export function __setLocksForTest(v: LockManagerLike | null | undefined): void {
+  _locksOverride = v;
+}
+
+function resolveLocks(): LockManagerLike | null {
+  if (_locksOverride !== undefined) return _locksOverride;
+  if (typeof navigator !== "undefined" && "locks" in navigator && navigator.locks) {
+    return navigator.locks as unknown as LockManagerLike;
+  }
+  return null;
+}
+
+export interface CoordinatedRefreshOpts {
+  // doRefresh performs the actual network /auth/refresh (rotating the
+  // shared single-use cookie). Called at most once across all tabs per
+  // cycle, only by whichever tab holds the lock AND found no fresh token.
+  doRefresh: () => Promise<void>;
+  // freshTokenArrived returns true if a "refreshed" broadcast was observed
+  // since this refresh attempt began — meaning another tab already led the
+  // refresh and we should adopt its token rather than rotate again.
+  freshTokenArrived: () => boolean;
+}
+
+// coordinatedRefresh serialises refresh across tabs via the Web Locks
+// mutex. The lock auto-releases if the holding tab crashes/closes, so
+// there is no orphaned-leader failure mode. If locks are unavailable
+// (ancient browser), it degrades to calling doRefresh directly — the
+// backend's 30s grace window then absorbs the occasional race exactly as
+// it did before this feature.
+export async function coordinatedRefresh(opts: CoordinatedRefreshOpts): Promise<void> {
+  const locks = resolveLocks();
+  if (!locks) {
+    await opts.doRefresh();
+    return;
+  }
+  await locks.request(AUTH_REFRESH_LOCK, {}, async () => {
+    // We now hold the lock. If, while we were queued behind another tab's
+    // refresh, that tab broadcast a fresh token, adopt it and skip our own
+    // network refresh — this is what guarantees the single-use cookie is
+    // rotated exactly once per cycle.
+    if (opts.freshTokenArrived()) return;
+    await opts.doRefresh();
+  });
+}

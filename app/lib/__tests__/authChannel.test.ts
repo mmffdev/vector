@@ -3,6 +3,8 @@ import {
   AUTH_CHANNEL_NAME,
   broadcastAuthEvent,
   subscribeAuthEvents,
+  coordinatedRefresh,
+  __setLocksForTest,
   type AuthChannelMessage,
 } from "@/app/lib/authChannel";
 
@@ -44,5 +46,51 @@ describe("authChannel.unit envelope + pub/sub", () => {
       { type: "logout" },
     ]);
     observer.close();
+  });
+});
+
+describe("authChannel.unit coordinatedRefresh", () => {
+  afterEach(() => {
+    __setLocksForTest(undefined); // restore real navigator.locks
+  });
+
+  it("runs the doRefresh callback when it acquires the lock and no fresh token arrived", async () => {
+    __setLocksForTest({
+      request: async (_name: string, _opts: unknown, cb?: () => Promise<void>) => {
+        await cb?.();
+      },
+    });
+
+    let refreshRan = 0;
+    await coordinatedRefresh({
+      doRefresh: async () => { refreshRan += 1; },
+      freshTokenArrived: () => false,
+    });
+    expect(refreshRan).toBe(1);
+  });
+
+  it("SKIPS doRefresh when a fresh token arrived while queued (another tab led)", async () => {
+    __setLocksForTest({
+      request: async (_name: string, _opts: unknown, cb?: () => Promise<void>) => {
+        await cb?.();
+      },
+    });
+
+    let refreshRan = 0;
+    await coordinatedRefresh({
+      doRefresh: async () => { refreshRan += 1; },
+      freshTokenArrived: () => true,
+    });
+    expect(refreshRan).toBe(0);
+  });
+
+  it("falls back to running doRefresh directly when Web Locks is unavailable", async () => {
+    __setLocksForTest(null);
+    let refreshRan = 0;
+    await coordinatedRefresh({
+      doRefresh: async () => { refreshRan += 1; },
+      freshTokenArrived: () => false,
+    });
+    expect(refreshRan).toBe(1);
   });
 });
