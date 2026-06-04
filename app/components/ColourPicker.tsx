@@ -7,13 +7,92 @@ import { safeInk } from "@/app/lib/colourUtils";
 // Shared palette — promoted from the duplicated inline copies in
 // app/(user)/workspace-admin/artefacts/artefact-types/page.tsx and
 // app/(user)/workspace-admin/flow-states/page.tsx.
-const PALETTE = [
+export const COLOUR_PALETTE = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308",
   "#84cc16", "#22c55e", "#10b981", "#14b8a6",
   "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
   "#a855f7", "#ec4899", "#f43f5e", "#64748b",
   "#6b7280", "#78716c",
-];
+] as const;
+
+// Panel — the popover content (palette + custom hex input + clear). Shared
+// between the inline ColourPicker (label + swatch + own popover) and the
+// portal-driven ColourBlockPicker (BTICA-sized trigger in grid cells).
+export interface ColourPickerPanelProps {
+  value: string | null | undefined;
+  onPick: (hex: string) => void;
+  onClear: () => void;
+  style?: React.CSSProperties;
+}
+
+export const ColourPickerPanel = React.forwardRef<HTMLDivElement, ColourPickerPanelProps>(
+  function ColourPickerPanel({ value, onPick, onClear, style }, ref) {
+    const [custom, setCustom] = useState(value ?? "");
+    useEffect(() => { setCustom(value ?? ""); }, [value]);
+
+    return (
+      <div
+        className="at-colour-popover"
+        ref={ref}
+        style={style}
+        role="dialog"
+        aria-label="Choose a colour"
+      >
+        <div className="at-colour-palette">
+          {COLOUR_PALETTE.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              className={`at-colour-cell${value === hex ? " at-colour-cell--active" : ""}`}
+              style={{ background: hex }}
+              title={hex}
+              onClick={() => onPick(hex)}
+              aria-label={hex}
+              aria-pressed={value === hex}
+            />
+          ))}
+        </div>
+        <div className="at-colour-custom">
+          <label className="at-colour-custom__label">
+            Custom hex
+            <input
+              type="text"
+              className="form__input at-colour-custom__input"
+              value={custom}
+              maxLength={7}
+              placeholder="#3B82F6"
+              onChange={(e) => setCustom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const v = custom.trim().toUpperCase();
+                  if (/^#[0-9A-F]{6}$/.test(v)) onPick(v);
+                }
+              }}
+            />
+          </label>
+          {/^#[0-9A-Fa-f]{6}$/.test(custom) && custom !== value && (
+            <button
+              type="button"
+              className="btn btn--sm btn--ghost"
+              onClick={() => onPick(custom.trim().toUpperCase())}
+            >
+              Apply
+            </button>
+          )}
+        </div>
+        {value && (
+          <button
+            type="button"
+            className="btn btn--sm btn--ghost at-colour-clear"
+            onClick={onClear}
+          >
+            Remove colour
+          </button>
+        )}
+      </div>
+    );
+  },
+);
 
 export interface ColourPickerProps {
   value: string | null | undefined;
@@ -38,17 +117,10 @@ export function ColourPicker(props: ColourPickerProps) {
   const closeIt = () => (isControlled ? props.onClose?.() : setInternalOpen(false));
 
   const { value, onChange } = props;
-  const [custom, setCustom] = useState(value ?? "");
-
-  // Keep `custom` in sync if value changes externally (e.g. parent updates).
-  useEffect(() => {
-    setCustom(value ?? "");
-  }, [value]);
 
   const swatchRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Portal position (only computed in controlled mode).
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   useEffect(() => {
     if (!isControlled || !open || !swatchRef.current) return;
@@ -61,7 +133,6 @@ export function ColourPicker(props: ColourPickerProps) {
     });
   }, [isControlled, open]);
 
-  // Click-outside dismissal — covers both modes.
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -74,65 +145,27 @@ export function ColourPicker(props: ColourPickerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const pick = (hex: string) => { onChange(hex); setCustom(hex); closeIt(); };
-  const clear = () => { onChange(null); setCustom(""); closeIt(); };
+  const pick = (hex: string) => { onChange(hex); closeIt(); };
+  const clear = () => { onChange(null); closeIt(); };
 
   const bg = value ?? "var(--surface-sunken)";
   const ink = value ? safeInk(value) : "var(--ink-muted)";
 
-  const popoverContent = (
-    <div className="at-colour-popover" ref={popoverRef} style={isControlled ? popoverStyle : undefined} role="dialog" aria-label="Choose a colour">
-      <div className="at-colour-palette">
-        {PALETTE.map((hex) => (
-          <button
-            key={hex}
-            type="button"
-            className={`at-colour-cell${value === hex ? " at-colour-cell--active" : ""}`}
-            style={{ background: hex }}
-            title={hex}
-            onClick={() => pick(hex)}
-            aria-label={hex}
-            aria-pressed={value === hex}
-          />
-        ))}
-      </div>
-      <div className="at-colour-custom">
-        <label className="at-colour-custom__label">
-          Custom hex
-          <input
-            type="text"
-            className="form__input at-colour-custom__input"
-            value={custom}
-            maxLength={7}
-            placeholder="#3B82F6"
-            onChange={(e) => setCustom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const v = custom.trim().toUpperCase();
-                if (/^#[0-9A-F]{6}$/.test(v)) pick(v);
-              }
-            }}
-          />
-        </label>
-        {/^#[0-9A-Fa-f]{6}$/.test(custom) && custom !== value && (
-          <button type="button" className="btn btn--sm btn--ghost" onClick={() => pick(custom.trim().toUpperCase())}>
-            Apply
-          </button>
-        )}
-      </div>
-      {value && (
-        <button type="button" className="btn btn--sm btn--ghost at-colour-clear" onClick={clear}>
-          Remove colour
-        </button>
-      )}
-    </div>
+  const panel = (
+    <ColourPickerPanel
+      ref={popoverRef}
+      value={value}
+      onPick={pick}
+      onClear={clear}
+      style={isControlled ? popoverStyle : undefined}
+    />
   );
 
   const popover = !open
     ? null
     : isControlled
-      ? ReactDOM.createPortal(popoverContent, document.body)
-      : popoverContent;
+      ? ReactDOM.createPortal(panel, document.body)
+      : panel;
 
   return (
     <div className="at-colour-picker">
