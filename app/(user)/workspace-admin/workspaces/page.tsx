@@ -217,7 +217,7 @@ function WorkspaceActionsCell({
         <MdOutlineEdit size={14} />
       </button>
       {canArchive && (
-        <button type="button" className="btn btn--danger btn--sm" onClick={archive} disabled={busy}>
+        <button type="button" className="btn btn--caution btn--sm" onClick={archive} disabled={busy}>
           {busy ? "Archiving…" : "Archive"}
         </button>
       )}

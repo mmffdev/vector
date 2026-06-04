@@ -97,7 +97,7 @@ export default function PortfolioSettingsPage() {
             Archive removes the portfolio from active selection. Existing data
             is preserved and can be restored by a gadmin.
           </p>
-          <button type="button" className="btn btn--danger" disabled>
+          <button type="button" className="btn btn--caution" disabled>
             Archive portfolio
           </button>
         </Panel>

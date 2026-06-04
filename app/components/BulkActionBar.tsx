@@ -154,7 +154,7 @@ export default function BulkActionBar({
         {canDelete && (
           <button
             type="button"
-            className="btn btn--danger"
+            className="btn btn--caution"
             onClick={onDelete}
             data-action="delete"
             disabled={!onDelete}

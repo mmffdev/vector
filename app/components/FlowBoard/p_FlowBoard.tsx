@@ -623,10 +623,7 @@ export function FlowBoard({
             />
             <button
               type="button"
-              className={
-                "navigation-pie__Chip" +
-                (ownerIsMe ? " navigation-pie__Chip-active" : "")
-              }
+              className={"btn btn--primary" + (ownerIsMe ? " is-active" : "")}
               onClick={() =>
                 setOwnerFilter(ownerIsMe ? [] : meId ? [meId] : [])
               }

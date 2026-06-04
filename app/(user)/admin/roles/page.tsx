@@ -463,7 +463,7 @@ export default function AdminRolesPage() {
                   {!selected.is_system && canArchive && (
                     <button
                       type="button"
-                      className="btn btn--danger"
+                      className="btn btn--caution"
                       onClick={archiveRole}
                       disabled={busy}
                     >

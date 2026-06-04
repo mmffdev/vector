@@ -577,7 +577,7 @@ function UserEditPanel({
             </span>
             <button
               type="button"
-              className="btn btn--danger users-edit-panel__remove-btn"
+              className="btn btn--caution users-edit-panel__remove-btn"
               onClick={async () => {
                 if (removeBusy) return;
                 setRemoveBusy(true);

@@ -688,7 +688,7 @@ export default function TenantSettingsPage() {
           <p className="danger-zone__title">Archive tenant</p>
           <p className="danger-zone__desc">Removes user access and freezes content. Requires platform-admin confirmation.</p>
         </div>
-        <button type="button" className="btn btn--danger" disabled>Archive…</button>
+        <button type="button" className="btn btn--caution" disabled>Archive…</button>
       </div>
 
       <UnsavedChangesBar

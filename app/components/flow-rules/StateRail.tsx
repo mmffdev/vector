@@ -42,7 +42,7 @@ export default function StateRail({ states, hasRules, rulesSize, focusedId, onFo
       <div className="flow-rules__rail-footer">
         <button
           type="button"
-          className={`btn btn--sm${confirming ? " btn--danger" : " btn--ghost"}`}
+          className={`btn btn--sm${confirming ? " btn--caution" : " btn--ghost"}`}
           onClick={onClear}
           disabled={!hasRules || clearing}
           aria-busy={clearing || undefined}

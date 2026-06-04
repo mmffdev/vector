@@ -250,14 +250,14 @@ export function ArtefactInlineForm({
           <>
             <button
               type="button"
-              className="btn btn--sm"
+              className="btn btn--sm btn--secondary"
               onClick={() => setConfirmingDelete(false)}
             >
               Cancel
             </button>
             <button
               type="button"
-              className="btn btn--sm artefact-inline-form__Actionbar_Btn--danger artefact-inline-form__Actionbar_Btn--confirm"
+              className="btn btn--sm btn--caution"
               onClick={() => onDelete?.(artefact)}
             >
               Confirm Delete
@@ -268,7 +268,7 @@ export function ArtefactInlineForm({
           <>
             <button
               type="button"
-              className="btn btn--sm"
+              className="btn btn--sm btn--secondary"
               onClick={() => onDuplicate?.(artefact)}
             >
               Duplicate
@@ -276,7 +276,7 @@ export function ArtefactInlineForm({
             {canAddTasks && (
               <button
                 type="button"
-                className="btn btn--sm"
+                className="btn btn--sm btn--secondary"
                 onClick={() => onAddTasks?.(artefact)}
               >
                 Add Tasks
@@ -284,28 +284,28 @@ export function ArtefactInlineForm({
             )}
             <button
               type="button"
-              className="btn btn--sm"
+              className="btn btn--sm btn--secondary"
               onClick={() => onDependencies?.(artefact)}
             >
               Dependencies
             </button>
             <button
               type="button"
-              className="btn btn--sm"
+              className="btn btn--sm btn--secondary"
               onClick={() => onDiscussion?.(artefact)}
             >
               Discussion
             </button>
             <button
               type="button"
-              className="btn btn--sm"
+              className="btn btn--sm btn--secondary"
               onClick={() => onHistory?.(artefact)}
             >
               History
             </button>
             <button
               type="button"
-              className="btn btn--sm artefact-inline-form__Actionbar_Btn--danger"
+              className="btn btn--sm btn--caution"
               onClick={() => setConfirmingDelete(true)}
             >
               Delete

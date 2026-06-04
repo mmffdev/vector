@@ -40,7 +40,7 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
-            className={danger ? "btn btn--danger btn--sm" : "btn btn--primary btn--sm"}
+            className={danger ? "btn btn--caution btn--sm" : "btn btn--primary btn--sm"}
             onClick={onConfirm}
           >
             Confirm

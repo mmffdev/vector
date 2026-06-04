@@ -70,7 +70,7 @@ export function ContextMenu({
       <button
         type="button"
         role="menuitem"
-        className="btn btn--danger btn--sm topo-ctx-menu__item"
+        className="btn btn--caution btn--sm topo-ctx-menu__item"
         onClick={onDelete}
       >
         <span className="topo-ctx-menu__icon">×</span>
