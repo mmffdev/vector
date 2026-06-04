@@ -1,33 +1,33 @@
 {
   "/addressables/build-reconcile": [
-    "app/lib/apiSite/index.ts:1201"
+    "app/lib/apiSite/index.ts:1210"
   ],
   "/addressables/register": [
-    "app/lib/apiSite/index.ts:1204"
+    "app/lib/apiSite/index.ts:1213"
   ],
   "/addressables/register-bulk": [
     "app/contexts/DomRegistryContext.tsx:220"
   ],
   "/addressables/snapshot": [
-    "app/lib/apiSite/index.ts:1207"
+    "app/lib/apiSite/index.ts:1216"
   ],
   "/admin/api-keys": [
-    "app/lib/apiSite/index.ts:403"
+    "app/lib/apiSite/index.ts:407"
   ],
   "/admin/api-keys/issue": [
-    "app/lib/apiSite/index.ts:406"
+    "app/lib/apiSite/index.ts:410"
   ],
   "/admin/api-keys/revoke": [
-    "app/lib/apiSite/index.ts:409"
-  ],
-  "/admin/dev/adoption-reset": [
     "app/lib/apiSite/index.ts:413"
   ],
+  "/admin/dev/adoption-reset": [
+    "app/lib/apiSite/index.ts:417"
+  ],
   "/admin/dev/master-reset": [
-    "app/lib/apiSite/index.ts:419"
+    "app/lib/apiSite/index.ts:423"
   ],
   "/admin/dev/reporting": [
-    "app/lib/apiSite/index.ts:494"
+    "app/lib/apiSite/index.ts:498"
   ],
   "/admin/page-grants": [
     "app/(user)/user-management/permissions/page.tsx:104"
@@ -35,8 +35,8 @@
   "/admin/users": [
     "app/(user)/user-management/users/page.tsx:638",
     "app/(user)/user-management/users/page.tsx:788",
-    "app/lib/apiSite/index.ts:388",
-    "app/lib/apiSite/index.ts:391"
+    "app/lib/apiSite/index.ts:392",
+    "app/lib/apiSite/index.ts:395"
   ],
   "/artefact-priorities": [
     "app/lib/artefactPrioritiesApi.ts:37",
@@ -50,11 +50,11 @@
   ],
   "/auth/change-password": [
     "app/change-password/page.tsx:46",
-    "app/lib/apiSite/index.ts:127"
+    "app/lib/apiSite/index.ts:131"
   ],
   "/auth/login": [
     "app/contexts/AuthContext.tsx:247",
-    "app/lib/apiSite/index.ts:111"
+    "app/lib/apiSite/index.ts:115"
   ],
   "/auth/login-continuation": [
     "app/login/page.tsx:126"
@@ -62,10 +62,10 @@
   "/auth/logout": [
     "app/contexts/AuthContext.tsx:302",
     "app/contexts/AuthContext.tsx:341",
-    "app/lib/apiSite/index.ts:121"
+    "app/lib/apiSite/index.ts:125"
   ],
   "/auth/me": [
-    "app/lib/apiSite/index.ts:124"
+    "app/lib/apiSite/index.ts:128"
   ],
   "/auth/mfa": [
     "app/user/account-settings/mfa/page.tsx:82",
@@ -83,11 +83,11 @@
     "app/contexts/AuthContext.tsx:268"
   ],
   "/auth/password-reset": [
-    "app/lib/apiSite/index.ts:133",
+    "app/lib/apiSite/index.ts:137",
     "app/login/reset/page.tsx:27"
   ],
   "/auth/password-reset/confirm": [
-    "app/lib/apiSite/index.ts:140",
+    "app/lib/apiSite/index.ts:144",
     "app/login/reset/confirm/page.tsx:54"
   ],
   "/auth/password-reset/state": [
@@ -98,7 +98,7 @@
   ],
   "/auth/refresh": [
     "app/contexts/AuthContext.tsx:181",
-    "app/lib/apiSite/index.ts:118"
+    "app/lib/apiSite/index.ts:122"
   ],
   "/auth/sessions": [
     "app/user/account-settings/sessions/page.tsx:71"
@@ -114,30 +114,36 @@
     "app/lib/costCentresApi.ts:39"
   ],
   "/custom-pages": [
-    "app/lib/apiSite/index.ts:292",
-    "app/lib/apiSite/index.ts:295",
+    "app/lib/apiSite/index.ts:296",
+    "app/lib/apiSite/index.ts:299",
     "app/lib/customPages.ts:23",
     "app/lib/customPages.ts:32"
   ],
+  "/dependencies/edges": [
+    "app/lib/apiSite/dependencies.ts:197"
+  ],
+  "/dependencies/maps": [
+    "app/lib/apiSite/dependencies.ts:155"
+  ],
   "/errors/report": [
-    "app/lib/apiSite/index.ts:1177",
+    "app/lib/apiSite/index.ts:1186",
     "app/lib/reportError.ts:8"
   ],
   "/flowboard/wip": [
-    "app/lib/apiSite/index.ts:1505",
-    "app/lib/apiSite/index.ts:1541"
+    "app/lib/apiSite/index.ts:1514",
+    "app/lib/apiSite/index.ts:1550"
   ],
   "/flows": [
     "app/(user)/workspace-admin/work-items/page.tsx:44",
-    "app/lib/apiSite/index.ts:695"
+    "app/lib/apiSite/index.ts:699"
   ],
   "/library/releases": [
     "app/(user)/library-releases/page.tsx:80",
-    "app/lib/apiSite/index.ts:1185"
+    "app/lib/apiSite/index.ts:1194"
   ],
   "/library/releases/count": [
     "app/contexts/LibraryReleasesContext.tsx:45",
-    "app/lib/apiSite/index.ts:1188"
+    "app/lib/apiSite/index.ts:1197"
   ],
   "/me/page-access": [
     "app/contexts/PageAccessContext.tsx:65"
@@ -145,15 +151,15 @@
   "/me/theme-pack": [
     "app/hooks/useThemePack.ts:105",
     "app/hooks/useThemePack.ts:138",
-    "app/lib/apiSite/index.ts:152",
-    "app/lib/apiSite/index.ts:155"
+    "app/lib/apiSite/index.ts:156",
+    "app/lib/apiSite/index.ts:159"
   ],
   "/mentions": [
-    "app/lib/apiSite/index.ts:1270"
+    "app/lib/apiSite/index.ts:1279"
   ],
   "/nav/catalogue": [
     "app/contexts/NavPrefsContext.tsx:241",
-    "app/lib/apiSite/index.ts:197"
+    "app/lib/apiSite/index.ts:201"
   ],
   "/nav/page-bookmark": [
     "app/contexts/NavPrefsContext.tsx:563",
@@ -161,67 +167,67 @@
   ],
   "/nav/prefs": [
     "app/contexts/NavPrefsContext.tsx:333",
-    "app/lib/apiSite/index.ts:205"
+    "app/lib/apiSite/index.ts:209"
   ],
   "/nav/profiles": [
     "app/contexts/NavPrefsContext.tsx:240",
     "app/contexts/NavPrefsContext.tsx:358",
-    "app/lib/apiSite/index.ts:224",
-    "app/lib/apiSite/index.ts:227"
+    "app/lib/apiSite/index.ts:228",
+    "app/lib/apiSite/index.ts:231"
   ],
   "/nav/profiles/active": [
     "app/contexts/NavPrefsContext.tsx:350",
-    "app/lib/apiSite/index.ts:239"
+    "app/lib/apiSite/index.ts:243"
   ],
   "/nav/profiles/order": [
     "app/contexts/NavPrefsContext.tsx:382",
-    "app/lib/apiSite/index.ts:233"
+    "app/lib/apiSite/index.ts:237"
   ],
   "/nav/reset": [
     "app/user/navigation/page.tsx:1075"
   ],
   "/nav/start-page": [
-    "app/lib/apiSite/index.ts:217",
+    "app/lib/apiSite/index.ts:221",
     "app/login/page.tsx:134"
   ],
   "/notifications/prefs": [
-    "app/lib/apiSite/index.ts:1337",
-    "app/lib/apiSite/index.ts:1340"
+    "app/lib/apiSite/index.ts:1346",
+    "app/lib/apiSite/index.ts:1349"
   ],
   "/notifications/read-all": [
-    "app/lib/apiSite/index.ts:1329"
+    "app/lib/apiSite/index.ts:1338"
   ],
   "/notifications/rule-schema": [
-    "app/lib/apiSite/index.ts:1457"
+    "app/lib/apiSite/index.ts:1466"
   ],
   "/notifications/rules": [
-    "app/lib/apiSite/index.ts:1424",
-    "app/lib/apiSite/index.ts:1436"
+    "app/lib/apiSite/index.ts:1433",
+    "app/lib/apiSite/index.ts:1445"
   ],
   "/notifications/unread-count": [
-    "app/lib/apiSite/index.ts:1314"
+    "app/lib/apiSite/index.ts:1323"
   ],
   "/page-help/admin": [
-    "app/lib/apiSite/index.ts:1213"
+    "app/lib/apiSite/index.ts:1222"
   ],
   "/portfolio-items": [
-    "app/lib/apiSite/index.ts:860"
-  ],
-  "/portfolio-items/bulk": [
     "app/lib/apiSite/index.ts:869"
   ],
+  "/portfolio-items/bulk": [
+    "app/lib/apiSite/index.ts:878"
+  ],
   "/portfolio-items/query": [
-    "app/lib/apiSite/index.ts:884"
+    "app/lib/apiSite/index.ts:893"
   ],
   "/portfolio-models": [
-    "app/lib/apiSite/index.ts:541"
+    "app/lib/apiSite/index.ts:545"
   ],
   "/portfolio-models/adoption-state": [
-    "app/lib/apiSite/index.ts:545"
+    "app/lib/apiSite/index.ts:549"
   ],
   "/rank/move": [
     "app/hooks/useResourceRank.ts:146",
-    "app/lib/apiSite/index.ts:910"
+    "app/lib/apiSite/index.ts:919"
   ],
   "/risks/summary": [
     "app/(user)/risk/page.tsx:95"
@@ -231,42 +237,42 @@
     "app/(user)/admin/roles/page.tsx:90",
     "app/(user)/user-management/permissions/page.tsx:105",
     "app/(user)/user-management/users/page.tsx:789",
-    "app/lib/apiSite/index.ts:1142",
-    "app/lib/apiSite/index.ts:1154"
+    "app/lib/apiSite/index.ts:1151",
+    "app/lib/apiSite/index.ts:1163"
   ],
   "/roles/creatable": [
     "app/(user)/user-management/users/page.tsx:264",
     "app/(user)/user-management/users/page.tsx:622",
-    "app/lib/apiSite/index.ts:1145"
+    "app/lib/apiSite/index.ts:1154"
   ],
   "/roles/permissions/catalogue": [
     "app/(user)/admin/roles/page.tsx:91",
-    "app/lib/apiSite/index.ts:1148"
+    "app/lib/apiSite/index.ts:1157"
   ],
   "/topology/commit": [
-    "app/lib/apiSite/index.ts:1096",
-    "app/lib/apiSite/index.ts:1129"
+    "app/lib/apiSite/index.ts:1105",
+    "app/lib/apiSite/index.ts:1138"
   ],
   "/topology/disconnected": [
-    "app/lib/apiSite/index.ts:1093"
-  ],
-  "/topology/nodes": [
     "app/lib/apiSite/index.ts:1102"
   ],
+  "/topology/nodes": [
+    "app/lib/apiSite/index.ts:1111"
+  ],
   "/topology/nodes/bulk-position": [
-    "app/lib/apiSite/index.ts:1120"
+    "app/lib/apiSite/index.ts:1129"
   ],
   "/topology/reset": [
-    "app/lib/apiSite/index.ts:1132"
+    "app/lib/apiSite/index.ts:1141"
   ],
   "/topology/view-state": [
-    "app/lib/apiSite/index.ts:1099"
+    "app/lib/apiSite/index.ts:1108"
   ],
   "/work-items": [
-    "app/lib/apiSite/index.ts:798"
+    "app/lib/apiSite/index.ts:802"
   ],
   "/work-items/bulk": [
-    "app/lib/apiSite/index.ts:824"
+    "app/lib/apiSite/index.ts:833"
   ],
   "/work-items/columns": [
     "app/components/ObjectTreeV2/adapters/customFieldsAdapter.tsx:373"
@@ -274,12 +280,9 @@
   "/work-items/flow-states": [
     "app/components/useWorkItemFlowStates.ts:36"
   ],
-  "/work-items/query": [
-    "app/lib/apiSite/index.ts:813"
-  ],
   "/workspaces": [
-    "app/lib/apiSite/index.ts:332",
-    "app/lib/apiSite/index.ts:335",
-    "app/lib/apiSite/index.ts:338"
+    "app/lib/apiSite/index.ts:336",
+    "app/lib/apiSite/index.ts:339",
+    "app/lib/apiSite/index.ts:342"
   ]
 }

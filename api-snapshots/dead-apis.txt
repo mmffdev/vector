@@ -20,6 +20,11 @@
 /cost-centres/{id}
 /csp-report
 /custom-pages/{id}
+/dependencies/candidates
+/dependencies/edges/{id}/archive
+/dependencies/maps/{id}
+/dependencies/maps/{id}/archive
+/dependencies/{id}/transitive-impact
 /flow-state-exit-rules/{id}
 /flow-states/{id}
 /flow-states/{id}/exit-rules
@@ -53,6 +58,7 @@
 /portfolio-items/{id}
 /portfolio-items/{id}/ancestors
 /portfolio-items/{id}/children
+/portfolio-items/{id}/dependency-impact
 /portfolio-items/{id}/field-values
 /portfolio-items/{id}/field-values/{field_library_id}
 /portfolio-models/{family}/latest
@@ -96,11 +102,13 @@
 /user/tab-order/{pageId}
 /work-items/by-ids
 /work-items/facets
+/work-items/query
 /work-items/summary
 /work-items/types/{typeId}/fields
 /work-items/{id}
 /work-items/{id}/ancestors
 /work-items/{id}/children
+/work-items/{id}/dependency-impact
 /work-items/{id}/field-values
 /work-items/{id}/field-values/{field_library_id}
 /workspace-settings
