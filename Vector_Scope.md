@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
-**Doc version:** 2.70 (2026-06-03 — B23 added from PLA074, edge-first dependency maps.)
+**Doc version:** 2.71 (2026-06-04 — B11.5 + B11.6 added: live rank-sync browser verification + stale prio-test fix.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -925,6 +925,17 @@ Backend + UI live; worker running. New event types under B9.7+ extend the catalo
 - **B11.2** General-purpose pub/sub — design decision pending `[P3]`
 - **B11.3** Live board updates (item changes visible to other users) `[P3]`
 - **B11.4** In-app notifications `[P3]`
+- **B11.5 [P2] 🔵 IN FLIGHT** — Verify two-tab live rank sync end-to-end in browser. Confirm the Rally-style live rank sync (migration 176 `rank_changed` trigger + `useRefetchOnPush` on `/scope`) works through the real UI across two tabs — the delivery of B11.3 for the `/scope` grid.
+  - AC: with two `/scope` tabs open in the same workspace, dragging a Prio reorder in tab A causes tab B's grid to refetch and show the new order within ~1s.
+  - AC: the WS push is observed (browser network/WS frame OR backend hub publish) carrying topic `rank:work_item:<sub>:backlog:`.
+  - AC: the originating tab does not double-flicker (150ms debounce collapses own-echo + push into one refetch).
+  - AC: no console errors; no logout triggered by the WS activity.
+- **B11.6 [P2] 🔵 IN FLIGHT** — Fix stale `scopeColumns.prio.test.tsx` — Prio moved to Grid__Tree lead track. The Prio rank rendering moved from a scopeColumns column into the Grid__Tree lead track (`rowPrio` → `grid__Tree_PrioLead`) during the Grid refactor; the old test still asserts `cols[0].id==="prio"` and fails. Rewrite the test against the real render location.
+  - AC: `scopeColumns.prio.test.tsx` no longer asserts a 'prio' column in `makeScopeColumns` (that column no longer exists there).
+  - AC: a test asserts Grid__Tree renders the numeric prio in `.grid__Tree_PrioLead` when `rowPrio` returns a value (e.g. 7).
+  - AC: a test asserts the lead track renders empty (textContent '') when `rowPrio` returns null.
+  - AC: `npm test` on the rewritten file passes (0 failed); the 9 pre-existing red tests in that file are resolved.
+  - AC: no production code changed — test-only fix.
 
 ---
 
@@ -1180,6 +1191,19 @@ Moved to [`Vector_Scope_Done.md` § B15](Vector_Scope_Done.md#b15-ui-primitives-
   - AC: helper has at least 4 unit tests covering: script tag stripped, on-handler stripped, javascript-URL stripped, safe markdown-rendered HTML passes through unchanged.
   - AC: `docs/c_c_frontend_stack_picks.md` (from F2.4) documents the helper as the sole sanitiser entry point — `app/**` lint rule (or doc convention) forbids calling DOMPurify directly outside the helper.
   - AC: `docs/c_security.md` gains a row mapping the helper to OWASP ASVS V5 / NIST SI-10 + the "ready before needed" procurement narrative.
+
+### B16.18 SEC-001 — close `POST /search` cross-tenant read (RES066)
+
+- **B16.18 [P1] 🔵 IN FLIGHT** — [Benefit 5/5] Close the cross-tenant data-leak in `POST /search` ([backend/internal/search/handler.go:33](backend/internal/search/handler.go#L33)): the handler trusts `workspace_id` from the request body and the route is not mounted behind `sentinelMW`, so `topologyclamp.SubtreeClause` degrades to a no-op and any authenticated user can read another tenant's search results. Violates the SERVER-IS-THE-GATE hard rule. Fix is fail-closed: workspace derives solely from the JWT-anchored clamp; the body field is dropped. A lint then asserts the whole class can't recur. Surfaced by RES066 (whole-repo audit) as the highest-confidence security finding.
+  - AC: `Search` handler reads workspace **only** from `sentinel.WorkspaceIDFromCtx(r.Context())`; the `workspace_id` field is removed from the request body struct entirely (grep finds 0 references to `body.WorkspaceID` in `search/handler.go`).
+  - AC: when the clamp is absent from ctx, the handler returns **403** (fail-closed) — it does NOT fall back to subscription-only or an unbounded query.
+  - AC: the `/search` route in [backend/cmd/server/main.go](backend/cmd/server/main.go) has `r.Use(sentinelMW)` in its route group, alongside the existing `RequireAuth` + `RequireFreshPassword` + rate-limit.
+  - AC: a handler test (`search/handler_test.go`) proves a request whose ctx clamp is workspace A but whose (removed) body names workspace B returns results scoped to A only — i.e. the forged value has no effect; and a request with no clamp returns 403.
+  - AC: a new lint (`lint:search-sentinel-mounted` or a generalised `lint:artefact-handler-sentinel`) asserts every route group whose handler reads `artefacts*` tables is mounted behind `sentinelMW`; the lint FAILS on a synthetic un-mounted handler and PASSES on the current tree.
+  - AC: the lint is wired into `npm run lint:rf1` (or the project lint suite) so CI blocks regressions.
+  - AC: `go vet ./...`, the search package tests, and the new lint all pass green.
+  - AC: RES066's SEC-001 row and this scope entry are struck through as complete.
+  - Theme: B16 Security & Auth
 
 ---
 

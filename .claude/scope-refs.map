@@ -363,3 +363,5 @@ B23.2.3	apiSite dependencies.ts client maps edges candidates impact tsc noEmit w
 B23.2.4	DependencyMapOverlay persistent edges hydrate three-buckets wire payload ephemeral candidate dropdown server-side optimistic toast Playwright dependency_map_persistence round-trip PLA074
 B23.3.1	transitive-impact dependencies artefact_id downstream upstream depth recursive CTE finish_to_start redacts redacted_count TestTransitiveImpact_RedactsAcrossClamp Scalar reachability PLA074
 B23.4.1	c_c_dependencies.md docs system Sentinel sole-writer audit narrative archive preflight CLAUDE.md index TD-DEP-CPM-DURATION estimate_days TD-DEP-FORWARD-MEG-AUDIT meg corollary PLA074
+B11.5	live rank sync browser tabs scope grid prio reorder refetch websocket push topic backlog debounce
+B11.6	scopeColumns prio test stale Grid__Tree lead track rowPrio PrioLead render numeric null rewrite
