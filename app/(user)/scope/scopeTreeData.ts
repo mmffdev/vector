@@ -71,6 +71,7 @@ interface WireWorkItem {
 // columnId → backend SortKey whitelist. Columns with no server key
 // (owner, parent) map to null → no sort param.
 export const SORT_KEY_BY_COLUMN: Record<string, string | null> = {
+  prio: "position",
   id: "id",
   summary: "title",
   status: "status",
