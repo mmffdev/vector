@@ -72,6 +72,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Database schema** → [`docs/c_schema.md`](../docs/c_schema.md) — table list, tenant isolation, soft-archive, invariants.
 - **`<migration>` skill** → [`.claude/skills/migration/SKILL.md`](skills/migration/SKILL.md) — pick DB, next NNN, scaffold + dry-run + apply + verify `schema_migrations`; never assumes a DB.
 - **`<artefacts>` skill** → [`.claude/skills/artefacts/SKILL.md`](skills/artefacts/SKILL.md) — tenant artefacts maintenance via backend API (`/_site/admin/dev/artefacts-{count,wipe}`); `-d` wipe-all with pre-flight count + explicit "yes" prompt; dev-only; never psql-direct.
+- **`<remove>` skill** → [`.claude/skills/remove/SKILL.md`](skills/remove/SKILL.md) — dev-only substrate data wipes (schema intact); `-dag` truncates the three dependency tables on `vector_artefacts` (maps + edges + events) with pre-flight count + explicit "yes" prompt; more flags will be added later.
 - **`<audit>` skill** → [`.claude/skills/audit/SKILL.md`](skills/audit/SKILL.md) — repo-wide audits; `-api` regenerates `dev/audits/api-touchpoints.json` (/dev/api-audit); `-graph` regenerates `dev/audits/codegraph.json` (/dev/visualiser, unified TS+Go force-directed graph); read-only grep, ~2–5s.
 - **Outbox pattern (read-side projection)** → [`docs/c_c_outbox_pattern.md`](../docs/c_c_outbox_pattern.md) — canonical transactional outbox + projection worker shape; the three current uses (search, notifications v2, polymorphicrefs) + the rungs above (sidecar caches, read replicas) per RES061.
 - **Artefact dependency maps (PLA074 / B23)** → [`docs/c_c_dependencies.md`](../docs/c_c_dependencies.md) — edge-first persistence, three-bucket projection, Sentinel-gated sole-writer, cross-clamp reachability redaction; 409 `dependency_impact` archive preflight.
@@ -120,7 +121,6 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Swarm stack (dev)** → [`infra/swarm/README.md`](../infra/swarm/README.md) — `vector-dev` Docker Swarm stack file is source of truth for the dev Postgres tier; re-sync on any out-of-band `docker service update`.
 - **Section-tag vocab** → [`docs/c_section-tags.md`](../docs/c_section-tags.md) — short product-slice tags.
 - **URL routing — work items & custom pages** → [`docs/c_url-routing.md`](../docs/c_url-routing.md) — `/work-items/{id}` + `/p/{id}` + `?vid=` convention.
-- **Theme rules** → [`docs/c_theme_rules.md`](../docs/c_theme_rules.md) — palette→role mapping for `<theme>` skill.
 - **Samantha SDK — Fields** → [`docs/c_samantha_sdk_fields.md`](../docs/c_samantha_sdk_fields.md) — field rendering/schema/value surface.
 - **Retro index** → [`docs/c_retro_index.md`](../docs/c_retro_index.md) — `RET###` / legacy `RETRO-NNN` counter; `<report> -retro` writes here.
 - **Secrets audit** → [`docs/c_c_secrets_audit.md`](../docs/c_c_secrets_audit.md) — `os.Getenv` sensitive-key inventory.

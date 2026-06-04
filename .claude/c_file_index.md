@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-06-03 01:22:26
+**Generated:** 2026-06-04 02:28:49
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -35,7 +35,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/scope
-4 file(s) · key: GridExecution.tsx, scopeColumns.tsx, scopeTreeData.ts
+4 file(s) · key: scopeColumns.tsx, GridExecution.tsx, scopeTreeData.ts
 Purpose: _(unset)_
 
 ### app/(user)/user-management
@@ -59,7 +59,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components
-76 file(s) · key: work-items-tree-config.tsx, NavigationPie.tsx, FlowStatePillRow.tsx
+76 file(s) · key: work-items-tree-config.tsx, NavigationPie.tsx, BulkActionBar.tsx
 Purpose: _(unset)_
 
 ### app/components/ArtefactInlineForm
@@ -68,6 +68,14 @@ Purpose: _(unset)_
 
 ### app/components/CustomFields
 4 file(s) · key: CustomFieldEditForm.tsx, TypeBindingsPicker.tsx, CustomFieldsPageBody.tsx
+Purpose: _(unset)_
+
+### app/components/DependencyMap
+2 file(s) · key: DependencyMapOverlay.tsx, usePersistedDependencyMap.ts
+Purpose: _(unset)_
+
+### app/components/DependencyMap/MapViews
+5 file(s) · key: MapViewD3Dag.tsx, types.ts, MapViewCytoscape.tsx
 Purpose: _(unset)_
 
 ### app/components/FlowBoard
@@ -103,7 +111,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/Grid
-12 file(s) · key: Grid__Tree.tsx, Grid__Tree_StatsPanel.tsx, Grid__Tree_Forms.tsx
+12 file(s) · key: Grid__Tree_Lines.tsx, Grid__Tree.tsx, Grid__Tree_Row.tsx
 Purpose: _(unset)_
 
 ### app/components/MapRelationship3D
@@ -147,11 +155,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/flow-rules
-5 file(s) · key: OrbitCanvas.tsx, StateRail.tsx, OrbitView.tsx
+5 file(s) · key: StateRail.tsx, OrbitCanvas.tsx, OrbitView.tsx
 Purpose: _(unset)_
 
 ### app/components/topology
-18 file(s) · key: useScopedTopologyNodes.ts, useTopologyData.ts, useTopologyTreeState.ts
+18 file(s) · key: ContextMenu.tsx, ConfirmModal.tsx, useScopedTopologyNodes.ts
 Purpose: _(unset)_
 
 ### app/contexts
@@ -163,7 +171,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/hooks
-17 file(s) · key: usePageTitle.ts, useResourceRank.ts, useNextSprint.ts
+15 file(s) · key: usePageTitle.ts, useResourceRank.ts, useNextSprint.ts
 Purpose: _(unset)_
 
 ### app/hooks/__tests__
@@ -178,6 +186,10 @@ Purpose: _(unset)_
 6 file(s) · key: dpop.test.ts, api-session-codes.test.ts, wsClose.test.ts
 Purpose: _(unset)_
 
+### app/lib/apiSite
+2 file(s) · key: index.ts, dependencies.ts
+Purpose: _(unset)_
+
 ### app/login
 2 file(s) · key: page.tsx, layout.tsx
 Purpose: _(unset)_
@@ -187,7 +199,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/redesign/components
-9 file(s) · key: nav_primary_rail_2.tsx, StatusBarBottom.tsx, RedesignTopBar.tsx
+9 file(s) · key: RedesignShell.tsx, nav_primary_rail_2.tsx, StatusBarBottom.tsx
 Purpose: _(unset)_
 
 ### app/sentinel
@@ -224,7 +236,6 @@ Purpose: _(unset)_
 - app/(user)/risk
 - app/(user)/sprints
 - app/(user)/table-harness
-- app/(user)/theme-classic
 - app/(user)/user-management/permissions
 - app/(user)/user-management/users
 - app/(user)/value-flow
@@ -273,8 +284,8 @@ Purpose: _(unset)_
 - app/api/dev/security-audits
 - app/api/dev/services
 - app/change-password
+- app/components/Canvas
 - app/components/DataContainer
-- app/components/DependencyMap
 - app/components/FullscreenCanvasOverlay
 - app/components/Grid/__tests__
 - app/components/ObjectTree
@@ -288,7 +299,6 @@ Purpose: _(unset)_
 - app/components/catalogue/c_circular_additor
 - app/contexts/__tests__
 - app/help/[id]
-- app/lib/apiSite
 - app/lib/shared/topology
 - app/lib/shared/topology/__tests__
 - app/login/reset
@@ -302,7 +312,6 @@ Purpose: _(unset)_
 - app/user/navigation
 - app/user/notifications/notifications
 - app/user/notifications/settings
-- app/user/theme
 
 ## Backend Go services
 
@@ -383,7 +392,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-23 file(s) · key: sql.go, service.go, handler.go
+24 file(s) · key: dependency_preflight_test.go, handler.go, sql.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
@@ -428,6 +437,10 @@ Purpose: _(unset)_
 
 ### backend/internal/dbinvariants
 1 file(s) · key: orphans_test.go
+Purpose: _(unset)_
+
+### backend/internal/dependencies
+7 file(s) · key: handler_test.go, handler.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/devreports
@@ -651,7 +664,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/users
-8 file(s) · key: service.go, protected_accounts_test.go, handler_creator_matrix_test.go
+8 file(s) · key: prefs_problemjson_test.go, sql.go, prefs.go
 Purpose: _(unset)_
 
 ### backend/internal/usertaborder
@@ -730,11 +743,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/reports
-1146 file(s) · key: 20260602-204515-addressables.json, 20260602-165200-addressables.json, 20260602-101824-addr
+1159 file(s) · key: 20260603-050659-addressables.json, 20260603-045439-addressables.json, 20260603-034952-addr
 Purpose: _(unset)_
 
 ### dev/research
-58 file(s) · key: R057.json, R056.json, R055.json
+59 file(s) · key: R058.json, R057.json, R056.json
 Purpose: _(unset)_
 
 ### dev/scripts
@@ -788,11 +801,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-166 file(s) · key: 172_value_artefacts_nav_pages.sql, 171_form_designer_page.sql, 170_backfill_vector_fields_
+169 file(s) · key: 175_artefact_dependency_edge_events.sql, 174_artefact_dependency_edges.sql, 173_artefact_d
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-101 file(s) · key: 172_value_artefacts_nav_pages_DOWN.sql, 171_form_designer_page_DOWN.sql, 170_backfill_vect
+104 file(s) · key: 175_artefact_dependency_edge_events_DOWN.sql, 174_artefact_dependency_edges_DOWN.sql, 173_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/merge_plan
@@ -806,11 +819,11 @@ Purpose: _(unset)_
 ## Documentation indexes
 
 ### .
-12 file(s) · key: AGENTS.md, BACKLOG.md, Vector_Scope.md
+12 file(s) · key: Vector_Scope.md, AGENTS.md, BACKLOG.md
 Purpose: _(unset)_
 
 ### docs
-79 file(s) · key: c_sql_cookbook.md, c_bash_cookbook.md, c_schema.md
+79 file(s) · key: c_tech_debt.md, c_c_dependencies.md, c_sql_cookbook.md
 Purpose: _(unset)_
 
 ### docs/Database
