@@ -34,6 +34,8 @@ import { useFlowStatesByType } from "@/app/components/useFlowStatesByType";
 import { workItems, type WorkItemsSummary } from "@/app/lib/apiSite";
 import { apiSite } from "@/app/lib/api";
 import { useSentinel } from "@/app/sentinel";
+import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
+import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 import { useObjectTreeFacets } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeFacets";
 import {
@@ -181,7 +183,7 @@ export function GridExecution() {
   const [search, setSearch] = useState("");
   const [nodeSummary, setNodeSummary] = useState<WorkItemsSummary | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const { sentinel_focus_node, sentinel_loading } = useSentinel();
+  const { sentinel_focus_node, sentinel_loading, sentinel_tenant } = useSentinel();
   const { filters } = useWorkItemsFilters(SCOPE_FILTER_PREF_KEY);
 
   // Creatable work-scope artefact types → one pie wedge each. Source the same
@@ -260,6 +262,22 @@ export function GridExecution() {
   const { refresh } = tree;
   const { refreshPreservingExpansion } = tree;
   const { updateRow } = tree;
+
+  // Rally-style live rank sync: reorder a Prio in ANY tab or client (same
+  // workspace) → every other open /scope grid refetches and re-renders the new
+  // order. Source of truth is the WebSocket realtime hub: a /rank/move writes
+  // artefacts_position → the rank_changed DB trigger (mig 176) pg_notifies →
+  // StartRankListener republishes to this topic → useRefetchOnPush fires a
+  // 150ms-debounced refreshPreservingExpansion. Topic MUST match the trigger's
+  // emitted shape exactly: scope="backlog", scope_id=null (Prio is a workspace-
+  // global dense rank, one namespace per subscription — not per-sprint). Prio
+  // is a computed ROW_NUMBER over the filtered set, so one move reshuffles many
+  // rows; a full list refetch is the only correct reconciliation (no single-cell
+  // patch is possible). Null topic until the tenant is known → hook no-ops.
+  const rankSyncTopic = sentinel_tenant?.id
+    ? rankTopic("work_item", sentinel_tenant.id, "backlog", null)
+    : null;
+  useRefetchOnPush({ topic: rankSyncTopic, refetch: refreshPreservingExpansion });
   const rowByUuid = useMemo(() => {
     const out = new Map<string, ScopeNode>();
     for (const node of tree.flatNodes) out.set(node.row.uuid, node.row);
