@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
-import { broadcastAuthEvent, coordinatedRefresh, subscribeAuthEvents } from "@/app/lib/authChannel";
+import { broadcastAuthEvent, bumpRotationMarker, coordinatedRefresh, readRotationMarker, subscribeAuthEvents } from "@/app/lib/authChannel";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 // DPoP (RFC 9449) keypair lifecycle. Generated before the initial
@@ -127,13 +127,15 @@ export const AuthContext = Ctx;
 let _bootstrapFlight: Promise<void> | null = null;
 let _bootstrapped = false;
 
-// _lastBroadcastTokenAt is bumped whenever this tab receives a "refreshed"
-// broadcast from another tab (listener added in the channel-subscription
-// effect). coordinatedRefresh's freshTokenArrived() compares a snapshot
-// taken before acquiring the lock against the current value: if it changed,
-// a sibling tab rotated the cookie while we queued, so we adopt that token
-// instead of rotating again.
-let _lastBroadcastTokenAt = 0;
+// _broadcastSeq is a monotonic counter bumped whenever this tab receives a
+// "refreshed" broadcast from another tab (listener added in the channel-
+// subscription effect). coordinatedRefresh's freshTokenArrived() compares a
+// snapshot taken before acquiring the lock against the current value: if it
+// changed, a sibling tab rotated the cookie while we queued, so we adopt that
+// token instead of rotating again. A plain counter (not Date.now()) is used so
+// two rotations within the same millisecond still register as distinct — a
+// timestamp would collide and the !== check would miss the second rotation.
+let _broadcastSeq = 0;
 
 // B16.8.7 — session_alive is a UI-only hint cookie (no auth value;
 // HttpOnly=false is fine because it's read by AuthContext on bootstrap
@@ -200,10 +202,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // sibling tab broadcasts a fresh token while we wait, the marker
     // advances and freshTokenArrived() returns true → we skip the network
     // refresh and adopt the broadcast token (set by the channel listener).
-    const seenBefore = _lastBroadcastTokenAt;
+    const seenBefore = _broadcastSeq;
+    // Snapshot the synchronously-readable localStorage rotation marker too.
+    // It closes the async race where a sibling acquires the lock and rotates
+    // before its BroadcastChannel message reaches us (so _broadcastSeq hasn't
+    // advanced yet) — the marker write is visible the instant the sibling's
+    // lock callback resolves, which happens-before our lock handoff.
+    const markerBefore = readRotationMarker();
     const flight = (async () => {
       await coordinatedRefresh({
-        freshTokenArrived: () => _lastBroadcastTokenAt !== seenBefore,
+        markerBefore,
+        freshTokenArrived: () => _broadcastSeq !== seenBefore,
         doRefresh: async () => {
           try {
             const res = await apiSite<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
@@ -212,6 +221,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Tell sibling tabs the cookie was just rotated and hand them
             // the new access token so they don't rotate it again.
             broadcastAuthEvent({ type: "refreshed", accessToken: res.access_token, userId: res.user.id });
+            // Bump the synchronously-readable marker AFTER a confirmed
+            // rotation so the next tab to acquire the lock sees it even if
+            // our broadcast hasn't been delivered yet. Only on success.
+            bumpRotationMarker();
           } catch (e) {
             // Only clear state on REAL auth failures (backend 4xx). Network
             // errors are transient (dev backend restart, mid-nav abort);
@@ -405,7 +418,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsub = subscribeAuthEvents((msg) => {
       if (msg.type === "refreshed") {
-        _lastBroadcastTokenAt = Date.now();
+        _broadcastSeq += 1;
         setApiToken(msg.accessToken);
         _bootstrapped = true;
         // If this tab had no user yet (e.g. it opened AFTER a sibling

@@ -24,6 +24,38 @@
 export const AUTH_CHANNEL_NAME = "vector-auth";
 export const AUTH_REFRESH_LOCK = "vector-auth-refresh";
 
+// Cross-tab rotation marker. localStorage is synchronously readable across
+// same-origin tabs the instant it's written — unlike BroadcastChannel,
+// whose delivery is an async task with no ordering guarantee against the
+// Web Lock handoff. The leader writes this INSIDE its lock callback before
+// resolving; a queued tab reads it (synchronously) inside its own lock
+// callback and skips its redundant refresh if the marker advanced. This is
+// what makes "rotate exactly once per cycle" a guarantee rather than a
+// best-effort racing the broadcast.
+const ROTATION_MARKER_KEY = "vector-auth-rotation-seq";
+
+export function readRotationMarker(): string | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem(ROTATION_MARKER_KEY);
+  } catch {
+    return null; // private mode / disabled storage
+  }
+}
+
+export function bumpRotationMarker(): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    // Value just needs to differ each write. Use a counter persisted in the
+    // value itself so it's monotonic across writers and collision-free.
+    const prev = Number(localStorage.getItem(ROTATION_MARKER_KEY) ?? "0");
+    localStorage.setItem(ROTATION_MARKER_KEY, String(prev + 1));
+  } catch {
+    // private mode / disabled — fall back to the in-memory + grace-window
+    // path; no throw.
+  }
+}
+
 // Typed message envelope. The `type` discriminator keeps the channel
 // extensible (future domain-state sync can add new variants).
 export type AuthChannelMessage =
@@ -98,6 +130,13 @@ export interface CoordinatedRefreshOpts {
   // since this refresh attempt began — meaning another tab already led the
   // refresh and we should adopt its token rather than rotate again.
   freshTokenArrived: () => boolean;
+  // markerBefore is the snapshot of the synchronously-readable localStorage
+  // rotation marker captured by the caller BEFORE queueing for the lock.
+  // If the marker advanced by the time we hold the lock, a sibling rotated
+  // even if its async broadcast hasn't been delivered yet — we skip our own
+  // refresh. Optional: when omitted, coordinatedRefresh captures the marker
+  // itself at entry (meaning "expect no change").
+  markerBefore?: string | null;
 }
 
 // coordinatedRefresh serialises refresh across tabs via the Web Locks
@@ -107,17 +146,23 @@ export interface CoordinatedRefreshOpts {
 // backend's 30s grace window then absorbs the occasional race exactly as
 // it did before this feature.
 export async function coordinatedRefresh(opts: CoordinatedRefreshOpts): Promise<void> {
+  // Normalize markerBefore at entry, BEFORE the lock: an omitted snapshot
+  // means "capture now, expect no change" (so a null marker doesn't read as
+  // a phantom advance against undefined). Callers that care about the
+  // async-race window pass their own pre-queue snapshot.
+  const mb = opts.markerBefore === undefined ? readRotationMarker() : opts.markerBefore;
   const locks = resolveLocks();
   if (!locks) {
     await opts.doRefresh();
     return;
   }
   await locks.request(AUTH_REFRESH_LOCK, {}, async () => {
-    // We now hold the lock. If, while we were queued behind another tab's
-    // refresh, that tab broadcast a fresh token, adopt it and skip our own
-    // network refresh — this is what guarantees the single-use cookie is
-    // rotated exactly once per cycle.
-    if (opts.freshTokenArrived()) return;
+    // We now hold the lock. Skip if EITHER signal says a sibling already
+    // rotated: the in-memory broadcast marker (fast path) OR the
+    // synchronously-readable localStorage marker (closes the async
+    // lock-handoff-vs-broadcast race). The caller's doRefresh bumps the
+    // localStorage marker on success, so we never bump it here.
+    if (opts.freshTokenArrived() || readRotationMarker() !== mb) return;
     await opts.doRefresh();
   });
 }

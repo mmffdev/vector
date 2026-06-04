@@ -94,3 +94,57 @@ describe("authChannel.unit coordinatedRefresh", () => {
     expect(refreshRan).toBe(1);
   });
 });
+
+import { coordinatedRefresh as coordRefresh2, __setLocksForTest as setLocks2, readRotationMarker, bumpRotationMarker } from "@/app/lib/authChannel";
+
+describe("authChannel.unit rotation marker (review finding #1)", () => {
+  beforeEach(() => {
+    try { localStorage.clear(); } catch { /* ignore */ }
+  });
+  afterEach(() => {
+    setLocks2(undefined);
+    try { localStorage.clear(); } catch { /* ignore */ }
+  });
+
+  it("bumpRotationMarker advances the value monotonically", () => {
+    expect(readRotationMarker()).toBeNull();
+    bumpRotationMarker();
+    const a = readRotationMarker();
+    bumpRotationMarker();
+    const b = readRotationMarker();
+    expect(Number(b)).toBe(Number(a) + 1);
+  });
+
+  it("SKIPS doRefresh when the localStorage marker advanced even if freshTokenArrived() is false (async-race case)", async () => {
+    setLocks2({
+      request: async (_n: string, _o: unknown, cb?: () => Promise<void>) => {
+        // Simulate a sibling rotating AFTER markerBefore was captured but
+        // before our lock callback runs: bump the marker here.
+        bumpRotationMarker();
+        if (cb) await cb();
+      },
+    });
+    const markerBefore = readRotationMarker(); // null
+    let ran = 0;
+    await coordRefresh2({
+      markerBefore,
+      freshTokenArrived: () => false, // in-memory signal MISSED the broadcast
+      doRefresh: async () => { ran += 1; },
+    });
+    expect(ran).toBe(0); // localStorage marker caught it → no double rotation
+  });
+
+  it("RUNS doRefresh when neither signal indicates a sibling rotation", async () => {
+    setLocks2({
+      request: async (_n: string, _o: unknown, cb?: () => Promise<void>) => { if (cb) await cb(); },
+    });
+    const markerBefore = readRotationMarker();
+    let ran = 0;
+    await coordRefresh2({
+      markerBefore,
+      freshTokenArrived: () => false,
+      doRefresh: async () => { ran += 1; },
+    });
+    expect(ran).toBe(1);
+  });
+});
