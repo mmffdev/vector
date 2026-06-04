@@ -2776,6 +2776,7 @@ func scanWorkItemRow(row scannable) (*WorkItem, error) {
 		// trailing projection appended in sqlWorkItemColumns /
 		// sqlWorkItemColumnsListTemplate.
 		&wi.FlowStateChangeOwnerUserID,
+		&wi.Prio,
 	)
 	if err != nil {
 		return nil, err

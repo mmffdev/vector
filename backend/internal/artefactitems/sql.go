@@ -305,7 +305,22 @@ const sqlWorkItemColumnsListTemplate = `
 	-- Flow State Change Owner (mig 164). Universal user-FK; ::text like
 	-- submitted_by. Order MUST stay in lockstep across both SELECT
 	-- templates AND the Scan() call in scanWorkItemRow (service.go).
-	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id`
+	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id,
+	-- Prio — dense 1..N rank over the filtered result set, derived from
+	-- artefacts_position. Identical to the projection in
+	-- sqlWorkItemColumns above; kept in lockstep so the List path produces
+	-- the same column count as Get/ListChildren and scanWorkItemRow can
+	-- consume both with one Scan() call. See sqlWorkItemColumns for the
+	-- design notes on the PARTITION-BY-boolean idiom.
+	CASE
+		WHEN a.artefacts_id_parent IS NULL
+		 AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task'
+		THEN ROW_NUMBER() OVER (
+			PARTITION BY (a.artefacts_id_parent IS NULL AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task')
+			ORDER BY a.artefacts_position ASC, a.artefacts_number ASC
+		)
+		ELSE NULL
+	END AS artefacts_prio`
 
 // sqlListWorkItemsTemplate is the paged data query. %s slots (in order):
 //   - childExtra: reserved extra AND-clause for the children_count subquery.
