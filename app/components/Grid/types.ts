@@ -175,8 +175,13 @@ export interface GridColumn<TRow> {
   /** Drag-resize gutter + dbl-click reset. Default true for fixed-width. */
   resizable?: boolean;
   /**
-   * Cell renderer. The PRIMARY (first) column's renderer receives the node
-   * so it can draw the caret + indentation hook; other columns ignore it.
+   * Marks the user column that hosts the tree chrome (indent SVG, caret, and
+   * expand-all header control). Defaults to the first column for older callers.
+   */
+  treePrimary?: boolean;
+  /**
+   * Cell renderer. The tree-primary column's renderer receives the node so it
+   * can react to expansion state; other columns ignore it.
    */
   renderCell?: (row: TRow, node?: TreeNode<TRow>) => ReactNode;
   /** Optional header-cell override. */

@@ -90,6 +90,12 @@ export interface GridTreeProps<TRow> {
   /** Click handler for the rowIdText link (e.g. open the row's edit form). */
   onRowIdClick?: (row: TRow) => void;
   /**
+   * Opt-in per-row Prio rank — rendered as its OWN fixed-width lead track at
+   * position 2 (right after drag). Returns the dense 1..N rank for the row, or
+   * null for rows that don't qualify (tasks, nested rows). Read-only display.
+   */
+  rowPrio?: (row: TRow) => number | null;
+  /**
    * Per-row accent colour. Painted as the 10px type-stripe lead cell (OTV2
    * parity). Falls back to the row's left border when no stripe column shows.
    */
@@ -107,15 +113,20 @@ export interface GridTreeProps<TRow> {
 }
 
 // Lead control tracks rendered before the user columns, in order:
-// drag → type-stripe → selection → cog → idText. Each has a fixed px width
-// that must match between the header lead cells and every row's lead cells so
-// the CSS grid lines up. Drag sits first (the row-handle convention), and is
-// sized 50% wider than the other compact controls to be an obvious grab
-// target. The caret lives in the primary (first user) cell, not here.
+// drag → prio → type-stripe → selection → cog → idText. Each has a fixed px
+// width that must match between the header lead cells and every row's lead
+// cells so the CSS grid lines up. Drag sits first (the row-handle convention),
+// and is sized 50% wider than the other compact controls to be an obvious grab
+// target. Prio sits SECOND (right after drag) so the dense 1..N rank is the
+// row's first piece of meaningful identity. The caret lives in the primary
+// (first user) cell, not here.
 const STRIPE_COL_PX = 10;
 const SELECT_COL_PX = 28;
 const DRAG_COL_PX = 42;
 const COG_COL_PX = 32;
+// Fixed-px track for the dense Prio rank (1..N). 44px fits up to 4 digits
+// (~9999 items) with the lead cell's 6px right-padding and tabular nums.
+const PRIO_COL_PX = 44;
 // Fixed-px track for the per-row ID text (13px light, matching row body
 // text). MUST be a single shared px value so the header (its own CSS grid)
 // and every body row (each its own CSS grid) line up — "max-content" sizes
@@ -139,6 +150,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     cogMenu,
     rowIdText,
     onRowIdClick,
+    rowPrio,
     accentOf,
     renderRowDetail,
     openDetailId,
@@ -154,6 +166,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const hasSelection = !!selection;
   const hasCog = !!cogMenu;
   const hasIdText = !!rowIdText;
+  const hasPrio = !!rowPrio;
   const dndRowIdOf = useCallback(
     (node: TreeNode<TRow>) => dnd?.rowIdOf?.(node.row) ?? node.id,
     [dnd],
@@ -178,16 +191,22 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const leadWidths = useMemo(() => {
     const w: number[] = [];
     if (hasDnd) w.push(DRAG_COL_PX);
+    if (hasPrio) w.push(PRIO_COL_PX);
     if (hasStripe) w.push(STRIPE_COL_PX);
     if (hasSelection) w.push(SELECT_COL_PX);
     if (hasCog) w.push(COG_COL_PX);
     if (hasIdText) w.push(ID_TEXT_COL_PX);
     return w;
-  }, [hasStripe, hasSelection, hasDnd, hasCog, hasIdText]);
+  }, [hasStripe, hasSelection, hasDnd, hasCog, hasIdText, hasPrio]);
 
-  // The primary (first) column hosts the indent SVG, so as rows nest deeper its
-  // content needs more room or the id text clips. Grow the primary column's
-  // width by the deepest visible indent (maxDepth × step) so it always fits.
+  const primaryColumnIndex = useMemo(() => {
+    const marked = columns.findIndex((c) => c.treePrimary);
+    return marked >= 0 ? marked : 0;
+  }, [columns]);
+
+  // The tree-primary column hosts the indent SVG, so as rows nest deeper its
+  // content needs more room or the id text clips. Grow that column's width by
+  // the deepest visible indent (maxDepth × step) so it always fits.
   const maxDepth = useMemo(
     () => tree.flatNodes.reduce((m, n) => (n.depth > m ? n.depth : m), 0),
     [tree.flatNodes],
@@ -195,14 +214,16 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   const indentAllowance = maxDepth * TREE_STEP;
   const columnsWithIndent = useMemo(() => {
     if (indentAllowance <= 0 || columns.length === 0) return columns;
-    const [first, ...rest] = columns;
-    // Only grow a FIXED-width primary column; if it's the flex column leave it.
-    if (first.defaultWidth == null) return columns;
-    return [
-      { ...first, defaultWidth: first.defaultWidth + indentAllowance },
-      ...rest,
-    ];
-  }, [columns, indentAllowance]);
+    const primary = columns[primaryColumnIndex];
+    // Only grow a FIXED-width tree-primary column; if it's the flex column leave it.
+    if (!primary || primary.defaultWidth == null) return columns;
+    const primaryWidth = primary.defaultWidth;
+    return columns.map((col, i) =>
+      i === primaryColumnIndex
+        ? { ...col, defaultWidth: primaryWidth + indentAllowance }
+        : col,
+    );
+  }, [columns, indentAllowance, primaryColumnIndex]);
 
   const cm = useColumnManager<TRow>({
     columns: columnsWithIndent,
@@ -285,10 +306,11 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     selection.onSelectionChange(next);
   };
 
-  // Lead cells for one row, in render order: drag → stripe → selection → cog
-  // → idText. Emitted only for enabled capabilities, matching leadWidths above.
+  // Lead cells for one row, in render order: drag → prio → stripe → selection
+  // → cog → idText. Emitted only for enabled capabilities, matching leadWidths
+  // above.
   const renderLeadControls =
-    hasStripe || hasSelection || hasDnd || hasCog || hasIdText
+    hasStripe || hasSelection || hasDnd || hasCog || hasIdText || hasPrio
       ? (node: TreeNode<TRow>) => (
           <>
             {hasDnd && (
@@ -300,6 +322,15 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
                 >
                   ⋮⋮
                 </span>
+              </div>
+            )}
+            {hasPrio && (
+              <div
+                className="grid__Tree_Lead grid__Tree_PrioLead"
+                role="cell"
+                aria-label="Priority rank"
+              >
+                {rowPrio!(node.row) ?? ""}
               </div>
             )}
             {hasStripe && (
@@ -379,10 +410,18 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
   };
 
   const headerLeadControls =
-    hasStripe || hasSelection || hasDnd || hasCog || hasIdText ? (
+    hasStripe || hasSelection || hasDnd || hasCog || hasIdText || hasPrio ? (
       <>
         {hasDnd && (
           <div className="grid__Tree_Lead" role="columnheader" aria-hidden="true" />
+        )}
+        {hasPrio && (
+          <div
+            className="grid__Tree_Lead grid__Tree_PrioLead grid__Tree_PrioLead--head"
+            role="columnheader"
+          >
+            Prio
+          </div>
         )}
         {hasStripe && (
           <div className="grid__Tree_Lead" role="columnheader" aria-hidden="true" />
@@ -474,6 +513,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
         getHeaderProps={cm.getHeaderProps}
         headerRowRef={cm.headerRowRef}
         primaryControl={expandAllControl}
+        primaryColumnIndex={primaryColumnIndex}
         leadControls={headerLeadControls}
       />
 
@@ -496,6 +536,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
                     node={node}
                     columns={columns}
                     gridTemplateColumns={cm.gridTemplateColumns}
+                    primaryColumnIndex={primaryColumnIndex}
                     leadControls={renderLeadControls?.(node)}
                     selected={selectedId === node.id}
                     onSelect={onSelect}

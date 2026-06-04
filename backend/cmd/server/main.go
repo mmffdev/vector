@@ -936,9 +936,16 @@ func main() {
 	// Falls back gracefully to a no-op handler when vaPool is nil.
 	var rankH *ranking.Handler
 	if vaPool != nil {
+		// Rally-style global rank: ScopeColumn = workspace, NOT sprint. All
+		// non-archived artefacts in a workspace share ONE rank namespace, so
+		// drag-reorder works across sprint boundaries and any other view
+		// partition. The Prio column displays the dense rank derived from
+		// artefacts_position over the same cohort, so what you see in the
+		// grid is what drag mutates. See deep-research 2026-06-04 on Rally
+		// DragAndDropRank semantics.
 		ranking.Register("work_item", ranking.ResourceConfig{
 			Table:                "artefacts",
-			ScopeColumn:          "artefacts_id_timebox_sprint",
+			ScopeColumn:          "artefacts_id_workspace",
 			IDColumn:             "artefacts_id",
 			PositionColumn:       "artefacts_position",
 			SubscriptionIDColumn: "artefacts_id_subscription",

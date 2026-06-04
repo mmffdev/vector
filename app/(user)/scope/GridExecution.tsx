@@ -631,6 +631,7 @@ export function GridExecution() {
       selection={{ selectedIds, onSelectionChange: setSelectedIds }}
       rowIdText={(row) => row.id}
       onRowIdClick={(row) => openForm(row.id)}
+      rowPrio={(row) => row.prio}
       selectedId={openDetailId}
       openDetailId={openDetailId}
       rowAnchorOf={(node) => scopeRowAnchor(node.id)}

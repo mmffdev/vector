@@ -4,10 +4,10 @@
 //
 // A pure presentation component: a CSS-grid row sharing the column template
 // supplied by useColumnManager (via gridTemplateColumns), with a caret in the
-// PRIMARY cell (column index 0) when the node can expand. Colour accent is a
-// left border driven by the --row-accent custom property (runtime value →
-// custom property, per the CSS rule). loadingStyle="barberpole" adds the
-// form-open stripe modifier.
+// tree-primary cell when the node can expand. Colour accent is a left border
+// driven by the --row-accent custom property (runtime value → custom property,
+// per the CSS rule). loadingStyle="barberpole" adds the form-open stripe
+// modifier.
 //
 // It owns NO tree logic — expansion is node.toggle(), state is node.expanded.
 // The skin (Grid__Tree) decides which rows render; this just paints one.
@@ -22,6 +22,7 @@ export interface GridTreeRowProps<TRow> {
   node: TreeNode<TRow>;
   columns: GridColumn<TRow>[];
   gridTemplateColumns: string;
+  primaryColumnIndex: number;
   /** Lead control tracks rendered before the user columns (caret / drag). */
   leadControls?: React.ReactNode;
   selected?: boolean;
@@ -44,6 +45,7 @@ function GridTreeRowInner<TRow>({
   node,
   columns,
   gridTemplateColumns,
+  primaryColumnIndex,
   leadControls,
   selected,
   onSelect,
@@ -86,13 +88,15 @@ function GridTreeRowInner<TRow>({
       {columns.map((col, i) => (
         <div
           className={
-            i === 0 ? "grid__Tree_Cell grid__Tree_Cell--primary" : "grid__Tree_Cell"
+            i === primaryColumnIndex
+              ? "grid__Tree_Cell grid__Tree_Cell--primary"
+              : "grid__Tree_Cell"
           }
           role="cell"
           key={col.id}
         >
-          {i === 0 ? (
-            // Primary cell — the indent SVG comes FIRST (width = depth × step),
+          {i === primaryColumnIndex ? (
+            // Tree-primary cell — the indent SVG comes FIRST (width = depth × step),
             // then the caret, then the badge/id. This indents the caret by
             // depth × step so child carets sit one step right of their parent.
             // Connector rails anchor on the CARET centre at each depth and the
@@ -135,7 +139,10 @@ function GridTreeRowInner<TRow>({
             </>
           ) : null}
           {col.renderCell
-            ? col.renderCell(node.row, i === 0 ? node : undefined)
+            ? col.renderCell(
+                node.row,
+                i === primaryColumnIndex ? node : undefined,
+              )
             : null}
         </div>
       ))}

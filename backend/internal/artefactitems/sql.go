@@ -163,17 +163,18 @@ const sqlWorkItemColumns = `
 	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id,
 	-- Prio — dense 1..N rank over the filtered result set, derived from
 	-- artefacts_position. PARTITION BY boolean creates two partitions:
-	-- qualifying (top-level non-task) rows form one continuous sequence;
-	-- non-qualifying rows go into the other partition and their numbers
-	-- are suppressed to NULL by the outer CASE. The window evaluates
-	-- AFTER the WHERE clause, so the densification is scoped to whatever
-	-- the caller filters down to (workspace, topology clamp, type chip,
-	-- etc.). Order MUST stay in lockstep with scanWorkItemRow.
+	-- non-task rows form one continuous sequence (densely 1..N), tasks form
+	-- the other and their numbers are suppressed to NULL by the outer CASE.
+	-- Rally-style: every non-task work item gets a rank regardless of
+	-- nesting depth (Epics under Features, Stories under Epics — all count).
+	-- The window evaluates AFTER the WHERE clause, so densification is
+	-- scoped to whatever the caller filters down to (workspace, topology
+	-- clamp, type chip, etc.). Order MUST stay in lockstep with
+	-- scanWorkItemRow.
 	CASE
-		WHEN a.artefacts_id_parent IS NULL
-		 AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task'
+		WHEN at.artefacts_types_slot IS DISTINCT FROM 'wrk_task'
 		THEN ROW_NUMBER() OVER (
-			PARTITION BY (a.artefacts_id_parent IS NULL AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task')
+			PARTITION BY (at.artefacts_types_slot IS DISTINCT FROM 'wrk_task')
 			ORDER BY a.artefacts_position ASC, a.artefacts_number ASC
 		)
 		ELSE NULL
@@ -313,10 +314,9 @@ const sqlWorkItemColumnsListTemplate = `
 	-- consume both with one Scan() call. See sqlWorkItemColumns for the
 	-- design notes on the PARTITION-BY-boolean idiom.
 	CASE
-		WHEN a.artefacts_id_parent IS NULL
-		 AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task'
+		WHEN at.artefacts_types_slot IS DISTINCT FROM 'wrk_task'
 		THEN ROW_NUMBER() OVER (
-			PARTITION BY (a.artefacts_id_parent IS NULL AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task')
+			PARTITION BY (at.artefacts_types_slot IS DISTINCT FROM 'wrk_task')
 			ORDER BY a.artefacts_position ASC, a.artefacts_number ASC
 		)
 		ELSE NULL

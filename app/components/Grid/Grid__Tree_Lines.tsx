@@ -69,8 +69,9 @@ export function GridTreeLines({
   if (depth === 0 && !hasVisibleChildren) return null;
 
   const H = rowH;
-  // Vertical centre of the row. Hook tail lands here = row mid = caret centre
-  // (caret is flex-centred in the cell).
+  // Vertical centre of the stretched row. The primary cell and lines wrapper
+  // both align-self:stretch, so SVG top:0 is row-top; do not add a second Y
+  // nudge here or tails drift off the caret/badge centre.
   const MID = H / 2;
   // SVG layout width = the indent before the caret (0 at depth 0). The caret
   // sits AFTER the SVG in flex flow, so the caret column at depth N is at
@@ -88,8 +89,8 @@ export function GridTreeLines({
   const BADGE_OFFSET = 21; // caret/spacer advance: -3 margin-left + 16 width + 8 margin-right
   const stubEndX = depth * step + (hasChildren ? CARET_LEFT : BADGE_OFFSET);
 
-  const throughPaths: string[] = [];
-  const paths: string[] = [];
+  const ancestorPaths: string[] = [];
+  const currentRowPaths: string[] = [];
 
   // Ancestor through-lines: a full-height │ at every GRANDPARENT-and-above
   // level still continuing below this subtree. We drop the LAST continuations
@@ -100,7 +101,7 @@ export function GridTreeLines({
   ancestors.forEach((cont, i) => {
     if (cont) {
       const x = i * step + CARET_CENTRE;
-      throughPaths.push(`M${x} 0 L${x} ${H}`);
+      ancestorPaths.push(`M${x} 0 L${x} ${H}`);
     }
   });
 
@@ -113,13 +114,13 @@ export function GridTreeLines({
     if (CONNECTOR_STYLE === "hook") {
       const R = HOOK_RADIUS;
       if (needThroughVertical) {
-        paths.push(`M${lineX} 0 L${lineX} ${H}`);
-        paths.push(
+        currentRowPaths.push(`M${lineX} 0 L${lineX} ${H}`);
+        currentRowPaths.push(
           `M${lineX} ${MID - R} Q${lineX} ${MID} ${lineX + R} ${MID} L${stubEndX} ${MID}`,
         );
       } else {
         // ╰ — descend to MID-R, quarter-arc through MID, then run right.
-        paths.push(
+        currentRowPaths.push(
           `M${lineX} 0 L${lineX} ${MID - R} Q${lineX} ${MID} ${lineX + R} ${MID} L${stubEndX} ${MID}`,
         );
       }
@@ -127,11 +128,11 @@ export function GridTreeLines({
       // 'elbow' style — kept available for later use.
       if (needThroughVertical) {
         // ├ — full-height vertical + horizontal at mid.
-        paths.push(`M${lineX} 0 L${lineX} ${H}`);
-        paths.push(`M${lineX} ${MID} L${stubEndX} ${MID}`);
+        currentRowPaths.push(`M${lineX} 0 L${lineX} ${H}`);
+        currentRowPaths.push(`M${lineX} ${MID} L${stubEndX} ${MID}`);
       } else {
         // └ — down to mid, then right.
-        paths.push(`M${lineX} 0 L${lineX} ${MID} L${stubEndX} ${MID}`);
+        currentRowPaths.push(`M${lineX} 0 L${lineX} ${MID} L${stubEndX} ${MID}`);
       }
     }
   }
@@ -141,7 +142,7 @@ export function GridTreeLines({
   // the line — visually the line passes through the caret area rather than
   // emerging "hard" from its bottom edge.
   if (hasVisibleChildren) {
-    paths.push(`M${childLineX} ${MID} L${childLineX} ${H}`);
+    currentRowPaths.push(`M${childLineX} ${MID} L${childLineX} ${H}`);
   }
 
   // Layout: an in-flow spacer provides the indent width (W); the SVG overlays
@@ -149,7 +150,7 @@ export function GridTreeLines({
   // never shifts the caret/badge. DRAW_W must cover childLineX (the rightmost
   // path x) plus a small buffer.
   const DRAW_W = childLineX + step;
-  const allPaths = [...throughPaths, ...paths];
+  const allPaths = [...ancestorPaths, ...currentRowPaths];
   // Node dot at the ├/└ junction. Only meaningful for sharp-elbow rendering;
   // in 'hook' mode the curve provides its own visual continuity so the dot is
   // suppressed.

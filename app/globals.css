@@ -21965,18 +21965,25 @@ tr.is-editing {
   align-self: stretch;
 }
 
-/* Prio cell content — Rally-style rank column. tabular-nums keeps 1/10/100
-   vertically aligned; right-align + inline-block + width:100% is required
-   for text-align to take effect inside the flex cell (otherwise the span
-   shrink-wraps and right-align becomes a no-op). */
-.grid__Tree_Prio {
+/* Prio lead cell — dense 1..N rank in its own lead track (position 2, right
+   after the drag handle). Rendered by Grid__Tree's rowPrio path, NOT by a
+   user-column descriptor. tabular-nums keeps 1/10/100/1000 vertically aligned;
+   right-align reads as "rank, not free text". */
+.grid__Tree_PrioLead {
   font-variant-numeric: tabular-nums;
   text-align: right;
   font-weight: 500;
+  font-size: 13px;
   color: var(--text-secondary, #6b7280);
-  display: inline-block;
-  width: 100%;
   padding-right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.grid__Tree_PrioLead--head {
+  color: var(--ink);
+  font-weight: 600;
+  text-transform: none;
 }
 
 /* ── Tree connector SVG (in-cell indent + ├└│ rails) ──────────────────────────

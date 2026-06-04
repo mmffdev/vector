@@ -114,23 +114,16 @@ export function makeScopeColumns(
 ): GridColumn<ScopeNode>[] {
   return [
   {
-    id: "prio",
-    label: "Prio",
-    defaultWidth: 56,
-    sortable: true,
-    resizable: false,
-    renderCell: (r) => (
-      <span className="grid__Tree_Prio">{r.prio ?? ""}</span>
-    ),
-  },
-  {
     // Primary cell — hosts the caret + tree-lines indent + type badge. The
     // artefact ID text lives in its own lead track now (Grid__Tree rowIdText),
     // so this column only needs room for the badge; Grid__Tree grows the
     // primary column by maxDepth × TREE_STEP on top of defaultWidth.
+    // Prio (dense 1..N rank) is also a lead track now — see Grid__Tree
+    // rowPrio — so it sits right after the drag handle, not here.
     id: "id",
     label: "ID",
     defaultWidth: 64,
+    treePrimary: true,
     sortable: true,
     resizable: true,
     renderCell: (r) => <IdCell row={r} onOpenForm={onOpenForm} />,

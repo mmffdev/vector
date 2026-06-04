@@ -20,11 +20,12 @@ export interface GridTreeHeadProps<TRow> {
   /** Lead control header cells — one per leadWidths track (drag column). */
   leadControls?: React.ReactNode;
   /**
-   * Control rendered INSIDE the primary (first) column header, before its
+   * Control rendered INSIDE the tree-primary column header, before its
    * label — sits at the same x as the row carets so the expand-all toggle
    * aligns with the per-row carets it mirrors. Not a track of its own.
    */
   primaryControl?: React.ReactNode;
+  primaryColumnIndex?: number;
 }
 
 function sortGlyph(dir: SortDir | undefined): string {
@@ -40,6 +41,7 @@ export function GridTreeHead<TRow>({
   headerRowRef,
   leadControls,
   primaryControl,
+  primaryColumnIndex = 0,
 }: GridTreeHeadProps<TRow>) {
   return (
     <div
@@ -66,7 +68,7 @@ export function GridTreeHead<TRow>({
                   : undefined
             }
           >
-            {i === 0 && primaryControl ? primaryControl : null}
+            {i === primaryColumnIndex && primaryControl ? primaryControl : null}
             <button
               type="button"
               className="grid__Tree_Head_Label"
