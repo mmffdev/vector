@@ -15,3 +15,7 @@ Snapshot of siteAPI.yaml at c32bd04. Breaking changes: no.
 ## v4 — 2026-05-24
 
 Snapshot of siteAPI.yaml at 82d3aed1. Breaking changes: no.
+
+## v5 — 2026-06-04
+
+Snapshot of siteAPI.yaml at bdc56d84. Breaking changes: no.
