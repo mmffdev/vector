@@ -101,7 +101,6 @@ function StatusCell({
   return (
     <FlowStatePillRow
       currentId={row.flowStateId}
-      currentCode={row.flowStateCode}
       states={renderedStates}
       onCommit={() => {}}
       readOnly
@@ -137,6 +136,23 @@ export function makeScopeColumns(
     defaultWidth: null, // flex
     sortable: true,
     renderCell: (r) => <span className="grid__Cell_Summary">{r.summary}</span>,
+  },
+  {
+    // Per-artefact colour swatch — replaces the row's left-border accent.
+    // Renders only when r.colour is set; otherwise the cell stays empty.
+    id: "colour",
+    label: "",
+    defaultWidth: 67,
+    sortable: false,
+    resizable: false,
+    renderCell: (r) =>
+      r.colour ? (
+        <span
+          className="grid__Tree_ColourBadge"
+          style={{ background: r.colour }}
+          aria-hidden="true"
+        />
+      ) : null,
   },
   {
     id: "status",

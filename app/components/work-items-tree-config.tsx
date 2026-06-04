@@ -373,7 +373,6 @@ function StatusCell({
   return (
     <FlowStatePillRow
       currentId={row.flow_state_id}
-      currentCode={row.flow_state_code}
       states={states}
       onCommit={(next) => onPatch(row.id, { flow_state_id: next })}
       derived={isDerived}
@@ -937,7 +936,7 @@ export function WorkItemsFilterChips({
       />
       <button
         type="button"
-        className="btn navigation-pie__Chip navigation-pie__Chip-triggerless"
+        className="btn btn--primary"
         aria-disabled="true"
         title="Sprint filter coming soon"
       >
@@ -948,7 +947,7 @@ export function WorkItemsFilterChips({
       </button>
       <button
         type="button"
-        className="btn navigation-pie__Chip navigation-pie__Chip-triggerless"
+        className="btn btn--primary"
         aria-disabled="true"
         title="Release filter coming soon"
       >
@@ -959,10 +958,7 @@ export function WorkItemsFilterChips({
       </button>
       <button
         type="button"
-        className={
-          "btn navigation-pie__Chip" +
-          (ownerIsMe ? " navigation-pie__Chip-active" : "")
-        }
+        className={"btn btn--primary" + (ownerIsMe ? " is-active" : "")}
         onClick={() => setFilter("owner_id", ownerIsMe ? [] : (meId ? [meId] : []))}
         disabled={!meId}
         aria-pressed={ownerIsMe}

@@ -869,10 +869,9 @@ input[type="reset"] {
 }
 
 /* Group-divider utility — dashed bottom rule in the warm parchment
-   tone (#EDEAE4 in light = --surface-sunken; the dark theme remaps
-   this token to its own muted divider value). Apply to the last
-   child of a tree group to visually close the subtree before the
-   next group begins. Generic class — reusable on any list. */
+   tone (#EDEAE4 = --surface-sunken). Apply to the last child of a tree
+   group to visually close the subtree before the next group begins.
+   Generic class — reusable on any list. */
 .divider-dashed {
   border-bottom: 2px dashed var(--surface-sunken);
 }
@@ -1337,26 +1336,53 @@ input[type="reset"] {
    (.tp-btn--primary / --secondary / --ghost) — the preview card
    on the theme page is the design source of truth. */
 .btn--primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
+  background: var(--buttons-main-bg);
+  color: var(--buttons-main-ink);
+  border-color: var(--buttons-main-border);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ink) 12%, var(--accent));
-  color: var(--accent-ink);
-  border-color: var(--accent);
+  background: var(--buttons-main-bg-hover);
+  color: var(--buttons-main-ink-hover);
+  border-color: var(--buttons-main-border-hover);
+}
+
+.btn--primary.is-active {
+  background: var(--buttons-main-bg-active);
+  color: var(--buttons-main-ink-active);
+  border-color: var(--buttons-main-border-active);
 }
 
 .btn--secondary {
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  background: var(--buttons-secondary-bg);
+  color: var(--buttons-secondary-ink);
+  border: 1px solid var(--buttons-secondary-border);
 }
 .btn--secondary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: var(--buttons-secondary-bg-hover);
+  color: var(--buttons-secondary-ink-hover);
+  border-color: var(--buttons-secondary-border-hover);
+}
+.btn--secondary.is-active {
+  background: var(--buttons-secondary-bg-active);
+  color: var(--buttons-secondary-ink-active);
+  border-color: var(--buttons-secondary-border-active);
+}
+
+.btn--caution {
+  background: var(--buttons-caution-bg);
+  color: var(--buttons-caution-ink);
+  border-color: var(--buttons-caution-border);
+}
+.btn--caution:hover:not(:disabled) {
+  background: var(--buttons-caution-bg-hover);
+  color: var(--buttons-caution-ink-hover);
+  border-color: var(--buttons-caution-border-hover);
+}
+.btn--caution.is-active {
+  background: var(--buttons-caution-bg-active);
+  color: var(--buttons-caution-ink-active);
+  border-color: var(--buttons-caution-border-active);
 }
 
 .btn--row-expander {
@@ -1384,17 +1410,6 @@ input[type="reset"] {
   background: color-mix(in srgb, currentColor 8%, transparent);
   color: var(--ink);
   border-color: var(--border);
-}
-
-.btn--danger {
-  background: var(--status-danger-bg);
-  color: var(--status-danger);
-  border-color: var(--status-danger);
-}
-.btn--danger:hover:not(:disabled) {
-  background: var(--status-danger);
-  color: var(--ink-contrast);
-  border-color: var(--status-danger);
 }
 
 .btn--sm {
@@ -5547,11 +5562,6 @@ input[type="reset"] {
   background: var(--swatch-bg, transparent);
 }
 
-/* Theme page swatches. */
-.theme-swatch-block { background: var(--swatch-bg, transparent); }
-.theme-swatch-input--hidden { display: none; }
-.theme-gradient-bar { background: linear-gradient(to right, var(--gradient, transparent)); }
-
 /* Diverging heatmap & adjacency hover labels. */
 .chart-hover-label {
   position: absolute;
@@ -5702,982 +5712,6 @@ input[type="reset"] {
 .draft-banner__actions { display: flex; gap: var(--space-1); flex: 0 0 auto; }
 /* Draft-banner buttons compose from .btn .btn--ghost / .btn--primary
    .btn--sm — no bespoke overrides required. */
-
-/* ============================================================
-   Theme page — panels (mirrors nav-prefs__pane styling)
-   ============================================================ */
-/* ============================================================
-   Theme selector — Vector Design System (story 00106)
-   .theme-panel cards on --canvas. Headings use eyebrow-style
-   labels (.theme-panel__title acts as an .eyebrow). The shade row
-   is the only intentional swatch surface — the rest of the page
-   never paints brand colour. .theme-status uses .pill-style
-   semantic variants only (--info exposed, --warning new-token,
-   --neutral future).
-   ============================================================ */
-.theme-panels {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
-}
-
-@media (min-width: 900px) {
-  .theme-panels {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.theme-panel {
-  background: var(--surface);
-  border: none;
-  border-radius: 0;
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.theme-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border);
-}
-
-.theme-panel__title {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--ink-subtle);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.theme-panel__empty {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-  margin: 0;
-}
-
-.theme-swatch-row {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  height: 60px;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  overflow: hidden;
-}
-
-.theme-swatch {
-  height: 100%;
-  border-right: 1px solid var(--border);
-}
-
-.theme-swatch:last-child {
-  border-right: none;
-}
-
-.theme-panel__count {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 400;
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Theme packs — two-button surface for swapping the global stylesheet
-   on the fly. One button per pack: shows label + 4 representative
-   swatches + Active/Apply state. */
-.theme-packs__grid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4) 0 var(--space-2);
-}
-
-.theme-packs__error {
-  margin-top: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  color: var(--status-danger);
-  background: var(--status-danger-bg);
-  border: 1px solid var(--status-danger);
-  border-radius: var(--radius-2);
-}
-
-.theme-pack-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-
-.theme-pack-btn:hover {
-  background: var(--surface-sunken);
-}
-
-.theme-pack-btn--active {
-  border-color: var(--ink);
-  background: var(--surface-sunken);
-}
-
-.theme-pack-btn__swatches {
-  display: inline-flex;
-  border: 1px solid var(--border-strong);
-  flex-shrink: 0;
-}
-
-.theme-pack-btn__swatch {
-  width: 28px;
-  height: 56px;
-  display: block;
-}
-
-.theme-pack-btn__body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.theme-pack-btn__label {
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.theme-pack-btn__desc {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
-.theme-pack-btn__state {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
-  flex-shrink: 0;
-}
-
-.theme-pack-btn--active .theme-pack-btn__state {
-  color: var(--ink);
-}
-
-/* ============================================================
-   Theme maker — input panel (story 00106)
-   ============================================================ */
-.theme-maker {
-  margin-bottom: var(--space-4);
-}
-
-.theme-maker__modes {
-  display: inline-flex;
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  overflow: hidden;
-}
-
-.theme-maker__mode {
-  padding: var(--space-2) var(--space-4);
-  background: transparent;
-  color: var(--ink-muted);
-  border: none;
-  border-right: 1px solid var(--border);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.theme-maker__mode:last-child {
-  border-right: none;
-}
-
-.theme-maker__mode:hover {
-  background: var(--surface-sunken);
-  color: var(--ink);
-}
-
-.theme-maker__mode--active {
-  background: var(--ink);
-  color: var(--surface);
-}
-
-.theme-maker__mode--active:hover {
-  background: var(--ink);
-  color: var(--surface);
-}
-
-.theme-maker__body {
-  display: flex;
-  gap: var(--space-6);
-  align-items: stretch;
-  min-height: 120px;
-}
-
-.theme-maker__body--seed {
-  flex-wrap: wrap;
-}
-
-.theme-maker__swatch {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  cursor: pointer;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.theme-maker__swatch input[type="color"] {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.theme-maker__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 200px;
-}
-
-.theme-maker__field-label {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-subtle);
-}
-
-.theme-maker__hex {
-  font-family: var(--font-mono);
-  max-width: 180px;
-  font-variant-numeric: tabular-nums;
-}
-
-.theme-maker__quick {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
-  min-width: 240px;
-}
-
-.theme-maker__quick-row {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.theme-maker__quick-swatch {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  padding: 0;
-  cursor: pointer;
-  transition: border-color 120ms ease;
-}
-
-.theme-maker__quick-swatch:hover {
-  border-color: var(--ink);
-}
-
-.theme-maker__dropzone {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  border: 1px dashed var(--border);
-  border-radius: 0;
-  padding: var(--space-6);
-  text-align: center;
-  background: var(--surface-sunken);
-}
-
-.theme-maker__dropzone-lead {
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  font-weight: 500;
-  color: var(--ink);
-  margin: 0;
-}
-
-.theme-maker__dropzone-sub {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  margin: 0 0 var(--space-2);
-}
-
-.theme-maker__preset-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--space-3);
-  width: 100%;
-}
-
-.theme-maker__preset {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  text-align: left;
-  transition: border-color 120ms ease;
-}
-
-.theme-maker__preset:hover {
-  border-color: var(--border-strong);
-}
-
-.theme-maker__preset--active {
-  border-color: var(--ink);
-}
-
-.theme-maker__preset-strip {
-  display: block;
-  height: 36px;
-  border: 1px solid var(--border);
-  border-radius: 0;
-}
-
-.theme-maker__preset-name {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--ink);
-}
-
-.theme-maker__preset-hex {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ============================================================
-   Theme page — artefacts table (story 00106)
-   ============================================================ */
-.theme-intro {
-  margin-bottom: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.theme-intro__lead {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-  line-height: 1.5;
-  max-width: 860px;
-}
-
-.theme-intro__lead code {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  padding: 1px 5px;
-  border-radius: 0;
-  color: var(--ink);
-}
-
-.theme-intro__counts {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.theme-section {
-  margin-bottom: var(--space-7);
-}
-
-.theme-section__title {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--ink-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: var(--space-2);
-}
-
-.theme-section .table__cell code {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink);
-}
-
-.theme-status {
-  display: inline-block;
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  padding: 2px 10px;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.theme-status--exposed {
-  color: var(--status-success);
-  border-color: var(--status-success);
-  background: var(--status-success-bg);
-}
-
-.theme-status--new-token {
-  color: var(--status-warning);
-  border-color: var(--status-warning);
-  background: var(--status-warning-bg);
-}
-
-.theme-status--future {
-  color: var(--ink-muted);
-  border-color: var(--border);
-  background: var(--surface);
-}
-
-/* ============================================================
-   Theme library — full table view
-   ============================================================ */
-.theme-lib {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  /* Fill viewport below app-header + page-head + tabs bar + padding.
-     77px = --app-header-wrapper-height; 136px covers the rest. */
-  height: calc(100dvh - 77px - 136px);
-  min-height: 300px;
-}
-
-.theme-lib__bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  padding: 12px 0 10px;
-}
-
-.theme-lib__search {
-  flex: 1;
-  min-width: 180px;
-  max-width: 280px;
-  padding: 7px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.theme-lib__search::placeholder {
-  color: var(--ink-muted);
-}
-
-.theme-lib__filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 1;
-}
-
-.theme-lib__polarity {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.theme-lib__filter-select {
-  width: auto;
-  min-width: 110px;
-  height: 32px;
-}
-
-/* theme-lib filter-clear composes from .btn .btn--ghost .btn--sm.
-   Inline modifier strips chrome to render as a text-link inside the
-   empty-state copy. */
-.theme-lib__filter-clear--inline {
-  border: none;
-  padding: 0;
-  height: auto;
-  font-size: inherit;
-  color: var(--brand);
-  text-decoration: underline;
-}
-.theme-lib__filter-clear--inline:hover {
-  border: none;
-  color: var(--ink);
-}
-
-.theme-lib__search:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  border-color: var(--accent);
-}
-
-.theme-lib__count {
-  font-size: 12px;
-  color: var(--ink-muted);
-  white-space: nowrap;
-  margin-left: auto;
-}
-
-.theme-lib__table-wrap {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Scrollable region inside the table-wrap border */
-.theme-lib__scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* 4-column grid — no gap; hairline borders separate cells */
-.theme-lib__grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-}
-
-/* Individual card — no inner borders; outer border from table-wrap only */
-.theme-lib__item {
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-  overflow: hidden;
-  transition: background 0.15s ease;
-  padding: 10px;
-}
-
-.theme-lib__item--active {
-  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-}
-
-/* tp-card inside item — fills column width, fixed 400px height, no border */
-.theme-lib__item .tp-card {
-  width: 100%;
-  height: 400px;
-  flex-shrink: 0;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-}
-
-/* Meta section — 10px gap below the card, no border */
-.theme-lib__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 16px;
-  background: var(--surface-sunken);
-  border: none;
-  margin-top: 10px;
-  flex: 1;
-}
-
-/* Top row: swatches left, Apply/Active button right, vertically centred */
-.theme-lib__meta-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* Right-side action cluster: mode toggle + Apply/Active, flush together */
-.theme-lib__meta-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-/* Mode toggle button — square icon button, same height as btn--sm (32px) */
-.theme-card-mode-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.15s ease;
-  flex-shrink: 0;
-}
-.theme-card-mode-toggle:hover {
-  opacity: 1;
-}
-
-.theme-lib__empty {
-  padding: 60px 16px;
-  text-align: center;
-  color: var(--ink-muted);
-  font-size: 13px;
-}
-
-/* Match table body text sizes */
-.theme-lib__name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  margin: 0;
-}
-
-.theme-lib__desc {
-  font-size: 12px;
-  color: var(--ink-muted);
-  line-height: 1.5;
-  margin: 0;
-}
-
-.theme-lib__active-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  white-space: nowrap;
-}
-
-.theme-lib__pagination {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  padding: 20px 0 14px;
-  margin: 0 0 20px 0;
-}
-
-.theme-lib__pagination--bottom {
-  padding: 15px 0 4px;
-}
-
-.theme-lib__page-size {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.theme-lib__page-size-label {
-  font-size: 12px;
-  color: var(--ink-muted);
-  white-space: nowrap;
-}
-
-.theme-lib__page-info {
-  font-size: 12px;
-  color: var(--ink-muted);
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.theme-lib__page-nav {
-  display: flex;
-  gap: 4px;
-}
-
-/* ============================================================
-   Theme swatch strip
-   ============================================================ */
-.theme-swatch-strip {
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-}
-
-.theme-swatch-strip__chip {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  border: 1px solid rgba(0,0,0,0.12);
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   Theme preview card (tp-*) — isolated 400×600 mini-preview
-   All colours sourced from inline --tp-* CSS custom properties
-   set per-card; never reads global --canvas / --ink etc.
-   ============================================================ */
-.tp-card {
-  display: flex;
-  flex-direction: row;
-  /* Standalone: fixed 400×600. Inside .theme-lib__item the parent overrides
-     width:100% and aspect-ratio:2/3 so it fills the column. */
-  width: 400px;
-  height: 600px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  background: var(--tp-canvas);
-  font-family: inherit;
-  flex-shrink: 0;
-}
-
-/* --- sidebar strip --- */
-.tp-sidebar {
-  width: 44px;
-  flex-shrink: 0;
-  background: var(--tp-sunken);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px 0;
-  gap: 6px;
-  border-right: 1px solid var(--tp-border);
-}
-
-.tp-sidebar__logo {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  background: var(--tp-accent);
-  margin-bottom: 8px;
-  flex-shrink: 0;
-}
-
-.tp-sidebar__item {
-  width: 28px;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--tp-ink-m);
-  opacity: 0.5;
-}
-
-.tp-sidebar__item--active {
-  background: var(--tp-nav);
-  opacity: 1;
-}
-
-/* --- body area --- */
-.tp-body {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  background: var(--tp-canvas);
-}
-
-/* --- typography block --- */
-.tp-types {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.tp-h1 { font-size: 16px; font-weight: 800; color: var(--tp-ink);   line-height: 1.2; }
-.tp-h2 { font-size: 14px; font-weight: 700; color: var(--tp-ink);   line-height: 1.2; }
-.tp-h3 { font-size: 12px; font-weight: 700; color: var(--tp-ink);   line-height: 1.2; }
-.tp-h4 { font-size: 11px; font-weight: 600; color: var(--tp-ink-m); line-height: 1.2; }
-.tp-h5 { font-size: 10px; font-weight: 600; color: var(--tp-ink-m); line-height: 1.2; }
-.tp-h6 { font-size: 9px;  font-weight: 600; color: var(--tp-ink-m); line-height: 1.2; text-transform: uppercase; letter-spacing: 0.04em; }
-
-.tp-p {
-  font-size: 10px;
-  color: var(--tp-ink-m);
-  line-height: 1.5;
-  margin-top: 2px;
-}
-
-/* --- form fields --- */
-.tp-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tp-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.tp-field__label {
-  font-size: 8px;
-  font-weight: 600;
-  color: var(--tp-ink-m);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.tp-field__input {
-  height: 20px;
-  border-radius: 4px;
-  border: 1px solid var(--tp-border);
-  background: var(--tp-surface);
-  padding: 0 6px;
-  font-size: 9px;
-  color: var(--tp-ink);
-  display: flex;
-  align-items: center;
-}
-
-.tp-field__input--placeholder {
-  color: var(--tp-ink-m);
-  opacity: 0.6;
-}
-
-/* --- buttons --- */
-.tp-buttons {
-  display: flex;
-  flex-direction: row;
-  gap: 5px;
-  align-items: center;
-}
-
-/* Theme-page swatch button — preview render of the .btn primitive using
-   the per-card --tp-* tokens (not the active --accent/--ink). The card's
-   point is "this is how buttons look in THIS theme", so the swatch must
-   plumb through the card's local tokens, not the live theme.
-   Shape (height/padding/radius/font) MUST track .btn 1:1 so the preview
-   reads true. If .btn changes shape, change this in lockstep. */
-.tp-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.tp-btn--primary {
-  background: var(--tp-accent);
-  color: var(--tp-ink-c);
-  border: 1px solid var(--tp-accent);
-}
-
-.tp-btn--secondary {
-  background: transparent;
-  color: var(--tp-accent);
-  border: 1px solid var(--tp-accent);
-}
-
-.tp-btn--ghost {
-  background: transparent;
-  color: var(--tp-ink-m);
-  border: 1px solid var(--tp-border);
-}
-
-/* --- mini table --- */
-.tp-table {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--tp-border);
-  border-radius: 4px;
-  overflow: hidden;
-  font-size: 8px;
-}
-
-.tp-table__head {
-  display: flex;
-  flex-direction: row;
-  background: var(--tp-sunken);
-  border-bottom: 1px solid var(--tp-border);
-}
-
-.tp-table__row {
-  display: flex;
-  flex-direction: row;
-  background: var(--tp-surface);
-  border-bottom: 1px solid var(--tp-border);
-}
-
-.tp-table__row--alt {
-  background: var(--tp-canvas);
-}
-
-.tp-table__row:last-child {
-  border-bottom: none;
-}
-
-.tp-table__cell {
-  flex: 1;
-  padding: 3px 5px;
-  color: var(--tp-ink-m);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.tp-table__cell--accent {
-  color: var(--tp-accent);
-  font-weight: 600;
-}
-
-/* --- nav highlight chip --- */
-.tp-nav-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 8px;
-  color: var(--tp-ink-m);
-}
-
-.tp-nav-chip__dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--tp-nav);
-  flex-shrink: 0;
-}
 
 /* ============================================================
    Portfolio model preview (read-only bundle view)
@@ -7855,7 +6889,6 @@ input[type="reset"] {
    Path A: CSS structural shimmer using design tokens.
    Wave stagger via --skeleton-delay custom property.
    Content transition via .skeleton-fade grid stacking.
-   Dark mode automatic: tokens swap under data-theme="dark".
    prefers-reduced-motion: covered by the global rule above.
    ============================================================ */
 
@@ -9716,164 +8749,54 @@ input[type="reset"] {
 }
 
 /* ── Flow state pill-row ────────────────────────────────────────────────────
-   Segmented button strip replacing the InlineSelect drop-down on work item
-   rows. One button per flow state; active segment filled, inactive muted.
-   Colours mirror .pill--* so the visual language stays consistent.        */
-.wi-flow-row {
+   Segmented button strip replacing the InlineSelect drop-down on Grid__Tree
+   rows. One block per flow state, single-letter label. Colours driven by
+   the --grid-tree-row-flow-state-btn-* vars in app/styles/primitives.css —
+   one normal/hover/active palette across all states (positional B/T/I/C/A
+   letters carry the state identity; colour just signals active vs idle). */
+.grid__Tree_Row_FlowState {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
 }
-/* Derived row — pill group is non-interactive because the parent's
+/* Derived row — block group is non-interactive because the parent's
    flow state is computed from its children. Cursor + opacity signal
-   "not editable" without hiding the pills (the user still needs to see
-   what state the row is in). aria-disabled on the buttons handles AT. */
-.wi-flow-row--derived .wi-flow-row__btn {
+   "not editable" without hiding the blocks (the user still needs to
+   see what state the row is in). aria-disabled handles AT. */
+.grid__Tree_Row_FlowState-derived .grid__Tree_Row_FlowState_Btn {
   cursor: default;
   opacity: 0.55;
 }
-.wi-flow-row--derived .wi-flow-row__btn:hover:not(.wi-flow-row__btn--active) {
-  /* Cancel the hover tint — there's no action to suggest. */
-  --pill-fill: #fff;
-}
-/* Chevron pill — layered fill.
-   The button paints the border colour and is clipped to the chevron
-   silhouette; ::before paints the interior fill 1px inset on every
-   side, also clipped to the chevron shape. That 1px diff is the
-   visible outline. Custom properties (--pill-border / --pill-fill /
-   --pill-text) drive both layers so a single source of truth (inline
-   style for hex states, --code-<code> classes for canonical states)
-   colours everything in lockstep. */
-.wi-flow-row__btn {
-  --pill-border: var(--border, #d1d5db);
-  --pill-fill: #fff;
-  --pill-text: #000;
-  position: relative;
+.grid__Tree_Row_FlowState_Btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;        /* chevron notches eat ~6px on each side; +6 vs old 26px */
+  min-width: 22px;
   height: 18px;
-  padding: 0 10px 0 14px; /* extra left so the letter clears the notch */
+  padding: 0 6px;
+  margin-left: 2px;
   font-size: 10px;
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
-  border: 0;
-  background: var(--pill-border);   /* outline layer */
-  color: var(--pill-text);
+  background: var(--grid-tree-row-flow-state-btn-bg-normal);
+  color: var(--grid-tree-row-flow-state-btn-ink-normal);
+  border: 1px solid var(--grid-tree-row-flow-state-btn-border-normal);
   cursor: pointer;
-  transition: background 80ms, color 80ms;
-  margin-left: -6px;        /* pull each pill back so its notch eats the previous point */
-  /* Chevron silhouette: flat top + bottom, point on right edge, notch
-     cut into left edge. 6px deep on both edges. */
-  clip-path: polygon(
-    0 0,
-    calc(100% - 6px) 0,
-    100% 50%,
-    calc(100% - 6px) 100%,
-    0 100%,
-    6px 50%
-  );
+  transition: background 80ms, color 80ms, border-color 80ms;
 }
-.wi-flow-row__btn::before {
-  /* Interior fill. Inset 1px on every side so 1px of the button's
-     background colour bleeds around as the chevron outline. Same
-     clip-path so the inner layer matches the chevron silhouette. */
-  content: "";
-  position: absolute;
-  inset: 1px;
-  background: var(--pill-fill);
-  clip-path: polygon(
-    0 0,
-    calc(100% - 5.5px) 0,
-    100% 50%,
-    calc(100% - 5.5px) 100%,
-    0 100%,
-    5.5px 50%
-  );
-  z-index: 0;
+.grid__Tree_Row_FlowState_Btn:first-child { margin-left: 0; }
+.grid__Tree_Row_FlowState_Btn:hover:not(.grid__Tree_Row_FlowState_Btn-active) {
+  background: var(--grid-tree-row-flow-state-btn-bg-hover);
+  color: var(--grid-tree-row-flow-state-btn-ink-hover);
+  border-color: var(--grid-tree-row-flow-state-btn-border-hover);
 }
-/* Letter sits above the ::before fill layer. position:relative is
-   required for z-index to take effect on the inline span. Translated
-   2px left so the glyph sits visually centred between the chevron's
-   left notch and right point (without this it reads slightly right of
-   centre because the right point extends further out than the left
-   notch eats in). */
-.wi-flow-row__btn_Label {
-  position: relative;
-  z-index: 1;
-  transform: translateX(-2px);
-}
-.wi-flow-row__btn:first-child {
-  margin-left: 0;
-  padding-left: 10px;
-  /* First pill has a flat left edge — no notch. */
-  clip-path: polygon(
-    0 0,
-    calc(100% - 6px) 0,
-    100% 50%,
-    calc(100% - 6px) 100%,
-    0 100%
-  );
-}
-.wi-flow-row__btn:first-child::before {
-  clip-path: polygon(
-    0 0,
-    calc(100% - 5.5px) 0,
-    100% 50%,
-    calc(100% - 5.5px) 100%,
-    0 100%
-  );
-}
-.wi-flow-row__btn:last-child {
-  padding-right: 14px;
-  /* Last pill has a flat right edge — no point. */
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% 100%,
-    0 100%,
-    6px 50%
-  );
-}
-.wi-flow-row__btn:last-child::before {
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% 100%,
-    0 100%,
-    5.5px 50%
-  );
-}
-.wi-flow-row__btn:hover:not(.wi-flow-row__btn--active) {
-  /* Tint the interior fill toward the border colour on hover —
-     affordance feedback without the chevron silhouette changing. */
-  --pill-fill: color-mix(in srgb, var(--pill-border) 12%, #fff);
-}
-/* Inactive coloured pills for canonical (no-hex) states — set the
-   border custom property to the canonical hue. Active variants
-   additionally swap the fill and text below. */
-.wi-flow-row__btn--code-backlog   { --pill-border: #f97316; }
-.wi-flow-row__btn--code-todo,
-.wi-flow-row__btn--code-ready     { --pill-border: #9333ea; }
-.wi-flow-row__btn--code-doing     { --pill-border: #2563eb; }
-.wi-flow-row__btn--code-completed { --pill-border: #16a34a; }
-.wi-flow-row__btn--code-accepted  { --pill-border: #14532d; }
-/* Active variants — keyed to canonical_code, not renamed state names.
-   Each sets --pill-fill = --pill-text = chevron-hue / white so the
-   active pill reads as a fully filled chevron rather than an outline.
-   The --pill-border is already correct from the --code-<code> class. */
-.wi-flow-row__btn--active {
-  z-index: 2;       /* float above neighbours so the chevron point is unobscured */
+.grid__Tree_Row_FlowState_Btn-active {
+  background: var(--grid-tree-row-flow-state-btn-bg-active);
+  color: var(--grid-tree-row-flow-state-btn-ink-active);
+  border-color: var(--grid-tree-row-flow-state-btn-border-active);
   cursor: default;
 }
-.wi-flow-row__btn--active-backlog   { --pill-fill: #f97316; --pill-text: #fff; }
-.wi-flow-row__btn--active-todo,
-.wi-flow-row__btn--active-ready     { --pill-fill: #9333ea; --pill-text: #fff; }
-.wi-flow-row__btn--active-doing     { --pill-fill: #2563eb; --pill-text: #fff; }
-.wi-flow-row__btn--active-completed { --pill-fill: #16a34a; --pill-text: #fff; }
-.wi-flow-row__btn--active-accepted  { --pill-fill: #14532d; --pill-text: #fff; }
 
 /* Numeric input variant — right-aligned, narrow, used in inline points
    editors so the cell layout doesn't jump on edit. */
@@ -10259,9 +9182,12 @@ input[type="reset"] {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: #ffffff;
+  background: transparent;
   border: var(--border-width) solid var(--border);
-  border-radius: 10px;
+  border-top-left-radius:     var(--radius-top-left);
+  border-top-right-radius:    var(--radius-top-right);
+  border-bottom-left-radius:  var(--radius-bottom-left);
+  border-bottom-right-radius: var(--radius-bottom-right);
   margin-bottom: 20px;
 }
 
@@ -11211,16 +10137,17 @@ input[type="reset"] {
   align-items: center;
 }
 
-/* Remove user button — fixed red surface, inverts to black on hover.
-   Scoped to the users edit panel so it does not bleed into other
-   .btn--danger usages elsewhere in the app. */
-.users-edit-panel__remove-btn.btn--danger {
+/* Remove user button — scoped override on top of .btn--caution to keep
+   the explicit red surface + black hover used by the users edit panel.
+   Scoped to the panel so it does not leak into other .btn--caution
+   usages elsewhere in the app. */
+.users-edit-panel__remove-btn.btn--caution {
   background: #ff0000;
   color: #fff;
   border-color: #ff0000;
 }
-.users-edit-panel__remove-btn.btn--danger:hover,
-.users-edit-panel__remove-btn.btn--danger:focus-visible {
+.users-edit-panel__remove-btn.btn--caution:hover,
+.users-edit-panel__remove-btn.btn--caution:focus-visible {
   background: #000;
   color: #fff;
   border-color: #000;
@@ -12150,7 +11077,7 @@ input[type="reset"] {
 }
 
 /* .topo-ctx-menu__danger removed — Delete now composes from
-   .btn .btn--danger .btn--sm; the icon inherits its colour. */
+   .btn .btn--caution .btn--sm; the icon inherits its colour. */
 
 /* ── Edit flyout ─────────────────────────────────────────────────── */
 
@@ -15443,39 +14370,8 @@ input[type="reset"] {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
-.artefact-inline-form__Actionbar .btn {
-  background: var(--surface-sunken);
-  border-color: var(--border);
-  color: var(--ink);
-  border-radius: 6px;
-}
-.artefact-inline-form__Actionbar .btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ink) 6%, var(--surface-sunken));
-  border-color: var(--border);
-  color: var(--ink);
-}
 .artefact-inline-form__Actionbar_Spacer {
   flex: 1;
-}
-.artefact-inline-form__Actionbar_Btn--danger {
-  color: var(--danger, #b91c1c);
-  border-color: color-mix(in srgb, var(--danger, #b91c1c) 35%, var(--border)) !important;
-}
-.artefact-inline-form__Actionbar_Btn--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger, #b91c1c) 10%, var(--surface-sunken)) !important;
-  color: var(--danger, #b91c1c) !important;
-}
-/* Confirm-delete state — solid red fill with white text so the committed
-   danger action reads as committed (vs the bordered-only Delete trigger).
-   Stacked after --danger so we override its colour/background. */
-.artefact-inline-form__Actionbar_Btn--confirm {
-  background: var(--danger, #b91c1c) !important;
-  color: #fff !important;
-  border-color: var(--danger, #b91c1c) !important;
-}
-.artefact-inline-form__Actionbar_Btn--confirm:hover:not(:disabled) {
-  background: color-mix(in srgb, #000 12%, var(--danger, #b91c1c)) !important;
-  color: #fff !important;
 }
 .artefact-inline-form__Container_Head_Title {
   margin: 0;
@@ -17218,48 +16114,15 @@ input[type="reset"] {
    full-circle pie. Resting/locked chips use the sandy surface-sunken
    fill; white surface is the rollover state.
 */
-.navigation-pie__Chip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface-sunken);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-.navigation-pie__Chip:hover {
-  background: var(--surface);
-}
-.navigation-pie__Chip-active {
-  border-color: var(--border);
-  background: var(--surface-sunken);
-  color: var(--ink);
-}
-.navigation-pie__Chip-active:hover {
-  background: var(--surface);
-}
-.navigation-pie__Chip-triggerless {
-  cursor: default;
-}
-.navigation-pie__Chip-open {
-  /* Arma-radial: when the pie opens, the trigger chip disappears so the
-     gaps + hub read as transparent. Layout is preserved (visibility,
-     not display) so the pie's anchor position doesn't shift on open. */
-  visibility: hidden;
-}
+/* NavigationPie chip is rendered as a plain .btn .btn--primary —
+   no chip-specific wrapper class on the button itself. The
+   data-nav-pie-chip attribute marks the structural anchor for the
+   sibling pointer-out close logic. Open-state visibility is
+   inline-styled in TSX (visibility: hidden) so no class is needed
+   there either. */
 .navigation-pie__Chip_icon {
-  color: var(--ink-subtle);
+  color: currentColor;
   display: inline-flex;
-}
-.navigation-pie__Chip-active .navigation-pie__Chip_icon {
-  color: var(--ink);
 }
 .navigation-pie__Chip_label {
   white-space: nowrap;
@@ -21488,15 +20351,19 @@ tr.is-editing {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 0;
-  padding: 0 var(--space-6) 0 30px;
+  /* Symmetric padding on both ends of the bar. The flex `gap` doubles
+   * as the spacing between the logo and the title block — same as the
+   * outer padding, so the title sits the same distance from the logo
+   * as the logo sits from the bar's left edge. */
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border-default);
   background: var(--surface);
 }
 
 .canvas__Bar_Brand {
-  flex: 0 0 auto;
-  width: calc(var(--rd-rail-w, 100px) + 16px - 30px);
+  flex: 0 0 40px;
+  width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
@@ -22109,24 +20976,21 @@ tr.is-editing {
   background: var(--surface);
 }
 
+/* Two-zone row: a `_Body` button (the select toggle) on the left, and
+ * a fixed-width `_Focus` button (the target-arrow refocus action) on
+ * the right. Splitting the row means each interactive zone owns a
+ * distinct semantic — toggle vs. refocus — without nesting buttons. */
 .dependency-composer__BucketRow {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: stretch;
   width: 100%;
-  border: 0;
   border-top: 1px solid var(--border-default);
-  background: transparent;
   color: var(--ink);
-  cursor: pointer;
-  padding: var(--space-3);
-  text-align: left;
-  font: inherit;
   transition: background 120ms ease, color 120ms ease;
 }
 
-.dependency-composer__BucketRow:hover:not(.is-selected) {
-  background: var(--surface-sunken);
+.dependency-composer__BucketRow:first-child {
+  border-top: 0;
 }
 
 .dependency-composer__BucketRow.is-selected {
@@ -22140,8 +21004,51 @@ tr.is-editing {
   color: #fff;
 }
 
-.dependency-composer__BucketRow:first-child {
-  border-top: 0;
+.dependency-composer__BucketRow_Body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: var(--space-3);
+  text-align: left;
+  font: inherit;
+}
+
+.dependency-composer__BucketRow:not(.is-selected):hover
+  .dependency-composer__BucketRow_Body {
+  background: var(--surface-sunken);
+}
+
+/* Target-arrow refocus button — full row height, black plate, white
+ * icon. Sits flush with the right edge of the card so it reads as
+ * "the action that lives on this row" rather than a floating chip. */
+.dependency-composer__BucketRow_Focus {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  border: 0;
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.dependency-composer__BucketRow_Focus:hover {
+  background: var(--orange);
+  color: #000;
+}
+
+.dependency-composer__BucketRow_Focus svg {
+  width: 20px;
+  height: 20px;
 }
 
 .dependency-composer__BucketCode {
@@ -22215,20 +21122,135 @@ tr.is-editing {
 .dependency-map__StateGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(320px, 1fr));
+  grid-template-rows: auto 1fr;
   gap: 40px;
   align-items: start;
   width: 100%;
+  opacity: 1;
+  transition: opacity 250ms ease;
 }
 
-/* Map view (toggled via the header "View Map" button). Empty canvas
- * placeholder — fills the canvas slot and will host the visualisation
- * once the rendering pass lands. */
+/* Refocus fade — the target-arrow button on a bucket row toggles this
+ * class for ~250ms while we fetch the new target and rebuild the map.
+ * Fading the whole StateGrid (target card + all three buckets) keeps
+ * the swap feeling like a single transition rather than a flicker. */
+.dependency-map__StateGrid.is-fading {
+  opacity: 0;
+}
+
+/* Target card sits in the centre column (above the parallel bucket)
+ * so its width matches the parallel column exactly. The grid row it
+ * occupies is intrinsically sized; the bucket lanes drop into row 2. */
+.dependency-map__StateGrid_Target {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.dependency-map__StateGrid > .dependency-map__StateBox {
+  grid-row: 2;
+}
+
+/* Map view — depth-based DAG layout. Surface is a scrollable
+ * viewport; the Inner sized to the graph's natural width/height
+ * (column count × cell width, max-rows-per-column × cell height).
+ * Nodes are absolute-positioned with translate(-50%) so (left, top)
+ * is the node's CENTRE. Edges drawn in the same coordinate space
+ * inside an SVG that fills the Inner. */
 .dependency-map__MapSurface {
+  position: relative;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 100%;
-  border: 0;
+  height: 100%;
+  min-height: 400px;
+  overflow: auto;
   background: var(--surface);
+}
+
+/* Cytoscape mounts a canvas into this host; needs explicit
+ * dimensions so the renderer can size itself. */
+.dependency-map__CytoscapeHost {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+.dependency-map__MapInner {
+  position: relative;
+}
+
+.dependency-map__MapEmpty {
+  padding: var(--space-6);
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.dependency-map__MapConnectors {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.dependency-map__MapConnectors line {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+/* Per-bucket edge tint so the user can read the link kind at a
+ * glance — matches the active-state colour the chevron strips use
+ * in the editor view. */
+.dependency-map__MapConnector--requires {
+  stroke: var(--orange);
+}
+
+.dependency-map__MapConnector--unlocks {
+  stroke: var(--good-green);
+}
+
+.dependency-map__MapConnector--parallel {
+  stroke: var(--ink-muted);
+}
+
+.dependency-map__MapNode {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.dependency-map__MapNode--target {
+  height: 36px;
+  padding: 0 16px;
+  background: #000;
+  color: #fff;
+  border-color: #000;
+  font-size: 13px;
+  z-index: 2;
+}
+
+.dependency-map__MapNode--requires {
+  border-color: var(--orange);
+}
+
+.dependency-map__MapNode--unlocks {
+  border-color: var(--good-green);
+}
+
+.dependency-map__MapNode--parallel {
+  border-color: var(--ink-muted);
 }
 
 .dependency-map__StateBox {
@@ -22238,12 +21260,24 @@ tr.is-editing {
   min-width: 0;
 }
 
+/* ── FlowChevron — barber-pole animated arrows ────────────────────
+ * All three variants (requires/parallel/unlocks) share the SAME
+ * structure: container → Pair wrapper → two Row halves. The Pair
+ * carries the only animation instance; the rows are static. This
+ * keeps the two halves of the chevron rigidly bonded, so the apex
+ * at the join line is mathematically guaranteed to meet — no drift
+ * between two independent animations, no off-by-a-few-pixels seam.
+ *
+ * The "second half" (bottom row for horizontal variants, right
+ * column for parallel) renders the SAME gradient as the first half
+ * but transform-mirrored (scaleY for horizontal, scaleX for parallel).
+ * Mirror symmetry guarantees stripe phase alignment at the seam.
+ */
 .dependency-map__FlowChevron {
   --dependency-map-chevron-cycle: 56.568542px;
   --dependency-map-chevron-stripe: var(--surface-sunken);
   position: relative;
-  display: grid;
-  grid-template-rows: 1fr 1fr;
+  display: block;
   width: 100%;
   height: 60px;
   overflow: hidden;
@@ -22252,100 +21286,111 @@ tr.is-editing {
   transition: border-color 160ms ease;
 }
 
-/* Active state — bucket mode tab in the sidebar selects this bucket.
- * Swaps the chevron stripe and icon colour to the brand orange so the
- * canvas mirrors the sidebar selection. */
+/* Active (orange) state — picked up from the sidebar bucket tab and
+ * the canvas-lane both via the same is-active class. */
 .dependency-map__FlowChevron.is-active {
   --dependency-map-chevron-stripe: var(--orange);
   border-color: var(--orange);
 }
 
-.dependency-map__FlowChevron_Row {
-  display: block;
-  min-width: 100%;
-  background-color: var(--surface);
-  background-size:
-    var(--dependency-map-chevron-cycle)
-    var(--dependency-map-chevron-cycle);
-  animation: dependency-map-flow-chevron 2s linear infinite;
-}
-
-.dependency-map__FlowChevron_Row--top {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--dependency-map-chevron-stripe) 0,
-    var(--dependency-map-chevron-stripe) 20px,
-    var(--surface) 20px,
-    var(--surface) 40px
-  );
-}
-
-.dependency-map__FlowChevron_Row--bottom {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--dependency-map-chevron-stripe) 0,
-    var(--dependency-map-chevron-stripe) 20px,
-    var(--surface) 20px,
-    var(--surface) 40px
-  );
-}
-
-.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row {
-  animation-name: dependency-map-flow-chevron-reverse;
-}
-
-.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row--top {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--dependency-map-chevron-stripe) 0,
-    var(--dependency-map-chevron-stripe) 20px,
-    var(--surface) 20px,
-    var(--surface) 40px
-  );
-}
-
-.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row--bottom {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--dependency-map-chevron-stripe) 0,
-    var(--dependency-map-chevron-stripe) 20px,
-    var(--surface) 20px,
-    var(--surface) 40px
-  );
-}
-
-/* Parallel variant — both halves live inside a single Pair wrapper.
- * The wrapper carries the animation (translateY), so the two halves
- * are rigidly bonded and can never drift relative to each other. The
- * wrapper is taller than the visible container by one cycle so the
- * upward translate never reveals empty space. */
-.dependency-map__FlowChevron--parallel {
-  display: block;
-  grid-template-columns: none;
-  grid-template-rows: none;
-}
-
+/* Default Pair — covers horizontal variants (requires + unlocks).
+ * Wider than the container by one cycle so the X translate never
+ * reveals empty space. Two stacked rows (top + bottom). Parallel
+ * overrides this to side-by-side columns extended vertically. */
 .dependency-map__FlowChevron_Pair {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr;
-  height: calc(100% + var(--dependency-map-chevron-cycle));
-  animation: dependency-map-flow-chevron-pair 2s linear infinite;
+  grid-template-rows: 1fr 1fr;
+  grid-template-columns: 1fr;
+  width: calc(100% + var(--dependency-map-chevron-cycle));
+  height: 100%;
   will-change: transform;
 }
 
-/* Both halves get the SAME `/` gradient — the right half is then
- * horizontally mirrored with transform: scaleX(-1) so its rendered
- * pattern is a literal geometric mirror of the left. This is the
- * only way to guarantee stripe phase aligns at the central seam:
- * mirrored gradients on independent half-boxes don't (their 0%
- * color-stop corners differ); a single gradient flipped does. */
-.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row {
-  animation: none;
-  background-position: 0 0;
+.dependency-map__FlowChevron_Row {
+  display: block;
+  width: 100%;
   height: 100%;
+  background-color: var(--surface);
+  background-position: 0 0;
+}
+
+/* Default mirror for horizontal variants — bottom row is the vertical
+ * mirror of the top row. With both rows carrying the same gradient,
+ * scaleY(-1) on the bottom row produces a clean chevron whose apex
+ * line falls exactly on the midline by geometric mirror. */
+.dependency-map__FlowChevron_Row--bottom {
+  transform: scaleY(-1);
+  transform-origin: center;
+}
+
+/* Requires — leftward chevron, leftward motion. Both rows use the
+ * -45deg gradient (`/` stripes); the scaleY-mirrored bottom renders
+ * as `\`, and the top-`/` + bottom-`\` join forms a `<` apex at the
+ * midline (leftmost point). */
+.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Row {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron--requires .dependency-map__FlowChevron_Pair {
+  animation: dependency-map-flow-chevron-left 2s linear infinite;
+}
+
+/* Requires active — when this bucket is the picked mode, flip the
+ * arrows 180° so they face the way they travel. Swapping the gradient
+ * to 45deg (`\`) gives top-`\` + bottom-`/` (after scaleY mirror),
+ * which forms a `>` apex pointing right. Keyframe also flips to the
+ * rightward translate so animation direction matches the apex. */
+.dependency-map__FlowChevron--requires.is-active .dependency-map__FlowChevron_Row {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron--requires.is-active .dependency-map__FlowChevron_Pair {
+  animation-name: dependency-map-flow-chevron-right;
+}
+
+/* Unlocks — rightward chevron, rightward motion. 45deg (`\`) gradient
+ * + scaleY-mirrored bottom (`/`) = `>` apex pointing right. */
+.dependency-map__FlowChevron--unlocks .dependency-map__FlowChevron_Row {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--dependency-map-chevron-stripe) 0,
+    var(--dependency-map-chevron-stripe) 20px,
+    var(--surface) 20px,
+    var(--surface) 40px
+  );
+}
+
+.dependency-map__FlowChevron--unlocks .dependency-map__FlowChevron_Pair {
+  animation: dependency-map-flow-chevron-right 2s linear infinite;
+}
+
+/* Parallel — vertical motion, side-by-side halves. Pair is wider than
+ * tall by switching the grid to columns; extends below the container
+ * by one cycle so the Y translate never reveals empty space. The
+ * scaleX(-1) on the right column gives the vertical-seam mirror. */
+.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Pair {
+  width: 100%;
+  height: calc(100% + var(--dependency-map-chevron-cycle));
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  animation: dependency-map-flow-chevron-up 2s linear infinite;
+}
+
+.dependency-map__FlowChevron--parallel .dependency-map__FlowChevron_Row {
   background-image: repeating-linear-gradient(
     -45deg,
     var(--dependency-map-chevron-stripe) 0,
@@ -22387,31 +21432,26 @@ tr.is-editing {
   height: 16px;
 }
 
-@keyframes dependency-map-flow-chevron {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: var(--dependency-map-chevron-cycle) 0;
-  }
+/* Pair translates — one keyframe per motion direction. The Pair
+ * wrapper handles ALL three variants; the per-variant rules above
+ * pick which keyframe to bind. Leftward starts at translateX(0) and
+ * ends at -cycle. Rightward starts at -cycle and ends at 0 (so the
+ * Pair, sized at 100%+cycle, slides its right-extended portion into
+ * view rather than off-screen on the left). Upward is the vertical
+ * equivalent for the parallel variant. */
+@keyframes dependency-map-flow-chevron-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(-1 * var(--dependency-map-chevron-cycle))); }
 }
 
-@keyframes dependency-map-flow-chevron-reverse {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: calc(-1 * var(--dependency-map-chevron-cycle)) 0;
-  }
+@keyframes dependency-map-flow-chevron-right {
+  from { transform: translateX(calc(-1 * var(--dependency-map-chevron-cycle))); }
+  to   { transform: translateX(0); }
 }
 
-@keyframes dependency-map-flow-chevron-pair {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(calc(-1 * var(--dependency-map-chevron-cycle)));
-  }
+@keyframes dependency-map-flow-chevron-up {
+  from { transform: translateY(0); }
+  to   { transform: translateY(calc(-1 * var(--dependency-map-chevron-cycle))); }
 }
 
 /* Form Layout Builder — Save-as-Draft (secondary) + Discard (danger) buttons */
@@ -22475,8 +21515,8 @@ tr.is-editing {
      midpoint (≈ ROW_H/2), rail-inset = how far the rail sits in from the
      child's left edge. */
   --tree-step: 20px;
-  --tree-row-h: 30px;
-  --tree-mid: 15px;
+  --tree-row-h: 48px;
+  --tree-mid: 24px;
   --tree-rail-inset: 8px;
 
   display: flex;
@@ -22484,6 +21524,10 @@ tr.is-editing {
   width: 100%;
   font-size: 13px;
   color: var(--ink);
+  border-top-left-radius:     var(--grid-radius-top-left);
+  border-top-right-radius:    var(--grid-radius-top-right);
+  border-bottom-left-radius:  var(--grid-radius-bottom-left);
+  border-bottom-right-radius: var(--grid-radius-bottom-right);
 }
 
 /* ── Title band ──────────────────────────────────────────────────────────────
@@ -22836,10 +21880,10 @@ tr.is-editing {
   align-items: center;
   height: var(--tree-row-h);
   border-bottom: 1px solid var(--border);
-  /* Per-row colour accent — runtime value arrives via the --row-accent custom
-     property set inline (the one sanctioned style={{}} case). Transparent when
-     unset so plain rows show no rail. */
-  border-left: 3px solid var(--row-accent, transparent);
+  /* Per-row colour accent moved off the left border — the artefact colour now
+     lives in its own column as a 60×60 swatch (.grid__Tree_ColourBadge), so
+     the row paints with no leading rail. --row-accent is still propagated for
+     the optional 10px Stripe lead column. */
   background: var(--surface);
   cursor: default;
 }
@@ -22874,9 +21918,10 @@ tr.is-editing {
 
 /* ── Tree connector SVG (in-cell indent + ├└│ rails) ──────────────────────────
    The WRAP is an in-flow spacer whose width = the indent (depth × step); it sits
-   before the caret so only the primary cell content shifts (lead columns never
-   move). The SVG overlays it absolutely and draws past the spacer's right edge
-   (the badge-touching horizontal + the drop-stub) without affecting layout. */
+   AFTER the (fixed-column) caret and BEFORE the badge — only the primary cell
+   content shifts (lead columns + caret never move). The SVG overlays it
+   absolutely and draws past the spacer's right edge (the badge-touching
+   horizontal + the drop-stub) without affecting layout. */
 .grid__Tree_LinesWrap {
   position: relative;
   flex-shrink: 0;
@@ -22904,6 +21949,17 @@ tr.is-editing {
 .grid__Tree_Cell--primary > .grid__Cell_Summary {
   position: relative;
   z-index: 1;
+}
+
+/* Per-artefact colour swatch — 35×35 filled square, rendered in its own
+   column (scopeColumns "colour"). Replaces the old --row-accent left
+   border; cell stays empty when row.colour is null. */
+.grid__Tree_ColourBadge {
+  display: block;
+  width: 35px;
+  height: 35px;
+  border-radius: 4px;
+  flex: 0 0 auto;
 }
 
 /* Type-badge button wrapper — the OTV2 form trigger. Resets button chrome so
@@ -22942,6 +21998,12 @@ tr.is-editing {
 }
 
 /* ── Caret (expand toggle) ───────────────────────────────────────────────── */
+/* Boxed +/− toggle rendered with Material icons (MdOutlineAddBox /
+   MdOutlineIndeterminateCheckBox). Caret sits in a FIXED column — rendered
+   BEFORE the TreeLines indent SVG — so all +/− boxes align vertically
+   regardless of depth. The icon owns the visible outline; the button is just
+   a transparent wrapper. Colours come from primitives.css tokens:
+   --grid-tree-expander-closed → + state, --grid-tree-expander-open → − state. */
 .grid__Tree_Caret {
   flex: 0 0 auto;
   display: inline-flex;
@@ -22950,30 +22012,28 @@ tr.is-editing {
   width: 16px;
   height: 16px;
   padding: 0;
-  /* Caret nudged 3px right (margin-left:3) while the badge stays put — the 3px
-     is taken back out of margin-right (5→2) so total caret box width is
-     unchanged and the badge/id don't move. The spacer matches so leaf rows
-     align with parents. (margin-right keeps the chevron↔badge gap; flex gap on
-     the cell stays 0 to preserve the connector caret-spacing math.) */
+  /* Total advance (−3 + 16 + 8 = 21) matches the CaretSpacer so leaf rows
+     align with branch rows at every depth. */
   margin: 0 8px 0 -3px;
   border: 0;
-  background: none;
+  background: transparent;
   cursor: pointer;
-  color: var(--text-secondary, #5c5c5c);
+  color: var(--grid-tree-expander-closed, #be513f);
+  transition: color 0.12s ease;
 }
-.grid__Tree_Caret:hover { color: var(--ink); }
+.grid__Tree_Caret:hover { filter: brightness(0.9); }
 .grid__Tree_CaretGlyph {
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 7px solid currentColor;
-  transition: transform 0.12s ease;
+  display: block;
+  width: 16px;
+  height: 16px;
 }
-.grid__Tree_Caret[data-expanded="true"] .grid__Tree_CaretGlyph { transform: rotate(90deg); }
+.grid__Tree_Caret[data-expanded="true"] {
+  color: var(--grid-tree-expander-open, #142424);
+}
 .grid__Tree_CaretSpacer { flex: 0 0 auto; width: 16px; height: 16px; margin: 0 8px 0 -3px; }
 
-/* Expand-all toggle — lives inside the primary header cell, aligned to carets. */
+/* Expand-all toggle — lives inside the primary header cell, aligned to carets.
+   Mirrors the row caret: Material +/− icon, tinted by the same tokens. */
 .grid__Tree_ExpandAll {
   flex: 0 0 auto;
   display: inline-flex;
@@ -22982,14 +22042,22 @@ tr.is-editing {
   width: 16px;
   height: 16px;
   padding: 0;
-  margin: 0 4px 0 0;
+  margin: 0 8px 0 -3px;
   border: 0;
-  background: none;
+  background: transparent;
   cursor: pointer;
-  color: var(--text-secondary, #5c5c5c);
-  font-size: 10px;
+  color: var(--grid-tree-expander-closed, #be513f);
+  transition: color 0.12s ease;
 }
-.grid__Tree_ExpandAll:hover { color: var(--ink); }
+.grid__Tree_ExpandAll:hover { filter: brightness(0.9); }
+.grid__Tree_ExpandAllGlyph {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+.grid__Tree_ExpandAll[data-expanded="true"] {
+  color: var(--grid-tree-expander-open, #142424);
+}
 
 /* Drag grip (dnd opt-in). */
 .grid__Tree_DragGrip {
@@ -23153,8 +22221,8 @@ tr.is-editing {
   gap: var(--space-3, 12px);
   padding: 6px 8px;
   border-top: 1px solid var(--border);
-  border-bottom-left-radius: 10px;
-  border-bottom-right-radius: 10px;
+  border-bottom-left-radius:  var(--grid-radius-bottom-left);
+  border-bottom-right-radius: var(--grid-radius-bottom-right);
   background: color-mix(in srgb, var(--ink) 2%, var(--surface));
   font-size: 12px;
   color: var(--ink-muted, var(--text-secondary, #5c5c5c));

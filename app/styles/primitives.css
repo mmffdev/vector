@@ -7,12 +7,89 @@
    ============================================================= */
 
 :root {
+  /* ── PER-SURFACE INK ──────────────────────────────────────
+     One ink token per surface family, so each surface can be
+     re-skinned independently of body --ink. Defaults preserve
+     current look — change a value here and every consumer of
+     that surface re-paints in lockstep. */
+  --nav-rail-ink:                 #142424;
+  --nav-rail-ink-active:          #f7f7f7;
+  --nav-rail-bg-active:           #142424;
+
+
+  --buttons-main-ink:             #f7f7f7;
+  --buttons-main-bg:              #142424;
+  --buttons-main-border:            var(--buttons-main-bg);
+
+  --buttons-main-ink-hover:      #142424;
+  --buttons-main-bg-hover:       #f7f7f7;
+  --buttons-main-border-hover:     var(--buttons-main-ink-hover);
+
+  --buttons-main-ink-active:      #f7f7f7;
+  --buttons-main-bg-active:       #be513f;
+  --buttons-main-border-active:     var(--buttons-main-bg-active);
+
+  --buttons-secondary-ink:        #f7f7f7;
+  --buttons-secondary-bg:         #142424;
+  --buttons-secondary-border:       var(--buttons-secondary-bg);
+
+  --buttons-secondary-ink-hover:      #be513f;
+  --buttons-secondary-bg-hover:       #f7f7f7;
+  --buttons-secondary-border-hover:   var( --buttons-secondary-bg-hover);
+
+  --buttons-secondary-ink-active:      #f7f7f7;
+  --buttons-secondary-bg-active:       #be513f;
+  --buttons-secondary-border-active: var(--buttons-secondary-bg-active);
+
+  --buttons-caution-ink:             #f7f7f7;
+  --buttons-caution-bg:              #be513f;
+  --buttons-caution-border:          var(--buttons-caution-bg);
+
+  --buttons-caution-ink-hover:      #be513f;
+  --buttons-caution-bg-hover:       #f7f7f7;
+  --buttons-caution-border-hover:   var(--buttons-caution-bg-hover);
+
+  --buttons-caution-ink-active:      #f7f7f7;
+  --buttons-caution-bg-active:       #be513f;
+  --buttons-caution-border-active:  var(--buttons-caution-bg);
+
+  --buttons-positive-ink:             #f7f7f7;
+  --buttons-positive-bg:              #2F7D54;
+  --buttons-positive-border:          var(--buttons-positive-bg);
+
+  --buttons-positive-ink-hover:      #2F7D54;
+  --buttons-positive-bg-hover:       #f7f7f7;
+  --buttons-positive-border-hover:          var(--buttons-positive-bg-hover);
+
+  --buttons-positive-ink-active:      #f7f7f7;
+  --buttons-positive-bg-active:       #2F7D54;
+  --buttons-positive-border-active:          var(--buttons-positive-bg-active);
+
+  --data-headers:                 var(--surface-sunken);
+  --data-headers-ink:             var(--ink);
+
+  --grid-tree-row-connector: #be513f;
+  --grid-tree-expander-closed: #be513f;
+  --grid-tree-expander-open: #142424;
+
+  /* GRID - FlowStatePillRow*/
+  --grid-tree-row-flow-state-btn-ink-normal:  #142424;
+  --grid-tree-row-flow-state-btn-bg-normal:   #f7f7f7;
+  --grid-tree-row-flow-state-btn-border-normal: #142424;
+
+  --grid-tree-row-flow-state-btn-ink-hover:  #142424;
+  --grid-tree-row-flow-state-btn-bg-hover:   #f7f7f7;
+  --grid-tree-row-flow-state-btn-border-hover: #142424;
+
+  --grid-tree-row-flow-state-btn-ink-active:  #f7f7f7;
+  --grid-tree-row-flow-state-btn-bg-active:   #be513f;
+  --grid-tree-row-flow-state-btn-border-active: #be513f;
 
   /* ── 1. CANVAS ─────────────────────────────────────────────
      Page surfaces — what everything sits on. */
-  --canvas:          #FFFFFF;
-  --surface:         #FFFFFF;
-  --surface-sunken:  #EDEAE4;
+  --canvas:          #f7f7f7;
+  --surface:         #f7f7f7;
+  --surface-sunken:  #f7f7f7;
   --surface-raised:  #FFFFFF;
 
   /* ── 2. INK ────────────────────────────────────────────────
@@ -34,8 +111,9 @@
   /* ── 4. ACCENT ─────────────────────────────────────────────
      Single interactive colour — buttons, links, active states.
      Defaults to ink so Vector ships monochrome until a theme overrides. */
-  --accent:        #1A1A1A;
+  --accent:        #142424;
   --accent-ink:    #FFFFFF;
+  --accent-ink-active:    #142424;
   --accent-muted:  rgba(26, 26, 26, 0.06);
   --accent-border: rgba(26, 26, 26, 0.20);
 
@@ -84,6 +162,13 @@
   /* ── 8. RADIUS ─────────────────────────────────────────────
      Corner rounding. Defaults to 0 — Vector ships sharp until
      a theme overrides. */
+  --radius-top-left:   0;
+  --radius-top-right:  0;
+  --radius-bottom-left:  0;
+  --radius-bottom-right:  0;
+  --radius-md:   0;
+  --radius-lg:   0;
+  --radius-xl:   0;
   --radius-sm:   0;
   --radius-md:   0;
   --radius-lg:   0;
@@ -146,31 +231,6 @@
   --tree_accordion-dense-type-story:  #8A8A8A;
   --tree_accordion-dense-type-task:   #B8B5AF;
   --tree_accordion-dense-type-defect: #b91c1c;
-}
-
-/* ── DARK THEME ──────────────────────────────────────────────
-   Warm dark palette — overrides canvas, ink, border primitives. */
-:root[data-theme="dark"] {
-  --canvas:          #1A1816;
-  --surface:         #232120;
-  --surface-sunken:  #1F1D1B;
-  --surface-raised:  #2A2826;
-
-  --ink:          #F4F2EE;
-  --ink-muted:    #B0ADA6;
-  --ink-subtle:   #8A8780;
-  --ink-faint:    #4A4744;
-  --ink-inverse:  #1A1816;
-  --ink-contrast: #1A1816;
-
-  --border:        #2E2B28;
-  --border-strong: #3D3A36;
-  --border-panel:  #4A4744;
-
-  --accent:        #F4F2EE;
-  --accent-ink:    #1A1816;
-  --accent-muted:  rgba(244, 242, 238, 0.06);
-  --accent-border: rgba(244, 242, 238, 0.20);
 }
 
 /* ── COLLAPSED SIDEBAR ───────────────────────────────────────  */
