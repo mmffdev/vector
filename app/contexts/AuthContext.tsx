@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
-import { broadcastAuthEvent, coordinatedRefresh } from "@/app/lib/authChannel";
+import { broadcastAuthEvent, coordinatedRefresh, subscribeAuthEvents } from "@/app/lib/authChannel";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 // DPoP (RFC 9449) keypair lifecycle. Generated before the initial
@@ -181,6 +181,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // one we just bound. Fire-and-forget — a prune failure only means a
     // stale key lingers one more cycle, never a broken session.
     void reparentAnonKeypair(res.user.id).then(() => pruneStaleKeys(res.user.id));
+    // Tell sibling tabs the DPoP keypair was (re)bound/pruned so any live
+    // tab reloads its in-memory key from IDB instead of signing the next
+    // refresh with a key we just pruned (which the backend would reject →
+    // revoke-all). TD-SEC-DPOP-STALE-KEY live-tab path.
+    broadcastAuthEvent({ type: "dpop-key-changed", userId: res.user.id });
   }, []);
 
   const refresh = useCallback(async () => {
@@ -334,6 +339,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
+    broadcastAuthEvent({ type: "logout" });
     _bootstrapped = false;
     notify.success("You've been signed out.");
     router.push("/login");
@@ -368,6 +374,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
+    broadcastAuthEvent({ type: "logout" });
     _bootstrapped = false;
     try {
       sessionStorage.setItem("vector.login.reason", reason);
@@ -384,6 +391,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setHardLogoutCallback(hardLogout);
     return () => setHardLogoutCallback(null);
   }, [hardLogout]);
+
+  // Subscribe to cross-tab auth events. A sibling tab that refreshes
+  // broadcasts the new token (we adopt it without a network call); a
+  // key-change tells us to reload the DPoP key from IDB; a logout tells
+  // us to clear and redirect so no authenticated tab lingers.
+  useEffect(() => {
+    const unsub = subscribeAuthEvents((msg) => {
+      if (msg.type === "refreshed") {
+        _lastBroadcastTokenAt = Date.now();
+        setApiToken(msg.accessToken);
+        _bootstrapped = true;
+        // Note: the user object isn't broadcast (it can be large + the
+        // access token is the load-bearing credential). If this tab had no
+        // user yet, its own bootstrap/refresh will populate it; the token
+        // lets those calls succeed immediately.
+      } else if (msg.type === "dpop-key-changed") {
+        // Reload the in-memory active keypair from IDB. Fire-and-forget; a
+        // failure only means this tab re-binds on its next refresh.
+        void ensureAnyActiveKeypair();
+      } else if (msg.type === "logout") {
+        setApiToken(null);
+        setUser(null);
+        clearSessionCookie();
+        _bootstrapped = false;
+        if (typeof window !== "undefined") window.location.assign("/login");
+      }
+    });
+    return unsub;
+  }, []);
 
   const permissions = useMemo(
     () => new Set(user?.permissions ?? []),
