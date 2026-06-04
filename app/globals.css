@@ -21670,6 +21670,14 @@ tr.is-editing {
   padding: 10px 12px 9px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  /* Hard-freeze the action band against the top of the scroll container,
+     stacked directly under the (also sticky) stats panel so the filters,
+     search and create affordances are always reachable. The column head
+     stacks below this (--grid-tree-actionbar-stick-h offset). z below stats
+     (3) and above the head (2). */
+  position: sticky;
+  top: var(--grid-tree-stats-stick-h, 64px);
+  z-index: 3;
 }
 .grid__Tree_ActionBar_Create {
   flex: 0 0 auto;
@@ -21719,10 +21727,14 @@ tr.is-editing {
   display: grid;
   align-items: stretch;
   position: sticky;
-  /* Stack below the (also sticky) stats band so both stay visible on scroll.
-     Default tuned for a 1-row stats grid; override --grid-tree-stats-stick-h
-     on .grid (or a parent) to retune for taller stats configurations. */
-  top: var(--grid-tree-stats-stick-h, 64px);
+  /* Stack below BOTH the sticky stats band and the sticky action band so all
+     three stay visible on scroll. Defaults tuned for a 1-row stats grid + the
+     default action-bar height; override --grid-tree-stats-stick-h /
+     --grid-tree-actionbar-stick-h on .grid (or a parent) to retune. */
+  top: calc(
+    var(--grid-tree-stats-stick-h, 64px) +
+      var(--grid-tree-actionbar-stick-h, 55px)
+  );
   z-index: 2;
   background: var(--grid-tree-header-bg);
   border-bottom: 1px solid var(--border);

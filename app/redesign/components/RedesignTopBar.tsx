@@ -6,6 +6,7 @@ import { useShell } from "../ShellContext";
 import { useSentinel } from "@/app/sentinel/useSentinel";
 import { PageHeaderContext } from "@/app/contexts/PageHeaderContext";
 import ProfilePillStack from "./nav_primary_rail_1_NavProfilePillStack";
+import PrefixBlockStripes from "@/app/components/PrefixBlockStripes";
 
 export default function RedesignTopBar() {
   const { activeSection, isAccountActive } = useShell();
@@ -53,7 +54,10 @@ export default function RedesignTopBar() {
 
   return (
     <div className="main_title header-band" role="banner">
-      <h1 className="main_title__text">{displayTitlePrefixed}</h1>
+      <div className="main_title__lead">
+        <PrefixBlockStripes size={28} />
+        <h1 className="main_title__text">{displayTitlePrefixed}</h1>
+      </div>
       <div className="main_title__actions">
         {pageHeader?.actions}
         <ProfilePillStack />

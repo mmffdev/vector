@@ -21,7 +21,7 @@
 //     (e.g. ArtefactInlineForm) BELOW its own row. openDetailId drives which.
 //   • accentOf                  → per-row colour accent (left border).
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MdOutlineAddBox, MdOutlineIndeterminateCheckBox } from "react-icons/md";
 import { useColumnManager } from "./useColumnManager";
 import { useResourceRank } from "@/app/hooks/useResourceRank";
@@ -34,6 +34,7 @@ import {
   type GridTreeActionBarConfig,
 } from "./Grid__Tree_ActionBar";
 import { GridTreeCog } from "./Grid__Tree_Cog";
+import PrefixBlockStripes from "@/app/components/PrefixBlockStripes";
 import {
   GridTreeStatsPanel,
   type GridTreeStatsPanelConfig,
@@ -157,6 +158,11 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     (node: TreeNode<TRow>) => dnd?.rowIdOf?.(node.row) ?? node.id,
     [dnd],
   );
+
+  // Our own handle on the .grid container — useColumnManager's containerRef is
+  // a callback ref that doesn't expose the element, and the sticky-offset
+  // measurement effect needs to read child heights off the DOM.
+  const gridEl = useRef<HTMLDivElement | null>(null);
 
   // Which row's cog menu is open (single-open, OTV2 model).
   const [cogOpenId, setCogOpenId] = useState<string | null>(null);
@@ -409,15 +415,44 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
 
   const hasTitle = title != null || subtitle != null || badge != null;
 
+  // Keep the sticky-stack offsets exact. The stats band and the action band
+  // are both sticky to the scroll container; the column head must stack below
+  // both of them. Their pixel heights vary (button sizes, stats-grid wrap), so
+  // measure them and publish the live heights as CSS vars on the container
+  // rather than guessing a static offset. The head's `top` reads these.
+  useLayoutEffect(() => {
+    const container = gridEl.current;
+    if (!container) return;
+    const stats = container.querySelector<HTMLElement>(".grid__Tree_StatsPanel");
+    const action = container.querySelector<HTMLElement>(".grid__Tree_ActionBar");
+    const publish = () => {
+      container.style.setProperty(
+        "--grid-tree-stats-stick-h",
+        `${stats?.offsetHeight ?? 0}px`,
+      );
+      container.style.setProperty(
+        "--grid-tree-actionbar-stick-h",
+        `${action?.offsetHeight ?? 0}px`,
+      );
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    if (stats) ro.observe(stats);
+    if (action) ro.observe(action);
+    return () => ro.disconnect();
+  }, [statsPanel, actionBar]);
+
   return (
-    <div className="grid" ref={cm.containerRef}>
+    <div
+      className="grid"
+      ref={(el) => {
+        gridEl.current = el;
+        cm.containerRef(el);
+      }}
+    >
       {hasTitle && (
         <div className="grid__Tree_Title">
-          {badge != null && (
-            <span className="grid__Tree_Title_Badge" aria-hidden="true">
-              {badge}
-            </span>
-          )}
+          {badge != null && <PrefixBlockStripes />}
           <div className="grid__Tree_Title_Body">
             {title != null && (
               <h3 className="grid__Tree_Title_Heading">

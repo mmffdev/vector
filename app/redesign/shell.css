@@ -779,6 +779,17 @@
   background: var(--canvas);
 }
 
+/* Lead group: the striped prefix block + the title share a common left edge
+   at the header's 30px padding; the block is flush-left and the title sits to
+   its right. */
+.main_title__lead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding-left: 17px;
+}
+
 .main_title__text {
   margin: 0;
   font-family: var(--font-sans);
