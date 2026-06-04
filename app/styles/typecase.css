@@ -2,9 +2,11 @@
    typecase.css — site typographic scale
    Single source of truth for h1–h6 sizing, body font-family,
    and the .text-size-* / .h1-.h6 helper classes.
-   Satoshi is loaded via Fontshare in app/layout.tsx and bound
-   to var(--font-sans) on <html>; we reference that here rather
-   than re-importing the stylesheet.
+   Archivo is loaded via next/font/google in app/layout.tsx and
+   bound to var(--font-sans) on <html>; we reference that here
+   rather than re-importing the stylesheet.
+   (Previous: Satoshi via Fontshare local woff2 — commented out
+   in layout.tsx, still on disk at app/fonts/satoshi/.)
    ============================================================ */
 
 html {
