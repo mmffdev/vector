@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vector · Log Viewer</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <!-- ── Top control bar ─────────────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="topbar__brand">
+        <span class="topbar__logo">▚</span>
+        <span class="topbar__title">Vector Log Viewer</span>
+      </div>
+
+      <div class="topbar__group">
+        <button id="btn-tail" class="btn btn--toggle is-active" title="Play / pause live tail (Space)">
+          <span class="dot dot--live"></span> Tailing
+        </button>
+        <button id="btn-clear" class="btn" title="Clear all panels">Clear</button>
+        <button id="btn-export" class="btn" title="Export visible / selected">Export ▾</button>
+        <div id="export-menu" class="menu" hidden>
+          <button data-scope="visible" data-format="txt">Visible → TXT</button>
+          <button data-scope="visible" data-format="csv">Visible → CSV</button>
+          <button data-scope="visible" data-format="json">Visible → JSON</button>
+          <button data-scope="visible" data-format="html">Visible → HTML (coloured)</button>
+          <hr />
+          <button data-scope="selected" data-format="txt">Selected → TXT</button>
+          <button data-scope="selected" data-format="csv">Selected → CSV</button>
+          <button data-scope="highlighted" data-format="txt">Highlighted → TXT</button>
+          <hr />
+          <button data-scope="visible" data-format="clipboard">Copy visible to clipboard</button>
+        </div>
+      </div>
+
+      <div class="topbar__group topbar__search">
+        <input id="global-filter" class="input" type="search"
+               placeholder="Filter all panels…  (plain text, or /regex/)" />
+        <label class="chk" title="Treat filter as regular expression">
+          <input type="checkbox" id="global-regex" /> regex
+        </label>
+        <label class="chk" title="Show only lines matching a highlight rule">
+          <input type="checkbox" id="only-highlighted" /> only ★
+        </label>
+      </div>
+
+      <div class="topbar__group topbar__right">
+        <button id="btn-view" class="btn" title="Toggle dashboard">Dashboard</button>
+        <button id="btn-highlights" class="btn" title="Highlight rules">★ Rules</button>
+        <button id="btn-layout" class="btn" title="Cycle panel layout">Layout</button>
+        <span id="conn" class="conn conn--down" title="Stream connection">
+          <span class="dot"></span> <span class="conn__txt">connecting…</span>
+        </span>
+        <span id="last-update" class="muted">—</span>
+      </div>
+    </header>
+
+    <!-- ── Live tail view: split panels ─────────────────────────────────── -->
+    <main id="tail-view" class="stage"></main>
+
+    <!-- ── Dashboard view ───────────────────────────────────────────────── -->
+    <section id="dashboard-view" class="dashboard" hidden></section>
+
+    <!-- ── Status bar ───────────────────────────────────────────────────── -->
+    <footer class="statusbar">
+      <span id="st-tail" class="statusbar__item">● Active</span>
+      <span id="st-rate" class="statusbar__item">0 lines/s</span>
+      <span id="st-total" class="statusbar__item">0 lines</span>
+      <span id="st-filter" class="statusbar__item">0 filters</span>
+      <span id="st-selected" class="statusbar__item">0 selected</span>
+      <span id="st-mem" class="statusbar__item">— in memory</span>
+      <span class="statusbar__spacer"></span>
+      <span id="st-refs" class="statusbar__item statusbar__item--nav">
+        <button id="ref-back" class="linkbtn" disabled>◀</button>
+        <span id="ref-label">no jumps</span>
+        <button id="ref-fwd" class="linkbtn" disabled>▶</button>
+      </span>
+    </footer>
+
+    <!-- ── Highlight-rules drawer ───────────────────────────────────────── -->
+    <aside id="highlights-drawer" class="drawer" hidden>
+      <header class="drawer__head">
+        <strong>Highlight rules</strong>
+        <button id="hl-close" class="linkbtn">✕</button>
+      </header>
+      <div class="drawer__body">
+        <p class="muted">Level rules are built in. Add your own pattern → colour.</p>
+        <div id="hl-list" class="hl-list"></div>
+        <div class="hl-add">
+          <input id="hl-pattern" class="input" placeholder="regex e.g. \b\d{1,3}(\.\d{1,3}){3}\b" />
+          <input id="hl-color" class="input input--color" type="color" value="#f59e0b" />
+          <button id="hl-add" class="btn">Add</button>
+        </div>
+        <hr />
+        <strong>Matches</strong>
+        <div id="hl-summary" class="hl-summary muted">no custom matches</div>
+      </div>
+    </aside>
+
+    <!-- ── Context menu (right-click on a line) ─────────────────────────── -->
+    <div id="ctx-menu" class="menu menu--ctx" hidden></div>
+
+    <!-- ── Toast / notification host ────────────────────────────────────── -->
+    <div id="toasts" class="toasts"></div>
+
+    <!-- Panel template -->
+    <template id="panel-tpl">
+      <section class="panel" tabindex="0">
+        <header class="panel__head">
+          <span class="panel__swatch"></span>
+          <select class="panel__select"></select>
+          <span class="panel__meta">
+            <span class="panel__count">0</span> lines ·
+            <span class="panel__latest muted">—</span>
+          </span>
+          <span class="panel__spacer"></span>
+          <input class="input panel__filter" type="search" placeholder="filter this panel…" />
+          <button class="linkbtn panel__jump" title="Jump to line #">⤷ line</button>
+          <button class="linkbtn panel__close" title="Close panel">✕</button>
+        </header>
+        <div class="panel__viewport">
+          <div class="panel__spacer-top"></div>
+          <div class="panel__rows"></div>
+          <div class="panel__spacer-bottom"></div>
+        </div>
+      </section>
+    </template>
+
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

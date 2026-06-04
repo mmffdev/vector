@@ -1,0 +1,18 @@
+{
+  "name": "vector-log-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone real-time tail viewer for Vector's users_sessions and audit_logs Postgres tables. Read-only, SSE-streamed, multi-panel operator console.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

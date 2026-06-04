@@ -1,0 +1,79 @@
+{
+  "port": 3001,
+  "refreshIntervalMs": 1000,
+  "maxLinesInMemory": 50000,
+  "tailInitialLines": 500,
+  "db": {
+    "comment": "Connection string is resolved at runtime. Priority: LOG_VIEWER_DB_URL env > VECTOR_ARTEFACTS_DB_URL from ../backend/.env.dev. The viewer only ever issues SELECTs.",
+    "envFile": "../backend/.env.dev",
+    "urlKey": "VECTOR_ARTEFACTS_DB_URL",
+    "statementTimeoutMs": 8000,
+    "maxPoolConnections": 4
+  },
+  "logs": [
+    {
+      "id": "audit_logs",
+      "name": "Audit Logs",
+      "color": "#10B981",
+      "table": "audit_logs",
+      "prefix": "audit_logs_",
+      "idColumn": "audit_logs_id",
+      "tsColumn": "audit_logs_created_at",
+      "orderColumn": "audit_logs_created_at",
+      "columns": [
+        "audit_logs_id",
+        "audit_logs_created_at",
+        "audit_logs_action",
+        "audit_logs_resource",
+        "audit_logs_resource_id",
+        "audit_logs_id_user",
+        "audit_logs_id_subscription",
+        "audit_logs_ip_address",
+        "audit_logs_source_transport",
+        "audit_logs_metadata"
+      ],
+      "messageTemplate": "{audit_logs_action}  {audit_logs_resource}{resource_id_suffix}  ip={audit_logs_ip_address}  via={audit_logs_source_transport}  user={audit_logs_id_user}",
+      "levelFrom": "audit_logs_action",
+      "levelRules": [
+        { "match": "(failed|violation|reuse|denied|revoke|deactivated|lockout)", "level": "ERROR" },
+        { "match": "(grace|challenge|mfa|trusted_device|expired|archived)", "level": "WARN" },
+        { "match": "(login|created|granted|workspace_switched)", "level": "SUCCESS" },
+        { "match": "token_refresh$", "level": "DEBUG" }
+      ],
+      "defaultLevel": "INFO",
+      "correlationKey": "audit_logs_id_user"
+    },
+    {
+      "id": "users_sessions",
+      "name": "User Sessions",
+      "color": "#3B82F6",
+      "table": "users_sessions",
+      "prefix": "users_sessions_",
+      "idColumn": "users_sessions_id",
+      "tsColumn": "users_sessions_created_at",
+      "orderColumn": "users_sessions_created_at",
+      "columns": [
+        "users_sessions_id",
+        "users_sessions_created_at",
+        "users_sessions_last_used_at",
+        "users_sessions_expires_at",
+        "users_sessions_id_user",
+        "users_sessions_ip_address",
+        "users_sessions_user_agent",
+        "users_sessions_revoked",
+        "users_sessions_rotated_at",
+        "users_sessions_dpop_jkt",
+        "users_sessions_first_country"
+      ],
+      "messageTemplate": "session  user={users_sessions_id_user}  ip={users_sessions_ip_address}  country={users_sessions_first_country}  jkt={users_sessions_dpop_jkt}  ua=\"{users_sessions_user_agent}\"",
+      "levelFrom": "_derived",
+      "levelRules": [
+        { "match": "revoked", "level": "ERROR" },
+        { "match": "rotated", "level": "WARN" },
+        { "match": "active", "level": "SUCCESS" }
+      ],
+      "defaultLevel": "INFO",
+      "correlationKey": "users_sessions_id_user"
+    }
+  ]
+}
