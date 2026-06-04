@@ -160,6 +160,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // (not module-scope) because it should reset between user sessions.
   const refreshInFlight = useRef<Promise<void> | null>(null);
 
+  // Mirror `user` into a ref so the cross-tab channel listener (whose effect
+  // has empty deps) can read the CURRENT user without re-subscribing on
+  // every user change.
+  const userRef = useRef<AuthUser | null>(null);
+  useEffect(() => { userRef.current = user; }, [user]);
+
   const applyLogin = useCallback((res: LoginResp) => {
     setApiToken(res.access_token);
     setUser(res.user);
@@ -402,10 +408,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         _lastBroadcastTokenAt = Date.now();
         setApiToken(msg.accessToken);
         _bootstrapped = true;
-        // Note: the user object isn't broadcast (it can be large + the
-        // access token is the load-bearing credential). If this tab had no
-        // user yet, its own bootstrap/refresh will populate it; the token
-        // lets those calls succeed immediately.
+        // If this tab had no user yet (e.g. it opened AFTER a sibling
+        // already established the session), the access token alone isn't
+        // enough — React state needs the user object. Fetch it via
+        // GET /auth/me, which is a READ and does NOT rotate the single-use
+        // refresh cookie. We gate on `user == null` via the ref below so a
+        // tab that already has a user doesn't refetch on every sibling
+        // refresh. Fire-and-forget; a failure leaves the tab to its own
+        // next refresh.
+        if (!userRef.current) {
+          void apiSite<AuthUser>("/auth/me")
+            .then((u) => { setUser(u); })
+            .catch(() => { /* transient; next refresh recovers */ });
+        }
       } else if (msg.type === "dpop-key-changed") {
         // Reload the in-memory active keypair from IDB. Fire-and-forget; a
         // failure only means this tab re-binds on its next refresh.
