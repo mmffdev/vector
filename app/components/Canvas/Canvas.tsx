@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 /**
@@ -24,6 +24,21 @@ export interface CanvasStatus {
   ariaLabel?: string;
 }
 
+/**
+ * One alternate-canvas entry. Each entry contributes a trigger button
+ * to the header; clicking the trigger swaps the canvas body to this
+ * view and collapses the sidebar (whichever non-primary view is active
+ * shows the canvas full-width).
+ */
+export interface CanvasView {
+  /** Stable identifier — survives re-renders, used as the React key. */
+  key: string;
+  /** Header trigger button label. */
+  label: string;
+  /** Canvas body content for this view. */
+  content: ReactNode;
+}
+
 export interface CanvasProps {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -38,8 +53,18 @@ export interface CanvasProps {
    * Optional second canvas body. When supplied, the header renders a
    * swap button; activating it shows this view and collapses the
    * sidebar so the canvas fills the full width.
+   *
+   * Use `alternateViews` (the array form) when you need MORE than one
+   * alternate. `alternateView` + `alternateViewLabel` is kept for
+   * backwards compatibility and is treated as a single-entry array.
    */
   alternateView?: ReactNode;
+  /**
+   * Two or more alternate canvas bodies, one trigger button per entry.
+   * Takes precedence over `alternateView` when both are provided. The
+   * "primary" button is always rendered first when this is non-empty.
+   */
+  alternateViews?: CanvasView[];
   /** Swap-button label while the primary view is showing (the click
    *  destination, e.g. "View Map"). Defaults to "View Alternate". */
   alternateViewLabel?: string;
@@ -73,6 +98,7 @@ export function Canvas({
   toolbar,
   primaryView,
   alternateView,
+  alternateViews,
   alternateViewLabel = "View Alternate",
   primaryViewLabel = "Primary",
   onClose,
@@ -80,14 +106,33 @@ export function Canvas({
   rootData,
   canvasData,
 }: CanvasProps) {
-  const [viewMode, setViewMode] = useState<"primary" | "alternate">("primary");
+  // Normalise the alternate-view input — preferring the array form
+  // when provided so legacy `alternateView` callers keep working.
+  const views: CanvasView[] = useMemo(() => {
+    if (alternateViews && alternateViews.length > 0) return alternateViews;
+    if (alternateView) {
+      return [
+        { key: "alternate", label: alternateViewLabel, content: alternateView },
+      ];
+    }
+    return [];
+  }, [alternateViews, alternateView, alternateViewLabel]);
+
+  const [activeKey, setActiveKey] = useState<string>("primary");
+  // Defensive: if the active key disappears between renders (caller
+  // shortened the array), fall back to primary.
+  const safeActiveKey =
+    activeKey === "primary" || views.some((v) => v.key === activeKey)
+      ? activeKey
+      : "primary";
   const hasSidebar = Boolean(sidebar);
-  const hasAlternate = Boolean(alternateView);
-  // Sidebar swipes out whenever the alternate canvas is active so the
-  // body fills full width.
-  const sidebarExpanded = hasSidebar && viewMode === "primary";
-  const currentView =
-    viewMode === "alternate" && hasAlternate ? alternateView : primaryView;
+  const hasAlternates = views.length > 0;
+  const isPrimary = safeActiveKey === "primary";
+  const sidebarExpanded = hasSidebar && isPrimary;
+  const currentView = isPrimary
+    ? primaryView
+    : views.find((v) => v.key === safeActiveKey)?.content ?? primaryView;
+  const viewMode = isPrimary ? "primary" : "alternate";
 
   return (
     <div
@@ -96,6 +141,7 @@ export function Canvas({
       aria-modal="true"
       aria-label={ariaLabel}
       data-view-mode={viewMode}
+      data-view-key={safeActiveKey}
       {...dataAttributes(rootData)}
     >
       <header className="canvas__Bar">
@@ -123,17 +169,36 @@ export function Canvas({
           )}
         </div>
         <div className="canvas__Bar_Actions">
-          {hasAlternate && (
-            <button
-              type="button"
-              className="canvas__Button canvas__Button--ghost"
-              onClick={() =>
-                setViewMode((m) => (m === "primary" ? "alternate" : "primary"))
-              }
-              aria-pressed={viewMode === "alternate"}
-            >
-              {viewMode === "primary" ? alternateViewLabel : primaryViewLabel}
-            </button>
+          {hasAlternates && (
+            <>
+              <button
+                type="button"
+                className={
+                  isPrimary
+                    ? "canvas__Button canvas__Button--ghost is-active"
+                    : "canvas__Button canvas__Button--ghost"
+                }
+                onClick={() => setActiveKey("primary")}
+                aria-pressed={isPrimary}
+              >
+                {primaryViewLabel}
+              </button>
+              {views.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  className={
+                    safeActiveKey === v.key
+                      ? "canvas__Button canvas__Button--ghost is-active"
+                      : "canvas__Button canvas__Button--ghost"
+                  }
+                  onClick={() => setActiveKey(v.key)}
+                  aria-pressed={safeActiveKey === v.key}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </>
           )}
           <button
             type="button"
@@ -165,6 +230,7 @@ export function Canvas({
           className="canvas__Surface"
           aria-label={`${ariaLabel} canvas`}
           data-view-mode={viewMode}
+          data-view-key={safeActiveKey}
           {...dataAttributes(canvasData)}
         >
           {currentView}
