@@ -12,6 +12,7 @@
 
 import type { GridColumn } from "@/app/components/Grid/types";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
+import { ColourBlockPicker } from "@/app/components/ColourBlockPicker";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import type { ScopeNode } from "./scopeTreeData";
 
@@ -39,9 +40,11 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// IdCell — the type badge and the artefact ID both open the inline edit flyout
-// for that row (onOpenForm). The ID is rendered as a link-styled button so
-// keyboard and pointer users get the same affordance.
+// IdCell — the type badge that opens the inline edit flyout for that row
+// (onOpenForm). Lives in the primary cell so it sits next to the caret +
+// tree-lines. The artefact ID text used to live here too, but has been moved
+// into its own dedicated lead track (Grid__Tree's rowIdText prop) so badge and
+// ID are visually separated.
 function IdCell({
   row,
   onOpenForm,
@@ -50,30 +53,17 @@ function IdCell({
   onOpenForm?: (id: string) => void;
 }) {
   return (
-    <span className="grid__Cell_Id">
-      <button
-        type="button"
-        className="grid__Cell_TypeBadgeBtn"
-        aria-label={`Edit ${row.id}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenForm?.(row.id);
-        }}
-      >
-        <TypeBadge type={row.type} />
-      </button>
-      <button
-        type="button"
-        className="grid__Cell_IdText grid__Cell_IdText--link"
-        aria-label={`Edit ${row.id}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenForm?.(row.id);
-        }}
-      >
-        {row.id}
-      </button>
-    </span>
+    <button
+      type="button"
+      className="grid__Cell_TypeBadgeBtn"
+      aria-label={`Edit ${row.id}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenForm?.(row.id);
+      }}
+    >
+      <TypeBadge type={row.type} />
+    </button>
   );
 }
 
@@ -120,12 +110,17 @@ function OwnerPill({ name }: { name: string }) {
 export function makeScopeColumns(
   onOpenForm: (id: string) => void,
   flowStatesByType: Map<string, WorkItemFlowState[]>,
+  onPatchColour: (uuid: string, hex: string | null) => void,
 ): GridColumn<ScopeNode>[] {
   return [
   {
+    // Primary cell — hosts the caret + tree-lines indent + type badge. The
+    // artefact ID text lives in its own lead track now (Grid__Tree rowIdText),
+    // so this column only needs room for the badge; Grid__Tree grows the
+    // primary column by maxDepth × TREE_STEP on top of defaultWidth.
     id: "id",
     label: "ID",
-    defaultWidth: 160,
+    defaultWidth: 64,
     sortable: true,
     resizable: true,
     renderCell: (r) => <IdCell row={r} onOpenForm={onOpenForm} />,
@@ -138,21 +133,21 @@ export function makeScopeColumns(
     renderCell: (r) => <span className="grid__Cell_Summary">{r.summary}</span>,
   },
   {
-    // Per-artefact colour swatch — replaces the row's left-border accent.
-    // Renders only when r.colour is set; otherwise the cell stays empty.
+    // Per-artefact colour. Click the block to open the shared ColourPickerPanel
+    // (palette + custom hex + clear) in a portal popover; the picked hex is
+    // PATCHed to the artefact via onPatchColour. Renders even when r.colour is
+    // null so a colour can be assigned from an empty cell.
     id: "colour",
     label: "",
     defaultWidth: 67,
     sortable: false,
     resizable: false,
-    renderCell: (r) =>
-      r.colour ? (
-        <span
-          className="grid__Tree_ColourBadge"
-          style={{ background: r.colour }}
-          aria-hidden="true"
-        />
-      ) : null,
+    renderCell: (r) => (
+      <ColourBlockPicker
+        value={r.colour}
+        onChange={(hex) => onPatchColour(r.uuid, hex)}
+      />
+    ),
   },
   {
     id: "status",

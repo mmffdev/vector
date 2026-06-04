@@ -252,6 +252,10 @@
     {
       "path": "app/(user)/workspace-admin/custom-fields/page.tsx",
       "reason": "list route \u2014 delegates to CustomFieldsPageBody (lives outside app/) which renders its own <PageDescription>; this file has no own UI"
+    },
+    {
+      "path": "app/(user)/artefacts/page.tsx",
+      "reason": "Panel title + description own the page's heading + context; a page-level <PageDescription> would duplicate the same band"
     }
   ]
 }

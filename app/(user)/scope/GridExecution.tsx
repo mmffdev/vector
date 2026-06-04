@@ -416,11 +416,26 @@ export function GridExecution() {
     [duplicateOfId, openDetailId],
   );
 
+  // Inline colour patch — fires from the grid's ColourBlockPicker. PATCH the
+  // artefact's colour, then refreshPreservingExpansion so the row re-renders
+  // with the new tint without collapsing the user's tree state.
+  const patchColour = useCallback(
+    async (uuid: string, hex: string | null) => {
+      try {
+        await workItems.patch(uuid, { colour: hex ?? "" });
+        refreshPreservingExpansion();
+      } catch (e) {
+        console.error("scope colour patch failed", e);
+      }
+    },
+    [refreshPreservingExpansion],
+  );
+
   // Columns close over the form-open trigger so the type badge can open the
   // flyout (OTV2 parity). Memoised so the column identity is stable.
   const columns = useMemo(
-    () => makeScopeColumns(openForm, flowStatesByType),
-    [openForm, flowStatesByType],
+    () => makeScopeColumns(openForm, flowStatesByType, patchColour),
+    [openForm, flowStatesByType, patchColour],
   );
 
   const openDetailVisible = useMemo(
@@ -596,7 +611,7 @@ export function GridExecution() {
     <GridTree<ScopeNode>
       title={selectedTypeLabel}
       subtitle={`These are your selected ${selectedTypeLabel.toLowerCase()}, you can navigate through their ancestry, create new, duplicate, remove and edit.`}
-      badge="01"
+      badge=""
       statsPanel={statsPanel}
       actionBar={actionBar}
       tree={tree}
@@ -614,14 +629,8 @@ export function GridExecution() {
         onError: () => refreshPreservingExpansion(),
       }}
       selection={{ selectedIds, onSelectionChange: setSelectedIds }}
-      cogMenu={(row) => [
-        {
-          key: "open",
-          label: "Open",
-          onSelect: () => openForm(row.id),
-        },
-      ]}
-      accentOf={(r) => r.colour}
+      rowIdText={(row) => row.id}
+      onRowIdClick={(row) => openForm(row.id)}
       selectedId={openDetailId}
       openDetailId={openDetailId}
       rowAnchorOf={(node) => scopeRowAnchor(node.id)}
