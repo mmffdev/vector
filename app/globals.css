@@ -21549,13 +21549,15 @@ tr.is-editing {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
-/* Title badge — decorative square painted with a 5px barber-pole pattern in
-   --ink / --canvas at -45°. No text content; the box is a pure visual marker
-   beside the FILTER title. */
-.grid__Tree_Title_Badge {
+/* Decorative striped square (<PrefixBlockStripes>) — 5px barber-pole pattern
+   in --ink / --canvas at -45°. No text content; a pure visual marker prefixed
+   to a section/page title. Size is caller-driven via --prefix-block-size so the
+   /scope grid (32px) and the shell header can share one rule. Originated as the
+   inline .grid__Tree_Title_Badge. */
+.prefix-block-stripes {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: var(--prefix-block-size, 32px);
+  height: var(--prefix-block-size, 32px);
   background: repeating-linear-gradient(
     -45deg,
     var(--ink) 0,
@@ -21949,6 +21951,20 @@ tr.is-editing {
      caret. Without this the cell shrinks to content height, offsetting the
      SVG baseline and landing connector tails below the badge centre. */
   align-self: stretch;
+}
+
+/* Prio cell content — Rally-style rank column. tabular-nums keeps 1/10/100
+   vertically aligned; right-align + inline-block + width:100% is required
+   for text-align to take effect inside the flex cell (otherwise the span
+   shrink-wraps and right-align becomes a no-op). */
+.grid__Tree_Prio {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  display: inline-block;
+  width: 100%;
+  padding-right: 6px;
 }
 
 /* ── Tree connector SVG (in-cell indent + ├└│ rails) ──────────────────────────
