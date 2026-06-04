@@ -200,6 +200,11 @@ type WorkItem struct {
 	// core column (no slot/scope gate). FK to users; ON DELETE SET NULL.
 	// Mirrors SubmittedByUserID. Selected as ::text.
 	FlowStateChangeOwnerUserID *string `json:"flow_state_change_owner_user_id"`
+	// Prio — dense 1..N rank derived from artefacts_position over the
+	// filtered result set. Non-nil only for top-level non-task rows; nil
+	// for tasks and nested artefacts. See sqlWorkItemColumns for the
+	// window projection.
+	Prio *int `json:"prio,omitempty"`
 }
 
 // OwnerRef is the slim user projection embedded on each WorkItem when the
