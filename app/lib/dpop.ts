@@ -90,23 +90,58 @@ export async function ensureKeypair(userId: string): Promise<void> {
 // in IDB and activate it; if none exists, generate an anon one.
 // AuthContext.applyLogin will call reparentAnonKeypair afterwards if
 // the user identity disagrees with the loaded record.
-export async function ensureAnyActiveKeypair(): Promise<void> {
-  if (!isDPoPSupported()) return;
-  if (_activeRecord) return;
+// EnsureKeypairResult tells the caller what happened so the bootstrap path can
+// react correctly:
+//   "ok"            — a usable key is now active (matched the bound JKT, or
+//                     newest-wins fallback when no bound JKT was supplied).
+//   "unrecoverable" — a bound JKT WAS supplied but NO key in IDB matches it.
+//                     The session's bound key is gone from this device; signing
+//                     /auth/refresh with any other key would fail the backend
+//                     binding check and revoke-all. The caller must NOT refresh
+//                     — it should clear local session state and re-auth cleanly.
+//   "unsupported"   — DPoP/WebCrypto unavailable (SSR, ancient browser).
+export type EnsureKeypairResult = "ok" | "unrecoverable" | "unsupported";
+
+// ensureAnyActiveKeypair activates the DPoP signing key for the bootstrap
+// path. When preferJKT is supplied (the session's bound cnf.jkt, persisted to
+// localStorage from the last login/refresh), it selects the IDB key whose RFC
+// 7638 thumbprint EQUALS preferJKT — deterministic, not a guess. This closes
+// TD-SEC-DPOP-STALE-KEY Residual A: the previous "newest-by-createdAt"
+// heuristic assumed the freshly-bound key is always newest, which is FALSE
+// with multiple tabs / re-login / cross-tab key reload / leftover anon keys —
+// the wrong key then signs /auth/refresh and the backend revokes the session
+// (the recurring "refresh logs me out" bug, proven in audit_logs as
+// refresh_dpop_binding_violation with bound_jkt != incoming_jkt).
+//
+// When preferJKT is absent (first-ever login, or localStorage unavailable),
+// it falls back to the prior newest-real-user-wins behavior — no regression
+// for the cases that already worked.
+export async function ensureAnyActiveKeypair(preferJKT?: string | null): Promise<EnsureKeypairResult> {
+  if (!isDPoPSupported()) return "unsupported";
+  // If a key is already active and it matches the requested binding (or none
+  // was requested), keep it. If it does NOT match a requested binding, fall
+  // through to re-select — the in-memory key may be a sibling tab's.
+  if (_activeRecord && (!preferJKT || _activeJKT === preferJKT)) return "ok";
   const records = await listAllRecords();
+
+  if (preferJKT) {
+    // Deterministic path: find the key whose JKT equals the session binding.
+    for (const rec of records) {
+      if ((await recordJKT(rec)) === preferJKT) {
+        await setActive(rec);
+        return "ok";
+      }
+    }
+    // No key on this device matches the bound session. Do NOT activate a wrong
+    // key — that's exactly what triggers revoke-all. Signal unrecoverable so
+    // the caller re-auths cleanly instead of self-inflicting a logout cascade.
+    return "unrecoverable";
+  }
+
   if (records.length > 0) {
-    // TD-SEC-DPOP-STALE-KEY (2026-05-31) — pick the MOST RECENT real-user
-    // record by createdAt, not an arbitrary Array.find. When IDB holds an
-    // orphaned keypair from a prior un-cleaned session alongside the
-    // freshly-bound one, find() could return the orphan; signing
-    // /auth/refresh with it fails the backend cnf.jkt binding check and
-    // revokes every session (logged-out / blank-page-on-refocus bug). The
-    // freshly-bound key is always the newest, so newest-wins selects the
-    // key whose jkt the current session was actually stamped with.
-    //
-    // Anon records are still de-prioritised: a leftover anon from an
-    // interrupted login should never beat a real-user key. We only fall
-    // back to anon (or the newest overall) when no real-user record exists.
+    // Fallback (no bound JKT known): newest real-user key wins, anon
+    // de-prioritised. Same behavior as before this fix for the first-login /
+    // no-persisted-JKT case.
     const real = records
       .filter((r) => r.userId !== DPOP_ANON_KEY)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -114,10 +149,11 @@ export async function ensureAnyActiveKeypair(): Promise<void> {
       .slice()
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
     await setActive(real[0] ?? newestOverall);
-    return;
+    return "ok";
   }
   const fresh = await generateAndStore(DPOP_ANON_KEY);
   if (fresh) await setActive(fresh);
+  return "ok";
 }
 
 // pruneStaleKeys deletes every persisted keypair EXCEPT the one bound to
@@ -171,6 +207,33 @@ export function getActiveJKT(): string | null {
   return _activeJKT;
 }
 
+// jktFromAccessToken extracts the cnf.jkt confirmation claim (RFC 9449 § 5)
+// from an access-token JWT WITHOUT verifying its signature — we only need to
+// read which DPoP key the session is bound to so the client can pick the
+// matching keypair from IndexedDB. Signature verification is the backend's
+// job; this is a read of a public, non-secret thumbprint the backend already
+// validated when it minted the token. Returns null when the token is
+// malformed or carries no cnf claim (legacy / pre-Phase-3 token).
+export function jktFromAccessToken(token: string | null | undefined): string | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    // JWT payload is the base64url middle segment. Pad + translate to standard
+    // base64 for atob (which doesn't accept the url-safe alphabet).
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = typeof atob !== "undefined"
+      ? atob(padded)
+      : Buffer.from(padded, "base64").toString("binary");
+    const payload = JSON.parse(json) as { cnf?: { jkt?: unknown } };
+    const jkt = payload?.cnf?.jkt;
+    return typeof jkt === "string" && jkt.length > 0 ? jkt : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface MintProofOpts {
   htm: string;       // HTTP method, uppercased internally
   htu: string;       // Full request URL — query/fragment stripped before signing
@@ -220,6 +283,23 @@ async function setActive(record: DPoPKeyRecord): Promise<void> {
   // of the RFC 7638 thumbprint inputs).
   _activeJWK = canonicaliseJWK(_activeJWK, record.alg);
   _activeJKT = await computeJKT(_activeJWK);
+}
+
+// recordJKT computes the RFC 7638 thumbprint of a record's public key, the
+// same value setActive() caches as _activeJKT and the backend stores as
+// users_sessions_dpop_jkt. Used to match an IDB record against the session's
+// bound JKT without making it active. Returns null if the key can't be
+// exported (corrupt record).
+async function recordJKT(record: DPoPKeyRecord): Promise<string | null> {
+  try {
+    const jwk = canonicaliseJWK(
+      await crypto.subtle.exportKey("jwk", record.keyPair.publicKey),
+      record.alg,
+    );
+    return await computeJKT(jwk);
+  } catch {
+    return null;
+  }
 }
 
 // generateAndStore generates a fresh keypair, tries to persist it,

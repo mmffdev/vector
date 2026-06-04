@@ -291,6 +291,49 @@ describe("dpop: stale-key selection (TD-SEC-DPOP-STALE-KEY)", () => {
     await dpop.clearKeypair("alice-uid");
   });
 
+  // TD-SEC-DPOP-STALE-KEY Residual A — the proper fix: select by the session's
+  // bound JKT, not by newest. This is the regression guard for the recurring
+  // "page refresh logs me out" bug (refresh_dpop_binding_violation in
+  // audit_logs: bound_jkt != incoming_jkt). The newest-wins heuristic above is
+  // only the FALLBACK now; when the bound JKT is known it must win, even when
+  // it is the OLDER key.
+  it("ensureAnyActiveKeypair(preferJKT) selects the BOUND key even when it's the older one", async () => {
+    const { staleJKT, freshJKT } = await seedTwoKeys();
+    expect(staleJKT).not.toBe(freshJKT);
+
+    // Session is bound to the STALE (older) key. Newest-wins would pick fresh
+    // and trigger a binding violation. JKT-verified selection must pick stale.
+    const result = await dpop.ensureAnyActiveKeypair(staleJKT);
+    expect(result).toBe("ok");
+    expect(dpop.getActiveJKT()).toBe(staleJKT);
+
+    await dpop.clearKeypair("alice-uid");
+    await dpop.clearKeypair("stale-uid");
+  });
+
+  it("ensureAnyActiveKeypair(preferJKT) returns 'unrecoverable' when no key matches the binding", async () => {
+    await seedTwoKeys();
+    // A bound JKT that matches NEITHER stored key — the bound key is gone from
+    // this device. Must NOT activate a wrong key (that's what causes the
+    // revoke-all); signal unrecoverable so the caller re-auths cleanly.
+    const result = await dpop.ensureAnyActiveKeypair("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    expect(result).toBe("unrecoverable");
+    expect(dpop.getActiveJKT()).toBeNull(); // no wrong key got activated
+
+    await dpop.clearKeypair("alice-uid");
+    await dpop.clearKeypair("stale-uid");
+  });
+
+  it("ensureAnyActiveKeypair() with NO preferJKT keeps the newest-wins fallback", async () => {
+    const { freshJKT } = await seedTwoKeys();
+    const result = await dpop.ensureAnyActiveKeypair(); // no binding known
+    expect(result).toBe("ok");
+    expect(dpop.getActiveJKT()).toBe(freshJKT); // newest still wins as fallback
+
+    await dpop.clearKeypair("alice-uid");
+    await dpop.clearKeypair("stale-uid");
+  });
+
   it("reparent+prune leaves exactly the real-user key when a stale leftover exists", async () => {
     _records.clear();
     // A leftover stale key from a prior, crashed/uncleaned session.

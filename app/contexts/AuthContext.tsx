@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallback } from "@/app/lib/api";
-import { broadcastAuthEvent, bumpRotationMarker, coordinatedRefresh, readRotationMarker, subscribeAuthEvents } from "@/app/lib/authChannel";
+import { broadcastAuthEvent, bumpRotationMarker, coordinatedRefresh, readBoundJKT, readRotationMarker, subscribeAuthEvents, writeBoundJKT } from "@/app/lib/authChannel";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
 // DPoP (RFC 9449) keypair lifecycle. Generated before the initial
@@ -16,6 +16,8 @@ import {
   DPOP_ANON_KEY,
   ensureAnyActiveKeypair,
   ensureKeypair,
+  getActiveJKT,
+  jktFromAccessToken,
   pruneStaleKeys,
   reparentAnonKeypair,
 } from "@/app/lib/dpop";
@@ -172,6 +174,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(res.access_token);
     setUser(res.user);
     setSessionCookie();
+    // Persist the session's bound DPoP thumbprint (cnf.jkt from the freshly
+    // minted access token) so the NEXT page-load bootstrap can deterministically
+    // select the matching IndexedDB key to sign /auth/refresh — instead of
+    // guessing "newest" and tripping the backend binding check → revoke-all →
+    // logout. TD-SEC-DPOP-STALE-KEY Residual A. Null on legacy/pre-Phase-3
+    // tokens, which leaves bootstrap on the newest-wins fallback (no regression).
+    writeBoundJKT(jktFromAccessToken(res.access_token));
     // DPoP: if the request that produced this LoginResp went out
     // under the anonymous keypair (login mint), reparent the IDB
     // record under the real userId now. On a refresh response the
@@ -215,6 +224,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         freshTokenArrived: () => _broadcastSeq !== seenBefore,
         doRefresh: async () => {
           try {
+            // Regression guard (dev only): the recurring "refresh logs me out"
+            // bug is the active DPoP key's JKT not matching the session's bound
+            // JKT — the backend then rejects the proof and revokes the session.
+            // If that mismatch is about to happen, scream in the console with a
+            // greppable marker so it's caught the instant it regresses, instead
+            // of days later via a user report. NEVER throws — a mismatch is
+            // recoverable (the backend will 401 and we re-auth), and throwing
+            // here would convert it into a hard crash.
+            if (process.env.NODE_ENV !== "production") {
+              const active = getActiveJKT();
+              const bound = readBoundJKT();
+              if (bound && active && active !== bound) {
+                // eslint-disable-next-line no-console
+                console.error(
+                  `DPOP_JKT_MISMATCH: about to sign /auth/refresh with key ${active} ` +
+                  `but session is bound to ${bound}. This will trip the backend ` +
+                  `binding check → revoke-all → logout. TD-SEC-DPOP-STALE-KEY.`,
+                );
+              }
+            }
             const res = await apiSite<LoginResp>("/auth/refresh", { method: "POST", skipAuth: true });
             applyLogin(res);
             _bootstrapped = true;
@@ -233,6 +262,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setApiToken(null);
               setUser(null);
               clearSessionCookie();
+              writeBoundJKT(null); // refresh hit a real 4xx — session is gone
               _bootstrapped = false;
             }
           }
@@ -264,8 +294,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // outgoing request carries a proof. From Phase 3 onward, an
       // unsigned refresh would 401 immediately.
       if (!_bootstrapFlight) {
-        _bootstrapFlight = ensureAnyActiveKeypair()
-          .then(() => refresh())
+        // Select the DPoP key the session is BOUND to (persisted cnf.jkt from
+        // the last login/refresh), not "newest". TD-SEC-DPOP-STALE-KEY
+        // Residual A — the fix for the recurring "refresh logs me out".
+        const boundJKT = readBoundJKT();
+        _bootstrapFlight = ensureAnyActiveKeypair(boundJKT)
+          .then((result) => {
+            if (result === "unrecoverable") {
+              // The session's bound key is gone from this device (pruned,
+              // cleared, different browser-profile). Signing /auth/refresh with
+              // any OTHER key would fail the backend binding check and revoke
+              // every session. So DON'T refresh — clear the stale local hints
+              // and let the user re-auth cleanly. This converts a guaranteed
+              // revoke-all-logout into an honest "please sign in again".
+              writeBoundJKT(null);
+              clearSessionCookie();
+              setApiToken(null);
+              setUser(null);
+              return;
+            }
+            return refresh();
+          })
           .finally(() => {
             _bootstrapFlight = null;
             setLoading(false);
@@ -358,6 +407,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
+    writeBoundJKT(null); // drop the bound-key hint so the next user can't inherit it
     broadcastAuthEvent({ type: "logout" });
     _bootstrapped = false;
     notify.success("You've been signed out.");
@@ -393,6 +443,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiToken(null);
     setUser(null);
     clearSessionCookie();
+    writeBoundJKT(null); // session is dead — drop the bound-key hint
     // NO cross-tab logout broadcast here. hardLogout is the INVOLUNTARY path
     // (backend-driven: WS idle-close 4002 / session_revoked 4001, or a
     // terminal-401). Broadcasting logout from here cascaded a single tab's
@@ -430,6 +481,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         _broadcastSeq += 1;
         setApiToken(msg.accessToken);
         _bootstrapped = true;
+        // Keep this tab's persisted bound JKT in sync with the sibling's
+        // rotated token, so a subsequent reload of THIS tab selects the right
+        // key. The session family shares one bound JKT (the backend re-stamps
+        // the original boundJKT onto every rotation), so this is normally a
+        // no-op, but it's correct to track the authoritative value.
+        writeBoundJKT(jktFromAccessToken(msg.accessToken));
         // If this tab had no user yet (e.g. it opened AFTER a sibling
         // already established the session), the access token alone isn't
         // enough — React state needs the user object. Fetch it via
@@ -444,13 +501,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .catch(() => { /* transient; next refresh recovers */ });
         }
       } else if (msg.type === "dpop-key-changed") {
-        // Reload the in-memory active keypair from IDB. Fire-and-forget; a
-        // failure only means this tab re-binds on its next refresh.
-        void ensureAnyActiveKeypair();
+        // Reload the in-memory active keypair from IDB — but select the key
+        // BOUND to this session (persisted cnf.jkt), NOT "newest". A sibling
+        // tab's key-change broadcast must not make this tab adopt the
+        // sibling's newest key and then sign its next refresh with the wrong
+        // JKT → binding violation → revoke-all. Passing the bound JKT keeps
+        // selection deterministic. Fire-and-forget; "unrecoverable" here just
+        // leaves the current in-memory key in place until this tab's own next
+        // refresh resolves it. TD-SEC-DPOP-STALE-KEY Residual A (hardening).
+        void ensureAnyActiveKeypair(readBoundJKT());
       } else if (msg.type === "logout") {
         setApiToken(null);
         setUser(null);
         clearSessionCookie();
+        writeBoundJKT(null); // sibling signed out the shared session
         _bootstrapped = false;
         if (typeof window !== "undefined") window.location.assign("/login");
       }

@@ -56,6 +56,38 @@ export function bumpRotationMarker(): void {
   }
 }
 
+// ── Bound-JKT persistence (TD-SEC-DPOP-STALE-KEY Residual A) ─────────────────
+// The session's DPoP key thumbprint (cnf.jkt) persisted so the bootstrap path
+// — which must sign /auth/refresh BEFORE it learns the bound JKT from a fresh
+// response — can deterministically pick the IndexedDB key whose JKT matches
+// the session, instead of guessing "newest". A page refresh that signs with
+// the wrong key fails the backend RFC 9449 binding check → revoke-all →
+// logout; this is the data that closes the guess.
+//
+// NOT a secret: a public-key thumbprint, already present in the JWT and in
+// users_sessions_dpop_jkt. localStorage is correct — synchronously readable on
+// reload, same-origin. Cleared on logout so a following user can't inherit it.
+const BOUND_JKT_KEY = "vector-dpop-bound-jkt";
+
+export function readBoundJKT(): string | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem(BOUND_JKT_KEY);
+  } catch {
+    return null; // private mode → caller falls back to newest-wins
+  }
+}
+
+export function writeBoundJKT(jkt: string | null): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (jkt) localStorage.setItem(BOUND_JKT_KEY, jkt);
+    else localStorage.removeItem(BOUND_JKT_KEY);
+  } catch {
+    // private mode / disabled — no throw; bootstrap falls back to newest-wins.
+  }
+}
+
 // Typed message envelope. The `type` discriminator keeps the channel
 // extensible (future domain-state sync can add new variants).
 export type AuthChannelMessage =
