@@ -160,7 +160,24 @@ const sqlWorkItemColumns = `
 	-- Flow State Change Owner (mig 164). Universal user-FK; ::text like
 	-- submitted_by. Order MUST stay in lockstep across both SELECT
 	-- templates AND the Scan() call in scanWorkItemRow (service.go).
-	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id`
+	a.artefacts_id_user_flow_state_change_owner::text AS flow_state_change_owner_user_id,
+	-- Prio — dense 1..N rank over the filtered result set, derived from
+	-- artefacts_position. PARTITION BY boolean creates two partitions:
+	-- qualifying (top-level non-task) rows form one continuous sequence;
+	-- non-qualifying rows go into the other partition and their numbers
+	-- are suppressed to NULL by the outer CASE. The window evaluates
+	-- AFTER the WHERE clause, so the densification is scoped to whatever
+	-- the caller filters down to (workspace, topology clamp, type chip,
+	-- etc.). Order MUST stay in lockstep with scanWorkItemRow.
+	CASE
+		WHEN a.artefacts_id_parent IS NULL
+		 AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task'
+		THEN ROW_NUMBER() OVER (
+			PARTITION BY (a.artefacts_id_parent IS NULL AND at.artefacts_types_slot IS DISTINCT FROM 'wrk_task')
+			ORDER BY a.artefacts_position ASC, a.artefacts_number ASC
+		)
+		ELSE NULL
+	END AS artefacts_prio`
 
 // sqlCountWorkItemsTemplate is the count-only query used by List. The
 // extraWhere is composed in Go from the active filter set; %s slot.
