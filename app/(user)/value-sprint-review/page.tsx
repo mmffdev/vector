@@ -23,6 +23,8 @@ import { MdChevronLeft, MdChevronRight, MdOutlineFlag } from "react-icons/md";
 import { BsCalendar3 } from "react-icons/bs";
 import { usePageSavedViews } from "@/app/components/SavedViews/PageSavedViewsControl";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
+import { SprintBurndownChart } from "@/app/components/SprintBurndownChart";
+import { useSprintMetrics } from "@/app/hooks/useSprintMetrics";
 
 // Display rule for sprint identifiers — matches the backend's projection
 // (backend/internal/timeboxsprints/sql.go and artefactitems/sql.go):
@@ -141,6 +143,21 @@ export default function ValueSprintReview() {
       nextSprint,
     [allSprints, upcomingSprints, panelSprintId, nextSprint],
   );
+
+  // Sprint burndown — reads the on-demand metrics engine for the
+  // currently-displayed sprint. Subscribes to the same sprint rank topic
+  // the tree uses so it wakes on pushes; the hook's 60s poll + the ↻
+  // button are the reliable freshness path until the rank trigger fires
+  // on flow-state/sprint-membership changes (TD-SPRINT-BURN-REALTIME-NOTIFY).
+  const burndownTopic =
+    sentinel_tenant?.id && panelSprintId
+      ? rankTopic("work_item", sentinel_tenant.id, "sprint", panelSprintId)
+      : null;
+  const {
+    model: burndownModel,
+    loading: burndownLoading,
+    refetch: refetchBurndown,
+  } = useSprintMetrics(panelSprintId, burndownTopic);
 
   // Date-driven "current" sprint — today's date falls within the
   // sprint's [start, end] window. Powers the "Current sprint" jump
@@ -376,6 +393,40 @@ export default function ValueSprintReview() {
         <PageDescription>
           Review sprint progress with full work-item hierarchy. State changes on child items roll up to their parents automatically.
         </PageDescription>
+
+        {/* Sprint burndown — live from the sprint metrics engine. Reads
+            real story-points remaining vs. the ideal pace, with the
+            forecast cone and any mid-sprint scope changes pinned. Value
+            is earned only when a parent item is Accepted. */}
+        <Panel
+          name="panel_value_sprint_review_burndown"
+          className="page-panel-heading"
+          title="Sprint burndown"
+          description="Story points remaining vs. the ideal pace, with forecast cone and scope-change history."
+        >
+          <div className="value-sprint-review__burndown-bar">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void refetchBurndown()}
+              aria-label="Refresh burndown"
+              title="Refresh burndown"
+            >
+              <span>↻ Refresh</span>
+            </button>
+          </div>
+          {burndownModel ? (
+            <SprintBurndownChart model={burndownModel} />
+          ) : (
+            <p className="text-size-90">
+              {burndownLoading
+                ? "Loading burndown…"
+                : panelSprintId
+                  ? "No burndown data for this sprint yet — it populates as items are added and accepted."
+                  : "Select a sprint to see its burndown."}
+            </p>
+          )}
+        </Panel>
 
         {/* Sprint-scoped panel — title + description reflect the
             currently-displayed sprint (which defaults to useNextSprint's

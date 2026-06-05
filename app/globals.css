@@ -22596,3 +22596,6 @@ tr.is-editing {
   border-radius: 50%;
   background: var(--chart-scope);
 }
+
+/* === value-sprint-review burndown bar === */
+.value-sprint-review__burndown-bar { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
