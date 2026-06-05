@@ -11,7 +11,7 @@
   --ink-mute: #5b6678;
   --accent: #38bdf8;
   --accent-2: #818cf8;
-  --row-h: 22px;
+  --row-h: 24px; /* MUST equal ROW_H in logViewer.js — exact row pitch for virtual scroll */
 
   /* level palettes (spec) */
   --lvl-error-bg: #4c1212; --lvl-error-fg: #ffd9d9;
@@ -112,19 +112,26 @@ body {
 .resizer:hover { background: var(--accent); }
 body.is-resizing { cursor: grabbing; user-select: none; }
 
-.panel__viewport { flex: 1 1 0; overflow-y: auto; overflow-x: hidden; min-height: 0; contain: strict; }
+/* overflow-anchor:none is ESSENTIAL for the virtual scroller. Without it the
+   browser compensates scrollTop whenever we resize .panel__spacer-top, adding
+   that delta back into scrollTop every frame → runaway scroll feedback loop. */
+.panel__viewport { flex: 1 1 0; overflow-y: auto; overflow-x: hidden; min-height: 0; contain: strict; overflow-anchor: none; }
+.panel__spacer-top, .panel__spacer-bottom, .panel__rows { overflow-anchor: none; }
 .panel__rows { will-change: transform; }
 
 /* ── log rows ───────────────────────────────────────────────────────────── */
 .row {
   display: grid;
   grid-template-columns: 56px 96px 64px 1fr;
-  align-items: start; column-gap: 8px;
-  min-height: var(--row-h); padding: 2px 10px 2px 0;
+  align-items: center; column-gap: 8px;
+  /* EXACT height (box-sizing:border-box folds in padding+border) so the
+     rendered pitch === --row-h === ROW_H in JS. Any drift here makes the
+     virtual scroller run away. */
+  height: var(--row-h); padding: 0 10px 0 0;
   border-bottom: 1px solid #0e141f;
-  white-space: nowrap; cursor: default;
+  white-space: nowrap; cursor: default; overflow: hidden;
 }
-.row.is-expanded { white-space: normal; }
+.row.is-expanded { white-space: normal; height: auto; align-items: start; padding: 2px 10px; }
 .row__gutter { color: var(--ink-mute); text-align: right; padding-right: 6px; cursor: pointer; user-select: none; border-right: 1px solid var(--line); }
 .row__gutter:hover { color: var(--accent); }
 .row__time { color: var(--ink-dim); }

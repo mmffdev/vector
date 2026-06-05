@@ -11,8 +11,17 @@
 import { levelClass } from './highlightEngine.js';
 import { copyText } from './exportManager.js';
 
-const ROW_H = 22; // px, must match .row height in CSS
+// Exact row pitch. MUST equal --row-h in styles.css, or the virtual scroller
+// drifts and "runs away". We read the CSS var at load so the two can't diverge,
+// falling back to 24 if unreadable.
+const ROW_H = readRowH();
 const OVERSCAN = 8; // rows rendered above/below the viewport
+
+function readRowH() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--row-h');
+  const n = parseFloat(v);
+  return Number.isFinite(n) && n > 0 ? n : 24;
+}
 
 export class LogViewer {
   /**
@@ -76,14 +85,19 @@ export class LogViewer {
       this.applyFilter();
     });
 
-    this.dom.viewport.addEventListener('scroll', () => this.render());
+    // Scroll → render, but coalesced to one render per animation frame.
+    // Rendering synchronously inside the scroll event re-sizes the spacers,
+    // which perturbs scroll anchoring and re-fires scroll → runaway feedback.
+    // rAF defers the layout write out of the scroll handler and de-dupes bursts.
+    this.dom.viewport.addEventListener('scroll', () => this.#scheduleRender(), { passive: true });
     this.dom.rows.addEventListener('click', (e) => this.#onRowClick(e));
     this.dom.rows.addEventListener('contextmenu', (e) => this.#onRowContext(e));
 
     this.dom.jump.addEventListener('click', () => this.#promptJump());
     this.dom.close.addEventListener('click', () => this.opts.onClose?.(this));
 
-    new ResizeObserver(() => this.render()).observe(this.dom.viewport);
+    this._rafPending = false;
+    new ResizeObserver(() => this.#scheduleRender()).observe(this.dom.viewport);
   }
 
   // ---- stream lifecycle ----------------------------------------------------
@@ -197,6 +211,8 @@ export class LogViewer {
     for (let i = 0; i < this.lines.length; i++) {
       if (this.#matches(this.lines[i])) this.filtered.push(i);
     }
+    // Content changed — invalidate the window cache so render() rebuilds.
+    this._winFirst = this._winLast = this._winN = -1;
     this.render(stick);
     this.opts.onStatus?.('up');
   }
@@ -208,21 +224,49 @@ export class LogViewer {
     return v.scrollTop + v.clientHeight >= v.scrollHeight - ROW_H * 3;
   }
 
+  /** Coalesce render requests to one per frame (scroll/resize bursts). */
+  #scheduleRender() {
+    if (this._rafPending) return;
+    this._rafPending = true;
+    requestAnimationFrame(() => {
+      this._rafPending = false;
+      this.render();
+    });
+  }
+
+  /** Force a row rebuild even if the visible window didn't move (selection,
+   *  expand, highlight changes alter row appearance in place). */
+  repaint() {
+    this._winFirst = this._winLast = this._winN = -1;
+    this.render();
+  }
+
   render(stick = false) {
     const v = this.dom.viewport;
     const n = this.filtered.length;
     const totalH = n * ROW_H;
 
+    // When sticking to bottom we move scrollTop to the end FIRST, then read it
+    // below — so first/last are computed for the real bottom position.
     if (stick) {
-      // defer scroll to bottom until after spacer sizing
-      this.dom.bottom.style.height = '0px';
       this.dom.top.style.height = totalH + 'px';
+      this.dom.bottom.style.height = '0px';
+      v.scrollTop = totalH; // (clamped by the browser to max scroll)
     }
 
-    const scrollTop = stick ? totalH : v.scrollTop;
+    const scrollTop = v.scrollTop;
     const first = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
     const visibleCount = Math.ceil(v.clientHeight / ROW_H) + OVERSCAN * 2;
     const last = Math.min(n, first + visibleCount);
+
+    // Skip the DOM rebuild when the visible window hasn't moved — avoids
+    // destroying/recreating rows on every scroll pixel.
+    if (!stick && this._winFirst === first && this._winLast === last && this._winN === n) {
+      return;
+    }
+    this._winFirst = first;
+    this._winLast = last;
+    this._winN = n;
 
     this.dom.top.style.height = first * ROW_H + 'px';
     this.dom.bottom.style.height = Math.max(0, (n - last) * ROW_H) + 'px';
@@ -232,8 +276,6 @@ export class LogViewer {
       frag.appendChild(this.#rowEl(this.lines[this.filtered[i]], i));
     }
     this.dom.rows.replaceChildren(frag);
-
-    if (stick) v.scrollTop = v.scrollHeight;
   }
 
   #rowEl(ln, filteredIdx) {
@@ -288,7 +330,7 @@ export class LogViewer {
     // body click toggles expand
     if (this.expanded.has(line)) this.expanded.delete(line);
     else this.expanded.add(line);
-    this.render();
+    this.repaint();
   }
 
   #select(line, fidx, e) {
@@ -304,7 +346,7 @@ export class LogViewer {
       this.lastClickIdx = fidx;
     }
     this.opts.onSelectionChange?.();
-    this.render();
+    this.repaint();
   }
 
   #onRowContext(e) {
@@ -387,7 +429,7 @@ export class LogViewer {
     this.filtered = [];
     this.selected.clear();
     this.expanded.clear();
-    this.render();
+    this.repaint();
     this.dom.count.textContent = '0';
   }
   takeRate() {
