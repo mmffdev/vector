@@ -192,6 +192,44 @@ func TestDeriveBurnEvents(t *testing.T) {
 			},
 			want: nil,
 		},
+		{
+			name: "MoveBetweenSprintsUnaccepted",
+			in: ArtefactDelta{
+				ArtefactID:      "a1",
+				BeforeSprintID:  "s1",
+				AfterSprintID:   "s2",
+				BeforeKind:      "in_progress",
+				AfterKind:       "in_progress",
+				BeforePoints:    8,
+				AfterPoints:     8,
+				Points:          8,
+				IsAuthoritative: true,
+			},
+			want: []PendingEvent{
+				{SprintID: "s1", ArtefactID: "a1", EventType: EventRemoved, ScopeDelta: -8, PointsDelta: -8, PointsAfter: 8},
+				{SprintID: "s2", ArtefactID: "a1", EventType: EventAdded, ScopeDelta: 8, PointsDelta: 8, PointsAfter: 8},
+			},
+		},
+		{
+			name: "MoveBetweenSprintsWhileAcceptedInSource",
+			in: ArtefactDelta{
+				ArtefactID:      "a1",
+				BeforeSprintID:  "s1",
+				AfterSprintID:   "s2",
+				BeforeKind:      "accepted",
+				AfterKind:       "accepted",
+				BeforePoints:    8,
+				AfterPoints:     8,
+				Points:          8,
+				IsAuthoritative: true,
+			},
+			// Source remaining was already burned (accepted) so only its scope
+			// drops; the destination gains full scope + remaining.
+			want: []PendingEvent{
+				{SprintID: "s1", ArtefactID: "a1", EventType: EventRemoved, ScopeDelta: -8, PointsDelta: 0, PointsAfter: 8},
+				{SprintID: "s2", ArtefactID: "a1", EventType: EventAdded, ScopeDelta: 8, PointsDelta: 8, PointsAfter: 8},
+			},
+		},
 	}
 
 	for _, tc := range cases {

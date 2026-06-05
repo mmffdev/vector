@@ -81,8 +81,33 @@ func DeriveBurnEvents(d ArtefactDelta) []PendingEvent {
 				PointsAfter: d.Points,
 			}}
 		default:
-			// Sprint-to-sprint move: out of scope for this ledger pass.
-			return nil
+			// Sprint-to-sprint move (X -> Y, both non-empty). Record it as a
+			// removal from the old sprint AND an addition to the new one, so
+			// BOTH ledgers stay consistent: old sprint's scope drops (and its
+			// remaining drops unless the points were already burned there),
+			// new sprint's scope + remaining rise by the full points.
+			removedPoints := -d.Points
+			if d.BeforeKind == kindAccepted {
+				removedPoints = 0
+			}
+			return []PendingEvent{
+				{
+					SprintID:    d.BeforeSprintID,
+					ArtefactID:  d.ArtefactID,
+					EventType:   EventRemoved,
+					ScopeDelta:  -d.Points,
+					PointsDelta: removedPoints,
+					PointsAfter: d.Points,
+				},
+				{
+					SprintID:    d.AfterSprintID,
+					ArtefactID:  d.ArtefactID,
+					EventType:   EventAdded,
+					ScopeDelta:  d.Points,
+					PointsDelta: d.Points,
+					PointsAfter: d.Points,
+				},
+			}
 		}
 	}
 
