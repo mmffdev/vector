@@ -1584,3 +1584,15 @@ export {
   type DependencyReachableNode,
   type DependencyTransitiveImpactReport,
 } from "@/app/lib/apiSite/dependencies";
+
+// Sprint metrics engine client — lives in its own file so the neutral
+// model→chart contract can grow without inflating this barrel;
+// re-exported here so callers can `import { sprintMetrics } from "@/app/lib/apiSite"`.
+export { sprintMetrics } from "@/app/lib/apiSite/sprintMetrics";
+export type {
+  SprintMetricsModel,
+  SprintWindow,
+  SprintScopeChange,
+  SprintCone,
+  SprintKPIs,
+} from "@/app/lib/apiSite/sprintMetrics";
