@@ -101,6 +101,17 @@ Dev panel: `http://localhost:5101/dev` → **API Changelog** tab.
 
 See [`docs/c_c_lint_rules.md`](docs/c_c_lint_rules.md) for full detail.
 
+### Optional: Log viewer
+
+Standalone, read-only real-time tail console for the `users_sessions` and `audit_logs` tables in `vector_artefacts`. Streams new rows over SSE into a multi-panel browser UI (level highlighting, filtering, cross-referencing, export, dashboard). Runs independently of the app on its own port — `express` + `pg` only, zero-build frontend.
+
+```bash
+ssh -fN vector-dev-pg                # DB tunnel (localhost:5435) must be up
+cd log-viewer && ./start.sh          # → http://localhost:3001
+```
+
+Read-only by construction (connection forced read-only, `SELECT`-only, bound params, allowlisted identifiers); intended for `localhost` / an operator screen, not public exposure. Add more tables via [`log-viewer/config.json`](log-viewer/config.json) with no code change. See [`log-viewer/README.md`](log-viewer/README.md) for the full feature list and API.
+
 ## Project docs
 
 See [`.claude/CLAUDE.md`](.claude/CLAUDE.md) for the full topic index.
