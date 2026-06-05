@@ -74,6 +74,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/users"
 	"github.com/mmffdev/vector-backend/internal/vectorfields"
 	"github.com/mmffdev/vector-backend/internal/lookups"
+	"github.com/mmffdev/vector-backend/internal/sprintmetrics"
 	"github.com/mmffdev/vector-backend/internal/timeboxmilestones"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
@@ -905,6 +906,14 @@ func main() {
 		sprintH = timeboxsprints.NewHandler(sprintSvc)
 	}
 
+	// Sprint metrics (feature/sprint-metrics-engine) — same vaPool + guard
+	// as the sprint handler above; mounted at GET /timeboxes/sprints/{id}/metrics.
+	var sprintMetricsH *sprintmetrics.Handler
+	if vaPool != nil {
+		sprintMetricsSvc := sprintmetrics.NewService(vaPool)
+		sprintMetricsH = sprintmetrics.NewHandler(sprintMetricsSvc)
+	}
+
 	// timebox releases REST handler — mirrors sprints, no adjacency rule.
 	// Slice 5B: same WithTopology wiring as sprints for ancestor-walk reads.
 	var releaseH *timeboxreleases.Handler
@@ -1714,6 +1723,7 @@ func main() {
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
 				Post("/bulk-create", sprintH.BulkCreate)
 			r.Get("/{id}", sprintH.Get)
+			r.Get("/{id}/metrics", sprintMetricsH.Metrics)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
 				Put("/{id}", sprintH.Update)
 			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
