@@ -165,11 +165,3 @@ func dayOffset(start, occ string) int {
 	o := parseYMD(occ[:10])
 	return int(o.Sub(s).Hours() / 24)
 }
-
-// minInt is a pre-1.21-safe integer min (no reliance on the builtin).
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
