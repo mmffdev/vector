@@ -142,6 +142,15 @@
   --status-info-ink:     #FFFFFF;
   --status-info-bg:      #E1ECF5;
 
+  /* ── CHART — sprint burndown series (scoped colour exception per design handoff) ──
+     Themeable; charts reference these tokens, never raw hex. */
+  --chart-actual:        #E5392B;
+  --chart-optimistic:    #2F7D54;   /* == --status-success */
+  --chart-pessimistic:   #B7791F;   /* == --status-warning */
+  --chart-scope:         #2F5F8A;
+  --chart-cone-band:     rgba(26, 26, 26, 0.05);
+  --chart-scope-region:  rgba(26, 26, 26, 0.025);
+
   /* ── 7. TYPE ───────────────────────────────────────────────
      Typefaces and scale. --font-sans is bound by Next.js in
      app/layout.tsx (Archivo). Display / numeric / mono all chain
