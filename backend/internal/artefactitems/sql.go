@@ -868,6 +868,13 @@ const sqlSelectCurrentFlowKind = `
 		WHERE a.artefacts_id = $1 AND a.artefacts_id_subscription = $2
 	`
 
+// sqlSelectFlowKindByStateID resolves a flow-state KIND directly from a
+// flows_states row id. Used by the sprint-metrics burn-event capture to
+// translate before/after flow_state_id into the kind ("accepted" etc.)
+// the ledger reasons about. Empty id (uuid.Nil) callers must skip the
+// query and treat the kind as "".
+const sqlSelectFlowKindByStateID = `SELECT COALESCE(flows_states_kind, '') FROM flows_states WHERE flows_states_id = $1`
+
 // sqlSelectFirstReachableStateByKind — finds the first state of the
 // target kind that is REACHABLE from `currentStateID` via a single
 // flows_transitions edge. Honours tenant-customised transition rules

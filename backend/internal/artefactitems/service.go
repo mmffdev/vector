@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mmffdev/vector-backend/internal/notifications/rules"
 	"github.com/mmffdev/vector-backend/internal/sentinel"
+	"github.com/mmffdev/vector-backend/internal/sprintmetrics"
 	"github.com/mmffdev/vector-backend/internal/topologyclamp"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
@@ -169,6 +170,42 @@ func valOrNil[T any](p *T) any {
 		return nil
 	}
 	return *p
+}
+
+// strDeref / intDeref unwrap optional scalars to a zero value when nil.
+// Used by the sprint-metrics burn-event capture to build an ArtefactDelta
+// from the *string SprintID / *int StoryPoints fields.
+func strDeref(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func intDeref(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+// flowKindByStateID resolves a flow-state KIND from a flows_states row id
+// INSIDE the caller's transaction, so the read sees uncommitted state from
+// the same write. uuid.Nil → "" with no query. Used by the burn-event
+// capture to translate before/after flow_state_id into the kind the ledger
+// reasons about.
+func (s *Service) flowKindByStateID(ctx context.Context, tx pgx.Tx, flowStateID uuid.UUID) (string, error) {
+	if flowStateID == uuid.Nil {
+		return "", nil
+	}
+	var kind string
+	if err := tx.QueryRow(ctx, sqlSelectFlowKindByStateID, flowStateID).Scan(&kind); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return kind, nil
 }
 
 // WithTopologyResolver wires the PLA-0043 scope clamp dependency. When
@@ -1165,6 +1202,37 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		}
 	}
 
+	// Sprint-metrics burn-event capture (feature/sprint-metrics-engine).
+	// Append the ledger rows INSIDE this same transaction so the ledger can
+	// never drift from the artefact write. A newly-created row is always a
+	// leaf (no children yet), so its flow state is authoritative — the
+	// derived-from-children rule (hasLiveChildren) is vacuously false here.
+	// before-state is empty (the row did not exist); after-state is the
+	// values just inserted. Only when the new row joins a sprint does this
+	// emit an "added" event.
+	afterKind, err := s.flowKindByStateID(ctx, tx, defaultFlowStateID)
+	if err != nil {
+		return nil, fmt.Errorf("burn-event capture: %w", err)
+	}
+	afterSprintID := ""
+	if sprintID != nil {
+		afterSprintID = sprintID.String()
+	}
+	createDelta := sprintmetrics.ArtefactDelta{
+		ArtefactID:      newID.String(),
+		BeforeSprintID:  "",
+		AfterSprintID:   afterSprintID,
+		BeforeKind:      "",
+		AfterKind:       afterKind,
+		BeforePoints:    0,
+		AfterPoints:     intDeref(in.StoryPoints),
+		Points:          intDeref(in.StoryPoints),
+		IsAuthoritative: true,
+	}
+	if err := sprintmetrics.AppendBurnEvents(ctx, tx, createDelta, createdBy, workspaceID); err != nil {
+		return nil, fmt.Errorf("burn-event capture: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
@@ -1283,6 +1351,19 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	if s.ruleHook != nil {
 		if snap, snapErr := s.GetWorkItem(ctx, subscriptionID, id); snapErr == nil {
 			beforeSnapshot = snap
+		}
+	}
+
+	// Sprint-metrics burn-event capture (feature/sprint-metrics-engine):
+	// snapshot the before-state UNCONDITIONALLY (independent of the rule
+	// hook) so we can derive the ledger delta after the UPDATE. Reuse the
+	// rule-hook snapshot when present to avoid a second read. A nil snapshot
+	// (read failed / row gone) disables capture for this patch — the UPDATE
+	// itself will surface ErrNotFound below.
+	burnBefore := beforeSnapshot
+	if burnBefore == nil {
+		if snap, snapErr := s.GetWorkItem(ctx, subscriptionID, id); snapErr == nil {
+			burnBefore = snap
 		}
 	}
 	// PLA-0055 / story 00595+00597 — priority is a UUID FK. PriorityID
@@ -1915,7 +1996,17 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	idN := n
 	subN := n + 1
 
-	ct, err := s.vectorArtefactsPool.Exec(ctx,
+	// The UPDATE and the sprint-metrics burn-event capture must commit
+	// atomically so the ledger can never drift from the artefact write —
+	// they run in one transaction. The cascade recalcs below stay outside
+	// (post-read, best-effort) exactly as before.
+	tx, err := s.vectorArtefactsPool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	ct, err := tx.Exec(ctx,
 		fmt.Sprintf(sqlPatchArtefactTemplate,
 			strings.Join(sets, ", "), idN, subN),
 		args...,
@@ -1925,6 +2016,80 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	}
 	if ct.RowsAffected() == 0 {
 		return nil, ErrNotFound
+	}
+
+	// Burn-event capture (feature/sprint-metrics-engine). Derive the ledger
+	// delta from the before-snapshot vs the patched values, INSIDE the tx.
+	//
+	// Authoritative-parent rule: value events fire ONLY for the row whose
+	// flow state is authoritative — NOT a parent whose state is DERIVED from
+	// its children (work flows UP; the children already emit). We reuse the
+	// EXACT predicate the cascade guard uses (hasLiveChildren): a row with
+	// live children is non-authoritative. This is the same rule enforced at
+	// the flow_state_id write guard above (ErrParentFlowStateDerived).
+	if burnBefore != nil {
+		hasKids, gerr := s.hasLiveChildren(ctx, subscriptionID, id)
+		if gerr != nil {
+			return nil, fmt.Errorf("burn-event capture: %w", gerr)
+		}
+
+		beforeSprintID := strDeref(burnBefore.SprintID)
+		afterSprintID := beforeSprintID
+		if in.SprintID != nil {
+			afterSprintID = *in.SprintID
+		}
+
+		beforePoints := intDeref(burnBefore.StoryPoints)
+		afterPoints := beforePoints
+		if in.StoryPoints != nil {
+			afterPoints = *in.StoryPoints
+		}
+
+		beforeFlowStateID := uuid.Nil
+		if burnBefore.FlowStateID != "" {
+			if pid, perr := uuid.Parse(burnBefore.FlowStateID); perr == nil {
+				beforeFlowStateID = pid
+			}
+		}
+		afterFlowStateID := beforeFlowStateID
+		if in.FlowStateID != nil && *in.FlowStateID != "" {
+			if pid, perr := uuid.Parse(*in.FlowStateID); perr == nil {
+				afterFlowStateID = pid
+			}
+		}
+
+		// Resolve kinds in-tx so the read sees this transaction's writes.
+		beforeKind, kerr := s.flowKindByStateID(ctx, tx, beforeFlowStateID)
+		if kerr != nil {
+			return nil, fmt.Errorf("burn-event capture: %w", kerr)
+		}
+		afterKind, kerr := s.flowKindByStateID(ctx, tx, afterFlowStateID)
+		if kerr != nil {
+			return nil, fmt.Errorf("burn-event capture: %w", kerr)
+		}
+
+		// Workspace for the ledger row comes from the sentinel clamp — the
+		// authoritative workspace established server-side for this request.
+		burnWorkspaceID, _ := sentinel.WorkspaceIDFromCtx(ctx)
+
+		delta := sprintmetrics.ArtefactDelta{
+			ArtefactID:      id.String(),
+			BeforeSprintID:  beforeSprintID,
+			AfterSprintID:   afterSprintID,
+			BeforeKind:      beforeKind,
+			AfterKind:       afterKind,
+			BeforePoints:    beforePoints,
+			AfterPoints:     afterPoints,
+			Points:          afterPoints,
+			IsAuthoritative: !hasKids,
+		}
+		if berr := sprintmetrics.AppendBurnEvents(ctx, tx, delta, in.AuthorUserID, burnWorkspaceID); berr != nil {
+			return nil, fmt.Errorf("burn-event capture: %w", berr)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 	// Post-write read context. When the patch rebinds topology, the row's
 	// NEW topology_node may fall outside the request's entry-time
