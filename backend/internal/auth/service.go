@@ -827,18 +827,19 @@ func (s *Service) Refresh(ctx context.Context, rawRefresh, ip, ua, incomingJKT s
 // match the proof on the inbound request, otherwise we're dealing with a
 // stolen-during-grace reuse and the whole family is revoked.
 func (s *Service) refreshFromSuccessor(ctx context.Context, successorHash, ip, ua, incomingJKT string) (*LoginResult, error) {
-	var sessID, userID uuid.UUID
-	var expiresAt time.Time
-	var revoked bool
-	var boundJKT string // inherited binding for the re-emitted access token
-	err := s.Pool.QueryRow(ctx, sqlSelectSuccessorSession, successorHash).
-		Scan(&sessID, &userID, &expiresAt, &revoked, &boundJKT)
-	if err == pgx.ErrNoRows || revoked || expiresAt.Before(time.Now()) {
+	// TD-AUTH-MULTITAB-STALE-RT-COOKIE — walk the successor chain forward
+	// to the LIVE head rather than resolving a single hop. When a second
+	// tab rotates the shared refresh cookie, the first tab's immediate
+	// successor is itself already revoked; the walk follows revoked links
+	// (capped at maxGraceChainHops) to the row the browser actually holds.
+	// A single live immediate successor is the hop==0 case and still
+	// returns directly. No live head within the bound → ErrTokenExpired
+	// (genuine reuse handling in Refresh is unchanged).
+	head, ok := resolveLiveHead(successorHash, s.fetchChainHop(ctx), maxGraceChainHops)
+	if !ok {
 		return nil, ErrTokenExpired
 	}
-	if err != nil {
-		return nil, err
-	}
+	sessID, userID, expiresAt, boundJKT := head.sessID, head.userID, head.expiresAt, head.boundJKT
 
 	// Grace-window binding check (matches Refresh; same revoke + audit shape).
 	if boundJKT != "" && incomingJKT != boundJKT {

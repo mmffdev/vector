@@ -233,16 +233,22 @@ const sqlRotateSession = `
 		 WHERE users_sessions_id = $2
 	`
 
-// sqlSelectSuccessorSession is the lean shape used by refreshFromSuccessor
-// (it doesn't need rotation metadata — only liveness). dpop_jkt added
-// 2026-05-18 (Phase 3) so the existing-successor reuse path can
-// re-emit the access token's cnf.jkt without a separate lookup.
-const sqlSelectSuccessorSession = `
+// sqlSelectChainHopByHash is the per-hop shape used by the grace-window
+// chain-walk (resolveLiveHead). It returns liveness (revoked/expires_at),
+// identity (id, id_user, dpop_jkt) AND users_sessions_successor_hash so
+// the walk can follow a revoked link forward to the live head when a tab
+// is 2+ rotations stale (TD-AUTH-MULTITAB-STALE-RT-COOKIE). NULL
+// successor_hash → '' (chain end). Supersedes the old single-hop
+// sqlSelectSuccessorSession (removed when the walk landed). The live head
+// it lands on is the row whose tokens get re-emitted; the dpop_jkt is
+// then checked against the inbound proof at the call site.
+const sqlSelectChainHopByHash = `
 		SELECT users_sessions_id,
 		       users_sessions_id_user,
 		       users_sessions_expires_at,
 		       users_sessions_revoked,
-		       COALESCE(users_sessions_dpop_jkt, '')
+		       COALESCE(users_sessions_dpop_jkt, ''),
+		       COALESCE(users_sessions_successor_hash, '')
 		  FROM users_sessions
 		 WHERE users_sessions_token_hash = $1
 	`
