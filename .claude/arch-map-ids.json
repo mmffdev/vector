@@ -1639,10 +1639,6 @@
       "stored_at": "app/(user)/work-items/GridWorkItems.tsx",
       "tier": "primary"
     },
-    "Grid__Tree_ActionBar": {
-      "stored_at": "app/components/Grid/Grid__Tree_ActionBar.tsx",
-      "tier": "shared"
-    },
     "HelpDocRenderer": {
       "stored_at": "app/components/HelpDocRenderer.tsx",
       "tier": "leaf"
