@@ -17,20 +17,21 @@ import (
 var ErrNoWorkspace = errors.New("user has no active workspace grants in this tenant")
 
 // PoolResolver is the production implementation of the
-// auth.WorkspaceResolver interface. Holds both database pools
-// because the derivation crosses them (topology_nodes in
-// vector_artefacts, users + users_roles_workspaces in mmff_vector).
+// auth.WorkspaceResolver interface. Pre-2026-05-26 the derivation
+// crossed two DBs (topology_nodes in vector_artefacts,
+// users_roles_workspaces + master_record_workspaces in the now-DROPPED
+// mmff_vector); the three-pillar merge folded all three tables into
+// vector_artefacts, so this is a single-DB resolver. Holds one pool.
 //
-// Construct via NewPoolResolver; passing nil pools is a programming
+// Construct via NewPoolResolver; passing a nil pool is a programming
 // error and surfaces as a nil-pointer panic on the first call.
 type PoolResolver struct {
-	VAPool *pgxpool.Pool // vector_artefacts (topology_nodes)
-	MVPool *pgxpool.Pool // mmff_vector (users_roles_workspaces, master_record_workspaces)
+	Pool *pgxpool.Pool // vector_artefacts (topology_nodes, users_roles_workspaces, master_record_workspaces)
 }
 
 // NewPoolResolver constructs a PoolResolver.
-func NewPoolResolver(vaPool, mvPool *pgxpool.Pool) *PoolResolver {
-	return &PoolResolver{VAPool: vaPool, MVPool: mvPool}
+func NewPoolResolver(pool *pgxpool.Pool) *PoolResolver {
+	return &PoolResolver{Pool: pool}
 }
 
 // WorkspaceForFocusNode returns the workspace_id of the given live
@@ -38,7 +39,7 @@ func NewPoolResolver(vaPool, mvPool *pgxpool.Pool) *PoolResolver {
 // node is archived, in another tenant, or has been deleted.
 func (r *PoolResolver) WorkspaceForFocusNode(ctx context.Context, focusNodeID, tenantID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := r.VAPool.QueryRow(ctx, sqlWorkspaceForFocusNode, focusNodeID, tenantID).Scan(&id)
+	err := r.Pool.QueryRow(ctx, sqlWorkspaceForFocusNode, focusNodeID, tenantID).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -50,7 +51,7 @@ func (r *PoolResolver) WorkspaceForFocusNode(ctx context.Context, focusNodeID, t
 // when the user has zero active grants in the tenant.
 func (r *PoolResolver) FirstGrantedWorkspace(ctx context.Context, userID, tenantID uuid.UUID) (uuid.UUID, error) {
 	var id uuid.UUID
-	err := r.MVPool.QueryRow(ctx, sqlFirstGrantedWorkspace, userID, tenantID).Scan(&id)
+	err := r.Pool.QueryRow(ctx, sqlFirstGrantedWorkspace, userID, tenantID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, ErrNoWorkspace
 	}
@@ -64,7 +65,7 @@ func (r *PoolResolver) FirstGrantedWorkspace(ctx context.Context, userID, tenant
 // active (non-revoked) grant on the workspace.
 func (r *PoolResolver) UserHasActiveGrantOnWorkspace(ctx context.Context, userID, workspaceID uuid.UUID) (bool, error) {
 	var ok bool
-	err := r.MVPool.QueryRow(ctx, sqlUserHasActiveGrantOnWorkspace, userID, workspaceID).Scan(&ok)
+	err := r.Pool.QueryRow(ctx, sqlUserHasActiveGrantOnWorkspace, userID, workspaceID).Scan(&ok)
 	if err != nil {
 		return false, fmt.Errorf("workspaceresolver.UserHasActiveGrantOnWorkspace: %w", err)
 	}
