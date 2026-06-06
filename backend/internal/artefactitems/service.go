@@ -195,6 +195,63 @@ func intDeref(p *int) int {
 // the same write. uuid.Nil → "" with no query. Used by the burn-event
 // capture to translate before/after flow_state_id into the kind the ledger
 // reasons about.
+// resolveInsertPosition computes the artefacts_position value for a new row
+// according to the caller's RankPlacement choice. It NEVER errors — every
+// branch falls back to the bottom (MAX+100) so a create is never blocked by a
+// ranking-preference problem. This is the single decision point for "where does
+// a new artefact land in the Prio rank" (Rally offers no such choice).
+//
+//   ""/"bottom" → MAX(position)+100   (default, back-compat, Rally-parity)
+//   "top"       → MIN(position)-100
+//   "after"     → midpoint just below afterID's position; if the computed
+//                 midpoint floors onto the source's own position (gap closed),
+//                 bump to source+1 (TD-RANK-REBALANCE). Invalid/empty afterID
+//                 degrades to bottom.
+func (s *Service) resolveInsertPosition(
+	ctx context.Context,
+	tx pgx.Tx,
+	subscriptionID, artefactTypeID uuid.UUID,
+	placement string,
+	afterID *string,
+) int {
+	bottom := func() int {
+		var p int
+		_ = tx.QueryRow(ctx, sqlSelectNextArtefactPosition, subscriptionID, artefactTypeID).Scan(&p)
+		return p
+	}
+
+	switch placement {
+	case "top":
+		var p int
+		if err := tx.QueryRow(ctx, sqlSelectTopArtefactPosition, subscriptionID, artefactTypeID).Scan(&p); err != nil {
+			return bottom()
+		}
+		return p
+	case "after":
+		if afterID == nil || *afterID == "" {
+			return bottom()
+		}
+		srcID, err := uuid.Parse(*afterID)
+		if err != nil {
+			return bottom()
+		}
+		var pos, srcPos int
+		if err := tx.QueryRow(ctx, sqlSelectAfterArtefactPosition,
+			subscriptionID, artefactTypeID, srcID).Scan(&pos, &srcPos); err != nil {
+			// Source not found / cross-subscription → safe default.
+			return bottom()
+		}
+		// Gap closed: midpoint floored onto the source. Bump above it so the
+		// clone still sorts strictly after its original.
+		if pos <= srcPos {
+			return srcPos + 1
+		}
+		return pos
+	default: // "", "bottom", or any unknown value
+		return bottom()
+	}
+}
+
 func (s *Service) flowKindByStateID(ctx context.Context, tx pgx.Tx, flowStateID uuid.UUID) (string, error) {
 	if flowStateID == uuid.Nil {
 		return "", nil
@@ -1175,11 +1232,13 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		}
 	}
 
-	// Append to existing items (position = MAX + 100).
-	var pos int
-	_ = tx.QueryRow(ctx, sqlSelectNextArtefactPosition,
-		subscriptionID, artefactTypeID,
-	).Scan(&pos)
+	// Rank placement — where the new artefact lands in the dense Prio.
+	// Default "bottom" (MAX+100) keeps Rally-parity + back-compat for every
+	// caller that omits RankPlacement. "top" / "after" are the Vector
+	// differentiator (Rally offers no choice). Resolution is its own method
+	// so the position-formula logic stays testable + out of this long create.
+	pos := s.resolveInsertPosition(ctx, tx, subscriptionID, artefactTypeID,
+		in.RankPlacement, in.AfterArtefactID)
 
 	// PLA-0055 / story 00595+00597 — resolve priority_id. Use the
 	// caller's UUID when provided + valid; otherwise pick the
