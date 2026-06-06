@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "report_id": "ARC001",
+  "description": "Stable ID registry for the <report> -a architecture site map. Locks bucket/page/section slugs to IDs so re-runs never renumber. Retired entries keep status='retired' and their ID is never reused. Key shapes — buckets: {<tag_enum>:{id,label,status}}, pages: {<key_enum>:{id,bucket,label,route,status}}, sections: {<page_id>.<section_slug>:{id,label,status}}, components: {<ComponentName>:{stored_at,tier}}.",
+  "buckets": {},
+  "pages": {},
+  "sections": {},
+  "components": {}
+}
