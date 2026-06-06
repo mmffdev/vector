@@ -1,5 +1,18 @@
 "use client";
 
+// /work-items — Grid-based surface. Swapped off the retiring ObjectTreeV2 onto
+// the Grid primitive via <GridWorkItems> (an independent copy of /scope's
+// GridExecution). See docs/superpowers/specs/2026-06-06-work-items-grid-swap-design.md.
+//
+// The rich page chrome (heading + KPI summary strip + visualisation petals) is
+// preserved from the old page — only the grid BODY changed (ObjectTreeV2 →
+// Grid). The summary fetch below drives PageSummaryHeader + VisualisationPanel;
+// GridWorkItems owns the tree itself (rows, filters, detail flyout, the
+// Dependencies button that the old ObjectTreeV2 body left unwired).
+//
+// The original ObjectTreeV2 page is preserved verbatim at /work-items-2 as a
+// safety net while this surface is finished.
+
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import PageContent from "@/app/components/PageContent";
 import Panel from "@/app/components/Panel";
@@ -8,30 +21,18 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import VisualisationPanel from "@/app/components/VisualisationPanel";
 import { apiSite } from "@/app/lib/api";
-import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useSentinel } from "@/app/sentinel";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useHintOnce } from "@/app/lib/hints";
-import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
-
-// Priority column is hidden on this surface for now — kept on the
-// builder so other grids (risk, portfolio) still render it.
-const WORK_ITEMS_DROP_COLS = ["priority"] as const;
-
-// Opaque per-page identifier for saved-views storage. Follows the
-// `<kind>:<stable-id>` convention from the design spec §6 — never the
-// user-visible name, never a route segment.
-const SAVED_VIEW_TARGET = "objecttree:work_items";
+import { GridWorkItems } from "./GridWorkItems";
 
 export default function WorkItemsPage() {
   const { full } = usePageTitle();
-  // PLA062 S10: this page reads identity + tenant + scope from Sentinel.
-  // The `direction` field that ScopeContext used to expose is derived
-  // here from sentinel_scope_up / sentinel_scope_down (Rally idiom).
+  // PLA062 S10: identity + tenant + scope come from Sentinel. `direction` is
+  // derived from sentinel_scope_up / sentinel_scope_down (Rally idiom).
   const {
     sentinel_tenant,
     sentinel_focus_node,
@@ -42,37 +43,15 @@ export default function WorkItemsPage() {
   const direction = sentinel_scope_down ? "descend" : sentinel_scope_up ? "ascend" : "none";
   useHintOnce("WORK_ITEMS_FIRST_VISIT");
   const [filters] = useState({ sprint_id: "" });
-  const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
-  // TD-WORKITEMS-GENERIC pay-down (2026-05-16): backend dropped the fixed
-  // per-type fields on /work-items/summary; everything ships via by_type.
-  // Frontend reads by_type[<lowercased type name>] for per-type counts.
+  // TD-WORKITEMS-GENERIC pay-down (2026-05-16): /work-items/summary ships every
+  // per-type count via by_type[<lowercased type name>].
   const [summary, setSummary] = useState<{
     total: number;
     blocked: number;
     by_type: Record<string, number>;
   } | null>(null);
 
-  // ObjectTreeV2 sidecars carry createableTypeSlots (e.g. ["wrk_story",
-  // "wrk_defect", "wrk_task", "wrk_epic"]) which resolveSlotRefs rewrites
-  // to createableTypeIds at mount. On first render before the catalogue
-  // resolves, the slot list stays unresolved and the grid waits.
   const { types } = useArtefactTypeCatalogue();
-  const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
-    const resolvedSlots = resolveSlotRefs(
-      workItemsWizardJson as unknown as Record<string, unknown>,
-      types,
-    );
-    const resolved = resolveWizardConfig(resolvedSlots as any);
-    const funcs = buildWorkItemsFunctions();
-    return {
-      ...resolved,
-      getParentId: funcs.getParentId,
-      getChildrenCount: funcs.getChildrenCount,
-      searchAccessor: funcs.searchAccessor,
-      // filterChips is provided by ObjectTree itself based on
-      // filterChipsComponent — page no longer wires the React element.
-    } as ObjectTreeDataConfig;
-  }, [types]);
 
   const refetchSummary = useCallback(() => {
     const params = new URLSearchParams();
@@ -87,13 +66,8 @@ export default function WorkItemsPage() {
       .catch(() => setSummary(null));
   }, [filters.sprint_id]);
 
-  const refetch = useCallback(() => {
-    return refetchSummary();
-  }, [refetchSummary]);
-
-  // Re-fire on scope change — see portfolio-items/page.tsx for the full
-  // rationale (?meg= URL state + ScopeContext.activeNodeId both drive
-  // the wire-request scope clamp; effect must depend on the latter).
+  // Re-fire on scope change — ?meg= URL state + sentinel focus both drive the
+  // wire-request scope clamp; the effect must depend on the latter.
   useEffect(() => {
     void refetchSummary();
   }, [refetchSummary, activeNodeId, direction]);
@@ -105,14 +79,11 @@ export default function WorkItemsPage() {
       ? rankTopic("work_item", subscriptionID, "sprint", sprintID)
       : rankTopic("work_item", subscriptionID, "backlog", subscriptionID)
     : null;
-  useRefetchOnPush({ topic, refetch });
+  useRefetchOnPush({ topic, refetch: refetchSummary });
 
-  // Single source of truth for "which artefact types this page surfaces"
-  // — the wizard's createableTypeSlots resolved through the catalogue.
-  // Drives both the summary cells AND the visualisation petals, so a
-  // sidecar edit (add Story, drop Defect, etc.) ripples through both
-  // and they can't drift. Order follows catalogue sort_order, matching
-  // the create-new dropdown and the filter chips.
+  // Single source of truth for "which artefact types this page surfaces" — the
+  // wizard's createableTypeSlots resolved through the catalogue. Drives both the
+  // summary cells AND the visualisation petals so they can't drift.
   const surfacedTypes = useMemo(() => {
     const slots = (workItemsWizardJson as { createableTypeSlots?: string[] })
       .createableTypeSlots ?? [];
@@ -161,23 +132,7 @@ export default function WorkItemsPage() {
         treeResourceUrl="/work-items"
       />
 
-      <ObjectTree
-        title="Work items"
-        addressableName="work_items_grid_tree_ll"
-        subtitleBadge="05"
-        subtitle="Dense grid"
-        description="Spreadsheet-fast. 28px rows, single-character status, mono ID column."
-        selectedId={selectedItem?.id ?? null}
-        onSelect={setSelectedItem}
-        onPatched={(body) => {
-          const needsRefetch = "story_points" in body || "title" in body;
-          if (needsRefetch) void refetch();
-        }}
-        wizardConfig={wizardConfig}
-        multiSelectEnabled
-        dropColumnKeys={WORK_ITEMS_DROP_COLS}
-        savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET }}
-      />
+      <GridWorkItems />
     </>
     </PageContent>
   );
