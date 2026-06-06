@@ -106,32 +106,75 @@ func Project(in ProjectInput) Model {
 		}
 	}
 
-	// 8. Forecast cone.
+	// 8. Researched forecast (spec: "Forecast cone — researched formula").
+	// remToday clamped >= 0 (negative remaining is physically impossible — a
+	// corrupt ledger; never surface it). Velocity tiers = max/mean/min of the
+	// per-day accepted amounts over the forecast window. daysToComplete =
+	// remaining / velocity; landingDay = today + daysToComplete; lines extend
+	// past sprint-end; velocity <= 0 never lands (-1).
 	remToday := remaining[today]
-	daysLeft := days - today
-	pessEnd := remToday - velocity*float64(daysLeft)
-	if pessEnd < 0 {
-		pessEnd = 0
+	if remToday < 0 {
+		remToday = 0
 	}
-	optimistic := make([]float64, daysLeft+1)
-	pessimistic := make([]float64, daysLeft+1)
-	for i := 0; i <= daysLeft; i++ {
-		var t float64
-		if daysLeft > 0 {
-			t = float64(i) / float64(daysLeft)
+	daysLeft := days - today
+
+	dailyAccepted := []float64{}
+	if today >= 1 {
+		from := today - (forecastDays - 1)
+		if from < 1 {
+			from = 1
 		}
-		optimistic[i] = remToday + (0-remToday)*t
-		pessimistic[i] = remToday + (pessEnd-remToday)*t
+		for d := from; d <= today; d++ {
+			dailyAccepted = append(dailyAccepted, earned[d]-earned[d-1])
+		}
+	}
+	optV, avgV, pessV := velocityTiers(dailyAccepted)
+
+	land := func(v float64) float64 {
+		if v <= 0 {
+			return -1
+		}
+		return float64(today) + remToday/v
+	}
+	optLand := land(optV)
+	avgLand := land(avgV)
+	pessLand := land(pessV)
+
+	pessPastEnd := pessLand > float64(days)
+	pessDate := ""
+	if pessLand >= 0 {
+		pessDate = addDays(in.Window.Start, int(math.Round(pessLand)))
 	}
 
-	// 9. KPIs.
+	forecast := Forecast{
+		OptimisticVelocity:  optV,
+		AverageVelocity:     avgV,
+		PessimisticVelocity: pessV,
+		OptLandingDay:       optLand,
+		AvgLandingDay:       avgLand,
+		PessLandingDay:      pessLand,
+		PessLandingDate:     pessDate,
+		ProjectedPastEnd:    pessPastEnd,
+	}
+
+	optimistic := coneLine(remToday, optV, daysLeft)
+	pessimistic := coneLine(remToday, pessV, daysLeft)
+
+	onTrack := avgLand >= 0 && avgLand <= float64(days)
+	pessAtEnd := remToday - pessV*float64(daysLeft)
+	if pessAtEnd < 0 {
+		pessAtEnd = 0
+	}
+
+	// 9. KPIs. Velocity stays the 3-day rolling mean (the existing KPI-strip
+	// figure); the forecast tiers are carried separately in Forecast.
 	kpis := KPIs{
 		Committed:      int(scope[days]),
 		Remaining:      int(remToday),
 		Velocity:       velocity,
 		DaysLeft:       daysLeft,
-		OnTrack:        pessEnd <= 0,
-		ProjectedShort: int(math.Round(pessEnd)),
+		OnTrack:        onTrack,
+		ProjectedShort: int(math.Round(pessAtEnd)),
 	}
 
 	return Model{
@@ -144,6 +187,7 @@ func Project(in ProjectInput) Model {
 		IdealOriginal: idealOriginal,
 		Cone:          Cone{Optimistic: optimistic, Pessimistic: pessimistic},
 		Velocity:      velocity,
+		Forecast:      forecast,
 		ScopeChanges:  scopeChanges,
 		KPIs:          kpis,
 	}
@@ -167,4 +211,47 @@ func dayOffset(start, occ string) int {
 	s := parseYMD(start)
 	o := parseYMD(occ[:10])
 	return int(o.Sub(s).Hours() / 24)
+}
+
+// velocityTiers returns the max / mean / min of the per-day amounts. Kept in
+// parity with taskmetrics.velocityTiers. Empty input → all zero.
+func velocityTiers(daily []float64) (optimistic, average, pessimistic float64) {
+	if len(daily) == 0 {
+		return 0, 0, 0
+	}
+	mx, mn, sum := daily[0], daily[0], 0.0
+	for _, v := range daily {
+		if v > mx {
+			mx = v
+		}
+		if v < mn {
+			mn = v
+		}
+		sum += v
+	}
+	return mx, sum / float64(len(daily)), mn
+}
+
+// coneLine projects remToday falling by velocity per day for daysLeft days
+// (index 0 = today), floored at 0, drawn only to the right plot edge. A
+// velocity <= 0 stays flat. Parity with taskmetrics.coneLine.
+func coneLine(remToday, velocity float64, daysLeft int) []float64 {
+	out := make([]float64, daysLeft+1)
+	for i := 0; i <= daysLeft; i++ {
+		v := remToday - velocity*float64(i)
+		if v < 0 {
+			v = 0
+		}
+		out[i] = v
+	}
+	return out
+}
+
+// addDays returns the "YYYY-MM-DD" date n whole days after start.
+func addDays(start string, n int) string {
+	s := parseYMD(start)
+	if s.IsZero() {
+		return ""
+	}
+	return s.AddDate(0, 0, n).Format("2006-01-02")
 }

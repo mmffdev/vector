@@ -100,21 +100,77 @@ func Project(in ProjectInput) Model {
 	}
 
 	// Forecast cone.
+	// remToday is clamped to >= 0: remaining tasks can never be physically
+	// negative. A negative value can only mean a corrupt ledger (more 'done'
+	// than 'added' for a task — e.g. a backfill that double-counted against live
+	// emission). Clamping keeps the KPIs honest (Completed <= Total, Remaining
+	// >= 0) rather than rendering an impossible "-1 remaining"; the underlying
+	// ledger corruption is a separate data-reconcile concern, not a chart bug.
 	remToday := remaining[today]
-	daysLeft := days - today
-	pessEnd := remToday - rate*float64(daysLeft)
-	if pessEnd < 0 {
-		pessEnd = 0
+	if remToday < 0 {
+		remToday = 0
 	}
-	optimistic := make([]float64, daysLeft+1)
-	pessimistic := make([]float64, daysLeft+1)
-	for i := 0; i <= daysLeft; i++ {
-		var t float64
-		if daysLeft > 0 {
-			t = float64(i) / float64(daysLeft)
+	daysLeft := days - today
+
+	// ── Researched forecast (spec: "Forecast cone — researched formula").
+	// Sample the per-day completed amounts over the last `forecastDays` actual
+	// days; the velocity tiers are the max / mean / min of those daily amounts.
+	// daysToComplete = remaining / velocity; landingDay = today + daysToComplete.
+	// A velocity <= 0 never lands (landingDay -1). Lines extend past sprint-end.
+	dailyCompletions := []float64{}
+	if today >= 1 {
+		from := today - (forecastDays - 1)
+		if from < 1 {
+			from = 1
 		}
-		optimistic[i] = remToday + (0-remToday)*t
-		pessimistic[i] = remToday + (pessEnd-remToday)*t
+		for d := from; d <= today; d++ {
+			dailyCompletions = append(dailyCompletions, earned[d]-earned[d-1])
+		}
+	}
+	optV, avgV, pessV := velocityTiers(dailyCompletions)
+
+	land := func(v float64) float64 {
+		if v <= 0 {
+			return -1 // never lands at this rate
+		}
+		return float64(today) + remToday/v
+	}
+	optLand := land(optV)
+	avgLand := land(avgV)
+	pessLand := land(pessV)
+
+	pessPastEnd := pessLand > float64(days)
+	pessDate := ""
+	if pessLand >= 0 {
+		// Calendar date of the (possibly past-end) pessimistic landing day.
+		pessDate = addDays(in.Window.Start, int(math.Round(pessLand)))
+	}
+
+	forecast := Forecast{
+		OptimisticVelocity:  optV,
+		AverageVelocity:     avgV,
+		PessimisticVelocity: pessV,
+		OptLandingDay:       optLand,
+		AvgLandingDay:       avgLand,
+		PessLandingDay:      pessLand,
+		PessLandingDate:     pessDate,
+		ProjectedPastEnd:    pessPastEnd,
+	}
+
+	// Cone draw-arrays: each tier's projected remaining for days today..end,
+	// at its true slope (remToday falling by `velocity` per day), floored at 0
+	// and drawn only to the right plot edge. A tier that never lands (velocity
+	// <= 0) stays flat at remToday. point i = day today+i.
+	optimistic := coneLine(remToday, optV, daysLeft)
+	pessimistic := coneLine(remToday, pessV, daysLeft)
+
+	// On-track = the AVERAGE trend lands on or before sprint-end. ProjectedShort
+	// = remaining the pessimistic line still has at sprint-end (0 if it lands by
+	// then), the "you may be N short at the deadline" figure.
+	onTrack := avgLand >= 0 && avgLand <= float64(days)
+	pessAtEnd := remToday - pessV*float64(daysLeft)
+	if pessAtEnd < 0 {
+		pessAtEnd = 0
 	}
 
 	kpis := KPIs{
@@ -122,8 +178,8 @@ func Project(in ProjectInput) Model {
 		Completed:      int(scope[today] - remToday),
 		Remaining:      int(remToday),
 		DaysLeft:       daysLeft,
-		OnTrack:        pessEnd <= 0,
-		ProjectedShort: int(math.Round(pessEnd)),
+		OnTrack:        onTrack,
+		ProjectedShort: int(math.Round(pessAtEnd)),
 	}
 
 	return Model{
@@ -136,6 +192,7 @@ func Project(in ProjectInput) Model {
 		IdealOriginal: idealOriginal,
 		Cone:          Cone{Optimistic: optimistic, Pessimistic: pessimistic},
 		Rate:          rate,
+		Forecast:      forecast,
 		ScopeChanges:  scopeChanges,
 		KPIs:          kpis,
 	}
@@ -156,4 +213,50 @@ func dayOffset(start, occ string) int {
 	s := parseYMD(start)
 	o := parseYMD(occ[:10])
 	return int(o.Sub(s).Hours() / 24)
+}
+
+// velocityTiers returns the max / mean / min of the per-day completion amounts.
+// Empty input → all zero (no recent progress; nothing lands). This is the
+// tool-convention min/avg/max derivation documented in the spec.
+func velocityTiers(daily []float64) (optimistic, average, pessimistic float64) {
+	if len(daily) == 0 {
+		return 0, 0, 0
+	}
+	mx, mn, sum := daily[0], daily[0], 0.0
+	for _, v := range daily {
+		if v > mx {
+			mx = v
+		}
+		if v < mn {
+			mn = v
+		}
+		sum += v
+	}
+	return mx, sum / float64(len(daily)), mn
+}
+
+// coneLine projects `remToday` falling by `velocity` per day for `daysLeft`
+// days (index 0 = today). Floored at 0. A velocity <= 0 stays flat at remToday
+// (the honest "at this rate it never falls" line). This draws ONLY to the right
+// plot edge — the landing day (which may be past the edge) is carried separately
+// in Forecast.*LandingDay for the off-grid date label + banner.
+func coneLine(remToday, velocity float64, daysLeft int) []float64 {
+	out := make([]float64, daysLeft+1)
+	for i := 0; i <= daysLeft; i++ {
+		v := remToday - velocity*float64(i)
+		if v < 0 {
+			v = 0
+		}
+		out[i] = v
+	}
+	return out
+}
+
+// addDays returns the "YYYY-MM-DD" date `n` whole days after `start`.
+func addDays(start string, n int) string {
+	s := parseYMD(start)
+	if s.IsZero() {
+		return ""
+	}
+	return s.AddDate(0, 0, n).Format("2006-01-02")
 }

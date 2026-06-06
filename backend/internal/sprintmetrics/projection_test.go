@@ -63,11 +63,37 @@ func TestProjectHandoffReference(t *testing.T) {
 	if got := m.Velocity; math.Abs(got-7.667) >= 0.01 {
 		t.Errorf("velocity = %v, want ~7.667", got)
 	}
-	if got := m.KPIs.ProjectedShort; got != 21 {
-		t.Errorf("KPIs.ProjectedShort = %v, want 21", got)
+	// ProjectedShort now uses the PESSIMISTIC (min recent day) velocity, per the
+	// researched forecast formula — a shortfall warning should reflect the
+	// worst-case recent pace, not the average. Forecast window = days 5,6,7,
+	// accepted [5,9,9] → pessV = min = 5/day. remToday(44) - 5*3 = 29. (Was 21
+	// under the old average-velocity formula, which understated the risk.)
+	if got := m.KPIs.ProjectedShort; got != 29 {
+		t.Errorf("KPIs.ProjectedShort = %v, want 29 (pessimistic velocity 5/day)", got)
 	}
 	if got := m.KPIs.OnTrack; got != false {
 		t.Errorf("KPIs.OnTrack = %v, want false", got)
+	}
+	// Forecast tiers: window days 5,6,7 accepted [5,9,9].
+	if got := m.Forecast.OptimisticVelocity; math.Abs(got-9) >= 0.01 {
+		t.Errorf("Forecast.OptimisticVelocity = %v, want 9", got)
+	}
+	if got := m.Forecast.AverageVelocity; math.Abs(got-7.667) >= 0.01 {
+		t.Errorf("Forecast.AverageVelocity = %v, want ~7.667", got)
+	}
+	if got := m.Forecast.PessimisticVelocity; math.Abs(got-5) >= 0.01 {
+		t.Errorf("Forecast.PessimisticVelocity = %v, want 5", got)
+	}
+	// optLand = 7 + 44/9 = 11.89; avgLand = 7 + 44/7.667 = 12.74;
+	// pessLand = 7 + 44/5 = 15.8 — all past sprint-end (day 10).
+	if got := m.Forecast.OptLandingDay; math.Abs(got-11.889) >= 0.01 {
+		t.Errorf("Forecast.OptLandingDay = %v, want ~11.889", got)
+	}
+	if got := m.Forecast.PessLandingDay; math.Abs(got-15.8) >= 0.01 {
+		t.Errorf("Forecast.PessLandingDay = %v, want 15.8", got)
+	}
+	if !m.Forecast.ProjectedPastEnd {
+		t.Errorf("Forecast.ProjectedPastEnd = false, want true (pess lands day 15.8 > 10)")
 	}
 	if got := m.IdealB[0]; got != 52 {
 		t.Errorf("IdealB[0] = %v, want 52", got)

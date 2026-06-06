@@ -163,6 +163,113 @@ the duplication is logged, not hidden.
 - `buildTaskBurndownView` geometry test — actual/ideal/cone path strings for a
   known model.
 
+## Forecast cone — researched formula (2026-06-06 addendum)
+
+**Why this section exists:** burndown forecast accuracy is brand-critical — these
+numbers drive real delivery decisions. The forecast lines must follow the
+established industry formula, NOT a plausible-looking guess. An earlier draft
+fabricated a "±25% band" around the rate; that is discarded. The definitions
+below are sourced.
+
+**Canonical completion forecast (universal across sources):**
+
+```
+daysToComplete = remainingWork / dailyVelocity
+projectedCompletionDay = todayIndex + daysToComplete
+```
+
+Sources: Atlassian burndown tutorial, Asana sprint-velocity guide, Scrum.org
+burndown-calculation forum, and the brokenbuild interactive Jira sprint-burndown
+replica (which exposes the exact `forecast days count = 3` + min/avg/max tiers
+this design adopts).
+
+**Daily velocity window:** the per-day *completed* amount over the last
+`FORECAST_DAYS = 3` actual days — the same 3-day window already used for the
+KPI rate. (Matches the brokenbuild replica's default "forecast days count: 3".)
+
+**Three projection lines (min / avg / max velocity):**
+
+```
+recentDailyCompletions = [ earned[d] - earned[d-1]  for d in last 3 actual days ]
+optimisticVelocity = max(recentDailyCompletions)     // best day  → lands soonest
+averageVelocity    = mean(recentDailyCompletions)    // typical   → middle trend
+pessimisticVelocity = min(recentDailyCompletions)    // worst day → lands latest
+
+land(v) = todayIndex + remainingToday / v            // x-axis day the line hits 0
+```
+
+- **Optimistic** = max-velocity trend → reaches zero **soonest**. Gets the green
+  vertical line + green circle at its landing day, with an inline green legend
+  entry ("Projected finish").
+- **Average** = the middle trend (optional middle line; the cone is bounded by
+  optimistic + pessimistic).
+- **Pessimistic** = min-velocity trend → reaches zero **latest**. If its landing
+  day is **past sprint-end**, the chart shows a full-width banner: *"Current
+  delivery trend projects completion on <date> if work continues at the current
+  rate."*
+
+**Lines extend PAST sprint-end.** Per the brokenbuild replica, the forecast
+shows "how many days beyond your original deadline the remaining work is
+projected to continue" — so a slow pessimistic line is drawn at its true slope to
+the right plot edge (sprint-end), and its landing day (which may exceed
+`sprint_days`) is computed and surfaced as a date label + banner rather than
+bent down to zero at the deadline.
+
+**Tool-convention flag (transparency):** the *single-day* min/max derivation
+(best day / worst day within the 3-day window) is a tool convention — it matches
+the brokenbuild Jira-replica, but is NOT mandated by the Scrum Guide, which
+standardises only the `remaining / velocity` average forecast. This choice is
+named here so it is auditable, not presented as canon.
+
+**Engine fields added to the neutral Model** (both `taskmetrics` and
+`sprintmetrics`, kept in parity):
+
+```
+optimistic_velocity, average_velocity, pessimistic_velocity : float
+opt_landing_day, avg_landing_day, pess_landing_day          : float (may exceed sprint_days; -1 when velocity <= 0)
+pess_landing_date                                            : "YYYY-MM-DD" (calendar date of pess landing, for the banner)
+projected_past_end                                          : bool (pess_landing_day > sprint_days)
+```
+
+Degenerate cases (researched intent): when a velocity is `<= 0` (no recent
+progress) the line never lands — `landing_day = -1` and the chart draws it flat
+to the right edge (no zero-crossing), which is the honest "at this rate it never
+finishes" signal. `remainingToday` is clamped `>= 0` (a ledger that records more
+done than committed is corrupt; negative remaining is physically impossible and
+must never surface as a KPI — see the data-integrity note below).
+
+## Data integrity — ledger must not double-count
+
+**Invariant:** for a sprint, `Completed <= Total` and `Remaining >= 0` always.
+A violation means the ledger recorded more `done` than `added` for some task.
+
+**Root cause observed 2026-06-06:** running the historical backfill on a
+substrate where **live emission was already active** double-counted — the
+backfill stamped a `done` event (actor NULL) for a task that a live write had
+also recorded (actor set), with no `undone` between → `Completed > Total`,
+`Remaining < 0`. The backfill's `NOT EXISTS` guard checked only event-type
+presence, not whether live emission had already covered the task.
+
+**Fixes:**
+1. Projection clamps `remainingToday >= 0` as a physical invariant (guard, not a
+   symptom-hide — negative remaining cannot exist).
+2. The dev ledger for the affected sprint was reconciled by wiping + reseeding
+   from current truth (1 `added` per task, 1 `done` per currently-done task).
+3. TD-TASKMETRICS-BACKFILL-DOUBLECOUNT logs the gotcha: **never run the backfill
+   after live emission is enabled** without a reconcile step that dedups against
+   existing live events.
+
+## Chart alignment — shared CSS, identical wrappers
+
+The two charts must be visually continuous: equal plot height, title /
+description / KPI strip / legend on the **same baselines** across both panels.
+They already share the `sprint-burndown__*` class family; the KPI strip count
+differing (story has Velocity + Team velocity; task has neither) must NOT shift
+the plot down on one side. Fix: a fixed-min-height KPI strip + identical panel
+chrome so both plots start at the same y. The story panel's extra ↻ Refresh
+button + a second KPI row are the current source of misalignment — normalise
+both wrappers to one shared layout.
+
 ## Out of scope
 
 - Sharing the projection math (deferred to TD trigger above).

@@ -28,6 +28,11 @@ const (
 // accepted; "done" is the engineer's terminal, "accepted" is the PO's.
 const kindDone = "done"
 
+// forecastDays is the rolling window (in actual days) over which the per-day
+// completion velocities are sampled for the forecast. 3 matches the KPI rate
+// window and the brokenbuild Jira-replica's default "forecast days count: 3".
+const forecastDays = 3
+
 // TaskBurnEvent is one row of the replayed ledger, normalised for projection.
 // OccurredAt is a "YYYY-MM-DD" date string. Deltas are COUNTS (a task is size 1).
 type TaskBurnEvent struct {
@@ -53,9 +58,37 @@ type ScopeChange struct {
 }
 
 // Cone is the forecast envelope between optimistic and pessimistic finishes.
+// The arrays carry the per-day projected remaining for each velocity tier,
+// indexed from `today` (point i = day today+i), drawn to the right plot edge.
 type Cone struct {
 	Optimistic  []float64 `json:"optimistic"`
 	Pessimistic []float64 `json:"pessimistic"`
+}
+
+// Forecast holds the researched completion projection (see the spec's
+// "Forecast cone — researched formula" addendum). The canonical formula is
+// daysToComplete = remaining / dailyVelocity; three velocity tiers (max/mean/min
+// of the per-day completed amounts over the FORECAST_DAYS window) give three
+// landing days. Lines extend PAST sprint-end — a landing day may exceed
+// sprint_days. A velocity <= 0 never lands (LandingDay = -1).
+type Forecast struct {
+	OptimisticVelocity  float64 `json:"optimistic_velocity"`  // max recent daily completion → soonest
+	AverageVelocity     float64 `json:"average_velocity"`     // mean recent daily completion
+	PessimisticVelocity float64 `json:"pessimistic_velocity"` // min recent daily completion → latest
+
+	// Landing day = today + remaining/velocity. May exceed sprint_days (late).
+	// -1 means "never lands at this velocity" (velocity <= 0).
+	OptLandingDay  float64 `json:"opt_landing_day"`
+	AvgLandingDay  float64 `json:"avg_landing_day"`
+	PessLandingDay float64 `json:"pess_landing_day"`
+
+	// PessLandingDate is the calendar date the pessimistic line hits zero,
+	// "YYYY-MM-DD". Empty when it never lands. Drives the past-end banner.
+	PessLandingDate string `json:"pess_landing_date"`
+
+	// ProjectedPastEnd is true when the pessimistic line lands after sprint-end
+	// (pess_landing_day > sprint_days) — the trigger for the banner.
+	ProjectedPastEnd bool `json:"projected_past_end"`
 }
 
 // KPIs is the at-a-glance scoreboard. No velocity (engineering-team view).
@@ -87,6 +120,7 @@ type Model struct {
 	IdealOriginal []float64     `json:"ideal_original"`
 	Cone          Cone          `json:"cone"`
 	Rate          float64       `json:"rate"` // mean daily completion over last 3 days
+	Forecast      Forecast      `json:"forecast"`
 	ScopeChanges  []ScopeChange `json:"scope_changes"`
 	KPIs          KPIs          `json:"kpis"`
 }

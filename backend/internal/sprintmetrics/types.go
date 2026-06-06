@@ -24,6 +24,11 @@ const (
 	EventPointsChanged = "points_changed"
 )
 
+// forecastDays is the rolling window (in actual days) over which per-day
+// accepted velocities are sampled for the forecast. Matches taskmetrics and the
+// 3-day KPI rate window.
+const forecastDays = 3
+
 // BurnEvent is one row of the replayed ledger, normalised for projection.
 // OccurredAt is a "YYYY-MM-DD" date string.
 type BurnEvent struct {
@@ -52,6 +57,26 @@ type ScopeChange struct {
 type Cone struct {
 	Optimistic  []float64 `json:"optimistic"`
 	Pessimistic []float64 `json:"pessimistic"`
+}
+
+// Forecast holds the researched completion projection — kept in parity with
+// taskmetrics.Forecast (see the task-burndown spec's "Forecast cone — researched
+// formula" addendum). Canonical: daysToComplete = remaining / dailyVelocity;
+// three velocity tiers (max/mean/min of per-day accepted amounts over the
+// forecast window) give three landing days; lines extend past sprint-end; a
+// velocity <= 0 never lands (LandingDay = -1). For the story chart "completed"
+// means accepted points per day.
+type Forecast struct {
+	OptimisticVelocity  float64 `json:"optimistic_velocity"`
+	AverageVelocity     float64 `json:"average_velocity"`
+	PessimisticVelocity float64 `json:"pessimistic_velocity"`
+
+	OptLandingDay  float64 `json:"opt_landing_day"`
+	AvgLandingDay  float64 `json:"avg_landing_day"`
+	PessLandingDay float64 `json:"pess_landing_day"`
+
+	PessLandingDate  string `json:"pess_landing_date"`
+	ProjectedPastEnd bool   `json:"projected_past_end"`
 }
 
 // KPIs is the at-a-glance scoreboard derived from the projection.
@@ -91,6 +116,7 @@ type Model struct {
 
 	Cone         Cone          `json:"cone"`
 	Velocity     float64       `json:"velocity"`
+	Forecast     Forecast      `json:"forecast"`
 	ScopeChanges []ScopeChange `json:"scope_changes"`
 	KPIs         KPIs          `json:"kpis"`
 }
