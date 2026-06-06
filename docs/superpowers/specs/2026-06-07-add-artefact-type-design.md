@@ -15,7 +15,8 @@ The artefact-types page can edit and resync types but cannot **create** one. We 
 
 - **Work types** — nesting hard-coded in the frontend constant `PARENT_PREFIX_MAP`
   (`app/components/ArtefactInlineForm/types.ts:119`).
-- **Strategy types** — nesting in DB columns `artefacts_types_id_parent_type` (+ a now-unreliable
+- **Strategy types** — nesting in DB column `artefacts_types_id_parent_type` (self-FK; renamed to
+  `artefacts_types_strategy_parent_id` by this work — see §5) (+ a now-unreliable
   `artefacts_types_layer_depth`).
 
 Decision (approved): **`parent_type_id` chain is the single source of truth.** `layer_depth`
@@ -54,7 +55,7 @@ Inputs: **Tag** (prefix), **Name**, **Description**, **Colour**, **Behaves like*
 execution rung it siblings with — e.g. "like Story").
 
 - Effect: one `INSERT` into `artefacts_types` (`scope='work'`, `source='tenant'`,
-  `parent_type_id=NULL`, `colour`, `prefix`, `name`, `description`, `sort_order` = max+10 in scope).
+  `strategy_parent_id=NULL`, `colour`, `prefix`, `name`, `description`, `sort_order` = max+10 in scope).
 - **No artefact instances are touched.**
 - The new type's allowed parents are derived from the "Behaves like" choice via the stored
   work-nesting rule (§5), not from a code edit. This is what makes work-type creation fully
@@ -87,42 +88,82 @@ Selection is expressed server-side as the **child type id** whose `parent_type_i
 (the parent is derived from that child's current `parent_type_id`). This avoids any reliance on
 `layer_depth`.
 
-## 5. Work-nesting rule moves to the DB (foundation)
+## 5. Parent-link columns: scoped, honest naming (foundation)
 
-Today `PARENT_PREFIX_MAP` is the truth for work-type nesting. Per the "DB columns only" decision we
-store the rule so new work types are self-serve.
+Today the parent rules split across an awkwardly-named DB column + a frontend constant:
 
-- **Approach:** a new column `artefacts_types_work_parent_slots TEXT[]` on `artefacts_types`
-  (nullable; only meaningful for `scope='work'`). It holds the **slugs/prefixes of allowed parent
-  types** for that work type. The DB `artefacts_types_work_no_parent` CHECK is unaffected — work
-  types still keep `parent_type_id = NULL`; this column encodes the *legal* parents, not a single
-  stored parent, because a work type may nest under several (Story → Feature OR Epic).
-- **Backfill migration:** seed `artefacts_types_work_parent_slots` for the existing system work types
-  from the current `PARENT_PREFIX_MAP` so behaviour is byte-for-byte unchanged:
-  `TA→[DE,US]`, `US→[FE,EP]`, `DE→[EP,US]`, `EP→[FE]`. (Risk/RSK currently absent from the map —
-  carried as `NULL`/empty, preserving today's behaviour; flagged in tech debt for a product
-  decision.)
-- **Resolver collapse (`useParentCandidates`).** Today `resolveAllowedTypes`
-  (`app/components/ArtefactInlineForm/useParentCandidates.ts:57`) has three tiers:
-  (1) `PARENT_PREFIX_MAP`, (2) `layer_depth < myDepth`, (3) `parent_type_id` chain walk. After
-  cleanup there are **two data-driven tiers, one per scope**:
-  - **Work types** → resolve `editing.work_parent_slots` (prefixes/slugs) to type ids. Replaces
-    tier 1.
-  - **Strategy types** → walk the `parent_type_id` chain upward (the existing tier-3 logic).
-    **Tier 2's `layer_depth` numeric comparison is removed entirely**, consistent with
-    "layer_depth is a derived mirror, never branched on." The chain walk already yields the correct
-    ancestor set and is immune to the Feature=NULL / duplicate-depth contamination that forced the
-    map in the first place.
-  - `PARENT_PREFIX_MAP` is deleted; its only consumers are `useParentCandidates`,
-    `workItemsReparentRules`, and their tests — all migrated to `work_parent_slots` /
-    chain-walk in the same change.
-- **`workItemsReparentRules.workItemsCanReparent`** reads the mover type's `work_parent_slots`
-  instead of the map, so create / inline-edit / drag-reparent stay in agreement (the invariant the
-  current map comment calls out).
-- **"Behaves like" on create** copies the chosen rung's `work_parent_slots` onto the new type.
+- Strategy: `artefacts_types_id_parent_type` (self-FK) — named for its *mechanism* (an id/FK), not
+  its *meaning* (the strategy ladder's parent link).
+- Work: `PARENT_PREFIX_MAP` (frontend constant) — not in the DB at all.
 
-> This pays down `TD-PARENT-CANDIDATES-DYNAMIC`. It is in-scope because the feature cannot be
-> self-serve for work types without it — see CLAUDE.md "name scope creep as scope correction".
+We make the two parallel and scope-declaring, while honouring their genuinely different shapes
+(strategy = strict single parent → FK; execution = multiple legal parents → array). **The two are
+NOT the same shape** — naming them identically would trade one lie for another. Final columns on
+`artefacts_types`:
+
+| Column | Type | Scope | Meaning |
+|---|---|---|---|
+| `artefacts_types_strategy_parent_id` | `UUID` (self-FK, `ON DELETE RESTRICT`) | strategy | the **one** parent type this strategy type nests under (the chain) |
+| `artefacts_types_execution_parent_slots` | `TEXT[]` (soft-ref list) | work | the **list** of parent type **slots** this work type may nest under (the rule) |
+
+### 5a. Rename strategy column (FK preserved)
+
+`artefacts_types_id_parent_type` → `artefacts_types_strategy_parent_id`. Pure rename, **zero
+behaviour change**, FK + `ON DELETE RESTRICT` retained (the insert-layer transaction depends on a
+walkable, integrity-guarded chain).
+
+- **DB:** `ALTER TABLE artefacts_types RENAME COLUMN ...`; also rename the FK + the
+  `artefacts_types_parent` partial index to match.
+- **JSON wire field stays `parent_type_id`.** The DB rename is internal; the API contract and the
+  5 frontend consumers keep the existing `parent_type_id` JSON key (struct tag maps
+  `ArtefactType.ParentTypeID json:"parent_type_id"` → the renamed column). No frontend churn for a
+  DB-internal rename.
+- **Go blast radius (rename the SQL identifiers only, behaviour unchanged):**
+  `backend/internal/artefacttypes/{types.go,service.go}`,
+  `backend/internal/portfoliomodels/{adopt_work_types.go,adopt_strategy_types.go,adopt_readopt.go,sql.go}`,
+  plus the 4 `portfoliomodels` tests. Migrations `003/009/011/066` are historical — not edited; the
+  new migration is additive.
+
+### 5b. New execution column (replaces the frontend map)
+
+New column `artefacts_types_execution_parent_slots TEXT[]` (nullable; only meaningful for
+`scope='work'`). The `artefacts_types_work_no_parent` CHECK is unaffected — work types still keep
+`strategy_parent_id = NULL`; this column encodes the *legal* parents (plural), not a stored parent.
+
+- **Store slots, not prefixes.** Entries are the rename-proof handles (`wrk_story`, `wrk_epic`,
+  `wrk_defect`, `wrk_task`) — NOT display prefixes (`US`, `EP`). A gadmin renaming "Story" or
+  changing its tag must not break the rule. The resolver maps slot → live type id via the workspace
+  catalogue (the same slot→id resolution already used for chip filters per PLA-0054).
+- **Backfill migration** from the current `PARENT_PREFIX_MAP`, translated prefix→slot, byte-for-byte
+  behaviour-preserving: `wrk_task→[wrk_defect,wrk_story]`, `wrk_story→[<feature-slot>,wrk_epic]`,
+  `wrk_defect→[wrk_epic,wrk_story]`, `wrk_epic→[<feature-slot>]`. (Feature is a strategy type — its
+  slot is resolved at backfill time; if absent, store its prefix as a documented fallback and flag
+  in TD.) Risk/RSK absent from the map today → `NULL`/empty, preserving current behaviour
+  (TD-RISK-WORK-PARENT-SLOTS).
+
+### 5c. Resolver collapse (`useParentCandidates`)
+
+Today `resolveAllowedTypes` (`app/components/ArtefactInlineForm/useParentCandidates.ts:57`) has three
+tiers: (1) `PARENT_PREFIX_MAP`, (2) `layer_depth < myDepth`, (3) `parent_type_id` chain walk. After
+cleanup there are **two data-driven tiers, one per scope**:
+
+- **Work types** → resolve `editing.execution_parent_slots` (slots) → live type ids → candidates.
+  Replaces tier 1.
+- **Strategy types** → walk the `parent_type_id` chain upward (existing tier-3 logic).
+  **Tier 2's `layer_depth` numeric comparison is removed entirely** — consistent with "layer_depth
+  is a derived mirror, never branched on." The chain walk is immune to the Feature=NULL /
+  duplicate-depth contamination that forced the map in the first place.
+- `PARENT_PREFIX_MAP` is deleted; its only consumers are `useParentCandidates`,
+  `workItemsReparentRules`, and their tests — all migrated to `execution_parent_slots` / chain-walk.
+- **`workItemsReparentRules.workItemsCanReparent`** reads the mover type's
+  `execution_parent_slots` (resolved to prefixes/ids for comparison) instead of the map, so
+  create / inline-edit / drag-reparent stay in agreement.
+- **"Behaves like" on create** copies the chosen rung's `execution_parent_slots` onto the new type.
+
+> This pays down `TD-PARENT-CANDIDATES-DYNAMIC` and corrects the `artefacts_types_id_parent_type`
+> naming. In-scope because the feature cannot be self-serve for work types without the execution
+> column, and the rename is cheapest now while we're already touching every reader — see CLAUDE.md
+> "name scope creep as scope correction" + "cleanup, not deferral".
 
 ## 6. Strategic type-chain rewrite (one transaction)
 
@@ -237,7 +278,9 @@ insertLayer(body: { /* same as previewInsertLayer */ }): Promise<{
 }>;
 ```
 
-`ArtefactType` gains `work_parent_slots: string[] | null`.
+`ArtefactType` gains `execution_parent_slots: string[] | null` (JSON field name; maps to DB
+`artefacts_types_execution_parent_slots`). The existing `parent_type_id` JSON field is unchanged
+(now backed by the renamed `artefacts_types_strategy_parent_id` column).
 
 ## 10. Frontend surface
 
@@ -277,17 +320,20 @@ Backend (Go):
   correctly; archived instances excluded; depth recompute correct; bounds violation rejected;
   permission denied for non-`portfolio.model.edit` caller; clamp isolation (cross-workspace
   instances untouched).
-- Migration: `work_parent_slots` backfilled to match `PARENT_PREFIX_MAP` exactly.
+- Migration: `execution_parent_slots` backfilled (prefix→slot) to match `PARENT_PREFIX_MAP` exactly;
+  strategy column rename is behaviour-neutral (existing strategy adoption tests still green).
 
 Frontend (Vitest/RTL):
 - Flyout scope fork renders correct fields.
 - Strategy path blocks confirm until preview returned; renders impact list; confirm calls commit.
-- `useParentCandidates` reads `work_parent_slots` and matches prior behaviour for system types.
+- `useParentCandidates` reads `execution_parent_slots` (slot→id resolved) and matches prior
+  behaviour for system types.
 
 ## 13. Tech-debt entries
 
 - **TD-PARENT-CANDIDATES-DYNAMIC** — moved from "open" to "paid (work scope)": work nesting now in
-  `work_parent_slots`; `PARENT_PREFIX_MAP` retired. Strategy nesting already dynamic.
+  `execution_parent_slots`; `PARENT_PREFIX_MAP` retired; `artefacts_types_id_parent_type` renamed to
+  `artefacts_types_strategy_parent_id`. Strategy nesting already dynamic.
 - **TD-LAYER-DEPTH-DERIVED** (new, S3) — `layer_depth` retained as a derived mirror. After this
   work, the `useParentCandidates` depth comparison is gone; the only remaining numeric readers are
   `DependencyMapOverlay` (root detection via `min(depth)`) and `p_ObjectTree` / `ArtefactCreateFlyout`
