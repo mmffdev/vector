@@ -4813,3 +4813,139 @@
   font-family: ui-monospace, Menlo, monospace;
   letter-spacing: 0.04em;
 }
+
+
+/* ============================================================
+   Dev Scope Actions panel — scope-targeting action runner
+   (DevScopeActionsPanel.tsx). Uses the .dev-* namespace to sit
+   alongside the existing DevPage panels (.dev-btn, .dev-alert,
+   .dev-confirm-input, …). Tokens only — no hard-coded colour.
+   ============================================================ */
+
+/* Cascading scope selector grid — label + native <select> per level */
+.dev-scope-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.dev-scope-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.dev-scope-field__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+.dev-scope-select {
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  outline: none;
+}
+
+.dev-scope-select:focus {
+  border-color: var(--ink);
+}
+
+.dev-scope-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Resolved-scope breadcrumb — makes the blast radius unmistakable */
+.dev-scope-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.dev-scope-breadcrumb__label {
+  font-weight: 600;
+  color: var(--ink-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
+}
+
+.dev-scope-breadcrumb__path {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Whole-tenant variant — paints the breadcrumb in the danger tone */
+.dev-scope-breadcrumb--tenant {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+.dev-scope-breadcrumb--tenant .dev-scope-breadcrumb__label,
+.dev-scope-breadcrumb--tenant .dev-scope-breadcrumb__path {
+  color: var(--danger);
+}
+
+/* Preview summary block — readable counts after a Preview call */
+.dev-scope-preview {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.dev-scope-preview strong {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Prominent whole-tenant warning strip inside a preview */
+.dev-scope-warn {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* Inline checkbox row (include-custom-flows toggle) */
+.dev-scope-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  cursor: pointer;
+  margin-bottom: var(--space-3);
+}
