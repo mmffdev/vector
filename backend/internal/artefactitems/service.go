@@ -13,6 +13,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/notifications/rules"
 	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/sprintmetrics"
+	"github.com/mmffdev/vector-backend/internal/taskmetrics"
 	"github.com/mmffdev/vector-backend/internal/topologyclamp"
 	"github.com/mmffdev/vector-backend/internal/webhooks"
 )
@@ -206,6 +207,47 @@ func (s *Service) flowKindByStateID(ctx context.Context, tx pgx.Tx, flowStateID 
 		return "", err
 	}
 	return kind, nil
+}
+
+// slotByTypeID resolves the project-locked slot handle for an artefact type
+// (in-tx so it sees this transaction's writes). Empty type id or no row → "".
+func (s *Service) slotByTypeID(ctx context.Context, tx pgx.Tx, typeID uuid.UUID) (string, error) {
+	if typeID == uuid.Nil {
+		return "", nil
+	}
+	var slot string
+	if err := tx.QueryRow(ctx, sqlSelectSlotByTypeID, typeID).Scan(&slot); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return slot, nil
+}
+
+// effectiveSprintForTask resolves a task's sprint as its parent story's
+// timebox-sprint id, read on the tx so it reflects in-flight writes. Empty
+// string when the task has no parent or the parent carries no sprint. This is
+// the heart of task-membership inheritance: a task is "in" the sprint its parent
+// story is in, never via its own sprint column.
+func (s *Service) effectiveSprintForTask(ctx context.Context, tx pgx.Tx, artefactID uuid.UUID) (string, error) {
+	var sid string
+	if err := tx.QueryRow(ctx, sqlSelectParentSprintID, artefactID).Scan(&sid); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return sid, nil
+}
+
+// isStoryTierSlot reports whether a slot is a STORY-tier sprint unit — the only
+// tier whose membership/points/acceptance feed the sprint burndown. Story /
+// Defect / Risk carry committed sprint points; Epic (above) and Task (below) do
+// not. A custom tenant type (slot == "") is NOT a unit today — see
+// TD-SPRINTREVIEW-STORY-TIER-STATIC (same static-allow-list gap as the grid).
+func isStoryTierSlot(slot string) bool {
+	return slot == SlotStory || slot == SlotDefect || slot == SlotRisk
 }
 
 // WithTopologyResolver wires the PLA-0043 scope clamp dependency. When
@@ -1204,13 +1246,16 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 
 	// Sprint-metrics burn-event capture (feature/sprint-metrics-engine).
 	// Append the ledger rows INSIDE this same transaction so the ledger can
-	// never drift from the artefact write. A newly-created row is always a
-	// leaf (no children yet), so its flow state is authoritative — the
-	// derived-from-children rule (hasLiveChildren) is vacuously false here.
-	// before-state is empty (the row did not exist); after-state is the
-	// values just inserted. Only when the new row joins a sprint does this
-	// emit an "added" event.
+	// never drift from the artefact write. Only the STORY tier (Story / Defect
+	// / Risk) is a sprint unit — a created Epic or Task contributes no committed
+	// sprint points, so it emits nothing even when created directly into a
+	// sprint. before-state is empty (the row did not exist); after-state is the
+	// values just inserted. Gate resolved from the created type's slot, in-tx.
 	afterKind, err := s.flowKindByStateID(ctx, tx, defaultFlowStateID)
+	if err != nil {
+		return nil, fmt.Errorf("burn-event capture: %w", err)
+	}
+	createSlot, err := s.slotByTypeID(ctx, tx, artefactTypeID)
 	if err != nil {
 		return nil, fmt.Errorf("burn-event capture: %w", err)
 	}
@@ -1219,18 +1264,42 @@ func (s *Service) CreateWorkItem(ctx context.Context, subscriptionID uuid.UUID, 
 		afterSprintID = sprintID.String()
 	}
 	createDelta := sprintmetrics.ArtefactDelta{
-		ArtefactID:      newID.String(),
-		BeforeSprintID:  "",
-		AfterSprintID:   afterSprintID,
-		BeforeKind:      "",
-		AfterKind:       afterKind,
-		BeforePoints:    0,
-		AfterPoints:     intDeref(in.StoryPoints),
-		Points:          intDeref(in.StoryPoints),
-		IsAuthoritative: true,
+		ArtefactID:     newID.String(),
+		BeforeSprintID: "",
+		AfterSprintID:  afterSprintID,
+		BeforeKind:     "",
+		AfterKind:      afterKind,
+		BeforePoints:   0,
+		AfterPoints:    intDeref(in.StoryPoints),
+		Points:         intDeref(in.StoryPoints),
+		IsSprintUnit:   isStoryTierSlot(createSlot),
 	}
 	if err := sprintmetrics.AppendBurnEvents(ctx, tx, createDelta, createdBy, workspaceID); err != nil {
 		return nil, fmt.Errorf("burn-event capture: %w", err)
+	}
+
+	// Task-count burndown: a task created directly under a story already in a
+	// sprint is "added" to that sprint. The task's effective sprint is its
+	// parent story's, resolved in-tx (the row exists now, so the parent join
+	// resolves). No-op when the parent has no sprint.
+	if createSlot == SlotTask {
+		eff, eerr := s.effectiveSprintForTask(ctx, tx, newID)
+		if eerr != nil {
+			return nil, fmt.Errorf("task burn-event capture: %w", eerr)
+		}
+		if eff != "" {
+			createTaskDelta := taskmetrics.TaskDelta{
+				ArtefactID:     newID.String(),
+				BeforeSprintID: "",
+				AfterSprintID:  eff,
+				BeforeKind:     "",
+				AfterKind:      afterKind,
+				IsTaskUnit:     true,
+			}
+			if terr := taskmetrics.AppendTaskEvents(ctx, tx, createTaskDelta, createdBy, workspaceID); terr != nil {
+				return nil, fmt.Errorf("task burn-event capture: %w", terr)
+			}
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -2021,17 +2090,27 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 	// Burn-event capture (feature/sprint-metrics-engine). Derive the ledger
 	// delta from the before-snapshot vs the patched values, INSIDE the tx.
 	//
-	// Authoritative-parent rule: value events fire ONLY for the row whose
-	// flow state is authoritative — NOT a parent whose state is DERIVED from
-	// its children (work flows UP; the children already emit). We reuse the
-	// EXACT predicate the cascade guard uses (hasLiveChildren): a row with
-	// live children is non-authoritative. This is the same rule enforced at
-	// the flow_state_id write guard above (ErrParentFlowStateDerived).
+	// Story-tier rule: burn events fire ONLY for the STORY tier (Story /
+	// Defect / Risk) — the artefacts that carry the sprint's committed points
+	// and that the sprint-review grid shows. Epics never belong in a sprint;
+	// Tasks are sub-story execution with no committed points. A Story emits its
+	// own scope even when it has Task children (the cascade rolls those Tasks
+	// up to "done", after which the Story can be manually accepted — that
+	// acceptance is the burn). This REPLACES the old hasLiveChildren gate,
+	// which left the burndown empty for any parented Story. Resolved from the
+	// artefact's type slot, in-tx.
 	if burnBefore != nil {
-		hasKids, gerr := s.hasLiveChildren(ctx, subscriptionID, id)
-		if gerr != nil {
-			return nil, fmt.Errorf("burn-event capture: %w", gerr)
+		var beforeTypeID uuid.UUID
+		if burnBefore.ArtefactTypeID != "" {
+			if tid, perr := uuid.Parse(burnBefore.ArtefactTypeID); perr == nil {
+				beforeTypeID = tid
+			}
 		}
+		slot, serr := s.slotByTypeID(ctx, tx, beforeTypeID)
+		if serr != nil {
+			return nil, fmt.Errorf("burn-event capture: %w", serr)
+		}
+		isSprintUnit := isStoryTierSlot(slot)
 
 		beforeSprintID := strDeref(burnBefore.SprintID)
 		afterSprintID := beforeSprintID
@@ -2073,18 +2152,81 @@ func (s *Service) PatchWorkItem(ctx context.Context, subscriptionID uuid.UUID, i
 		burnWorkspaceID, _ := sentinel.WorkspaceIDFromCtx(ctx)
 
 		delta := sprintmetrics.ArtefactDelta{
-			ArtefactID:      id.String(),
-			BeforeSprintID:  beforeSprintID,
-			AfterSprintID:   afterSprintID,
-			BeforeKind:      beforeKind,
-			AfterKind:       afterKind,
-			BeforePoints:    beforePoints,
-			AfterPoints:     afterPoints,
-			Points:          afterPoints,
-			IsAuthoritative: !hasKids,
+			ArtefactID:     id.String(),
+			BeforeSprintID: beforeSprintID,
+			AfterSprintID:  afterSprintID,
+			BeforeKind:     beforeKind,
+			AfterKind:      afterKind,
+			BeforePoints:   beforePoints,
+			AfterPoints:    afterPoints,
+			Points:         afterPoints,
+			IsSprintUnit:   isSprintUnit,
 		}
 		if berr := sprintmetrics.AppendBurnEvents(ctx, tx, delta, in.AuthorUserID, burnWorkspaceID); berr != nil {
 			return nil, fmt.Errorf("burn-event capture: %w", berr)
+		}
+
+		// Task-count burndown emission (engineering-team view). Only the TASK
+		// tier emits here; the story-tier block above handles points. A task's
+		// effective sprint is its parent story's sprint, resolved in-tx. This
+		// branch captures the task's own done/undone crossing within a stable
+		// sprint — membership MOVES are captured by the story-move cascade below
+		// (a task's sprint never changes except when its parent story's does),
+		// so before/after effective sprint are the same value here.
+		if slot == SlotTask {
+			eff, eerr := s.effectiveSprintForTask(ctx, tx, id)
+			if eerr != nil {
+				return nil, fmt.Errorf("task burn-event capture: %w", eerr)
+			}
+			taskDelta := taskmetrics.TaskDelta{
+				ArtefactID:     id.String(),
+				BeforeSprintID: eff,
+				AfterSprintID:  eff,
+				BeforeKind:     beforeKind,
+				AfterKind:      afterKind,
+				IsTaskUnit:     true,
+			}
+			if terr := taskmetrics.AppendTaskEvents(ctx, tx, taskDelta, in.AuthorUserID, burnWorkspaceID); terr != nil {
+				return nil, fmt.Errorf("task burn-event capture: %w", terr)
+			}
+		}
+
+		// Cascade: a STORY moving sprints moves its tasks' membership too. When a
+		// story-tier write changes the story's sprint, re-derive add/remove task
+		// events for every TASK child, in-tx. This is what makes task membership
+		// follow the parent story LIVE (a task with no sprint of its own).
+		if isSprintUnit && beforeSprintID != afterSprintID {
+			rows, qerr := tx.Query(ctx, sqlSelectTaskChildren, id)
+			if qerr != nil {
+				return nil, fmt.Errorf("task cascade: %w", qerr)
+			}
+			type childRow struct{ id, kind string }
+			var children []childRow
+			for rows.Next() {
+				var cr childRow
+				if serr := rows.Scan(&cr.id, &cr.kind); serr != nil {
+					rows.Close()
+					return nil, fmt.Errorf("task cascade scan: %w", serr)
+				}
+				children = append(children, cr)
+			}
+			rows.Close()
+			if rerr := rows.Err(); rerr != nil {
+				return nil, fmt.Errorf("task cascade iterate: %w", rerr)
+			}
+			for _, cr := range children {
+				cd := taskmetrics.TaskDelta{
+					ArtefactID:     cr.id,
+					BeforeSprintID: beforeSprintID,
+					AfterSprintID:  afterSprintID,
+					BeforeKind:     cr.kind,
+					AfterKind:      cr.kind,
+					IsTaskUnit:     true,
+				}
+				if terr := taskmetrics.AppendTaskEvents(ctx, tx, cd, in.AuthorUserID, burnWorkspaceID); terr != nil {
+					return nil, fmt.Errorf("task cascade emit: %w", terr)
+				}
+			}
 		}
 	}
 

@@ -29,7 +29,25 @@ export interface SprintMetricsModel {
   kpis: SprintKPIs;
 }
 
+// TeamVelocity — the cross-sprint metric (mean net-accepted points per
+// COMPLETED sprint over a rolling window), distinct from the burndown's
+// intra-sprint "recent rate" (SprintKPIs.velocity, pts/day, 3-day rolling).
+// Backend: sprintmetrics.VelocityResult → GET /_site/timeboxes/velocity.
+// Standalone endpoint so any consumer reads team velocity the same way.
+export interface TeamVelocity {
+  points_per_sprint: number;
+  window_size: number;        // n actually averaged (≤ eligible)
+  eligible_sprints: number;   // past-dated sprints available
+  sampled_sprint_ids: string[];
+  low_confidence: boolean;    // < 3 sprints fed the average
+  has_data: boolean;          // false → show "—", not "0"
+}
+
 export const sprintMetrics = {
   get: (sprintId: ID): Promise<SprintMetricsModel> =>
     apiSite<SprintMetricsModel>(`/timeboxes/sprints/${sprintId}/metrics`),
+
+  // Workspace-level; Sentinel resolves the clamp server-side (no args).
+  teamVelocity: (): Promise<TeamVelocity> =>
+    apiSite<TeamVelocity>(`/timeboxes/velocity`),
 };

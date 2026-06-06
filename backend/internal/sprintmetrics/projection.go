@@ -27,7 +27,10 @@ func Project(in ProjectInput) Model {
 
 	scope := make([]float64, days+1)
 	remaining := make([]float64, days+1)
-	var scopeChanges []ScopeChange
+	// Non-nil so the wire carries `[]` not `null` when there are no
+	// mid-sprint scope changes — the frontend view-shaper also guards
+	// against null, but emitting [] keeps the JSON contract honest.
+	scopeChanges := []ScopeChange{}
 
 	// 3 + 4. Replay day by day, accumulating scope and remaining.
 	curScope := 0

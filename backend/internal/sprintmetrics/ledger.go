@@ -15,15 +15,27 @@ const kindAccepted = "accepted"
 // ArtefactDelta is the pure, DB-free before/after snapshot of a work item as it
 // crosses a write boundary. DeriveBurnEvents turns it into ledger rows.
 type ArtefactDelta struct {
-	ArtefactID      string
-	BeforeSprintID  string
-	AfterSprintID   string
-	BeforeKind      string
-	AfterKind       string
-	BeforePoints    int
-	AfterPoints     int
-	Points          int // = AfterPoints; used by add/remove/accept paths
-	IsAuthoritative bool
+	ArtefactID     string
+	BeforeSprintID string
+	AfterSprintID  string
+	BeforeKind     string
+	AfterKind      string
+	BeforePoints   int
+	AfterPoints    int
+	Points         int // = AfterPoints; used by add/remove/accept paths
+	// IsSprintUnit gates ALL ledger emission: only the artefact tier that
+	// carries committed sprint points emits burn events. That tier is the
+	// STORY tier — Story / Defect / Risk — the exact set the sprint-review
+	// grid shows. Epics never belong in a sprint (their children span
+	// sprints) and Tasks are sub-story execution carrying no committed
+	// points; neither emits. This REPLACES the earlier "authoritative parent"
+	// (no-live-children) rule, which wrongly suppressed a Story's own scope
+	// the moment it had Task children — leaving the burndown empty. With a
+	// tier gate there is no double-count: a Story is the sole emitter of its
+	// points; its Tasks contribute nothing. Origin: 2026-06-06 empty-burndown
+	// diagnosis (Sprint 1 — Red: 8 stories / 34 pts in-sprint, 1 of 11 events
+	// captured because parented stories were gated out).
+	IsSprintUnit bool
 }
 
 // PendingEvent is one un-persisted ledger row derived from an ArtefactDelta.
@@ -41,13 +53,16 @@ type PendingEvent struct {
 // precedence (membership > acceptance/points), except that acceptance and a
 // points change on the SAME sprint can both fire on one write.
 //
-// Value is earned ONLY when the AUTHORITATIVE PARENT flow state crosses INTO
-// "accepted"; leaving "accepted" (to anything) restores the points. Non-
-// authoritative rows (parents whose flow state is derived from children) emit
-// nothing — their children already emit.
+// Only the STORY tier (Story / Defect / Risk) emits — see IsSprintUnit. That
+// tier owns the sprint's committed points; a Story added to a sprint commits
+// its own points to scope regardless of whether it has Task children. Value is
+// earned when the Story crosses INTO "accepted" (reached, for a parented Story,
+// via the cascade rolling its Tasks up to "done" then a manual accept); leaving
+// "accepted" restores the points.
 func DeriveBurnEvents(d ArtefactDelta) []PendingEvent {
-	// 1. Only the authoritative row emits value/scope events.
-	if !d.IsAuthoritative {
+	// 1. Only a sprint unit (story tier) emits value/scope events. Tasks and
+	//    Epics carry no committed sprint points → nothing to record.
+	if !d.IsSprintUnit {
 		return nil
 	}
 

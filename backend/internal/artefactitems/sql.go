@@ -875,6 +875,25 @@ const sqlSelectCurrentFlowKind = `
 // query and treat the kind as "".
 const sqlSelectFlowKindByStateID = `SELECT COALESCE(flows_states_kind, '') FROM flows_states WHERE flows_states_id = $1`
 
+// sqlSelectSlotByTypeID resolves the project-locked slot handle
+// (wrk_story / wrk_defect / wrk_risk / wrk_task / wrk_epic, or NULL for a
+// custom tenant type) from an artefacts_types row id. Used by the
+// sprint-metrics burn-event capture to decide whether a row is a STORY-tier
+// sprint unit (the only tier that emits burn events). Empty id → "".
+const sqlSelectSlotByTypeID = `SELECT COALESCE(artefacts_types_slot, '') FROM artefacts_types WHERE artefacts_types_id = $1`
+
+// sqlSelectParentSprintID returns the timebox-sprint id of an artefact's parent
+// (the task's parent story). Empty string when no parent or the parent has no
+// sprint. Used by the task-count burndown emission: a task's EFFECTIVE sprint is
+// its parent story's sprint. Runs on the tx so it sees in-flight parent/sprint
+// reassignment.
+const sqlSelectParentSprintID = `SELECT COALESCE(parent.artefacts_id_timebox_sprint::text, '') FROM artefacts child JOIN artefacts parent ON parent.artefacts_id = child.artefacts_id_parent WHERE child.artefacts_id = $1`
+
+// sqlSelectTaskChildren returns (id, flow_kind) for every TASK-tier child of a
+// parent artefact. Used to cascade sprint-membership moves to the task burndown
+// when the parent story changes sprint.
+const sqlSelectTaskChildren = `SELECT c.artefacts_id::text, COALESCE(fs.flows_states_kind, '') FROM artefacts c JOIN artefacts_types t ON t.artefacts_types_id = c.artefacts_id_artefact_type LEFT JOIN flows_states fs ON fs.flows_states_id = c.artefacts_id_flow_state WHERE c.artefacts_id_parent = $1 AND t.artefacts_types_slot = 'wrk_task'`
+
 // sqlSelectFirstReachableStateByKind — finds the first state of the
 // target kind that is REACHABLE from `currentStateID` via a single
 // flows_transitions edge. Honours tenant-customised transition rules
