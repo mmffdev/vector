@@ -13,6 +13,7 @@
 import type { SprintMetricsModel, TeamVelocity } from "@/app/lib/apiSite";
 import { buildBurndownView, VB } from "@/app/components/charts/sprint/buildBurndownView";
 import { axisTicks } from "@/app/components/charts/sprint/axisScale";
+import { ForecastMarker } from "@/app/components/charts/sprint/ForecastMarker";
 
 export function SprintBurndownChart({
   model,
@@ -35,16 +36,13 @@ export function SprintBurndownChart({
   // data + headroom) so labels always match the plotted line — no clipping.
   const gridVals = axisTicks(v.yTop, 5);
 
+  // Date-pill lane below the x-axis (design 2026-06-06).
+  const PILL_LANE = 26;
+  const svgH = VB.H + PILL_LANE;
+  const pillY = plotBottom + 30;
+
   return (
     <div className="sprint-burndown">
-      {/* Full-width delivery-trend banner — pessimistic trend lands past sprint-end. */}
-      {v.banner && (
-        <div className="sprint-burndown__banner" role="status">
-          Current delivery trend projects completion on{" "}
-          <strong>{v.banner.date}</strong> if work continues at the current rate.
-        </div>
-      )}
-
       {/* KPI strip */}
       <div className="sprint-burndown__kpis">
         <div className="sprint-burndown__kpi">
@@ -97,9 +95,9 @@ export function SprintBurndownChart({
 
       <svg
         className="sprint-burndown__svg"
-        viewBox={`0 0 ${VB.W} ${VB.H}`}
+        viewBox={`0 0 ${VB.W} ${svgH}`}
         width="100%"
-        height={VB.H}
+        height={svgH}
         role="img"
         aria-label="Sprint burndown chart"
         preserveAspectRatio="xMidYMid meet"
@@ -240,31 +238,27 @@ export function SprintBurndownChart({
           </g>
         ))}
 
-        {/* 12. optimistic projected-finish: green vertical + circle + date. */}
-        {v.optFinish && (
-          <g>
-            <line
-              className="sprint-burndown__finish-line"
-              x1={v.optFinish.x}
-              y1={VB.plotT}
-              x2={v.optFinish.x}
-              y2={plotBottom}
-            />
-            <circle
-              className="sprint-burndown__finish-dot"
-              cx={v.optFinish.x}
-              cy={plotBottom}
-              r={4}
-            />
-            <text
-              className="sprint-burndown__finish-label"
-              x={v.optFinish.x}
-              y={VB.plotT - 4}
-              textAnchor="middle"
-            >
-              {v.optFinish.label}
-            </text>
-          </g>
+        {/* 12. forecast markers (green optimistic + red pessimistic) with date
+            pills in the lane below the x-axis. Red only in pessimistic mode. */}
+        {v.optMarker && (
+          <ForecastMarker
+            x={v.optMarker.x}
+            date={v.optMarker.date}
+            tone="opt"
+            plotTop={VB.plotT}
+            plotBottom={plotBottom}
+            pillY={pillY}
+          />
+        )}
+        {v.pessMarker && (
+          <ForecastMarker
+            x={v.pessMarker.x}
+            date={v.pessMarker.date}
+            tone="pess"
+            plotTop={VB.plotT}
+            plotBottom={plotBottom}
+            pillY={pillY}
+          />
         )}
       </svg>
 

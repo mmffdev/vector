@@ -82,12 +82,14 @@ type Forecast struct {
 	AvgLandingDay  float64 `json:"avg_landing_day"`
 	PessLandingDay float64 `json:"pess_landing_day"`
 
-	// PessLandingDate is the calendar date the pessimistic line hits zero,
-	// "YYYY-MM-DD". Empty when it never lands. Drives the past-end banner.
+	// Landing calendar dates ("YYYY-MM-DD"), empty when the line never lands.
+	// OptLandingDate drives the green finish pill; PessLandingDate the red one.
+	OptLandingDate  string `json:"opt_landing_date"`
 	PessLandingDate string `json:"pess_landing_date"`
 
 	// ProjectedPastEnd is true when the pessimistic line lands after sprint-end
-	// (pess_landing_day > sprint_days) — the trigger for the banner.
+	// (pess_landing_day > sprint_days) — the trigger for the red pessimistic
+	// marker (clamped to the right edge) + its date pill.
 	ProjectedPastEnd bool `json:"projected_past_end"`
 }
 

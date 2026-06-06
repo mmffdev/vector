@@ -10,7 +10,7 @@
  * line stops cleanly at the last real measurement.
  */
 import type { SprintMetricsModel } from "@/app/lib/apiSite";
-import { axisTop, dayToDate } from "@/app/components/charts/sprint/axisScale";
+import { axisTop, fmtYMD } from "@/app/components/charts/sprint/axisScale";
 
 export const VB = {
   W: 560,
@@ -38,11 +38,12 @@ export interface BurndownView {
   markers: { x: number; y: number }[];
   todayX: number;
   yTop: number;
-  // Optimistic projected-finish marker (green vertical + circle), null when the
-  // optimistic trend never lands or lands off the right edge.
-  optFinish: { x: number; label: string } | null;
-  // Past-end banner when the pessimistic trend lands after sprint-end.
-  banner: { date: string } | null;
+  // Green optimistic marker at the optimistic-landing x (clamped to right edge),
+  // with its date. null when the optimistic trend never lands.
+  optMarker: { x: number; date: string } | null;
+  // Red pessimistic marker — only when pess lands past sprint-end; clamped to
+  // the right edge, date is the true projected landing. null otherwise.
+  pessMarker: { x: number; date: string } | null;
 }
 
 interface Pt { x: number; y: number; }
@@ -180,18 +181,19 @@ export function buildBurndownView(m0: SprintMetricsModel): BurndownView {
 
   const todayX = x(today);
 
-  // ── Optimistic projected-finish marker + past-end banner (parity with the
-  // task shaper). opt_landing_day is the day the fastest-recent trend hits zero;
-  // show the green marker only when it lands within the plotted window.
+  // ── Forecast markers (parity with the task shaper; design 2026-06-06).
+  // Green optimistic marker at opt-landing x (clamped to right edge); red
+  // pessimistic marker at the right edge only when pess lands past sprint-end.
   const fc = m.forecast;
-  let optFinish: { x: number; label: string } | null = null;
-  if (fc && fc.opt_landing_day >= 0 && fc.opt_landing_day <= sprint_days) {
-    optFinish = { x: x(fc.opt_landing_day), label: dayToDate(m.window.start, fc.opt_landing_day) };
+  const rightEdge = x(sprint_days);
+  let optMarker: { x: number; date: string } | null = null;
+  if (fc && fc.opt_landing_day >= 0 && fc.opt_landing_date) {
+    optMarker = { x: Math.min(x(fc.opt_landing_day), rightEdge), date: fmtYMD(fc.opt_landing_date) };
   }
-  const banner =
-    fc && fc.projected_past_end && fc.pess_landing_date
-      ? { date: fc.pess_landing_date }
-      : null;
+  let pessMarker: { x: number; date: string } | null = null;
+  if (fc && fc.projected_past_end && fc.pess_landing_date) {
+    pessMarker = { x: rightEdge, date: fmtYMD(fc.pess_landing_date) };
+  }
 
   return {
     x,
@@ -209,7 +211,7 @@ export function buildBurndownView(m0: SprintMetricsModel): BurndownView {
     markers,
     todayX,
     yTop,
-    optFinish,
-    banner,
+    optMarker,
+    pessMarker,
   };
 }

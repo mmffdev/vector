@@ -22,8 +22,9 @@ export interface TaskForecast {
   opt_landing_day: number;
   avg_landing_day: number;
   pess_landing_day: number;
-  pess_landing_date: string;      // "YYYY-MM-DD"; "" when never lands
-  projected_past_end: boolean;    // pess lands after sprint-end → banner
+  opt_landing_date: string;       // "YYYY-MM-DD"; "" when never lands
+  pess_landing_date: string;
+  projected_past_end: boolean;    // pess lands after sprint-end → red marker
 }
 export interface TaskKPIs {
   total: number; completed: number; remaining: number;

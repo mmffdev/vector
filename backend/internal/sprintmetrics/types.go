@@ -75,6 +75,7 @@ type Forecast struct {
 	AvgLandingDay  float64 `json:"avg_landing_day"`
 	PessLandingDay float64 `json:"pess_landing_day"`
 
+	OptLandingDate   string `json:"opt_landing_date"`
 	PessLandingDate  string `json:"pess_landing_date"`
 	ProjectedPastEnd bool   `json:"projected_past_end"`
 }

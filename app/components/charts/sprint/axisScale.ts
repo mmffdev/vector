@@ -19,7 +19,18 @@ export function dayToDate(start: string, dayOffset: number): string {
   if (!m) return "";
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
   d.setUTCDate(d.getUTCDate() + Math.round(dayOffset));
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return fmtDayMonth(d);
+}
+
+/** fmtYMD formats a "YYYY-MM-DD" string as "D Mon" (e.g. "6 Jul"). */
+export function fmtYMD(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd);
+  if (!m) return "";
+  return fmtDayMonth(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])));
+}
+
+function fmtDayMonth(d: Date): string {
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /** niceCeil rounds `v` up to a visually-tidy axis maximum. */

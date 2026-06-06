@@ -14,6 +14,7 @@
 import type { TaskMetricsModel } from "@/app/lib/apiSite";
 import { buildTaskBurndownView, VB } from "@/app/components/charts/sprint/buildTaskBurndownView";
 import { axisTicks } from "@/app/components/charts/sprint/axisScale";
+import { ForecastMarker } from "@/app/components/charts/sprint/ForecastMarker";
 
 export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
   const v = buildTaskBurndownView(model);
@@ -27,17 +28,14 @@ export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
   // contain every series + overshoot headroom), so labels always match the line.
   const gridVals = axisTicks(v.yTop, 5);
 
+  // Date-pill lane below the x-axis labels (design 2026-06-06). Extend the
+  // viewBox so the green/red finish pills sit in their own row, like the mockup.
+  const PILL_LANE = 26;
+  const svgH = VB.H + PILL_LANE;
+  const pillY = plotBottom + 30; // below the day-number ticks (which sit at +16)
+
   return (
     <div className="sprint-burndown">
-      {/* Full-width delivery-trend banner — only when the pessimistic trend
-          projects completion AFTER sprint-end. */}
-      {v.banner && (
-        <div className="sprint-burndown__banner" role="status">
-          Current delivery trend projects completion on{" "}
-          <strong>{v.banner.date}</strong> if work continues at the current rate.
-        </div>
-      )}
-
       {/* KPI strip — engineering-team view: counts, no velocity. */}
       <div className="sprint-burndown__kpis">
         <div className="sprint-burndown__kpi">
@@ -68,9 +66,9 @@ export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
 
       <svg
         className="sprint-burndown__svg"
-        viewBox={`0 0 ${VB.W} ${VB.H}`}
+        viewBox={`0 0 ${VB.W} ${svgH}`}
         width="100%"
-        height={VB.H}
+        height={svgH}
         role="img"
         aria-label="Task burndown chart"
         preserveAspectRatio="xMidYMid meet"
@@ -211,32 +209,28 @@ export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
           </g>
         ))}
 
-        {/* 12. optimistic projected-finish: green vertical line + circle at the
-            baseline where the fastest-recent trend lands, with its date. */}
-        {v.optFinish && (
-          <g>
-            <line
-              className="sprint-burndown__finish-line"
-              x1={v.optFinish.x}
-              y1={VB.plotT}
-              x2={v.optFinish.x}
-              y2={plotBottom}
-            />
-            <circle
-              className="sprint-burndown__finish-dot"
-              cx={v.optFinish.x}
-              cy={plotBottom}
-              r={4}
-            />
-            <text
-              className="sprint-burndown__finish-label"
-              x={v.optFinish.x}
-              y={VB.plotT - 4}
-              textAnchor="middle"
-            >
-              {v.optFinish.label}
-            </text>
-          </g>
+        {/* 12. forecast markers (design 2026-06-06): green optimistic + red
+            pessimistic vertical dotted lines, baseline dots, and chevron date
+            pills in the lane below the x-axis. Red only in pessimistic mode. */}
+        {v.optMarker && (
+          <ForecastMarker
+            x={v.optMarker.x}
+            date={v.optMarker.date}
+            tone="opt"
+            plotTop={VB.plotT}
+            plotBottom={plotBottom}
+            pillY={pillY}
+          />
+        )}
+        {v.pessMarker && (
+          <ForecastMarker
+            x={v.pessMarker.x}
+            date={v.pessMarker.date}
+            tone="pess"
+            plotTop={VB.plotT}
+            plotBottom={plotBottom}
+            pillY={pillY}
+          />
         )}
       </svg>
 

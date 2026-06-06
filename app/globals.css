@@ -14315,6 +14315,15 @@ input[type="reset"] {
   background: #ffcc33;
   color: #000;
 }
+/* Created modifier — applied to a freshly-created artefact's flyout when it
+   auto-opens after a successful create (mirrors --duplicate's amber, but green
+   for "added"). Green on black text so it reads as a positive confirmation,
+   distinct from the amber clone head and the red delete head. Lowest priority:
+   --deleting and --duplicate both win over it (see ArtefactInlineForm.tsx). */
+.artefact-inline-form__Container_Head--created {
+  background: var(--good-green, #66cc00);
+  color: #000;
+}
 /* Deleting modifier — applied while the user is confirming a delete.
    Red on black-text so the danger is unambiguous; takes precedence over
    --duplicate when both would apply (see ArtefactInlineForm.tsx). */
@@ -14344,6 +14353,7 @@ input[type="reset"] {
    override here rather than removing it from the base. */
 .artefact-inline-form__Container_Head,
 .artefact-inline-form__Container_Head--duplicate,
+.artefact-inline-form__Container_Head--created,
 .artefact-inline-form__Container_Head--deleting {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -22622,33 +22632,25 @@ tr.is-editing {
   background: var(--chart-optimistic);
 }
 
-/* Optimistic projected-finish marker (green vertical + circle + date). */
-.sprint-burndown__finish-line {
-  stroke: var(--chart-optimistic);
+/* Forecast finish markers (green optimistic / red pessimistic): dotted vertical
+   line + baseline dot + chevron date pill in the lane below the x-axis. Colour
+   is tone-driven via --chart-optimistic / --chart-pessimistic. */
+.sprint-burndown__fmark-line {
   stroke-width: 1.5px;
   stroke-dasharray: 3 3;
-  opacity: 0.7;
+  opacity: 0.85;
 }
-.sprint-burndown__finish-dot {
-  fill: var(--chart-optimistic);
-}
-.sprint-burndown__finish-label {
-  fill: var(--chart-optimistic);
+.sprint-burndown__fmark-pilltext {
+  fill: var(--surface);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
-
-/* Full-width delivery-trend banner — pessimistic lands past sprint-end. */
-.sprint-burndown__banner {
-  width: 100%;
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: var(--status-warning-bg, color-mix(in srgb, var(--chart-pessimistic) 12%, transparent));
-  color: var(--ink);
-  border-left: 3px solid var(--chart-pessimistic);
-  font-size: 13px;
-  line-height: 1.4;
-}
+.sprint-burndown__fmark--opt .sprint-burndown__fmark-line { stroke: var(--chart-optimistic); }
+.sprint-burndown__fmark--opt .sprint-burndown__fmark-dot,
+.sprint-burndown__fmark--opt .sprint-burndown__fmark-pill { fill: var(--chart-optimistic); }
+.sprint-burndown__fmark--pess .sprint-burndown__fmark-line { stroke: var(--chart-pessimistic); }
+.sprint-burndown__fmark--pess .sprint-burndown__fmark-dot,
+.sprint-burndown__fmark--pess .sprint-burndown__fmark-pill { fill: var(--chart-pessimistic); }
 
 /* === value-sprint-review burndown bar === */
 .value-sprint-review__burndown-bar { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }

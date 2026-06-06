@@ -15,7 +15,7 @@ const model: TaskMetricsModel = {
   forecast: {
     optimistic_velocity: 2, average_velocity: 2, pessimistic_velocity: 2,
     opt_landing_day: 5, avg_landing_day: 5, pess_landing_day: 5,
-    pess_landing_date: "", projected_past_end: false,
+    opt_landing_date: "2026-01-06", pess_landing_date: "", projected_past_end: false,
   },
   scope_changes: [],
   kpis: { total: 10, completed: 4, remaining: 6, days_left: 8, on_track: true, projected_short: 0 },
@@ -41,26 +41,34 @@ describe("buildTaskBurndownView", () => {
     expect(v.y(v.yTop)).toBeCloseTo(VB.plotT, 1);
   });
 
-  it("places the optimistic finish marker at the landing day when it lands in-window", () => {
+  it("places the green optimistic marker at the optimistic-landing x with its date", () => {
     const v = buildTaskBurndownView(model);
-    // opt_landing_day = 5 (<= sprint_days 10) → marker at x(5), with a date label.
-    expect(v.optFinish).not.toBeNull();
-    expect(v.optFinish!.x).toBeCloseTo(VB.plotL + (5 / 10) * VB.plotW, 1);
-    expect(v.optFinish!.label.length).toBeGreaterThan(0);
+    // opt_landing_day = 5 → marker at x(5); date formatted "6 Jan".
+    expect(v.optMarker).not.toBeNull();
+    expect(v.optMarker!.x).toBeCloseTo(VB.plotL + (5 / 10) * VB.plotW, 1);
+    expect(v.optMarker!.date).toBe("6 Jan");
   });
 
-  it("hides the finish marker when the optimistic trend never lands", () => {
-    const noLand = { ...model, forecast: { ...model.forecast, opt_landing_day: -1 } };
-    expect(buildTaskBurndownView(noLand).optFinish).toBeNull();
+  it("hides the optimistic marker when the trend never lands", () => {
+    const noLand = { ...model, forecast: { ...model.forecast, opt_landing_day: -1, opt_landing_date: "" } };
+    expect(buildTaskBurndownView(noLand).optMarker).toBeNull();
   });
 
-  it("shows the past-end banner only when projected_past_end with a date", () => {
-    expect(buildTaskBurndownView(model).banner).toBeNull();
+  it("clamps the optimistic marker to the right edge when it lands past it", () => {
+    const past = { ...model, forecast: { ...model.forecast, opt_landing_day: 14 } };
+    const v = buildTaskBurndownView(past);
+    expect(v.optMarker!.x).toBeCloseTo(VB.plotL + VB.plotW, 1); // right edge (day 10)
+  });
+
+  it("shows the red pessimistic marker at the right edge only when past-end", () => {
+    expect(buildTaskBurndownView(model).pessMarker).toBeNull();
     const late = {
       ...model,
       forecast: { ...model.forecast, projected_past_end: true, pess_landing_date: "2026-01-18" },
     };
-    expect(buildTaskBurndownView(late).banner).toEqual({ date: "2026-01-18" });
+    const v = buildTaskBurndownView(late);
+    expect(v.pessMarker!.x).toBeCloseTo(VB.plotL + VB.plotW, 1); // clamped to right edge
+    expect(v.pessMarker!.date).toBe("18 Jan");
   });
 
   it("tolerates null array fields from the wire", () => {

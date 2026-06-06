@@ -20,6 +20,7 @@ export interface SprintForecast {
   opt_landing_day: number;
   avg_landing_day: number;
   pess_landing_day: number;
+  opt_landing_date: string;
   pess_landing_date: string;
   projected_past_end: boolean;
 }

@@ -140,6 +140,10 @@ func Project(in ProjectInput) Model {
 	pessLand := land(pessV)
 
 	pessPastEnd := pessLand > float64(days)
+	optDate := ""
+	if optLand >= 0 {
+		optDate = addDays(in.Window.Start, int(math.Round(optLand)))
+	}
 	pessDate := ""
 	if pessLand >= 0 {
 		// Calendar date of the (possibly past-end) pessimistic landing day.
@@ -153,6 +157,7 @@ func Project(in ProjectInput) Model {
 		OptLandingDay:       optLand,
 		AvgLandingDay:       avgLand,
 		PessLandingDay:      pessLand,
+		OptLandingDate:      optDate,
 		PessLandingDate:     pessDate,
 		ProjectedPastEnd:    pessPastEnd,
 	}

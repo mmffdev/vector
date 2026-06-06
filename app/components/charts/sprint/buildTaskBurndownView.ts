@@ -9,7 +9,7 @@
  * cone, ideal_* — so the body is identical to the points shaper.
  */
 import type { TaskMetricsModel } from "@/app/lib/apiSite";
-import { axisTop, dayToDate } from "@/app/components/charts/sprint/axisScale";
+import { axisTop, fmtYMD } from "@/app/components/charts/sprint/axisScale";
 
 export const VB = {
   W: 560,
@@ -37,12 +37,14 @@ export interface TaskBurndownView {
   markers: { x: number; y: number }[];
   todayX: number;
   yTop: number;
-  // Optimistic projected-finish marker: the green vertical line + circle at the
-  // day the optimistic (fastest recent) trend reaches zero. null when it never
-  // lands (velocity <= 0) or lands off the right edge of the plot.
-  optFinish: { x: number; label: string } | null;
-  // Past-end banner: set when the pessimistic trend lands after sprint-end.
-  banner: { date: string } | null;
+  // Green optimistic marker: vertical dotted line + baseline circle at the day
+  // the optimistic (fastest-recent) trend reaches zero, with its calendar date.
+  // null when the optimistic trend never lands (velocity <= 0).
+  optMarker: { x: number; date: string } | null;
+  // Red pessimistic marker: shown ONLY when the pessimistic trend lands past
+  // sprint-end. Always clamped to the right plot edge (the deadline); the date
+  // is the TRUE projected landing date (which is past the edge). null otherwise.
+  pessMarker: { x: number; date: string } | null;
 }
 
 interface Pt { x: number; y: number; }
@@ -168,22 +170,25 @@ export function buildTaskBurndownView(m0: TaskMetricsModel): TaskBurndownView {
 
   const todayX = x(today);
 
-  // ── Optimistic projected-finish marker. The forecast's opt_landing_day is the
-  // day the fastest-recent trend reaches zero. Show the green marker only when
-  // it lands (>= 0) AND within the plotted window (<= sprint_days); a landing
-  // past the right edge is communicated by the banner instead, not a clipped
-  // marker. Label is the calendar date of that finish day.
+  // ── Forecast markers (design: 2026-06-06 mockup).
+  // GREEN optimistic marker: at the x where the optimistic line reaches zero
+  // (opt_landing_day), with its calendar date. Shown whenever it lands; if the
+  // landing is past the right edge it's clamped there (the line can't exit the
+  // SVG, but the date pill still reads true).
+  // RED pessimistic marker: ONLY when the pessimistic trend lands past sprint-end
+  // (projected_past_end). ALWAYS clamped to the right plot edge (the deadline);
+  // the date is the TRUE projected landing date.
   const fc = m.forecast;
-  let optFinish: { x: number; label: string } | null = null;
-  if (fc && fc.opt_landing_day >= 0 && fc.opt_landing_day <= sprint_days) {
-    optFinish = { x: x(fc.opt_landing_day), label: dayToDate(m.window.start, fc.opt_landing_day) };
+  const rightEdge = x(sprint_days);
+  let optMarker: { x: number; date: string } | null = null;
+  if (fc && fc.opt_landing_day >= 0 && fc.opt_landing_date) {
+    const ox = Math.min(x(fc.opt_landing_day), rightEdge);
+    optMarker = { x: ox, date: fmtYMD(fc.opt_landing_date) };
   }
-
-  // ── Past-end banner: pessimistic trend lands after sprint-end.
-  const banner =
-    fc && fc.projected_past_end && fc.pess_landing_date
-      ? { date: fc.pess_landing_date }
-      : null;
+  let pessMarker: { x: number; date: string } | null = null;
+  if (fc && fc.projected_past_end && fc.pess_landing_date) {
+    pessMarker = { x: rightEdge, date: fmtYMD(fc.pess_landing_date) };
+  }
 
   return {
     x,
@@ -201,7 +206,7 @@ export function buildTaskBurndownView(m0: TaskMetricsModel): TaskBurndownView {
     markers,
     todayX,
     yTop,
-    optFinish,
-    banner,
+    optMarker,
+    pessMarker,
   };
 }
