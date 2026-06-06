@@ -53,6 +53,7 @@ import (
 	"github.com/mmffdev/vector-backend/internal/mentions"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
 	"github.com/mmffdev/vector-backend/internal/nav"
+	"github.com/mmffdev/vector-backend/internal/navmap"
 	"github.com/mmffdev/vector-backend/internal/notifications"
 	"github.com/mmffdev/vector-backend/internal/notifications/broker"
 	"github.com/mmffdev/vector-backend/internal/notifications/dispatchers"
@@ -346,6 +347,11 @@ func main() {
 	)
 	navH := nav.NewHandler(navSvc, navPageBookmarks, customPagesSvc)
 	navGrantsAdminH := nav.NewGrantsAdminHandler(servicePool, navRegistry, rolesSvc, auditLog)
+
+	// navmap — unfiltered nav spine for the <report> -a architecture map.
+	// Reads pages + pages_tags from servicePool (vector_artefacts). Dev-gated.
+	navMapSvc := navmap.New(servicePool)
+	navMapH := navmap.NewHandler(navMapSvc)
 
 	// PLA-0049 Phase 0.5: page-access resolver + handler. The resolver
 	// caches the global pages_access_version (1s in-process) and a
@@ -1696,6 +1702,7 @@ func main() {
 					r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
 					r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
 					r.Get("/dev/api-audit", devResetH.ApiAudit)
+					r.Get("/dev/architecture/spine", navMapH.GetSpine)
 					r.Get("/dev/erd", erdH.Get)
 					r.Post("/dev/erd", erdH.Snapshot)
 					r.Get("/dev/codegraph", devResetH.Codegraph)
