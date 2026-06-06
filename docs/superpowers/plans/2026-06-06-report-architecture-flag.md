@@ -158,6 +158,8 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 The column names are verified against `backend/internal/nav/sql.go` (`pages_*`, `pages_tags_*`). Both tables live in `vector_artefacts` (servicePool / vaPool) per the DB-routing rule.
 
+> **Correction (applied during build):** the bucket label column is **`pages_tags_display_name`** (NOT `pages_tags_label`), and the system-page filter is **`pages_id_user_creator IS NULL`** (NOT `created_by IS NULL`). The shipped `sql.go` uses the corrected names — see commit `f711770c`. Use those, not the draft names in the code block below.
+
 - [ ] **Step 1: Write the SQL constants**
 
 ```go

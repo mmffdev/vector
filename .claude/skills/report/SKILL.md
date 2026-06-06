@@ -929,6 +929,7 @@ Cite real file paths. Do not invent components. Leaf-tier components may be list
 
 ### Hard rules
 
+- **The `architecture` type is gated by a DB CHECK constraint.** `dev_reports.type` in `mmff_dev` enforces an allow-list (migration `004_dev_reports_add_architecture.sql` added `architecture`). If a POST returns `500 … dev_reports_type_check (SQLSTATE 23514)`, the live DB is missing the type — apply migration 004 against `mmff_dev` (tunnel `localhost:5435`) before retrying. The Go `ValidTypes`, the frontend union, and the DB CHECK must all include `architecture`.
 - **Never mint a new report id.** `-a` is always `ARC001`. The Change Log carries the version history.
 - **Never regenerate an existing ID.** Look up from `.claude/arch-map-ids.json`; generate only for genuinely new slugs; retire (never delete/reuse) vanished ones.
 - **Stay on the dev backend.** The spine comes from `:5100`; do not psql-guess the nav tables (the `/dev/architecture/spine` endpoint is the sanctioned source).
