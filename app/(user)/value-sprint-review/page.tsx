@@ -417,7 +417,7 @@ export default function ValueSprintReview() {
                   {taskLoading
                     ? "Loading task burndown…"
                     : panelSprintId
-                      ? "No task burndown yet — it populates as tasks are added under sprinted stories and marked done."
+                      ? "This sprint has no tasks under its stories yet — the chart appears as soon as a story in the sprint has Task children."
                       : "Select a sprint to see its task burndown."}
                 </p>
               )}

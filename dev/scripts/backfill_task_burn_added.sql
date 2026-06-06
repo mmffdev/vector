@@ -22,7 +22,9 @@
 --   'added'  : remaining_delta = scope_delta = 1, at the sprint START date
 --              (committed baseline, visible from day 0).
 --   'done'   : remaining_delta = -1, scope_delta = 0, at the task's
---              flow-state-change date (best-effort; falls back to sprint start).
+--              updated_at (best-effort done-date — flow_state_changed_at is
+--              unpopulated in this substrate, so updated_at is the live signal;
+--              falls back to sprint start only if updated_at is null).
 --   id_actor = NULL (system backfill; column is nullable).
 --
 -- Idempotent: each INSERT skips tasks that already have the matching event.
@@ -81,7 +83,7 @@ SELECT
   'done',
   -1,
   0,
-  COALESCE(child.artefacts_flow_state_changed_at, s.timeboxes_sprints_date_start::timestamptz),
+  COALESCE(child.artefacts_updated_at, s.timeboxes_sprints_date_start::timestamptz),
   NULL,
   child.artefacts_id_workspace
 FROM artefacts child
