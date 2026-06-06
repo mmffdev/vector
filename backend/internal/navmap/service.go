@@ -69,10 +69,12 @@ func (s *Service) queryPages(ctx context.Context) ([]SpinePage, map[string]strin
 func assembleSpine(buckets []SpineBucket, pages []SpinePage, tagOf map[string]string) SpineResponse {
 	byTag := make(map[string]int, len(buckets)) // tag_enum -> index in buckets
 	for i := range buckets {
-		buckets[i].Pages = nil
+		// Non-nil empty slice so a bucket with no pages serializes as
+		// "pages":[] not "pages":null — consumers never need a null-guard.
+		buckets[i].Pages = []SpinePage{}
 		byTag[buckets[i].TagEnum] = i
 	}
-	var untagged []SpinePage
+	untagged := []SpinePage{}
 	for _, p := range pages {
 		tag := tagOf[p.KeyEnum]
 		if idx, ok := byTag[tag]; ok {
@@ -80,6 +82,9 @@ func assembleSpine(buckets []SpineBucket, pages []SpinePage, tagOf map[string]st
 		} else {
 			untagged = append(untagged, p)
 		}
+	}
+	if buckets == nil {
+		buckets = []SpineBucket{}
 	}
 	return SpineResponse{Buckets: buckets, Untagged: untagged}
 }

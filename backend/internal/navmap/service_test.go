@@ -46,4 +46,19 @@ func TestAssembleSpine_EmptyInputs(t *testing.T) {
 	if len(resp.Untagged) != 0 {
 		t.Fatalf("want 0 untagged, got %d", len(resp.Untagged))
 	}
+	// Contract: slices are non-nil so JSON serializes as [] not null.
+	if resp.Buckets == nil {
+		t.Fatalf("Buckets must be non-nil (serializes as [])")
+	}
+	if resp.Untagged == nil {
+		t.Fatalf("Untagged must be non-nil (serializes as [])")
+	}
+}
+
+func TestAssembleSpine_EmptyBucketHasNonNilPages(t *testing.T) {
+	buckets := []SpineBucket{{TagEnum: "empty", Label: "Empty"}}
+	resp := assembleSpine(buckets, nil, nil)
+	if resp.Buckets[0].Pages == nil {
+		t.Fatalf("a bucket with no pages must have non-nil Pages (serializes as [])")
+	}
 }
