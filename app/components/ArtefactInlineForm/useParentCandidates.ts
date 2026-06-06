@@ -31,34 +31,49 @@ interface UseParentCandidatesResult {
 
 // Resolves the set of artefact types this type may legally parent under.
 //
-// Priority order (most-specific data wins so tenants can grow into the
-// model without losing the static safety net):
+// Priority order:
 //
-//   1. `layer_depth` model — if the editing type has a layer_depth, the
-//      allowed parents are every type whose layer_depth is strictly less.
-//      Crosses scope freely (strategy types sit above execution types
-//      because their depths are smaller).
-//   2. `parent_type_id` chain — walk upward from parent_type_id,
-//      collecting every ancestor. Single-parent-per-type; works for a
-//      strict ladder but can't express Story → Epic OR Feature.
-//   3. Static `PARENT_PREFIX_MAP` fallback. Keeps the legacy fixed
-//      hierarchy working for tenants that haven't populated the model.
+//   1. Static `PARENT_PREFIX_MAP` — AUTHORITATIVE for any type whose prefix
+//      is in the map (all execution types: US→[FE,EP], DE→[EP,US], TA→[DE,US],
+//      EP→[FE]). This is the SAME rule the drag-reparent path enforces
+//      (workItemsCanReparent), so create / inline-edit / drag all agree.
+//      It is keyed by prefix → resolved to type UUIDs below.
+//   2. `layer_depth` model — fallback ONLY for types NOT in the map, i.e. the
+//      pure-strategic ladder (PRW=0 < PR=1 < BO=2 < TH=3 < FT=4). Allowed
+//      parents = every type with a strictly-smaller depth.
+//   3. `parent_type_id` chain — last-resort walk for types with neither.
 //
-// Each allowed type id is then queried against its scope-appropriate
-// endpoint (work types → /work-items; strategy types → /portfolio-items).
-// apiSite() forwards ?meg= on GETs so the topology clamp comes for free.
+// Why the map wins over layer_depth (2026-06-06): the live artefacts_types
+// layer_depth data is contaminated for execution types — duplicate rows with
+// conflicting depths (US=0 AND 5, DE=0 AND 6, EP=0 AND 9), and Feature (FE) is
+// NULL. The depth model therefore both (a) excluded the one valid Story parent
+// (Feature) and (b) crossed the work→strategy boundary, surfacing the whole
+// BO/PR/PRW/TH ladder under a Story. PARENT_PREFIX_MAP is the curated truth.
+// (Data cleanup tracked as TD-ARTEFACT-TYPE-DEPTH-DUP.)
+//
+// Each allowed type id is then queried against its scope-appropriate endpoint
+// (work types → /work-items; strategy types → /portfolio-items). apiSite()
+// forwards ?meg= on GETs so the topology clamp comes for free.
 function resolveAllowedTypes(
   editing: ArtefactType,
   allTypes: ArtefactType[],
 ): ArtefactType[] {
-  // (1) layer_depth model — most expressive.
+  // (1) PARENT_PREFIX_MAP — authoritative when the editing type is in it.
+  const allowedPrefixes = PARENT_PREFIX_MAP[editing.prefix.toUpperCase()];
+  if (allowedPrefixes != null) {
+    const allowedSet = new Set(allowedPrefixes.map((p) => p.toUpperCase()));
+    return allTypes.filter(
+      (t) => allowedSet.has(t.prefix.toUpperCase()) && t.id !== editing.id,
+    );
+  }
+  // (2) layer_depth model — fallback for strategic-only types not in the map.
   if (editing.layer_depth != null) {
     const myDepth = editing.layer_depth;
     return allTypes.filter(
       (t) => t.layer_depth != null && t.layer_depth < myDepth && t.id !== editing.id,
     );
   }
-  // (2) parent_type_id chain — walk upward.
+  // (3) parent_type_id chain — walk upward.
   if (editing.parent_type_id != null) {
     const byId = new Map(allTypes.map((t) => [t.id, t]));
     const visited = new Set<string>();
@@ -73,11 +88,7 @@ function resolveAllowedTypes(
     }
     return out;
   }
-  // (3) Static fallback for tenants that haven't populated the model.
-  const allowedPrefixes = PARENT_PREFIX_MAP[editing.prefix.toUpperCase()] ?? [];
-  return allTypes.filter((t) =>
-    allowedPrefixes.includes(t.prefix.toUpperCase()),
-  );
+  return [];
 }
 
 function pickBundle(resourceUrl?: string) {
