@@ -393,6 +393,49 @@ paths:
                 type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /admin/dev/architecture/spine:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/architecture/spine
+      operationId: getAdminDevArchitectureSpine
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: navMapH.GetSpine
+        file: backend/internal/navmap/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  buckets:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: SpineBucket
+                  untagged:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: SpinePage
+                required:
+                - buckets
+                - untagged
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /admin/dev/artefacts-count:
     get:
       tags:
@@ -10337,6 +10380,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /timeboxes/sprints/{id}/task-metrics:
+    get:
+      tags:
+      - timeboxes
+      summary: GET /timeboxes/sprints/{id}/task-metrics
+      operationId: getTimeboxesSprintsIdTaskMetrics
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: taskMetricsH.Metrics
+        file: backend/internal/taskmetrics/handler.go
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
   /timeboxes/velocity:

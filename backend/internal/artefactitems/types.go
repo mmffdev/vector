@@ -370,6 +370,19 @@ type CreateWorkItemInput struct {
 	// custom values are committed atomically. Empty / nil → no custom
 	// fields written, behaviour matches the legacy create.
 	CustomFields []UpsertFieldValueInput
+	// RankPlacement controls where the new artefact lands in the dense
+	// Prio rank (derived from artefacts_position). One of:
+	//   "" | "bottom" → MAX(position)+100   (default, back-compat)
+	//   "top"         → MIN(position)-100
+	//   "after"       → midpoint just below AfterArtefactID's position
+	//                   (duplicate-only; ignored when AfterArtefactID is nil)
+	// Rally pins new items to the bottom with no choice; this is the
+	// Vector differentiator. Unknown values fall back to "bottom".
+	RankPlacement string
+	// AfterArtefactID is the source artefact a duplicate should sit
+	// directly beneath in the rank. Required when RankPlacement=="after";
+	// when nil/invalid, "after" degrades to "bottom".
+	AfterArtefactID *string
 }
 
 // PatchWorkItemInput holds optional fields for partial update.

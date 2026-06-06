@@ -147,7 +147,10 @@
       "WebFetch(domain:laraveldaily.com)",
       "WebFetch(domain:v-checha.medium.com)",
       "WebFetch(domain:www.servicenow.com)",
-      "WebFetch(domain:developers.asana.com)"
+      "WebFetch(domain:developers.asana.com)",
+      "WebFetch(domain:rally.broadcom.com)",
+      "Bash(cd \"/Users/rick/Documents/MMFFDev - Projects/MMFFDev - Vector\" && echo \"=== append the two refs to scope-refs.map ===\" && printf 'B11.5\\\\tlive rank sync browser tabs scope grid prio reorder refetch websocket push topic backlog debounce\\\\nB11.6\\\\tscopeColumns prio test stale Grid__Tree lead track rowPrio PrioLead render numeric null rewrite\\\\n' >> .claude/scope-refs.map && echo \"appended\" && tail -3 .claude/scope-refs.map)",
+      "WebFetch(domain:www.brokenbuild.net)"
     ],
     "additionalDirectories": [
       "/Users/rick/.claude",

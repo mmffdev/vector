@@ -12,6 +12,7 @@ import { workspacesApi } from "@/app/lib/workspacesApi";
 import Panel from "@/app/components/Panel";
 import { StrictRoute } from "@/app/contexts/DomRegistryContext";
 import ServiceHealthPanel from "@/app/components/ServiceHealthPanel";
+import DevScopeActionsPanel from "@dev/pages/DevScopeActionsPanel";
 
 export default function DevSetupPage() {
   usePageHeader({
@@ -202,6 +203,8 @@ export default function DevSetupPage() {
             </div>
           )}
         </Panel>
+
+        <DevScopeActionsPanel />
 
         <Panel name="dev_seed_risks" title="Seed Risks">
           <p className="dev-p">

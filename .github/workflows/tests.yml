@@ -101,6 +101,32 @@ jobs:
       - name: lint:deferral-needs-td-id (HEAD commit)
         run: python3 dev/scripts/lint_deferral_needs_td_id.py
 
+      - name: lint:cross-db-writer-test
+        run: python3 dev/scripts/lint_cross_db_writer_test.py
+
+      - name: lint:column-prefix-convention
+        run: python3 dev/scripts/lint_column_prefix_convention.py
+
+      - name: lint:custom-field-prefix
+        run: python3 dev/scripts/lint_custom_field_prefix.py
+
+      - name: lint:no-direct-workspace-id
+        run: python3 dev/scripts/lint_no_direct_workspace_id.py
+
+      # lint:no-old-context-imports is intentionally NOT wired here yet:
+      # 2 architecturally-correct AuthContext reads (app/sentinel/
+      # SentinelProvider boot-sequencing; app/user/account-settings per
+      # bugfix 3c910088) keep it red until the credential flow is
+      # extracted to app/lib/auth.ts (TD-SENT-AUTH-EXTRACT). It runs in
+      # the npm `lint:rf1` chain + the local hook meanwhile. Wire it in
+      # the same PR that lands the extraction.
+
+      - name: lint:no-ghost-scope-ls-reads
+        run: python3 dev/scripts/lint_no_ghost_scope_ls_reads.py
+
+      - name: lint:artefact-read-sentinel
+        run: python3 dev/scripts/lint_artefact_read_sentinel.py
+
   existing-lints:
     name: Existing Project Lints
     runs-on: ubuntu-latest

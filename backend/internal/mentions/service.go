@@ -25,23 +25,35 @@ const snippetMax = 280
 // via a per-kind registry, and hands the fanned-out events to the
 // notifier interface for the (not-yet-built) runner to pick up.
 type Service struct {
-	pool     *pgxpool.Pool         // mmff_vector — users + users_mentions
-	vaPool   *pgxpool.Pool         // vector_artefacts — master_record_tenants
-	notifier notifications.Notifier
+	// pool is vector_artefacts — users + users_mentions + (when
+	// scopeAware) master_record_tenants. Single DB post-2026-05-26 merge
+	// (legacy mmff_vector DROPPED).
+	pool *pgxpool.Pool
+	// scopeAware gates the per-subscription mentions-scope lookup
+	// (master_record_tenants). When false, MentionsScope short-circuits
+	// to ScopeTenant without touching the DB — used by call sites that
+	// don't wire the scope feature (and historically when the scope pool
+	// was nil). Replaces the prior nil-pool sentinel with an explicit
+	// capability flag.
+	scopeAware bool
+	notifier   notifications.Notifier
 
 	mu        sync.RWMutex
 	resolvers map[string]ContextResolver
 }
 
-// NewService constructs a Service. vaPool and notifier may be nil —
-// scope defaults to 'tenant' when vaPool is nil, and a nil notifier
-// is treated as no-op (the same as NoopNotifier).
-func NewService(pool, vaPool *pgxpool.Pool, notifier notifications.Notifier) *Service {
+// NewService constructs a Service. scopePool and notifier may be nil —
+// a nil scopePool disables per-subscription scope resolution (defaults
+// to ScopeTenant), and a nil notifier is treated as no-op (the same as
+// NoopNotifier). scopePool, when non-nil, must address the same database
+// as pool (vector_artefacts) — both reads run on `pool`; scopePool is
+// only inspected for nil-ness to set the scopeAware capability flag.
+func NewService(pool, scopePool *pgxpool.Pool, notifier notifications.Notifier) *Service {
 	return &Service{
-		pool:      pool,
-		vaPool:    vaPool,
-		notifier:  notifier,
-		resolvers: make(map[string]ContextResolver),
+		pool:       pool,
+		scopeAware: scopePool != nil,
+		notifier:   notifier,
+		resolvers:  make(map[string]ContextResolver),
 	}
 }
 
@@ -76,14 +88,15 @@ func (s *Service) resolveLabel(rctx ResolveCtx, c Context) (string, error) {
 }
 
 // MentionsScope returns the active scope setting for the
-// subscription. Reads vaPool.master_record_tenants; falls back to
-// ScopeTenant when vaPool is unavailable or the row is missing.
+// subscription. Reads master_record_tenants; falls back to ScopeTenant
+// when the scope feature is not wired (scopeAware == false) or the row
+// is missing.
 func (s *Service) MentionsScope(ctx context.Context, subscriptionID uuid.UUID) (ScopeSetting, error) {
-	if s.vaPool == nil {
+	if !s.scopeAware {
 		return ScopeTenant, nil
 	}
 	var raw string
-	err := s.vaPool.QueryRow(ctx, sqlGetMentionsScopeSetting, subscriptionID).Scan(&raw)
+	err := s.pool.QueryRow(ctx, sqlGetMentionsScopeSetting, subscriptionID).Scan(&raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ScopeTenant, nil
 	}

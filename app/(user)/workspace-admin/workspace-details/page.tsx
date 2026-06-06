@@ -328,8 +328,6 @@ export default function WorkspaceDetailsPage() {
     if (sentinel_user && !canAccess) router.replace("/workspace-admin");
   }, [sentinel_user, canAccess, router]);
 
-  if (!sentinel_user || !canAccess) return null;
-
   const [original, setOriginal] = useState<FormState | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -457,6 +455,12 @@ export default function WorkspaceDetailsPage() {
     setForm(cloneState(original));
     setErrors({});
   }, [original]);
+
+  // Access guard — kept BELOW every hook so the hook order is stable
+  // across renders (Rules of Hooks). The redirect itself is fired by the
+  // useEffect above; this just renders nothing while sentinel_user is
+  // unresolved or the caller lacks workspace.archive.
+  if (!sentinel_user || !canAccess) return null;
 
   if (loading) {
     return (

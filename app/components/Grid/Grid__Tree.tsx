@@ -102,6 +102,13 @@ export interface GridTreeProps<TRow> {
   accentOf?: (row: TRow) => string | null;
   /** Extension seam: render a flyout/detail row below the given node. */
   renderRowDetail?: (node: TreeNode<TRow>) => React.ReactNode;
+  /**
+   * Extension seam: a node rendered directly BELOW the action bar and ABOVE
+   * the column head + rows — for grid-scoped panels that aren't row-attached,
+   * e.g. the create-new flyout. When it expands it pushes the head + rows down
+   * (ObjectTreeV2 parity), rather than floating at the bottom of the grid.
+   */
+  belowActionBar?: React.ReactNode;
   /** Which node currently has its detail open. */
   openDetailId?: string | null;
   selectedId?: string | null;
@@ -153,6 +160,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     rowPrio,
     accentOf,
     renderRowDetail,
+    belowActionBar,
     openDetailId,
     selectedId,
     onSelect,
@@ -507,6 +515,11 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
       )}
       {statsPanel && <GridTreeStatsPanel {...statsPanel} />}
       {actionBar && <GridTreeActionBar {...actionBar} />}
+      {belowActionBar != null && (
+        <div className="grid__Tree_BelowActionBar" role="presentation">
+          {belowActionBar}
+        </div>
+      )}
       <GridTreeHead
         columns={columns}
         gridTemplateColumns={cm.gridTemplateColumns}

@@ -91,6 +91,7 @@ export class LogViewer {
     // rAF defers the layout write out of the scroll handler and de-dupes bursts.
     this.dom.viewport.addEventListener('scroll', () => this.#scheduleRender(), { passive: true });
     this.dom.rows.addEventListener('click', (e) => this.#onRowClick(e));
+    this.dom.rows.addEventListener('dblclick', (e) => this.#onRowDblClick(e));
     this.dom.rows.addEventListener('contextmenu', (e) => this.#onRowContext(e));
 
     this.dom.jump.addEventListener('click', () => this.#promptJump());
@@ -133,9 +134,12 @@ export class LogViewer {
 
   setPaused(p) {
     this.paused = p;
-    // We keep the EventSource open but stop appending while paused, buffering
-    // nothing (next reconnect re-seeds). Simpler + matches "freeze the view".
-    if (!p) this.connect(this.sourceId); // re-seed to catch up
+    // Pause closes the stream so the server stops its per-connection poll loop
+    // (no idle DB queries while frozen). The on-screen rows are kept as-is.
+    // Resume reconnects, which re-seeds from the tail to catch up on anything
+    // that landed while paused.
+    if (p) this.disconnect();
+    else if (this.sourceId) this.connect(this.sourceId);
   }
 
   disconnect() {
@@ -289,7 +293,8 @@ export class LogViewer {
     const gutter = document.createElement('span');
     gutter.className = 'row__gutter';
     gutter.textContent = ln.lineNumber;
-    gutter.title = 'Click to select · ⇧ range · ⌘/Ctrl multi';
+    gutter.title = 'Click # to select · ⇧ range · ⌘/Ctrl multi';
+    row.title = 'Click to copy line + JSON · double-click to expand';
 
     const time = document.createElement('span');
     time.className = 'row__time';
@@ -323,14 +328,35 @@ export class LogViewer {
     const line = Number(row.dataset.line);
     const fidx = Number(row.dataset.fidx);
 
+    // The gutter (line number) is the selection affordance — click/⇧/⌘ select.
     if (e.target.closest('.row__gutter')) {
       this.#select(line, fidx, e);
       return;
     }
-    // body click toggles expand
+    // If the user dragged to select text in the row, respect that — don't
+    // clobber their manual selection with an auto-copy.
+    const sel = window.getSelection?.();
+    if (sel && !sel.isCollapsed && sel.toString().length) return;
+    // Body click copies the whole event (header line + pretty JSON) to the
+    // clipboard. Expand moves to double-click so this stays a single gesture.
+    const ln = this.lines.find((l) => l.lineNumber === line);
+    if (ln) this.#copyEvent(ln);
+  }
+
+  #onRowDblClick(e) {
+    const row = e.target.closest('.row');
+    if (!row || e.target.closest('.row__gutter')) return;
+    const line = Number(row.dataset.line);
     if (this.expanded.has(line)) this.expanded.delete(line);
     else this.expanded.add(line);
     this.repaint();
+  }
+
+  /** Copy a row as a tab-separated header line followed by its pretty JSON. */
+  #copyEvent(ln) {
+    const header = `${ln.lineNumber}\t${ln.ts ?? ''}\t${ln.level ?? ''}\t${ln.message ?? ''}`;
+    const json = ln.raw != null ? JSON.stringify(ln.raw, null, 2) : '(no raw payload)';
+    copyText(`${header}\n${json}`, this.opts.toast, `line ${ln.lineNumber} + JSON`);
   }
 
   #select(line, fidx, e) {

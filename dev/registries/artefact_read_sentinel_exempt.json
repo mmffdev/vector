@@ -1,0 +1,11 @@
+{
+  "_comment": "Packages that touch the tenant `artefacts` table but legitimately do NOT read the Sentinel clamp in an HTTP handler. Each entry needs a reason. This ledger is a ratchet — it should only ever shrink. See lint_artefact_read_sentinel.py and SEC-001 / RES066.",
+  "exempt": [
+    {
+      "package": "portfoliomodels",
+      "reason": "HTTP handlers (GetLatestByFamily, GetByModelID) read portfolio_templates, NOT the artefacts table. The package's `FROM artefacts` SELECTs are subscription-scoped (artefacts_id_subscription = $1) adoption-saga / dev-reset service methods that are NOT reachable from the HTTP handlers. Traced 2026-06-04 during SEC-001 remediation: handler.go:46-95 → Svc.FetchTemplate → portfolio_templates only. File-level match false-positive.",
+      "reviewed": "2026-06-04",
+      "review_trigger": "Re-verify if portfoliomodels gains a handler method that calls a service method SELECTing FROM artefacts with a caller-supplied id."
+    }
+  ]
+}

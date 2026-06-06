@@ -38,6 +38,14 @@ export interface GridTreeActionBarSearch {
 export interface GridTreeActionBarConfig {
   /** aria-label for the toolbar. */
   ariaLabel?: string;
+  /**
+   * Host-supplied nodes rendered at the START of the toolbar, before the
+   * create chip. The seam for page-specific affordances that belong on the
+   * tree's own action band — e.g. /value-sprint-review's Prev / Next / Current
+   * / Switch-sprint / Sprint-Status buttons. Mirrors ObjectTreeV2's
+   * `actionBarLeading`. Omit → nothing rendered (the /scope default).
+   */
+  leading?: React.ReactNode;
   /** Create-new control (radial pick-one). Omit → no create chip. */
   create?: GridTreeActionBarCreate;
   /** Search input. Omit → no search. */
@@ -48,6 +56,7 @@ export interface GridTreeActionBarConfig {
 
 export function GridTreeActionBar({
   ariaLabel = "Tree actions",
+  leading,
   create,
   search,
   filterChips,
@@ -58,6 +67,8 @@ export function GridTreeActionBar({
       role="toolbar"
       aria-label={ariaLabel}
     >
+      {leading}
+
       {create && create.types.length > 0 && (
         <NavigationPie
           label={create.label}

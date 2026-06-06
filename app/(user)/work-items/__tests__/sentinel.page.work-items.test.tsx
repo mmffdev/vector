@@ -112,9 +112,13 @@ vi.mock("@/app/components/Panel", () => ({
   __esModule: true,
   default: ({ children }: { children?: React.ReactNode }) => <section>{children}</section>,
 }));
-vi.mock("@/app/components/ObjectTreeV2/p_ObjectTree", () => ({
+// The page renders the Grid body via <GridWorkItems> (swapped off ObjectTreeV2
+// in commit 521ff63d). Stub it so this page-level Sentinel smoke test doesn't
+// pull in the grid's router/useTree/realtime machinery — the same reason the
+// old ObjectTreeV2 child was stubbed here. (Stale OTV2 mock removed.)
+vi.mock("../GridWorkItems", () => ({
   __esModule: true,
-  default: () => <div data-testid="object-tree" />,
+  GridWorkItems: () => <div data-testid="grid-work-items" />,
 }));
 vi.mock("@/app/hooks/useHintOnce", () => ({
   __esModule: true,
@@ -177,7 +181,7 @@ describe("sentinel.page.work-items", () => {
     ).not.toThrow();
   });
 
-  it("AC2.1 — ObjectTree mounts before the artefact-type catalogue resolves", async () => {
+  it("AC2.1 — grid body mounts before the artefact-type catalogue resolves", async () => {
     const { SentinelProvider } = await import("@/app/sentinel");
     const { default: WorkItemsPage } = await import("../page");
 
@@ -187,7 +191,7 @@ describe("sentinel.page.work-items", () => {
       </SentinelProvider>,
     );
 
-    expect(screen.getByTestId("object-tree")).toBeInTheDocument();
+    expect(screen.getByTestId("grid-work-items")).toBeInTheDocument();
   });
 
   it("AC3 — page reads tenant + focus from Sentinel (smoke)", async () => {

@@ -12582,6 +12582,49 @@ input[type="reset"] {
   border-color: var(--border);
   color: var(--ink);
 }
+/* Rank placement toggle — sits at the LEFT of the actions row (margin-right
+   auto pushes Cancel/Create to the right). Sticky Top/Bottom segmented control:
+   the Vector "where does new work land" choice Rally doesn't offer. */
+.createflyout-rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+}
+.createflyout-rank__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.createflyout-rank__toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.createflyout-rank__opt {
+  border: 0;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.createflyout-rank__opt + .createflyout-rank__opt {
+  border-left: 1px solid var(--border);
+}
+.createflyout-rank__opt:hover:not([data-active="true"]) {
+  background: color-mix(in srgb, var(--ink) 5%, var(--surface));
+  color: var(--ink);
+}
+.createflyout-rank__opt[data-active="true"] {
+  background: var(--good-green, #66cc00);
+  color: #000;
+}
 .tree_accordion-dense__createflyout-section {
   display: flex;
   flex-direction: column;
@@ -14320,15 +14363,6 @@ input[type="reset"] {
   background: #ffcc33;
   color: #000;
 }
-/* Created modifier — applied to a freshly-created artefact's flyout when it
-   auto-opens after a successful create (mirrors --duplicate's amber, but green
-   for "added"). Green on black text so it reads as a positive confirmation,
-   distinct from the amber clone head and the red delete head. Lowest priority:
-   --deleting and --duplicate both win over it (see ArtefactInlineForm.tsx). */
-.artefact-inline-form__Container_Head--created {
-  background: var(--good-green, #66cc00);
-  color: #000;
-}
 /* Deleting modifier — applied while the user is confirming a delete.
    Red on black-text so the danger is unambiguous; takes precedence over
    --duplicate when both would apply (see ArtefactInlineForm.tsx). */
@@ -14358,7 +14392,6 @@ input[type="reset"] {
    override here rather than removing it from the base. */
 .artefact-inline-form__Container_Head,
 .artefact-inline-form__Container_Head--duplicate,
-.artefact-inline-form__Container_Head--created,
 .artefact-inline-form__Container_Head--deleting {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
