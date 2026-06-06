@@ -22,6 +22,7 @@ allowed-tools: Read Grep Glob WebFetch WebSearch Write Edit Bash Agent
 | `-retro [--auto-loop]` | retro | Honest retrospective: 5 Whys + reversal + ledger sync | `RET###` |
 | `-p` | plan | Offline implementation plan from chat + repo context; proposes stories; on confirm, hands off to `<scope> -a` | `PLA###` |
 | `-sy [--source <path>] "<topic>"` | system | Developer-facing System paper: explains a section/feature end-to-end (purpose, architecture, I/O contract, how to use, examples, caveats) | `SY###` |
+| `-a` | architecture | Build/refresh the single living site map: every Rail1 bucket → page → purpose + transitive component tree + reverse used-by registry. **Always upserts `ARC001`** — never mints a new id. | `ARC001` (fixed) |
 
 No flag → list available flags and stop. Unknown flag → list available flags and stop. **Never** pick a default.
 
@@ -86,6 +87,7 @@ The Dev → Reporting panel rebuilds the TOC from the actual headings in the sto
 | `-retro` retro | Synopsis, Signals, Root Cause Table, What Went Well, Ledger Update, Tech-Debt Promotions, CLAUDE.md Proposals, Change Log | `synopsis`, `signals`, `root-cause-table`, `what-went-well`, `ledger-update`, `tech-debt-promotions`, `claudemd-proposals`, `change-log` |
 | `-p` plan | Synopsis, Problem, Approach, Areas Impacted, Implementation Steps, Proposed Stories, Risks, Verification, Change Log | `synopsis`, `problem`, `approach`, `areas-impacted`, `implementation-steps`, `proposed-stories`, `risks`, `verification`, `change-log` |
 | `-sy` system | Synopsis, Purpose, Architecture, Components, I/O Contract, How to Use, Examples, Constraints, Backlog, Change Log | `synopsis`, `purpose`, `architecture`, `components`, `io-contract`, `how-to-use`, `examples`, `constraints`, `backlog`, `change-log` |
+| `-a` architecture | Synopsis, Site Overview, Buckets & Pages, Component Registry, Drift Report, Change Log | `synopsis`, `site-overview`, `buckets-and-pages`, `component-registry`, `drift-report`, `change-log` |
 
 ### Synopsis section (every type)
 
@@ -828,6 +830,114 @@ Sections in this exact order, matching the system template:
 ### Idempotency
 
 Re-running `<report> -sy` with the same topic creates a NEW `SY###` — System papers are point-in-time artefacts. To revise an existing paper, the user GETs the existing SY### from /dev/reporting, hands the ID to the agent ("update SY001 with X"), and the agent POSTs the same ID with a prepended Change Log entry.
+
+---
+
+## `-a` — Architecture site map
+
+### Arguments
+
+```
+<report> -a            # build or refresh the living site map (always ARC001)
+```
+
+No arguments. **`-a` is a single living document, not a point-in-time series.** The first run builds `ARC001`; every later run UPDATES `ARC001` in place and prepends a Change Log entry. It NEVER mints a new id. This is the deliberate difference from every other flag.
+
+### Behaviour — offline except the local dev backend
+
+Draws from the live dev backend (the nav spine endpoint) + the local filesystem (route files + components). No `WebFetch` / `WebSearch`.
+
+### Pipeline
+
+1. **Load the ID registry.** Read `.claude/arch-map-ids.json`. This is the source of truth for every bucket/page/section/component ID. You LOOK UP ids here; you never regenerate an existing one. Key shapes:
+   - `buckets`: `{ "<tag_enum>": { "id": "PLAN", "label": "Planning", "status": "active|retired" } }`
+   - `pages`: `{ "<key_enum>": { "id": "PLAN-WI", "bucket": "PLAN", "label": "Work Items", "route": "/work-items", "status": "active|retired" } }`
+   - `sections`: `{ "<page_id>.<section_slug>": { "id": "PLAN-WI.01", "label": "Grid toolbar", "status": "active|retired" } }`
+   - `components`: `{ "<ComponentName>": { "stored_at": "app/components/Grid/Grid.tsx", "tier": "primary|shared|leaf" } }`
+
+2. **Fetch the nav spine (authoritative bucket→page tree).**
+   ```bash
+   KEY=$(grep '^DEV_API_KEY=' backend/.env.dev | cut -d= -f2)
+   curl -s -H "Authorization: Bearer $KEY" \
+     "http://localhost:5100/_site/admin/dev/architecture/spine"
+   ```
+   Returns the COMPLETE catalogue (no role filter): `buckets` each with nested `pages`, plus `untagged` (pages whose tag matches no bucket — surface these in the Drift Report).
+
+3. **Assign / look up IDs.**
+   - Bucket id: look up `buckets[<tag_enum>]`. If missing, generate a short uppercase code from the label ("Planning" → `PLAN`; collision → append a digit), write it with `status:"active"`.
+   - Page id: look up `pages[<key_enum>]`. If missing, generate `<BUCKET>-<SHORT>` (SHORT = uppercase consonant-skeleton of the page label/route, "Work Items" → `WI`; collision → append a digit), write it.
+   - Mark any registry bucket/page NOT in the current spine AND absent from code (step 4) as `status:"retired"` — never delete, never reuse an id.
+
+4. **Reconcile against code routes (drift).**
+   - `Glob` `app/(user)/**/page.tsx` and `dev/pages/*.tsx`; derive each route path.
+   - **Orphans** = code routes with no spine page (match by href/route).
+   - **Dead links** = spine pages whose `href` has no route file.
+   - **Matched** = the rest (count only).
+
+5. **Resolve per-page component trees — sequential batched sub-agents (~5 pages per batch).**
+   For each page, check `.claude/arch-map-cache.json`: compute a content hash of the route file + the page-local (primary-tier) files it imports. If unchanged since last run, REUSE the cached tree (skip the agent). Otherwise spawn a sub-agent (`subagent_type: general-purpose`) with the PER-PAGE BRIEF below. Run agents in batches of ~5, sequentially (await each batch before the next) to control token spend.
+
+6. **Build the reverse component registry.** Invert every page's tree: for each component, record `stored_at`, `tier`, and the list of page ids that use it. Persist component metadata (`stored_at`, `tier`) back to the ID registry.
+
+7. **Render the HTML body** matching the section template — see LAYOUT below.
+
+8. **Upsert `ARC001`.** GET the existing report first to read its Change Log; prepend a new `<li>` describing what changed (pages added / retired / re-analysed, component-count delta). POST with the fixed id `ARC001`. On first run the Change Log is "Initial build."
+   ```bash
+   curl -s -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+     --data @/tmp/arc001.json "http://localhost:5100/_site/admin/dev/reporting/"
+   ```
+   Payload: `{ "id":"ARC001", "type":"architecture", "title":"Vector Architecture Site Map", "category":"Architecture · Site Map", "topic":"…", "summary":"<Synopsis text>", "content":"<HTML body>", "report_date":"YYYY-MM-DD" }`
+
+9. **Write back both `.claude/` files** (`arch-map-ids.json`, `arch-map-cache.json`) and commit them with the report-build message. Run `git diff --cached --stat` first; stage only those two files.
+
+10. **Tell the user:** "Site map refreshed (ARC001). View on /dev/reporting → Architecture tab. N buckets, N pages, N components; drift: X orphans, Y dead links." Show the Synopsis inline.
+
+### PER-PAGE BRIEF (verbatim — substitute `{{ROUTE_FILE}}`, `{{PAGE_NAME}}`, `{{PAGE_ID}}`)
+
+You are mapping ONE page of the Vector site for an architecture site map.
+
+**Page:** {{PAGE_NAME}} (id `{{PAGE_ID}}`)
+**Route file:** {{ROUTE_FILE}}
+
+Your job:
+1. Read the route file. Summarise the page's PURPOSE in 1–2 sentences (use its `<PageDescription>` text if present, plus what the components imply).
+2. Resolve the FULL TRANSITIVE component tree. Start from the page's imports; follow project-local component imports recursively (use `lsp-ts` references / definitions where helpful). Stop at node_modules / std-lib.
+3. Classify every node into a tier:
+   - **primary** — page-local assemblers (files under the page's own route dir, or named for this page).
+   - **shared** — anything under `app/components/`.
+   - **leaf** — icons (react-icons / `app/components/icons`), pure utils, tiny wrappers.
+4. Identify the page's SECTIONS (header, toolbar, main tree/grid, side panels, modals) — these become its sub-sections. Give each a short stable slug.
+5. Return ONLY structured JSON (no prose):
+```json
+{
+  "page_id": "{{PAGE_ID}}",
+  "purpose": "…",
+  "sections": [{ "slug": "toolbar", "label": "Grid toolbar", "components": ["GridToolbar", "Button"] }],
+  "components": [{ "name": "Grid", "stored_at": "app/components/Grid/Grid.tsx", "tier": "shared" }]
+}
+```
+Cite real file paths. Do not invent components. Leaf-tier components may be listed by name without expanding their internals.
+
+### LAYOUT (HTML body)
+
+- `<h2 id="synopsis">` — counts + last-build date + headline.
+- `<h2 id="site-overview">` — a `<table>`: Bucket ID · Bucket · Page count.
+- `<h2 id="buckets-and-pages">` — per bucket, per page: `<h3 id="<PAGE_ID>">{{PAGE_NAME}}</h3>`, then purpose, route, and the tiered tree. Each page's sub-sections use `<h4 id="<PAGE_ID>.NN">`. **Primary tier expanded; Shared listed; Leaf collapsed to a single line "N leaf: name, name, …"** (never expand leaf nodes in the tree).
+- `<h2 id="component-registry">` — a `<table>`: Component · Stored at · Tier · Used by (page ids).
+- `<h2 id="drift-report">` — Orphans list, Dead links list, Matched count, plus any `untagged` spine pages.
+- `<h2 id="change-log">` — newest first.
+
+### Hard rules
+
+- **Never mint a new report id.** `-a` is always `ARC001`. The Change Log carries the version history.
+- **Never regenerate an existing ID.** Look up from `.claude/arch-map-ids.json`; generate only for genuinely new slugs; retire (never delete/reuse) vanished ones.
+- **Stay on the dev backend.** The spine comes from `:5100`; do not psql-guess the nav tables (the `/dev/architecture/spine` endpoint is the sanctioned source).
+- **Leaf nodes never expand in the per-page tree** — count + names only, so the map stays navigable.
+- **Commit the two `.claude/` files** every run so the registry/cache travel with the repo.
+
+### Idempotency
+
+`-a` is idempotent by design: same code state in → same `ARC001` body out (modulo the appended Change Log entry). Re-running with no changes must NOT renumber any id. To force a full rebuild, delete `.claude/arch-map-cache.json` (the ID registry is preserved so cross-references survive) and re-run.
 
 ---
 
