@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "report_id": "ARC001",
+  "built": "2026-06-06",
+  "pages": {
+    "PLAN-PLA": {
+      "route": "/planning",
+      "hash": "55c39ab879d81c6a",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-BAC": {
+      "route": "/backlog",
+      "hash": "c36dc062b6e987c5",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-POR": {
+      "route": "/portfolio",
+      "hash": "eb3742e5eb9a1477",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-PI": {
+      "route": "/portfolio-items",
+      "hash": "948f96bcac2c8d37",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-WI": {
+      "route": "/work-items",
+      "hash": "725dddc3a93b58c6",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-SPR": {
+      "route": "/sprints",
+      "hash": "d92fd06dc13e9678",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-WI2": {
+      "route": "/work-items-2",
+      "hash": "0d187e37963662cf",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-REL": {
+      "route": "/releases",
+      "hash": "7731e49d3187c38c",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-MIL": {
+      "route": "/milestones",
+      "hash": "ac7ee8d86ad5db52",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-VS": {
+      "route": "/value-sprint",
+      "hash": "9ff0a5c2850298a5",
+      "analysed": "2026-06-06"
+    },
+    "VAL-VS": {
+      "route": "/value-status",
+      "hash": "9ceab08ef7804614",
+      "analysed": "2026-06-06"
+    },
+    "DEV-RES": {
+      "route": "/dev/research",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-SET": {
+      "route": "/dev/setup",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-PLA": {
+      "route": "/dev/plans",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-RET": {
+      "route": "/dev/retros",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-SCO": {
+      "route": "/dev/scope",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-REP": {
+      "route": "/dev/reports",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-SHO": {
+      "route": "/dev/shortcuts",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-OPE": {
+      "route": "/dev/operations",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-PH": {
+      "route": "/dev/page-help",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-UC": {
+      "route": "/dev/ui-catalog",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "VAL-VSR": {
+      "route": "/value-sprint-review",
+      "hash": "d546431c8a111288",
+      "analysed": "2026-06-06"
+    },
+    "VAL-VSB": {
+      "route": "/value-sprint-board",
+      "hash": "6c6206e348da8994",
+      "analysed": "2026-06-06"
+    },
+    "VAL-VF": {
+      "route": "/value-flow",
+      "hash": "0b45b9ab47bbe64e",
+      "analysed": "2026-06-06"
+    },
+    "VAL-VA": {
+      "route": "/artefacts",
+      "hash": "b6575292779ad446",
+      "analysed": "2026-06-06"
+    },
+    "VAL-VD": {
+      "route": "/dependencies",
+      "hash": "027a20a241a8d838",
+      "analysed": "2026-06-06"
+    },
+    "UMG-USE": {
+      "route": "/user-management/users",
+      "hash": "49e4a5ad3286e494",
+      "analysed": "2026-06-06"
+    },
+    "UMG-PER": {
+      "route": "/user-management/permissions",
+      "hash": "6c86e04142feb738",
+      "analysed": "2026-06-06"
+    },
+    "VADM-TS": {
+      "route": "/vector-admin/tenant-settings",
+      "hash": "ffdea6c112cbfba2",
+      "analysed": "2026-06-06"
+    },
+    "VADM-LR": {
+      "route": "/library-releases",
+      "hash": "4f8d9604b393498f",
+      "analysed": "2026-06-06"
+    },
+    "VADM-AM": {
+      "route": "/vector-admin/api-manager",
+      "hash": "b5b26668093d569d",
+      "analysed": "2026-06-06"
+    },
+    "VADM-AMAR": {
+      "route": "/vector-admin/api-manager/asset-register",
+      "hash": "35d1fdc9576831bb",
+      "analysed": "2026-06-06"
+    },
+    "VADM-AMW": {
+      "route": "/vector-admin/api-manager/webhooks",
+      "hash": "faa40279481af760",
+      "analysed": "2026-06-06"
+    },
+    "WADM-WD": {
+      "route": "/workspace-admin/workspace-details",
+      "hash": "8f71f857bc9f27b0",
+      "analysed": "2026-06-06"
+    },
+    "WADM-ART": {
+      "route": "/workspace-admin/artefacts",
+      "hash": "8596c7b6ec8ba694",
+      "analysed": "2026-06-06"
+    },
+    "DEV-ICO": {
+      "route": "/dev/icons",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-AVT": {
+      "route": "/dev/api-v2-tests",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-AC": {
+      "route": "/dev/api-changelog",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-AA": {
+      "route": "/dev/api-audit",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-COM": {
+      "route": "/dev/components",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-SA": {
+      "route": "/dev/security-audits",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-COD": {
+      "route": "/dev/code",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-REP2": {
+      "route": "/dev/reporting",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "DEV-VIS": {
+      "route": "/dev/visualiser",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "AVR-AS": {
+      "route": "/user/account-settings",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "AVR-PN": {
+      "route": "/user/navigation",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "AVR-NM": {
+      "route": "/user/notifications",
+      "hash": "",
+      "analysed": "2026-06-06"
+    },
+    "WADM-MET": {
+      "route": "/workspace-admin/metrics",
+      "hash": "4436fb64ea86a715",
+      "analysed": "2026-06-06"
+    },
+    "WADM-WOR": {
+      "route": "/workspace-admin/workspaces",
+      "hash": "8861228abd7ad640",
+      "analysed": "2026-06-06"
+    },
+    "WADM-AT": {
+      "route": "/workspace-admin/artefacts/artefact-types",
+      "hash": "94f2335b0a605738",
+      "analysed": "2026-06-06"
+    },
+    "WADM-TM": {
+      "route": "/workspace-admin/topology-map",
+      "hash": "e34c594dca88fb2e",
+      "analysed": "2026-06-06"
+    },
+    "WADM-TOP": {
+      "route": "/workspace-admin/topology",
+      "hash": "c648bc4d448052db",
+      "analysed": "2026-06-06"
+    },
+    "WADM-TR": {
+      "route": "/workspace-admin/artefacts/transition-rules",
+      "hash": "c46e4649c721f25e",
+      "analysed": "2026-06-06"
+    },
+    "WADM-FS": {
+      "route": "/workspace-admin/flow-states",
+      "hash": "b1a4ef0779c63ab2",
+      "analysed": "2026-06-06"
+    },
+    "WADM-FSV": {
+      "route": "/workspace-admin/artefacts/flow-states-v2",
+      "hash": "e487449266c2a136",
+      "analysed": "2026-06-06"
+    },
+    "WADM-PM": {
+      "route": "/workspace-admin/portfolio-model",
+      "hash": "2928ea0fda6b0758",
+      "analysed": "2026-06-06"
+    },
+    "WADM-PS": {
+      "route": "/portfolio-settings",
+      "hash": "bb81fdca3f625f2b",
+      "analysed": "2026-06-06"
+    },
+    "WADM-CC": {
+      "route": "/workspace-admin/cost-centres",
+      "hash": "7a25eb39636368c9",
+      "analysed": "2026-06-06"
+    },
+    "WADM-CF": {
+      "route": "/workspace-admin/custom-fields",
+      "hash": "c9d322ac518ed174",
+      "analysed": "2026-06-06"
+    },
+    "WADM-FD": {
+      "route": "/workspace-admin/custom-fields/form-designer",
+      "hash": "6cae39baa0278b78",
+      "analysed": "2026-06-06"
+    },
+    "PERS-DAS": {
+      "route": "/dashboard",
+      "hash": "ecdc2128a6dec8f3",
+      "analysed": "2026-06-06"
+    },
+    "PERS-MV": {
+      "route": "/my-vista",
+      "hash": "0fa89e59b9fb3fdd",
+      "analysed": "2026-06-06"
+    },
+    "PERS-FAV": {
+      "route": "/favourites",
+      "hash": "737dd45283c92624",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-RIS": {
+      "route": "/risk",
+      "hash": "a80c54eb7e84c828",
+      "analysed": "2026-06-06"
+    },
+    "PLAN-SCO": {
+      "route": "/scope",
+      "hash": "4c3e0e3ad73d0cbf",
+      "analysed": "2026-06-06"
+    }
+  }
+}

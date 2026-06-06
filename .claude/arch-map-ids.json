@@ -1,9 +1,2135 @@
 {
   "version": 1,
   "report_id": "ARC001",
-  "description": "Stable ID registry for the <report> -a architecture site map. Locks bucket/page/section slugs to IDs so re-runs never renumber. Retired entries keep status='retired' and their ID is never reused. Key shapes — buckets: {<tag_enum>:{id,label,status}}, pages: {<key_enum>:{id,bucket,label,route,status}}, sections: {<page_id>.<section_slug>:{id,label,status}}, components: {<ComponentName>:{stored_at,tier}}.",
-  "buckets": {},
-  "pages": {},
-  "sections": {},
-  "components": {}
+  "description": "Stable ID registry for the <report> -a architecture site map. Locks bucket/page/section slugs to IDs so re-runs never renumber. Retired entries keep status='retired' and their ID is never reused. Key shapes \u2014 buckets: {<tag_enum>:{id,label,status}}, pages: {<key_enum>:{id,bucket,label,route,status}}, sections: {<page_id>.<section_slug>:{id,label,status}}, components: {<ComponentName>:{stored_at,tier}}.",
+  "buckets": {
+    "personal": {
+      "id": "PERS",
+      "label": "Personal",
+      "status": "active"
+    },
+    "bookmarks": {
+      "id": "BMK",
+      "label": "Bookmarks",
+      "status": "active"
+    },
+    "planning": {
+      "id": "PLAN",
+      "label": "Planning",
+      "status": "active"
+    },
+    "value": {
+      "id": "VAL",
+      "label": "Value",
+      "status": "active"
+    },
+    "strategy": {
+      "id": "STRAT",
+      "label": "Strategy",
+      "status": "active"
+    },
+    "user_management": {
+      "id": "UMG",
+      "label": "User Management",
+      "status": "active"
+    },
+    "vector_admin": {
+      "id": "VADM",
+      "label": "Vector Admin",
+      "status": "active"
+    },
+    "workspace_admin": {
+      "id": "WADM",
+      "label": "Workspace Admin",
+      "status": "active"
+    },
+    "dev_tools": {
+      "id": "DEV",
+      "label": "Dev Tools",
+      "status": "active"
+    },
+    "avatar_menu": {
+      "id": "AVR",
+      "label": "Avatar Menu",
+      "status": "active"
+    }
+  },
+  "pages": {
+    "dashboard": {
+      "id": "PERS-DAS",
+      "bucket": "PERS",
+      "label": "Dashboard",
+      "route": "/dashboard",
+      "status": "active"
+    },
+    "my-vista": {
+      "id": "PERS-MV",
+      "bucket": "PERS",
+      "label": "My Vista",
+      "route": "/my-vista",
+      "status": "active"
+    },
+    "favourites": {
+      "id": "PERS-FAV",
+      "bucket": "PERS",
+      "label": "Favourites",
+      "route": "/favourites",
+      "status": "active"
+    },
+    "risk": {
+      "id": "PLAN-RIS",
+      "bucket": "PLAN",
+      "label": "Risk",
+      "route": "/risk",
+      "status": "active"
+    },
+    "scope": {
+      "id": "PLAN-SCO",
+      "bucket": "PLAN",
+      "label": "Scope",
+      "route": "/scope",
+      "status": "active"
+    },
+    "planning": {
+      "id": "PLAN-PLA",
+      "bucket": "PLAN",
+      "label": "Planning",
+      "route": "/planning",
+      "status": "active"
+    },
+    "backlog": {
+      "id": "PLAN-BAC",
+      "bucket": "PLAN",
+      "label": "Backlog",
+      "route": "/backlog",
+      "status": "active"
+    },
+    "portfolio": {
+      "id": "PLAN-POR",
+      "bucket": "PLAN",
+      "label": "Portfolio",
+      "route": "/portfolio",
+      "status": "active"
+    },
+    "portfolio-items": {
+      "id": "PLAN-PI",
+      "bucket": "PLAN",
+      "label": "Portfolio Items",
+      "route": "/portfolio-items",
+      "status": "active"
+    },
+    "work-items": {
+      "id": "PLAN-WI",
+      "bucket": "PLAN",
+      "label": "Work Items",
+      "route": "/work-items",
+      "status": "active"
+    },
+    "sprints": {
+      "id": "PLAN-SPR",
+      "bucket": "PLAN",
+      "label": "Sprints",
+      "route": "/sprints",
+      "status": "active"
+    },
+    "work-items-2": {
+      "id": "PLAN-WI2",
+      "bucket": "PLAN",
+      "label": "Work Items (old)",
+      "route": "/work-items-2",
+      "status": "active"
+    },
+    "releases": {
+      "id": "PLAN-REL",
+      "bucket": "PLAN",
+      "label": "Releases",
+      "route": "/releases",
+      "status": "active"
+    },
+    "milestones": {
+      "id": "PLAN-MIL",
+      "bucket": "PLAN",
+      "label": "Milestones",
+      "route": "/milestones",
+      "status": "active"
+    },
+    "value-sprint": {
+      "id": "PLAN-VS",
+      "bucket": "PLAN",
+      "label": "Sprint",
+      "route": "/value-sprint",
+      "status": "active"
+    },
+    "value-status": {
+      "id": "VAL-VS",
+      "bucket": "VAL",
+      "label": "Value Status",
+      "route": "/value-status",
+      "status": "active"
+    },
+    "value-sprint-review": {
+      "id": "VAL-VSR",
+      "bucket": "VAL",
+      "label": "Sprint Review",
+      "route": "/value-sprint-review",
+      "status": "active"
+    },
+    "value-sprint-board": {
+      "id": "VAL-VSB",
+      "bucket": "VAL",
+      "label": "Sprint Board",
+      "route": "/value-sprint-board",
+      "status": "active"
+    },
+    "value-flow": {
+      "id": "VAL-VF",
+      "bucket": "VAL",
+      "label": "Flow",
+      "route": "/value-flow",
+      "status": "active"
+    },
+    "value-artefacts": {
+      "id": "VAL-VA",
+      "bucket": "VAL",
+      "label": "Artefacts",
+      "route": "/artefacts",
+      "status": "active"
+    },
+    "value-dependencies": {
+      "id": "VAL-VD",
+      "bucket": "VAL",
+      "label": "Dependencies",
+      "route": "/dependencies",
+      "status": "active"
+    },
+    "um-users": {
+      "id": "UMG-USE",
+      "bucket": "UMG",
+      "label": "Users",
+      "route": "/user-management/users",
+      "status": "active"
+    },
+    "um-permissions": {
+      "id": "UMG-PER",
+      "bucket": "UMG",
+      "label": "Permissions",
+      "route": "/user-management/permissions",
+      "status": "active"
+    },
+    "va-tenant-settings": {
+      "id": "VADM-TS",
+      "bucket": "VADM",
+      "label": "Tenant Settings",
+      "route": "/vector-admin/tenant-settings",
+      "status": "active"
+    },
+    "library-releases": {
+      "id": "VADM-LR",
+      "bucket": "VADM",
+      "label": "Library Releases",
+      "route": "/library-releases",
+      "status": "active"
+    },
+    "va-api-manager": {
+      "id": "VADM-AM",
+      "bucket": "VADM",
+      "label": "API Manager",
+      "route": "/vector-admin/api-manager",
+      "status": "active"
+    },
+    "va-api-manager-asset-register": {
+      "id": "VADM-AMAR",
+      "bucket": "VADM",
+      "label": "Asset Register",
+      "route": "/vector-admin/api-manager/asset-register",
+      "status": "active"
+    },
+    "va-api-manager-webhooks": {
+      "id": "VADM-AMW",
+      "bucket": "VADM",
+      "label": "Webhooks",
+      "route": "/vector-admin/api-manager/webhooks",
+      "status": "active"
+    },
+    "ws-workspace-details": {
+      "id": "WADM-WD",
+      "bucket": "WADM",
+      "label": "Workspace Details",
+      "route": "/workspace-admin/workspace-details",
+      "status": "active"
+    },
+    "ws-artefacts": {
+      "id": "WADM-ART",
+      "bucket": "WADM",
+      "label": "Artefacts",
+      "route": "/workspace-admin/artefacts",
+      "status": "active"
+    },
+    "ws-metrics": {
+      "id": "WADM-MET",
+      "bucket": "WADM",
+      "label": "Metrics",
+      "route": "/workspace-admin/metrics",
+      "status": "active"
+    },
+    "ws-workspaces": {
+      "id": "WADM-WOR",
+      "bucket": "WADM",
+      "label": "Workspaces",
+      "route": "/workspace-admin/workspaces",
+      "status": "active"
+    },
+    "ws-artefact-types": {
+      "id": "WADM-AT",
+      "bucket": "WADM",
+      "label": "Artefact Types",
+      "route": "/workspace-admin/artefacts/artefact-types",
+      "status": "active"
+    },
+    "va-topology-map": {
+      "id": "WADM-TM",
+      "bucket": "WADM",
+      "label": "Topology Map",
+      "route": "/workspace-admin/topology-map",
+      "status": "active"
+    },
+    "va-topology": {
+      "id": "WADM-TOP",
+      "bucket": "WADM",
+      "label": "Topology",
+      "route": "/workspace-admin/topology",
+      "status": "active"
+    },
+    "ws-transition-rules": {
+      "id": "WADM-TR",
+      "bucket": "WADM",
+      "label": "Transition Rules",
+      "route": "/workspace-admin/artefacts/transition-rules",
+      "status": "active"
+    },
+    "ws-flow-states": {
+      "id": "WADM-FS",
+      "bucket": "WADM",
+      "label": "Flow States",
+      "route": "/workspace-admin/flow-states",
+      "status": "active"
+    },
+    "ws-flow-states-v2": {
+      "id": "WADM-FSV",
+      "bucket": "WADM",
+      "label": "Flow States v2",
+      "route": "/workspace-admin/artefacts/flow-states-v2",
+      "status": "active"
+    },
+    "ws-portfolio-model": {
+      "id": "WADM-PM",
+      "bucket": "WADM",
+      "label": "Portfolio Model",
+      "route": "/workspace-admin/portfolio-model",
+      "status": "active"
+    },
+    "portfolio-settings": {
+      "id": "WADM-PS",
+      "bucket": "WADM",
+      "label": "Portfolio Settings",
+      "route": "/portfolio-settings",
+      "status": "active"
+    },
+    "ws-cost-centres": {
+      "id": "WADM-CC",
+      "bucket": "WADM",
+      "label": "Cost Centres",
+      "route": "/workspace-admin/cost-centres",
+      "status": "active"
+    },
+    "ws-custom-fields": {
+      "id": "WADM-CF",
+      "bucket": "WADM",
+      "label": "Custom Fields",
+      "route": "/workspace-admin/custom-fields",
+      "status": "active"
+    },
+    "ws-form-designer": {
+      "id": "WADM-FD",
+      "bucket": "WADM",
+      "label": "Form Designer",
+      "route": "/workspace-admin/custom-fields/form-designer",
+      "status": "active"
+    },
+    "dev-research": {
+      "id": "DEV-RES",
+      "bucket": "DEV",
+      "label": "Research",
+      "route": "/dev/research",
+      "status": "active"
+    },
+    "dev-setup": {
+      "id": "DEV-SET",
+      "bucket": "DEV",
+      "label": "Setup",
+      "route": "/dev/setup",
+      "status": "active"
+    },
+    "dev-plans": {
+      "id": "DEV-PLA",
+      "bucket": "DEV",
+      "label": "Plans",
+      "route": "/dev/plans",
+      "status": "active"
+    },
+    "dev-retros": {
+      "id": "DEV-RET",
+      "bucket": "DEV",
+      "label": "Retros",
+      "route": "/dev/retros",
+      "status": "active"
+    },
+    "dev-scope": {
+      "id": "DEV-SCO",
+      "bucket": "DEV",
+      "label": "Scope",
+      "route": "/dev/scope",
+      "status": "active"
+    },
+    "dev-reports": {
+      "id": "DEV-REP",
+      "bucket": "DEV",
+      "label": "Reports",
+      "route": "/dev/reports",
+      "status": "active"
+    },
+    "dev-shortcuts": {
+      "id": "DEV-SHO",
+      "bucket": "DEV",
+      "label": "Shortcuts",
+      "route": "/dev/shortcuts",
+      "status": "active"
+    },
+    "dev-operations": {
+      "id": "DEV-OPE",
+      "bucket": "DEV",
+      "label": "Operations",
+      "route": "/dev/operations",
+      "status": "active"
+    },
+    "dev-page-help": {
+      "id": "DEV-PH",
+      "bucket": "DEV",
+      "label": "Page Help",
+      "route": "/dev/page-help",
+      "status": "active"
+    },
+    "dev-ui-catalog": {
+      "id": "DEV-UC",
+      "bucket": "DEV",
+      "label": "UI Catalog",
+      "route": "/dev/ui-catalog",
+      "status": "active"
+    },
+    "dev-icons": {
+      "id": "DEV-ICO",
+      "bucket": "DEV",
+      "label": "Icons",
+      "route": "/dev/icons",
+      "status": "active"
+    },
+    "dev-api-v2-tests": {
+      "id": "DEV-AVT",
+      "bucket": "DEV",
+      "label": "API v2 Tests",
+      "route": "/dev/api-v2-tests",
+      "status": "active"
+    },
+    "dev-api-changelog": {
+      "id": "DEV-AC",
+      "bucket": "DEV",
+      "label": "API Changelog",
+      "route": "/dev/api-changelog",
+      "status": "active"
+    },
+    "dev-api-audit": {
+      "id": "DEV-AA",
+      "bucket": "DEV",
+      "label": "API Audit",
+      "route": "/dev/api-audit",
+      "status": "active"
+    },
+    "dev-components": {
+      "id": "DEV-COM",
+      "bucket": "DEV",
+      "label": "Components",
+      "route": "/dev/components",
+      "status": "active"
+    },
+    "dev-security-audits": {
+      "id": "DEV-SA",
+      "bucket": "DEV",
+      "label": "Security Audits",
+      "route": "/dev/security-audits",
+      "status": "active"
+    },
+    "dev-code": {
+      "id": "DEV-COD",
+      "bucket": "DEV",
+      "label": "Code",
+      "route": "/dev/code",
+      "status": "active"
+    },
+    "dev-reporting": {
+      "id": "DEV-REP2",
+      "bucket": "DEV",
+      "label": "Reporting",
+      "route": "/dev/reporting",
+      "status": "active"
+    },
+    "dev-visualiser": {
+      "id": "DEV-VIS",
+      "bucket": "DEV",
+      "label": "Visualiser",
+      "route": "/dev/visualiser",
+      "status": "active"
+    },
+    "account-settings": {
+      "id": "AVR-AS",
+      "bucket": "AVR",
+      "label": "Account Settings",
+      "route": "/user/account-settings",
+      "status": "active"
+    },
+    "preferences-navigation": {
+      "id": "AVR-PN",
+      "bucket": "AVR",
+      "label": "Navigation",
+      "route": "/user/navigation",
+      "status": "active"
+    },
+    "theme": {
+      "id": "AVR-THE",
+      "bucket": "AVR",
+      "label": "Themes",
+      "route": "/user/theme",
+      "status": "active"
+    },
+    "notifications-manager": {
+      "id": "AVR-NM",
+      "bucket": "AVR",
+      "label": "Notifications Manager",
+      "route": "/user/notifications",
+      "status": "active"
+    }
+  },
+  "sections": {
+    "PERS-DAS.page_header": {
+      "id": "PERS-DAS.01",
+      "label": "Page header",
+      "status": "active"
+    },
+    "PERS-DAS.overview_tiles": {
+      "id": "PERS-DAS.02",
+      "label": "Overview tiles",
+      "status": "active"
+    },
+    "PERS-DAS.portfolio_dimensions": {
+      "id": "PERS-DAS.03",
+      "label": "Portfolio dimensions",
+      "status": "active"
+    },
+    "PERS-DAS.objectives_and_flow": {
+      "id": "PERS-DAS.04",
+      "label": "Objectives & flow",
+      "status": "active"
+    },
+    "PERS-DAS.advanced_analysis": {
+      "id": "PERS-DAS.05",
+      "label": "Advanced analysis",
+      "status": "active"
+    },
+    "PERS-DAS.recent_activity": {
+      "id": "PERS-DAS.06",
+      "label": "Recent activity",
+      "status": "active"
+    },
+    "PERS-MV.heading": {
+      "id": "PERS-MV.01",
+      "label": "Page Heading",
+      "status": "active"
+    },
+    "PERS-MV.panel-header": {
+      "id": "PERS-MV.02",
+      "label": "Vista Intro Panel",
+      "status": "active"
+    },
+    "PERS-MV.assigned-list": {
+      "id": "PERS-MV.03",
+      "label": "Assigned Work Items",
+      "status": "active"
+    },
+    "PERS-FAV.header": {
+      "id": "PERS-FAV.01",
+      "label": "Page Heading",
+      "status": "active"
+    },
+    "PERS-FAV.panel-header": {
+      "id": "PERS-FAV.02",
+      "label": "Favourites Panel",
+      "status": "active"
+    },
+    "PERS-FAV.pinned-list": {
+      "id": "PERS-FAV.03",
+      "label": "Pinned Items List / Empty State",
+      "status": "active"
+    },
+    "PLAN-RIS.page-heading": {
+      "id": "PLAN-RIS.01",
+      "label": "Page heading",
+      "status": "active"
+    },
+    "PLAN-RIS.panel-header": {
+      "id": "PLAN-RIS.02",
+      "label": "Risk panel header",
+      "status": "active"
+    },
+    "PLAN-RIS.summary-header": {
+      "id": "PLAN-RIS.03",
+      "label": "Summary stats",
+      "status": "active"
+    },
+    "PLAN-RIS.visualisation": {
+      "id": "PLAN-RIS.04",
+      "label": "Severity petal chart + artefact tree overlay",
+      "status": "active"
+    },
+    "PLAN-RIS.risk-register": {
+      "id": "PLAN-RIS.05",
+      "label": "Risk register tree grid with filter chips",
+      "status": "active"
+    },
+    "PLAN-SCO.page-shell": {
+      "id": "PLAN-SCO.01",
+      "label": "Page shell & description",
+      "status": "active"
+    },
+    "PLAN-SCO.grid-execution": {
+      "id": "PLAN-SCO.02",
+      "label": "Grid assembler (scope-local)",
+      "status": "active"
+    },
+    "PLAN-SCO.scope-data": {
+      "id": "PLAN-SCO.03",
+      "label": "Scope data layer (scope-local)",
+      "status": "active"
+    },
+    "PLAN-SCO.scope-columns": {
+      "id": "PLAN-SCO.04",
+      "label": "Scope column descriptors (scope-local)",
+      "status": "active"
+    },
+    "PLAN-SCO.grid-tree-primitive": {
+      "id": "PLAN-SCO.05",
+      "label": "Grid__Tree primitive",
+      "status": "active"
+    },
+    "PLAN-SCO.row-flyout": {
+      "id": "PLAN-SCO.06",
+      "label": "Row detail flyout",
+      "status": "active"
+    },
+    "PLAN-SCO.filter-chips": {
+      "id": "PLAN-SCO.07",
+      "label": "Filter chips & facets",
+      "status": "active"
+    },
+    "PLAN-SCO.cell-renderers": {
+      "id": "PLAN-SCO.08",
+      "label": "Cell renderer primitives",
+      "status": "active"
+    },
+    "PLAN-PLA.header": {
+      "id": "PLAN-PLA.01",
+      "label": "Page header",
+      "status": "active"
+    },
+    "PLAN-PLA.roadmap-board": {
+      "id": "PLAN-PLA.02",
+      "label": "Roadmap board",
+      "status": "active"
+    },
+    "PLAN-PLA.initiative-timeline": {
+      "id": "PLAN-PLA.03",
+      "label": "Initiative timeline",
+      "status": "active"
+    },
+    "PLAN-BAC.backlog-header": {
+      "id": "PLAN-BAC.01",
+      "label": "Page Header",
+      "status": "active"
+    },
+    "PLAN-BAC.backlog-filters": {
+      "id": "PLAN-BAC.02",
+      "label": "Filters",
+      "status": "active"
+    },
+    "PLAN-BAC.backlog-list": {
+      "id": "PLAN-BAC.03",
+      "label": "Items",
+      "status": "active"
+    },
+    "PLAN-POR.portfolio-header": {
+      "id": "PLAN-POR.01",
+      "label": "Portfolio Header Panel",
+      "status": "active"
+    },
+    "PLAN-PI.page-heading": {
+      "id": "PLAN-PI.01",
+      "label": "Page Heading",
+      "status": "active"
+    },
+    "PLAN-PI.summary-header": {
+      "id": "PLAN-PI.02",
+      "label": "Summary Header",
+      "status": "active"
+    },
+    "PLAN-PI.visualisation": {
+      "id": "PLAN-PI.03",
+      "label": "Visualisation Panel",
+      "status": "active"
+    },
+    "PLAN-PI.object-tree": {
+      "id": "PLAN-PI.04",
+      "label": "Portfolio Items Dense Grid",
+      "status": "active"
+    },
+    "PLAN-WI.heading": {
+      "id": "PLAN-WI.01",
+      "label": "Page Heading",
+      "status": "active"
+    },
+    "PLAN-WI.summary-header": {
+      "id": "PLAN-WI.02",
+      "label": "KPI Summary Strip",
+      "status": "active"
+    },
+    "PLAN-WI.visualisation": {
+      "id": "PLAN-WI.03",
+      "label": "Visualisation Panel",
+      "status": "active"
+    },
+    "PLAN-WI.grid-body": {
+      "id": "PLAN-WI.04",
+      "label": "Work Items Grid",
+      "status": "active"
+    },
+    "PLAN-SPR.heading": {
+      "id": "PLAN-SPR.01",
+      "label": "Page Heading",
+      "status": "active"
+    },
+    "PLAN-SPR.sprint-grid": {
+      "id": "PLAN-SPR.02",
+      "label": "Sprint Grid (focus node present)",
+      "status": "active"
+    },
+    "PLAN-SPR.no-focus-fallback": {
+      "id": "PLAN-SPR.03",
+      "label": "No Focus Node Fallback",
+      "status": "active"
+    },
+    "PLAN-WI2.heading": {
+      "id": "PLAN-WI2.01",
+      "label": "Page heading",
+      "status": "active"
+    },
+    "PLAN-WI2.info-panel": {
+      "id": "PLAN-WI2.02",
+      "label": "Info banner panel",
+      "status": "active"
+    },
+    "PLAN-WI2.summary-strip": {
+      "id": "PLAN-WI2.03",
+      "label": "Summary stat strip",
+      "status": "active"
+    },
+    "PLAN-WI2.visualisation": {
+      "id": "PLAN-WI2.04",
+      "label": "Visualisation / chart flyout",
+      "status": "active"
+    },
+    "PLAN-WI2.main-grid": {
+      "id": "PLAN-WI2.05",
+      "label": "ObjectTreeV2 work-items grid",
+      "status": "active"
+    },
+    "PLAN-REL.heading": {
+      "id": "PLAN-REL.01",
+      "label": "Page heading",
+      "status": "active"
+    },
+    "PLAN-REL.description": {
+      "id": "PLAN-REL.02",
+      "label": "Page description",
+      "status": "active"
+    },
+    "PLAN-REL.main-grid": {
+      "id": "PLAN-REL.03",
+      "label": "Releases ObjectTree grid",
+      "status": "active"
+    },
+    "PLAN-MIL.heading": {
+      "id": "PLAN-MIL.01",
+      "label": "Page heading",
+      "status": "active"
+    },
+    "PLAN-MIL.description": {
+      "id": "PLAN-MIL.02",
+      "label": "Page description",
+      "status": "active"
+    },
+    "PLAN-MIL.no-node-gate": {
+      "id": "PLAN-MIL.03",
+      "label": "No-focus-node gate panel",
+      "status": "active"
+    },
+    "PLAN-MIL.main-grid": {
+      "id": "PLAN-MIL.04",
+      "label": "Milestones ObjectTree grid",
+      "status": "active"
+    },
+    "PLAN-VS.heading": {
+      "id": "PLAN-VS.01",
+      "label": "Page heading + dynamic subtitle",
+      "status": "active"
+    },
+    "PLAN-VS.description": {
+      "id": "PLAN-VS.02",
+      "label": "Page description",
+      "status": "active"
+    },
+    "PLAN-VS.sprint-panel": {
+      "id": "PLAN-VS.03",
+      "label": "Sprint scope panel (active sprint grid + nav bar)",
+      "status": "active"
+    },
+    "PLAN-VS.backlog-grid": {
+      "id": "PLAN-VS.04",
+      "label": "Workspace backlog grid",
+      "status": "active"
+    },
+    "PLAN-VS.radial-picker": {
+      "id": "PLAN-VS.05",
+      "label": "Radial sprint/status picker overlay",
+      "status": "active"
+    },
+    "VAL-VS.heading": {
+      "id": "VAL-VS.01",
+      "label": "Page heading",
+      "status": "active"
+    },
+    "VAL-VS.description": {
+      "id": "VAL-VS.02",
+      "label": "Page description",
+      "status": "active"
+    },
+    "VAL-VS.status-panel": {
+      "id": "VAL-VS.03",
+      "label": "Value status summary panel",
+      "status": "active"
+    },
+    "VAL-VSR.burndown-row": {
+      "id": "VAL-VSR.01",
+      "label": "Burndown Charts",
+      "status": "active"
+    },
+    "VAL-VSR.sprint-backlog": {
+      "id": "VAL-VSR.02",
+      "label": "Sprint Backlog Grid",
+      "status": "active"
+    },
+    "VAL-VSB.sprint-board-header": {
+      "id": "VAL-VSB.01",
+      "label": "Sprint Board Panel",
+      "status": "active"
+    },
+    "VAL-VF.flow-board": {
+      "id": "VAL-VF.01",
+      "label": "Flow Board",
+      "status": "active"
+    },
+    "VAL-VA.artefacts-grid": {
+      "id": "VAL-VA.01",
+      "label": "Artefacts Grid Tree",
+      "status": "active"
+    },
+    "VAL-VD.dependency-map": {
+      "id": "VAL-VD.01",
+      "label": "Dependency Map Canvas",
+      "status": "active"
+    },
+    "UMG-USE.user-management-header": {
+      "id": "UMG-USE.01",
+      "label": "User Management Panel",
+      "status": "active"
+    },
+    "UMG-USE.users-table": {
+      "id": "UMG-USE.02",
+      "label": "Users Table",
+      "status": "active"
+    },
+    "UMG-USE.create-user-modal": {
+      "id": "UMG-USE.03",
+      "label": "Create User Modal",
+      "status": "active"
+    },
+    "UMG-USE.bulk-set-role-modal": {
+      "id": "UMG-USE.04",
+      "label": "Bulk Set Role Modal",
+      "status": "active"
+    },
+    "UMG-PER.page-permissions-grid": {
+      "id": "UMG-PER.01",
+      "label": "Page Permissions Grid",
+      "status": "active"
+    },
+    "VADM-TS.identity": {
+      "id": "VADM-TS.01",
+      "label": "Identity",
+      "status": "active"
+    },
+    "VADM-TS.time-dates": {
+      "id": "VADM-TS.02",
+      "label": "Time & Dates",
+      "status": "active"
+    },
+    "VADM-TS.workdays": {
+      "id": "VADM-TS.03",
+      "label": "Workdays",
+      "status": "active"
+    },
+    "VADM-TS.features": {
+      "id": "VADM-TS.04",
+      "label": "Features",
+      "status": "active"
+    },
+    "VADM-TS.danger-zone": {
+      "id": "VADM-TS.05",
+      "label": "Danger zone",
+      "status": "active"
+    },
+    "VADM-LR.outstanding-releases": {
+      "id": "VADM-LR.01",
+      "label": "Outstanding releases",
+      "status": "active"
+    },
+    "VADM-AM.redirect": {
+      "id": "VADM-AM.01",
+      "label": "Redirect shell",
+      "status": "active"
+    },
+    "VADM-AMAR.panel": {
+      "id": "VADM-AMAR.01",
+      "label": "Panel props table",
+      "status": "active"
+    },
+    "VADM-AMW.webhook-list": {
+      "id": "VADM-AMW.01",
+      "label": "Webhooks table",
+      "status": "active"
+    },
+    "VADM-AMW.webhook-form": {
+      "id": "VADM-AMW.02",
+      "label": "Create / edit webhook form",
+      "status": "active"
+    },
+    "WADM-WD.identity": {
+      "id": "WADM-WD.01",
+      "label": "Identity",
+      "status": "active"
+    },
+    "WADM-WD.workdays": {
+      "id": "WADM-WD.02",
+      "label": "Workdays",
+      "status": "active"
+    },
+    "WADM-WD.features": {
+      "id": "WADM-WD.03",
+      "label": "Features",
+      "status": "active"
+    },
+    "WADM-WD.danger-zone": {
+      "id": "WADM-WD.04",
+      "label": "Danger zone",
+      "status": "active"
+    },
+    "WADM-ART.redirect": {
+      "id": "WADM-ART.01",
+      "label": "Redirect shell",
+      "status": "active"
+    },
+    "WADM-MET.scrum-metrics": {
+      "id": "WADM-MET.01",
+      "label": "Scrum Metrics",
+      "status": "active"
+    },
+    "WADM-WOR.live-workspaces-table": {
+      "id": "WADM-WOR.01",
+      "label": "Live Workspaces table",
+      "status": "active"
+    },
+    "WADM-WOR.archived-workspaces": {
+      "id": "WADM-WOR.02",
+      "label": "Archived Workspaces",
+      "status": "active"
+    },
+    "WADM-WOR.create-workspace-modal": {
+      "id": "WADM-WOR.03",
+      "label": "Create Workspace modal",
+      "status": "active"
+    },
+    "WADM-AT.panel-header": {
+      "id": "WADM-AT.01",
+      "label": "Artefact Types header",
+      "status": "active"
+    },
+    "WADM-AT.types-tree": {
+      "id": "WADM-AT.02",
+      "label": "Types flat-tree",
+      "status": "active"
+    },
+    "WADM-TM.topology-map-panel": {
+      "id": "WADM-TM.01",
+      "label": "Topology map canvas",
+      "status": "active"
+    },
+    "WADM-TOP.topology-editor": {
+      "id": "WADM-TOP.01",
+      "label": "Topology overlay canvas",
+      "status": "active"
+    },
+    "WADM-TR.section-work": {
+      "id": "WADM-TR.01",
+      "label": "Work Types",
+      "status": "active"
+    },
+    "WADM-TR.section-strategy": {
+      "id": "WADM-TR.02",
+      "label": "Strategy Types",
+      "status": "active"
+    },
+    "WADM-TR.anchor-nav": {
+      "id": "WADM-TR.03",
+      "label": "Anchor nav",
+      "status": "active"
+    },
+    "WADM-FS.panel-header": {
+      "id": "WADM-FS.01",
+      "label": "Flow States header",
+      "status": "active"
+    },
+    "WADM-FS.section-work": {
+      "id": "WADM-FS.02",
+      "label": "Work Types",
+      "status": "active"
+    },
+    "WADM-FS.section-strategy": {
+      "id": "WADM-FS.03",
+      "label": "Strategy Types",
+      "status": "active"
+    },
+    "WADM-FS.anchor-nav": {
+      "id": "WADM-FS.04",
+      "label": "Anchor nav",
+      "status": "active"
+    },
+    "WADM-FSV.section-work": {
+      "id": "WADM-FSV.01",
+      "label": "Work Types",
+      "status": "active"
+    },
+    "WADM-FSV.section-strategy": {
+      "id": "WADM-FSV.02",
+      "label": "Strategy Types",
+      "status": "active"
+    },
+    "WADM-PM.model-router": {
+      "id": "WADM-PM.01",
+      "label": "Portfolio Model router body",
+      "status": "active"
+    },
+    "WADM-PS.identity": {
+      "id": "WADM-PS.01",
+      "label": "Identity",
+      "status": "active"
+    },
+    "WADM-PS.stakeholders": {
+      "id": "WADM-PS.02",
+      "label": "Stakeholders",
+      "status": "active"
+    },
+    "WADM-PS.danger-zone": {
+      "id": "WADM-PS.03",
+      "label": "Danger zone",
+      "status": "active"
+    },
+    "WADM-CC.create": {
+      "id": "WADM-CC.01",
+      "label": "Create cost centre",
+      "status": "active"
+    },
+    "WADM-CC.list": {
+      "id": "WADM-CC.02",
+      "label": "Existing cost centres",
+      "status": "active"
+    },
+    "WADM-CF.form-builder-launch": {
+      "id": "WADM-CF.01",
+      "label": "Form Layout Builder launch",
+      "status": "active"
+    },
+    "WADM-CF.custom-fields-grid": {
+      "id": "WADM-CF.02",
+      "label": "Custom Fields grid",
+      "status": "active"
+    },
+    "WADM-FD.form-builder-launch": {
+      "id": "WADM-FD.01",
+      "label": "Form Layout Builder",
+      "status": "active"
+    },
+    "DEV-RES.research-list": {
+      "id": "DEV-RES.01",
+      "label": "Report accordion list",
+      "status": "active"
+    },
+    "DEV-SET.health": {
+      "id": "DEV-SET.01",
+      "label": "Service Health",
+      "status": "active"
+    },
+    "DEV-SET.scope-actions": {
+      "id": "DEV-SET.02",
+      "label": "Scope-action framework",
+      "status": "active"
+    },
+    "DEV-SET.resets": {
+      "id": "DEV-SET.03",
+      "label": "Resets & seeders",
+      "status": "active"
+    },
+    "DEV-PLA.plans-list": {
+      "id": "DEV-PLA.01",
+      "label": "Plan accordion list",
+      "status": "active"
+    },
+    "DEV-RET.ledger": {
+      "id": "DEV-RET.01",
+      "label": "Recurring ledger",
+      "status": "active"
+    },
+    "DEV-RET.retrospectives": {
+      "id": "DEV-RET.02",
+      "label": "Individual retros",
+      "status": "active"
+    },
+    "DEV-SCO.scope-body": {
+      "id": "DEV-SCO.01",
+      "label": "Collapsible section body",
+      "status": "active"
+    },
+    "DEV-REP.reports-accordion": {
+      "id": "DEV-REP.01",
+      "label": "Report list",
+      "status": "active"
+    },
+    "DEV-SHO.shortcuts-table": {
+      "id": "DEV-SHO.01",
+      "label": "Shortcuts table",
+      "status": "active"
+    },
+    "DEV-OPE.operations-accordion": {
+      "id": "DEV-OPE.01",
+      "label": "Operations list",
+      "status": "active"
+    },
+    "DEV-PH.page-help-groups": {
+      "id": "DEV-PH.01",
+      "label": "Route-grouped help rows",
+      "status": "active"
+    },
+    "DEV-UC.catalog": {
+      "id": "DEV-UC.01",
+      "label": "dui-* primitive catalog",
+      "status": "active"
+    },
+    "DEV-ICO.icon-grid": {
+      "id": "DEV-ICO.01",
+      "label": "Icon grid (per-pack, click-to-copy)",
+      "status": "active"
+    },
+    "DEV-AVT.run": {
+      "id": "DEV-AVT.01",
+      "label": "Run bar + summary",
+      "status": "active"
+    },
+    "DEV-AVT.test-groups": {
+      "id": "DEV-AVT.02",
+      "label": "Handler/Service test groups",
+      "status": "active"
+    },
+    "DEV-AC.blast": {
+      "id": "DEV-AC.01",
+      "label": "Blast radius diff",
+      "status": "active"
+    },
+    "DEV-AC.callers": {
+      "id": "DEV-AC.02",
+      "label": "Caller map table",
+      "status": "active"
+    },
+    "DEV-AC.dead": {
+      "id": "DEV-AC.03",
+      "label": "Dead APIs",
+      "status": "active"
+    },
+    "DEV-AA.summary": {
+      "id": "DEV-AA.01",
+      "label": "Compliance summary tiles",
+      "status": "active"
+    },
+    "DEV-AA.table": {
+      "id": "DEV-AA.02",
+      "label": "API management table",
+      "status": "active"
+    },
+    "DEV-COM.panel": {
+      "id": "DEV-COM.01",
+      "label": "Panel anatomy + playground",
+      "status": "active"
+    },
+    "DEV-COM.qr-code": {
+      "id": "DEV-COM.02",
+      "label": "QRCode anatomy + playground",
+      "status": "active"
+    },
+    "DEV-COM.object-tree-v2": {
+      "id": "DEV-COM.03",
+      "label": "ObjectTreeV2 anatomy",
+      "status": "active"
+    },
+    "DEV-COM.notifications": {
+      "id": "DEV-COM.04",
+      "label": "Notifications system",
+      "status": "active"
+    },
+    "DEV-COM.flow-board": {
+      "id": "DEV-COM.05",
+      "label": "FlowBoard anatomy",
+      "status": "active"
+    },
+    "DEV-SA.checklist": {
+      "id": "DEV-SA.01",
+      "label": "Security checklist",
+      "status": "active"
+    },
+    "DEV-SA.audits-list": {
+      "id": "DEV-SA.02",
+      "label": "Audit reports",
+      "status": "active"
+    },
+    "DEV-COD.code-list": {
+      "id": "DEV-COD.01",
+      "label": "Code report accordion",
+      "status": "active"
+    },
+    "DEV-REP2.type-tabs": {
+      "id": "DEV-REP2.01",
+      "label": "Report type tabs",
+      "status": "active"
+    },
+    "DEV-REP2.report-accordion": {
+      "id": "DEV-REP2.02",
+      "label": "Report accordion + TOC",
+      "status": "active"
+    },
+    "DEV-VIS.version-tabs": {
+      "id": "DEV-VIS.01",
+      "label": "Version switcher",
+      "status": "active"
+    },
+    "DEV-VIS.v4-atlas": {
+      "id": "DEV-VIS.02",
+      "label": "V4 3D Code Atlas (active)",
+      "status": "active"
+    },
+    "AVR-AS.profile": {
+      "id": "AVR-AS.01",
+      "label": "Profile",
+      "status": "active"
+    },
+    "AVR-AS.home-location": {
+      "id": "AVR-AS.02",
+      "label": "Home Location",
+      "status": "active"
+    },
+    "AVR-AS.homepage": {
+      "id": "AVR-AS.03",
+      "label": "Homepage",
+      "status": "active"
+    },
+    "AVR-AS.password": {
+      "id": "AVR-AS.04",
+      "label": "Password",
+      "status": "active"
+    },
+    "AVR-AS.two-factor": {
+      "id": "AVR-AS.05",
+      "label": "Two-Factor Authentication",
+      "status": "active"
+    },
+    "AVR-AS.notifications": {
+      "id": "AVR-AS.06",
+      "label": "Notifications prefs",
+      "status": "active"
+    },
+    "AVR-PN.pinned": {
+      "id": "AVR-PN.01",
+      "label": "Pinned",
+      "status": "active"
+    },
+    "AVR-PN.available": {
+      "id": "AVR-PN.02",
+      "label": "Available",
+      "status": "active"
+    },
+    "AVR-PN.custom-nav": {
+      "id": "AVR-PN.03",
+      "label": "Custom Navigation",
+      "status": "active"
+    },
+    "AVR-NM.inbox": {
+      "id": "AVR-NM.01",
+      "label": "Inbox",
+      "status": "active"
+    }
+  },
+  "components": {
+    "ActionBar": {
+      "stored_at": "app/components/ObjectTreeV2/kinds/ActionBar.tsx",
+      "tier": "shared"
+    },
+    "AdjacencyMatrixChart": {
+      "stored_at": "app/components/AdjacencyMatrixChart.tsx",
+      "tier": "shared"
+    },
+    "AdoptionOverlay": {
+      "stored_at": "app/(user)/portfolio-model/AdoptionOverlay.tsx",
+      "tier": "primary"
+    },
+    "ArchivedWorkspacesSection": {
+      "stored_at": "app/(user)/workspace-admin/workspaces/page.tsx",
+      "tier": "primary"
+    },
+    "ArtefactCreateFlyout": {
+      "stored_at": "app/components/ArtefactCreateFlyout/index.tsx",
+      "tier": "shared"
+    },
+    "ArtefactInlineForm": {
+      "stored_at": "app/components/ArtefactInlineForm/ArtefactInlineForm.tsx",
+      "tier": "shared"
+    },
+    "ArtefactTree": {
+      "stored_at": "app/components/ArtefactTree.tsx",
+      "tier": "shared"
+    },
+    "BarGrid3DChart": {
+      "stored_at": "app/components/BarGrid3DChart.tsx",
+      "tier": "shared"
+    },
+    "BlankCanvasOverlay": {
+      "stored_at": "app/components/BlankCanvasOverlay.tsx",
+      "tier": "shared"
+    },
+    "BucketCheckbox": {
+      "stored_at": "app/(user)/user-management/permissions/page.tsx",
+      "tier": "primary"
+    },
+    "BulkActionBar": {
+      "stored_at": "app/components/BulkActionBar.tsx",
+      "tier": "shared"
+    },
+    "BulkSetRoleModal": {
+      "stored_at": "app/(user)/user-management/users/page.tsx",
+      "tier": "primary"
+    },
+    "BundleView": {
+      "stored_at": "app/(user)/portfolio-model/page.tsx",
+      "tier": "primary"
+    },
+    "Canvas": {
+      "stored_at": "app/components/Canvas/Canvas.tsx",
+      "tier": "shared"
+    },
+    "ChartWidget": {
+      "stored_at": "app/components/ChartWidget.tsx",
+      "tier": "shared"
+    },
+    "CircularAdditor": {
+      "stored_at": "app/components/catalogue/c_circular_additor/circularAdditor.tsx",
+      "tier": "shared"
+    },
+    "ColourBlockPicker": {
+      "stored_at": "app/components/ColourBlockPicker.tsx",
+      "tier": "shared"
+    },
+    "ColourPicker": {
+      "stored_at": "app/components/ColourPicker.tsx",
+      "tier": "shared"
+    },
+    "ColourPickerCell": {
+      "stored_at": "app/(user)/workspace-admin/artefacts/artefact-types/page.tsx",
+      "tier": "primary"
+    },
+    "ComponentsToc": {
+      "stored_at": "dev/pages/DevComponentsPanel.tsx",
+      "tier": "primary"
+    },
+    "ConcentricArcChart": {
+      "stored_at": "app/components/ConcentricArcChart.tsx",
+      "tier": "shared"
+    },
+    "ConcentricArcChartNonClosed": {
+      "stored_at": "app/components/ConcentricArcChartNonClosed.tsx",
+      "tier": "shared"
+    },
+    "ConfirmModal": {
+      "stored_at": "app/components/topology/ConfirmModal.tsx",
+      "tier": "shared"
+    },
+    "ContextMenu": {
+      "stored_at": "app/components/topology/ContextMenu.tsx",
+      "tier": "shared"
+    },
+    "CreateUserModal": {
+      "stored_at": "app/(user)/user-management/users/page.tsx",
+      "tier": "primary"
+    },
+    "CreateWorkspaceModal": {
+      "stored_at": "app/(user)/workspace-admin/workspaces/page.tsx",
+      "tier": "primary"
+    },
+    "CustomFieldsPageBody": {
+      "stored_at": "app/components/CustomFields/CustomFieldsPageBody.tsx",
+      "tier": "primary"
+    },
+    "DenseGridHeader": {
+      "stored_at": "app/components/ObjectTreeV2/kinds/DenseGridHeader.tsx",
+      "tier": "shared"
+    },
+    "DependencyMapOverlay": {
+      "stored_at": "app/components/DependencyMap/DependencyMapOverlay.tsx",
+      "tier": "shared"
+    },
+    "DevAccordion": {
+      "stored_at": "dev/components/DevAccordion.tsx",
+      "tier": "shared"
+    },
+    "DevApiAuditPanel": {
+      "stored_at": "dev/pages/DevApiAuditPanel.tsx",
+      "tier": "primary"
+    },
+    "DevApiChangelogPanel": {
+      "stored_at": "dev/pages/DevApiChangelogPanel.tsx",
+      "tier": "primary"
+    },
+    "DevApiV2TestsPanel": {
+      "stored_at": "dev/pages/DevApiV2TestsPanel.tsx",
+      "tier": "primary"
+    },
+    "DevCodePanel": {
+      "stored_at": "dev/pages/DevCodePanel.tsx",
+      "tier": "primary"
+    },
+    "DevComponentsPanel": {
+      "stored_at": "dev/pages/DevComponentsPanel.tsx",
+      "tier": "primary"
+    },
+    "DevOperationsPanel": {
+      "stored_at": "dev/pages/DevOperationsPanel.tsx",
+      "tier": "primary"
+    },
+    "DevPage": {
+      "stored_at": "dev/pages/DevPage.tsx",
+      "tier": "primary"
+    },
+    "DevPageHelpPanel": {
+      "stored_at": "dev/pages/DevPageHelpPanel.tsx",
+      "tier": "primary"
+    },
+    "DevPlansPanel": {
+      "stored_at": "dev/pages/DevPlansPanel.tsx",
+      "tier": "primary"
+    },
+    "DevReportingPanel": {
+      "stored_at": "dev/pages/DevReportingPanel.tsx",
+      "tier": "primary"
+    },
+    "DevReportsPanel": {
+      "stored_at": "dev/pages/DevReportsPanel.tsx",
+      "tier": "primary"
+    },
+    "DevResearchPanel": {
+      "stored_at": "dev/pages/DevResearchPanel.tsx",
+      "tier": "primary"
+    },
+    "DevRetrosPanel": {
+      "stored_at": "dev/pages/DevRetrosPanel.tsx",
+      "tier": "primary"
+    },
+    "DevScopeActionsPanel": {
+      "stored_at": "dev/pages/DevScopeActionsPanel.tsx",
+      "tier": "primary"
+    },
+    "DevScopePanel": {
+      "stored_at": "dev/pages/DevScopePanel.tsx",
+      "tier": "primary"
+    },
+    "DevSecurityAuditsListPanel": {
+      "stored_at": "dev/pages/DevSecurityAuditsListPanel.tsx",
+      "tier": "primary"
+    },
+    "DevSecurityAuditsPanel": {
+      "stored_at": "dev/pages/DevSecurityAuditsPanel.tsx",
+      "tier": "primary"
+    },
+    "DevShortcutsPanel": {
+      "stored_at": "dev/pages/DevShortcutsPanel.tsx",
+      "tier": "primary"
+    },
+    "DevUiCatalogPanel": {
+      "stored_at": "dev/pages/DevUiCatalogPanel.tsx",
+      "tier": "primary"
+    },
+    "DevVisualiserPanel": {
+      "stored_at": "dev/pages/DevVisualiserPanel.tsx",
+      "tier": "primary"
+    },
+    "DevVisualiserPanelV1": {
+      "stored_at": "dev/pages/DevVisualiserPanelV1.tsx",
+      "tier": "primary"
+    },
+    "DevVisualiserPanelV2": {
+      "stored_at": "dev/pages/DevVisualiserPanelV2.tsx",
+      "tier": "primary"
+    },
+    "DevVisualiserPanelV2A": {
+      "stored_at": "dev/pages/DevVisualiserPanelV2A.tsx",
+      "tier": "primary"
+    },
+    "DevVisualiserPanelV3": {
+      "stored_at": "dev/pages/DevVisualiserPanelV3.tsx",
+      "tier": "primary"
+    },
+    "DevVisualiserPanelV4": {
+      "stored_at": "dev/pages/DevVisualiserPanelV4.tsx",
+      "tier": "primary"
+    },
+    "DivergingHeatmapChart": {
+      "stored_at": "app/components/DivergingHeatmapChart.tsx",
+      "tier": "shared"
+    },
+    "DonutChart": {
+      "stored_at": "app/components/DonutChart.tsx",
+      "tier": "shared"
+    },
+    "EditFlyout": {
+      "stored_at": "app/components/topology/EditFlyout.tsx",
+      "tier": "shared"
+    },
+    "ExitRulesExpander": {
+      "stored_at": "app/(user)/workspace-admin/flow-states/page.tsx",
+      "tier": "primary"
+    },
+    "FeatureToggle": {
+      "stored_at": "app/(user)/vector-admin/tenant-settings/page.tsx",
+      "tier": "primary"
+    },
+    "FillPetalEqualChart": {
+      "stored_at": "app/components/FillPetalEqualChart.tsx",
+      "tier": "shared"
+    },
+    "FillPetalEqualChartRounded": {
+      "stored_at": "app/components/FillPetalEqualChartRounded.tsx",
+      "tier": "shared"
+    },
+    "FilledPetalChart": {
+      "stored_at": "app/components/FilledPetalChart.tsx",
+      "tier": "shared"
+    },
+    "FlowBlock": {
+      "stored_at": "app/(user)/workspace-admin/flow-states/page.tsx",
+      "tier": "primary"
+    },
+    "FlowBoard": {
+      "stored_at": "app/components/FlowBoard/p_FlowBoard.tsx",
+      "tier": "shared"
+    },
+    "FlowMap": {
+      "stored_at": "app/(user)/workspace-admin/flow-states/page.tsx",
+      "tier": "primary"
+    },
+    "FlowOrbit": {
+      "stored_at": "app/(user)/workspace-admin/artefacts/flow-states-v2/page.tsx",
+      "tier": "primary"
+    },
+    "FlowSection": {
+      "stored_at": "app/(user)/workspace-admin/artefacts/transition-rules/page.tsx",
+      "tier": "primary"
+    },
+    "FlowStatePillRow": {
+      "stored_at": "app/components/FlowStatePillRow.tsx",
+      "tier": "shared"
+    },
+    "FormBuilderLaunchPanel": {
+      "stored_at": "app/components/FormLayoutBuilder/FormBuilderLaunchPanel.tsx",
+      "tier": "shared"
+    },
+    "FormBuilderShell": {
+      "stored_at": "app/components/FormLayoutBuilder/FormBuilderShell.tsx",
+      "tier": "shared"
+    },
+    "GridExecution": {
+      "stored_at": "app/(user)/scope/GridExecution.tsx",
+      "tier": "primary"
+    },
+    "GridSprintReview": {
+      "stored_at": "app/(user)/value-sprint-review/GridSprintReview.tsx",
+      "tier": "primary"
+    },
+    "GridTree": {
+      "stored_at": "app/components/Grid/Grid__Tree.tsx",
+      "tier": "shared"
+    },
+    "GridTreeActionBar": {
+      "stored_at": "app/components/Grid/Grid__Tree_ActionBar.tsx",
+      "tier": "shared"
+    },
+    "GridTreeCog": {
+      "stored_at": "app/components/Grid/Grid__Tree_Cog.tsx",
+      "tier": "shared"
+    },
+    "GridTreeForms": {
+      "stored_at": "app/components/Grid/Grid__Tree_Forms.tsx",
+      "tier": "shared"
+    },
+    "GridTreeHead": {
+      "stored_at": "app/components/Grid/Grid__Tree_Head.tsx",
+      "tier": "shared"
+    },
+    "GridTreePagination": {
+      "stored_at": "app/components/Grid/Grid__Tree_Pagination.tsx",
+      "tier": "shared"
+    },
+    "GridTreeRow": {
+      "stored_at": "app/components/Grid/Grid__Tree_Row.tsx",
+      "tier": "shared"
+    },
+    "GridTreeStatsPanel": {
+      "stored_at": "app/components/Grid/Grid__Tree_StatsPanel.tsx",
+      "tier": "shared"
+    },
+    "GridWorkItems": {
+      "stored_at": "app/(user)/work-items/GridWorkItems.tsx",
+      "tier": "primary"
+    },
+    "Grid__Tree_ActionBar": {
+      "stored_at": "app/components/Grid/Grid__Tree_ActionBar.tsx",
+      "tier": "shared"
+    },
+    "HelpDocRenderer": {
+      "stored_at": "app/components/HelpDocRenderer.tsx",
+      "tier": "leaf"
+    },
+    "HelpRow": {
+      "stored_at": "dev/pages/DevPageHelpPanel.tsx",
+      "tier": "primary"
+    },
+    "HomeLocationSection": {
+      "stored_at": "app/components/HomeLocationSection.tsx",
+      "tier": "shared"
+    },
+    "HomepageSection": {
+      "stored_at": "app/components/HomepageSection.tsx",
+      "tier": "shared"
+    },
+    "HorizontalStackChart": {
+      "stored_at": "app/components/HorizontalStackChart.tsx",
+      "tier": "shared"
+    },
+    "IconItem": {
+      "stored_at": "dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index.tsx",
+      "tier": "primary"
+    },
+    "InheritanceIndicator": {
+      "stored_at": "app/components/InheritanceIndicator.tsx",
+      "tier": "shared"
+    },
+    "InlineEditField": {
+      "stored_at": "app/components/InlineEditField.tsx",
+      "tier": "shared"
+    },
+    "InlineSelect": {
+      "stored_at": "app/components/InlineSelect.tsx",
+      "tier": "shared"
+    },
+    "JourneyDomeChart": {
+      "stored_at": "app/components/JourneyDomeChart.tsx",
+      "tier": "shared"
+    },
+    "LadderChart": {
+      "stored_at": "app/components/LadderChart.tsx",
+      "tier": "shared"
+    },
+    "LayersPreviewTable": {
+      "stored_at": "app/(user)/portfolio-model/LayersPreviewTable.tsx",
+      "tier": "primary"
+    },
+    "LedgerSubTab": {
+      "stored_at": "dev/pages/DevRetrosPanel.tsx",
+      "tier": "primary"
+    },
+    "ListRowSkeleton": {
+      "stored_at": "app/components/SkeletonCompositions.tsx",
+      "tier": "shared"
+    },
+    "MapRelationship3D": {
+      "stored_at": "app/components/MapRelationship3D/index.tsx",
+      "tier": "shared"
+    },
+    "Modal": {
+      "stored_at": "app/(user)/_shared/index.ts",
+      "tier": "shared"
+    },
+    "NavigationPie": {
+      "stored_at": "app/components/NavigationPie.tsx",
+      "tier": "shared"
+    },
+    "ObjectTree": {
+      "stored_at": "app/components/ObjectTreeV2/p_ObjectTree.tsx",
+      "tier": "primary"
+    },
+    "ObjectTreeBulkCreateSheet": {
+      "stored_at": "app/components/ObjectTreeV2/sheets/ObjectTreeBulkCreateSheet.tsx",
+      "tier": "shared"
+    },
+    "ObjectTreeDetailFlyout": {
+      "stored_at": "app/components/ObjectTreeV2/flyouts/ObjectTreeDetailFlyout.tsx",
+      "tier": "shared"
+    },
+    "OperationItem": {
+      "stored_at": "dev/pages/DevOperationsPanel.tsx",
+      "tier": "primary"
+    },
+    "OrbitCanvas": {
+      "stored_at": "app/components/flow-rules/OrbitCanvas.tsx",
+      "tier": "shared"
+    },
+    "OrbitView": {
+      "stored_at": "app/components/flow-rules/OrbitView.tsx",
+      "tier": "shared"
+    },
+    "OrgNodeCard": {
+      "stored_at": "app/components/topology/OrgNodeCard.tsx",
+      "tier": "shared"
+    },
+    "PageAccessDenied": {
+      "stored_at": "app/components/PageAccessDenied.tsx",
+      "tier": "shared"
+    },
+    "PageAnchorNav": {
+      "stored_at": "app/components/PageAnchorNav.tsx",
+      "tier": "shared"
+    },
+    "PageContent": {
+      "stored_at": "app/components/PageContent.tsx",
+      "tier": "shared"
+    },
+    "PageDescription": {
+      "stored_at": "app/components/PageDescription.tsx",
+      "tier": "shared"
+    },
+    "PageHeading": {
+      "stored_at": "app/components/PageHeading.tsx",
+      "tier": "shared"
+    },
+    "PageSummaryHeader": {
+      "stored_at": "app/components/PageSummaryHeader.tsx",
+      "tier": "shared"
+    },
+    "Panel": {
+      "stored_at": "app/components/Panel.tsx",
+      "tier": "shared"
+    },
+    "PanelPlayground": {
+      "stored_at": "dev/pages/DevComponentsPanel.tsx",
+      "tier": "primary"
+    },
+    "PercentileDotChart": {
+      "stored_at": "app/components/PercentileDotChart.tsx",
+      "tier": "shared"
+    },
+    "PetalChart": {
+      "stored_at": "app/components/PetalChart.tsx",
+      "tier": "shared"
+    },
+    "PlanBody": {
+      "stored_at": "dev/pages/DevPlansPanel.tsx",
+      "tier": "primary"
+    },
+    "PlanItem": {
+      "stored_at": "dev/pages/DevPlansPanel.tsx",
+      "tier": "primary"
+    },
+    "PortfolioGraphChart": {
+      "stored_at": "app/components/PortfolioGraphChart.tsx",
+      "tier": "shared"
+    },
+    "PortfolioModelPage": {
+      "stored_at": "app/(user)/portfolio-model/page.tsx",
+      "tier": "primary"
+    },
+    "PortfolioRouterBody": {
+      "stored_at": "app/(user)/portfolio-model/page.tsx",
+      "tier": "primary"
+    },
+    "PrefixBlockStripes": {
+      "stored_at": "app/components/PrefixBlockStripes.tsx",
+      "tier": "shared"
+    },
+    "ProfileBar": {
+      "stored_at": "app/components/ProfileBar.tsx",
+      "tier": "shared"
+    },
+    "QRCode": {
+      "stored_at": "app/components/QRCode.tsx",
+      "tier": "shared"
+    },
+    "QRCodePlayground": {
+      "stored_at": "dev/pages/DevComponentsPanel.tsx",
+      "tier": "primary"
+    },
+    "QRCodeTrigger": {
+      "stored_at": "app/components/QRCodeTrigger.tsx",
+      "tier": "shared"
+    },
+    "RadialPillMenu": {
+      "stored_at": "app/components/RadialPillMenu/p_RadialPillMenu.tsx",
+      "tier": "primary"
+    },
+    "RaydaleChart": {
+      "stored_at": "app/components/RaydaleChart.tsx",
+      "tier": "shared"
+    },
+    "RelationsGraph": {
+      "stored_at": "app/components/WorkItemRelations/RelationsGraph.tsx",
+      "tier": "shared"
+    },
+    "RelationsSidebar": {
+      "stored_at": "app/components/WorkItemRelations/RelationsSidebar.tsx",
+      "tier": "shared"
+    },
+    "RelationsToolbar": {
+      "stored_at": "app/components/WorkItemRelations/RelationsToolbar.tsx",
+      "tier": "shared"
+    },
+    "ResearchItem": {
+      "stored_at": "dev/pages/DevResearchPanel.tsx",
+      "tier": "primary"
+    },
+    "ResourceTree": {
+      "stored_at": "app/components/ResourceTree.tsx",
+      "tier": "shared"
+    },
+    "RetrospectivesSubTab": {
+      "stored_at": "dev/pages/DevRetrosPanel.tsx",
+      "tier": "primary"
+    },
+    "RisksFilterChips": {
+      "stored_at": "app/components/risk-tree-config.tsx",
+      "tier": "primary"
+    },
+    "RoutesLinesView": {
+      "stored_at": "app/components/flow-rules/RoutesLinesView.tsx",
+      "tier": "shared"
+    },
+    "SankeyFlowChart": {
+      "stored_at": "app/components/SankeyFlowChart.tsx",
+      "tier": "shared"
+    },
+    "SavedViewsControl": {
+      "stored_at": "app/components/SavedViews/SavedViewsControl.tsx",
+      "tier": "shared"
+    },
+    "ScopeContent": {
+      "stored_at": "dev/pages/DevScopePanel.tsx",
+      "tier": "primary"
+    },
+    "ServiceHealthPanel": {
+      "stored_at": "app/components/ServiceHealthPanel.tsx",
+      "tier": "shared"
+    },
+    "SkeletonFade": {
+      "stored_at": "app/components/Skeleton.tsx",
+      "tier": "shared"
+    },
+    "SortablePill": {
+      "stored_at": "app/(user)/workspace-admin/flow-states/page.tsx",
+      "tier": "primary"
+    },
+    "SprintBurndownChart": {
+      "stored_at": "app/components/SprintBurndownChart.tsx",
+      "tier": "shared"
+    },
+    "StateRail": {
+      "stored_at": "app/components/flow-rules/StateRail.tsx",
+      "tier": "shared"
+    },
+    "StateRow": {
+      "stored_at": "app/(user)/workspace-admin/flow-states/page.tsx",
+      "tier": "primary"
+    },
+    "Table": {
+      "stored_at": "app/components/Table.tsx",
+      "tier": "shared"
+    },
+    "TaskBurndownChart": {
+      "stored_at": "app/components/TaskBurndownChart.tsx",
+      "tier": "shared"
+    },
+    "TestRow": {
+      "stored_at": "dev/pages/DevApiV2TestsPanel.tsx",
+      "tier": "primary"
+    },
+    "ThroughputChart": {
+      "stored_at": "app/components/ThroughputChart.tsx",
+      "tier": "shared"
+    },
+    "TimeboxInlineForm": {
+      "stored_at": "app/components/TimeboxInlineForm/index.tsx",
+      "tier": "shared"
+    },
+    "TimeboxObjectTree": {
+      "stored_at": "app/components/TimeboxObjectTree/index.tsx",
+      "tier": "primary"
+    },
+    "TimelineBar": {
+      "stored_at": "app/(user)/planning/page.tsx",
+      "tier": "primary"
+    },
+    "ToggleBtn": {
+      "stored_at": "app/components/ToggleBtn.tsx",
+      "tier": "shared"
+    },
+    "TopologyCanvas": {
+      "stored_at": "app/components/topology/TopologyCanvas.tsx",
+      "tier": "shared"
+    },
+    "TopologyOverlayPage": {
+      "stored_at": "app/(overlay)/topology/page.tsx",
+      "tier": "shared"
+    },
+    "TopologyToolbar": {
+      "stored_at": "app/components/topology/TopologyToolbar.tsx",
+      "tier": "shared"
+    },
+    "TopologyTreeFlyout": {
+      "stored_at": "app/components/TopologyTreeFlyout.tsx",
+      "tier": "shared"
+    },
+    "TypeSection": {
+      "stored_at": "app/(user)/workspace-admin/artefacts/transition-rules/page.tsx",
+      "tier": "primary"
+    },
+    "UiAppIconbrowser": {
+      "stored_at": "dev/store/ui_apps/ui_app_iconbrowser/d_store_app_iconbrowser-index.tsx",
+      "tier": "primary"
+    },
+    "UnsavedChangesBar": {
+      "stored_at": "app/components/UnsavedChangesBar.tsx",
+      "tier": "shared"
+    },
+    "UserEditPanel": {
+      "stored_at": "app/(user)/user-management/users/page.tsx",
+      "tier": "primary"
+    },
+    "UserNodeAssignment": {
+      "stored_at": "app/components/topology/UserNodeAssignment.tsx",
+      "tier": "shared"
+    },
+    "VisualisationPanel": {
+      "stored_at": "app/components/VisualisationPanel.tsx",
+      "tier": "shared"
+    },
+    "WebhookForm": {
+      "stored_at": "app/(user)/vector-admin/api-manager/webhooks/WebhookForm.tsx",
+      "tier": "primary"
+    },
+    "WizardModelCardList": {
+      "stored_at": "app/(user)/portfolio-model/WizardModelCardList.tsx",
+      "tier": "primary"
+    },
+    "WorkItemsFilterChips": {
+      "stored_at": "app/components/work-items-tree-config.tsx",
+      "tier": "shared"
+    },
+    "WorkdaysPicker": {
+      "stored_at": "app/(user)/vector-admin/tenant-settings/page.tsx",
+      "tier": "primary"
+    },
+    "WorkspaceActionsCell": {
+      "stored_at": "app/(user)/workspace-admin/workspaces/page.tsx",
+      "tier": "primary"
+    },
+    "WorkspaceNameCell": {
+      "stored_at": "app/(user)/workspace-admin/workspaces/page.tsx",
+      "tier": "primary"
+    },
+    "admin": {
+      "stored_at": "app/lib/apiSite.ts",
+      "tier": "leaf"
+    },
+    "apiSite": {
+      "stored_at": "app/lib/api.ts",
+      "tier": "leaf"
+    },
+    "artefactTypesApi": {
+      "stored_at": "app/lib/artefactTypesApi.ts",
+      "tier": "leaf"
+    },
+    "costCentresApi": {
+      "stored_at": "app/lib/costCentresApi.ts",
+      "tier": "leaf"
+    },
+    "devReporting": {
+      "stored_at": "app/lib/apiSite/index.ts",
+      "tier": "leaf"
+    },
+    "fieldsApi": {
+      "stored_at": "app/lib/fieldsApi.ts",
+      "tier": "leaf"
+    },
+    "flowStatesApi": {
+      "stored_at": "app/lib/flowStatesApi.ts",
+      "tier": "leaf"
+    },
+    "layoutWithDagre": {
+      "stored_at": "app/components/topology/layoutWithDagre.ts",
+      "tier": "leaf"
+    },
+    "notifications": {
+      "stored_at": "app/lib/apiSite/index.ts",
+      "tier": "leaf"
+    },
+    "portfolioApi": {
+      "stored_at": "app/lib/apiSite/index.ts",
+      "tier": "leaf"
+    },
+    "redirect": {
+      "stored_at": "next/navigation",
+      "tier": "leaf"
+    },
+    "scopeColumns": {
+      "stored_at": "app/(user)/scope/scopeColumns.tsx",
+      "tier": "primary"
+    },
+    "scopeTreeData": {
+      "stored_at": "app/(user)/scope/scopeTreeData.ts",
+      "tier": "primary"
+    },
+    "sprintReviewTreeData": {
+      "stored_at": "app/(user)/value-sprint-review/sprintReviewTreeData.ts",
+      "tier": "primary"
+    },
+    "tenantSettingsApi": {
+      "stored_at": "app/lib/tenantSettingsApi.ts",
+      "tier": "leaf"
+    },
+    "topologyApi": {
+      "stored_at": "app/lib/topologyApi.ts",
+      "tier": "leaf"
+    },
+    "useAuth": {
+      "stored_at": "app/contexts/AuthContext.tsx",
+      "tier": "leaf"
+    },
+    "useColumnManager": {
+      "stored_at": "app/components/Grid/useColumnManager.ts",
+      "tier": "shared"
+    },
+    "useDevTab": {
+      "stored_at": "app/contexts/DevTabContext.tsx",
+      "tier": "leaf"
+    },
+    "useMasterDebug": {
+      "stored_at": "app/contexts/MasterDebugContext.tsx",
+      "tier": "leaf"
+    },
+    "useNavPrefs": {
+      "stored_at": "app/contexts/NavPrefsContext.tsx",
+      "tier": "leaf"
+    },
+    "useNextSprint": {
+      "stored_at": "app/hooks/useNextSprint.ts",
+      "tier": "leaf"
+    },
+    "useObjectTreeFacets": {
+      "stored_at": "app/components/ObjectTreeV2/hooks/useObjectTreeFacets.ts",
+      "tier": "shared"
+    },
+    "usePageAccess": {
+      "stored_at": "app/contexts/PageAccessContext.tsx",
+      "tier": "leaf"
+    },
+    "usePageTitle": {
+      "stored_at": "app/hooks/usePageTitle.ts",
+      "tier": "leaf"
+    },
+    "useRouter": {
+      "stored_at": "next/navigation",
+      "tier": "leaf"
+    },
+    "useSentinel": {
+      "stored_at": "app/sentinel/index.ts",
+      "tier": "leaf"
+    },
+    "useSprintMetrics": {
+      "stored_at": "app/hooks/useSprintMetrics.ts",
+      "tier": "leaf"
+    },
+    "useTabState": {
+      "stored_at": "app/hooks/useTabState.ts",
+      "tier": "leaf"
+    },
+    "useTaskMetrics": {
+      "stored_at": "app/hooks/useTaskMetrics.ts",
+      "tier": "leaf"
+    },
+    "useTeamVelocity": {
+      "stored_at": "app/hooks/useTeamVelocity.ts",
+      "tier": "leaf"
+    },
+    "useTopologyRelationsPayload": {
+      "stored_at": "app/hooks/useTopologyRelationsPayload.ts",
+      "tier": "leaf"
+    },
+    "useTree": {
+      "stored_at": "app/components/Grid/useTree.ts",
+      "tier": "shared"
+    },
+    "workspaceSettingsApi": {
+      "stored_at": "app/lib/workspaceSettingsApi.ts",
+      "tier": "leaf"
+    },
+    "workspacesApi": {
+      "stored_at": "app/lib/workspacesApi.ts",
+      "tier": "leaf"
+    }
+  }
 }
