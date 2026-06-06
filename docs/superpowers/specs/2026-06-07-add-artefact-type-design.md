@@ -102,9 +102,23 @@ store the rule so new work types are self-serve.
   `TA→[DE,US]`, `US→[FE,EP]`, `DE→[EP,US]`, `EP→[FE]`. (Risk/RSK currently absent from the map —
   carried as `NULL`/empty, preserving today's behaviour; flagged in tech debt for a product
   decision.)
-- **Resolver change:** `useParentCandidates` and `workItemsReparentRules` read
-  `work_parent_slots` from the type record instead of the hard-coded map. `PARENT_PREFIX_MAP` is
-  retired in the same change (its consumers are exactly these two plus tests).
+- **Resolver collapse (`useParentCandidates`).** Today `resolveAllowedTypes`
+  (`app/components/ArtefactInlineForm/useParentCandidates.ts:57`) has three tiers:
+  (1) `PARENT_PREFIX_MAP`, (2) `layer_depth < myDepth`, (3) `parent_type_id` chain walk. After
+  cleanup there are **two data-driven tiers, one per scope**:
+  - **Work types** → resolve `editing.work_parent_slots` (prefixes/slugs) to type ids. Replaces
+    tier 1.
+  - **Strategy types** → walk the `parent_type_id` chain upward (the existing tier-3 logic).
+    **Tier 2's `layer_depth` numeric comparison is removed entirely**, consistent with
+    "layer_depth is a derived mirror, never branched on." The chain walk already yields the correct
+    ancestor set and is immune to the Feature=NULL / duplicate-depth contamination that forced the
+    map in the first place.
+  - `PARENT_PREFIX_MAP` is deleted; its only consumers are `useParentCandidates`,
+    `workItemsReparentRules`, and their tests — all migrated to `work_parent_slots` /
+    chain-walk in the same change.
+- **`workItemsReparentRules.workItemsCanReparent`** reads the mover type's `work_parent_slots`
+  instead of the map, so create / inline-edit / drag-reparent stay in agreement (the invariant the
+  current map comment calls out).
 - **"Behaves like" on create** copies the chosen rung's `work_parent_slots` onto the new type.
 
 > This pays down `TD-PARENT-CANDIDATES-DYNAMIC`. It is in-scope because the feature cannot be
@@ -274,9 +288,11 @@ Frontend (Vitest/RTL):
 
 - **TD-PARENT-CANDIDATES-DYNAMIC** — moved from "open" to "paid (work scope)": work nesting now in
   `work_parent_slots`; `PARENT_PREFIX_MAP` retired. Strategy nesting already dynamic.
-- **TD-LAYER-DEPTH-DERIVED** (new, S3) — `layer_depth` retained as a derived mirror; consumers still
-  read the number in a few spots (`DependencyMapOverlay`, `p_ObjectTree` isTopLevel). Trigger: when
-  all four consumers read the `parent_type_id` chain, drop the column in a clean migration.
+- **TD-LAYER-DEPTH-DERIVED** (new, S3) — `layer_depth` retained as a derived mirror. After this
+  work, the `useParentCandidates` depth comparison is gone; the only remaining numeric readers are
+  `DependencyMapOverlay` (root detection via `min(depth)`) and `p_ObjectTree` / `ArtefactCreateFlyout`
+  (`isTopLevel === layer_depth === 0`). Both can switch to `parent_type_id == null` for "is root".
+  Trigger: when those two read the chain, drop the column in a clean migration.
 - **TD-RISK-WORK-PARENT-SLOTS** (new, S3) — Risk/RSK has no entry in `PARENT_PREFIX_MAP` today;
   backfilled as empty. Trigger: product decision on where Risk nests.
 
