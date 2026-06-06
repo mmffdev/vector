@@ -36,10 +36,12 @@ export function SprintBurndownChart({
   // data + headroom) so labels always match the plotted line — no clipping.
   const gridVals = axisTicks(v.yTop, 5);
 
-  // Date-pill lane below the x-axis (design 2026-06-06).
-  const PILL_LANE = 26;
+  // Date-pill lane (design 2026-06-06): transparent row between the plot baseline
+  // and the x-axis labels; the pills slide into it, detaching the axis downward.
+  const PILL_LANE = 22;
   const svgH = VB.H + PILL_LANE;
-  const pillY = plotBottom + 30;
+  const pillY = plotBottom + 15;
+  const xLabelY = plotBottom + 15 + PILL_LANE;
 
   return (
     <div className="sprint-burndown">
@@ -96,11 +98,9 @@ export function SprintBurndownChart({
       <svg
         className="sprint-burndown__svg"
         viewBox={`0 0 ${VB.W} ${svgH}`}
-        width="100%"
-        height={svgH}
         role="img"
         aria-label="Sprint burndown chart"
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio="xMinYMid meet"
       >
         <defs>
           <linearGradient id="sbGrad" x1="0" y1="0" x2="0" y2="1">
@@ -140,7 +140,7 @@ export function SprintBurndownChart({
             key={`xtick-${d}`}
             className="sprint-burndown__axis"
             x={v.x(d)}
-            y={plotBottom + 16}
+            y={xLabelY}
             textAnchor="middle"
           >
             {d === 0 ? "S" : d}

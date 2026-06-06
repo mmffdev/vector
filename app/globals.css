@@ -12499,7 +12499,10 @@ input[type="reset"] {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: var(--surface-sunken);
+  /* Green title bar — this header is ALWAYS a new-artefact-being-added, so it
+     reads green (--good-green) as a positive "creating" cue, the same vivid
+     register as the amber Duplicate / red Delete heads on the edit flyout. */
+  background: var(--good-green, #66cc00);
   margin: -14px -16px -12px;
   padding: 10px 16px;
   border-top-left-radius: 0;
@@ -12509,21 +12512,23 @@ input[type="reset"] {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--ink);
+  /* Black on green for contrast (mirrors the amber duplicate head). */
+  color: #000;
 }
 .tree_accordion-dense__createflyout-close {
   width: 24px;
   height: 24px;
   border: 0;
   background: transparent;
-  color: var(--ink-muted);
+  /* Black on the green head so the × stays legible. */
+  color: #000;
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
   border-radius: 4px;
 }
 .tree_accordion-dense__createflyout-close:hover {
-  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  background: color-mix(in srgb, #000 12%, transparent);
   color: var(--ink);
 }
 .tree_accordion-dense__createflyout-form {
@@ -22509,7 +22514,7 @@ tr.is-editing {
 }
 
 /* SVG + series */
-.sprint-burndown__svg { display: block; }
+.sprint-burndown__svg { display: block; width: 100%; height: auto; }
 .sprint-burndown__grad-0 { stop-color: var(--chart-actual); stop-opacity: .26; }
 .sprint-burndown__grad-1 { stop-color: var(--chart-actual); stop-opacity: .02; }
 .sprint-burndown__scope-region { fill: var(--chart-scope-region); }

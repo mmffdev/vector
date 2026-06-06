@@ -28,11 +28,13 @@ export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
   // contain every series + overshoot headroom), so labels always match the line.
   const gridVals = axisTicks(v.yTop, 5);
 
-  // Date-pill lane below the x-axis labels (design 2026-06-06). Extend the
-  // viewBox so the green/red finish pills sit in their own row, like the mockup.
-  const PILL_LANE = 26;
+  // Date-pill lane (design 2026-06-06): a transparent row sits BETWEEN the plot
+  // baseline and the x-axis labels — the pills slide into that row, detaching the
+  // axis numbers downward by one row. Extend the viewBox to fit it.
+  const PILL_LANE = 22;
   const svgH = VB.H + PILL_LANE;
-  const pillY = plotBottom + 30; // below the day-number ticks (which sit at +16)
+  const pillY = plotBottom + 15; // the detached row, just under the baseline
+  const xLabelY = plotBottom + 15 + PILL_LANE; // axis numbers below the pill row
 
   return (
     <div className="sprint-burndown">
@@ -67,11 +69,9 @@ export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
       <svg
         className="sprint-burndown__svg"
         viewBox={`0 0 ${VB.W} ${svgH}`}
-        width="100%"
-        height={svgH}
         role="img"
         aria-label="Task burndown chart"
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio="xMinYMid meet"
       >
         <defs>
           <linearGradient id="tbGrad" x1="0" y1="0" x2="0" y2="1">
@@ -111,7 +111,7 @@ export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
             key={`xtick-${d}`}
             className="sprint-burndown__axis"
             x={v.x(d)}
-            y={plotBottom + 16}
+            y={xLabelY}
             textAnchor="middle"
           >
             {d === 0 ? "S" : d}
