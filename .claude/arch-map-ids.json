@@ -1703,10 +1703,6 @@
       "stored_at": "app/components/MapRelationship3D/index.tsx",
       "tier": "shared"
     },
-    "Modal": {
-      "stored_at": "app/(user)/_shared/index.ts",
-      "tier": "shared"
-    },
     "NavigationPie": {
       "stored_at": "app/components/NavigationPie.tsx",
       "tier": "shared"
@@ -1991,10 +1987,6 @@
       "stored_at": "app/(user)/workspace-admin/workspaces/page.tsx",
       "tier": "primary"
     },
-    "admin": {
-      "stored_at": "app/lib/apiSite.ts",
-      "tier": "leaf"
-    },
     "apiSite": {
       "stored_at": "app/lib/api.ts",
       "tier": "leaf"
@@ -2029,10 +2021,6 @@
     },
     "portfolioApi": {
       "stored_at": "app/lib/apiSite/index.ts",
-      "tier": "leaf"
-    },
-    "redirect": {
-      "stored_at": "next/navigation",
       "tier": "leaf"
     },
     "scopeColumns": {
@@ -2089,10 +2077,6 @@
     },
     "usePageTitle": {
       "stored_at": "app/hooks/usePageTitle.ts",
-      "tier": "leaf"
-    },
-    "useRouter": {
-      "stored_at": "next/navigation",
       "tier": "leaf"
     },
     "useSentinel": {
