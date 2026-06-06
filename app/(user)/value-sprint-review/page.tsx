@@ -5,15 +5,11 @@ import PageContent from "@/app/components/PageContent";
 import PageDescription from "@/app/components/PageDescription";
 import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
-import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
+import { GridSprintReview } from "./GridSprintReview";
 import RadialPillMenu from "@/app/components/RadialPillMenu/p_RadialPillMenu";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useSentinel } from "@/app/sentinel";
-import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
-import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import { resolveSlotRefs } from "@/app/lib/sidecarSlotResolver";
-import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
 import { usePageTitle } from "@/app/hooks/usePageTitle";
 import { useNextSprint, type SprintWireRow } from "@/app/hooks/useNextSprint";
 import { sprints as sprintsApi } from "@/app/lib/apiSite";
@@ -24,7 +20,10 @@ import { BsCalendar3 } from "react-icons/bs";
 import { usePageSavedViews } from "@/app/components/SavedViews/PageSavedViewsControl";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
 import { SprintBurndownChart } from "@/app/components/SprintBurndownChart";
+import { TaskBurndownChart } from "@/app/components/TaskBurndownChart";
 import { useSprintMetrics } from "@/app/hooks/useSprintMetrics";
+import { useTaskMetrics } from "@/app/hooks/useTaskMetrics";
+import { useTeamVelocity } from "@/app/hooks/useTeamVelocity";
 
 // Display rule for sprint identifiers — matches the backend's projection
 // (backend/internal/timeboxsprints/sql.go and artefactitems/sql.go):
@@ -79,7 +78,11 @@ export default function ValueSprintReview() {
     // TD as the per-grid SavedViewsControl — TD-SAVEDVIEWS-WORKSPACE-SHARE-PERM-CODE.
     canShareToWorkspace: sentinel_can("workspace.archive"),
   });
-  const panelBind = pageSavedViews.bind("panel");
+  // The saved-views header dropdown stays (page chrome). Its per-grid column
+  // control (`bind("panel")`) is intentionally NOT wired to GridSprintReview:
+  // the Grid primitive has no column show/hide concept yet — see
+  // TD-GRID-SAVEDVIEWS-COLUMNS. The dropdown still persists the view name/scope;
+  // column visibility lands when the primitive gains it.
   usePageHeader({
     title: full,
     actions: pageSavedViews.node,
@@ -101,9 +104,6 @@ export default function ValueSprintReview() {
   } = useNextSprint(workspaceId, activeNodeId, 8);
 
   const [filters] = useState({ sprint_id: "" });
-  // Sprint-panel selection state — single-row selection only on review
-  // page (no bulk actions, no cross-tree DnD).
-  const [panelSelectedItem, setPanelSelectedItem] = useState<WorkItem | null>(null);
 
   // Radial picker open state. Single shared instance, mode-tagged so
   // onPick knows what to do with the picked id:
@@ -125,13 +125,55 @@ export default function ValueSprintReview() {
   // different sprint via the Switch Sprint affordance; when null we
   // fall through to useNextSprint's pick.
   const [panelSprintIdOverride, setPanelSprintIdOverride] = useState<string | null>(null);
-  const panelRefetchRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Resolved sprint id for the panel — override wins, else fall back
-  // to useNextSprint's pick. The matching SprintWireRow comes from the
-  // upcomingSprints list (which already covers planned + active).
+  // Date-driven "current" sprint — the sprint whose [start, end] window
+  // contains today. This is the page's DEFAULT landing target and powers the
+  // "Current sprint" jump button. Wire dates are ISO YYYY-MM-DD with no time
+  // component, so a string compare against today's local-date ISO works without
+  // timezone juggling.
+  //
+  // Overlap tiebreak: sprint windows CAN overlap (e.g. Sprint 1 — Alpha
+  // 05-28→06-10 and Sprint 1 — Red 06-02→06-15 both contain 06-06). When more
+  // than one window contains today we pick the MOST-RECENTLY-STARTED one — the
+  // freshest active sprint — so the page lands on the sprint the team most
+  // recently kicked off, not an older still-open one.
+  //
+  // Returns null only when today falls in NO sprint window (e.g. a gap between
+  // two planned sprints) — the panelSprintId fallback chain handles that.
+  const currentSprint = useMemo<SprintWireRow | null>(() => {
+    if (allSprints.length === 0) return null;
+    const t = new Date();
+    const todayISO = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+    const containing = allSprints.filter((s) => {
+      const start = s.timeboxes_sprints_date_start;
+      const end = s.timeboxes_sprints_date_end;
+      if (!start || !end) return false;
+      return start <= todayISO && todayISO <= end;
+    });
+    if (containing.length === 0) return null;
+    return containing.reduce((latest, s) =>
+      (s.timeboxes_sprints_date_start ?? "") >
+      (latest.timeboxes_sprints_date_start ?? "")
+        ? s
+        : latest,
+    );
+  }, [allSprints]);
+
+  // Resolved sprint id for the panel. Precedence:
+  //   1. panelSprintIdOverride — an explicit user pick (Switch / Prev / Next /
+  //      Current), or the auto-advance landing the current sprint once
+  //      allSprints loads.
+  //   2. currentSprint — the sprint whose date window contains TODAY. The
+  //      page's intended default: it always lands on the in-flight sprint by
+  //      date range, NOT the next upcoming one.
+  //   3. nextSprint — only when today is in NO sprint window (a gap between
+  //      sprints); falling forward to the next-up sprint is the sensible
+  //      degrade.
   const panelSprintId =
-    panelSprintIdOverride ?? nextSprint?.timeboxes_sprints_id ?? null;
+    panelSprintIdOverride ??
+    currentSprint?.timeboxes_sprints_id ??
+    nextSprint?.timeboxes_sprints_id ??
+    null;
   // Resolve from `allSprints` first so Prev/Next navigation into completed
   // sprints (which are excluded from `upcomingSprints`) still surfaces the
   // correct title / dates / status. Fall back to upcoming + nextSprint
@@ -159,25 +201,27 @@ export default function ValueSprintReview() {
     refetch: refetchBurndown,
   } = useSprintMetrics(panelSprintId, burndownTopic);
 
-  // Date-driven "current" sprint — today's date falls within the
-  // sprint's [start, end] window. Powers the "Current sprint" jump
-  // button. Wire dates are ISO YYYY-MM-DD with no time component, so a
-  // string compare against today's local-date ISO works without
-  // timezone juggling. Returns null when today doesn't fall in any
-  // sprint's window (e.g. between two planned sprints).
-  const currentSprint = useMemo<SprintWireRow | null>(() => {
-    if (allSprints.length === 0) return null;
-    const t = new Date();
-    const todayISO = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-    return (
-      allSprints.find((s) => {
-        const start = s.timeboxes_sprints_date_start;
-        const end = s.timeboxes_sprints_date_end;
-        if (!start || !end) return false;
-        return start <= todayISO && todayISO <= end;
-      }) ?? null
-    );
-  }, [allSprints]);
+  // Task-count burndown — engineering-team view, beside the story chart. Same
+  // sprint + rank topic; a separate engine (taskmetrics) so the two never
+  // couple. Burns at the engineer's "done", not the PO's "accepted".
+  const {
+    model: taskModel,
+    loading: taskLoading,
+    refetch: refetchTask,
+  } = useTaskMetrics(panelSprintId, burndownTopic);
+
+  // Cross-sprint team velocity — workspace-level, independent of the displayed
+  // sprint. Shown as a distinct KPI in the burndown strip.
+  const { data: teamVelocity, refresh: refreshTeamVelocity } = useTeamVelocity();
+
+  // Refresh both metrics together — an acceptance moves the burndown AND can
+  // change team velocity (once the sprint is past-dated).
+  const refreshMetrics = useCallback(() => {
+    void refetchBurndown();
+    void refreshTeamVelocity();
+    void refetchTask();
+  }, [refetchBurndown, refreshTeamVelocity, refetchTask]);
+
   // Hide the button when the panel is already on the current sprint
   // (no-op affordance reads as clutter), or when there's no current
   // sprint to jump to.
@@ -217,89 +261,16 @@ export default function ValueSprintReview() {
   // greys-out illegal transitions; the backend re-enforces them.
   const statusSprintBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // ObjectTreeV2 sidecars — base config is the Work Items wizard,
-  // clamped to story + defect + risk (sprint planning granularity).
-  // Epics and tasks are excluded by design — sprint planning is at the
-  // story/defect/risk granularity. Epics group stories above the sprint
-  // boundary; tasks are sub-story execution.
-  const { types, loading: catalogueLoading } = useArtefactTypeCatalogue();
-  // Gate the ObjectTree mount on the catalogue being resolved. Without
-  // this gate, the page mounts with `types=[]` (allowedIds resolves to
-  // empty, wizardConfig builds a URL with NO item_type clamp), fires a
-  // throwaway /work-items + prefs GET, then re-mounts a moment later
-  // when `types` populates.
-  const catalogueReady = !catalogueLoading && types.length > 0;
+  // The sprint backlog tree now lives in <GridSprintReview> (the Grid
+  // primitive). It owns its own type clamp (story tier), data fetch, realtime,
+  // and inline-form wiring — see GridSprintReview.tsx. The page keeps only the
+  // sprint-selection chrome (header, nav/status buttons, burndown).
 
-  // Factored sidecar resolver. The base wizard is the work-items
-  // wizard, which already wires getParentId / getChildrenCount /
-  // searchAccessor via buildWorkItemsFunctions() — the SAME hierarchy
-  // recipe used by /work-items. The review page renders the resulting
-  // tree WITHOUT hideExpanders, so chevrons appear and children expand
-  // inline (this is the core difference from /value-sprint's flat panel
-  // view).
-  //
-  // Wire clamp:
-  //   panel: ?item_type_id=<ids>&sprint_id=<sprintId>
-  //                                         — items assigned to the panel sprint
-  const buildWizardConfig = useCallback(
-    (treeName: string, extraParams: string | null): ObjectTreeDataConfig => {
-      const ALLOWED_SLOTS = ["wrk_story", "wrk_defect", "wrk_risk"] as const;
-      const bySlot = new Map(types.map((t) => [t.slot, t.id]));
-      const allowedIds = ALLOWED_SLOTS
-        .map((s) => bySlot.get(s))
-        .filter((id): id is string => !!id);
-      const baseSidecar = {
-        ...(workItemsWizardJson as unknown as Record<string, unknown>),
-        createableTypeSlots: [...ALLOWED_SLOTS],
-      };
-      const resolvedSlots = resolveSlotRefs(baseSidecar, types);
-      const resolved = resolveWizardConfig(resolvedSlots as any);
-      const funcs = buildWorkItemsFunctions();
-      const baseUrl = (resolved.resourceUrl as string | undefined) ?? "/work-items";
-      const sep1 = baseUrl.includes("?") ? "&" : "?";
-      let url = allowedIds.length
-        ? `${baseUrl}${sep1}item_type_id=${allowedIds.join(",")}`
-        : baseUrl;
-      if (extraParams) {
-        const sep2 = url.includes("?") ? "&" : "?";
-        url = `${url}${sep2}${extraParams}`;
-      }
-      return {
-        ...resolved,
-        resourceUrl: url,
-        treeName,
-        getParentId: funcs.getParentId,
-        getChildrenCount: funcs.getChildrenCount,
-        searchAccessor: funcs.searchAccessor,
-      } as ObjectTreeDataConfig;
-    },
-    [types],
-  );
-
-  // Sprint-panel wizard. Clamps to ?sprint_id=<panelSprintId> so the
-  // tree only shows work items currently assigned to the panel sprint.
-  // Only built when a real sprint id is loaded. The tree below is
-  // gated on the same panelSprintId — no point asking the backend
-  // for "sprint = none" (an earlier sentinel value of __none__ tripped
-  // a 500 on the work-items handler's UUID parse).
-  const panelWizardConfig = useMemo<ObjectTreeDataConfig | null>(
-    () =>
-      panelSprintId
-        ? buildWizardConfig(
-            "valuesprintreview",
-            `sprint_id=${panelSprintId}`,
-          )
-        : null,
-    [buildWizardConfig, panelSprintId],
-  );
-
-  // Realtime refetch — same topic shape as Work Items so the panel stays
-  // in sync when other clients mutate work items in this tenant. We also
-  // refetch the sprint panel header so sprint name / date changes pushed
-  // from another tab surface here without a manual reload.
+  // Realtime refetch — refreshes the sprint header (name / dates / status) so
+  // out-of-band sprint changes surface without a manual reload. The grid
+  // refreshes itself via its own rank subscription.
   const refetch = useCallback(async () => {
     await refetchNextSprint();
-    await panelRefetchRef.current?.();
   }, [refetchNextSprint]);
 
   useEffect(() => {
@@ -394,39 +365,65 @@ export default function ValueSprintReview() {
           Review sprint progress with full work-item hierarchy. State changes on child items roll up to their parents automatically.
         </PageDescription>
 
-        {/* Sprint burndown — live from the sprint metrics engine. Reads
-            real story-points remaining vs. the ideal pace, with the
-            forecast cone and any mid-sprint scope changes pinned. Value
-            is earned only when a parent item is Accepted. */}
-        <Panel
-          name="panel_value_sprint_review_burndown"
-          className="page-panel-heading"
-          title="Sprint burndown"
-          description="Story points remaining vs. the ideal pace, with forecast cone and scope-change history."
-        >
-          <div className="value-sprint-review__burndown-bar">
-            <button
-              type="button"
-              className="btn"
-              onClick={() => void refetchBurndown()}
-              aria-label="Refresh burndown"
-              title="Refresh burndown"
+        {/* Two burndowns side-by-side at 50% each — the PO view (story points,
+            earned at Accepted) and the engineering-team view (task count,
+            earned at the engineer's Done). Story = the problem; task = the
+            solution. Separate engines (sprintmetrics / taskmetrics) so they
+            never couple. Stacks to one column below 900px. */}
+        <div className="value-sprint-review__burndown-row">
+          <div className="value-sprint-review__burndown-col">
+            <Panel
+              name="panel_value_sprint_review_burndown"
+              className="page-panel-heading"
+              title="Sprint burndown"
+              description="Story points remaining vs. the ideal pace, with forecast cone and scope-change history."
             >
-              <span>↻ Refresh</span>
-            </button>
+              <div className="value-sprint-review__burndown-bar">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => refreshMetrics()}
+                  aria-label="Refresh burndown"
+                  title="Refresh burndown"
+                >
+                  <span>↻ Refresh</span>
+                </button>
+              </div>
+              {burndownModel ? (
+                <SprintBurndownChart model={burndownModel} teamVelocity={teamVelocity} />
+              ) : (
+                <p className="text-size-90">
+                  {burndownLoading
+                    ? "Loading burndown…"
+                    : panelSprintId
+                      ? "No burndown data for this sprint yet — it populates as items are added and accepted."
+                      : "Select a sprint to see its burndown."}
+                </p>
+              )}
+            </Panel>
           </div>
-          {burndownModel ? (
-            <SprintBurndownChart model={burndownModel} />
-          ) : (
-            <p className="text-size-90">
-              {burndownLoading
-                ? "Loading burndown…"
-                : panelSprintId
-                  ? "No burndown data for this sprint yet — it populates as items are added and accepted."
-                  : "Select a sprint to see its burndown."}
-            </p>
-          )}
-        </Panel>
+
+          <div className="value-sprint-review__burndown-col">
+            <Panel
+              name="panel_value_sprint_review_task_burndown"
+              className="page-panel-heading"
+              title="Task burndown"
+              description="Tasks completed vs. the ideal pace — the engineering-team view. A task burns when its owner marks it done."
+            >
+              {taskModel ? (
+                <TaskBurndownChart model={taskModel} />
+              ) : (
+                <p className="text-size-90">
+                  {taskLoading
+                    ? "Loading task burndown…"
+                    : panelSprintId
+                      ? "No task burndown yet — it populates as tasks are added under sprinted stories and marked done."
+                      : "Select a sprint to see its task burndown."}
+                </p>
+              )}
+            </Panel>
+          </div>
+        </div>
 
         {/* Sprint-scoped panel — title + description reflect the
             currently-displayed sprint (which defaults to useNextSprint's
@@ -448,29 +445,19 @@ export default function ValueSprintReview() {
             )
           }
         >
-          {/* Sprint-scoped tree renders BARE (no title / addressableName)
-              so it doesn't nest a Panel inside this outer Panel. The
-              outer Panel owns the chrome; the tree owns the table.
-              Mounted only when a sprint is loaded — see panelWizardConfig
-              for the rationale.
+          {/* The sprint backlog is the Grid primitive (GridSprintReview),
+              clamped to the panel sprint + the story tier. The outer Panel
+              owns the chrome; the grid owns the table + its own action bar.
+              Mounted only when a sprint is loaded — an unresolved clamp
+              returns nothing, so there's no point mounting before then.
 
-              Switch Sprint affordance is injected onto the ActionBar via
-              actionBarLeading so it sits before "Create New" with the
-              same chip styling. Disabled when fewer than two upcoming
-              sprints exist (no point switching away from the only
-              candidate). */}
-          {catalogueReady && panelWizardConfig && (
-            <ObjectTree
-              title="Sprint backlog"
-              subtitleBadge="00"
-              subtitle="Sprint scope"
-              description="Work items committed to this sprint, with full hierarchy. State rolls up."
-              selectedId={panelSelectedItem?.id ?? null}
-              onSelect={setPanelSelectedItem}
-              wizardConfig={panelWizardConfig}
-              hideCogMenu
-              urlPrefix="review"
-              refetchRef={panelRefetchRef}
+              The sprint Prev / Next / Current / Switch / Status buttons are
+              injected onto the grid's action bar via the `leading` slot so
+              they sit at the start of the band, exactly as before. */}
+          {panelSprintId && (
+            <GridSprintReview
+              panelSprintId={panelSprintId}
+              onMembershipChanged={refreshMetrics}
               actionBarLeading={
                 <>
                   {sprintNavState.hasPrev && (
@@ -559,8 +546,6 @@ export default function ValueSprintReview() {
                   </button>
                 </>
               }
-              columnsControlRef={panelBind.columnsControlRef}
-              onColumnsChange={panelBind.onColumnsChange}
             />
           )}
         </Panel>

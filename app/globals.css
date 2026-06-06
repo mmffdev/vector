@@ -22432,6 +22432,21 @@ tr.is-editing {
   padding: 0;
 }
 
+/* === Burndown row: story + task charts side-by-side at 50% each === */
+.value-sprint-review__burndown-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+.value-sprint-review__burndown-col {
+  flex: 1 1 0;
+  min-width: 320px;
+}
+@media (max-width: 900px) {
+  .value-sprint-review__burndown-col { flex-basis: 100%; }
+}
+
 /* === Sprint burndown chart === */
 .sprint-burndown {
   display: flex;

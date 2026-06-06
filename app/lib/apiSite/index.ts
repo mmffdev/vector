@@ -425,7 +425,96 @@ export const admin = {
       "/admin/dev/seed-workspace",
       { method: "POST", body: JSON.stringify(params) },
     ),
+
+  // ─── Dev scope-actions framework ───────────────────────────────────────────
+  // Reusable scoped-maintenance tooling. Backend: backend/internal/devtools.
+  // UI: dev/pages/DevScopeActionsPanel.tsx. dev-env-only (fail-closed 403).
+  // Cascading scope: subscription → workspace → topology node → artefact type.
+
+  /** dev-only: cascading scope dropdown options. */
+  devScopeSubscriptions: () =>
+    apiSite<{ options: DevScopeOption[] }>("/admin/dev/scope-actions/subscriptions"),
+  devScopeWorkspaces: (subscriptionId: string) =>
+    apiSite<{ options: DevScopeOption[] }>(
+      `/admin/dev/scope-actions/workspaces?subscription_id=${encodeURIComponent(subscriptionId)}`,
+    ),
+  devScopeTopologyNodes: (workspaceId: string) =>
+    apiSite<{ options: DevScopeOption[] }>(
+      `/admin/dev/scope-actions/topology-nodes?workspace_id=${encodeURIComponent(workspaceId)}`,
+    ),
+  devScopeArtefactTypes: (workspaceId: string) =>
+    apiSite<{ options: DevScopeOption[] }>(
+      `/admin/dev/scope-actions/artefact-types?workspace_id=${encodeURIComponent(workspaceId)}`,
+    ),
+
+  /** dev-only: preview the flow-reseed (read-only; rolls back, never commits). */
+  devFlowReseedPreview: (body: { scope: DevScope; include_custom_flows: boolean }) =>
+    apiSite<{ preview: DevReseedPreview; whole_tenant: boolean }>(
+      "/admin/dev/scope-actions/flow-reseed/preview",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** dev-only: run the flow-reseed (backs up flow tables first; confirm:"yes"). */
+  devFlowReseedRun: (body: { scope: DevScope; include_custom_flows: boolean; confirm: "yes" }) =>
+    apiSite<{ success: boolean; result: DevReseedResult; backup_suffix: string; backup_tables: string[] }>(
+      "/admin/dev/scope-actions/flow-reseed/run",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  /** dev-only: preview the fixture cleanup (read-only; rolls back). */
+  devFixtureCleanupPreview: () =>
+    apiSite<{ preview: DevFixtureCleanupPreview }>(
+      "/admin/dev/scope-actions/fixture-cleanup/preview",
+      { method: "POST" },
+    ),
+  /** dev-only: drop FlowLayer* fixtures + Old/Pending artefacts (confirm:"yes"). */
+  devFixtureCleanupRun: (body: { confirm: "yes" }) =>
+    apiSite<{ success: boolean; result: DevFixtureCleanupResult; backup_suffix: string; backup_tables: string[] }>(
+      "/admin/dev/scope-actions/fixture-cleanup/run",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
 };
+
+// ─── Dev scope-actions types (mirror backend/internal/devtools structs) ───────
+export interface DevScopeOption {
+  id: string;
+  name: string;
+}
+export interface DevScope {
+  subscription_id?: string | null;
+  workspace_id?: string | null;
+  topology_node_id?: string | null;
+  artefact_type_id?: string | null;
+}
+export interface DevReseedPreview {
+  types: number;
+  default_flows: number;
+  custom_flows: number;
+  flows_total: number;
+  artefacts_repoint: number;
+  include_custom_flows: boolean;
+}
+export interface DevReseedResult {
+  types_processed: number;
+  snapshots_rebuilt: number;
+  flows_rebuilt: number;
+  artefacts_rebound: number;
+  states_deleted: number;
+  states_inserted: number;
+  transitions_rebuilt: number;
+}
+export interface DevFixtureCleanupPreview {
+  flow_layer_types: number;
+  flow_layer_flows: number;
+  old_pending_artefacts: number;
+  old_pending_types: number;
+}
+export interface DevFixtureCleanupResult {
+  flow_layer_flow_states_deleted: number;
+  flow_layer_flows_deleted: number;
+  flow_layer_types_deleted: number;
+  old_pending_artefacts_deleted: number;
+  old_pending_types_deleted: number;
+}
 
 // Pages: dev/pages/DevReportingPanel.tsx
 // ─── Dev reporting  (/admin/dev/reporting) ───────────────────────────────────
@@ -1595,4 +1684,16 @@ export type {
   SprintScopeChange,
   SprintCone,
   SprintKPIs,
+  TeamVelocity,
 } from "@/app/lib/apiSite/sprintMetrics";
+
+// taskMetrics — the TASK-count burndown (engineering-team view). Standalone
+// sibling of sprintMetrics; same dumb-chart contract, count units.
+export { taskMetrics } from "@/app/lib/apiSite/taskMetrics";
+export type {
+  TaskMetricsModel,
+  TaskWindow,
+  TaskScopeChange,
+  TaskCone,
+  TaskKPIs,
+} from "@/app/lib/apiSite/taskMetrics";

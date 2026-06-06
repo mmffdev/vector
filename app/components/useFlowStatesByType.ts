@@ -27,6 +27,27 @@ interface BulkResponse {
 const cache = new Map<string, WorkItemFlowState[]>();
 const inFlight = new Map<string, Promise<void>>();
 
+// Module-level subscribers so a cache bust re-renders every live consumer.
+const subscribers = new Set<() => void>();
+function notifyAll() {
+  for (const cb of subscribers) cb();
+}
+
+// invalidateFlowStatesByType drops cached states so the next render refetches.
+// Pass specific type ids to bust just those (e.g. after a commit 400 that means
+// the cached state ids are stale — a flow was edited/reseeded underneath the
+// open page); pass nothing to clear everything. Without this the module cache
+// never expires, so a flow reseed strands open pages with dead state ids that
+// 400 on commit. Origin: 2026-06-06 flow-baseline reseed.
+export function invalidateFlowStatesByType(typeIds?: readonly string[]) {
+  if (!typeIds || typeIds.length === 0) {
+    cache.clear();
+  } else {
+    for (const id of typeIds) cache.delete(id);
+  }
+  notifyAll();
+}
+
 function makeKey(ids: string[]): string {
   return [...ids].sort().join(",");
 }
@@ -74,6 +95,19 @@ export function useFlowStatesByType(typeIds: readonly string[]): FlowStatesByTyp
       if (!cancelled) force((n) => n + 1);
     });
     return () => { cancelled = true; };
+  }, [key]);
+
+  // Re-render + refetch when the module cache is busted (a flow edit/reseed
+  // invalidated the cached state ids). The fetch re-runs because fetchMissing
+  // sees the now-missing ids.
+  useEffect(() => {
+    const cb = () => {
+      const ids = makeKey(typeIds.filter(Boolean)).split(",").filter(Boolean);
+      if (ids.length) void fetchMissing(ids).then(() => force((n) => n + 1));
+      else force((n) => n + 1);
+    };
+    subscribers.add(cb);
+    return () => { subscribers.delete(cb); };
   }, [key]);
 
   // Project the cache into a Map scoped to the requested ids.
