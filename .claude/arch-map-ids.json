@@ -604,46 +604,6 @@
       "label": "Risk register tree grid with filter chips",
       "status": "active"
     },
-    "PLAN-SCO.page-shell": {
-      "id": "PLAN-SCO.01",
-      "label": "Page shell & description",
-      "status": "active"
-    },
-    "PLAN-SCO.grid-execution": {
-      "id": "PLAN-SCO.02",
-      "label": "Grid assembler (scope-local)",
-      "status": "active"
-    },
-    "PLAN-SCO.scope-data": {
-      "id": "PLAN-SCO.03",
-      "label": "Scope data layer (scope-local)",
-      "status": "active"
-    },
-    "PLAN-SCO.scope-columns": {
-      "id": "PLAN-SCO.04",
-      "label": "Scope column descriptors (scope-local)",
-      "status": "active"
-    },
-    "PLAN-SCO.grid-tree-primitive": {
-      "id": "PLAN-SCO.05",
-      "label": "Grid__Tree primitive",
-      "status": "active"
-    },
-    "PLAN-SCO.row-flyout": {
-      "id": "PLAN-SCO.06",
-      "label": "Row detail flyout",
-      "status": "active"
-    },
-    "PLAN-SCO.filter-chips": {
-      "id": "PLAN-SCO.07",
-      "label": "Filter chips & facets",
-      "status": "active"
-    },
-    "PLAN-SCO.cell-renderers": {
-      "id": "PLAN-SCO.08",
-      "label": "Cell renderer primitives",
-      "status": "active"
-    },
     "PLAN-PLA.header": {
       "id": "PLAN-PLA.01",
       "label": "Page header",
@@ -697,26 +657,6 @@
     "PLAN-PI.object-tree": {
       "id": "PLAN-PI.04",
       "label": "Portfolio Items Dense Grid",
-      "status": "active"
-    },
-    "PLAN-WI.heading": {
-      "id": "PLAN-WI.01",
-      "label": "Page Heading",
-      "status": "active"
-    },
-    "PLAN-WI.summary-header": {
-      "id": "PLAN-WI.02",
-      "label": "KPI Summary Strip",
-      "status": "active"
-    },
-    "PLAN-WI.visualisation": {
-      "id": "PLAN-WI.03",
-      "label": "Visualisation Panel",
-      "status": "active"
-    },
-    "PLAN-WI.grid-body": {
-      "id": "PLAN-WI.04",
-      "label": "Work Items Grid",
       "status": "active"
     },
     "PLAN-SPR.heading": {
@@ -834,16 +774,6 @@
       "label": "Value status summary panel",
       "status": "active"
     },
-    "VAL-VSR.burndown-row": {
-      "id": "VAL-VSR.01",
-      "label": "Burndown Charts",
-      "status": "active"
-    },
-    "VAL-VSR.sprint-backlog": {
-      "id": "VAL-VSR.02",
-      "label": "Sprint Backlog Grid",
-      "status": "active"
-    },
     "VAL-VSB.sprint-board-header": {
       "id": "VAL-VSB.01",
       "label": "Sprint Board Panel",
@@ -852,11 +782,6 @@
     "VAL-VF.flow-board": {
       "id": "VAL-VF.01",
       "label": "Flow Board",
-      "status": "active"
-    },
-    "VAL-VA.artefacts-grid": {
-      "id": "VAL-VA.01",
-      "label": "Artefacts Grid Tree",
       "status": "active"
     },
     "VAL-VD.dependency-map": {
@@ -1308,6 +1233,66 @@
       "id": "AVR-NM.01",
       "label": "Inbox",
       "status": "active"
+    },
+    "PLAN-WI.frame": {
+      "id": "PLAN-WI.01",
+      "label": "Frame \u2014 PageHeading + Panel (NOT DataContainer; the GridWorkItems comment referencing DataContainer is stale)",
+      "status": "active"
+    },
+    "PLAN-WI.kpi-strip": {
+      "id": "PLAN-WI.02",
+      "label": "KPI summary strip",
+      "status": "active"
+    },
+    "PLAN-WI.visualisation": {
+      "id": "PLAN-WI.03",
+      "label": "Visualisation petals",
+      "status": "active"
+    },
+    "PLAN-WI.grid-body": {
+      "id": "PLAN-WI.04",
+      "label": "Grid body",
+      "status": "active"
+    },
+    "PLAN-SCO.frame": {
+      "id": "PLAN-SCO.01",
+      "label": "Frame \u2014 Panel wraps GridExecution (no DataContainer despite the stale comment; Panel is the sole heading wrapper)",
+      "status": "active"
+    },
+    "PLAN-SCO.grid-body": {
+      "id": "PLAN-SCO.02",
+      "label": "Grid body",
+      "status": "active"
+    },
+    "VAL-VA.frame": {
+      "id": "VAL-VA.01",
+      "label": "Frame \u2014 Panel wraps GridExecution (same shape as PLAN-SCO; no DataContainer, no PageDescription)",
+      "status": "active"
+    },
+    "VAL-VA.grid-body": {
+      "id": "VAL-VA.02",
+      "label": "Grid body (shared GridExecution from /scope)",
+      "status": "active"
+    },
+    "VAL-VSR.frame": {
+      "id": "VAL-VSR.01",
+      "label": "Frame \u2014 PageHeading + PageDescription + Panels (no DataContainer; differs from PLAN-SCO/VAL-VA which use Panel alone)",
+      "status": "active"
+    },
+    "VAL-VSR.burndown-strip": {
+      "id": "VAL-VSR.02",
+      "label": "Dual burndown panels",
+      "status": "active"
+    },
+    "VAL-VSR.sprint-panel": {
+      "id": "VAL-VSR.03",
+      "label": "Sprint-scoped backlog panel",
+      "status": "active"
+    },
+    "VAL-VSR.sprint-picker": {
+      "id": "VAL-VSR.04",
+      "label": "Radial sprint / status picker",
+      "status": "active"
     }
   },
   "components": {
@@ -1373,10 +1358,6 @@
     },
     "CircularAdditor": {
       "stored_at": "app/components/catalogue/c_circular_additor/circularAdditor.tsx",
-      "tier": "shared"
-    },
-    "ColourBlockPicker": {
-      "stored_at": "app/components/ColourBlockPicker.tsx",
       "tier": "shared"
     },
     "ColourPicker": {
@@ -1583,10 +1564,6 @@
       "stored_at": "app/(user)/workspace-admin/artefacts/transition-rules/page.tsx",
       "tier": "primary"
     },
-    "FlowStatePillRow": {
-      "stored_at": "app/components/FlowStatePillRow.tsx",
-      "tier": "shared"
-    },
     "FormBuilderLaunchPanel": {
       "stored_at": "app/components/FormLayoutBuilder/FormBuilderLaunchPanel.tsx",
       "tier": "shared"
@@ -1621,6 +1598,10 @@
     },
     "GridTreeHead": {
       "stored_at": "app/components/Grid/Grid__Tree_Head.tsx",
+      "tier": "shared"
+    },
+    "GridTreeLines": {
+      "stored_at": "app/components/Grid/Grid__Tree_Lines.tsx",
       "tier": "shared"
     },
     "GridTreePagination": {
@@ -1790,10 +1771,6 @@
     "PortfolioRouterBody": {
       "stored_at": "app/(user)/portfolio-model/page.tsx",
       "tier": "primary"
-    },
-    "PrefixBlockStripes": {
-      "stored_at": "app/components/PrefixBlockStripes.tsx",
-      "tier": "shared"
     },
     "ProfileBar": {
       "stored_at": "app/components/ProfileBar.tsx",
@@ -2045,7 +2022,7 @@
     },
     "useColumnManager": {
       "stored_at": "app/components/Grid/useColumnManager.ts",
-      "tier": "shared"
+      "tier": "leaf"
     },
     "useDevTab": {
       "stored_at": "app/contexts/DevTabContext.tsx",
@@ -2063,10 +2040,6 @@
       "stored_at": "app/hooks/useNextSprint.ts",
       "tier": "leaf"
     },
-    "useObjectTreeFacets": {
-      "stored_at": "app/components/ObjectTreeV2/hooks/useObjectTreeFacets.ts",
-      "tier": "shared"
-    },
     "usePageAccess": {
       "stored_at": "app/contexts/PageAccessContext.tsx",
       "tier": "leaf"
@@ -2077,7 +2050,7 @@
     },
     "useSentinel": {
       "stored_at": "app/sentinel/index.ts",
-      "tier": "leaf"
+      "tier": "shared"
     },
     "useSprintMetrics": {
       "stored_at": "app/hooks/useSprintMetrics.ts",
@@ -2101,7 +2074,7 @@
     },
     "useTree": {
       "stored_at": "app/components/Grid/useTree.ts",
-      "tier": "shared"
+      "tier": "leaf"
     },
     "workspaceSettingsApi": {
       "stored_at": "app/lib/workspaceSettingsApi.ts",
