@@ -799,6 +799,331 @@ paths:
                 - content
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/artefact-types:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/scope-actions/artefact-types
+      operationId: getAdminDevScopeActionsArtefactTypes
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.ArtefactTypes
+        file: backend/internal/devtools/http.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/fixture-cleanup/preview:
+    post:
+      tags:
+      - admin
+      summary: POST /admin/dev/scope-actions/fixture-cleanup/preview
+      operationId: postAdminDevScopeActionsFixtureCleanupPreview
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.FixtureCleanupPreview
+        file: backend/internal/devtools/http.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preview:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/fixture-cleanup/run:
+    post:
+      tags:
+      - admin
+      summary: POST /admin/dev/scope-actions/fixture-cleanup/run
+      operationId: postAdminDevScopeActionsFixtureCleanupRun
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.FixtureCleanupRun
+        file: backend/internal/devtools/http.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: string
+              required:
+              - confirm
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: object
+                  result:
+                    type: object
+                  backup_suffix:
+                    type: object
+                  backup_tables:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/flow-reseed/preview:
+    post:
+      tags:
+      - admin
+      summary: POST /admin/dev/scope-actions/flow-reseed/preview
+      operationId: postAdminDevScopeActionsFlowReseedPreview
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.FlowReseedPreview
+        file: backend/internal/devtools/http.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope:
+                  type: object
+                  x-go-type: Scope
+                include_custom_flows:
+                  type: boolean
+                confirm:
+                  type: string
+              required:
+              - scope
+              - include_custom_flows
+              - confirm
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preview:
+                    type: object
+                  whole_tenant:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/flow-reseed/run:
+    post:
+      tags:
+      - admin
+      summary: POST /admin/dev/scope-actions/flow-reseed/run
+      operationId: postAdminDevScopeActionsFlowReseedRun
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.FlowReseedRun
+        file: backend/internal/devtools/http.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope:
+                  type: object
+                  x-go-type: Scope
+                include_custom_flows:
+                  type: boolean
+                confirm:
+                  type: string
+              required:
+              - scope
+              - include_custom_flows
+              - confirm
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: object
+                  result:
+                    type: object
+                  backup_suffix:
+                    type: object
+                  backup_tables:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/subscriptions:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/scope-actions/subscriptions
+      operationId: getAdminDevScopeActionsSubscriptions
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.Subscriptions
+        file: backend/internal/devtools/http.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/topology-nodes:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/scope-actions/topology-nodes
+      operationId: getAdminDevScopeActionsTopologyNodes
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.TopologyNodes
+        file: backend/internal/devtools/http.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/dev/scope-actions/workspaces:
+    get:
+      tags:
+      - admin
+      summary: GET /admin/dev/scope-actions/workspaces
+      operationId: getAdminDevScopeActionsWorkspaces
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: devScopeH.Workspaces
+        file: backend/internal/devtools/http.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /admin/dev/seed-risks:
     post:
       tags:
@@ -10012,6 +10337,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /timeboxes/velocity:
+    get:
+      tags:
+      - timeboxes
+      summary: GET /timeboxes/velocity
+      operationId: getTimeboxesVelocity
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: sprintMetricsH.Velocity
+        file: backend/internal/sprintmetrics/handler.go
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
           $ref: '#/components/responses/Unauthorized'
   /topology/commit:

@@ -216,10 +216,15 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 				return
 			}
 			idleTTL := parseDurationEnv("SESSION_IDLE_TTL", 30*time.Minute)
-			if time.Since(st.LastActivityAt) > idleTTL {
+			if sessionIdleExpired(st.LastActivityAt, idleTTL, time.Now()) {
 				writeAuthFailureCoded(w, r, CodeSessionIdleExpired, usermessages.AuthSessionIdleExpired, "session_idle_expired")
 				return
 			}
+			// A1 — record genuine activity so the idle timeout tracks
+			// real use, not time-since-rotation. Throttled to ~1 write/min
+			// per active session and fire-and-forget: a failed activity
+			// write must NEVER 401 a good request.
+			s.touchSessionActivity(r.Context(), sid)
 		} else {
 			// Legacy / grace-window token: no sid claim. Honour it via
 			// the user-only lookup until REQUIRE_SID_CLAIM is flipped

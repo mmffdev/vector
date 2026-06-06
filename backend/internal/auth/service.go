@@ -395,10 +395,13 @@ func (s *Service) FindServiceUserForSubscription(ctx context.Context, subscripti
 // SessionState captures the per-request session signals RequireAuth needs
 // alongside the user row. Revoked = user was signed out from another
 // device or revoked by an admin. LastActivityAt = the timestamp the
-// idle-timeout check compares NOW() against; COALESCE'd from
-// users_sessions_rotated_at (set on every refresh) falling back to
-// users_sessions_created_at for brand-new sessions that haven't rotated
-// yet. B16.8.11 step 3.
+// idle-timeout check compares NOW() against; reads
+// users_sessions_last_used_at, which RequireAuth advances on every
+// authenticated request (throttled, see touchSessionActivity). Before
+// A1 this was COALESCE(rotated_at, created_at) and last_used_at was never
+// written — making the gate a ~30-min absolute cap rather than a genuine
+// idle timeout. B16.8.11 step 3; corrected by A1
+// (docs/superpowers/plans/2026-06-06-session-idle-timeout.md).
 type SessionState struct {
 	Revoked        bool
 	LastActivityAt time.Time

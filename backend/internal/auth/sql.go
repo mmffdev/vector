@@ -81,12 +81,26 @@ const sqlSelectUserBySessionID = `
 		       u.users_mfa_enrolled, u.users_mfa_secret, u.users_mfa_recovery_codes,
 		       u.users_created_at, u.users_updated_at,
 		       s.users_sessions_revoked,
-		       COALESCE(s.users_sessions_rotated_at, s.users_sessions_created_at) AS last_activity_at
+		       s.users_sessions_last_used_at AS last_activity_at
 		FROM users u
 		JOIN users_sessions s
 		  ON s.users_sessions_id_user = u.users_id
 		 AND s.users_sessions_id      = $2
 		WHERE u.users_id = $1
+	`
+
+// sqlTouchSessionActivity advances users_sessions_last_used_at to NOW()
+// for THIS session, but only if it hasn't been advanced in the last 60s.
+// This is the write that makes the idle timeout a genuine idle timeout:
+// every authenticated request through RequireAuth records activity, so
+// LastActivityAt (read above) reflects real use rather than time-since-
+// rotation. The 60s throttle caps it at ~1 write/min per active session.
+// A1 — docs/superpowers/plans/2026-06-06-session-idle-timeout.md.
+const sqlTouchSessionActivity = `
+		UPDATE users_sessions
+		   SET users_sessions_last_used_at = NOW()
+		 WHERE users_sessions_id = $1
+		   AND users_sessions_last_used_at < NOW() - INTERVAL '60 seconds'
 	`
 
 // sqlSelectServiceUserForSubscription returns the highest-tier active
