@@ -11,6 +11,18 @@ import type { ID } from "@/app/lib/apiSite";
 export interface SprintWindow { start: string; end: string; today: number; sprint_days: number; }
 export interface SprintScopeChange { day: number; delta: number; }
 export interface SprintCone { optimistic: number[]; pessimistic: number[]; }
+// Researched completion forecast (parity with TaskForecast). landing days may
+// exceed sprint_days; -1 = never lands.
+export interface SprintForecast {
+  optimistic_velocity: number;
+  average_velocity: number;
+  pessimistic_velocity: number;
+  opt_landing_day: number;
+  avg_landing_day: number;
+  pess_landing_day: number;
+  pess_landing_date: string;
+  projected_past_end: boolean;
+}
 export interface SprintKPIs {
   committed: number; remaining: number; velocity: number;
   days_left: number; on_track: boolean; projected_short: number;
@@ -25,6 +37,7 @@ export interface SprintMetricsModel {
   ideal_original: number[];
   cone: SprintCone;
   velocity: number;
+  forecast: SprintForecast;
   scope_changes: SprintScopeChange[];
   kpis: SprintKPIs;
 }

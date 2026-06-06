@@ -8,6 +8,20 @@
  * TD-TASKMETRICS-DUP-PROJECTION) — a pure "what's the axis top + ticks" helper.
  */
 
+/**
+ * dayToDate converts a sprint day-offset (may be fractional — a forecast landing
+ * day) to a short "Mon D" calendar label, counting whole days from the sprint
+ * start "YYYY-MM-DD". Used for the optimistic-finish marker label. Parses the
+ * date as UTC to avoid the local-midnight off-by-one.
+ */
+export function dayToDate(start: string, dayOffset: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(start);
+  if (!m) return "";
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  d.setUTCDate(d.getUTCDate() + Math.round(dayOffset));
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 /** niceCeil rounds `v` up to a visually-tidy axis maximum. */
 export function niceCeil(v: number): number {
   if (v <= 0) return 1;

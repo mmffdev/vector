@@ -10,7 +10,7 @@
  * line stops cleanly at the last real measurement.
  */
 import type { SprintMetricsModel } from "@/app/lib/apiSite";
-import { axisTop } from "@/app/components/charts/sprint/axisScale";
+import { axisTop, dayToDate } from "@/app/components/charts/sprint/axisScale";
 
 export const VB = {
   W: 560,
@@ -38,6 +38,11 @@ export interface BurndownView {
   markers: { x: number; y: number }[];
   todayX: number;
   yTop: number;
+  // Optimistic projected-finish marker (green vertical + circle), null when the
+  // optimistic trend never lands or lands off the right edge.
+  optFinish: { x: number; label: string } | null;
+  // Past-end banner when the pessimistic trend lands after sprint-end.
+  banner: { date: string } | null;
 }
 
 interface Pt { x: number; y: number; }
@@ -175,6 +180,19 @@ export function buildBurndownView(m0: SprintMetricsModel): BurndownView {
 
   const todayX = x(today);
 
+  // ── Optimistic projected-finish marker + past-end banner (parity with the
+  // task shaper). opt_landing_day is the day the fastest-recent trend hits zero;
+  // show the green marker only when it lands within the plotted window.
+  const fc = m.forecast;
+  let optFinish: { x: number; label: string } | null = null;
+  if (fc && fc.opt_landing_day >= 0 && fc.opt_landing_day <= sprint_days) {
+    optFinish = { x: x(fc.opt_landing_day), label: dayToDate(m.window.start, fc.opt_landing_day) };
+  }
+  const banner =
+    fc && fc.projected_past_end && fc.pess_landing_date
+      ? { date: fc.pess_landing_date }
+      : null;
+
   return {
     x,
     y,
@@ -191,5 +209,7 @@ export function buildBurndownView(m0: SprintMetricsModel): BurndownView {
     markers,
     todayX,
     yTop,
+    optFinish,
+    banner,
   };
 }

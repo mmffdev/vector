@@ -37,6 +37,14 @@ export function SprintBurndownChart({
 
   return (
     <div className="sprint-burndown">
+      {/* Full-width delivery-trend banner — pessimistic trend lands past sprint-end. */}
+      {v.banner && (
+        <div className="sprint-burndown__banner" role="status">
+          Current delivery trend projects completion on{" "}
+          <strong>{v.banner.date}</strong> if work continues at the current rate.
+        </div>
+      )}
+
       {/* KPI strip */}
       <div className="sprint-burndown__kpis">
         <div className="sprint-burndown__kpi">
@@ -231,6 +239,33 @@ export function SprintBurndownChart({
             </text>
           </g>
         ))}
+
+        {/* 12. optimistic projected-finish: green vertical + circle + date. */}
+        {v.optFinish && (
+          <g>
+            <line
+              className="sprint-burndown__finish-line"
+              x1={v.optFinish.x}
+              y1={VB.plotT}
+              x2={v.optFinish.x}
+              y2={plotBottom}
+            />
+            <circle
+              className="sprint-burndown__finish-dot"
+              cx={v.optFinish.x}
+              cy={plotBottom}
+              r={4}
+            />
+            <text
+              className="sprint-burndown__finish-label"
+              x={v.optFinish.x}
+              y={VB.plotT - 4}
+              textAnchor="middle"
+            >
+              {v.optFinish.label}
+            </text>
+          </g>
+        )}
       </svg>
 
       {/* legend */}
@@ -254,6 +289,10 @@ export function SprintBurndownChart({
         <span className="sprint-burndown__legend-item">
           <span className="sprint-burndown__swatch sprint-burndown__swatch--scope" />
           Scope change
+        </span>
+        <span className="sprint-burndown__legend-item">
+          <span className="sprint-burndown__swatch sprint-burndown__swatch--finish" />
+          Projected finish
         </span>
       </div>
     </div>

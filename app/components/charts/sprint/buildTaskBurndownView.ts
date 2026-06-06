@@ -9,7 +9,7 @@
  * cone, ideal_* — so the body is identical to the points shaper.
  */
 import type { TaskMetricsModel } from "@/app/lib/apiSite";
-import { axisTop } from "@/app/components/charts/sprint/axisScale";
+import { axisTop, dayToDate } from "@/app/components/charts/sprint/axisScale";
 
 export const VB = {
   W: 560,
@@ -37,6 +37,12 @@ export interface TaskBurndownView {
   markers: { x: number; y: number }[];
   todayX: number;
   yTop: number;
+  // Optimistic projected-finish marker: the green vertical line + circle at the
+  // day the optimistic (fastest recent) trend reaches zero. null when it never
+  // lands (velocity <= 0) or lands off the right edge of the plot.
+  optFinish: { x: number; label: string } | null;
+  // Past-end banner: set when the pessimistic trend lands after sprint-end.
+  banner: { date: string } | null;
 }
 
 interface Pt { x: number; y: number; }
@@ -162,6 +168,23 @@ export function buildTaskBurndownView(m0: TaskMetricsModel): TaskBurndownView {
 
   const todayX = x(today);
 
+  // ── Optimistic projected-finish marker. The forecast's opt_landing_day is the
+  // day the fastest-recent trend reaches zero. Show the green marker only when
+  // it lands (>= 0) AND within the plotted window (<= sprint_days); a landing
+  // past the right edge is communicated by the banner instead, not a clipped
+  // marker. Label is the calendar date of that finish day.
+  const fc = m.forecast;
+  let optFinish: { x: number; label: string } | null = null;
+  if (fc && fc.opt_landing_day >= 0 && fc.opt_landing_day <= sprint_days) {
+    optFinish = { x: x(fc.opt_landing_day), label: dayToDate(m.window.start, fc.opt_landing_day) };
+  }
+
+  // ── Past-end banner: pessimistic trend lands after sprint-end.
+  const banner =
+    fc && fc.projected_past_end && fc.pess_landing_date
+      ? { date: fc.pess_landing_date }
+      : null;
+
   return {
     x,
     y,
@@ -178,5 +201,7 @@ export function buildTaskBurndownView(m0: TaskMetricsModel): TaskBurndownView {
     markers,
     todayX,
     yTop,
+    optFinish,
+    banner,
   };
 }

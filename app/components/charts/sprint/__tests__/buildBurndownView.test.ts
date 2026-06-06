@@ -14,8 +14,13 @@ const model: SprintMetricsModel = {
   ideal_original: [80, 72, 64, 56, 48, 40, 32, 24, 16, 8, 0],
   cone: { optimistic: [44, 29.3, 14.7, 0], pessimistic: [44, 36.3, 28.7, 21] },
   velocity: 7.67,
+  forecast: {
+    optimistic_velocity: 9, average_velocity: 7.667, pessimistic_velocity: 5,
+    opt_landing_day: 11.889, avg_landing_day: 12.74, pess_landing_day: 15.8,
+    pess_landing_date: "2026-01-16", projected_past_end: true,
+  },
   scope_changes: [{ day: 5, delta: 12 }],
-  kpis: { committed: 92, remaining: 44, velocity: 7.67, days_left: 3, on_track: false, projected_short: 21 },
+  kpis: { committed: 92, remaining: 44, velocity: 7.67, days_left: 3, on_track: false, projected_short: 29 },
 };
 
 describe("buildBurndownView", () => {

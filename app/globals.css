@@ -22455,12 +22455,16 @@ tr.is-editing {
   width: 100%;
 }
 
-/* KPI strip */
+/* KPI strip. Fixed min-height so the story chart (5 KPIs + pill) and the task
+   chart (4 KPIs + pill) reserve the SAME vertical space — their SVG plots then
+   start at the same y, keeping the two charts row-aligned (continuity matters;
+   off-aligned plots read as broken). */
 .sprint-burndown__kpis {
   display: flex;
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
+  min-height: 40px;
 }
 .sprint-burndown__kpi {
   display: flex;
@@ -22610,6 +22614,40 @@ tr.is-editing {
   border-top: none;
   border-radius: 50%;
   background: var(--chart-scope);
+}
+.sprint-burndown__swatch--finish {
+  height: 12px;
+  border-top: none;
+  border-radius: 50%;
+  background: var(--chart-optimistic);
+}
+
+/* Optimistic projected-finish marker (green vertical + circle + date). */
+.sprint-burndown__finish-line {
+  stroke: var(--chart-optimistic);
+  stroke-width: 1.5px;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+.sprint-burndown__finish-dot {
+  fill: var(--chart-optimistic);
+}
+.sprint-burndown__finish-label {
+  fill: var(--chart-optimistic);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Full-width delivery-trend banner — pessimistic lands past sprint-end. */
+.sprint-burndown__banner {
+  width: 100%;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--status-warning-bg, color-mix(in srgb, var(--chart-pessimistic) 12%, transparent));
+  color: var(--ink);
+  border-left: 3px solid var(--chart-pessimistic);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 /* === value-sprint-review burndown bar === */

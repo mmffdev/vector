@@ -12,6 +12,11 @@ const model: TaskMetricsModel = {
   ideal_original: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
   cone: { optimistic: [], pessimistic: [] },
   rate: 2,
+  forecast: {
+    optimistic_velocity: 2, average_velocity: 2, pessimistic_velocity: 2,
+    opt_landing_day: 5, avg_landing_day: 5, pess_landing_day: 5,
+    pess_landing_date: "", projected_past_end: false,
+  },
   scope_changes: [],
   kpis: { total: 10, completed: 4, remaining: 6, days_left: 8, on_track: true, projected_short: 0 },
 };
@@ -34,6 +39,28 @@ describe("buildTaskBurndownView", () => {
     expect(v.y(10)).toBeGreaterThan(VB.plotT);
     // And every plotted point stays within the plot box [plotT, plotT+plotH].
     expect(v.y(v.yTop)).toBeCloseTo(VB.plotT, 1);
+  });
+
+  it("places the optimistic finish marker at the landing day when it lands in-window", () => {
+    const v = buildTaskBurndownView(model);
+    // opt_landing_day = 5 (<= sprint_days 10) → marker at x(5), with a date label.
+    expect(v.optFinish).not.toBeNull();
+    expect(v.optFinish!.x).toBeCloseTo(VB.plotL + (5 / 10) * VB.plotW, 1);
+    expect(v.optFinish!.label.length).toBeGreaterThan(0);
+  });
+
+  it("hides the finish marker when the optimistic trend never lands", () => {
+    const noLand = { ...model, forecast: { ...model.forecast, opt_landing_day: -1 } };
+    expect(buildTaskBurndownView(noLand).optFinish).toBeNull();
+  });
+
+  it("shows the past-end banner only when projected_past_end with a date", () => {
+    expect(buildTaskBurndownView(model).banner).toBeNull();
+    const late = {
+      ...model,
+      forecast: { ...model.forecast, projected_past_end: true, pess_landing_date: "2026-01-18" },
+    };
+    expect(buildTaskBurndownView(late).banner).toEqual({ date: "2026-01-18" });
   });
 
   it("tolerates null array fields from the wire", () => {

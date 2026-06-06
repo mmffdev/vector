@@ -1683,6 +1683,7 @@ export type {
   SprintWindow,
   SprintScopeChange,
   SprintCone,
+  SprintForecast,
   SprintKPIs,
   TeamVelocity,
 } from "@/app/lib/apiSite/sprintMetrics";
@@ -1695,5 +1696,6 @@ export type {
   TaskWindow,
   TaskScopeChange,
   TaskCone,
+  TaskForecast,
   TaskKPIs,
 } from "@/app/lib/apiSite/taskMetrics";

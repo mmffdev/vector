@@ -370,6 +370,22 @@ export default function ValueSprintReview() {
             earned at the engineer's Done). Story = the problem; task = the
             solution. Separate engines (sprintmetrics / taskmetrics) so they
             never couple. Stacks to one column below 900px. */}
+        {/* Shared refresh — one ↻ for BOTH charts (refreshMetrics refetches
+            story + task + team velocity together). Lives above the row so
+            neither panel carries extra chrome that would offset its plot and
+            break the two charts' row-alignment. */}
+        <div className="value-sprint-review__burndown-bar">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => refreshMetrics()}
+            aria-label="Refresh burndown charts"
+            title="Refresh burndown charts"
+          >
+            <span>↻ Refresh</span>
+          </button>
+        </div>
+
         <div className="value-sprint-review__burndown-row">
           <div className="value-sprint-review__burndown-col">
             <Panel
@@ -378,17 +394,6 @@ export default function ValueSprintReview() {
               title="Sprint burndown"
               description="Story points remaining vs. the ideal pace, with forecast cone and scope-change history."
             >
-              <div className="value-sprint-review__burndown-bar">
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => refreshMetrics()}
-                  aria-label="Refresh burndown"
-                  title="Refresh burndown"
-                >
-                  <span>↻ Refresh</span>
-                </button>
-              </div>
               {burndownModel ? (
                 <SprintBurndownChart model={burndownModel} teamVelocity={teamVelocity} />
               ) : (
