@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
-**Doc version:** 2.71 (2026-06-04 — B11.5 + B11.6 added: live rank-sync browser verification + stale prio-test fix.)
+**Doc version:** 2.72 (2026-06-05 — B16.20 added from PLA076: multi-tab logout fix — leader-only refresh + grace-chain hardening, 4 stories.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -1205,6 +1205,48 @@ Moved to [`Vector_Scope_Done.md` § B15](Vector_Scope_Done.md#b15-ui-primitives-
   - AC: the lint is wired into `npm run lint:rf1` (or the project lint suite) so CI blocks regressions.
   - AC: `go vet ./...`, the search package tests, and the new lint all pass green.
   - AC: RES066's SEC-001 row and this scope entry are struck through as complete.
+  - Theme: B16 Security & Auth
+
+### B16.19 SEC-004 + SEC-MFA + SEC-ERR — auth hardening batch (RES066)
+
+- ✅ ~~**B16.19 [P2]** — [Benefit 3/5] Three localized auth-hardening fixes surfaced by RES066.~~ **DONE 2026-06-05** — SEC-004: `httprate.LimitByIP(10,min)` added to change-password group ([main.go](backend/cmd/server/main.go)); SEC-MFA: both `os.Getenv` → `secrets.Get` in [mfaremember.go](backend/internal/security/mfaremember.go), `os` import removed, 3 guard tests pass; SEC-ERR: 3 `err.Error()` fallbacks in [auth/handler.go](backend/internal/auth/handler.go) → generic message + `log.Printf` (0 leaks remain). `go build ./...` + `go vet` + auth/security tests green. SEC-ERR systemic 33-site fix remains out of scope (tracked). Original: None touch architecture; all mirror existing house patterns. **SEC-004** — `/auth/change-password` has no rate limit while every sibling credential endpoint does ([main.go:1315](backend/cmd/server/main.go)); self-inflicted DoS (bcrypt+HIBP per call) behind a valid session. **SEC-MFA** — `mfaremember.go` signs with `os.Getenv("JWT_ACCESS_SECRET")` instead of `secrets.Get()`, bypassing the AES-GCM envelope used by the 8 signers in `auth/tokens.go`; dormant today (plaintext secret) but a key-hygiene defect the moment the secret is encrypted/rotated. **SEC-ERR** — the unknown-error fallback in `ChangePassword`/`PasswordResetConfirm` dumps `err.Error()` to the wire ([auth/handler.go:362,503,537](backend/internal/auth/handler.go)), which can leak a raw pgx/DB error string. **Scope note:** SEC-ERR is fixed at the 3 sites in `auth/handler.go` only — the audit noted the `err.Error()`-to-wire pattern recurs across ~33 sites repo-wide; the systemic fix (shared error-mapping helper + lint) is explicitly OUT OF SCOPE here and tracked separately.
+  - AC: **SEC-004** — the `/auth/change-password` route group in [main.go](backend/cmd/server/main.go) has an `httprate.LimitByIP(...)` middleware, matching the rate-limit idiom on `/mfa/verify` and siblings.
+  - AC: **SEC-MFA** — both `os.Getenv("JWT_ACCESS_SECRET")` calls in [mfaremember.go:29,47](backend/internal/security/mfaremember.go) are replaced with `secrets.Get("JWT_ACCESS_SECRET")`; the now-unused `os` import is removed from that file; package still compiles (no import cycle).
+  - AC: **SEC-MFA** — a guard test asserts a token signed by `SignMFARememberToken` round-trips through `ParseMFARememberToken` (proves the secret swap didn't change the signing contract).
+  - AC: **SEC-ERR** — all 3 `httperr.Write(w, r, http.StatusBadRequest, err.Error())` fallbacks in `auth/handler.go` are replaced with a generic user message + a server-side `log.Printf` of the raw error (mirrors the `artefactitems` handler log-then-generic pattern); grep finds 0 `err.Error()` passed as the `detail` arg to `httperr.Write` in `auth/handler.go`.
+  - AC: `go vet ./...` (auth + security), `go build ./...`, and the auth + security package tests pass green.
+  - AC: RES066's SEC-004 / SEC-MFA / SEC-ERR rows and this scope entry are struck through as complete.
+  - Theme: B16 Security & Auth
+
+### B16.20 Multi-tab logout fix — leader-only refresh + grace-chain hardening (PLA076)
+
+Closes `TD-AUTH-MULTITAB-STALE-RT-COOKIE` (validated 2026-06-05): tabs share one single-use refresh cookie; a sibling tab's rotation supersedes it, the other tab later refreshes with the stale token >30s after rotation → `sqlRevokeAllUserSessions` → logout. Primary fix is frontend leader-only refresh (a follower awaits the leader's broadcast instead of touching the cookie); backend grace-chain walk is defense-in-depth within the unchanged 30s window. No theft-detection control weakened (defence/finance bar).
+
+- **B16.20.1 [P2] 🔵 IN FLIGHT** — Add RED tests pinning the multi-tab refresh contract. Lock in the single-network-refresh + grace-chain expectations before any fix.
+  - AC: frontend test in `authChannel.test.ts` — two `coordinatedRefresh` calls staggered apart (lock uncontended each time) with a simulated recent-rotation marker → `doRefresh` runs at most ONCE; the second adopts the broadcast.
+  - AC: backend test `service_test.go` — a 3-link chain A→B→C (C head, all within grace window); presenting A's token returns C's access token, NOT `ErrTokenExpired`.
+  - AC: both tests FAIL against current code (RED proven) before the fix stories.
+  - AC: no production code changed in this story.
+  - Theme: B16 Security & Auth
+- **B16.20.2 [P2] 🔵 IN FLIGHT** — Frontend: leader-only refresh — follower awaits broadcast instead of rotating. A tab needing a refresh within the recent-rotation window waits for the leader's token rather than touching the shared cookie.
+  - AC: `authChannel.ts` records a millis rotation timestamp on each successful rotation (alongside the existing marker).
+  - AC: `coordinatedRefresh` awaits a `refreshed` broadcast (timeout fallback to a real refresh) when a rotation occurred within `RECENT_REFRESH_MS` or a broadcast arrives while queued.
+  - AC: the Phase-0 frontend test now PASSES (exactly one network refresh across two staggered tabs).
+  - AC: existing authChannel + AuthContext tests stay green; `npm run typecheck` clean.
+  - AC: no backend change in this story.
+  - Theme: B16 Security & Auth
+- **B16.20.3 [P2] 🔵 IN FLIGHT** — Backend: grace-window successor walk to live head. Resolve a within-window reused token to the chain head, not just the immediate successor — defense-in-depth, window unchanged.
+  - AC: `refreshFromSuccessor` loops `successor_hash` to the head (no successor) or stops at a revoked/expired link.
+  - AC: the resolved head still passes the DPoP cnf.jkt binding check; a mismatch still revoke-alls (unchanged security).
+  - AC: `REFRESH_GRACE_SECONDS` is NOT changed (grep shows no edit to the default/30s).
+  - AC: the Phase-0 backend test (3-link chain) now PASSES.
+  - AC: existing auth backend tests stay green (`go test ./internal/auth/...`).
+  - Theme: B16 Security & Auth
+- **B16.20.4 [P2] 🔵 IN FLIGHT** — Verify end-to-end + resolve the TD. Prove the multi-tab logout is gone in the real app and close the debt.
+  - AC: live — log in, open 3 `/scope` tabs, idle each past the access-token TTL, refocus — zero logouts; `users_sessions` shows one unbroken chain; binding-violation count unchanged.
+  - AC: `auth.refresh_token_reuse` count does not increase during the test (no false theft trips).
+  - AC: `docs/c_tech_debt.md` marks TD-AUTH-MULTITAB-STALE-RT-COOKIE resolved with the commit ref.
+  - AC: the multi-tab design spec records leader-only-refresh as the closing fix.
   - Theme: B16 Security & Auth
 
 ---
