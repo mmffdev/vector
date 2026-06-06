@@ -22,28 +22,37 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
-	"github.com/mmffdev/vector-backend/internal/logger"
 	"github.com/mmffdev/vector-backend/internal/addressables"
 	"github.com/mmffdev/vector-backend/internal/alerting"
 	"github.com/mmffdev/vector-backend/internal/apikeys"
-	"github.com/mmffdev/vector-backend/internal/cspreport"
+	"github.com/mmffdev/vector-backend/internal/artefactitems"
+	"github.com/mmffdev/vector-backend/internal/artefactpriorities"
+	"github.com/mmffdev/vector-backend/internal/artefacttypes"
 	"github.com/mmffdev/vector-backend/internal/audit"
 	"github.com/mmffdev/vector-backend/internal/auth"
-	"github.com/mmffdev/vector-backend/internal/geo"
 	"github.com/mmffdev/vector-backend/internal/bootstatus"
 	"github.com/mmffdev/vector-backend/internal/cache"
+	"github.com/mmffdev/vector-backend/internal/costcentres"
+	"github.com/mmffdev/vector-backend/internal/cspreport"
 	"github.com/mmffdev/vector-backend/internal/custompages"
 	"github.com/mmffdev/vector-backend/internal/db"
+	"github.com/mmffdev/vector-backend/internal/dependencies"
 	"github.com/mmffdev/vector-backend/internal/devreports"
+	"github.com/mmffdev/vector-backend/internal/devtools"
 	"github.com/mmffdev/vector-backend/internal/erd"
 	"github.com/mmffdev/vector-backend/internal/errorsreport"
 	"github.com/mmffdev/vector-backend/internal/fields"
+	"github.com/mmffdev/vector-backend/internal/flowboard"
 	"github.com/mmffdev/vector-backend/internal/flows"
 	"github.com/mmffdev/vector-backend/internal/formlayouts"
+	"github.com/mmffdev/vector-backend/internal/geo"
 	"github.com/mmffdev/vector-backend/internal/librarydb"
 	"github.com/mmffdev/vector-backend/internal/libraryreleases"
+	"github.com/mmffdev/vector-backend/internal/logger"
+	"github.com/mmffdev/vector-backend/internal/lookups"
 	"github.com/mmffdev/vector-backend/internal/mentions"
 	"github.com/mmffdev/vector-backend/internal/messaging/email"
+	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/notifications"
 	"github.com/mmffdev/vector-backend/internal/notifications/broker"
 	"github.com/mmffdev/vector-backend/internal/notifications/dispatchers"
@@ -53,41 +62,34 @@ import (
 	notifv2relay "github.com/mmffdev/vector-backend/internal/notifications/v2/relay"
 	notifv2rules "github.com/mmffdev/vector-backend/internal/notifications/v2/rules"
 	notifv2templates "github.com/mmffdev/vector-backend/internal/notifications/v2/templates"
-	"github.com/mmffdev/vector-backend/internal/roletypes"
-	"github.com/mmffdev/vector-backend/internal/savedviews"
-	"github.com/mmffdev/vector-backend/internal/nav"
 	"github.com/mmffdev/vector-backend/internal/pageaccess"
-	"github.com/mmffdev/vector-backend/internal/sentinel"
-	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/permissions"
-	"github.com/mmffdev/vector-backend/internal/roles"
-	"github.com/mmffdev/vector-backend/internal/search"
-	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/portfolio"
 	"github.com/mmffdev/vector-backend/internal/portfoliomodels"
 	"github.com/mmffdev/vector-backend/internal/ranking"
 	"github.com/mmffdev/vector-backend/internal/realtime"
+	"github.com/mmffdev/vector-backend/internal/roles"
+	"github.com/mmffdev/vector-backend/internal/roletypes"
+	"github.com/mmffdev/vector-backend/internal/savedviews"
+	"github.com/mmffdev/vector-backend/internal/search"
+	"github.com/mmffdev/vector-backend/internal/searchworker"
 	"github.com/mmffdev/vector-backend/internal/security"
-	"github.com/mmffdev/vector-backend/internal/tenantmasterrecord"
-	"github.com/mmffdev/vector-backend/internal/workspacemasterrecord"
-	"github.com/mmffdev/vector-backend/internal/usertaborder"
-	"github.com/mmffdev/vector-backend/internal/users"
-	"github.com/mmffdev/vector-backend/internal/vectorfields"
-	"github.com/mmffdev/vector-backend/internal/lookups"
+	"github.com/mmffdev/vector-backend/internal/sentinel"
 	"github.com/mmffdev/vector-backend/internal/sprintmetrics"
+	"github.com/mmffdev/vector-backend/internal/taskmetrics"
+	"github.com/mmffdev/vector-backend/internal/tenantmasterrecord"
 	"github.com/mmffdev/vector-backend/internal/timeboxmilestones"
 	"github.com/mmffdev/vector-backend/internal/timeboxreleases"
 	"github.com/mmffdev/vector-backend/internal/timeboxsprints"
-	"github.com/mmffdev/vector-backend/internal/webhooks"
-	"github.com/mmffdev/vector-backend/internal/artefactitems"
-	"github.com/mmffdev/vector-backend/internal/artefactpriorities"
-	"github.com/mmffdev/vector-backend/internal/costcentres"
-	"github.com/mmffdev/vector-backend/internal/dependencies"
-	"github.com/mmffdev/vector-backend/internal/artefacttypes"
-	"github.com/mmffdev/vector-backend/internal/flowboard"
+	"github.com/mmffdev/vector-backend/internal/topology"
 	"github.com/mmffdev/vector-backend/internal/transport"
-	"github.com/mmffdev/vector-backend/internal/workspaces"
+	"github.com/mmffdev/vector-backend/internal/users"
+	"github.com/mmffdev/vector-backend/internal/usertaborder"
+	"github.com/mmffdev/vector-backend/internal/vectorfields"
+	"github.com/mmffdev/vector-backend/internal/webhooks"
+	"github.com/mmffdev/vector-backend/internal/workspacemasterrecord"
 	"github.com/mmffdev/vector-backend/internal/workspaceresolver"
+	"github.com/mmffdev/vector-backend/internal/workspaces"
 )
 
 // Build-time identity. Set via -ldflags "-X main.Commit=… -X main.BuildTime=…"
@@ -386,6 +388,9 @@ func main() {
 	// devResetH is constructed after the vaPool block so MasterReset can
 	// target vector_artefacts. See below.
 	var devResetH *portfoliomodels.DevResetHandler
+	// devScopeH — devtools scope-actions surface; assigned alongside devResetH
+	// after the vaPool block (see below).
+	var devScopeH *devtools.Handler
 	// Library release-notification channel (Phase 3 of mmff_library plan, §12).
 	// Reconciler maintains a per-subscription badge-count cache; ticker
 	// floor is 15m by default (LIBRARY_RECONCILER_INTERVAL to override).
@@ -520,10 +525,10 @@ func main() {
 	// users_roles_workspaces (moved from mmff_vector → VA) now live in
 	// vector_artefacts. We still pass two pool arguments because the
 	// PoolResolver carries both pools explicitly today (will collapse
-	// to one in Pillar 3 step 3 when mmff_vector is dropped); both
-	// slots take vaPool now.
+	// mmff_vector is dropped; the resolver is single-DB (vector_artefacts)
+	// after the three-pillar merge, so it takes one pool.
 	if vaPool != nil {
-		authSvc.WorkspaceResolver = workspaceresolver.NewPoolResolver(vaPool, vaPool)
+		authSvc.WorkspaceResolver = workspaceresolver.NewPoolResolver(vaPool)
 	}
 
 	// mmff_dev pool — holds dev_reports (research/plan/security/retro/code/api).
@@ -635,6 +640,12 @@ func main() {
 	// pass servicePool to keep the existing wiring shape intact until
 	// Pillar 3 step 3 collapses to a single pool argument.
 	devResetH = portfoliomodels.NewDevResetHandler(servicePool, vaPool, orgDesignSvc)
+
+	// devScopeH — devtools scope-actions surface (cascading dropdowns +
+	// flow-reseed + fixture-cleanup, each backup-first). vaPool may be nil
+	// pre-cutover; the handler's guard() fails closed (403) in that case, so
+	// construction is safe even when vaPool is unwired.
+	devScopeH = devtools.NewHandler(vaPool)
 
 	// /dev/erd — live + snapshot ERD page (PLA-ERD).
 	// vaPool = vector_artefacts (vaPool), libPools.RO = mmff_library.
@@ -912,6 +923,15 @@ func main() {
 	if vaPool != nil {
 		sprintMetricsSvc := sprintmetrics.NewService(vaPool)
 		sprintMetricsH = sprintmetrics.NewHandler(sprintMetricsSvc)
+	}
+
+	// Task metrics (task-count burndown, engineering-team view) — standalone
+	// sibling of sprintmetrics; same vaPool guard. Mounted at GET
+	// /timeboxes/sprints/{id}/task-metrics.
+	var taskMetricsH *taskmetrics.Handler
+	if vaPool != nil {
+		taskMetricsSvc := taskmetrics.NewService(vaPool)
+		taskMetricsH = taskmetrics.NewHandler(taskMetricsSvc)
 	}
 
 	// timebox releases REST handler — mirrors sprints, no adjacency rule.
@@ -1285,916 +1305,955 @@ func main() {
 	// /samantha/v2).
 	mountSiteRoutes := func(r chi.Router) {
 
-	// /csp-report — TD-SEC-CSP-NONCES-SRI Phase 2.
-	// Unauthenticated AND CSRF-exempt: the browser POSTs these on the
-	// user's behalf with no session cookie. Per-IP rate limit is the
-	// only DoS protection. Accepts both legacy application/csp-report
-	// and modern application/reports+json wire formats; service drops
-	// browser-extension noise before persisting.
-	r.With(httprate.LimitByIP(120, time.Minute)).Post("/csp-report", cspReportH.Report)
+		// /csp-report — TD-SEC-CSP-NONCES-SRI Phase 2.
+		// Unauthenticated AND CSRF-exempt: the browser POSTs these on the
+		// user's behalf with no session cookie. Per-IP rate limit is the
+		// only DoS protection. Accepts both legacy application/csp-report
+		// and modern application/reports+json wire formats; service drops
+		// browser-extension noise before persisting.
+		r.With(httprate.LimitByIP(120, time.Minute)).Post("/csp-report", cspReportH.Report)
 
-	// /auth
-	r.Route("/auth", func(r chi.Router) {
-		r.With(httprate.LimitByIP(10, time.Minute)).Post("/login", authH.Login)
-		r.Post("/refresh", authH.Refresh)
-		r.Post("/logout", authH.Logout)
-		r.With(httprate.LimitByIP(3, time.Hour)).Post("/password-reset", authH.PasswordReset)
-		// TD-SEC-RESET-TOKEN-FRAGMENT — email links hit /redeem which
-		// validates the raw token, sets a 5-min HttpOnly handoff cookie,
-		// and 302s to /login/reset/confirm. /state is the frontend's
-		// "is my cookie alive?" probe. /confirm reads the cookie and
-		// (back-compat) still accepts a raw token in the body for
-		// non-browser callers.
-		r.With(httprate.LimitByIP(20, time.Minute)).Get("/password-reset/redeem", authH.PasswordResetRedeem)
-		r.With(httprate.LimitByIP(60, time.Minute)).Get("/password-reset/state", authH.PasswordResetState)
-		r.With(httprate.LimitByIP(10, time.Minute)).Post("/password-reset/confirm", authH.PasswordResetConfirm)
+		// /auth
+		r.Route("/auth", func(r chi.Router) {
+			r.With(httprate.LimitByIP(10, time.Minute)).Post("/login", authH.Login)
+			r.Post("/refresh", authH.Refresh)
+			r.Post("/logout", authH.Logout)
+			r.With(httprate.LimitByIP(3, time.Hour)).Post("/password-reset", authH.PasswordReset)
+			// TD-SEC-RESET-TOKEN-FRAGMENT — email links hit /redeem which
+			// validates the raw token, sets a 5-min HttpOnly handoff cookie,
+			// and 302s to /login/reset/confirm. /state is the frontend's
+			// "is my cookie alive?" probe. /confirm reads the cookie and
+			// (back-compat) still accepts a raw token in the body for
+			// non-browser callers.
+			r.With(httprate.LimitByIP(20, time.Minute)).Get("/password-reset/redeem", authH.PasswordResetRedeem)
+			r.With(httprate.LimitByIP(60, time.Minute)).Get("/password-reset/state", authH.PasswordResetState)
+			r.With(httprate.LimitByIP(10, time.Minute)).Post("/password-reset/confirm", authH.PasswordResetConfirm)
 
-		// Login continuation handoff (TD-SEC-LOGIN-REDIRECT-COOKIE).
-		// Replaces /login?redirect=<path>. /login-required is the
-		// redirect target the Next.js middleware bounces unauthenticated
-		// users to; it validates the path, mints a 10-min HttpOnly
-		// cookie carrying the signed path, 302s to a plain /login.
-		// /login-continuation is the post-auth probe — returns 200 +
-		// { path } if a valid cookie is present (and clears it
-		// atomically), 204 otherwise.
-		r.With(httprate.LimitByIP(120, time.Minute)).Get("/login-required", authH.LoginRequired)
-		r.With(httprate.LimitByIP(60, time.Minute)).Get("/login-continuation", authH.LoginContinuation)
-
-		r.Group(func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Post("/change-password", authH.ChangePassword)
-		})
-
-		r.Group(func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Get("/me", authH.Me)
-			// PLA-0053 / story 00576.5 — re-mint JWT with a new
-			// workspace_id claim. Mounted alongside /me so the
-			// auth+fresh-password gates already on this group apply.
-			r.Post("/switch-workspace", authH.SwitchWorkspace)
-		})
-
-		// B16.8.3 — MFA verify (unauthenticated — accepts challenge_token)
-		r.With(httprate.LimitByIP(10, time.Minute)).Post("/mfa/verify", authH.MFAVerify)
-
-		// B16.8.4 — MFA management (requires full authentication)
-		r.Group(func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Post("/mfa/enroll", authH.MFAEnroll)
-			r.Post("/mfa/confirm", authH.MFAConfirm)
-			r.Delete("/mfa", authH.MFADisable)
-		})
-
-		// B16.8.10 — active sessions UI + per-action step-up reauth.
-		// Rate-limited because Reauth burns a password verify per call;
-		// 20/min is generous enough for legitimate UX (modal retries)
-		// while capping brute-force attempts against the password.
-		r.Group(func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.With(httprate.LimitByIP(20, time.Minute)).Post("/reauth", authH.Reauth)
-			r.Route("/sessions", func(r chi.Router) {
-				r.Get("/", authH.ListSessions)
-				r.Post("/revoke-others", authH.RevokeOtherSessions)
-				r.Delete("/{id}", authH.RevokeSession)
-			})
-		})
-	})
-
-	// /me
-	r.Route("/me", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/active-scope", usersH.GetActiveScope)
-		r.Put("/active-scope", usersH.SetActiveScope)
-
-		// Migration 244 — Pinned (FALSE, default) vs Follow (TRUE) mode
-		// for the Home Location dropdown on /user/account-settings.
-		// Write-only here; read side flows through /auth/me as
-		// userPayload.HomeLocationFollowMode.
-		r.Put("/home-location-follow-mode", usersH.SetHomeLocationFollowMode)
-
-		// Per-user namespaced preferences (mig 208).
-		// Replaces URL-bar query state for filter chips, sort, tab —
-		// see TD-URL-FILTER-CHIPS / TD-URL-TAB-STATE in c_tech_debt.md.
-		r.Get("/preferences/{key}", usersH.GetPreference)
-		r.Put("/preferences/{key}", usersH.SetPreference)
-		r.Delete("/preferences/{key}", usersH.DeletePreference)
-
-		// PLA-0049 Phase 0.5.3: per-user page-access set + global version.
-		// Drives usePageAccess() in the frontend; client polls/re-fetches
-		// when the version bumps.
-		r.Get("/page-access", pageAccessH.MeAccess)
-	})
-
-	// /sentinel — per-user Sentinel preference writes (mutation surface
-	// for the substrate Middleware reads on every request). PUT /focus
-	// persists users.default_focus_node_id; the read side has shipped
-	// since S06 via Resolver.DefaultFocus and the /auth/me boot payload.
-	// Mounted with sentinelMW so the handler has the clamp on ctx for
-	// future tightening (e.g. scoping writes to the actor's current
-	// workspace) and so any future scope_up/down preference writes
-	// inherit the same gate.
-	// /sentinel/boot composes user + grants + tenant_root into the
-	// single payload SentinelProvider needs on mount. Without this
-	// mount the frontend bridged via /auth/me + /topology/grants/me,
-	// paying a wasted 404 probe on every page load. Injecting the
-	// two service calls via closure keeps the sentinel package free
-	// of auth/topology imports (avoids cycles).
-	sentinelLoadRolePerms := func(ctx context.Context, userID uuid.UUID) (string, uuid.UUID, []string) {
-		rp, perms := authSvc.LoadRoleAndPermissions(ctx, userID)
-		return rp.Code, rp.ID, perms
-	}
-	sentinelListGrants := func(ctx context.Context, subID, userID, actorRoleID uuid.UUID) ([]sentinel.BootGrant, error) {
-		rows, err := orgDesignSvc.ListMyGrants(ctx, subID, userID, actorRoleID)
-		if err != nil {
-			return nil, err
-		}
-		// Field-for-field copy — identical JSON tags. Role + GrantedAt
-		// come through as the topology types (Role enum, time.Time) and
-		// land in BootGrant's `any` slots, where encoding/json writes
-		// them with the same shape the chrome scope-rail consumes
-		// today via /topology/grants/me.
-		out := make([]sentinel.BootGrant, len(rows))
-		for i, g := range rows {
-			out[i] = sentinel.BootGrant{
-				GrantID:       g.GrantID,
-				NodeID:        g.NodeID,
-				WorkspaceID:   g.WorkspaceID,
-				ParentID:      g.ParentID,
-				Name:          g.Name,
-				LabelOverride: g.LabelOverride,
-				Colour:        g.Colour,
-				Icon:          g.Icon,
-				Role:          g.Role,
-				GrantedAt:     g.GrantedAt,
-				Position:      g.Position,
-			}
-		}
-		return out, nil
-	}
-	sentinelH := sentinel.NewHandler(sentinelResolver).
-		WithBootDeps(sentinelLoadRolePerms, sentinelListGrants)
-	r.Route("/sentinel", func(r chi.Router) {
-		// NB: NotFound MUST be registered BEFORE the .With(...) chain
-		// because chi runs the group's middleware stack on prefix-match
-		// alone — so any sub-route NOT explicitly mounted below would
-		// otherwise hit RequireAuth and 401 instead of 404. This was
-		// originally a workaround for the (then-unmounted) /boot probe;
-		// /boot is mounted as a real GET below, so the NotFound now
-		// only catches truly unknown sub-paths (defence-in-depth so a
-		// future probe doesn't accidentally trigger the 401 hook).
-		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "not found", http.StatusNotFound)
-		})
-		r.With(
-			authSvc.RequireAuth,
-			authSvc.RequireFreshPassword,
-			httprate.LimitByIP(120, time.Minute),
-			sentinelMW,
-		).Get("/boot", sentinelH.Boot)
-		r.With(
-			authSvc.RequireAuth,
-			authSvc.RequireFreshPassword,
-			httprate.LimitByIP(60, time.Minute),
-			userWriteLimiter,
-			sentinelMW,
-		).Put("/focus", sentinelH.PutFocus)
-	})
-
-	// /api/form-layouts — Form Layout Builder (2026-05-30). Mounted with
-	// sentinelMW so save/read handlers resolve the actor's workspace +
-	// tenant from the clamp (SERVER IS THE GATE — never from the body).
-	// formLayoutsH is nil when vaPool is unconfigured (legacy envs); the
-	// mount is guarded so the prefix simply 404s rather than panicking.
-	if formLayoutsH != nil {
-		r.Route("/api/form-layouts", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(120, time.Minute))
-			r.Use(sentinelMW)
-			r.Mount("/", formLayoutsH.Routes())
-		})
-	}
-
-	// /nav
-	r.Route("/nav", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/catalogue", navH.Catalogue)
-		r.Get("/prefs", navH.GetPrefs)
-		r.Put("/prefs", navH.PutPrefs)
-		r.Delete("/prefs", navH.DeletePrefs)
-		r.Post("/reset", navH.ResetAll)
-		r.Get("/start-page", navH.StartPage)
-		// Entity bookmarks (/bookmark, /bookmark/check) deleted with
-		// TD-CUT1.1.1-BOOKMARK-SURFACE — see backend/internal/nav/bookmarks.go.
-		// Page bookmarks survive.
-		r.Post("/page-bookmark", navH.PinPageBookmark)
-		r.Delete("/page-bookmark", navH.UnpinPageBookmark)
-
-		r.Get("/profiles", navH.ListProfiles)
-		r.Post("/profiles", navH.CreateProfile)
-		r.Put("/profiles/order", navH.ReorderProfiles)
-		r.Put("/profiles/active", navH.SetActiveProfile)
-		r.Patch("/profiles/{id}", navH.RenameProfile)
-		r.Delete("/profiles/{id}", navH.DeleteProfile)
-		r.Get("/profiles/{id}/groups", navH.ListProfileGroups)
-		r.Put("/profiles/{id}/groups", navH.SetProfileGroups)
-	})
-
-	// /admin/page-grants — gadmin-only matrix at /user-management/permissions.
-	// Grants and revokes (page × role) rows in users_roles_pages. The
-	// {role_id} URL param is rejected for grp_global inside the handler so
-	// this surface can never strip gadmin's universal page access.
-	//
-	// PLA-0049 Phase 0.5.6: also gated by RequirePageAccess("um-permissions")
-	// so a hand-typed URL or stale bookmark from a user whose grant on
-	// the page-permissions page has been revoked is denied at the API
-	// layer — not just rendered as a blank UI.
-	r.Route("/admin/page-grants", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions))
-		r.Use(auth.RequirePageAccess(pageAccessResolver, "um-permissions"))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", navGrantsAdminH.List)
-		r.Put("/{page_id}/{role_id}", navGrantsAdminH.Grant)
-		r.Delete("/{page_id}/{role_id}", navGrantsAdminH.Revoke)
-		// PLA-0049 Phase 1.2: bucket-row toggle. Body: {"checked": bool}.
-		// Atomic grant/revoke for every system page in the named bucket.
-		r.Put("/bucket/{tag_enum}/{role_id}", navGrantsAdminH.BucketToggle)
-	})
-
-	// /user/tab-order
-	r.Route("/user/tab-order", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/{pageId}", userTabOrderH.Get)
-		r.Put("/{pageId}", userTabOrderH.Put)
-		r.Delete("/{pageId}", userTabOrderH.Delete)
-	})
-
-	// /custom-pages
-	r.Route("/custom-pages", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", customPagesH.List)
-		r.Post("/", customPagesH.Create)
-		r.Get("/{id}", customPagesH.Get)
-		r.Patch("/{id}", customPagesH.Patch)
-		r.Delete("/{id}", customPagesH.Delete)
-	})
-
-	// /addressables + /page-help (PLA-0005)
-	r.Post("/addressables/build-reconcile", addressablesH.BuildReconcile)
-	r.Post("/addressables/register", addressablesH.Register)
-	// register-bulk: perf cycle 6 — collapses N parallel /register POSTs
-	// on page mount (one per <Panel>/<Table>/<ResourceTree>) into one
-	// HTTP roundtrip. Same auth/source/production rules as /register.
-	r.Post("/addressables/register-bulk", addressablesH.RegisterBulk)
-	r.Get("/addressables/snapshot", addressablesH.Snapshot)
-	r.Get("/page-help/{addressable_id}", addressablesH.PageHelp)
-	r.Route("/page-help/admin", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		r.Get("/", addressablesH.PageHelpAdminList)
-		r.Put("/{addressable_id}", addressablesH.PageHelpAdminPut)
-		r.Delete("/{addressable_id}", addressablesH.PageHelpAdminDelete)
-	})
-	r.Route("/addressables/admin", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		r.Patch("/{id}/helpable", addressablesH.AdminUpdateHelpable)
-	})
-
-	// /library/releases
-	r.Route("/library/releases", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Get("/", libReleasesH.List)
-		r.Get("/count", libReleasesH.Count)
-		r.Post("/{id}/ack", libReleasesH.Ack)
-	})
-
-	// /errors
-	r.Route("/errors", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		r.Post("/report", errorsReportH.Report)
-	})
-
-	// /workspaces (PLA-0006)
-	r.Route("/workspaces", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-
-		// B16.8.10 — DELETE /workspaces/{id} is the one sensitive action
-		// in this group that doesn't already self-gate on inline password
-		// reauth (change-password and disable-mfa both take a password in
-		// the body and re-verify). Register the gated DELETE BEFORE
-		// workspacesH.Mount so chi resolves it ahead of Mount's own
-		// DELETE handler. The unique action_key "delete-workspace" must
-		// match what the frontend's useStepUpAction hook submits to
-		// /auth/reauth.
-		r.With(authSvc.RequireStepUpReauth("delete-workspace")).Delete("/{id}", workspacesH.Delete)
-		workspacesH.Mount(r)
-
-		// /workspaces/{workspaceId}/webhooks (B9)
-		if webhooksH != nil {
-			r.Route("/{workspaceId}/webhooks", func(r chi.Router) {
-				webhooksH.Mount(r)
-			})
-		}
-	})
-
-	// /admin
-	r.Route("/admin", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-
-		r.Group(func(r chi.Router) {
-			r.Use(authSvc.RequireFreshPassword)
-
-			r.With(auth.RequireAnyPermission(permResolver,
-				permissions.UsersCreateGrpGlobal,
-				permissions.UsersCreateGrpPortfolio,
-				permissions.UsersCreateGrpProduct,
-				permissions.UsersCreateGrpTeamLead,
-				permissions.UsersCreateGrpTeamMember,
-				permissions.UsersCreateGrpStakeholder,
-				permissions.UsersCreateGrpExternal,
-			)).Post("/users", usersH.Create)
-			r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
-				Patch("/users/{id}", usersH.Patch)
-			r.With(auth.RequirePermission(permResolver, permissions.UsersArchive)).
-				Delete("/users/{id}", usersH.Delete)
-			r.With(auth.RequirePermission(permResolver, permissions.UsersIssueReset)).
-				Post("/users/{id}/password-reset", usersH.IssueReset)
-
-			r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
-				Get("/users", usersH.List)
+			// Login continuation handoff (TD-SEC-LOGIN-REDIRECT-COOKIE).
+			// Replaces /login?redirect=<path>. /login-required is the
+			// redirect target the Next.js middleware bounces unauthenticated
+			// users to; it validates the path, mints a 10-min HttpOnly
+			// cookie carrying the signed path, 302s to a plain /login.
+			// /login-continuation is the post-auth probe — returns 200 +
+			// { path } if a valid cookie is present (and clears it
+			// atomically), 204 otherwise.
+			r.With(httprate.LimitByIP(120, time.Minute)).Get("/login-required", authH.LoginRequired)
+			r.With(httprate.LimitByIP(60, time.Minute)).Get("/login-continuation", authH.LoginContinuation)
 
 			r.Group(func(r chi.Router) {
-				r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
-				r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
-				r.Post("/dev/master-reset", devResetH.MasterReset)
-				r.Post("/dev/seed-risks", devResetH.SeedRisks)
-				r.Post("/dev/seed-workspace", devResetH.SeedWorkspace)
-				r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
-				r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
-				r.Get("/dev/api-audit", devResetH.ApiAudit)
-				r.Get("/dev/erd", erdH.Get)
-				r.Post("/dev/erd", erdH.Snapshot)
-				r.Get("/dev/codegraph", devResetH.Codegraph)
-				r.Get("/dev/source", devResetH.Source)
-				// Inline closure (not `devReportsH.Mount` as the second arg)
-				// so dev/scripts/extract_routes.py picks up the nested
-				// routes — its ROUTE_RE only matches the closure form.
-				r.Route("/dev/reporting", func(r chi.Router) {
-					devReportsH.Mount(r)
+				r.Use(authSvc.RequireAuth)
+				// SEC-004 (RES066): rate-limit change-password to match its
+				// sibling credential endpoints. Each call burns bcrypt(cost=12)
+				// + a HIBP lookup; without a limit a valid session can self-
+				// inflict a DoS. 10/min/IP mirrors /mfa/verify.
+				r.With(httprate.LimitByIP(10, time.Minute)).Post("/change-password", authH.ChangePassword)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Get("/me", authH.Me)
+				// PLA-0053 / story 00576.5 — re-mint JWT with a new
+				// workspace_id claim. Mounted alongside /me so the
+				// auth+fresh-password gates already on this group apply.
+				r.Post("/switch-workspace", authH.SwitchWorkspace)
+			})
+
+			// B16.8.3 — MFA verify (unauthenticated — accepts challenge_token)
+			r.With(httprate.LimitByIP(10, time.Minute)).Post("/mfa/verify", authH.MFAVerify)
+
+			// B16.8.4 — MFA management (requires full authentication)
+			r.Group(func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Post("/mfa/enroll", authH.MFAEnroll)
+				r.Post("/mfa/confirm", authH.MFAConfirm)
+				r.Delete("/mfa", authH.MFADisable)
+			})
+
+			// B16.8.10 — active sessions UI + per-action step-up reauth.
+			// Rate-limited because Reauth burns a password verify per call;
+			// 20/min is generous enough for legitimate UX (modal retries)
+			// while capping brute-force attempts against the password.
+			r.Group(func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.With(httprate.LimitByIP(20, time.Minute)).Post("/reauth", authH.Reauth)
+				r.Route("/sessions", func(r chi.Router) {
+					r.Get("/", authH.ListSessions)
+					r.Post("/revoke-others", authH.RevokeOtherSessions)
+					r.Delete("/{id}", authH.RevokeSession)
 				})
 			})
 		})
 
-		// PLA059 — /admin/api-keys/{issue,list,revoke}.
-		// Gate order matters and is pinned by handler tests:
-		//   1. RequireFreshPassword — a user with ForcePasswordChange
-		//      must rotate before touching credentials.
-		//   2. RequireUserAuth — deny API-key-only callers explicitly
-		//      (closes the accidental key-chaining path through the
-		//      RequirePermission api-key pass-through).
-		//   3. RequirePermission(ApiKeysManage) — dedicated permission,
-		//      no longer coupled to users.list.
-		//   4. RequireStepUpReauth("manage-api-keys") — Issue and
-		//      Revoke change credentials state; require a fresh
-		//      X-Action-Proof. List is read-only audit data (KeyInfo
-		//      carries no raw_key) and is intentionally NOT step-up
-		//      gated.
-		r.Group(func(r chi.Router) {
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(auth.RequireUserAuth)
-			r.Use(auth.RequirePermission(permResolver, permissions.ApiKeysManage))
-			r.With(authSvc.RequireStepUpReauth("manage-api-keys")).Post("/api-keys/issue", apiKeysH.Issue)
-			r.Get("/api-keys", apiKeysH.List)
-			r.With(authSvc.RequireStepUpReauth("manage-api-keys")).Post("/api-keys/revoke", apiKeysH.Revoke)
-		})
-	})
-
-	// /timeboxes/sprints + /timeboxes/releases (B22.23)
-	if sprintH != nil {
-		r.Route("/timeboxes/sprints", func(r chi.Router) {
+		// /me
+		r.Route("/me", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(120, time.Minute))
-			r.Get("/", sprintH.List)
-			// Slice 2.5 (ObjectTree refactor) — column catalogue.
-			r.Get("/columns", sprintH.Columns)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/", sprintH.Create)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/bulk-create", sprintH.BulkCreate)
-			r.Get("/{id}", sprintH.Get)
-			r.Get("/{id}/metrics", sprintMetricsH.Metrics)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Put("/{id}", sprintH.Update)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Delete("/{id}", sprintH.Delete)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/{id}/start", sprintH.Start)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/{id}/close", sprintH.Close)
-		})
-	}
-	if releaseH != nil {
-		r.Route("/timeboxes/releases", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(120, time.Minute))
-			r.Get("/", releaseH.List)
-			// Slice 2.5 (ObjectTree refactor) — column catalogue.
-			r.Get("/columns", releaseH.Columns)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/", releaseH.Create)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/bulk-create", releaseH.BulkCreate)
-			r.Get("/{id}", releaseH.Get)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Put("/{id}", releaseH.Update)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Delete("/{id}", releaseH.Delete)
-		})
-	}
-	if milestoneH != nil {
-		r.Route("/timeboxes/milestones", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(120, time.Minute))
-			r.Get("/", milestoneH.List)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Post("/", milestoneH.Create)
-			r.Get("/{id}", milestoneH.Get)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Patch("/{id}", milestoneH.Update)
-			r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
-				Delete("/{id}", milestoneH.Delete)
-		})
-	}
+			r.Use(userWriteLimiter)
 
-	// /lookups — slim scope-bound lookup endpoints (users-in-scope etc.).
-	// Every authenticated tenant member can read; subscription clamp is
-	// applied server-side in the SQL.
-	r.Route("/lookups", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Get("/users-in-scope", lookupsH.ListUsersInScope)
-	})
+			r.Get("/active-scope", usersH.GetActiveScope)
+			r.Put("/active-scope", usersH.SetActiveScope)
 
-	// /mentions — @-mention scaffold (search + create + inbox).
-	// Tenant isolation lives in the SQL; no extra permission gate beyond
-	// RequireAuth + RequireFreshPassword. Rate-limit matches the other
-	// authenticated read-heavy surfaces.
-	r.Route("/mentions", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Get("/search", mentionsH.SearchMentionables)
-		r.Get("/inbox", mentionsH.ListInbox)
-		r.Post("/", mentionsH.Create)
-		r.Post("/{id}/read", mentionsH.MarkRead)
-	})
+			// Migration 244 — Pinned (FALSE, default) vs Follow (TRUE) mode
+			// for the Home Location dropdown on /user/account-settings.
+			// Write-only here; read side flows through /auth/me as
+			// userPayload.HomeLocationFollowMode.
+			r.Put("/home-location-follow-mode", usersH.SetHomeLocationFollowMode)
 
-	// /notifications — bell + preferences (B11.4).
-	// Read-heavy: list + unread-count poll cycles. Tenant isolation
-	// is in the SQL (every read fences on subscription_id + user_id).
-	r.Route("/notifications", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(240, time.Minute))
-		r.Get("/", notifH.List)
-		r.Get("/unread-count", notifH.UnreadCount)
-		r.Post("/read-all", notifH.MarkAllRead)
-		r.Post("/{id}/read", notifH.MarkRead)
-		r.Get("/prefs", notifH.ListPrefs)
-		r.Put("/prefs", notifH.UpsertPref)
-		// SSE: server-sent events for real-time notification nudges.
-		// One open connection per user; reconnects handled by the
-		// browser's native EventSource.
-		r.Get("/stream", notifStreamH.Stream)
-		// Rules engine — CRUD + per-tenant field/operator catalogue.
-		r.Get("/rule-schema", notifSchemaH.Get)
-		r.Route("/rules", func(r chi.Router) {
-			r.Get("/", notifRulesH.List)
-			r.Post("/", notifRulesH.Create)
-			r.Get("/{id}", notifRulesH.Get)
-			r.Patch("/{id}", notifRulesH.Update)
-			r.Delete("/{id}", notifRulesH.Delete)
+			// Per-user namespaced preferences (mig 208).
+			// Replaces URL-bar query state for filter chips, sort, tab —
+			// see TD-URL-FILTER-CHIPS / TD-URL-TAB-STATE in c_tech_debt.md.
+			r.Get("/preferences/{key}", usersH.GetPreference)
+			r.Put("/preferences/{key}", usersH.SetPreference)
+			r.Delete("/preferences/{key}", usersH.DeletePreference)
+
+			// PLA-0049 Phase 0.5.3: per-user page-access set + global version.
+			// Drives usePageAccess() in the frontend; client polls/re-fetches
+			// when the version bumps.
+			r.Get("/page-access", pageAccessH.MeAccess)
 		})
-	})
 
-	// /portfolio + /workspace/{id}/portfolio/layers (B22.19)
-	// Portfolio master record + workspace layer reads — site-only BFF surfaces.
-	r.Route("/portfolio", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		portfolioMasterRecordH.Mount(r)
-	})
-	r.Route("/workspaces/{id}/portfolio", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
-		r.Patch("/layers/batch", workspaceLayersH.PatchWorkspaceLayers)
-	})
-
-	// /flows (B22.20) — site-only; padmin-managed workflow definitions.
-	if flowsH != nil {
-		r.Route("/flows", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
-			r.Use(sentinelMW)
-			r.Use(httprate.LimitByIP(60, time.Minute))
-			r.Get("/", flowsH.List)
-			// Per-flow state + transition management.
-			r.Route("/{flowId}/states", func(r chi.Router) {
-				r.Post("/", flowsH.CreateFlowState)
-			})
-			r.Route("/{flowId}/transitions", func(r chi.Router) {
-				r.Post("/", flowsH.CreateTransition)
-				r.Delete("/", flowsH.DeleteTransition)
-			})
-			// Reset to factory-default snapshot — diff/preview, then apply.
-			r.Post("/reset/preview", flowsH.ResetPreview)
-			r.Post("/reset/apply", flowsH.ResetApply)
-		})
-		// Flow state mutations — no flows.manage gate so padmin/gadmin can use.
-		r.Route("/flow-states", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(120, time.Minute))
-			r.Patch("/{id}", flowsH.PatchFlowState)
-			r.Delete("/{id}", flowsH.DeleteFlowState)
-			// Per-state exit-rule checklist (FE-GOV-0003).
-			r.Get("/{id}/exit-rules", flowsH.ListExitRules)
-			r.Post("/{id}/exit-rules", flowsH.CreateExitRule)
-		})
-		// Single exit-rule mutations (FE-GOV-0003).
-		r.Route("/flow-state-exit-rules", func(r chi.Router) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			r.Use(httprate.LimitByIP(120, time.Minute))
-			r.Patch("/{id}", flowsH.PatchExitRule)
-			r.Delete("/{id}", flowsH.DeleteExitRule)
-		})
-	}
-
-	// /workspace/{id}/fields (B22.21) — admitted field set per workspace.
-	// Writers (POST/PATCH/DELETE) re-pipe the dead /api/dev/artefact-types
-	// shadow surface for workspace-admin Custom Fields management.
-	// Authz/tenancy/scope clamp all inside handler — see fields/handler.go.
-	r.Route("/workspaces/{id}/fields", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Get("/", fieldsH.List)
-		r.Post("/", fieldsH.Create)
-		r.Patch("/{field_id}", fieldsH.Update)
-		r.Delete("/{field_id}", fieldsH.Archive)
-		r.Get("/{field_id}/types", fieldsH.ListBindings)
-		r.Put("/{field_id}/types", fieldsH.ReplaceBindings)
-		r.Patch("/{field_id}/types/{type_id}", fieldsH.UpdateBinding)
-	})
-
-	// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
-	// These are BFF-only: the ObjectTree, WorkItemDetailPanel, and
-	// artefact-items tree are all staff/site surfaces. The same
-	// artefactitems handlers (and rate limits) are reused.
-	if workItemsV2H != nil {
-		readLimit17 := httprate.LimitByIP(600, time.Minute)
-		writeLimit17 := httprate.LimitByIP(120, time.Minute)
-		mountArtefactSite := func(r chi.Router, h *artefactitems.Handler) {
-			r.Use(authSvc.RequireAuth)
-			r.Use(authSvc.RequireFreshPassword)
-			// PLA-0053 / story 00578: workspace clamp via JWT claim.
-			// Runs after auth so middleware has u.WorkspaceID populated.
-			r.Use(sentinelMW)
-			r.With(readLimit17).Get("/", h.List)
-			// PLA — audited POST read-gateway: unifies "list roots" and
-			// "list children" behind one body-driven endpoint so every
-			// read is logged uniformly for SOC 2 (no identifiers in URLs).
-			// Clamp is automatic via the RequireAuth + sentinelMW above.
-			r.With(readLimit17).Post("/query", h.Query)
-			r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
-			r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
-			r.With(readLimit17).Get("/summary", h.Summary)
-			// PLA057 / OBJ1 — scope-clamped facet enumeration. Chip UIs
-			// call this to learn "what types/priorities are reachable
-			// in the current scope" without hitting the workspace catalogue
-			// (which can disagree with the grid's topology clamp).
-			r.With(readLimit17).Get("/facets", h.Facets)
-			r.With(readLimit17).Get("/flow-states", h.ListFlowStates)
-			// Slice 2.5 (ObjectTree refactor) — exposes the ?fields=
-			// allow-list catalogue. Frontend column picker / agent
-			// introspection consume this; no subscription clamp on the
-			// catalogue itself, the surface is global to the resource.
-			r.With(readLimit17).Get("/columns", h.Columns)
-			// Per-type custom-field schema. Consumed by the V2 create
-			// flyout + inline edit form to render the right inputs for
-			// each artefact type (Risk → risk_score, risk_impact, …;
-			// Defect → severity, …). Mounted before /{id} so the
-			// literal "types" segment wins over the {id} param.
-			r.With(readLimit17).Get("/types/{typeId}/fields", h.ListFieldsForType)
-			// Slice 4.6c — narrow refetch for cascade-touched rows.
-			// Mounted before /{id} so the literal segment wins over
-			// the param.
-			r.With(readLimit17).Get("/by-ids", h.ByIDs)
-			r.With(readLimit17).Get("/{id}", h.Get)
-			r.With(writeLimit17, userWriteLimiter).Patch("/{id}", h.Patch)
-			r.With(writeLimit17, userWriteLimiter).Delete("/{id}", h.Archive)
-			r.With(readLimit17).Get("/{id}/children", h.ListChildren)
-			// Parent chain for the ArtefactNodeDiagram hierarchy strip.
-			// Handler existed but was never mounted on the artefact-site
-			// group (only /nodes/{id}/ancestors for org-design was), so the
-			// diagram silently showed no ancestors (the .catch in
-			// ArtefactNodeDiagram swallowed the 404). Mounted after /children
-			// so it sits with the other {id} sub-resources; literal segments
-			// above still win over {id}.
-			r.With(readLimit17).Get("/{id}/ancestors", h.ListAncestors)
-			r.With(readLimit17).Get("/{id}/field-values", h.ListFieldValues)
-			r.With(writeLimit17, userWriteLimiter).Put("/{id}/field-values", h.UpsertFieldValues)
-			r.With(writeLimit17, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
+		// /sentinel — per-user Sentinel preference writes (mutation surface
+		// for the substrate Middleware reads on every request). PUT /focus
+		// persists users.default_focus_node_id; the read side has shipped
+		// since S06 via Resolver.DefaultFocus and the /auth/me boot payload.
+		// Mounted with sentinelMW so the handler has the clamp on ctx for
+		// future tightening (e.g. scoping writes to the actor's current
+		// workspace) and so any future scope_up/down preference writes
+		// inherit the same gate.
+		// /sentinel/boot composes user + grants + tenant_root into the
+		// single payload SentinelProvider needs on mount. Without this
+		// mount the frontend bridged via /auth/me + /topology/grants/me,
+		// paying a wasted 404 probe on every page load. Injecting the
+		// two service calls via closure keeps the sentinel package free
+		// of auth/topology imports (avoids cycles).
+		sentinelLoadRolePerms := func(ctx context.Context, userID uuid.UUID) (string, uuid.UUID, []string) {
+			rp, perms := authSvc.LoadRoleAndPermissions(ctx, userID)
+			return rp.Code, rp.ID, perms
 		}
-		r.Route("/work-items", func(r chi.Router) {
-			mountArtefactSite(r, workItemsV2H)
-			// PLA074 / B23.1.8 — dependency-impact preflight. Lives
-			// under /work-items by AC; the handler is owned by the
-			// dependencies package because the read targets the edge
-			// tables. Same auth + sentinel chain as the parent route
-			// group above (applied by mountArtefactSite).
-			r.Get("/{id}/dependency-impact", dependenciesH.ImpactForArtefact)
+		sentinelListGrants := func(ctx context.Context, subID, userID, actorRoleID uuid.UUID) ([]sentinel.BootGrant, error) {
+			rows, err := orgDesignSvc.ListMyGrants(ctx, subID, userID, actorRoleID)
+			if err != nil {
+				return nil, err
+			}
+			// Field-for-field copy — identical JSON tags. Role + GrantedAt
+			// come through as the topology types (Role enum, time.Time) and
+			// land in BootGrant's `any` slots, where encoding/json writes
+			// them with the same shape the chrome scope-rail consumes
+			// today via /topology/grants/me.
+			out := make([]sentinel.BootGrant, len(rows))
+			for i, g := range rows {
+				out[i] = sentinel.BootGrant{
+					GrantID:       g.GrantID,
+					NodeID:        g.NodeID,
+					WorkspaceID:   g.WorkspaceID,
+					ParentID:      g.ParentID,
+					Name:          g.Name,
+					LabelOverride: g.LabelOverride,
+					Colour:        g.Colour,
+					Icon:          g.Icon,
+					Role:          g.Role,
+					GrantedAt:     g.GrantedAt,
+					Position:      g.Position,
+				}
+			}
+			return out, nil
+		}
+		sentinelH := sentinel.NewHandler(sentinelResolver).
+			WithBootDeps(sentinelLoadRolePerms, sentinelListGrants)
+		r.Route("/sentinel", func(r chi.Router) {
+			// NB: NotFound MUST be registered BEFORE the .With(...) chain
+			// because chi runs the group's middleware stack on prefix-match
+			// alone — so any sub-route NOT explicitly mounted below would
+			// otherwise hit RequireAuth and 401 instead of 404. This was
+			// originally a workaround for the (then-unmounted) /boot probe;
+			// /boot is mounted as a real GET below, so the NotFound now
+			// only catches truly unknown sub-paths (defence-in-depth so a
+			// future probe doesn't accidentally trigger the 401 hook).
+			r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, "not found", http.StatusNotFound)
+			})
+			r.With(
+				authSvc.RequireAuth,
+				authSvc.RequireFreshPassword,
+				httprate.LimitByIP(120, time.Minute),
+				sentinelMW,
+			).Get("/boot", sentinelH.Boot)
+			r.With(
+				authSvc.RequireAuth,
+				authSvc.RequireFreshPassword,
+				httprate.LimitByIP(60, time.Minute),
+				userWriteLimiter,
+				sentinelMW,
+			).Put("/focus", sentinelH.PutFocus)
 		})
-		r.Route("/portfolio-items", func(r chi.Router) {
-			mountArtefactSite(r, portfolioItemsV2H)
-			r.Get("/{id}/dependency-impact", dependenciesH.ImpactForArtefact)
-		})
-		// PLA-0052 Story 10 — Risk summary endpoint. Severity × likelihood
-		// aggregator for the /risk page header. Reuses workItemsV2H (scope=work)
-		// since Risk is a work-scope artefact type. Public surface (/samantha/v2)
-		// deferred until n8n needs it.
-		r.Route("/risks", func(r chi.Router) {
+
+		// /api/form-layouts — Form Layout Builder (2026-05-30). Mounted with
+		// sentinelMW so save/read handlers resolve the actor's workspace +
+		// tenant from the clamp (SERVER IS THE GATE — never from the body).
+		// formLayoutsH is nil when vaPool is unconfigured (legacy envs); the
+		// mount is guarded so the prefix simply 404s rather than panicking.
+		if formLayoutsH != nil {
+			r.Route("/api/form-layouts", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.Use(sentinelMW)
+				r.Mount("/", formLayoutsH.Routes())
+			})
+		}
+
+		// /nav
+		r.Route("/nav", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
-			r.With(readLimit17).Get("/summary", workItemsV2H.RisksSummary)
-		})
-	}
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
 
-	// /saved-views — Rally-style saved view configurations. See
-	// docs/superpowers/specs/2026-05-28-saved-views-design.md.
-	r.Route("/saved-views", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		savedViewsHandler.Mount(r)
-	})
-	if rankH != nil {
-		r.Route("/rank", func(r chi.Router) {
+			r.Get("/catalogue", navH.Catalogue)
+			r.Get("/prefs", navH.GetPrefs)
+			r.Put("/prefs", navH.PutPrefs)
+			r.Delete("/prefs", navH.DeletePrefs)
+			r.Post("/reset", navH.ResetAll)
+			r.Get("/start-page", navH.StartPage)
+			// Entity bookmarks (/bookmark, /bookmark/check) deleted with
+			// TD-CUT1.1.1-BOOKMARK-SURFACE — see backend/internal/nav/bookmarks.go.
+			// Page bookmarks survive.
+			r.Post("/page-bookmark", navH.PinPageBookmark)
+			r.Delete("/page-bookmark", navH.UnpinPageBookmark)
+
+			r.Get("/profiles", navH.ListProfiles)
+			r.Post("/profiles", navH.CreateProfile)
+			r.Put("/profiles/order", navH.ReorderProfiles)
+			r.Put("/profiles/active", navH.SetActiveProfile)
+			r.Patch("/profiles/{id}", navH.RenameProfile)
+			r.Delete("/profiles/{id}", navH.DeleteProfile)
+			r.Get("/profiles/{id}/groups", navH.ListProfileGroups)
+			r.Put("/profiles/{id}/groups", navH.SetProfileGroups)
+		})
+
+		// /admin/page-grants — gadmin-only matrix at /user-management/permissions.
+		// Grants and revokes (page × role) rows in users_roles_pages. The
+		// {role_id} URL param is rejected for grp_global inside the handler so
+		// this surface can never strip gadmin's universal page access.
+		//
+		// PLA-0049 Phase 0.5.6: also gated by RequirePageAccess("um-permissions")
+		// so a hand-typed URL or stale bookmark from a user whose grant on
+		// the page-permissions page has been revoked is denied at the API
+		// layer — not just rendered as a blank UI.
+		r.Route("/admin/page-grants", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions))
+			r.Use(auth.RequirePageAccess(pageAccessResolver, "um-permissions"))
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			r.Get("/", navGrantsAdminH.List)
+			r.Put("/{page_id}/{role_id}", navGrantsAdminH.Grant)
+			r.Delete("/{page_id}/{role_id}", navGrantsAdminH.Revoke)
+			// PLA-0049 Phase 1.2: bucket-row toggle. Body: {"checked": bool}.
+			// Atomic grant/revoke for every system page in the named bucket.
+			r.Put("/bucket/{tag_enum}/{role_id}", navGrantsAdminH.BucketToggle)
+		})
+
+		// /user/tab-order
+		r.Route("/user/tab-order", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			r.Get("/{pageId}", userTabOrderH.Get)
+			r.Put("/{pageId}", userTabOrderH.Put)
+			r.Delete("/{pageId}", userTabOrderH.Delete)
+		})
+
+		// /custom-pages
+		r.Route("/custom-pages", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			r.Get("/", customPagesH.List)
+			r.Post("/", customPagesH.Create)
+			r.Get("/{id}", customPagesH.Get)
+			r.Patch("/{id}", customPagesH.Patch)
+			r.Delete("/{id}", customPagesH.Delete)
+		})
+
+		// /addressables + /page-help (PLA-0005)
+		r.Post("/addressables/build-reconcile", addressablesH.BuildReconcile)
+		r.Post("/addressables/register", addressablesH.Register)
+		// register-bulk: perf cycle 6 — collapses N parallel /register POSTs
+		// on page mount (one per <Panel>/<Table>/<ResourceTree>) into one
+		// HTTP roundtrip. Same auth/source/production rules as /register.
+		r.Post("/addressables/register-bulk", addressablesH.RegisterBulk)
+		r.Get("/addressables/snapshot", addressablesH.Snapshot)
+		r.Get("/page-help/{addressable_id}", addressablesH.PageHelp)
+		r.Route("/page-help/admin", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			r.Get("/", addressablesH.PageHelpAdminList)
+			r.Put("/{addressable_id}", addressablesH.PageHelpAdminPut)
+			r.Delete("/{addressable_id}", addressablesH.PageHelpAdminDelete)
+		})
+		r.Route("/addressables/admin", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			r.Patch("/{id}/helpable", addressablesH.AdminUpdateHelpable)
+		})
+
+		// /library/releases
+		r.Route("/library/releases", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(auth.RequirePermission(permResolver, permissions.MenuAdminView))
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			r.Get("/", libReleasesH.List)
+			r.Get("/count", libReleasesH.Count)
+			r.Post("/{id}/ack", libReleasesH.Ack)
+		})
+
+		// /errors
+		r.Route("/errors", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			r.Post("/report", errorsReportH.Report)
+		})
+
+		// /workspaces (PLA-0006)
+		r.Route("/workspaces", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			// B16.8.10 — DELETE /workspaces/{id} is the one sensitive action
+			// in this group that doesn't already self-gate on inline password
+			// reauth (change-password and disable-mfa both take a password in
+			// the body and re-verify). Register the gated DELETE BEFORE
+			// workspacesH.Mount so chi resolves it ahead of Mount's own
+			// DELETE handler. The unique action_key "delete-workspace" must
+			// match what the frontend's useStepUpAction hook submits to
+			// /auth/reauth.
+			r.With(authSvc.RequireStepUpReauth("delete-workspace")).Delete("/{id}", workspacesH.Delete)
+			workspacesH.Mount(r)
+
+			// /workspaces/{workspaceId}/webhooks (B9)
+			if webhooksH != nil {
+				r.Route("/{workspaceId}/webhooks", func(r chi.Router) {
+					webhooksH.Mount(r)
+				})
+			}
+		})
+
+		// /admin
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+
+			r.Group(func(r chi.Router) {
+				r.Use(authSvc.RequireFreshPassword)
+
+				r.With(auth.RequireAnyPermission(permResolver,
+					permissions.UsersCreateGrpGlobal,
+					permissions.UsersCreateGrpPortfolio,
+					permissions.UsersCreateGrpProduct,
+					permissions.UsersCreateGrpTeamLead,
+					permissions.UsersCreateGrpTeamMember,
+					permissions.UsersCreateGrpStakeholder,
+					permissions.UsersCreateGrpExternal,
+				)).Post("/users", usersH.Create)
+				r.With(auth.RequirePermission(permResolver, permissions.UsersUpdateProfile)).
+					Patch("/users/{id}", usersH.Patch)
+				r.With(auth.RequirePermission(permResolver, permissions.UsersArchive)).
+					Delete("/users/{id}", usersH.Delete)
+				r.With(auth.RequirePermission(permResolver, permissions.UsersIssueReset)).
+					Post("/users/{id}/password-reset", usersH.IssueReset)
+
+				r.With(auth.RequirePermission(permResolver, permissions.UsersList)).
+					Get("/users", usersH.List)
+
+				r.Group(func(r chi.Router) {
+					r.Use(auth.RequirePermission(permResolver, permissions.PortfolioList))
+					r.Post("/dev/adoption-reset", devResetH.ResetAdoptionState)
+					r.Post("/dev/master-reset", devResetH.MasterReset)
+					r.Post("/dev/seed-risks", devResetH.SeedRisks)
+					r.Post("/dev/seed-workspace", devResetH.SeedWorkspace)
+					r.Get("/dev/artefacts-count", devResetH.ArtefactsCount)
+					r.Post("/dev/artefacts-wipe", devResetH.ArtefactsWipe)
+					r.Get("/dev/api-audit", devResetH.ApiAudit)
+					r.Get("/dev/erd", erdH.Get)
+					r.Post("/dev/erd", erdH.Snapshot)
+					r.Get("/dev/codegraph", devResetH.Codegraph)
+					r.Get("/dev/source", devResetH.Source)
+					// devtools scope-actions — cascading dropdowns + backup-first
+					// flow-reseed / fixture-cleanup. Each handler is additionally
+					// fail-closed on devtools.DevEnvAllowed() + non-nil vaPool.
+					r.Get("/dev/scope-actions/subscriptions", devScopeH.Subscriptions)
+					r.Get("/dev/scope-actions/workspaces", devScopeH.Workspaces)
+					r.Get("/dev/scope-actions/topology-nodes", devScopeH.TopologyNodes)
+					r.Get("/dev/scope-actions/artefact-types", devScopeH.ArtefactTypes)
+					r.Post("/dev/scope-actions/flow-reseed/preview", devScopeH.FlowReseedPreview)
+					r.Post("/dev/scope-actions/flow-reseed/run", devScopeH.FlowReseedRun)
+					r.Post("/dev/scope-actions/fixture-cleanup/preview", devScopeH.FixtureCleanupPreview)
+					r.Post("/dev/scope-actions/fixture-cleanup/run", devScopeH.FixtureCleanupRun)
+					// Inline closure (not `devReportsH.Mount` as the second arg)
+					// so dev/scripts/extract_routes.py picks up the nested
+					// routes — its ROUTE_RE only matches the closure form.
+					r.Route("/dev/reporting", func(r chi.Router) {
+						devReportsH.Mount(r)
+					})
+				})
+			})
+
+			// PLA059 — /admin/api-keys/{issue,list,revoke}.
+			// Gate order matters and is pinned by handler tests:
+			//   1. RequireFreshPassword — a user with ForcePasswordChange
+			//      must rotate before touching credentials.
+			//   2. RequireUserAuth — deny API-key-only callers explicitly
+			//      (closes the accidental key-chaining path through the
+			//      RequirePermission api-key pass-through).
+			//   3. RequirePermission(ApiKeysManage) — dedicated permission,
+			//      no longer coupled to users.list.
+			//   4. RequireStepUpReauth("manage-api-keys") — Issue and
+			//      Revoke change credentials state; require a fresh
+			//      X-Action-Proof. List is read-only audit data (KeyInfo
+			//      carries no raw_key) and is intentionally NOT step-up
+			//      gated.
+			r.Group(func(r chi.Router) {
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(auth.RequireUserAuth)
+				r.Use(auth.RequirePermission(permResolver, permissions.ApiKeysManage))
+				r.With(authSvc.RequireStepUpReauth("manage-api-keys")).Post("/api-keys/issue", apiKeysH.Issue)
+				r.Get("/api-keys", apiKeysH.List)
+				r.With(authSvc.RequireStepUpReauth("manage-api-keys")).Post("/api-keys/revoke", apiKeysH.Revoke)
+			})
+		})
+
+		// /timeboxes/sprints + /timeboxes/releases (B22.23)
+		if sprintH != nil {
+			r.Route("/timeboxes/sprints", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.Get("/", sprintH.List)
+				// Slice 2.5 (ObjectTree refactor) — column catalogue.
+				r.Get("/columns", sprintH.Columns)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/", sprintH.Create)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/bulk-create", sprintH.BulkCreate)
+				r.Get("/{id}", sprintH.Get)
+				// Burndown metrics need the Sentinel workspace clamp on ctx
+				// (the handler reads sentinel.WorkspaceIDFromCtx to scope the
+				// ledger read, fail-closed). The rest of this /timeboxes/sprints
+				// group predates Sentinel and clamps via the legacy workspace
+				// param, so mount sentinelMW on THIS route only rather than the
+				// whole group. Without it the handler 401s "no workspace clamp"
+				// for every caller — the burndown renders empty regardless of
+				// ledger contents.
+				r.With(sentinelMW).Get("/{id}/metrics", sprintMetricsH.Metrics)
+				// Task-count burndown — same sentinelMW-on-this-route-only
+				// rule as /metrics above (handler reads the workspace clamp).
+				r.With(sentinelMW).Get("/{id}/task-metrics", taskMetricsH.Metrics)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Put("/{id}", sprintH.Update)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Delete("/{id}", sprintH.Delete)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/{id}/start", sprintH.Start)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/{id}/close", sprintH.Close)
+			})
+		}
+		// Cross-sprint team velocity (GET /timeboxes/velocity) — workspace-level,
+		// not per-sprint, so it lives outside the /timeboxes/sprints group. Needs
+		// the Sentinel workspace clamp (same fail-closed read as the burndown).
+		// Standalone endpoint so any consumer (burndown KPI, future velocity
+		// chart, capacity report) reads team velocity the same way.
+		if sprintMetricsH != nil {
+			r.Group(func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.With(sentinelMW).Get("/timeboxes/velocity", sprintMetricsH.Velocity)
+			})
+		}
+		if releaseH != nil {
+			r.Route("/timeboxes/releases", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.Get("/", releaseH.List)
+				// Slice 2.5 (ObjectTree refactor) — column catalogue.
+				r.Get("/columns", releaseH.Columns)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/", releaseH.Create)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/bulk-create", releaseH.BulkCreate)
+				r.Get("/{id}", releaseH.Get)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Put("/{id}", releaseH.Update)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Delete("/{id}", releaseH.Delete)
+			})
+		}
+		if milestoneH != nil {
+			r.Route("/timeboxes/milestones", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.Get("/", milestoneH.List)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Post("/", milestoneH.Create)
+				r.Get("/{id}", milestoneH.Get)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Patch("/{id}", milestoneH.Update)
+				r.With(auth.RequirePermission(permResolver, permissions.WorkItemsSettingsEdit)).
+					Delete("/{id}", milestoneH.Delete)
+			})
+		}
+
+		// /lookups — slim scope-bound lookup endpoints (users-in-scope etc.).
+		// Every authenticated tenant member can read; subscription clamp is
+		// applied server-side in the SQL.
+		r.Route("/lookups", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/users-in-scope", lookupsH.ListUsersInScope)
+		})
+
+		// /mentions — @-mention scaffold (search + create + inbox).
+		// Tenant isolation lives in the SQL; no extra permission gate beyond
+		// RequireAuth + RequireFreshPassword. Rate-limit matches the other
+		// authenticated read-heavy surfaces.
+		r.Route("/mentions", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/search", mentionsH.SearchMentionables)
+			r.Get("/inbox", mentionsH.ListInbox)
+			r.Post("/", mentionsH.Create)
+			r.Post("/{id}/read", mentionsH.MarkRead)
+		})
+
+		// /notifications — bell + preferences (B11.4).
+		// Read-heavy: list + unread-count poll cycles. Tenant isolation
+		// is in the SQL (every read fences on subscription_id + user_id).
+		r.Route("/notifications", func(r chi.Router) {
 			r.Use(authSvc.RequireAuth)
 			r.Use(authSvc.RequireFreshPassword)
 			r.Use(httprate.LimitByIP(240, time.Minute))
+			r.Get("/", notifH.List)
+			r.Get("/unread-count", notifH.UnreadCount)
+			r.Post("/read-all", notifH.MarkAllRead)
+			r.Post("/{id}/read", notifH.MarkRead)
+			r.Get("/prefs", notifH.ListPrefs)
+			r.Put("/prefs", notifH.UpsertPref)
+			// SSE: server-sent events for real-time notification nudges.
+			// One open connection per user; reconnects handled by the
+			// browser's native EventSource.
+			r.Get("/stream", notifStreamH.Stream)
+			// Rules engine — CRUD + per-tenant field/operator catalogue.
+			r.Get("/rule-schema", notifSchemaH.Get)
+			r.Route("/rules", func(r chi.Router) {
+				r.Get("/", notifRulesH.List)
+				r.Post("/", notifRulesH.Create)
+				r.Get("/{id}", notifRulesH.Get)
+				r.Patch("/{id}", notifRulesH.Update)
+				r.Delete("/{id}", notifRulesH.Delete)
+			})
+		})
+
+		// /portfolio + /workspace/{id}/portfolio/layers (B22.19)
+		// Portfolio master record + workspace layer reads — site-only BFF surfaces.
+		r.Route("/portfolio", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
 			r.Use(userWriteLimiter)
-			r.Post("/move", rankH.Move)
+			portfolioMasterRecordH.Mount(r)
 		})
-	}
+		r.Route("/workspaces/{id}/portfolio", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			r.Get("/layers", workspaceLayersH.GetWorkspaceLayers)
+			r.Patch("/layers/batch", workspaceLayersH.PatchWorkspaceLayers)
+		})
 
-	// /topology (B22.16 — /_site mirror of /samantha/v2/topology)
-	// All topology I/O is internal-only (staff + padmin); there is no
-	// public customer surface for org-design operations.
-	r.Route("/topology", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
+		// /flows (B22.20) — site-only; padmin-managed workflow definitions.
+		if flowsH != nil {
+			r.Route("/flows", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(auth.RequirePermission(permResolver, permissions.FlowsManage))
+				r.Use(sentinelMW)
+				r.Use(httprate.LimitByIP(60, time.Minute))
+				r.Get("/", flowsH.List)
+				// Per-flow state + transition management.
+				r.Route("/{flowId}/states", func(r chi.Router) {
+					r.Post("/", flowsH.CreateFlowState)
+				})
+				r.Route("/{flowId}/transitions", func(r chi.Router) {
+					r.Post("/", flowsH.CreateTransition)
+					r.Delete("/", flowsH.DeleteTransition)
+				})
+				// Reset to factory-default snapshot — diff/preview, then apply.
+				r.Post("/reset/preview", flowsH.ResetPreview)
+				r.Post("/reset/apply", flowsH.ResetApply)
+			})
+			// Flow state mutations — no flows.manage gate so padmin/gadmin can use.
+			r.Route("/flow-states", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.Patch("/{id}", flowsH.PatchFlowState)
+				r.Delete("/{id}", flowsH.DeleteFlowState)
+				// Per-state exit-rule checklist (FE-GOV-0003).
+				r.Get("/{id}/exit-rules", flowsH.ListExitRules)
+				r.Post("/{id}/exit-rules", flowsH.CreateExitRule)
+			})
+			// Single exit-rule mutations (FE-GOV-0003).
+			r.Route("/flow-state-exit-rules", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(120, time.Minute))
+				r.Patch("/{id}", flowsH.PatchExitRule)
+				r.Delete("/{id}", flowsH.DeleteExitRule)
+			})
+		}
 
-		r.Group(func(r chi.Router) {
-			// PLA062 S05.4: Sentinel is the sole request-level clamp.
-			// Replaces the inline PoolWorkspaceLookup wiring this group
-			// carried pre-PLA-0053 / story 00578 and the hoisted
-			// workspaceLookup that followed it.
+		// /workspace/{id}/fields (B22.21) — admitted field set per workspace.
+		// Writers (POST/PATCH/DELETE) re-pipe the dead /api/dev/artefact-types
+		// shadow surface for workspace-admin Custom Fields management.
+		// Authz/tenancy/scope clamp all inside handler — see fields/handler.go.
+		r.Route("/workspaces/{id}/fields", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Get("/", fieldsH.List)
+			r.Post("/", fieldsH.Create)
+			r.Patch("/{field_id}", fieldsH.Update)
+			r.Delete("/{field_id}", fieldsH.Archive)
+			r.Get("/{field_id}/types", fieldsH.ListBindings)
+			r.Put("/{field_id}/types", fieldsH.ReplaceBindings)
+			r.Patch("/{field_id}/types/{type_id}", fieldsH.UpdateBinding)
+		})
+
+		// /work-items + /portfolio-items + /rank (B22.17, B22.18, B22.22)
+		// These are BFF-only: the ObjectTree, WorkItemDetailPanel, and
+		// artefact-items tree are all staff/site surfaces. The same
+		// artefactitems handlers (and rate limits) are reused.
+		if workItemsV2H != nil {
+			readLimit17 := httprate.LimitByIP(600, time.Minute)
+			writeLimit17 := httprate.LimitByIP(120, time.Minute)
+			mountArtefactSite := func(r chi.Router, h *artefactitems.Handler) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				// PLA-0053 / story 00578: workspace clamp via JWT claim.
+				// Runs after auth so middleware has u.WorkspaceID populated.
+				r.Use(sentinelMW)
+				r.With(readLimit17).Get("/", h.List)
+				// PLA — audited POST read-gateway: unifies "list roots" and
+				// "list children" behind one body-driven endpoint so every
+				// read is logged uniformly for SOC 2 (no identifiers in URLs).
+				// Clamp is automatic via the RequireAuth + sentinelMW above.
+				r.With(readLimit17).Post("/query", h.Query)
+				r.With(writeLimit17, userWriteLimiter).Post("/", h.Create)
+				r.With(writeLimit17, userWriteLimiter).Post("/bulk", h.Bulk)
+				r.With(readLimit17).Get("/summary", h.Summary)
+				// PLA057 / OBJ1 — scope-clamped facet enumeration. Chip UIs
+				// call this to learn "what types/priorities are reachable
+				// in the current scope" without hitting the workspace catalogue
+				// (which can disagree with the grid's topology clamp).
+				r.With(readLimit17).Get("/facets", h.Facets)
+				r.With(readLimit17).Get("/flow-states", h.ListFlowStates)
+				// Slice 2.5 (ObjectTree refactor) — exposes the ?fields=
+				// allow-list catalogue. Frontend column picker / agent
+				// introspection consume this; no subscription clamp on the
+				// catalogue itself, the surface is global to the resource.
+				r.With(readLimit17).Get("/columns", h.Columns)
+				// Per-type custom-field schema. Consumed by the V2 create
+				// flyout + inline edit form to render the right inputs for
+				// each artefact type (Risk → risk_score, risk_impact, …;
+				// Defect → severity, …). Mounted before /{id} so the
+				// literal "types" segment wins over the {id} param.
+				r.With(readLimit17).Get("/types/{typeId}/fields", h.ListFieldsForType)
+				// Slice 4.6c — narrow refetch for cascade-touched rows.
+				// Mounted before /{id} so the literal segment wins over
+				// the param.
+				r.With(readLimit17).Get("/by-ids", h.ByIDs)
+				r.With(readLimit17).Get("/{id}", h.Get)
+				r.With(writeLimit17, userWriteLimiter).Patch("/{id}", h.Patch)
+				r.With(writeLimit17, userWriteLimiter).Delete("/{id}", h.Archive)
+				r.With(readLimit17).Get("/{id}/children", h.ListChildren)
+				// Parent chain for the ArtefactNodeDiagram hierarchy strip.
+				// Handler existed but was never mounted on the artefact-site
+				// group (only /nodes/{id}/ancestors for org-design was), so the
+				// diagram silently showed no ancestors (the .catch in
+				// ArtefactNodeDiagram swallowed the 404). Mounted after /children
+				// so it sits with the other {id} sub-resources; literal segments
+				// above still win over {id}.
+				r.With(readLimit17).Get("/{id}/ancestors", h.ListAncestors)
+				r.With(readLimit17).Get("/{id}/field-values", h.ListFieldValues)
+				r.With(writeLimit17, userWriteLimiter).Put("/{id}/field-values", h.UpsertFieldValues)
+				r.With(writeLimit17, userWriteLimiter).Delete("/{id}/field-values/{field_library_id}", h.DeleteFieldValue)
+			}
+			r.Route("/work-items", func(r chi.Router) {
+				mountArtefactSite(r, workItemsV2H)
+				// PLA074 / B23.1.8 — dependency-impact preflight. Lives
+				// under /work-items by AC; the handler is owned by the
+				// dependencies package because the read targets the edge
+				// tables. Same auth + sentinel chain as the parent route
+				// group above (applied by mountArtefactSite).
+				r.Get("/{id}/dependency-impact", dependenciesH.ImpactForArtefact)
+			})
+			r.Route("/portfolio-items", func(r chi.Router) {
+				mountArtefactSite(r, portfolioItemsV2H)
+				r.Get("/{id}/dependency-impact", dependenciesH.ImpactForArtefact)
+			})
+			// PLA-0052 Story 10 — Risk summary endpoint. Severity × likelihood
+			// aggregator for the /risk page header. Reuses workItemsV2H (scope=work)
+			// since Risk is a work-scope artefact type. Public surface (/samantha/v2)
+			// deferred until n8n needs it.
+			r.Route("/risks", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.With(readLimit17).Get("/summary", workItemsV2H.RisksSummary)
+			})
+		}
+
+		// /saved-views — Rally-style saved view configurations. See
+		// docs/superpowers/specs/2026-05-28-saved-views-design.md.
+		r.Route("/saved-views", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			savedViewsHandler.Mount(r)
+		})
+		if rankH != nil {
+			r.Route("/rank", func(r chi.Router) {
+				r.Use(authSvc.RequireAuth)
+				r.Use(authSvc.RequireFreshPassword)
+				r.Use(httprate.LimitByIP(240, time.Minute))
+				r.Use(userWriteLimiter)
+				r.Post("/move", rankH.Move)
+			})
+		}
+
+		// /topology (B22.16 — /_site mirror of /samantha/v2/topology)
+		// All topology I/O is internal-only (staff + padmin); there is no
+		// public customer surface for org-design operations.
+		r.Route("/topology", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+
+			r.Group(func(r chi.Router) {
+				// PLA062 S05.4: Sentinel is the sole request-level clamp.
+				// Replaces the inline PoolWorkspaceLookup wiring this group
+				// carried pre-PLA-0053 / story 00578 and the hoisted
+				// workspaceLookup that followed it.
+				r.Use(sentinelMW)
+
+				r.Get("/tree", orgDesignH.Tree)
+				r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
+				r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
+				r.Get("/preview-move", orgDesignH.PreviewMove)
+				r.Get("/disconnected", orgDesignH.Disconnected)
+				r.Get("/commit", orgDesignH.CommitStatus)
+				r.Put("/view-state", orgDesignH.ViewState)
+			})
+
+			// PLA-0042 — scope picker. Not workspace-clamped: a user's
+			// grants may span workspaces inside their subscription.
+			r.Get("/grants/me", orgDesignH.MyGrants)
+
+			// PLA-0046 / B6.8 — admin-pivot grant listing for the
+			// Topology Permissions page. Not workspace-clamped: target
+			// user's grants may span workspaces inside the subscription.
+			r.With(auth.RequirePermission(permResolver, permissions.TopologyGrantsManageOthers)).
+				Get("/users/{userId}/grants", orgDesignH.ListGrantsByUser)
+
+			r.Post("/nodes", orgDesignH.Create)
+			r.Patch("/nodes/{id}", orgDesignH.Patch)
+			r.Delete("/nodes/{id}", orgDesignH.Archive)
+			r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
+			r.Post("/nodes/{id}/duplicate", orgDesignH.Duplicate)
+			r.Post("/nodes/{id}/restore", orgDesignH.Restore)
+			r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
+			r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)
+			r.Delete("/roles/{grant_id}", orgDesignH.RevokeRole)
+			r.Post("/commit", orgDesignH.Commit)
+			r.Post("/reset", orgDesignH.Reset)
+		})
+
+		// /roles (PLA-0007 G3)
+		r.Route("/roles", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+
+			r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+				Get("/", rolesH.List)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+				Get("/creatable", rolesH.Creatable)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
+				Get("/permissions/catalogue", rolesH.ListPermissionsCatalogue)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
+				Get("/{id}", rolesH.Get)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesCreate)).
+				Post("/", rolesH.Create)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesUpdate)).
+				Patch("/{id}", rolesH.Update)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesArchive)).
+				Delete("/{id}", rolesH.Archive)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
+				Get("/{id}/permissions", rolesH.ListPermissions)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions)).
+				Post("/{id}/permissions", rolesH.AssignPermissions)
+			r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
+				Delete("/{id}/permissions", rolesH.RevokePermissions)
+		})
+
+		// B20.4.3 — cost centres. Subscription-scoped reference data;
+		// reads available to any authenticated tenant member (per-user
+		// edit panel needs the dropdown list), writes gated by
+		// cost_centres.manage. The handler re-checks per-request even
+		// though Patch/Create/Archive route through RequirePermission —
+		// SERVER IS THE GATE hard rule, defence in depth.
+		r.Route("/cost-centres", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Get("/", costCentresH.List)
+			r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
+				Post("/", costCentresH.Create)
+			r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
+				Patch("/{id}", costCentresH.Patch)
+			r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
+				Delete("/{id}", costCentresH.Archive)
+		})
+
+		// Artefact-types settings: GET (list all) + PATCH /{id} (name/prefix/description/colour).
+		// No permission gate beyond auth — every authenticated user can read types;
+		// writes require workspace.archive (padmin+), enforced client-side and tightened later.
+		//
+		// PLA-0053 / story 00578: mounted under WorkspaceClampMiddleware so
+		// every read clamps to the JWT-resolved workspace. The middleware
+		// runs after RequireAuth + RequireFreshPassword per its contract.
+		r.Route("/artefact-types", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
 			r.Use(sentinelMW)
-
-			r.Get("/tree", orgDesignH.Tree)
-			r.Get("/nodes/{id}/ancestors", orgDesignH.Ancestors)
-			r.Get("/nodes/{id}/archived-descendants", orgDesignH.ArchivedDescendants)
-			r.Get("/preview-move", orgDesignH.PreviewMove)
-			r.Get("/disconnected", orgDesignH.Disconnected)
-			r.Get("/commit", orgDesignH.CommitStatus)
-			r.Put("/view-state", orgDesignH.ViewState)
+			artefactTypesH.Mount(r)
+			// Re-sync — re-runs strategy + work-type writers against the
+			// already-adopted bundle so schema changes to the writers (new
+			// columns, depth recomputation, etc.) reach existing rows
+			// without a destructive re-adoption.
+			r.Post("/resync", portfolioResyncH.Resync)
 		})
 
-		// PLA-0042 — scope picker. Not workspace-clamped: a user's
-		// grants may span workspaces inside their subscription.
-		r.Get("/grants/me", orgDesignH.MyGrants)
+		// PLA-0055 / story 00596 — per-workspace priorities CRUD. Same
+		// auth/clamp shape as /artefact-types: every read narrows to the
+		// JWT-resolved workspace via WorkspaceClampMiddleware.
+		r.Route("/artefact-priorities", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(sentinelMW)
+			artefactPrioritiesH.Mount(r)
+		})
 
-		// PLA-0046 / B6.8 — admin-pivot grant listing for the
-		// Topology Permissions page. Not workspace-clamped: target
-		// user's grants may span workspaces inside the subscription.
-		r.With(auth.RequirePermission(permResolver, permissions.TopologyGrantsManageOthers)).
-			Get("/users/{userId}/grants", orgDesignH.ListGrantsByUser)
+		// PLA074 / B23 — artefact dependency maps. Same auth + sentinel
+		// chain as /artefact-priorities; route bodies land story by story
+		// (Mount is a no-op scaffold in B23.1.4).
+		r.Route("/dependencies", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(sentinelMW)
+			dependenciesH.Mount(r)
+		})
 
-		r.Post("/nodes", orgDesignH.Create)
-		r.Patch("/nodes/{id}", orgDesignH.Patch)
-		r.Delete("/nodes/{id}", orgDesignH.Archive)
-		r.Post("/nodes/{id}/disconnect", orgDesignH.Disconnect)
-		r.Post("/nodes/{id}/duplicate", orgDesignH.Duplicate)
-		r.Post("/nodes/{id}/restore", orgDesignH.Restore)
-		r.Post("/nodes/bulk-position", orgDesignH.BulkPosition)
-		r.Post("/nodes/{id}/roles", orgDesignH.GrantRole)
-		r.Delete("/roles/{grant_id}", orgDesignH.RevokeRole)
-		r.Post("/commit", orgDesignH.Commit)
-		r.Post("/reset", orgDesignH.Reset)
-	})
+		// ---- /portfolio-models ----
+		r.Route("/portfolio-models", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
+				Get("/", portfolioModelsH.List)
+			r.With(
+				auth.RequirePermission(permResolver, permissions.PortfolioList),
+				sentinelMW,
+			).Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
+			r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
+			r.Get("/{id}", portfolioModelsH.GetByModelID)
+			r.With(
+				auth.RequirePermission(permResolver, permissions.PortfolioList),
+				sentinelMW,
+			).Post("/{id}/adopt", portfolioAdoptH.Adopt)
+			r.With(
+				auth.RequirePermission(permResolver, permissions.PortfolioList),
+				sentinelMW,
+			).Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
+		})
 
-	// /roles (PLA-0007 G3)
-	r.Route("/roles", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
+		// ---- /workspace-settings ----
+		r.Route("/workspace-settings", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			workspaceSettingsH.Mount(r)
+		})
 
-		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
-			Get("/", rolesH.List)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
-			Get("/creatable", rolesH.Creatable)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesList)).
-			Get("/permissions/catalogue", rolesH.ListPermissionsCatalogue)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
-			Get("/{id}", rolesH.Get)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesCreate)).
-			Post("/", rolesH.Create)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesUpdate)).
-			Patch("/{id}", rolesH.Update)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesArchive)).
-			Delete("/{id}", rolesH.Archive)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesRead)).
-			Get("/{id}/permissions", rolesH.ListPermissions)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesAssignPermissions)).
-			Post("/{id}/permissions", rolesH.AssignPermissions)
-		r.With(auth.RequirePermission(permResolver, permissions.RolesRevokePermissions)).
-			Delete("/{id}/permissions", rolesH.RevokePermissions)
-	})
+		// ---- /tenant-settings (PLA-0050) ----
+		// Subscription-tier defaults editor. va-tenant-settings page-access row
+		// is seeded by story 00572 in the `pages` table; RequirePageAccess gates
+		// the API on the same grant the UI uses, so a hand-typed URL or stale
+		// bookmark from a user whose grant has been revoked is denied at the API
+		// layer — not just rendered as a blank UI. PLA-0050 AC7 verification:
+		// non-gadmin users 403 here.
+		r.Route("/tenant-settings", func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(auth.RequirePageAccess(pageAccessResolver, "va-tenant-settings"))
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			r.Use(userWriteLimiter)
+			tenantSettingsH.Mount(r)
+		})
 
-	// B20.4.3 — cost centres. Subscription-scoped reference data;
-	// reads available to any authenticated tenant member (per-user
-	// edit panel needs the dropdown list), writes gated by
-	// cost_centres.manage. The handler re-checks per-request even
-	// though Patch/Create/Archive route through RequirePermission —
-	// SERVER IS THE GATE hard rule, defence in depth.
-	r.Route("/cost-centres", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Get("/", costCentresH.List)
-		r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
-			Post("/", costCentresH.Create)
-		r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
-			Patch("/{id}", costCentresH.Patch)
-		r.With(auth.RequirePermission(permResolver, permissions.CostCentresManage)).
-			Delete("/{id}", costCentresH.Archive)
-	})
-
-	// Artefact-types settings: GET (list all) + PATCH /{id} (name/prefix/description/colour).
-	// No permission gate beyond auth — every authenticated user can read types;
-	// writes require workspace.archive (padmin+), enforced client-side and tightened later.
-	//
-	// PLA-0053 / story 00578: mounted under WorkspaceClampMiddleware so
-	// every read clamps to the JWT-resolved workspace. The middleware
-	// runs after RequireAuth + RequireFreshPassword per its contract.
-	r.Route("/artefact-types", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(sentinelMW)
-		artefactTypesH.Mount(r)
-		// Re-sync — re-runs strategy + work-type writers against the
-		// already-adopted bundle so schema changes to the writers (new
-		// columns, depth recomputation, etc.) reach existing rows
-		// without a destructive re-adoption.
-		r.Post("/resync", portfolioResyncH.Resync)
-	})
-
-	// PLA-0055 / story 00596 — per-workspace priorities CRUD. Same
-	// auth/clamp shape as /artefact-types: every read narrows to the
-	// JWT-resolved workspace via WorkspaceClampMiddleware.
-	r.Route("/artefact-priorities", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(sentinelMW)
-		artefactPrioritiesH.Mount(r)
-	})
-
-	// PLA074 / B23 — artefact dependency maps. Same auth + sentinel
-	// chain as /artefact-priorities; route bodies land story by story
-	// (Mount is a no-op scaffold in B23.1.4).
-	r.Route("/dependencies", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(sentinelMW)
-		dependenciesH.Mount(r)
-	})
-
-	// ---- /portfolio-models ----
-	r.Route("/portfolio-models", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		r.With(auth.RequirePermission(permResolver, permissions.PortfolioList)).
-			Get("/", portfolioModelsH.List)
-		r.With(
-			auth.RequirePermission(permResolver, permissions.PortfolioList),
-			sentinelMW,
-		).Get("/adoption-state", portfolioAdoptionStateH.GetAdoptionState)
-		r.Get("/{family}/latest", portfolioModelsH.GetLatestByFamily)
-		r.Get("/{id}", portfolioModelsH.GetByModelID)
-		r.With(
-			auth.RequirePermission(permResolver, permissions.PortfolioList),
-			sentinelMW,
-		).Post("/{id}/adopt", portfolioAdoptH.Adopt)
-		r.With(
-			auth.RequirePermission(permResolver, permissions.PortfolioList),
-			sentinelMW,
-		).Get("/{id}/adopt/stream", portfolioAdoptStreamH.Stream)
-	})
-
-	// ---- /workspace-settings ----
-	r.Route("/workspace-settings", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		workspaceSettingsH.Mount(r)
-	})
-
-	// ---- /tenant-settings (PLA-0050) ----
-	// Subscription-tier defaults editor. va-tenant-settings page-access row
-	// is seeded by story 00572 in the `pages` table; RequirePageAccess gates
-	// the API on the same grant the UI uses, so a hand-typed URL or stale
-	// bookmark from a user whose grant has been revoked is denied at the API
-	// layer — not just rendered as a blank UI. PLA-0050 AC7 verification:
-	// non-gadmin users 403 here.
-	r.Route("/tenant-settings", func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(auth.RequirePageAccess(pageAccessResolver, "va-tenant-settings"))
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		r.Use(userWriteLimiter)
-		tenantSettingsH.Mount(r)
-	})
-
-	// ---- /flowboard + /topology/{id}/members (FB1.2.1 + FB1.4.1 fix) ----
-	// FlowBoard routes: WIP limits, card prefs, and node-members read.
-	// All routes sit behind RequireAuth + RequireFreshPassword + sentinelMW;
-	// the sentinel middleware seeds WorkspaceID onto request context so the
-	// flowboard handlers can compare against the node's workspace and gate
-	// 403 on cross-scope reads. Without sentinelMW, every handler trips
-	// the `clamp.WorkspaceID == uuid.Nil` guard and returns 403.
-	// Per-route permission middleware (member-only WIP write gate) lives
-	// inside handler.go in FB1.2.2 / FB1.2.4.
-	r.Group(func(r chi.Router) {
-		r.Use(authSvc.RequireAuth)
-		r.Use(authSvc.RequireFreshPassword)
-		r.Use(sentinelMW)
-		r.Use(httprate.LimitByIP(120, time.Minute))
-		flowboardH.Mount(r)
-	})
+		// ---- /flowboard + /topology/{id}/members (FB1.2.1 + FB1.4.1 fix) ----
+		// FlowBoard routes: WIP limits, card prefs, and node-members read.
+		// All routes sit behind RequireAuth + RequireFreshPassword + sentinelMW;
+		// the sentinel middleware seeds WorkspaceID onto request context so the
+		// flowboard handlers can compare against the node's workspace and gate
+		// 403 on cross-scope reads. Without sentinelMW, every handler trips
+		// the `clamp.WorkspaceID == uuid.Nil` guard and returns 403.
+		// Per-route permission middleware (member-only WIP write gate) lives
+		// inside handler.go in FB1.2.2 / FB1.2.4.
+		r.Group(func(r chi.Router) {
+			r.Use(authSvc.RequireAuth)
+			r.Use(authSvc.RequireFreshPassword)
+			r.Use(sentinelMW)
+			r.Use(httprate.LimitByIP(120, time.Minute))
+			flowboardH.Mount(r)
+		})
 
 	} // end mountSiteRoutes
 
@@ -2350,6 +2409,11 @@ func main() {
 			r.Route("/search", func(r chi.Router) {
 				r.Use(authSvc.RequireAuth)
 				r.Use(authSvc.RequireFreshPassword)
+				// SEC-001 (RES066): sentinelMW seeds the workspace +
+				// subtree clamp on ctx. The handler derives workspace
+				// SOLELY from this clamp and fails closed (403) without
+				// it — search reads artefacts, so it MUST be clamped.
+				r.Use(sentinelMW)
 				r.Use(httprate.LimitByIP(60, time.Minute))
 				r.Post("/", searchH.Search)
 			})
