@@ -522,7 +522,7 @@ export interface DevFixtureCleanupResult {
 // retro, code, api, misc). Backend handler: backend/internal/devreports.
 
 export type DevReportType =
-  | "research" | "plan" | "security" | "retro" | "code" | "api" | "misc" | "system";
+  | "research" | "plan" | "security" | "retro" | "code" | "api" | "misc" | "system" | "architecture";
 
 export interface DevReportMeta {
   id: string;

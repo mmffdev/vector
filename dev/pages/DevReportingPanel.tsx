@@ -19,6 +19,7 @@ const TYPE_TABS: TypeTab[] = [
   { value: "plan", label: "Plan" },
   { value: "code", label: "Codebase" },
   { value: "system", label: "System" },
+  { value: "architecture", label: "Architecture" },
   { value: "security", label: "Security" },
   { value: "api", label: "API" },
   { value: "retro", label: "Retrospectives" },
