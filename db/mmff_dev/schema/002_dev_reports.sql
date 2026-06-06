@@ -12,16 +12,18 @@
 --
 -- ID convention (per CLAUDE.md decision 2026-05-21):
 --   RES### research, PLA### plans, SEC### security, RET### retros,
---   COD### codebase, API### api, MIS### misc
+--   COD### codebase, API### api, MIS### misc, SY### system, ARC### architecture
 -- ============================================================
 
 BEGIN;
 
 CREATE TABLE dev_reports (
     id              TEXT        PRIMARY KEY,
+    -- Keep in sync with ValidTypes in backend/internal/devreports/types.go
+    -- (the Go allowlist is authoritative; this CHECK documents the shape).
     type            TEXT        NOT NULL CHECK (type IN (
                                     'research','plan','security','retro',
-                                    'code','api','misc'
+                                    'code','api','misc','system','architecture'
                                 )),
     title           TEXT        NOT NULL,
     category        TEXT,
