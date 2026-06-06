@@ -10,12 +10,20 @@
  * Draw order follows the Aperture rule: connectors / regions / lines
  * FIRST, dots / pins LAST, so markers always sit above the lines.
  */
-import type { SprintMetricsModel } from "@/app/lib/apiSite";
+import type { SprintMetricsModel, TeamVelocity } from "@/app/lib/apiSite";
 import { buildBurndownView, VB } from "@/app/components/charts/sprint/buildBurndownView";
+import { axisTicks } from "@/app/components/charts/sprint/axisScale";
 
-const GRID_VALS = [0, 20, 40, 60, 80, 100];
-
-export function SprintBurndownChart({ model }: { model: SprintMetricsModel }) {
+export function SprintBurndownChart({
+  model,
+  teamVelocity,
+}: {
+  model: SprintMetricsModel;
+  // Optional cross-sprint team velocity (from useTeamVelocity). When supplied,
+  // the KPI strip shows it as a distinct metric next to the intra-sprint rate.
+  // The chart stays dumb — it renders whatever it's handed.
+  teamVelocity?: TeamVelocity | null;
+}) {
   const v = buildBurndownView(model);
   const k = model.kpis;
   const days = model.window.sprint_days;
@@ -23,6 +31,9 @@ export function SprintBurndownChart({ model }: { model: SprintMetricsModel }) {
   const plotBottom = VB.plotT + VB.plotH; // 274
 
   const dayTicks = Array.from({ length: days + 1 }, (_, i) => i);
+  // Gridlines derive from the shaper's resolved axis top (grown to contain the
+  // data + headroom) so labels always match the plotted line — no clipping.
+  const gridVals = axisTicks(v.yTop, 5);
 
   return (
     <div className="sprint-burndown">
@@ -37,9 +48,31 @@ export function SprintBurndownChart({ model }: { model: SprintMetricsModel }) {
           <span className="sprint-burndown__kpi-label">Remaining</span>
         </div>
         <div className="sprint-burndown__kpi">
-          <span className="sprint-burndown__kpi-value">{k.velocity}</span>
-          <span className="sprint-burndown__kpi-label">Velocity</span>
+          {/* Intra-sprint rate: mean daily earned delta over the last 3 actual
+              days (drives the forecast cone). 1 decimal + /d per the burndown
+              handoff. Labelled "3-day rolling avg" so it isn't mistaken for the
+              cross-sprint team velocity beside it. */}
+          <span className="sprint-burndown__kpi-value">{k.velocity.toFixed(1)}/d</span>
+          <span className="sprint-burndown__kpi-label">3-day rolling avg</span>
         </div>
+        {teamVelocity && (
+          <div className="sprint-burndown__kpi">
+            {/* Cross-sprint team velocity: mean net-accepted pts per completed
+                sprint over the rolling window. "—" until a sprint has actually
+                ended (no past-dated sprints → has_data false). */}
+            <span className="sprint-burndown__kpi-value">
+              {teamVelocity.has_data
+                ? `${teamVelocity.points_per_sprint.toFixed(1)}/sp`
+                : "—"}
+            </span>
+            <span className="sprint-burndown__kpi-label">
+              Team velocity
+              {teamVelocity.has_data
+                ? ` (${teamVelocity.window_size}-sprint${teamVelocity.low_confidence ? ", low conf" : ""})`
+                : ""}
+            </span>
+          </div>
+        )}
         <div className="sprint-burndown__kpi">
           <span className="sprint-burndown__kpi-value">{k.days_left}</span>
           <span className="sprint-burndown__kpi-label">Days left</span>
@@ -71,7 +104,7 @@ export function SprintBurndownChart({ model }: { model: SprintMetricsModel }) {
         </defs>
 
         {/* 1. gridlines + axis labels */}
-        {GRID_VALS.map((val) => {
+        {gridVals.map((val) => {
           const gy = v.y(val);
           return (
             <g key={`grid-${val}`}>

@@ -13,13 +13,7 @@
  */
 import type { TaskMetricsModel } from "@/app/lib/apiSite";
 import { buildTaskBurndownView, VB } from "@/app/components/charts/sprint/buildTaskBurndownView";
-
-// Five evenly-spaced gridline values from 0..total (rounded to whole tasks).
-function gridValues(total: number): number[] {
-  const top = Math.max(total, 1);
-  const step = top / 5;
-  return [0, 1, 2, 3, 4, 5].map((i) => Math.round(i * step));
-}
+import { axisTicks } from "@/app/components/charts/sprint/axisScale";
 
 export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
   const v = buildTaskBurndownView(model);
@@ -29,7 +23,9 @@ export function TaskBurndownChart({ model }: { model: TaskMetricsModel }) {
   const plotBottom = VB.plotT + VB.plotH; // 274
 
   const dayTicks = Array.from({ length: days + 1 }, (_, i) => i);
-  const gridVals = gridValues(k.total);
+  // Gridlines derive from the shaper's resolved axis top (which already grew to
+  // contain every series + overshoot headroom), so labels always match the line.
+  const gridVals = axisTicks(v.yTop, 5);
 
   return (
     <div className="sprint-burndown">

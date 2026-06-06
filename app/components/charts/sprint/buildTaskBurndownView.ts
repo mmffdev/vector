@@ -9,6 +9,7 @@
  * cone, ideal_* — so the body is identical to the points shaper.
  */
 import type { TaskMetricsModel } from "@/app/lib/apiSite";
+import { axisTop } from "@/app/components/charts/sprint/axisScale";
 
 export const VB = {
   W: 560,
@@ -35,6 +36,7 @@ export interface TaskBurndownView {
   scopeRegionX: number | null;
   markers: { x: number; y: number }[];
   todayX: number;
+  yTop: number;
 }
 
 interface Pt { x: number; y: number; }
@@ -82,12 +84,21 @@ export function buildTaskBurndownView(m0: TaskMetricsModel): TaskBurndownView {
   };
   const { sprint_days, today } = m.window;
 
-  // Count metric: the y-axis is normalised to the committed total (scope[0]),
-  // falling back to VB.yMax so an empty model still renders a sane axis. This
-  // is the one count-specific tweak vs the points shaper, whose values are
-  // already on a 0..100-ish points scale; task counts are small integers, so
-  // we scale to the total to use the full plot height.
-  const yTop = Math.max(m.scope[0] ?? 0, m.scope[m.scope.length - 1] ?? 0, 1);
+  // Count metric: the y-axis GROWS to contain every plotted value — scope,
+  // remaining (actual line), ideal guideline, and the forecast cone — plus
+  // headroom for the Catmull-Rom spline overshooting above its control points.
+  // Without the all-series max + headroom the actual line clips against the top
+  // gridline (the spline can bulge above the committed total between points).
+  const plotted = [
+    ...m.scope,
+    ...m.remaining.filter((v) => v >= 0),
+    ...m.ideal_a,
+    ...m.ideal_b,
+    ...m.ideal_original,
+    ...m.cone.optimistic,
+    ...m.cone.pessimistic,
+  ];
+  const yTop = axisTop(plotted, 1);
 
   const x = (day: number) => VB.plotL + (day / sprint_days) * VB.plotW;
   const y = (val: number) => VB.plotT + (1 - val / yTop) * VB.plotH;
@@ -166,5 +177,6 @@ export function buildTaskBurndownView(m0: TaskMetricsModel): TaskBurndownView {
     scopeRegionX,
     markers,
     todayX,
+    yTop,
   };
 }

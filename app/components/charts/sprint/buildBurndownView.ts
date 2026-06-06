@@ -10,6 +10,7 @@
  * line stops cleanly at the last real measurement.
  */
 import type { SprintMetricsModel } from "@/app/lib/apiSite";
+import { axisTop } from "@/app/components/charts/sprint/axisScale";
 
 export const VB = {
   W: 560,
@@ -36,6 +37,7 @@ export interface BurndownView {
   scopeRegionX: number | null;
   markers: { x: number; y: number }[];
   todayX: number;
+  yTop: number;
 }
 
 interface Pt { x: number; y: number; }
@@ -63,11 +65,52 @@ function smoothPath(pts: Pt[]): string {
   return d.trim();
 }
 
-export function buildBurndownView(m: SprintMetricsModel): BurndownView {
+export function buildBurndownView(m0: SprintMetricsModel): BurndownView {
+  // Normalise array fields against null. Go marshals a nil slice as JSON
+  // `null` (not `[]`), so any model facet that is empty server-side —
+  // most commonly `scope_changes` for a sprint with no mid-sprint scope
+  // change, but also the cone/ideal arrays in edge windows — arrives as
+  // null and would crash the `.map` calls below. Coalescing here makes the
+  // view-shaper robust for every sprint shape regardless of the wire's
+  // nil-vs-empty representation. (The backend also emits `[]` now, but this
+  // guard is the durable contract — never trust a slice field to be non-null.)
+  const arr = <T,>(v: T[] | null | undefined): T[] => v ?? [];
+  const m: SprintMetricsModel = {
+    ...m0,
+    scope: arr(m0.scope),
+    remaining: arr(m0.remaining),
+    earned: arr(m0.earned),
+    ideal_a: arr(m0.ideal_a),
+    ideal_b: arr(m0.ideal_b),
+    ideal_original: arr(m0.ideal_original),
+    scope_changes: arr(m0.scope_changes),
+    cone: {
+      optimistic: arr(m0.cone?.optimistic),
+      pessimistic: arr(m0.cone?.pessimistic),
+    },
+  };
   const { sprint_days, today } = m.window;
 
+  // y-axis grows to contain every plotted series + spline-overshoot headroom,
+  // so a >100-point sprint (or a spline bulge between points) no longer clips
+  // against a fixed ceiling. Scales tightly to the data (floor 1), matching the
+  // task chart — a 34-point sprint now uses the full plot height instead of the
+  // top third under the old fixed yMax=100.
+  const yTop = axisTop(
+    [
+      ...m.scope,
+      ...m.remaining.filter((v) => v >= 0),
+      ...m.ideal_a,
+      ...m.ideal_b,
+      ...m.ideal_original,
+      ...m.cone.optimistic,
+      ...m.cone.pessimistic,
+    ],
+    1,
+  );
+
   const x = (day: number) => VB.plotL + (day / sprint_days) * VB.plotW;
-  const y = (val: number) => VB.plotT + (1 - val / VB.yMax) * VB.plotH;
+  const y = (val: number) => VB.plotT + (1 - val / yTop) * VB.plotH;
 
   // ── Actual line: remaining[d] for d in 0..today where remaining[d] >= 0.
   //    The -1 sentinels past `today` are skipped entirely.
@@ -147,5 +190,6 @@ export function buildBurndownView(m: SprintMetricsModel): BurndownView {
     scopeRegionX,
     markers,
     todayX,
+    yTop,
   };
 }

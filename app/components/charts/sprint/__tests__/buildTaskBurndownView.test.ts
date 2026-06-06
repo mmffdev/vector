@@ -24,11 +24,16 @@ describe("buildTaskBurndownView", () => {
     expect(v.todayX).toBeCloseTo(VB.plotL + (2 / 10) * VB.plotW, 1);
   });
 
-  it("scales the y-axis to the committed total (count metric)", () => {
+  it("grows the y-axis to contain the data with headroom (no clipping)", () => {
     const v = buildTaskBurndownView(model);
-    // remaining=10 == total → top of plot; remaining=0 → bottom.
-    expect(v.y(10)).toBeCloseTo(VB.plotT, 1);
+    // Axis top sits ABOVE the max plotted value (10) so the spline can't clip.
+    expect(v.yTop).toBeGreaterThanOrEqual(10);
+    // 0 is the baseline (bottom of the plot).
     expect(v.y(0)).toBeCloseTo(VB.plotT + VB.plotH, 1);
+    // The max data value (10) plots STRICTLY INSIDE the top edge, not on it.
+    expect(v.y(10)).toBeGreaterThan(VB.plotT);
+    // And every plotted point stays within the plot box [plotT, plotT+plotH].
+    expect(v.y(v.yTop)).toBeCloseTo(VB.plotT, 1);
   });
 
   it("tolerates null array fields from the wire", () => {

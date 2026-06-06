@@ -26,9 +26,14 @@ describe("buildBurndownView", () => {
     expect(v.x(10)).toBeCloseTo(VB.plotL + VB.plotW, 1);
   });
 
-  it("maps the y axis (inverted) across the plot height", () => {
+  it("maps the y axis (inverted) across the plot height, growing to contain the data", () => {
+    // 0 is the baseline (bottom); the resolved axis top maps to plotT.
     expect(v.y(0)).toBeCloseTo(VB.plotT + VB.plotH, 1);
-    expect(v.y(100)).toBeCloseTo(VB.plotT, 1);
+    expect(v.y(v.yTop)).toBeCloseTo(VB.plotT, 1);
+    // Axis grew to clear the committed scope (92 here) plus headroom; the max
+    // plotted value sits strictly inside the top edge, never clipping it.
+    expect(v.yTop).toBeGreaterThanOrEqual(92);
+    expect(v.y(92)).toBeGreaterThan(VB.plotT);
   });
 
   it("plots the actual line only up to `today`, skipping -1 sentinels, with no NaN", () => {
@@ -66,5 +71,31 @@ describe("buildBurndownView", () => {
   it("builds a closed cone polygon with no NaN", () => {
     expect(v.conePolygon.length).toBeGreaterThan(0);
     expect(v.conePolygon).not.toContain("NaN");
+  });
+
+  // Regression (2026-06-06): Go marshals a nil slice as JSON `null`, so a
+  // sprint with no mid-sprint scope change arrives with scope_changes: null
+  // (and, in edge windows, other arrays too). The view-shaper must not crash
+  // on `null.map`. Cast through unknown to model the real (untyped) wire.
+  it("tolerates null array fields from the wire (nil-slice JSON)", () => {
+    const nulled = {
+      window: { start: "2026-06-02", end: "2026-06-15", today: 3, sprint_days: 13 },
+      scope: [31, 31, 31, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34],
+      remaining: [31, 31, 31, 34, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+      earned: null,
+      ideal_a: [34, 31.4, 28.8, 26.2, 23.5, 20.9, 18.3, 15.7, 13.1, 10.5, 7.8, 5.2, 2.6, 0],
+      ideal_b: null,
+      ideal_original: [34, 31.4, 28.8, 26.2, 23.5, 20.9, 18.3, 15.7, 13.1, 10.5, 7.8, 5.2, 2.6, 0],
+      cone: { optimistic: null, pessimistic: null },
+      velocity: 0,
+      scope_changes: null,
+      kpis: { committed: 34, remaining: 34, velocity: 0, days_left: 10, on_track: false, projected_short: 34 },
+    } as unknown as SprintMetricsModel;
+    const out = buildBurndownView(nulled);
+    expect(out.scopePins).toEqual([]);
+    expect(out.scopeRegionX).toBeNull();
+    expect(out.conePolygon).toBe("");
+    expect(out.idealPathA.length).toBeGreaterThan(0);
+    expect(out.actualPath).not.toContain("NaN");
   });
 });
