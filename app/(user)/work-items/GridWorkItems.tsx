@@ -24,7 +24,7 @@
 // What it does NOT own: the look (Grid__Tree), the connectors (CSS), the tree
 // state machine (useTree), or the form body (Grid__Tree_Forms / ArtefactInlineForm).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GridTree } from "@/app/components/Grid/Grid__Tree";
 import { GridTreeForms } from "@/app/components/Grid/Grid__Tree_Forms";
@@ -49,7 +49,6 @@ import {
   WorkItemsFilterChips,
 } from "@/app/components/work-items-tree-config";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
-import { ArtefactCreateFlyout } from "@/app/components/ArtefactCreateFlyout";
 import { makeScopeColumns } from "../scope/scopeColumns";
 import {
   fetchScopeRoots,
@@ -176,9 +175,6 @@ export function GridWorkItems() {
   const router = useRouter();
   const [openDetailId, setOpenDetailId] = useState<string | null>(null);
   const [duplicateOfId, setDuplicateOfId] = useState<string | null>(null);
-  // Armed create type (artefact_type uuid). "" ⇒ create flyout closed. The
-  // ActionBar's radial create-pick sets it; <ArtefactCreateFlyout> reads it.
-  const [createTypeId, setCreateTypeId] = useState<string>("");
   const [search, setSearch] = useState("");
   const [nodeSummary, setNodeSummary] = useState<WorkItemsSummary | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -270,26 +266,37 @@ export function GridWorkItems() {
     return Array.from(seen);
   }, [tree.flatNodes]);
   const flowStatesByType = useFlowStatesByType(visibleTypeIds);
+  const filterFingerprint = useMemo(
+    () =>
+      [
+        gridFilters.type.join(","),
+        gridFilters.status.join(","),
+        gridFilters.priority.join(","),
+        gridFilters.owner_id.join(","),
+      ].join("|"),
+    [gridFilters],
+  );
 
-  // Reload the canopy whenever the clamp or filters change AND on every change
-  // of `refresh` identity. `refresh` is rebuilt by useTree whenever its
-  // `fetchRoots` changes — which is exactly when `gridFilters` (hence the POST
-  // body / clamp closure) changes. Keying the load on `refresh` itself means we
-  // can't miss a settled-state load: when useWorkItemsFilters `seeded` flips
-  // true the filters object changes identity → fetchRoots rebuilds → refresh
-  // rebuilds → this effect re-runs and loads under the now-live ?meg= clamp.
+  // React to topology scope AND filter chips. The sentinel focus node is the
+  // request-time clamp the backend reads from the request context; the filters
+  // ride in the POST body. Either change must reload the canopy immediately.
   //
-  // Without this, the change-detection (focus+fingerprint) early-returned on
-  // the seeded re-run because the fingerprint CONTENT was unchanged ("|||"),
-  // even though the underlying fetchRoots closure — and the moment the ?meg=
-  // clamp became effective — had moved on. That left the first racey refresh()
-  // (fired before the clamp was live → 0 rows) as the final state, so the grid
-  // stayed empty until a hard refresh. /scope never hit this because its
-  // single-type fingerprint changes CONTENT (""→epicId) when the type resolves.
+  // This ALSO fixes the empty-grid-on-refresh: useTree's mount load can race the
+  // sentinel resolving the focus from the JWT (an unresolved clamp returns no
+  // rows). We initialise the tracker to `undefined` (distinct from a real null
+  // or string focus) so the FIRST time focus is actually known we refresh once,
+  // re-issuing the roots fetch under the now-resolved clamp.
+  const lastRequestRef = useRef<
+    { focus: string | null; filters: string } | undefined
+  >(undefined);
   useEffect(() => {
     if (sentinel_loading) return;
+    const next = { focus: sentinel_focus_node, filters: filterFingerprint };
+    const prev = lastRequestRef.current;
+    if (prev?.focus === next.focus && prev.filters === next.filters) return;
+    lastRequestRef.current = next;
     refresh();
-  }, [sentinel_loading, refresh]);
+  }, [sentinel_loading, sentinel_focus_node, filterFingerprint, refresh]);
 
   const refetchNodeSummary = useCallback(() => {
     if (sentinel_loading || !sentinel_focus_node) {
@@ -339,11 +346,14 @@ export function GridWorkItems() {
           label: t.label,
           color: t.color,
         })),
-        // Arm the create flyout for the picked type. <ArtefactCreateFlyout>
-        // (rendered below the grid) opens whenever createTypeId is non-empty,
-        // sources its own option lists, and POSTs+PATCHes on submit. Closing a
-        // row's edit flyout isn't required — the two are independent panels.
-        onCreate: (typeId: string) => setCreateTypeId(typeId),
+        // TODO(work-items-grid-swap step 5): port the ObjectTreeV2 create
+        // flyout (submitCreate + form state) into a reusable ArtefactCreateFlyout
+        // and open it for the picked type. Until then the radial pick is wired
+        // but no create form opens — create still works on /work-items-2.
+        // Spec: docs/superpowers/specs/2026-06-06-work-items-grid-swap-design.md.
+        onCreate: (_typeId: string) => {
+          /* create flyout not yet wired — see TODO above */
+        },
       },
       search: {
         placeholder: "Search work items…",
@@ -388,8 +398,6 @@ export function GridWorkItems() {
   const openForm = useCallback(
     (id: string) => {
       const next = openDetailId === id ? null : id;
-      // Navigating away from the freshly-duplicated row clears its amber accent
-      // — amber only applies to the row that just came back from Duplicate.
       if (next !== duplicateOfId) setDuplicateOfId(null);
       setOpenDetailId(next);
     },
@@ -513,11 +521,6 @@ export function GridWorkItems() {
       if (artefact.story_points != null) createBody.story_points = artefact.story_points;
       if (artefact.sprint_id) createBody.sprint_id = artefact.sprint_id;
       if (artefact.parent_id) createBody.parent_id = artefact.parent_id;
-      // "Under original" — the duplicate sits directly beneath its source in the
-      // Prio rank (the differentiator Rally can't do: a clone next to its
-      // origin). Backend computes the midpoint position below artefact.id.
-      createBody.rank_placement = "after";
-      createBody.after_artefact_id = artefact.id;
 
       const pinTo = artefact.topology_node_id ?? sentinel_focus_node;
       if (!pinTo) {
@@ -592,13 +595,6 @@ export function GridWorkItems() {
     [router, sentinel_focus_node],
   );
 
-  // Human label for the armed create type — drives the flyout heading +
-  // submit-button copy. Sourced from the same createTypes the radial pick uses.
-  const createTypeLabel = useMemo(
-    () => createTypes.find((t) => t.value === createTypeId)?.label ?? null,
-    [createTypes, createTypeId],
-  );
-
   return (
     <GridTree<ScopeNode>
       title="Work items"
@@ -645,25 +641,6 @@ export function GridWorkItems() {
         />
       )}
       empty={<p className="grid__Empty">No work items in scope.</p>}
-      belowActionBar={
-        <ArtefactCreateFlyout
-          actionTypeId={createTypeId}
-          actionTypeLabel={createTypeLabel}
-          resourceUrl="/work-items"
-          scope="work"
-          onClose={() => setCreateTypeId("")}
-          onCreated={() => {
-            // Pressing Create is "done": close the form and refresh so the new
-            // row appears at its rank. We deliberately DO NOT open the new
-            // row's edit flyout or scroll to it — that yanked the viewport to
-            // the top (for a top-placed item) and left a flyout open over the
-            // grid, which read as "the form is still open". Create = create,
-            // then get out of the way.
-            setCreateTypeId("");
-            refreshAfterMutation();
-          }}
-        />
-      }
     />
   );
 }

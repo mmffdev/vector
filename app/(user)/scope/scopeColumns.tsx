@@ -70,15 +70,9 @@ function IdCell({
 function StatusCell({
   row,
   flowStatesByType,
-  onStatusCommit,
 }: {
   row: ScopeNode;
   flowStatesByType?: Map<string, WorkItemFlowState[]>;
-  // When provided, the pill row is INTERACTIVE: picking a state fires
-  // onStatusCommit(uuid, flowStateId). /scope omits it → read-only pills.
-  // /value-sprint-review supplies it so the sprint board can drive state
-  // (matching the old ObjectTreeV2 behaviour).
-  onStatusCommit?: (uuid: string, flowStateId: string) => void;
 }) {
   const states = flowStatesByType?.get(row.artefactTypeId) ?? [];
   const renderedStates =
@@ -94,29 +88,12 @@ function StatusCell({
           },
         ];
 
-  // Derived-state lock: a row with live children has its flow state DERIVED
-  // from those children (work flows up), so manual edits are rejected
-  // backend-side with ErrParentFlowStateDerived (409). The EXCEPTION is once
-  // the cascade has landed the parent at a TERMINAL state (completed/accepted)
-  // — then the user takes control again (e.g. to accept it). Same rule as the
-  // backend's PatchWorkItem guard and the legacy work-items-tree-config. When
-  // derived, FlowStatePillRow renders locked + non-interactive so a click
-  // never fires a doomed PATCH. Only relevant when the pills are interactive
-  // (onStatusCommit present); /scope passes readOnly and never reaches this.
-  const atTerminal =
-    row.flowStateCode === "completed" || row.flowStateCode === "accepted";
-  const isDerived = row.childrenCount > 0 && !atTerminal;
-
   return (
     <FlowStatePillRow
       currentId={row.flowStateId}
       states={renderedStates}
-      onCommit={(next) => {
-        if (isDerived) return; // belt-and-suspenders; pills are locked anyway
-        onStatusCommit?.(row.uuid, next);
-      }}
-      derived={!!onStatusCommit && isDerived}
-      readOnly={!onStatusCommit}
+      onCommit={() => {}}
+      readOnly
     />
   );
 }
@@ -134,10 +111,6 @@ export function makeScopeColumns(
   onOpenForm: (id: string) => void,
   flowStatesByType: Map<string, WorkItemFlowState[]>,
   onPatchColour: (uuid: string, hex: string | null) => void,
-  // Optional — when supplied, the Status pill row becomes interactive and
-  // commits via this callback (/value-sprint-review). Omitted on /scope, where
-  // pills stay read-only.
-  onStatusCommit?: (uuid: string, flowStateId: string) => void,
 ): GridColumn<ScopeNode>[] {
   return [
   {
@@ -186,11 +159,7 @@ export function makeScopeColumns(
     sortable: true,
     resizable: true,
     renderCell: (r) => (
-      <StatusCell
-        row={r}
-        flowStatesByType={flowStatesByType}
-        onStatusCommit={onStatusCommit}
-      />
+      <StatusCell row={r} flowStatesByType={flowStatesByType} />
     ),
   },
   {

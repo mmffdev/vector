@@ -303,13 +303,10 @@ function renderRefNav() {
 function openContextMenu({ viewer, line, value, x, y }) {
   const menu = $('#ctx-menu');
   const ref = `[${viewer.sourceId}:${line.lineNumber}]`;
-  const header = `${line.lineNumber}\t${line.ts ?? ''}\t${line.level ?? ''}\t${line.message ?? ''}`;
-  const json = line.raw != null ? JSON.stringify(line.raw, null, 2) : '(no raw payload)';
   const items = [
-    { label: 'Copy line + JSON', fn: () => copyText(`${header}\n${json}`, toast, `line ${line.lineNumber} + JSON`) },
-    { label: 'Copy line only', fn: () => copyText(header, toast, 'line') },
-    { label: 'Copy raw JSON', fn: () => copyText(json, toast, 'raw row') },
+    { label: 'Copy line', fn: () => copyText(`${line.lineNumber}\t${line.ts}\t${line.level}\t${line.message}`, toast, 'line') },
     { label: `Copy reference ${ref}`, fn: () => copyText(ref, toast, 'reference') },
+    { label: 'Copy raw JSON', fn: () => copyText(JSON.stringify(line.raw, null, 2), toast, 'raw row') },
     { label: 'Copy with context (±5)', fn: () => copyWithContext(viewer, line) },
     { sep: true },
   ];
@@ -439,16 +436,7 @@ async function toggleDashboard() {
   dash.hidden = !showing;
   tail.hidden = showing;
   $('#btn-view').classList.toggle('is-active', showing);
-  if (showing) {
-    // Dashboard takes the screen — drop the live tail streams so the server
-    // stops polling the DB for panels nobody is watching. Reconnect on return.
-    state.panels.forEach((p) => p.disconnect());
-    await renderDashboard();
-  } else {
-    // Back to the tail. Only re-open streams if we're actually tailing; if the
-    // user paused, leave them closed (pause already stopped the poll loops).
-    if (state.tailing) state.panels.forEach((p) => p.connect(p.sourceId));
-  }
+  if (showing) await renderDashboard();
 }
 
 async function renderDashboard() {

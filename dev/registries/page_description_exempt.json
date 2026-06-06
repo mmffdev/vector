@@ -122,10 +122,6 @@
       "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
     },
     {
-      "path": "app/(user)/work-items-2/page.tsx",
-      "reason": "2026-06-06 \u2014 verbatim ObjectTreeV2 safety-net copy of /work-items (grid-swap spec); owns its heading via PageHeading + Panel, mirroring the original's exemption. Removed when ObjectTreeV2 /work-items-2 is retired."
-    },
-    {
       "path": "app/(user)/work-items/settings/page.tsx",
       "reason": "seeded 2026-05-12 \u2014 pending PageDescription migration"
     },

@@ -1030,13 +1030,6 @@ type createWorkItemReq struct {
 	// Same shape as the PUT /field-values body so consumers reuse types.
 	// Written inside the create transaction — full atomicity.
 	CustomFields []upsertFieldValueReq `json:"custom_fields,omitempty"`
-	// RankPlacement controls where the new artefact lands in the Prio rank:
-	// "" | "bottom" (default) | "top" | "after". The service falls back to
-	// "bottom" for unknown values, so this is safe to leave unset.
-	RankPlacement string `json:"rank_placement,omitempty"`
-	// AfterArtefactID is the source UUID a duplicate should sit beneath in
-	// the rank — required when RankPlacement=="after", ignored otherwise.
-	AfterArtefactID *string `json:"after_artefact_id,omitempty"`
 }
 
 // Create handles POST /api/v2/work-items.
@@ -1121,11 +1114,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		ParentID:       req.ParentID,
 		OwnerID:        ownerID,
 		CreatedBy:      createdBy,
-		TopologyNodeID:  topologyNodeID,
-		ActorRoleID:     u.RoleID,
-		CustomFields:    customs,
-		RankPlacement:   req.RankPlacement,
-		AfterArtefactID: req.AfterArtefactID,
+		TopologyNodeID: topologyNodeID,
+		ActorRoleID:    u.RoleID,
+		CustomFields:   customs,
 	})
 	if err != nil {
 		if errors.Is(err, ErrScopeForbidden) {

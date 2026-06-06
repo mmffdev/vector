@@ -113,28 +113,7 @@ import { notify } from "@/app/lib/toast";
 // trees. Was previously hardcoded inside useArtefactItemsWindow; now lives
 // at the V2 call site so other domains (sprints, releases) can pass [] or
 // their own list.
-//
-// Two classes of trigger live here:
-//   • Roll-up fields — flow_state_id / story_points / parent_artefact_id —
-//     change a value that aggregates onto ancestors, so the window + any
-//     expanded sub-trees must re-read.
-//   • Timebox-membership fields — sprint_id / release_id / milestone_id —
-//     change which *clamped* list a row belongs to. On a sprint-clamped tree
-//     (/value-sprint-review mounts with ?sprint_id=<panelSprintId>) reassigning
-//     a row to a different sprint must drop it from the current view; without a
-//     refetch patchAndApply only mutates the hidden field in place and the row
-//     stays wrongly visible — reads to the user as "the sprint change didn't
-//     take". On unclamped trees (/work-items) the refetch is harmless (the
-//     Sprint column just re-reads). Origin: 2026-06-05 inline-form sprint edit
-//     on /value-sprint-review appearing to no-op.
-const WORK_ITEMS_CASCADE_FIELDS = [
-  "flow_state_id",
-  "story_points",
-  "parent_artefact_id",
-  "sprint_id",
-  "release_id",
-  "milestone_id",
-];
+const WORK_ITEMS_CASCADE_FIELDS = ["flow_state_id", "story_points", "parent_artefact_id"];
 
 export type { WorkItem };
 

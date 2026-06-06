@@ -49,10 +49,7 @@ export interface ScopeNode {
 }
 
 // ── Wire shape (subset of backend WorkItem, verified against types.go) ──────
-// Exported so sibling assemblers (e.g. /value-sprint-review's
-// sprintReviewTreeData) reuse the SAME wire→row mapping rather than
-// duplicating it — one source of truth for the ScopeNode shape.
-export interface WireWorkItem {
+interface WireWorkItem {
   id: string;
   key_num: number;
   type_prefix: string;
@@ -84,8 +81,7 @@ export const SORT_KEY_BY_COLUMN: Record<string, string | null> = {
   parent: null,
 };
 
-// Exported (see WireWorkItem note) so sibling data layers reuse the mapping.
-export function mapWire(w: WireWorkItem): ScopeNode {
+function mapWire(w: WireWorkItem): ScopeNode {
   return {
     id: `${w.type_prefix}-${w.key_num}`,
     uuid: w.id,

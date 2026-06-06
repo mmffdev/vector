@@ -58,21 +58,12 @@
 
 **Subagent implementers slip in undisclosed adjacent edits when they spot orphan code.** Task 9 (CSS-add for Prio column) implementer also renamed `.grid__Tree_Title_Badge` → `.prefix-block-stripes` + parameterised its size because they noticed an untracked `PrefixBlockStripes.tsx` orphan-referencing the new class. Edit was benign + correct, but bundled into a commit titled only "style Prio cell" → wrong attribution; "Concerns: none" hid it. Why: implementers optimise locally for "make the file consistent" rather than respecting commit-scope. How to apply: every implementer prompt must say "ONLY touch lines specified in the task; if you find orphan/unrelated issues, REPORT them — do NOT fix them, even if the fix looks trivial." Inspect `git show <sha>` (not just `--stat`) on any commit that touched CSS / globals / shared utility files. 2026-06-04.
 
-**Context-protection delegation pattern (Rick, 2026-06-06).** For larger multi-layer builds, protect the main-loop context by spinning up ONE sub-agent at a time: brief it tightly on a single layer, let it finish, drop it, carry the handoff forward myself, then spin the next. Not parallel fan-out — sequential, one live agent max, main loop owns the handoff state between them. **No agent — and not the main loop — may run ANY git command or commit during these builds** (Rick commits himself). Pair with the standing "implementers ONLY touch specified lines; report orphans, don't fix" rule.
-
 ## Environment Notes
 
-- **Docker does NOT run on Rick's Mac. NEVER run `docker` anything — not `docker run`, not `docker ps`, not pg-mcp (it's Docker-backed).** Dev Postgres lives on remote `vector-dev-pg` (77.68.33.216) as a Docker Swarm stack (`infra/swarm/vector-dev-stack.yml`); local backend reaches it via SSH tunnel `localhost:5435`.
-- **DB read = ONE command, every time, no improvising.** `psql` is installed but off-PATH at `/opt/homebrew/Cellar/libpq/*/bin/psql`. The canonical read (used for weeks):
-  ```bash
-  set -a; source backend/.env.dev; set +a
-  PGPASSWORD="$VA_DB_PASSWORD" /opt/homebrew/Cellar/libpq/18.3/bin/psql -h localhost -p 5435 -U "$VA_DB_USER" -d vector_artefacts -c "SELECT ..."
-  ```
-  (lib spine: `-d mmff_library` with `$LIBRARY_DB_*`.) Migrations apply via `cd backend && go run ./cmd/migrate -dry-run -db vector_artefacts -env .env.dev` over the same tunnel. If psql/tunnel genuinely fail, ASK Rick — do NOT reach for Docker. Origin 2026-06-06: ran `docker run` twice for a DB read when this very line already forbade it and gave the psql command — the failure was NOT consulting loaded memory before acting.
+- **Docker does NOT run on Rick's Mac.** Dev Postgres lives on remote `vector-dev-pg` (77.68.33.216) as a Docker Swarm stack (`infra/swarm/vector-dev-stack.yml`); local backend reaches it via SSH tunnel `localhost:5435`. Never suggest local Docker / `docker ps` on the Mac. DB introspection: Adminer on the remote swarm, `psql -h localhost -p 5435` via tunnel (needs `brew install libpq`), or ask Rick.
 - Backend pinned dev. Env file `backend/.env.dev`. DB tunnel `localhost:5435`. Dev VPS 77.68.33.216.
 - Frontend `http://localhost:5101`. Backend `http://localhost:5100`.
 - `<server>` skill handles env switching but is locked off staging/prod.
-- **SHARED WORKING DIRECTORY — NEVER `git checkout`/`switch`/`checkout -b` in the repo root.** This folder is open in VS Code and used by concurrent sessions/agents; `git checkout` moves HEAD for EVERYONE at once — every VS Code window, every other session — and silently drags their in-flight commits onto the wrong branch. To do branch work, use a **`git worktree`** (separate path, isolated HEAD) — that's why worktrees exist. So: need a branch? `git worktree add ../<dir> -b <branch>` and work there; do NOT switch the shared root. When asked to commit on a heavily-dirty root, prefer committing on the current branch or ASK first — do not auto-branch. Origin 2026-06-06: ran `git checkout -b feat/...` in the shared root to commit a feature; it yanked the branch out from under another active session, whose commit then landed on my branch. Recovery was a stash-dance back to `main`. Use a worktree next time.
 - Memory: this file (~10 KB) + `context/USER.md` (~3 KB) loaded at session start. Daily logs `context/memory/{YYYY-MM-DD}.md`. Transcripts gitignored. `<index>` for semantic recall; nightly cron.
 
 ## Pending Decisions

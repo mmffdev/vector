@@ -213,8 +213,8 @@ export function ArtefactInlineForm({
         className={
           "artefact-inline-form__Container_Head" +
           // --deleting wins over --duplicate when both apply: confirming
-          // a delete on a freshly-duplicated row shows the danger colour,
-          // not the amber clone colour.
+          // a delete on a freshly-duplicated row should show the danger
+          // colour, not the amber clone colour.
           (confirmingDelete
             ? " artefact-inline-form__Container_Head--deleting"
             : isDuplicate

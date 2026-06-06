@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -360,10 +359,7 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			httperr.WriteCoded(w, r, http.StatusBadRequest, CodeBreachedPassword, usermessages.AuthBreachedPassword)
 			return
 		}
-		// SEC-ERR (RES066): do not leak the raw error to the wire — it may
-		// carry a pgx/DB string. Log server-side, return a generic message.
-		log.Printf("auth.ChangePassword: userID=%s err=%v", u.ID, err)
-		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -504,10 +500,7 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 				httperr.WriteCoded(w, r, http.StatusBadRequest, CodeBreachedPassword, usermessages.AuthBreachedPassword)
 				return
 			}
-			// SEC-ERR (RES066): generic message + server-side log; never
-			// leak a raw DB error to the wire.
-			log.Printf("auth.PasswordResetConfirm(byID): resetID=%s err=%v", resetID, err)
-			httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+			httperr.Write(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
 		// Clear the handoff cookie so a second click on the email link
@@ -541,10 +534,7 @@ func (h *Handler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
 			httperr.WriteCoded(w, r, http.StatusBadRequest, CodeBreachedPassword, usermessages.AuthBreachedPassword)
 			return
 		}
-		// SEC-ERR (RES066): generic message + server-side log on the
-		// legacy raw-token path; never leak a raw DB error to the wire.
-		log.Printf("auth.PasswordResetConfirm(legacyToken): err=%v", err)
-		httperr.Write(w, r, http.StatusBadRequest, usermessages.RequestInvalidBody)
+		httperr.Write(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

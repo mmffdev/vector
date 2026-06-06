@@ -679,48 +679,6 @@ const sqlSelectNextArtefactPosition = `
 		  AND artefacts_archived_at IS NULL
 	`
 
-// sqlSelectTopArtefactPosition — the "top of rank" insert position. MIN-100 so
-// the new row sorts before every existing same-type row in the dense Prio
-// (ORDER BY artefacts_position ASC). Mirrors the bottom query's scope.
-// $1=subscriptionID, $2=artefactTypeID.
-const sqlSelectTopArtefactPosition = `
-		SELECT COALESCE(MIN(artefacts_position), 0) - 100 FROM artefacts
-		WHERE artefacts_id_subscription = $1
-		  AND artefacts_id_artefact_type = $2
-		  AND artefacts_archived_at IS NULL
-	`
-
-// sqlSelectAfterArtefactPosition — the "under original" insert position for a
-// duplicate. Returns the midpoint between the source's position and the next
-// same-type sibling above it in rank (the smallest position strictly greater
-// than the source). When the source is already last, there is no next sibling
-// so we fall back to source+100 (i.e. bottom-adjacent). When source and next
-// sibling are integer-adjacent (gap closed), the midpoint floors to source's
-// own position — the caller detects pos<=source and bumps to source+1 (see
-// TD-RANK-REBALANCE). $1=subscriptionID, $2=artefactTypeID, $3=sourceArtefactID.
-const sqlSelectAfterArtefactPosition = `
-		WITH src AS (
-			SELECT artefacts_position AS p
-			FROM artefacts
-			WHERE artefacts_id = $3
-			  AND artefacts_id_subscription = $1
-			  AND artefacts_archived_at IS NULL
-		),
-		nxt AS (
-			SELECT MIN(a.artefacts_position) AS p
-			FROM artefacts a, src
-			WHERE a.artefacts_id_subscription = $1
-			  AND a.artefacts_id_artefact_type = $2
-			  AND a.artefacts_archived_at IS NULL
-			  AND a.artefacts_position > src.p
-		)
-		SELECT CASE
-			WHEN nxt.p IS NULL THEN src.p + 100
-			ELSE (src.p + nxt.p) / 2
-		END AS pos, src.p AS src_pos
-		FROM src, nxt
-	`
-
 // sqlDeriveSprintLabelSubquery is the canonical scalar-subquery for
 // computing the denormalised sprint label from a sprint_id bind. Used by
 // the Create INSERT (sprint_id bound at $10) and the Patch sparse-UPDATE

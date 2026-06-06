@@ -8,11 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/mmffdev/vector-backend/internal/secrets"
 )
 
 const (
@@ -27,10 +26,7 @@ var ErrMFARememberInvalid = errors.New("mfa_remember: token invalid or expired")
 // The nonce prevents two tokens for the same user issued in the same second
 // from being identical. No DB row — revocation is handled by mfa_enrolled=false.
 func SignMFARememberToken(userID string) (string, error) {
-	// SEC-MFA (RES066): read via secrets.Get so this signer honours the
-	// AES-GCM envelope used by the 8 signers in auth/tokens.go, rather
-	// than reading the raw env var directly.
-	secret := secrets.Get("JWT_ACCESS_SECRET")
+	secret := os.Getenv("JWT_ACCESS_SECRET")
 	if secret == "" {
 		return "", errors.New("JWT_ACCESS_SECRET not set")
 	}
@@ -48,7 +44,7 @@ func SignMFARememberToken(userID string) (string, error) {
 // ParseMFARememberToken validates a token previously signed by SignMFARememberToken.
 // Returns ErrMFARememberInvalid if the token is malformed, expired, or tampered.
 func ParseMFARememberToken(userID, token string) error {
-	secret := secrets.Get("JWT_ACCESS_SECRET")
+	secret := os.Getenv("JWT_ACCESS_SECRET")
 	if secret == "" {
 		return ErrMFARememberInvalid
 	}
