@@ -35,7 +35,15 @@ export function GridSprintBoundaryDivider({
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      // Capture on currentTarget (the divider div this handler is bound to),
+      // NOT e.target — pressing the grip/counter <span> makes e.target a CHILD,
+      // and the browser releases implicit pointer capture the moment that child
+      // is reconciled/re-inserted as the divider moves between row positions
+      // during the drag. That dropped capture after the first row-cross, so the
+      // sweep died at one row. The divider div carries the stable key
+      // ("__divider__") and is the element that owns the pointer handlers, so
+      // capturing it keeps every subsequent pointermove flowing to the drag.
+      e.currentTarget.setPointerCapture(e.pointerId);
       activeRef.current = true;
       onDragStart(e.clientY);
     },
@@ -54,7 +62,8 @@ export function GridSprintBoundaryDivider({
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!activeRef.current) return;
       activeRef.current = false;
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      // Release on currentTarget to match the capture target set on pointerdown.
+      e.currentTarget.releasePointerCapture(e.pointerId);
       onDragEnd();
     },
     [onDragEnd],

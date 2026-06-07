@@ -229,4 +229,70 @@ describe("GridSprintBoundary", () => {
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.getByText("Gamma")).toBeInTheDocument();
   });
+
+  // Regression: the drag must collect MANY rows across MANY pointer moves —
+  // the real "sweep" gesture, not one move. The bug was setPointerCapture on
+  // e.target (a child <span>): pressing the grip captured the span, the browser
+  // dropped that capture the moment the divider re-rendered/moved on the first
+  // row-cross, and the sweep died at one row. Fix: capture e.currentTarget
+  // (the stable separator div). This test drives a realistic many-small-moves
+  // drag, re-querying the live divider each move (as pointer capture would
+  // route events), and asserts the boundary keeps growing past one row.
+  it("collects many rows over many incremental pointer moves (continuous sweep)", () => {
+    const commit = vi.fn();
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub(["s1", "s2"])}
+        backlogTree={treeStub(["b1", "b2", "b3", "b4", "b5"])}
+        columns={columns}
+        commit={commit}
+        rowHeightForTest={40}
+      />,
+    );
+    const live = () => screen.getByRole("separator");
+    fireEvent.pointerDown(live(), { clientY: 100, pointerId: 1 });
+    for (let y = 110; y <= 300; y += 10) {
+      fireEvent.pointerMove(live(), { clientY: y, pointerId: 1 });
+    }
+    // +200px / 40px = 5 rows swept in from the backlog → 2 + 5 = 7 of 7.
+    expect(screen.getByText("7 of 7 in sprint")).toBeInTheDocument();
+    fireEvent.pointerUp(live(), { clientY: 300, pointerId: 1 });
+    expect(commit).toHaveBeenCalledWith({
+      toSprint: ["b1-uuid", "b2-uuid", "b3-uuid", "b4-uuid", "b5-uuid"],
+      toBacklog: [],
+    });
+  });
+
+  // Regression: pointer capture must land on the stable separator div (which
+  // carries the constant "__divider__" key + the pointer handlers), NOT on the
+  // child grip/counter span the user happened to press. Capturing a child span
+  // loses the capture when that span reconciles as the divider moves.
+  it("captures the pointer on the separator div, not the pressed child span", () => {
+    let capturedOn: HTMLElement | null = null;
+    const proto = HTMLElement.prototype as unknown as {
+      setPointerCapture: (id: number) => void;
+    };
+    const origSet = proto.setPointerCapture;
+    proto.setPointerCapture = function (this: HTMLElement) {
+      capturedOn = this;
+    };
+    try {
+      const { container } = render(
+        <GridSprintBoundary
+          sprintTree={treeStub(["s1", "s2"])}
+          backlogTree={treeStub(["b1", "b2", "b3"])}
+          columns={columns}
+          commit={vi.fn()}
+          rowHeightForTest={40}
+        />,
+      );
+      const grip = container.querySelector(
+        ".grid__SprintBoundary_Divider_Grip",
+      ) as HTMLElement;
+      fireEvent.pointerDown(grip, { clientY: 100, pointerId: 1 });
+      expect(capturedOn).toBe(screen.getByRole("separator"));
+    } finally {
+      proto.setPointerCapture = origSet;
+    }
+  });
 });
