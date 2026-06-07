@@ -10,7 +10,9 @@ import { workItems as workItemsApi, portfolioItems as portfolioItemsApi } from "
 import { useSentinel } from "@/app/sentinel";
 import ArtefactInlineForm from "@/app/components/ArtefactInlineForm";
 import { artefactDetailToTreeRowPatch } from "@/app/components/ArtefactInlineForm/rowPatch";
-import { PARENT_PREFIX_MAP, type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
+import { type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
+import { buildReparentMap } from "@/app/components/ObjectTreeV2/configs/workItemsReparentRules";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import BulkActionBar from "@/app/components/BulkActionBar";
 import Panel from "@/app/components/Panel";
 import { ResourceTree } from "@/app/components/ResourceTree";
@@ -107,6 +109,13 @@ export default function ObjectTree({
   // this could accept a config prop or look it up from the registry.
   const flowStates = useWorkItemFlowStates();
   const colourMap = useArtefactTypeColours();
+  // Allowed-parent map for drag-reparent, derived from the live types'
+  // execution_parent_slots (replaces the retired PARENT_PREFIX_MAP).
+  const { types: reparentTypeCatalogue } = useArtefactTypeCatalogue();
+  const reparentMap = useMemo(
+    () => buildReparentMap(reparentTypeCatalogue),
+    [reparentTypeCatalogue],
+  );
   const [pageSize, setPageSize] = useState<number | "all">(25);
   const [pageIndex, setPageIndex] = useState(0);
 
@@ -388,7 +397,7 @@ export default function ObjectTree({
   //   1. Same-parent → block. No-op move.
   //   2. Target in mover's subtree → block. Cycle prevention.
   //      (The hook itself already catches this via getDescendants.)
-  //   3. Target's type prefix NOT in PARENT_PREFIX_MAP[mover prefix] →
+  //   3. Target's type prefix NOT in reparentMap[mover prefix] →
   //      block. Strict cross-boundary rule: a Task can't drop onto an
   //      Epic, a strategic row can't host an execution row directly
   //      except where the map permits (EP→FE).
@@ -403,11 +412,11 @@ export default function ObjectTree({
       // Same-parent → no-op (would also be a wasted PATCH).
       if (mover.parent_id === target.id) return false;
       // Allowed-parent rule, from the prefix map.
-      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
+      const allowed = reparentMap[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
       const targetPrefix = target.type_prefix?.toUpperCase() ?? "";
       return allowed.includes(targetPrefix);
     },
-    [],
+    [reparentMap],
   );
 
   // Candidate pre-pass — fires once on dragstart. Two kinds of legal
@@ -431,7 +440,7 @@ export default function ObjectTree({
       if (!getIds || !get) return [];
       const mover = get(moverID);
       if (!mover) return [];
-      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
+      const allowed = reparentMap[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
       if (allowed.length === 0) return [];
       const allowedSet = new Set(allowed);
       const ids = getIds();
@@ -462,7 +471,7 @@ export default function ObjectTree({
       }
       return out;
     },
-    [],
+    [reparentMap],
   );
 
   // Drop handler. Two shapes per the hook's `intent`:
@@ -496,7 +505,7 @@ export default function ObjectTree({
       //   - ONTO a SIBLING candidate (target's PARENT is legal-parent
       //     of mover) → target's parent. User dropped on a sibling
       //     row, expects to land alongside it.
-      const allowed = PARENT_PREFIX_MAP[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
+      const allowed = reparentMap[mover.type_prefix?.toUpperCase() ?? ""] ?? [];
       const targetPrefix = target.type_prefix?.toUpperCase() ?? "";
       const targetIsLegalParent = allowed.includes(targetPrefix);
 
@@ -523,7 +532,7 @@ export default function ObjectTree({
       await refetchWindow();
       await refetchExpandedChildrenRef.current?.();
     },
-    [resourceUrl, refetchWindow],
+    [resourceUrl, refetchWindow, reparentMap],
   );
 
   // Patch wrapper to satisfy the ResourceTree contract (returns the row).

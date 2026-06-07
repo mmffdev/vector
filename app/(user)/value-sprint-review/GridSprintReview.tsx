@@ -48,6 +48,7 @@ import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 import { useObjectTreeFacets } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeFacets";
 import {
+  buildReparentMap,
   workItemsCanReparent,
   workItemsGetCandidateIds,
 } from "@/app/components/ObjectTreeV2/configs/workItemsReparentRules";
@@ -156,6 +157,10 @@ export function GridSprintReview({
   const [duplicateOfId, setDuplicateOfId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
+  // Allowed-parent map for drag-reparent, derived from the live types'
+  // execution_parent_slots (replaces the retired PARENT_PREFIX_MAP).
+  const reparentMap = useMemo(() => buildReparentMap(types), [types]);
 
   // Story-tier type-UUIDs from the workspace catalogue.
   const storyTierTypeIds = useMemo(() => {
@@ -371,9 +376,13 @@ export function GridSprintReview({
       const mover = rowByUuid.get(moverUuid);
       const target = rowByUuid.get(targetUuid);
       if (!mover || !target) return false;
-      return workItemsCanReparent(reparentableRow(mover), reparentableRow(target));
+      return workItemsCanReparent(
+        reparentableRow(mover),
+        reparentableRow(target),
+        reparentMap,
+      );
     },
-    [rowByUuid],
+    [rowByUuid, reparentMap],
   );
   const getDragCandidateIds = useCallback(
     (moverUuid: string): string[] => {
@@ -382,9 +391,10 @@ export function GridSprintReview({
       return workItemsGetCandidateIds(
         reparentableRow(mover),
         tree.flatNodes.map((node) => reparentableRow(node.row)),
+        reparentMap,
       );
     },
-    [rowByUuid, tree.flatNodes],
+    [rowByUuid, tree.flatNodes, reparentMap],
   );
   const getDescendantUuids = useCallback(
     (row: ScopeNode): string[] => {
@@ -406,7 +416,11 @@ export function GridSprintReview({
       if (
         intent === "above" ||
         intent === "below" ||
-        !workItemsCanReparent(reparentableRow(mover), reparentableRow(target))
+        !workItemsCanReparent(
+          reparentableRow(mover),
+          reparentableRow(target),
+          reparentMap,
+        )
       ) {
         newParentUuid = target.parentUuid;
       }
@@ -419,7 +433,7 @@ export function GridSprintReview({
       }
       refreshPreservingExpansion();
     },
-    [refreshPreservingExpansion, rowByUuid],
+    [refreshPreservingExpansion, rowByUuid, reparentMap],
   );
 
   const duplicateArtefact = useCallback(

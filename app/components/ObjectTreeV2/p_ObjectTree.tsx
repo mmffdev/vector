@@ -64,6 +64,7 @@ import {
 // adapter generalisation).
 import { type ArtefactDetail } from "@/app/components/ArtefactInlineForm/types";
 import {
+  buildReparentMap,
   workItemsCanReparent,
   workItemsGetCandidateIds,
 } from "@/app/components/ObjectTreeV2/configs/workItemsReparentRules";
@@ -635,6 +636,9 @@ export default function ObjectTree<T = WorkItem>({
     activeScopeNodeId,
   );
   const { types: typeCatalogue } = useArtefactTypeCatalogue();
+  // Allowed-parent map for drag-reparent, derived from the live types'
+  // execution_parent_slots (replaces the retired PARENT_PREFIX_MAP).
+  const reparentMap = useMemo(() => buildReparentMap(typeCatalogue), [typeCatalogue]);
   const selectedType = useMemo(
     () => typeCatalogue.find((x) => x.id === actionTypeId) ?? null,
     [typeCatalogue, actionTypeId],
@@ -1259,7 +1263,7 @@ export default function ObjectTree<T = WorkItem>({
   //   1. Same-parent → block. No-op move.
   //   2. Target in mover's subtree → block. Cycle prevention.
   //      (The hook itself already catches this via getDescendants.)
-  //   3. Target's type prefix NOT in PARENT_PREFIX_MAP[mover prefix] →
+  //   3. Target's type prefix NOT in reparentMap[mover prefix] →
   //      block. Strict cross-boundary rule: a Task can't drop onto an
   //      Epic, a strategic row can't host an execution row directly
   //      except where the map permits (EP→FE).
@@ -1275,9 +1279,9 @@ export default function ObjectTree<T = WorkItem>({
       const mover = get(moverID);
       const target = get(targetID);
       if (!mover || !target) return false;
-      return workItemsCanReparent(mover, target);
+      return workItemsCanReparent(mover, target, reparentMap);
     },
-    [],
+    [reparentMap],
   );
 
   // Candidate pre-pass — fires once on dragstart. Two kinds of legal
@@ -1313,9 +1317,9 @@ export default function ObjectTree<T = WorkItem>({
         const row = get(id);
         if (row) visible.push(row);
       }
-      return workItemsGetCandidateIds(mover, visible);
+      return workItemsGetCandidateIds(mover, visible, reparentMap);
     },
-    [],
+    [reparentMap],
   );
 
   // Drop handler. Two shapes per the hook's `intent`:

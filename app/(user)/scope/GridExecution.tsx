@@ -39,9 +39,11 @@ import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 import { useObjectTreeFacets } from "@/app/components/ObjectTreeV2/hooks/useObjectTreeFacets";
 import {
+  buildReparentMap,
   workItemsCanReparent,
   workItemsGetCandidateIds,
 } from "@/app/components/ObjectTreeV2/configs/workItemsReparentRules";
+import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import {
   useWorkItemsFilters,
   WorkItemsFilterChips,
@@ -190,6 +192,12 @@ export function GridExecution() {
   // sidecar allow-list as /work-items so Create New and the Type filter expose
   // the same declared work-item surface (Story / Defect / Task / Epic today).
   const workTypeOptions = useChipTypeOptions("work");
+  // Allowed-parent map for drag-reparent, derived from the live types'
+  // execution_parent_slots (replaces the retired PARENT_PREFIX_MAP). Sourced
+  // from the full catalogue so parent prefixes that live on strategy types
+  // (e.g. Feature) resolve.
+  const { types: typeCatalogue } = useArtefactTypeCatalogue();
+  const reparentMap = useMemo(() => buildReparentMap(typeCatalogue), [typeCatalogue]);
   const createTypes = useMemo(
     () =>
       workTypeOptions.filter((t) =>
@@ -477,9 +485,10 @@ export function GridExecution() {
       return workItemsCanReparent(
         reparentableScopeRow(mover),
         reparentableScopeRow(target),
+        reparentMap,
       );
     },
-    [rowByUuid],
+    [rowByUuid, reparentMap],
   );
 
   const getDragCandidateIds = useCallback(
@@ -489,9 +498,10 @@ export function GridExecution() {
       return workItemsGetCandidateIds(
         reparentableScopeRow(mover),
         tree.flatNodes.map((node) => reparentableScopeRow(node.row)),
+        reparentMap,
       );
     },
-    [rowByUuid, tree.flatNodes],
+    [rowByUuid, tree.flatNodes, reparentMap],
   );
 
   const getDescendantUuids = useCallback(
@@ -519,6 +529,7 @@ export function GridExecution() {
         !workItemsCanReparent(
           reparentableScopeRow(mover),
           reparentableScopeRow(target),
+          reparentMap,
         )
       ) {
         newParentUuid = target.parentUuid;
@@ -533,7 +544,7 @@ export function GridExecution() {
       }
       refreshPreservingExpansion();
     },
-    [refreshPreservingExpansion, rowByUuid],
+    [refreshPreservingExpansion, rowByUuid, reparentMap],
   );
 
   const duplicateArtefact = useCallback(

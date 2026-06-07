@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { workItems, portfolioItems } from "@/app/lib/apiSite";
 import { artefactTypesApi, type ArtefactType } from "@/app/lib/artefactTypesApi";
-import { PARENT_PREFIX_MAP, type ParentOption } from "./types";
+import { type ParentOption } from "./types";
 
 interface UseParentCandidatesParams {
   artefactId?: string | null;
@@ -31,49 +31,51 @@ interface UseParentCandidatesResult {
 
 // Resolves the set of artefact types this type may legally parent under.
 //
-// Priority order:
+// Two scope-driven tiers (PARENT_PREFIX_MAP retired — the rule now lives on the
+// type as `execution_parent_slots`, backfilled from the old map by migration):
 //
-//   1. Static `PARENT_PREFIX_MAP` — AUTHORITATIVE for any type whose prefix
-//      is in the map (all execution types: US→[FE,EP], DE→[EP,US], TA→[DE,US],
-//      EP→[FE]). This is the SAME rule the drag-reparent path enforces
-//      (workItemsCanReparent), so create / inline-edit / drag all agree.
-//      It is keyed by prefix → resolved to type UUIDs below.
-//   2. `layer_depth` model — fallback ONLY for types NOT in the map, i.e. the
-//      pure-strategic ladder (PRW=0 < PR=1 < BO=2 < TH=3 < FT=4). Allowed
-//      parents = every type with a strictly-smaller depth.
-//   3. `parent_type_id` chain — last-resort walk for types with neither.
+//   WORK scope → resolve `execution_parent_slots` to live types. Each entry is
+//     EITHER a slot handle (matches some type's `slot`) OR a prefix fallback
+//     (matches some type's `prefix`) when the parent type carries no slot. The
+//     live backfill stored the literal PREFIX "FE" for Feature because the
+//     Feature strategy type has slot=NULL — so a Story's slots look like
+//     ["FE","wrk_epic"]. We MUST resolve slot-first-then-prefix or the Feature
+//     parent silently drops from a Story's candidates (a real bug). We build
+//     BOTH a slot map and a prefix map and try them in that order.
 //
-// Why the map wins over layer_depth (2026-06-06): the live artefacts_types
-// layer_depth data is contaminated for execution types — duplicate rows with
-// conflicting depths (US=0 AND 5, DE=0 AND 6, EP=0 AND 9), and Feature (FE) is
-// NULL. The depth model therefore both (a) excluded the one valid Story parent
-// (Feature) and (b) crossed the work→strategy boundary, surfacing the whole
-// BO/PR/PRW/TH ladder under a Story. PARENT_PREFIX_MAP is the curated truth.
-// (Data cleanup tracked as TD-ARTEFACT-TYPE-DEPTH-DUP.)
+//   STRATEGY scope → walk the `parent_type_id` chain upward (the ladder).
 //
 // Each allowed type id is then queried against its scope-appropriate endpoint
 // (work types → /work-items; strategy types → /portfolio-items). apiSite()
 // forwards ?meg= on GETs so the topology clamp comes for free.
-function resolveAllowedTypes(
+export function resolveAllowedTypes(
   editing: ArtefactType,
   allTypes: ArtefactType[],
 ): ArtefactType[] {
-  // (1) PARENT_PREFIX_MAP — authoritative when the editing type is in it.
-  const allowedPrefixes = PARENT_PREFIX_MAP[editing.prefix.toUpperCase()];
-  if (allowedPrefixes != null) {
-    const allowedSet = new Set(allowedPrefixes.map((p) => p.toUpperCase()));
-    return allTypes.filter(
-      (t) => allowedSet.has(t.prefix.toUpperCase()) && t.id !== editing.id,
+  // WORK scope — resolve execution_parent_slots, slot-first-then-prefix.
+  if (editing.scope === "work") {
+    const slots = editing.execution_parent_slots ?? [];
+    if (slots.length === 0) return [];
+    const bySlot = new Map(
+      allTypes.filter((t) => t.slot).map((t) => [t.slot as string, t]),
     );
-  }
-  // (2) layer_depth model — fallback for strategic-only types not in the map.
-  if (editing.layer_depth != null) {
-    const myDepth = editing.layer_depth;
-    return allTypes.filter(
-      (t) => t.layer_depth != null && t.layer_depth < myDepth && t.id !== editing.id,
+    const byPrefix = new Map(
+      allTypes.map((t) => [t.prefix.toUpperCase(), t]),
     );
+    const out: ArtefactType[] = [];
+    const seen = new Set<string>();
+    for (const entry of slots) {
+      // Try a slot match first; fall back to a prefix match (the migration's
+      // documented fallback for parent types whose slot is NULL, e.g. Feature).
+      const t = bySlot.get(entry) ?? byPrefix.get(entry.toUpperCase());
+      if (t && t.id !== editing.id && !seen.has(t.id)) {
+        seen.add(t.id);
+        out.push(t);
+      }
+    }
+    return out;
   }
-  // (3) parent_type_id chain — walk upward.
+  // STRATEGY scope — walk the parent_type_id chain upward.
   if (editing.parent_type_id != null) {
     const byId = new Map(allTypes.map((t) => [t.id, t]));
     const visited = new Set<string>();
