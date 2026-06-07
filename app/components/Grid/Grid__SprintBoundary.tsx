@@ -103,14 +103,14 @@ export function GridSprintBoundary({
       const rowsMoved = Math.round(dy / rowHeight());
       boundary.setBoundaryIndex(dragStartIndex.current + rowsMoved);
     },
-    [boundary, rowHeight],
+    [boundary.setBoundaryIndex, rowHeight],
   );
 
   const onDragEnd = useCallback(() => {
     setDragging(false);
     const delta = boundary.computeDelta();
     if (delta.toSprint.length || delta.toBacklog.length) commit(delta);
-  }, [boundary, commit]);
+  }, [boundary.computeDelta, commit]);
 
   const combined = useMemo(
     () => [...sprintNodes, ...backlogNodes],

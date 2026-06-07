@@ -108,4 +108,27 @@ describe("GridSprintBoundary", () => {
       toBacklog: [],
     });
   });
+
+  it("commits toBacklog when dragging the divider up", () => {
+    const commit = vi.fn();
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub(["s1", "s2", "s3"])}
+        backlogTree={treeStub(["b1", "b2"])}
+        columns={columns}
+        commit={commit}
+        rowHeightForTest={40}
+      />,
+    );
+    const divider = screen.getByRole("separator");
+    // Initial split = 3 (s1,s2,s3 in sprint). Drag UP 80px → 2 rows → boundary 1.
+    // Rows s2,s3 leave the sprint into the backlog.
+    fireEvent.pointerDown(divider, { clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(divider, { clientY: 120, pointerId: 1 });
+    fireEvent.pointerUp(divider, { clientY: 120, pointerId: 1 });
+    expect(commit).toHaveBeenCalledWith({
+      toSprint: [],
+      toBacklog: ["s2-uuid", "s3-uuid"],
+    });
+  });
 });
