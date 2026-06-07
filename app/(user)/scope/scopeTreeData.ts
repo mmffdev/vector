@@ -139,13 +139,15 @@ function queryFilters(
 export async function fetchScopeRoots(page: {
   limit: number;
   offset: number;
-}, filters?: ScopeTreeFilters): Promise<{ rows: ScopeNode[]; total: number }> {
+}, filters?: ScopeTreeFilters, api: {
+  query: (body: WorkItemQueryBody) => Promise<WorkItemQueryResult>;
+} = workItems): Promise<{ rows: ScopeNode[]; total: number }> {
   const body: WorkItemQueryBody = {
     page: { limit: page.limit, offset: page.offset },
   };
   const f = queryFilters(filters);
   if (f) body.filters = f;
-  const res = await workItems.query(body);
+  const res = await api.query(body);
   return { rows: rowsOf(res), total: res.total ?? 0 };
 }
 
@@ -154,6 +156,9 @@ export async function fetchScopeRoots(page: {
 export async function fetchScopeChildren(
   parentUuid: string,
   filters?: ScopeTreeFilters,
+  api: {
+    query: (body: WorkItemQueryBody) => Promise<WorkItemQueryResult>;
+  } = workItems,
 ): Promise<ScopeNode[]> {
   const body: WorkItemQueryBody = { parentId: parentUuid };
   // Type chips choose the primary rows in the scope view. Once a row is
@@ -161,5 +166,5 @@ export async function fetchScopeChildren(
   // their artefact type, so parentId queries must not carry itemTypeId.
   const f = queryFilters(filters, { includeType: false });
   if (f) body.filters = f;
-  return rowsOf(await workItems.query(body));
+  return rowsOf(await api.query(body));
 }

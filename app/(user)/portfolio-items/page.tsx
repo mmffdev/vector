@@ -8,16 +8,12 @@ import { usePageTitle } from "@/app/hooks/usePageTitle";
 import PageSummaryHeader from "@/app/components/PageSummaryHeader";
 import VisualisationPanel from "@/app/components/VisualisationPanel";
 import { apiSite } from "@/app/lib/api";
-import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import { useRefetchOnPush } from "@/app/hooks/useRefetchOnPush";
 import { rankTopic } from "@/app/hooks/useRealtimeSubscription";
 import { useSentinel } from "@/app/sentinel";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
 import { useHintOnce } from "@/app/lib/hints";
-import { resolveWizardConfig, buildWorkItemsFunctions } from "@/app/lib/wizardLoader";
-import portfolioWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_portfolio.json";
-
-const SAVED_VIEW_TARGET = "objecttree:portfolio_items";
+import { GridPortfolioItems } from "./GridPortfolioItems";
 
 export default function PortfolioItemsPage() {
   const { full } = usePageTitle();
@@ -31,28 +27,14 @@ export default function PortfolioItemsPage() {
   const activeNodeId = sentinel_focus_node;
   const direction = sentinel_scope_down ? "descend" : sentinel_scope_up ? "ascend" : "none";
   useHintOnce("PORTFOLIO_MODEL_FIRST_VISIT");
-  const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [summary, setSummary] = useState<{
     total: number;
     by_type: Record<string, number>;
   } | null>(null);
 
-  // Catalogue gates the V2 render so the create-action picker (which
-  // reads scope=strategy from the sidecar) has Theme/BO/Feature in
-  // hand before the action bar mounts.
+  // Catalogue drives surfacedTypes (summary cells + visualisation petals);
+  // GridPortfolioItems owns the tree itself.
   const { types } = useArtefactTypeCatalogue();
-  const wizardConfig = useMemo<ObjectTreeDataConfig>(() => {
-    const resolved = resolveWizardConfig(portfolioWizardJson as any);
-    const funcs = buildWorkItemsFunctions();
-    // filterChips is provided by ObjectTree itself based on
-    // filterChipsComponent — page no longer wires the React element.
-    return {
-      ...resolved,
-      getParentId: funcs.getParentId,
-      getChildrenCount: funcs.getChildrenCount,
-      searchAccessor: funcs.searchAccessor,
-    } as ObjectTreeDataConfig;
-  }, []);
 
   const refetchSummary = useCallback(() => {
     return apiSite<{
@@ -124,24 +106,7 @@ export default function PortfolioItemsPage() {
         byType={summary?.by_type ?? {}}
       />
 
-      {types.length > 0 && (
-        <ObjectTree
-          title="Portfolio items"
-          addressableName="portfolio_items_grid_tree"
-          subtitleBadge="05"
-          subtitle="Dense grid"
-          description="Spreadsheet-fast. 28px rows, single-character status, mono ID column."
-          selectedId={selectedItem?.id ?? null}
-          onSelect={setSelectedItem}
-          onPatched={(body) => {
-            const needsRefetch = "title" in body;
-            if (needsRefetch) void refetch();
-          }}
-          wizardConfig={wizardConfig}
-          multiSelectEnabled
-          savedViews={{ kind: "objecttree", target: SAVED_VIEW_TARGET }}
-        />
-      )}
+      <GridPortfolioItems />
     </>
     </PageContent>
   );

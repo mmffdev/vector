@@ -138,8 +138,14 @@ export function makeScopeColumns(
   // commits via this callback (/value-sprint-review). Omitted on /scope, where
   // pills stay read-only.
   onStatusCommit?: (uuid: string, flowStateId: string) => void,
+  // Optional column trim — listed column ids are filtered OUT of the returned
+  // set. Default [] keeps the full work-items/scope/sprint-review column set
+  // unchanged; /portfolio-items passes { omit: ["points", "sprint"] } for the
+  // strategy trim (ID, Summary, Status, Colour, Owner, Parent, Due).
+  opts?: { omit?: string[] },
 ): GridColumn<ScopeNode>[] {
-  return [
+  const omit = opts?.omit ?? [];
+  const cols: GridColumn<ScopeNode>[] = [
   {
     // Primary cell — hosts the caret + tree-lines indent + type badge. The
     // artefact ID text lives in its own lead track now (Grid__Tree rowIdText),
@@ -234,4 +240,5 @@ export function makeScopeColumns(
     renderCell: (r) => r.due ?? "—",
   },
   ];
+  return cols.filter((c) => !omit.includes(c.id));
 }
