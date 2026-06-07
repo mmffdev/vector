@@ -10,6 +10,7 @@
 // now just the label — the whole PrimaryCellTreeLines / PrimaryCellExpander
 // import (the connector-bug surface) is gone.
 
+import { MdOutlineWarningAmber } from "react-icons/md";
 import type { GridColumn } from "@/app/components/Grid/types";
 import { FlowStatePillRow } from "@/app/components/FlowStatePillRow";
 import { ColourBlockPicker } from "@/app/components/ColourBlockPicker";
@@ -139,6 +140,26 @@ function StatusCell({
   );
 }
 
+// SummaryCell — the row title, prefixed with a red warning icon when the row is
+// a childless container (same rule as the red badge + rail). The icon carries a
+// title tooltip ("This artefact has no children") on hover.
+function SummaryCell({ row }: { row: ScopeNode }) {
+  const childless = isFlaggedChildless(row);
+  return (
+    <span className="grid__Cell_Summary">
+      {childless ? (
+        <MdOutlineWarningAmber
+          className="grid__Cell_Summary_Warn"
+          title="This artefact has no children"
+          aria-label="No children"
+          role="img"
+        />
+      ) : null}
+      {row.summary}
+    </span>
+  );
+}
+
 function OwnerPill({ name }: { name: string }) {
   return <span className="grid__Cell_OwnerPill">{name}</span>;
 }
@@ -184,7 +205,7 @@ export function makeScopeColumns(
     label: "Summary",
     defaultWidth: null, // flex
     sortable: true,
-    renderCell: (r) => <span className="grid__Cell_Summary">{r.summary}</span>,
+    renderCell: (r) => <SummaryCell row={r} />,
   },
   {
     // Per-artefact colour. Click the block to open the shared ColourPickerPanel

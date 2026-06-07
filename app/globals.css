@@ -22418,6 +22418,17 @@ tr.is-editing {
   white-space: nowrap;
   min-width: 0;
 }
+/* Childless-container warning glyph, prefixed before the summary text on rows
+   flagged by isFlaggedChildless. Red, sized to the text, nudged onto the text
+   baseline; the title attribute provides the hover tooltip. */
+.grid__Cell_Summary_Warn {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin-right: 5px;
+  color: var(--status-danger, #B23B3B);
+  vertical-align: -2px;
+}
 
 /* ── Pagination band ──────────────────────────────────────────────────────────
    The tree's OWN root-pagination band — the last sibling inside the grid,
