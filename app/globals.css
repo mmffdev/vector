@@ -22375,6 +22375,13 @@ tr.is-editing {
 .grid__Cell_TypeBadge[data-tier="story"]           { background: #8a8a8a; color: #fff; }
 .grid__Cell_TypeBadge[data-tier="defect"]          { background: #8a8a8a; color: #fff; }
 .grid__Cell_TypeBadge[data-tier="task"]            { background: #a8a8a8; color: #1a1a1a; }
+/* Childless-container warning: a red ring on the TAG badge when a container
+   type (anything except Task / Risk) has zero children. Drawn with box-shadow
+   (not border) so the badge box never reflows — alignment is preserved. Set by
+   data-childless in scopeColumns IdCell. Spans the whole exec→strat ladder. */
+.grid__Cell_TypeBadge[data-childless="true"] {
+  box-shadow: 0 0 0 1.5px var(--status-danger, #B23B3B);
+}
 .grid__Cell_OwnerPill {
   display: inline-flex;
   align-items: center;

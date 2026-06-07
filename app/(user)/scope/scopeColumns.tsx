@@ -31,10 +31,27 @@ const TIER_BY_PREFIX: Record<string, string> = {
   TK: "task",
 };
 
-function TypeBadge({ type }: { type: string }) {
+// Prefixes that are leaf-by-design — a childless Task or Risk is normal, never
+// a warning. Everything else (Epic → Story → Defect, and the whole strategic
+// ladder PRW → PR → BO → TH → ST → FE) is a container type, so having no
+// children is a "should-have-children but doesn't" signal worth flagging.
+const LEAF_BY_DESIGN_PREFIXES = new Set(["TA", "TK", "RSK"]);
+
+// childless = this row is a container type (not Task/Risk) with zero children.
+// Drives a red ring on the badge (data-childless) so empty containers stand out
+// across the whole exec→strat hierarchy. The set above is the only exemption.
+function isFlaggedChildless(row: ScopeNode): boolean {
+  return row.childrenCount === 0 && !LEAF_BY_DESIGN_PREFIXES.has(row.type);
+}
+
+function TypeBadge({ type, childless }: { type: string; childless?: boolean }) {
   const tier = TIER_BY_PREFIX[type] ?? "story";
   return (
-    <span className="grid__Cell_TypeBadge" data-tier={tier}>
+    <span
+      className="grid__Cell_TypeBadge"
+      data-tier={tier}
+      data-childless={childless ? "true" : undefined}
+    >
       {type}
     </span>
   );
@@ -62,7 +79,7 @@ function IdCell({
         onOpenForm?.(row.id);
       }}
     >
-      <TypeBadge type={row.type} />
+      <TypeBadge type={row.type} childless={isFlaggedChildless(row)} />
     </button>
   );
 }
