@@ -50,7 +50,7 @@ import {
   WorkItemsFilterChips,
 } from "@/app/components/work-items-tree-config";
 import { ArtefactCreateFlyout } from "@/app/components/ArtefactCreateFlyout";
-import { makeScopeColumns } from "../scope/scopeColumns";
+import { makeScopeColumns, isFlaggedChildless } from "../scope/scopeColumns";
 import {
   fetchScopeRoots,
   fetchScopeChildren,
@@ -492,6 +492,7 @@ export function GridPortfolioItems() {
       selectedId={openDetailId}
       openDetailId={openDetailId}
       rowAnchorOf={(node) => scopeRowAnchor(node.id)}
+      rowChildless={isFlaggedChildless}
       renderRowDetail={(node) => (
         <GridTreeForms
           artefactId={node.row.uuid}

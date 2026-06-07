@@ -52,7 +52,7 @@ import {
 } from "@/app/components/work-items-tree-config";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
 import { ArtefactCreateFlyout } from "@/app/components/ArtefactCreateFlyout";
-import { makeScopeColumns } from "../scope/scopeColumns";
+import { makeScopeColumns, isFlaggedChildless } from "../scope/scopeColumns";
 import {
   fetchScopeRoots,
   fetchScopeChildren,
@@ -638,6 +638,7 @@ export function GridWorkItems() {
       selectedId={openDetailId}
       openDetailId={openDetailId}
       rowAnchorOf={(node) => scopeRowAnchor(node.id)}
+      rowChildless={isFlaggedChildless}
       renderRowDetail={(node) => (
         <GridTreeForms
           artefactId={node.row.uuid}

@@ -21831,6 +21831,10 @@ tr.is-editing {
   z-index: 2;
   background: var(--grid-tree-header-bg);
   border-bottom: 1px solid var(--border);
+  /* Match the 5px left rail every body row carries, but in the header's own bg
+     colour (not transparent) so the header reads as a solid block and the rail
+     column lines up with the rows below — no odd transparent gap at the top. */
+  border-left: 5px solid var(--grid-tree-header-bg);
   user-select: none;
 }
 .grid__Tree_Head_Cell {
@@ -22013,6 +22017,10 @@ tr.is-editing {
   align-items: center;
   height: var(--tree-row-h);
   border-bottom: 1px solid var(--border);
+  /* 5px left rail — transparent by default; childless containers turn it red
+     (see [data-childless] below). The header carries a matching 5px rail in its
+     own bg colour so the two columns of rails line up with no gap. */
+  border-left: 5px solid transparent;
   /* Per-row colour accent moved off the left border — the artefact colour now
      lives in its own column as a clickable block (.grid__Tree_ColourBadgeBtn,
      sized to match the FlowState block), so the row paints with no leading
@@ -22030,6 +22038,12 @@ tr.is-editing {
   background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface));
 }
 .grid__Tree_Row--parent { font-weight: 600; }
+/* Childless-container rail: a container type (anything except Task / Risk) with
+   zero children gets a red 5px left rail. Set by rowChildless on <GridTree>
+   (page-supplied isFlaggedChildless). Pairs with the red badge fill. */
+.grid__Tree_Row[data-childless="true"] {
+  border-left-color: var(--status-danger, #B23B3B);
+}
 .grid__Tree_Cell {
   display: flex;
   align-items: center;

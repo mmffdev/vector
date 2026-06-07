@@ -32,6 +32,9 @@ export interface GridTreeRowProps<TRow> {
   formOpen?: boolean;
   /** Per-row accent colour → drawn as the left border via --row-accent. */
   accent?: string | null;
+  /** Flags a container row with no children → red left-border rail (CSS reads
+   *  the data-childless attribute). Computed by the page via rowChildless. */
+  childless?: boolean;
   /** Stable DOM anchor for deep-linking / scroll-to-row behaviours. */
   anchorId?: string;
   /** Drag/drop row props from useResourceRank; merged onto the row root. */
@@ -52,6 +55,7 @@ function GridTreeRowInner<TRow>({
   loadingStyle,
   formOpen,
   accent,
+  childless,
   anchorId,
   rankRowProps,
   registerRowRef,
@@ -81,6 +85,7 @@ function GridTreeRowInner<TRow>({
       }
       data-row-id={node.id}
       data-row-anchor={anchorId}
+      data-childless={childless ? "true" : undefined}
       role="row"
       onClick={onSelect ? () => onSelect(node) : undefined}
     >

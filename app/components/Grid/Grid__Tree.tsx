@@ -115,6 +115,10 @@ export interface GridTreeProps<TRow> {
   onSelect?: (node: TreeNode<TRow>) => void;
   /** Optional stable DOM anchor per row, e.g. scope-TA-1234. */
   rowAnchorOf?: (node: TreeNode<TRow>) => string;
+  /** Flags a row as a childless container → red left-border rail. Page-supplied
+   *  so the leaf-by-design exemption (Task/Risk) lives with the page's row type,
+   *  not the generic skin. */
+  rowChildless?: (row: TRow) => boolean;
   /** Empty-state node when there are zero roots. */
   empty?: React.ReactNode;
 }
@@ -165,6 +169,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
     selectedId,
     onSelect,
     rowAnchorOf,
+    rowChildless,
     empty,
   } = props;
 
@@ -556,6 +561,7 @@ export function GridTree<TRow>(props: GridTreeProps<TRow>) {
                     loadingStyle={loadingStyle}
                     formOpen={detailOpen}
                     accent={rowAccent}
+                    childless={rowChildless?.(node.row)}
                     anchorId={rowAnchorOf?.(node)}
                     rankRowProps={hasDnd ? rank.rowProps(dndRowIdOf(node)) : undefined}
                     registerRowRef={cm.registerBodyRow}

@@ -49,7 +49,7 @@ import {
   WorkItemsFilterChips,
 } from "@/app/components/work-items-tree-config";
 import workItemsWizardJson from "@/app/components/ObjectTreeV2/configs/p_wizard_workitems.json";
-import { makeScopeColumns } from "./scopeColumns";
+import { makeScopeColumns, isFlaggedChildless } from "./scopeColumns";
 import {
   fetchScopeRoots,
   fetchScopeChildren,
@@ -664,6 +664,7 @@ export function GridExecution() {
       selectedId={openDetailId}
       openDetailId={openDetailId}
       rowAnchorOf={(node) => scopeRowAnchor(node.id)}
+      rowChildless={isFlaggedChildless}
       renderRowDetail={(node) => (
         <GridTreeForms
           artefactId={node.row.uuid}

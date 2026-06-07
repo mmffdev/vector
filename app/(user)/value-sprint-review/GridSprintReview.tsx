@@ -57,7 +57,7 @@ import {
   useWorkItemsFilters,
   WorkItemsFilterChips,
 } from "@/app/components/work-items-tree-config";
-import { makeScopeColumns } from "@/app/(user)/scope/scopeColumns";
+import { makeScopeColumns, isFlaggedChildless } from "@/app/(user)/scope/scopeColumns";
 import {
   fetchSprintReviewRoots,
   fetchSprintReviewChildren,
@@ -570,6 +570,7 @@ export function GridSprintReview({
       selectedId={openDetailId}
       openDetailId={openDetailId}
       rowAnchorOf={(node) => reviewRowAnchor(node.id)}
+      rowChildless={isFlaggedChildless}
       renderRowDetail={(node) => (
         <GridTreeForms
           artefactId={node.row.uuid}

@@ -38,9 +38,12 @@ const TIER_BY_PREFIX: Record<string, string> = {
 const LEAF_BY_DESIGN_PREFIXES = new Set(["TA", "TK", "RSK"]);
 
 // childless = this row is a container type (not Task/Risk) with zero children.
-// Drives a red ring on the badge (data-childless) so empty containers stand out
-// across the whole exec→strat hierarchy. The set above is the only exemption.
-function isFlaggedChildless(row: ScopeNode): boolean {
+// Drives both the red badge fill AND the red row left-border (data-childless) so
+// empty containers stand out across the whole exec→strat hierarchy. The set
+// above is the only exemption. Exported so every Grid page (work-items, scope,
+// portfolio-items, sprint-review) feeds the SAME rule into <GridTree
+// rowChildless>, keeping the badge and the row rail in lockstep.
+export function isFlaggedChildless(row: ScopeNode): boolean {
   return row.childrenCount === 0 && !LEAF_BY_DESIGN_PREFIXES.has(row.type);
 }
 
