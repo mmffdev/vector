@@ -15,15 +15,29 @@ import { workItems } from "@/app/lib/apiSite";
 import type { WorkItemQueryBody } from "@/app/lib/apiSite";
 import { mapWire, type ScopeNode, type WireWorkItem } from "@/app/(user)/scope/scopeTreeData";
 
+// Optional action-bar filter chips passed through to the query body. Each is a
+// re-validated NARROW hint that only sub-selects within the server clamp; the
+// values are merged in only when the corresponding array is non-empty.
+export interface SprintBoundaryExtraFilters {
+  flowStateId?: string[];
+  priorityId?: string[];
+  ownerId?: string[];
+}
+
 // sprintId: a sprint UUID, or "__none__" for the backlog (no sprint assigned).
 // itemTypeIds: optional artefact-type UUID clamp (e.g. story/defect/risk only).
+// extraFilters: optional flowState/priority/owner chips; merged only when non-empty.
 export async function fetchSprintRoots(
   page: { limit: number; offset: number },
   sprintId: string,
   itemTypeIds?: string[],
+  extraFilters?: SprintBoundaryExtraFilters,
 ): Promise<{ rows: ScopeNode[]; total: number }> {
   const filters: NonNullable<WorkItemQueryBody["filters"]> = { sprintId };
   if (itemTypeIds && itemTypeIds.length) filters.itemTypeId = itemTypeIds;
+  if (extraFilters?.flowStateId?.length) filters.flowStateId = extraFilters.flowStateId;
+  if (extraFilters?.priorityId?.length) filters.priorityId = extraFilters.priorityId;
+  if (extraFilters?.ownerId?.length) filters.ownerId = extraFilters.ownerId;
   const body: WorkItemQueryBody = {
     page: { limit: page.limit, offset: page.offset },
     filters,

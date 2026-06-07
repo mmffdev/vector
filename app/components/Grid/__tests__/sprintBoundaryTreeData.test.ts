@@ -70,4 +70,34 @@ describe("fetchSprintRoots", () => {
       filters: { sprintId: "__none__" },
     });
   });
+
+  it("merges extraFilters (flowStateId/priorityId/ownerId) into the query", async () => {
+    queryMock.mockResolvedValue({ items: [], total: 0 });
+    await fetchSprintRoots({ limit: 100, offset: 0 }, "sprint-9", ["t1"], {
+      flowStateId: ["fs1"],
+      priorityId: ["p1"],
+      ownerId: ["o1"],
+    });
+    expect(queryMock).toHaveBeenCalledWith({
+      page: { limit: 100, offset: 0 },
+      filters: {
+        sprintId: "sprint-9",
+        itemTypeId: ["t1"],
+        flowStateId: ["fs1"],
+        priorityId: ["p1"],
+        ownerId: ["o1"],
+      },
+    });
+  });
+
+  it("omits empty extraFilters arrays", async () => {
+    queryMock.mockResolvedValue({ items: [], total: 0 });
+    await fetchSprintRoots({ limit: 100, offset: 0 }, "__none__", undefined, {
+      flowStateId: [],
+    });
+    expect(queryMock).toHaveBeenCalledWith({
+      page: { limit: 100, offset: 0 },
+      filters: { sprintId: "__none__" },
+    });
+  });
 });
