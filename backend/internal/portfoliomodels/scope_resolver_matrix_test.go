@@ -199,7 +199,7 @@ func probeWrite(
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
 			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_sort_order,
 			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,
@@ -259,7 +259,7 @@ func probeRead(
 				artefacts_types_id_subscription, artefacts_types_id_workspace,
 				artefacts_types_scope, artefacts_types_source,
 				artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
-				artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+				artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_sort_order,
 				artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 			) VALUES (
 				$1, $2,
@@ -304,7 +304,7 @@ func probeRead(
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
 			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_sort_order,
 			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
 			$1, $2,

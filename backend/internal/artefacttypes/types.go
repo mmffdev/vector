@@ -25,10 +25,14 @@ type ArtefactType struct {
 	ParentTypeID   *uuid.UUID `json:"parent_type_id"`
 	AllowsChildren bool       `json:"allows_children"`
 	LayerDepth     *int       `json:"layer_depth"`
-	SortOrder      int        `json:"sort_order"`
-	ArchivedAt     *time.Time `json:"archived_at"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	// ExecutionParentSlots — work-scope allowed-parent rule: list of parent
+	// type slots (wrk_story, wrk_epic, ...) this work type may nest under.
+	// Nil for strategy types. Replaces the retired frontend PARENT_PREFIX_MAP.
+	ExecutionParentSlots []string   `json:"execution_parent_slots"`
+	SortOrder            int        `json:"sort_order"`
+	ArchivedAt           *time.Time `json:"archived_at"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 // PatchInput is the body accepted by PATCH /_site/artefact-types/{id}.

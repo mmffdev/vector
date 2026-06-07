@@ -38,7 +38,7 @@ const sqlListWorkspaceStrategyArtefactTypes = `
 		SELECT artefacts_types_id, artefacts_types_id_workspace,
 		       artefacts_types_id_library_layer,
 		       artefacts_types_name, artefacts_types_prefix, artefacts_types_sort_order,
-		       artefacts_types_id_parent_type,
+		       artefacts_types_strategy_parent_id,
 		       artefacts_types_description, artefacts_types_allows_children,
 		       artefacts_types_is_placeholder,
 		       artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
@@ -46,7 +46,7 @@ const sqlListWorkspaceStrategyArtefactTypes = `
 		 WHERE artefacts_types_id_workspace = $1
 		   AND artefacts_types_scope         = 'strategy'
 		   AND artefacts_types_archived_at  IS NULL
-		 ORDER BY (artefacts_types_id_parent_type IS NOT NULL),
+		 ORDER BY (artefacts_types_strategy_parent_id IS NOT NULL),
 		          artefacts_types_sort_order,
 		          artefacts_types_name
 	`
@@ -219,7 +219,7 @@ const sqlInsertStrategyArtefactType = `
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
 			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_sort_order,
 			artefacts_types_layer_depth,
 			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
@@ -251,7 +251,7 @@ const sqlUpdateStrategyArtefactTypeLayerDepth = `
 // sqlUpdateStrategyArtefactTypeParent — Phase 2 of B3 (set parent_type_id).
 const sqlUpdateStrategyArtefactTypeParent = `
 		UPDATE artefacts_types
-		   SET artefacts_types_id_parent_type = $1
+		   SET artefacts_types_strategy_parent_id = $1
 		 WHERE artefacts_types_id = $2
 		   AND artefacts_types_id_workspace = $3
 		   AND artefacts_types_scope = 'strategy'
@@ -363,7 +363,7 @@ const sqlUpsertReadoptPlaceholderType = `
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
 			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_sort_order,
 			artefacts_types_id_library_layer, artefacts_types_library_layer_tag,
 			artefacts_types_is_placeholder
 		) VALUES (
@@ -452,7 +452,7 @@ const sqlInsertWorkArtefactTypeFromSystem = `
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
 			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_sort_order,
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_sort_order,
 			artefacts_types_layer_depth,
 			artefacts_types_id_library_layer, artefacts_types_library_layer_tag
 		) VALUES (
@@ -496,7 +496,7 @@ const sqlSelectMaxStrategyLayerDepth = `
 
 const sqlUpdateWorkArtefactTypeParent = `
 		UPDATE artefacts_types
-		   SET artefacts_types_id_parent_type = $1
+		   SET artefacts_types_strategy_parent_id = $1
 		 WHERE artefacts_types_id = $2
 		   AND artefacts_types_id_workspace = $3
 		   AND artefacts_types_scope = 'work'
@@ -504,7 +504,7 @@ const sqlUpdateWorkArtefactTypeParent = `
 	`
 
 const sqlSelectSystemWorkTypes = `
-		SELECT artefacts_types_id, artefacts_types_id_parent_type, artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+		SELECT artefacts_types_id, artefacts_types_strategy_parent_id, artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
 		       artefacts_types_allows_children, artefacts_types_sort_order
 		  FROM artefacts_types
 		 WHERE artefacts_types_id_subscription = $1

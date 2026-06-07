@@ -161,7 +161,7 @@ func TestWriteStrategyArtefactTypes_HappyPath(t *testing.T) {
 		gotParent           *uuid.UUID
 	)
 	if err := pool.QueryRow(ctx, `
-		SELECT artefacts_types_scope, artefacts_types_source, artefacts_types_id_library_layer, artefacts_types_library_layer_tag, artefacts_types_name, artefacts_types_id_parent_type
+		SELECT artefacts_types_scope, artefacts_types_source, artefacts_types_id_library_layer, artefacts_types_library_layer_tag, artefacts_types_name, artefacts_types_strategy_parent_id
 		  FROM artefacts_types
 		 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_id_library_layer = $2`,
 		workspaceID, rootID).Scan(&gotScope, &gotSource, &gotLibID, &gotLibTag, &gotName, &gotParent); err != nil {
@@ -194,7 +194,7 @@ func TestWriteStrategyArtefactTypes_HappyPath(t *testing.T) {
 	for _, libID := range []uuid.UUID{c1ID, c2ID} {
 		var parentMir *uuid.UUID
 		if err := pool.QueryRow(ctx, `
-			SELECT artefacts_types_id_parent_type FROM artefacts_types
+			SELECT artefacts_types_strategy_parent_id FROM artefacts_types
 			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_id_library_layer = $2`,
 			workspaceID, libID).Scan(&parentMir); err != nil {
 			t.Fatalf("load child %s: %v", libID, err)

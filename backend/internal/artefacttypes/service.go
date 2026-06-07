@@ -44,8 +44,8 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 		WITH live AS (
 			SELECT DISTINCT ON (artefacts_types_scope, artefacts_types_name)
 				artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
-				artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
-				artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+				artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_layer_depth,
+				artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at, artefacts_types_execution_parent_slots
 			FROM artefacts_types
 			WHERE artefacts_types_id_subscription = $1
 			  AND artefacts_types_archived_at IS NULL
@@ -53,8 +53,8 @@ func (s *Service) List(ctx context.Context, subscriptionID uuid.UUID) ([]Artefac
 		)
 		SELECT
 			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
-			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at, artefacts_types_execution_parent_slots
 		FROM live
 		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
 
@@ -81,8 +81,8 @@ func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspace
 		WITH live AS (
 			SELECT DISTINCT ON (artefacts_types_scope, artefacts_types_name)
 				artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
-				artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
-				artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+				artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_layer_depth,
+				artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at, artefacts_types_execution_parent_slots
 			FROM artefacts_types
 			WHERE artefacts_types_id_subscription = $1
 			  AND artefacts_types_id_workspace    = $2
@@ -91,8 +91,8 @@ func (s *Service) ListByWorkspace(ctx context.Context, subscriptionID, workspace
 		)
 		SELECT
 			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
-			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at, artefacts_types_execution_parent_slots
 		FROM live
 		ORDER BY artefacts_types_scope, artefacts_types_sort_order, artefacts_types_name`
 
@@ -115,6 +115,7 @@ func (s *Service) queryArtefactTypes(ctx context.Context, q string, args ...any)
 			&t.Description, &t.Colour, &t.Slot,
 			&t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth,
 			&t.SortOrder, &t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
+			&t.ExecutionParentSlots,
 		); err != nil {
 			return nil, fmt.Errorf("artefacttypes.queryArtefactTypes scan: %w", err)
 		}
@@ -227,7 +228,7 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 		argN++
 	}
 	if in.ParentTypeID != nil {
-		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_id_parent_type = $%d", argN))
+		setClauses = append(setClauses, fmt.Sprintf("artefacts_types_strategy_parent_id = $%d", argN))
 		if parentTypeUUID == nil {
 			args = append(args, nil) // explicit clear to NULL
 		} else {
@@ -251,8 +252,8 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 		WHERE artefacts_types_id = $1 AND artefacts_types_id_subscription = $2 AND artefacts_types_archived_at IS NULL
 		RETURNING
 			artefacts_types_id, artefacts_types_scope, artefacts_types_source, artefacts_types_name, artefacts_types_prefix, artefacts_types_description, artefacts_types_colour, artefacts_types_slot,
-			artefacts_types_id_parent_type, artefacts_types_allows_children, artefacts_types_layer_depth,
-			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at`,
+			artefacts_types_strategy_parent_id, artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at, artefacts_types_created_at, artefacts_types_updated_at, artefacts_types_execution_parent_slots`,
 		strings.Join(setClauses, ", "),
 	)
 
@@ -262,6 +263,7 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 		&t.Description, &t.Colour, &t.Slot,
 		&t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth,
 		&t.SortOrder, &t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt,
+		&t.ExecutionParentSlots,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound

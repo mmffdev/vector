@@ -116,7 +116,7 @@ func seedSystemWorkTypes(
 		// Make Story (US) a child of Epic (EP) — synthetic hierarchy
 		// that exercises Phase 2 parent resolution by prefix.
 		if _, err := tx.Exec(ctx, `
-			UPDATE artefacts_types SET artefacts_types_id_parent_type = $1 WHERE artefacts_types_id = $2`,
+			UPDATE artefacts_types SET artefacts_types_strategy_parent_id = $1 WHERE artefacts_types_id = $2`,
 			ids["EP"], ids["US"],
 		); err != nil {
 			t.Fatalf("set synthetic parent: %v", err)
@@ -222,7 +222,7 @@ func TestWriteWorkArtefactTypes_HappyPath(t *testing.T) {
 		}
 		var storyParent *uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			SELECT artefacts_types_id_parent_type FROM artefacts_types
+			SELECT artefacts_types_strategy_parent_id FROM artefacts_types
 			 WHERE artefacts_types_id_workspace = $1 AND artefacts_types_scope = 'work' AND artefacts_types_prefix = 'US'
 			   AND artefacts_types_source = 'tenant' AND artefacts_types_archived_at IS NULL`,
 			workspaceID).Scan(&storyParent); err != nil {

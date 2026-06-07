@@ -2199,6 +2199,10 @@ paths:
                   layer_depth:
                     type: integer
                     format: int32
+                  execution_parent_slots:
+                    type: array
+                    items:
+                      type: string
                   sort_order:
                     type: integer
                     format: int32
@@ -2218,6 +2222,7 @@ paths:
                 - name
                 - prefix
                 - allows_children
+                - execution_parent_slots
                 - sort_order
                 - created_at
                 - updated_at
