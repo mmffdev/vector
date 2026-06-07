@@ -1,14 +1,16 @@
 "use client";
 
-// Grid__SprintBoundary — POC skin: one continuous list (sprint rows, a
-// draggable divider, backlog rows) with a movable sprint-commitment line.
-// Reuses the headless useTree (passed in twice — sprint clamp + backlog clamp),
-// the pure Grid__Tree_Row, the Grid__Tree_Head, and useColumnManager. It does
-// NOT modify Grid__Tree — it composes its parts.
+// Grid__SprintBoundary — POC skin: one continuous list (sprint rows, a sweep
+// handle, backlog rows). Reuses the headless useTree (passed in twice — sprint
+// clamp + backlog clamp), the pure Grid__Tree_Row, the Grid__Tree_Head, and
+// useColumnManager. It does NOT modify Grid__Tree — it composes its parts.
 //
-// Membership is committed on RELEASE: the divider's row index is diffed against
-// the initial split and the crossed rows are handed to commit() as a delta of
-// artefact UUIDs (toSprint / toBacklog). Dragging is pure UI — no network.
+// Membership is committed on RELEASE via the imperative useSweepSelect hook:
+// pressing the handle and sweeping DOWN over backlog rows adds them to the
+// sprint; sweeping UP over sprint rows removes them. The sweep toggles a DOM
+// class on each crossed row (zero React renders during the drag) and, on
+// release, hands the swept UUIDs + direction to commit() mapped to the
+// { toSprint, toBacklog } delta. Dragging is pure UI — no network.
 //
 // NOTE ON WIRING (vs the POC plan's assumptions): the real useColumnManager
 // returns { gridTemplateColumns, sort, getHeaderProps, headerRowRef, … } — NOT
@@ -18,7 +20,7 @@
 // getHeaderProps + headerRowRef directly. This file adapts to those real names;
 // the shared Grid primitives are untouched.
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { useColumnManager } from "./useColumnManager";
 import { GridTreeHead } from "./Grid__Tree_Head";
@@ -26,10 +28,8 @@ import { GridTreeRow } from "./Grid__Tree_Row";
 import { GridSprintBoundaryDivider } from "./Grid__SprintBoundary_Divider";
 import PrefixBlockStripes from "@/app/components/PrefixBlockStripes";
 import { GridTreeActionBar, type GridTreeActionBarConfig } from "./Grid__Tree_ActionBar";
-import {
-  useSprintBoundary,
-  type SprintBoundaryDelta,
-} from "./useSprintBoundary";
+import { useSweepSelect, type SweepResult } from "./useSweepSelect";
+import type { SprintBoundaryDelta } from "./useSprintBoundary";
 import type { GridColumn, SortState, TreeNode, UseTreeResult } from "./types";
 import type { ScopeNode } from "@/app/(user)/scope/scopeTreeData";
 
@@ -40,7 +40,11 @@ export interface GridSprintBoundaryProps {
   /** Called on release with the rows that crossed the line (artefact UUIDs). */
   commit: (delta: SprintBoundaryDelta) => void;
   defaultSort?: SortState | null;
-  /** Test-only: fixed row height so the px→index map is deterministic. */
+  /**
+   * Deprecated no-op since the boundary moved to the imperative sweep (which
+   * reads real row geometry, not a fixed px→index map). Kept optional so
+   * existing callers don't break; ignored by the skin.
+   */
   rowHeightForTest?: number;
   /** In-skin title-band heading (rendered with the FILTER prefix). Omit → no band. */
   sprintLabel?: string;
@@ -66,18 +70,16 @@ export function GridSprintBoundary({
   columns,
   commit,
   defaultSort = null,
-  rowHeightForTest,
   sprintLabel,
   subtitle,
   actionBar,
   emptySprintHint,
   searchTerm,
 }: GridSprintBoundaryProps) {
-  // Client-side title filter (see searchTerm doc). Narrows the node arrays
-  // BEFORE they feed sprintIds/backlogIds → useSprintBoundary, so counts, the
-  // divider "N of M", the combined render, and the commit delta all use the
-  // same filtered set. No search term → every node matches → identical to the
-  // unfiltered behaviour.
+  // Client-side title filter (see searchTerm doc). Narrows the sprint/backlog
+  // node arrays BEFORE they're rendered as sweep rows, so the sweep snapshot,
+  // the live counter, and the commit delta all use the same filtered set. No
+  // search term → every node matches → identical to the unfiltered behaviour.
   const term = (searchTerm ?? "").trim().toLowerCase();
   const matches = useCallback(
     (n: TreeNode<ScopeNode>) => {
@@ -106,17 +108,6 @@ export function GridSprintBoundary({
     );
   }, [backlogTree.flatNodes, matches, sprintNodes]);
 
-  const sprintIds = useMemo(
-    () => sprintNodes.map((n) => n.row.uuid),
-    [sprintNodes],
-  );
-  const backlogIds = useMemo(
-    () => backlogNodes.map((n) => n.row.uuid),
-    [backlogNodes],
-  );
-
-  const boundary = useSprintBoundary(sprintIds, backlogIds);
-
   // Real hook surface: gridTemplateColumns + sort + getHeaderProps + headerRowRef.
   // primaryColumnIndex is NOT a hook output — derive it from the treePrimary flag
   // (default 0, matching GridTreeRow/GridTreeHead's own fallback).
@@ -128,47 +119,29 @@ export function GridSprintBoundary({
     return idx >= 0 ? idx : 0;
   }, [columns]);
 
-  const [dragging, setDragging] = useState(false);
-  const dragStartY = useRef(0);
-  const dragStartIndex = useRef(0);
-  const bodyRef = useRef<HTMLDivElement | null>(null);
+  // Imperative sweep: the container holds the [data-sweep-row] rows; the handle
+  // (divider) spreads handlePointerProps + carries the live counter span. On
+  // release the swept UUIDs are mapped to the unchanged { toSprint, toBacklog }
+  // delta — sweep "add" → toSprint, "remove" → toBacklog.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const counterRef = useRef<HTMLSpanElement | null>(null);
 
-  const rowHeight = useCallback((): number => {
-    if (rowHeightForTest) return rowHeightForTest;
-    const firstRow = bodyRef.current?.querySelector<HTMLElement>(
-      "[data-sprintboundary-row]",
-    );
-    return firstRow?.getBoundingClientRect().height || 40;
-  }, [rowHeightForTest]);
-
-  const onDragStart = useCallback(
-    (clientY: number) => {
-      setDragging(true);
-      dragStartY.current = clientY;
-      dragStartIndex.current = boundary.boundaryIndex;
+  const onSweepCommit = useCallback(
+    (r: SweepResult) => {
+      commit(
+        r.direction === "add"
+          ? { toSprint: r.uuids, toBacklog: [] }
+          : { toSprint: [], toBacklog: r.uuids },
+      );
     },
-    [boundary.boundaryIndex],
+    [commit],
   );
 
-  const onDragMove = useCallback(
-    (clientY: number) => {
-      const dy = clientY - dragStartY.current;
-      const rowsMoved = Math.round(dy / rowHeight());
-      boundary.setBoundaryIndex(dragStartIndex.current + rowsMoved);
-    },
-    [boundary.setBoundaryIndex, rowHeight],
-  );
-
-  const onDragEnd = useCallback(() => {
-    setDragging(false);
-    const delta = boundary.computeDelta();
-    if (delta.toSprint.length || delta.toBacklog.length) commit(delta);
-  }, [boundary.computeDelta, commit]);
-
-  const combined = useMemo(
-    () => [...sprintNodes, ...backlogNodes],
-    [sprintNodes, backlogNodes],
-  );
+  const { dragging, handlePointerProps } = useSweepSelect({
+    containerRef,
+    counterRef,
+    onCommit: onSweepCommit,
+  });
 
   return (
     <div className="grid grid__SprintBoundary">
@@ -196,8 +169,8 @@ export function GridSprintBoundary({
         headerRowRef={headerRowRef}
         primaryColumnIndex={primaryColumnIndex}
       />
-      <div className="grid__SprintBoundary_Body" ref={bodyRef}>
-        {sprintNodes.length === 0 && (
+      <div className="grid__SprintBoundary_Body" ref={containerRef}>
+        {sprintNodes.length === 0 && !dragging && (
           <div className="grid__SprintBoundary_Empty" data-sprintboundary-empty>
             {emptySprintHint ?? (
               <>
@@ -209,55 +182,46 @@ export function GridSprintBoundary({
             )}
           </div>
         )}
-        {/*
-          Rows and the divider are emitted as flat siblings — the divider is a
-          SINGLE element with a CONSTANT key ("__divider__") so React preserves
-          its instance (and its pointer-capture / activeRef state) as it moves
-          between row positions during a drag. Wrapping it in a per-row-keyed
-          parent (the obvious approach) re-mounts a fresh divider every time the
-          boundary crosses a row, dropping the capture and the in-flight drag —
-          which is exactly the bug this layout avoids.
-        */}
-        {(() => {
-          const children: ReactNode[] = [];
-          const divider = (
-            <GridSprintBoundaryDivider
-              key="__divider__"
-              inSprintCount={boundary.inSprintCount}
-              total={boundary.total}
-              dragging={dragging}
-              onDragStart={onDragStart}
-              onDragMove={onDragMove}
-              onDragEnd={onDragEnd}
+        {sprintNodes.map((n) => (
+          // Key + sweep-snapshot keyed by the stable artefact uuid (not the
+          // display id, which can repeat across artefacts). data-sweep-* drive
+          // the imperative sweep snapshot in useSweepSelect.
+          <div
+            key={n.row.uuid}
+            data-sweep-row
+            data-sweep-uuid={n.row.uuid}
+            data-sweep-section="sprint"
+          >
+            <GridTreeRow
+              node={n}
+              columns={columns}
+              gridTemplateColumns={gridTemplateColumns}
+              primaryColumnIndex={primaryColumnIndex}
             />
-          );
-          if (boundary.boundaryIndex === 0) children.push(divider);
-          combined.forEach((n, i) => {
-            const inSprint = i < boundary.boundaryIndex;
-            children.push(
-              // Key by the stable artefact uuid (not the display id, which can
-              // repeat across artefacts) so reconciliation is correct and a
-              // cross-section duplicate cannot collide. backlogNodes is already
-              // deduped against the sprint, so uuids are unique across combined.
-              <div
-                key={n.row.uuid}
-                data-sprintboundary-row
-                className={
-                  inSprint ? "grid__SprintBoundary_Row-inSprint" : undefined
-                }
-              >
-                <GridTreeRow
-                  node={n}
-                  columns={columns}
-                  gridTemplateColumns={gridTemplateColumns}
-                  primaryColumnIndex={primaryColumnIndex}
-                />
-              </div>,
-            );
-            if (i + 1 === boundary.boundaryIndex) children.push(divider);
-          });
-          return children;
-        })()}
+          </div>
+        ))}
+        {/* The handle is the sweep origin — it sits BETWEEN sprint and backlog
+            rows. Sweep down over backlog → add; up over sprint → remove. */}
+        <GridSprintBoundaryDivider
+          dragging={dragging}
+          pointerProps={handlePointerProps}
+          counterRef={counterRef}
+        />
+        {backlogNodes.map((n) => (
+          <div
+            key={n.row.uuid}
+            data-sweep-row
+            data-sweep-uuid={n.row.uuid}
+            data-sweep-section="backlog"
+          >
+            <GridTreeRow
+              node={n}
+              columns={columns}
+              gridTemplateColumns={gridTemplateColumns}
+              primaryColumnIndex={primaryColumnIndex}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );

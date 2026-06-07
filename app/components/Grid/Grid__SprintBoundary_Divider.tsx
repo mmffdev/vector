@@ -1,90 +1,43 @@
 // app/components/Grid/Grid__SprintBoundary_Divider.tsx
 "use client";
 
-// Grid__SprintBoundary_Divider — the draggable sprint-commitment line.
-//
-// Subtle at rest (a thin rule + grip on hover), blooms while dragging (the
-// glowing frontier + live counter). Pointer-only; it reports pointer-move
-// deltas in px to the parent, which converts them to a boundary row index. The
-// parent owns the count it shows back here (inSprintCount / total).
-
-import { useCallback, useRef } from "react";
+// Grid__SprintBoundary_Divider — the sweep handle (formerly the draggable
+// commitment line). Presentational only: it spreads the imperative pointer
+// handlers from useSweepSelect onto its root div and exposes a counter <span>
+// via ref so the hook can write the live "N to add/remove" text directly to the
+// DOM during a sweep (zero React renders). Subtle at rest, blooms while
+// dragging. Press the handle and sweep DOWN over backlog rows to add them to the
+// sprint, or UP over sprint rows to remove them; release to save.
 
 export interface GridSprintBoundaryDividerProps {
-  inSprintCount: number;
-  total: number;
   dragging: boolean;
-  /** Pointer went down on the grip — parent begins a drag session. */
-  onDragStart: (clientY: number) => void;
-  /** Pointer moved during a drag — absolute clientY. */
-  onDragMove: (clientY: number) => void;
-  /** Pointer released — parent commits the delta. */
-  onDragEnd: () => void;
+  pointerProps: {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
+  };
+  // React 18 RefObject<T>.current is already T | null; pairs with the parent's
+  // useRef<HTMLSpanElement | null>(null) (a MutableRefObject) without widening.
+  counterRef: React.RefObject<HTMLSpanElement>;
 }
 
 export function GridSprintBoundaryDivider({
-  inSprintCount,
-  total,
   dragging,
-  onDragStart,
-  onDragMove,
-  onDragEnd,
+  pointerProps,
+  counterRef,
 }: GridSprintBoundaryDividerProps) {
-  const activeRef = useRef(false);
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      // Capture on currentTarget (the divider div this handler is bound to),
-      // NOT e.target — pressing the grip/counter <span> makes e.target a CHILD,
-      // and the browser releases implicit pointer capture the moment that child
-      // is reconciled/re-inserted as the divider moves between row positions
-      // during the drag. That dropped capture after the first row-cross, so the
-      // sweep died at one row. The divider div carries the stable key
-      // ("__divider__") and is the element that owns the pointer handlers, so
-      // capturing it keeps every subsequent pointermove flowing to the drag.
-      e.currentTarget.setPointerCapture(e.pointerId);
-      activeRef.current = true;
-      onDragStart(e.clientY);
-    },
-    [onDragStart],
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!activeRef.current) return;
-      onDragMove(e.clientY);
-    },
-    [onDragMove],
-  );
-
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!activeRef.current) return;
-      activeRef.current = false;
-      // Release on currentTarget to match the capture target set on pointerdown.
-      e.currentTarget.releasePointerCapture(e.pointerId);
-      onDragEnd();
-    },
-    [onDragEnd],
-  );
-
   return (
     <div
       className={`grid__SprintBoundary_Divider${dragging ? " grid__SprintBoundary_Divider-dragging" : ""}`}
       role="separator"
       aria-orientation="horizontal"
-      aria-label={`Sprint commitment line — ${inSprintCount} of ${total} in sprint. Drag to adjust.`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      aria-label="Sprint commitment handle — drag down over backlog rows to add them to the sprint, or up over sprint rows to remove. Release to save."
+      {...pointerProps}
     >
       <span className="grid__SprintBoundary_Divider_Grip" aria-hidden>
         ⇕
       </span>
-      <span className="grid__SprintBoundary_Divider_Count">
-        {inSprintCount} of {total} in sprint
-      </span>
+      <span className="grid__SprintBoundary_Divider_Count" ref={counterRef} />
     </div>
   );
 }
