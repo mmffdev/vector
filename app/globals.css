@@ -22732,17 +22732,20 @@ tr.is-editing {
   cursor: row-resize;
   user-select: none;
   border-top: 1px dashed var(--border-subtle, #d0d3d8);
-  color: var(--text-subtle, #6b7280);
+  color: var(--ink-subtle, #6b7280);
   font-size: 12px;
   transition: background 120ms ease, box-shadow 160ms ease, color 120ms ease;
 }
 .grid__SprintBoundary_Divider:hover {
   background: var(--surface-raised, #f3f5f8);
-  color: var(--text-default, #1f2937);
+  color: var(--ink, #1f2937);
 }
 .grid__SprintBoundary_Divider-dragging {
-  background: linear-gradient(var(--accent-500, #0bb45a), var(--accent-600, #099349));
-  color: #fff;
+  background: linear-gradient(
+    color-mix(in srgb, var(--accent, #0bb45a) 88%, white),
+    color-mix(in srgb, var(--accent, #0bb45a) 88%, black)
+  );
+  color: var(--accent-ink, #fff);
   box-shadow: 0 4px 14px rgba(11, 180, 90, 0.45);
   border-top-color: transparent;
 }
@@ -22751,6 +22754,6 @@ tr.is-editing {
 
 /* Tint applied by the skin to rows currently above the line. */
 .grid__SprintBoundary_Row-inSprint {
-  background: var(--accent-50, #e6f5ee);
-  box-shadow: inset 3px 0 0 var(--accent-500, #0bb45a);
+  background: color-mix(in srgb, var(--accent, #0bb45a) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent, #0bb45a);
 }
