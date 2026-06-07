@@ -92,17 +92,34 @@ export function GridTreeLines({
   const ancestorPaths: string[] = [];
   const currentRowPaths: string[] = [];
 
-  // Ancestor through-lines: a full-height │ at every GRANDPARENT-and-above
-  // level still continuing below this subtree. We drop the LAST continuations
-  // entry (the immediate parent) because THIS row's own ├/└ connector already
-  // draws the parent-level vertical — keeping it here would overdraw a last
-  // child's └ into a ├ (the bug: bottom sibling getting a tee, not an elbow).
-  const ancestors = continuations.slice(0, -1);
-  ancestors.forEach((cont, i) => {
-    if (cont) {
-      const x = i * step + CARET_CENTRE;
-      ancestorPaths.push(`M${x} 0 L${x} ${H}`);
-    }
+  // Ancestor through-lines: a full-height │ at every ancestor whose subtree
+  // continues below THIS row, drawn at that ancestor's SIBLING-RAIL column.
+  //
+  // continuations[i] is the depth-i ancestor's "I have a later sibling" flag.
+  // That ancestor's sibling rail (the vertical that descends to its next
+  // sibling) sits one indent LEFT of the ancestor's own caret column, i.e. at
+  //   (i - 1) * step + CARET_CENTRE.
+  // So continuations[i] gates column (i-1)*step+CARET_CENTRE — NOT i*step. The
+  // old code gated column i*step by continuations[i], an off-by-one that
+  // (a) silently mis-attributed each rail to the wrong ancestor's flag and
+  // (b) DROPPED the immediate-parent entry via `slice(0, -1)`, severing the
+  // parent→next-sibling rail across an expanded non-last parent's children
+  // (the "BO Improve disconnected" gap: a LAST child draws only a half-height
+  // ╰ at its OWN column and cannot carry the parent rail — one indent to its
+  // left — down to the next sibling). We therefore KEEP every continuation and
+  // draw it at the correct (i-1) column.
+  //
+  // i === 0 is the root level: its sibling rail is off-canvas to the left
+  // (column -step+CARET_CENTRE), so it is never drawn.
+  //
+  // The immediate-parent entry (i === continuations.length - 1) lands at column
+  // (depth-2)*step+CARET_CENTRE — one indent LEFT of this row's own connector
+  // column (lineX = (depth-1)*step+CARET_CENTRE) — so it never overlaps or
+  // duplicates the row's own ├/└, regardless of isLast.
+  continuations.forEach((cont, i) => {
+    if (i === 0 || !cont) return;
+    const x = (i - 1) * step + CARET_CENTRE;
+    ancestorPaths.push(`M${x} 0 L${x} ${H}`);
   });
 
   // This row's own connector (skipped at depth 0, which has no incoming rail).
