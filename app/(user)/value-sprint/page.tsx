@@ -379,11 +379,23 @@ export default function ValueSprint() {
   // backlog section = unassigned (__none__). expandable:false — sprint planning
   // is a flat story/defect/risk list (no child expansion in the POC).
   const pocSprintId = panelSprintId ?? "";
+  // Sprint planning is story/defect/risk only — Epics span multiple sprints
+  // (they live above the boundary) and Tasks inherit their parent story's
+  // sprint, so neither belongs in this list. Resolve the allowed slots to
+  // artefact-type UUIDs (same ALLOWED_SLOTS the legacy panels use) and clamp
+  // both POC trees by item type.
+  const POC_ALLOWED_SLOTS = ["wrk_story", "wrk_defect", "wrk_risk"] as const;
+  const pocAllowedTypeIds = useMemo(() => {
+    const bySlot = new Map(types.map((t) => [t.slot, t.id]));
+    return POC_ALLOWED_SLOTS.map((s) => bySlot.get(s)).filter(
+      (id): id is string => !!id,
+    );
+  }, [types]);
   const pocSprintTree = useTree<ScopeNode>({
     fetchRoots: useCallback(
       (page: { limit: number; offset: number }) =>
-        fetchSprintRoots(page, pocSprintId),
-      [pocSprintId],
+        fetchSprintRoots(page, pocSprintId, pocAllowedTypeIds),
+      [pocSprintId, pocAllowedTypeIds],
     ),
     pageSize: 100,
     rowIdOf: (r) => r.id,
@@ -395,14 +407,14 @@ export default function ValueSprint() {
   const pocBacklogTree = useTree<ScopeNode>({
     fetchRoots: useCallback(
       (page: { limit: number; offset: number }) =>
-        fetchSprintRoots(page, "__none__"),
-      [],
+        fetchSprintRoots(page, "__none__", pocAllowedTypeIds),
+      [pocAllowedTypeIds],
     ),
     pageSize: 100,
     rowIdOf: (r) => r.id,
     getChildrenCount: () => 0,
     fetchChildren: async () => [],
-    autoLoad: true,
+    autoLoad: pocAllowedTypeIds.length > 0,
     expandable: false,
   });
 

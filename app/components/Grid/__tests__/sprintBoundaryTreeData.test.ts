@@ -52,4 +52,22 @@ describe("fetchSprintRoots", () => {
       filters: { sprintId: "__none__" },
     });
   });
+
+  it("includes itemTypeId filter when allowed type ids are provided", async () => {
+    queryMock.mockResolvedValue({ items: [], total: 0 });
+    await fetchSprintRoots({ limit: 100, offset: 0 }, "sprint-9", ["t1", "t2", "t3"]);
+    expect(queryMock).toHaveBeenCalledWith({
+      page: { limit: 100, offset: 0 },
+      filters: { sprintId: "sprint-9", itemTypeId: ["t1", "t2", "t3"] },
+    });
+  });
+
+  it("omits itemTypeId when no type ids are provided (back-compat)", async () => {
+    queryMock.mockResolvedValue({ items: [], total: 0 });
+    await fetchSprintRoots({ limit: 100, offset: 0 }, "__none__");
+    expect(queryMock).toHaveBeenCalledWith({
+      page: { limit: 100, offset: 0 },
+      filters: { sprintId: "__none__" },
+    });
+  });
 });

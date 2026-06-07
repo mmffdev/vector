@@ -16,13 +16,17 @@ import type { WorkItemQueryBody } from "@/app/lib/apiSite";
 import { mapWire, type ScopeNode, type WireWorkItem } from "@/app/(user)/scope/scopeTreeData";
 
 // sprintId: a sprint UUID, or "__none__" for the backlog (no sprint assigned).
+// itemTypeIds: optional artefact-type UUID clamp (e.g. story/defect/risk only).
 export async function fetchSprintRoots(
   page: { limit: number; offset: number },
   sprintId: string,
+  itemTypeIds?: string[],
 ): Promise<{ rows: ScopeNode[]; total: number }> {
+  const filters: NonNullable<WorkItemQueryBody["filters"]> = { sprintId };
+  if (itemTypeIds && itemTypeIds.length) filters.itemTypeId = itemTypeIds;
   const body: WorkItemQueryBody = {
     page: { limit: page.limit, offset: page.offset },
-    filters: { sprintId },
+    filters,
   };
   const res = await workItems.query(body);
   const rows = (res.items as WireWorkItem[]).map(mapWire);
