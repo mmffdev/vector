@@ -22721,3 +22721,36 @@ tr.is-editing {
 
 /* === value-sprint-review burndown bar === */
 .value-sprint-review__burndown-bar { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
+
+/* ── Grid__SprintBoundary — POC sprint-commitment divider ─────────────────── */
+.grid__SprintBoundary_Divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 28px;
+  cursor: row-resize;
+  user-select: none;
+  border-top: 1px dashed var(--border-subtle, #d0d3d8);
+  color: var(--text-subtle, #6b7280);
+  font-size: 12px;
+  transition: background 120ms ease, box-shadow 160ms ease, color 120ms ease;
+}
+.grid__SprintBoundary_Divider:hover {
+  background: var(--surface-raised, #f3f5f8);
+  color: var(--text-default, #1f2937);
+}
+.grid__SprintBoundary_Divider-dragging {
+  background: linear-gradient(var(--accent-500, #0bb45a), var(--accent-600, #099349));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(11, 180, 90, 0.45);
+  border-top-color: transparent;
+}
+.grid__SprintBoundary_Divider_Grip { font-size: 14px; line-height: 1; }
+.grid__SprintBoundary_Divider_Count { font-variant-numeric: tabular-nums; }
+
+/* Tint applied by the skin to rows currently above the line. */
+.grid__SprintBoundary_Row-inSprint {
+  background: var(--accent-50, #e6f5ee);
+  box-shadow: inset 3px 0 0 var(--accent-500, #0bb45a);
+}
