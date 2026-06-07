@@ -10,6 +10,7 @@ function makeContainer(
     section: "sprint" | "backlog";
     top: number;
     height: number;
+    points?: number;
   }[],
 ) {
   const container = document.createElement("div");
@@ -18,6 +19,7 @@ function makeContainer(
     el.setAttribute("data-sweep-row", "");
     el.setAttribute("data-sweep-uuid", r.uuid);
     el.setAttribute("data-sweep-section", r.section);
+    if (r.points != null) el.setAttribute("data-sweep-points", String(r.points));
     el.getBoundingClientRect = () =>
       ({
         top: r.top,
@@ -181,6 +183,87 @@ describe("useSweepSelect", () => {
     act(() => p.onPointerUp(pointer(60)));
     // Line cleared on release.
     expect(container.querySelectorAll(`.${LINE}`).length).toBe(0);
+    container.remove();
+  });
+
+  it("writes the live Artefacts count + Points sum above the line to the ref'd pills", () => {
+    // 2 sprint rows (5 + 3 pts), 2 backlog rows (8 + 2 pts).
+    const container = makeContainer([
+      { uuid: "s1", section: "sprint", top: 0, height: 40, points: 5 },
+      { uuid: "s2", section: "sprint", top: 40, height: 40, points: 3 },
+      { uuid: "b1", section: "backlog", top: 80, height: 40, points: 8 },
+      { uuid: "b2", section: "backlog", top: 120, height: 40, points: 2 },
+    ]);
+    const containerRef = { current: container };
+    const counterRef = { current: document.createElement("span") };
+    const artefactsRef = { current: document.createElement("span") };
+    const pointsRef = { current: document.createElement("span") };
+    const { result: hook } = renderHook(() =>
+      useSweepSelect({
+        containerRef,
+        counterRef,
+        artefactsRef,
+        pointsRef,
+        onCommit: () => {},
+      }),
+    );
+    const p = hook.current.handlePointerProps;
+    act(() => p.onPointerDown(pointer(70))); // split = 2 → at-rest: 2 artefacts, 8 points
+    expect(artefactsRef.current.textContent).toBe("2");
+    expect(pointsRef.current.textContent).toBe("8"); // 5 + 3
+    act(() => p.onPointerMove(pointer(110))); // line over b1 (mid 100) → boundary 3
+    expect(artefactsRef.current.textContent).toBe("3");
+    expect(pointsRef.current.textContent).toBe("16"); // 5 + 3 + 8
+    act(() => p.onPointerUp(pointer(110)));
+    container.remove();
+  });
+
+  it("treats rows with no data-sweep-points as 0 points", () => {
+    const container = makeContainer([
+      { uuid: "s1", section: "sprint", top: 0, height: 40 }, // no points attr
+      { uuid: "b1", section: "backlog", top: 40, height: 40, points: 7 },
+    ]);
+    const containerRef = { current: container };
+    const counterRef = { current: document.createElement("span") };
+    const pointsRef = { current: document.createElement("span") };
+    const { result: hook } = renderHook(() =>
+      useSweepSelect({ containerRef, counterRef, pointsRef, onCommit: () => {} }),
+    );
+    const p = hook.current.handlePointerProps;
+    act(() => p.onPointerDown(pointer(10))); // split = 1 (s1, 0 pts)
+    expect(pointsRef.current.textContent).toBe("0");
+    act(() => p.onPointerMove(pointer(70))); // past b1's mid (60) → include b1 (7 pts)
+    expect(pointsRef.current.textContent).toBe("7");
+    act(() => p.onPointerUp(pointer(70)));
+    container.remove();
+  });
+
+  it("sets the velocity colour custom prop on the line ref from points vs cap", () => {
+    const container = makeContainer([
+      { uuid: "s1", section: "sprint", top: 0, height: 40, points: 10 },
+      { uuid: "b1", section: "backlog", top: 40, height: 40, points: 40 },
+    ]);
+    const containerRef = { current: container };
+    const counterRef = { current: document.createElement("span") };
+    const lineRef = { current: document.createElement("div") };
+    const { result: hook } = renderHook(() =>
+      useSweepSelect({
+        containerRef,
+        counterRef,
+        lineRef,
+        plannedVelocity: 40,
+        onCommit: () => {},
+      }),
+    );
+    const p = hook.current.handlePointerProps;
+    act(() => p.onPointerDown(pointer(10))); // split = 1, 10 pts vs cap 40 → ratio 0.25 → greenish
+    const atRest = lineRef.current.style.getPropertyValue("--divider-colour");
+    expect(atRest).toContain("color-mix"); // a blend, not solid
+    act(() => p.onPointerMove(pointer(70))); // past b1's mid (60) → 50 pts vs cap 40 → ratio > 1 → red
+    expect(lineRef.current.style.getPropertyValue("--divider-colour")).toBe(
+      "var(--grid-tree-artefact-divider-red)",
+    );
+    act(() => p.onPointerUp(pointer(70)));
     container.remove();
   });
 });

@@ -18,6 +18,7 @@
 // and "checked each artefact" as you passed it.
 
 import { useCallback, useRef, useState } from "react";
+import { velocityColour } from "./sprintVelocityColour";
 
 export interface SweepResult {
   direction: "add" | "remove";
@@ -29,12 +30,33 @@ interface RowSnap {
   uuid: string;
   section: "sprint" | "backlog";
   mid: number;
+  points: number;
 }
 
 export interface UseSweepSelectArgs {
   containerRef: { current: HTMLElement | null };
   counterRef: { current: HTMLElement | null };
   onCommit: (result: SweepResult) => void;
+  /**
+   * Live "Artefacts N" pill text node — set to the count of rows above the line
+   * during the drag (pure DOM, zero React render). Optional: omit and the pill
+   * simply isn't driven by the sweep.
+   */
+  artefactsRef?: { current: HTMLElement | null };
+  /** Live "Points N" pill text node — set to the summed story points above the line. */
+  pointsRef?: { current: HTMLElement | null };
+  /**
+   * The element whose `--divider-colour` custom property is set to the
+   * velocity blend each move. Typically the divider root so its pills + line
+   * inherit the colour. Optional.
+   */
+  lineRef?: { current: HTMLElement | null };
+  /**
+   * The sprint's Planned Velocity cap that drives the colour escalation. Read
+   * via a ref internally so the LATEST value is used mid-drag without
+   * re-snapshotting; null/0/undefined → neutral green (no divide-by-zero).
+   */
+  plannedVelocity?: number | null;
 }
 
 export interface UseSweepSelectResult {
@@ -55,6 +77,10 @@ export function useSweepSelect({
   containerRef,
   counterRef,
   onCommit,
+  artefactsRef,
+  pointsRef,
+  lineRef,
+  plannedVelocity,
 }: UseSweepSelectArgs): UseSweepSelectResult {
   const [dragging, setDragging] = useState(false);
   const snapRef = useRef<RowSnap[]>([]);
@@ -63,6 +89,39 @@ export function useSweepSelect({
   const initialSplitRef = useRef(0);
   // Current boundary index = how many of the combined rows are above the line.
   const boundaryRef = useRef(0);
+  // The Planned Velocity cap, mirrored into a ref so the move handler reads the
+  // LATEST value (the handlers are stable callbacks; without the ref a velocity
+  // edit mid-mount would be captured stale). Kept in sync every render.
+  const velocityRef = useRef<number | null>(plannedVelocity ?? null);
+  velocityRef.current = plannedVelocity ?? null;
+
+  // Write the live readouts for a given boundary index — the Artefacts count,
+  // the Points sum, and the velocity colour — straight to the ref'd DOM nodes.
+  // Pure DOM, no React state. Called on pointerdown (initial paint) and every
+  // pointermove. Defined ABOVE the pointer handlers so they can list it as a
+  // dependency without a temporal-dead-zone reference.
+  const paintReadouts = useCallback(
+    (boundary: number) => {
+      const snap = snapRef.current;
+      let pointsAbove = 0;
+      for (let i = 0; i < boundary && i < snap.length; i++) {
+        pointsAbove += snap[i].points;
+      }
+      if (artefactsRef?.current) {
+        artefactsRef.current.textContent = String(boundary);
+      }
+      if (pointsRef?.current) {
+        pointsRef.current.textContent = String(pointsAbove);
+      }
+      if (lineRef?.current) {
+        lineRef.current.style.setProperty(
+          "--divider-colour",
+          velocityColour(pointsAbove, velocityRef.current),
+        );
+      }
+    },
+    [artefactsRef, pointsRef, lineRef],
+  );
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
@@ -75,6 +134,8 @@ export function useSweepSelect({
       );
       snapRef.current = rows.map((el) => {
         const r = el.getBoundingClientRect();
+        // data-sweep-points carries the row's story points ("" / missing → 0).
+        const pts = Number(el.getAttribute("data-sweep-points"));
         return {
           el,
           uuid: el.getAttribute("data-sweep-uuid") ?? "",
@@ -82,14 +143,18 @@ export function useSweepSelect({
             (el.getAttribute("data-sweep-section") as "sprint" | "backlog") ??
             "backlog",
           mid: r.top + r.height / 2,
+          points: Number.isFinite(pts) ? pts : 0,
         };
       });
       const split = snapRef.current.filter((r) => r.section === "sprint").length;
       initialSplitRef.current = split;
       boundaryRef.current = split;
+      // Paint the readouts for the un-dragged boundary so the pills + colour are
+      // correct the instant the gesture begins (before the first move).
+      paintReadouts(split);
       setDragging(true);
     },
-    [containerRef],
+    [containerRef, paintReadouts],
   );
 
   const onPointerMove = useCallback(
@@ -117,6 +182,9 @@ export function useSweepSelect({
         row.el.classList.toggle(LINE, above && i === boundary - 1);
       });
 
+      // Live Artefacts / Points / colour readouts on the divider pills.
+      paintReadouts(boundary);
+
       // Live counter: how many rows crossed vs the initial split.
       const delta = boundary - initialSplitRef.current;
       if (counterRef.current) {
@@ -128,7 +196,7 @@ export function useSweepSelect({
               : `${-delta} to remove`;
       }
     },
-    [counterRef],
+    [counterRef, paintReadouts],
   );
 
   const onPointerUp = useCallback(

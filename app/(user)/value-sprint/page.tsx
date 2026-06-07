@@ -2,8 +2,6 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import PageContent from "@/app/components/PageContent";
-import PageDescription from "@/app/components/PageDescription";
-import PageHeading from "@/app/components/PageHeading";
 import Panel from "@/app/components/Panel";
 import ObjectTree, { type WorkItem, type ObjectTreeDataConfig } from "@/app/components/ObjectTreeV2/p_ObjectTree";
 import type { RowButton } from "@/app/components/ResourceTree";
@@ -30,12 +28,7 @@ import { fetchSprintRoots } from "@/app/components/Grid/sprintBoundaryTreeData";
 import type { ScopeNode } from "@/app/(user)/scope/scopeTreeData";
 import { makeScopeColumns } from "@/app/(user)/scope/scopeColumns";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
-import {
-  useWorkItemsFilters,
-  WorkItemsFilterChips,
-} from "@/app/components/work-items-tree-config";
-import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
-import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCatalogueContext";
+import { useWorkItemsFilters } from "@/app/components/work-items-tree-config";
 
 // Column drops for the value-sprint trees. The rowButtons column adds
 // ~244px of horizontal chrome (Add to Sprint + Target Sprint chips),
@@ -451,35 +444,10 @@ export default function ValueSprint() {
     [boundaryFilters],
   );
 
-  // Type chip options restricted to the POC's story/defect/risk set so the Type
-  // chip never offers a type outside the visible clamp. Mirrors
-  // GridSprintReview.tsx's filterTypeOptions (work scope, filtered to the
-  // allowed id set).
-  const pocWorkTypeOptions = useChipTypeOptions("work");
-  const pocFilterTypeOptions = useMemo(() => {
-    const allowed = new Set(pocAllowedTypeIds);
-    return pocWorkTypeOptions.filter((t) => allowed.has(t.value));
-  }, [pocWorkTypeOptions, pocAllowedTypeIds]);
-
-  // Priority chip options from the workspace catalogue, mapped to the chip
-  // {value,label,color?} shape (mirrors GridSprintReview.tsx:289-291, sorted by
-  // the catalogue's own sort_order).
-  const { priorities: workspacePriorities } = useArtefactPriorityCatalogue();
-  const pocPriorityOptions = useMemo(
-    () =>
-      workspacePriorities
-        .slice()
-        .sort(
-          (a, b) =>
-            a.sort_order - b.sort_order || a.name.localeCompare(b.name),
-        )
-        .map((p) => ({
-          value: p.id,
-          label: p.name,
-          color: p.colour ?? undefined,
-        })),
-    [workspacePriorities],
-  );
+  // (The Type / Priority chip option memos were removed with the 6 work-item
+  // filter buttons — this planning view's action bar carries the Planned
+  // Velocity field + Start Planning instead. boundaryExtraFilters below still
+  // feeds the tree fetch with default (empty) status/priority/owner filters.)
 
   // Boundary search input value. The skin's client-side filtering lands in
   // Task 4; wiring the controlled value now is harmless.
@@ -572,6 +540,65 @@ export default function ValueSprint() {
     },
     [refetch],
   );
+
+  // ── Planned Velocity ──────────────────────────────────────────────────
+  // The displayed sprint's Planned Velocity cap (story points). It arrives on
+  // the wire as ::text (string|null); parse to a number for the boundary
+  // colour, and hold a separate input-draft string so the field can be edited
+  // freely (incl. cleared) before it's committed on blur/Enter.
+  const plannedVelocityCap = useMemo(() => {
+    const raw = panelSprint?.timeboxes_sprints_planned_velocity;
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }, [panelSprint]);
+
+  const [velocityDraft, setVelocityDraft] = useState<string>("");
+  // Re-seed the draft whenever the displayed sprint (or its saved cap) changes,
+  // so switching sprints shows that sprint's saved value, not a stale edit.
+  useEffect(() => {
+    setVelocityDraft(
+      panelSprint?.timeboxes_sprints_planned_velocity ?? "",
+    );
+  }, [panelSprint?.timeboxes_sprints_id, panelSprint?.timeboxes_sprints_planned_velocity]);
+
+  // Commit the velocity draft. Empty string → clear the cap (backend maps ""
+  // → NULL). Negative / non-numeric → reject + revert to the saved value (no
+  // silent clamp — the server stays the gate). PUTs the sprint with only the
+  // planned_velocity field, then refetches so the new cap drives the colour.
+  const commitVelocity = useCallback(async () => {
+    if (!panelSprint || !workspaceId || !activeNodeId) return;
+    const draft = velocityDraft.trim();
+    const saved = panelSprint.timeboxes_sprints_planned_velocity ?? "";
+    if (draft === saved) return; // no-op — nothing changed
+
+    if (draft !== "") {
+      const n = Number(draft);
+      if (!Number.isFinite(n) || n < 0) {
+        notify.error("Planned Velocity must be zero or a positive number.");
+        setVelocityDraft(saved); // revert
+        return;
+      }
+    }
+    const scopeParams = new URLSearchParams({
+      workspace_id: workspaceId,
+      org_node_id: activeNodeId,
+    }).toString();
+    try {
+      await sprintsApi.update(
+        panelSprint.timeboxes_sprints_id,
+        { timeboxes_sprints_planned_velocity: draft === "" ? "" : draft },
+        scopeParams,
+      );
+      await refetchNextSprint();
+      notify.success(
+        draft === "" ? "Planned Velocity cleared." : `Planned Velocity set to ${draft}.`,
+      );
+    } catch (err) {
+      notify.apiError(err as ApiError, "Failed to save Planned Velocity.");
+      setVelocityDraft(saved); // revert on failure — no silent loss
+    }
+  }, [panelSprint, workspaceId, activeNodeId, velocityDraft, refetchNextSprint]);
 
   // Cross-tree drop landing handler. Steps:
   //   1. PATCH sprint_id to put the row in the destination scope (sprint
@@ -927,6 +954,9 @@ export default function ValueSprint() {
   // legacy panel below keeps its own copy unchanged.
   const boundaryNav = (
     <>
+      {/* Sprint nav only (Prev / Next / Current / Switch / Status). Start
+          Planning + Planned Velocity now live in the right-aligned controls
+          group (boundaryVelocityControls) per the velocity-line spec. */}
       {sprintNavState.hasPrev && (
         <button
           type="button"
@@ -1010,21 +1040,60 @@ export default function ValueSprint() {
     </>
   );
 
+  // Right-aligned action-bar group: the Planned Velocity field (the cap that
+  // drives the boundary-line colour) followed by Start Planning. Rendered via
+  // the action bar's right-aligned filterChips slot — the 6 work-item filter
+  // buttons that used to live there are removed from this planning view.
+  const boundaryVelocityControls = (
+    <div className="value-sprint__VelocityControls">
+      <label className="value-sprint__VelocityField">
+        <span className="value-sprint__VelocityField_Label">Planned Velocity</span>
+        <input
+          type="number"
+          min={0}
+          step={1}
+          inputMode="numeric"
+          className="value-sprint__VelocityField_Input"
+          placeholder="—"
+          value={velocityDraft}
+          disabled={!panelSprint}
+          onChange={(e) => setVelocityDraft(e.target.value)}
+          onBlur={() => void commitVelocity()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              (e.currentTarget as HTMLInputElement).blur(); // blur → commitVelocity
+            }
+          }}
+          aria-label="Planned Velocity (story points) — the sprint capacity cap"
+          title="Planned Velocity — the sprint capacity cap that colours the commitment line"
+        />
+      </label>
+      {/* Start Planning — stub for now (planning-session entry point, wiring
+          TBD). Moved here from the left per the spec; sits to the right of the
+          velocity field. */}
+      <button
+        type="button"
+        className="btn btn--feature"
+        onClick={() => {
+          /* stub — Start Planning action not yet wired */
+        }}
+        aria-label="Start planning (coming soon)"
+        title="Start planning"
+      >
+        <span>Start Planning</span>
+      </button>
+    </div>
+  );
+
   return (
     <PageContent className="value-sprint">
       <>
-        <PageHeading
-          level={1}
-          title={full}
-          subtitle={
-            backlogSelectedIds.size > 0
-              ? `${backlogSelectedIds.size} selected — use the bulk bar to add or target a sprint.`
-              : "Plan the active sprint — drag items from the backlog into the sprint panel."
-          }
-        />
-        <PageDescription>
-          Manage the active sprint. The grid below is the workspace backlog (same clamp as Work Items). Drag stories onto the sprint to commit them.
-        </PageDescription>
+        {/* The main-title panel (<PageHeading>) and the <PageDescription>
+            block have both been removed at the user's request; the
+            lint:page-description gate that once required PageDescription was
+            retired 2026-06-07. The boundary POC below is now the page's top
+            element, and its action bar carries the Start Planning button. */}
 
         {/* ── POC: Jira-style sprint boundary-drag (above the legacy panels) ──
             New build per docs/superpowers/specs/2026-06-07-sprint-boundary-drag-design.md.
@@ -1044,6 +1113,7 @@ export default function ValueSprint() {
               backlogTree={pocBacklogTree}
               columns={pocColumns}
               commit={pocCommit}
+              plannedVelocity={plannedVelocityCap}
               sprintLabel={panelSprint ? formatSprintLabel(panelSprint) : "No sprint"}
               subtitle="Work items committed to this sprint — drag the divider to adjust membership."
               searchTerm={boundarySearch}
@@ -1055,13 +1125,10 @@ export default function ValueSprint() {
                   value: boundarySearch,
                   onChange: setBoundarySearch,
                 },
-                filterChips: (
-                  <WorkItemsFilterChips
-                    prefKey={BOUNDARY_FILTER_PREF_KEY}
-                    typeOptions={pocFilterTypeOptions}
-                    priorityOptions={pocPriorityOptions}
-                  />
-                ),
+                // The 6 work-item filter buttons are stripped from this
+                // planning view; the right-aligned slot now carries the
+                // Planned Velocity field + Start Planning button.
+                filterChips: boundaryVelocityControls,
               }}
             />
           </Panel>

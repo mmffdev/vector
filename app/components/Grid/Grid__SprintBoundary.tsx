@@ -73,6 +73,13 @@ export interface GridSprintBoundaryProps {
    * SEARCH). Omit/empty → all rows shown.
    */
   searchTerm?: string;
+  /**
+   * The sprint's Planned Velocity cap (story points). Drives the divider's
+   * green→amber→red colour as committed points approach and exceed it. Null /
+   * undefined → neutral green, no escalation (no cap set). Passed straight to
+   * the sweep hook (live colour mid-drag) and the divider (at-rest colour).
+   */
+  plannedVelocity?: number | null;
 }
 
 export function GridSprintBoundary({
@@ -86,6 +93,7 @@ export function GridSprintBoundary({
   actionBar,
   emptySprintHint,
   searchTerm,
+  plannedVelocity = null,
 }: GridSprintBoundaryProps) {
   // Client-side title filter (see searchTerm doc). Narrows the sprint/backlog
   // node arrays BEFORE they're rendered as sweep rows, so the sweep snapshot,
@@ -130,12 +138,26 @@ export function GridSprintBoundary({
     return idx >= 0 ? idx : 0;
   }, [columns]);
 
+  // At-rest divider readouts: the committed sprint's artefact count + summed
+  // story points (null points → 0). Shown on the pills when not dragging; the
+  // sweep hook overwrites them live during a gesture. Derived from the same
+  // filtered sprintNodes the sweep snapshots, so rest and drag agree.
+  const atRestCount = sprintNodes.length;
+  const atRestPoints = useMemo(
+    () => sprintNodes.reduce((sum, n) => sum + (n.row.points ?? 0), 0),
+    [sprintNodes],
+  );
+
   // Imperative sweep: the container holds the [data-sweep-row] rows; the handle
-  // (divider) spreads handlePointerProps + carries the live counter span. On
-  // release the swept UUIDs are mapped to the unchanged { toSprint, toBacklog }
-  // delta — sweep "add" → toSprint, "remove" → toBacklog.
+  // (divider) spreads handlePointerProps + carries the live counter span + the
+  // Artefacts/Points pills + the colour-driven line. On release the swept UUIDs
+  // are mapped to the unchanged { toSprint, toBacklog } delta — sweep "add" →
+  // toSprint, "remove" → toBacklog.
   const containerRef = useRef<HTMLDivElement | null>(null);
   const counterRef = useRef<HTMLSpanElement | null>(null);
+  const artefactsRef = useRef<HTMLSpanElement | null>(null);
+  const pointsRef = useRef<HTMLSpanElement | null>(null);
+  const lineRef = useRef<HTMLDivElement | null>(null);
 
   const onSweepCommit = useCallback(
     (r: SweepResult) => {
@@ -151,6 +173,10 @@ export function GridSprintBoundary({
   const { dragging, handlePointerProps } = useSweepSelect({
     containerRef,
     counterRef,
+    artefactsRef,
+    pointsRef,
+    lineRef,
+    plannedVelocity,
     onCommit: onSweepCommit,
   });
 
@@ -202,6 +228,7 @@ export function GridSprintBoundary({
             data-sweep-row
             data-sweep-uuid={n.row.uuid}
             data-sweep-section="sprint"
+            data-sweep-points={n.row.points ?? 0}
           >
             <GridTreeRow
               node={n}
@@ -217,6 +244,12 @@ export function GridSprintBoundary({
           dragging={dragging}
           pointerProps={handlePointerProps}
           counterRef={counterRef}
+          artefactsRef={artefactsRef}
+          pointsRef={pointsRef}
+          lineRef={lineRef}
+          atRestCount={atRestCount}
+          atRestPoints={atRestPoints}
+          plannedVelocity={plannedVelocity}
         />
         {backlogNodes.map((n) => (
           <div
@@ -224,6 +257,7 @@ export function GridSprintBoundary({
             data-sweep-row
             data-sweep-uuid={n.row.uuid}
             data-sweep-section="backlog"
+            data-sweep-points={n.row.points ?? 0}
           >
             <GridTreeRow
               node={n}

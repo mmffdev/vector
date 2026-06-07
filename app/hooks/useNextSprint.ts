@@ -39,6 +39,10 @@ export interface SprintWireRow {
   timeboxes_sprints_status?: string;
   timeboxes_sprints_scope?: number;
   timeboxes_sprints_velocity?: number;
+  // Planned Velocity cap (story points). The backend exposes it as ::text, so
+  // it arrives as a string; null when unset. Drives the boundary-line colour
+  // and is PATCHed from the /value-sprint action bar.
+  timeboxes_sprints_planned_velocity?: string | null;
   timeboxes_sprints_estimate?: number;
 }
 

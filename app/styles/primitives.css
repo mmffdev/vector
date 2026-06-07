@@ -59,11 +59,23 @@
 
   --buttons-positive-ink-hover:      #2F7D54;
   --buttons-positive-bg-hover:       #f7f7f7;
-  --buttons-positive-border-hover:          var(--buttons-positive-bg-hover);
+  --buttons-positive-border-hover:     var(--buttons-positive-bg-hover);
 
   --buttons-positive-ink-active:      #f7f7f7;
   --buttons-positive-bg-active:       #2F7D54;
-  --buttons-positive-border-active:          var(--buttons-positive-bg-active);
+  --buttons-positive-border-active:     var(--buttons-positive-bg-active);
+
+  --buttons-feature-ink:             #f7f7f7;
+  --buttons-feature-bg:              #2F7D54;
+  --buttons-feature-border:          var(--buttons-feature-bg);
+
+  --buttons-feature-ink-hover:      #2F7D54;
+  --buttons-feature-bg-hover:       #f7f7f7;
+  --buttons-feature-border-hover:     var(--buttons-feature-ink-hover);
+
+  --buttons-feature-ink-active:      #f7f7f7;
+  --buttons-feature-bg-active:       #2F7D54;
+  --buttons-feature-border-active:     var(--buttons-feature-bg-active);
 
   --data-headers:                 var(--surface-sunken);
   --data-headers-ink:             var(--ink);
@@ -88,6 +100,15 @@
   --grid-tree-row-flow-state-btn-border-active: #142424;
 
   --grid-tree-row-colour-btn-border-active: #142424;
+
+  /* ── SPRINT PLANNING ──────────────────────────────────────── */
+  --grid-tree-artefact-divider-red-ink:  #f7f7f7;
+  --grid-tree-artefact-divider-red: #ff0037;
+  --grid-tree-artefact-divider-amber-ink:  #f7f7f7;
+  --grid-tree-artefact-divider-amber: #ff6600;
+  --grid-tree-artefact-divider-green-ink:  #f7f7f7;
+  --grid-tree-artefact-divider-green: #66cc33;
+
   /* ── 1. CANVAS ─────────────────────────────────────────────
      Page surfaces — what everything sits on. */
   --canvas:          #f7f7f7;

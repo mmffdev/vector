@@ -1385,6 +1385,22 @@ input[type="reset"] {
   border-color: var(--buttons-caution-border-active);
 }
 
+.btn--feature {
+  background: var(--buttons-feature-bg);
+  color: var(--buttons-feature-ink);
+  border-color: var(--buttons-feature-border);
+}
+.btn--feature:hover:not(:disabled) {
+  background: var(--buttons-feature-bg-hover);
+  color: var(--buttons-feature-ink-hover);
+  border-color: var(--buttons-feature-border-hover);
+}
+.btn--feature.is-active {
+  background: var(--buttons-feature-bg-active);
+  color: var(--buttons-feature-ink-active);
+  border-color: var(--buttons-feature-border-active);
+}
+
 .btn--row-expander {
   background: transparent;
   color: inherit;
@@ -18041,15 +18057,6 @@ tr.is-editing {
   padding: 0 0 8px 0;
 }
 
-/* Standalone page-level action strip (the Poker panel under the page top).
-   Left-aligned, no extra padding — the host Panel owns the 5px chrome. */
-.value-sprint__ActionStrip {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 8px;
-}
-
 /* ──────────────────────────────────────────────────────────────────────
    TypeBindingsPicker — two-column field-to-type binder.
    Specs: docs/superpowers/specs/2026-05-28-custom-field-type-bindings-design.md
@@ -22731,35 +22738,133 @@ tr.is-editing {
 /* === value-sprint-review burndown bar === */
 .value-sprint-review__burndown-bar { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
 
-/* ── Grid__SprintBoundary — POC sprint-commitment divider ─────────────────── */
+/* ── Grid__SprintBoundary — Jira-style velocity commitment line ──────────────
+   A coloured line spanning the grid with two pills riding on it: "Artefacts N"
+   (left) and "Points N" (right). The colour — green→amber→red by sprint load
+   vs Planned Velocity — is supplied via the --divider-colour custom property:
+   React sets it at rest (from committed totals); useSweepSelect overwrites it
+   live during a drag. Falls back to the green token if unset. The whole strip
+   is the sweep handle (cursor: row-resize). Colour fades for the transition. */
 .grid__SprintBoundary_Divider {
+  --divider-colour: var(--grid-tree-artefact-divider-green);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  height: 34px;
+  cursor: row-resize;
+  user-select: none;
+  font-size: 12px;
+}
+/* The connecting line — flex-grows to fill the middle, carries the grip + the
+   live "N to add/remove" counter centred on it. Colour fades via transition. */
+.grid__SprintBoundary_Divider_Line {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  height: 28px;
-  cursor: row-resize;
-  user-select: none;
-  border-top: 1px dashed var(--border-subtle, #d0d3d8);
-  color: var(--ink-subtle, #6b7280);
+  gap: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--divider-colour);
+  color: var(--divider-colour);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+.grid__SprintBoundary_Divider:hover .grid__SprintBoundary_Divider_Line {
+  height: 3px;
+}
+.grid__SprintBoundary_Divider-dragging .grid__SprintBoundary_Divider_Line {
+  height: 4px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--divider-colour) 55%, transparent);
+}
+.grid__SprintBoundary_Divider_Grip {
+  font-size: 13px;
+  line-height: 1;
+  /* lift the glyph off the 2px rule onto a colour-matched chip so it reads */
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: var(--divider-colour);
+  color: #f7f7f7;
+}
+.grid__SprintBoundary_Divider_Count {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--divider-colour);
+  color: #f7f7f7;
+  white-space: nowrap;
+}
+/* The two readout pills — coloured chips that share the velocity colour. The
+   colour fades (transition) so green→amber→red blends as the line moves. */
+.grid__SprintBoundary_Divider_Pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--divider-colour);
+  color: #f7f7f7;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: background-color 180ms ease;
+}
+.grid__SprintBoundary_Divider_Pill_Label {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  opacity: 0.92;
+}
+.grid__SprintBoundary_Divider_Pill_Value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── value-sprint action-bar velocity controls ──────────────────────────────
+   Right-aligned group (Planned Velocity field + Start Planning), rendered in
+   the action bar's right-aligned slot in place of the stripped filter chips. */
+.value-sprint__VelocityControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto; /* push to the right edge of the action bar */
+}
+.value-sprint__VelocityField {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
-  transition: background 120ms ease, box-shadow 160ms ease, color 120ms ease;
+  color: var(--ink-subtle, #6b7280);
+  white-space: nowrap;
 }
-.grid__SprintBoundary_Divider:hover {
-  background: var(--surface-raised, #f3f5f8);
+.value-sprint__VelocityField_Label {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.value-sprint__VelocityField_Input {
+  width: 64px;
+  height: 26px;
+  padding: 2px 8px;
+  border: 1px solid var(--border, #d0d3d8);
+  border-radius: 6px;
+  background: var(--surface, #fff);
   color: var(--ink, #1f2937);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
-.grid__SprintBoundary_Divider-dragging {
-  background: linear-gradient(
-    color-mix(in srgb, var(--accent, #0bb45a) 88%, white),
-    color-mix(in srgb, var(--accent, #0bb45a) 88%, black)
-  );
-  color: var(--accent-ink, #fff);
-  box-shadow: 0 4px 14px rgba(11, 180, 90, 0.45);
-  border-top-color: transparent;
+.value-sprint__VelocityField_Input:focus {
+  outline: none;
+  border-color: var(--accent, #0bb45a);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #0bb45a) 25%, transparent);
 }
-.grid__SprintBoundary_Divider_Grip { font-size: 14px; line-height: 1; }
-.grid__SprintBoundary_Divider_Count { font-variant-numeric: tabular-nums; }
+.value-sprint__VelocityField_Input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Imperative sweep highlight — toggled on each crossed row by useSweepSelect
    (pure classList, no React render). Every row ABOVE the line is "in sprint";
