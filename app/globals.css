@@ -22071,6 +22071,11 @@ tr.is-editing {
   min-width: 0;
   padding: 0 16px;
   font-size: 13px;
+  /* Tight line-box so text centres TRUE against the flex centre. Without this
+     the inherited line-height:normal (~1.2) leaves uneven space above/below the
+     baseline and text rides high — visible once a taller flex item (the
+     Add-Child button) sits beside it. Applies to every column uniformly. */
+  line-height: 1;
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -22433,6 +22438,11 @@ tr.is-editing {
   color: var(--ink, #111);
 }
 .grid__Cell_Summary {
+  /* Flex so the Add-Child button, warning glyph, and title text share ONE
+     vertically-centred baseline (the button has its own height; inline-baseline
+     alignment was making the text ride high against it). */
+  display: flex;
+  align-items: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -22449,6 +22459,9 @@ tr.is-editing {
   height: 20px;
   padding: 0 8px;
   margin-right: 6px;
+  /* Optical nudge up 2px to sit level with the centred text/glyph. transform so
+     it shifts visually without affecting the flex layout of its neighbours. */
+  transform: translateY(-2px);
   border: 1px solid var(--buttons-missing-children-border, #f7f7f7);
   border-radius: 4px;
   background: var(--buttons-missing-children-bg, #f7f7f7);
@@ -22475,7 +22488,6 @@ tr.is-editing {
   height: 15px;
   margin-right: 5px;
   color: var(--status-danger, #B23B3B);
-  vertical-align: -2px;
 }
 
 /* ── Pagination band ──────────────────────────────────────────────────────────
