@@ -22768,6 +22768,12 @@ tr.is-editing {
   background: color-mix(in srgb, var(--accent, #0bb45a) 10%, transparent);
   box-shadow: inset 3px 0 0 var(--accent, #0bb45a);
 }
+/* The moving commitment line — the bottom edge of the last in-sprint row. It
+   travels with the pointer (toggled by useSweepSelect, no DOM move → the pointer
+   capture survives and the drag keeps collecting rows). */
+.grid__SprintBoundary_Row-line {
+  border-bottom: 2px solid var(--accent, #0bb45a);
+}
 
 /* Grid__SprintBoundary — chrome (title host + empty-sprint hint) */
 .grid__SprintBoundary_Empty {

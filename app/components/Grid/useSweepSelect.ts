@@ -34,8 +34,6 @@ interface RowSnap {
 export interface UseSweepSelectArgs {
   containerRef: { current: HTMLElement | null };
   counterRef: { current: HTMLElement | null };
-  /** The divider line element — moved through the grid to follow the boundary. */
-  handleRef?: { current: HTMLElement | null };
   onCommit: (result: SweepResult) => void;
 }
 
@@ -49,11 +47,13 @@ export interface UseSweepSelectResult {
 }
 
 const IN_SPRINT = "grid__SprintBoundary_Row-inSprint";
+// The last in-sprint row carries this → a strong bottom edge that reads as the
+// commitment line. It travels via class toggling (no DOM move → capture safe).
+const LINE = "grid__SprintBoundary_Row-line";
 
 export function useSweepSelect({
   containerRef,
   counterRef,
-  handleRef,
   onCommit,
 }: UseSweepSelectArgs): UseSweepSelectResult {
   const [dragging, setDragging] = useState(false);
@@ -105,22 +105,17 @@ export function useSweepSelect({
       }
       boundaryRef.current = boundary;
 
-      // Contiguous tint: every row above the line is "in sprint". Direct DOM.
+      // Paint the boundary purely via classes — NO DOM relocation of the handle.
+      //   • every row above the line → IN_SPRINT (the contiguous "in sprint" tint)
+      //   • the last row above the line → LINE (a strong bottom edge = the moving
+      //     commitment line). The line therefore travels with the pointer as the
+      //     tint extends, WITHOUT re-inserting the handle element (which would
+      //     drop the pointer capture and freeze the drag after one move).
       snap.forEach((row, i) => {
-        row.el.classList.toggle(IN_SPRINT, i < boundary);
+        const above = i < boundary;
+        row.el.classList.toggle(IN_SPRINT, above);
+        row.el.classList.toggle(LINE, above && i === boundary - 1);
       });
-
-      // Move the divider line to sit at the boundary, in-grid. The handle is a
-      // grid child; reposition it between the boundary-th and (boundary+1)-th row.
-      const container = containerRef.current;
-      const handle = handleRef?.current;
-      if (container && handle) {
-        if (boundary >= snap.length) {
-          container.appendChild(handle); // line at the very bottom
-        } else {
-          container.insertBefore(handle, snap[boundary].el);
-        }
-      }
 
       // Live counter: how many rows crossed vs the initial split.
       const delta = boundary - initialSplitRef.current;
@@ -133,7 +128,7 @@ export function useSweepSelect({
               : `${-delta} to remove`;
       }
     },
-    [containerRef, counterRef, handleRef],
+    [counterRef],
   );
 
   const onPointerUp = useCallback(
@@ -163,8 +158,8 @@ export function useSweepSelect({
         };
       }
 
-      // Clear the live tint + counter (the real refetch will repaint the truth).
-      for (const row of snap) row.el.classList.remove(IN_SPRINT);
+      // Clear the live tint + line + counter (the refetch repaints the truth).
+      for (const row of snap) row.el.classList.remove(IN_SPRINT, LINE);
       if (counterRef.current) counterRef.current.textContent = "";
       snapRef.current = [];
       setDragging(false);

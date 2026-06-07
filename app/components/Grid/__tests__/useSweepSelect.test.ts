@@ -155,36 +155,32 @@ describe("useSweepSelect", () => {
     act(() => p.onPointerUp(pointer(120)));
   });
 
-  it("moves the divider line element through the grid to follow the boundary", () => {
+  it("marks the boundary row with the moving line class (no DOM relocation)", () => {
     const container = makeContainer([
       { uuid: "s1", section: "sprint", top: 0, height: 40 },
       { uuid: "b1", section: "backlog", top: 40, height: 40 },
       { uuid: "b2", section: "backlog", top: 80, height: 40 },
     ]);
-    const handle = document.createElement("div");
-    container.appendChild(handle); // starts at the bottom; the hook repositions it
     const containerRef = { current: container };
     const counterRef = { current: document.createElement("span") };
-    const handleRef = { current: handle };
     const { result: hook } = renderHook(() =>
-      useSweepSelect({
-        containerRef,
-        counterRef,
-        handleRef,
-        onCommit: () => {},
-      }),
+      useSweepSelect({ containerRef, counterRef, onCommit: () => {} }),
     );
     const p = hook.current.handlePointerProps;
     act(() => p.onPointerDown(pointer(30))); // split = 1 (s1)
-    act(() => p.onPointerMove(pointer(60))); // line after b1 (mid 60) → boundary 2
-    // The handle now sits between b1 and b2 (before b2's element).
-    const kids = Array.from(container.children);
-    const handleIdx = kids.indexOf(handle);
-    const b2Idx = kids.findIndex(
-      (el) => el.getAttribute("data-sweep-uuid") === "b2",
-    );
-    expect(handleIdx).toBe(b2Idx - 1); // handle immediately before b2
+    act(() => p.onPointerMove(pointer(60))); // boundary 2 → b1 is the last in-sprint row
+    const LINE = "grid__SprintBoundary_Row-line";
+    const lined = container.querySelectorAll(`.${LINE}`);
+    expect(lined.length).toBe(1); // exactly one row carries the line
+    expect(lined[0].getAttribute("data-sweep-uuid")).toBe("b1"); // the boundary row
+    // No DOM relocation: row order is unchanged (s1, b1, b2).
+    const order = Array.from(
+      container.querySelectorAll("[data-sweep-row]"),
+    ).map((el) => el.getAttribute("data-sweep-uuid"));
+    expect(order).toEqual(["s1", "b1", "b2"]);
     act(() => p.onPointerUp(pointer(60)));
+    // Line cleared on release.
+    expect(container.querySelectorAll(`.${LINE}`).length).toBe(0);
     container.remove();
   });
 });

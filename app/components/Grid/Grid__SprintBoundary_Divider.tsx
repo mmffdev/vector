@@ -19,20 +19,15 @@ export interface GridSprintBoundaryDividerProps {
   // React 18 RefObject<T>.current is already T | null; pairs with the parent's
   // useRef<HTMLSpanElement | null>(null) (a MutableRefObject) without widening.
   counterRef: React.RefObject<HTMLSpanElement>;
-  // The divider line's own element — useSweepSelect moves it through the grid
-  // during a sweep so the boundary travels with the pointer (in-grid).
-  handleRef?: React.RefObject<HTMLDivElement>;
 }
 
 export function GridSprintBoundaryDivider({
   dragging,
   pointerProps,
   counterRef,
-  handleRef,
 }: GridSprintBoundaryDividerProps) {
   return (
     <div
-      ref={handleRef}
       className={`grid__SprintBoundary_Divider${dragging ? " grid__SprintBoundary_Divider-dragging" : ""}`}
       role="separator"
       aria-orientation="horizontal"
