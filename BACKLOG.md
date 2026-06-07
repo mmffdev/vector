@@ -175,3 +175,36 @@
 - 2026-06-07 — VECTOR tie in
 - 2026-06-07 — SPINE tie in
 - 2026-06-07 — COMBAT tie in
+
+### GULLFOSS — PRINCE2 / Waterfall Delivery Management
+> The waterfall counterpart to Vector's agile engine. Named after Gullfoss, the Icelandic "golden falls" where the river drops in two great stages — the visual metaphor for the module: work cascades through PRINCE2 stages and product-based plans like water over a sequence of ledges, each gate releasing the flow to the next. The thesis: Vector already owns a world-class agile/backlog spine (work items, sprints, dependency maps, RACI, audit), and the heavy structure a PRINCE2/waterfall shop needs — stages, registers, plans, gates — is largely a different *projection and lifecycle* over the same artefact substrate, not a different product. The differentiator is having both methodologies first-class in ONE platform with ONE identity/scope/audit model, so a regulated buyer can run waterfall where mandated and agile where it pays, without two tools and two audit trails. Reference research report: **RES068** (filed in parallel). Sibling to SPINE (Governance); candidate pillar or sub-pillar under the Service Pillars architecture (PLA065).
+
+**What it is:**
+- 2026-06-07 — PRINCE2 + classic waterfall delivery management for the Vector suite: managed-stage lifecycle, product-based planning, the seven PRINCE2 themes/registers, and a Gantt/critical-path view sitting alongside (not replacing) the agile backlog.
+
+**Core capabilities:**
+- 2026-06-07 — PID management — Project Initiation Documentation as a structured, versioned, auditable artefact (business case, project approach, controls, role assignments).
+- 2026-06-07 — Stage gates — managed-stage boundaries with end-stage assessments; gate = a flow transition that requires sign-off before the next stage's products are released (the "cascade ledge").
+- 2026-06-07 — Product-based planning — product breakdown structure, product descriptions, product flow diagram; deliverables as first-class typed artefacts.
+- 2026-06-07 — PRINCE2 registers — Risk, Issue, Quality, Daily Log, Lessons, plus Configuration Item records; each a register artefact type with its own lifecycle and audit trail.
+- 2026-06-07 — Gantt + dependencies — schedule view with critical path, baselines, and dependency links reusing the existing artefact dependency-map substrate (PLA074 / B23).
+- 2026-06-07 — Exception management — tolerance tracking (time/cost/scope/quality/risk/benefit), exception reports, and exception plans when a stage forecasts a breach.
+- 2026-06-07 — Work packages — the unit of authorised work handed to a team; an artefact item promoted/projected as a work package with acceptance criteria and Configuration Item links.
+- 2026-06-07 — Benefits tracking — benefits-realisation plan tied to the business case; post-stage and post-project benefit reviews.
+
+**Market angle:**
+- 2026-06-07 — UK government mandates PRINCE2 (GDS / major-projects portfolio) — a hard procurement gate competitors using agile-only tooling cannot meet. NATO/defence and JSP-440-adjacent programmes run stage-gated waterfall. Financial services, pharma (validated/GxP), and construction/infrastructure all default to gated, document-heavy delivery. Aligns directly with the defence/finance buyer profile in `context/USER.md`.
+
+**Architecture:**
+- 2026-06-07 — Fits as a pillar or sub-pillar within the Service Pillars architecture (PLA065) — one named contract, sole-writer ownership of its stage/register/plan tables, identity/tenant/scope resolved solely by the Sentinel clamp like every other pillar. No parallel auth, no second tenancy model.
+
+**Integration (reuse, don't rebuild):**
+- 2026-06-07 — Artefact items become work packages (projection/promotion over the existing artefact substrate, not a new entity); flows become stage transitions and gate sign-offs; existing auth (Sentinel), audit trail, and notifications are reused wholesale. PRINCE2 registers map onto artefact types + the dependency-map and outbox patterns already in place.
+
+**Competitive edge:**
+- 2026-06-07 — Modern, award-bar UX over a methodology usually served by grey enterprise tooling; AI-assisted PID drafting, register triage, and stage-report generation; security-first (Trust-No-One, SOC 2 / ISO 27001 audit narrative); and — the asymmetry — waterfall and agile living side by side in one platform with one clamp and one audit log, so a regulated org isn't forced to choose the tool over the method.
+
+- 2026-06-07 — VECTOR tie in
+- 2026-06-07 — SPINE tie in
+- 2026-06-07 — SIGMA tie in
+- 2026-06-07 — VISION tie in
