@@ -67,6 +67,8 @@ app/components/Grid/
   Grid__SprintBoundary.tsx             ← NEW · the skin: head + continuous body + divider
   Grid__SprintBoundary_Divider.tsx     ← NEW · the draggable divider (grip, counter, frontier)
   useSprintBoundary.ts                 ← NEW · drag math + boundary state + commit-on-drop delta
+  sprintBoundaryTreeData.ts            ← NEW · fetchRoots with filters.sprintId clamp;
+                                              reuses exported mapWire + ScopeNode (no shared edit)
   __tests__/useSprintBoundary.test.ts  ← NEW · unit tests for the boundary math + delta
   __tests__/Grid__SprintBoundary.test.tsx ← NEW · render + drag-commit integration
 ```
@@ -98,9 +100,45 @@ app/components/Grid/
             refetch both useTree instances + refetchNextSprint (page-owned)
 ```
 
-Two `useTree` instances reuse the **exact clamps the page already builds**
-(`buildWizardConfig` → `sprint_id=<id>` and `sprint_id=__none__`). The POC reuses
-those resolved URLs rather than inventing new fetch wiring.
+### 3.5 Verified live wiring (the POC must reuse these verbatim)
+
+Grounded in the working two-grid layout (`GridWorkItems` + `scopeTreeData.ts`):
+
+- **Clamp is a real, supported filter.** `WorkItemQueryBody.filters.sprintId`
+  exists (`app/lib/apiSite/index.ts:70`) — `"<uuid>"` or `"__none__"` for
+  unassigned. Both POC sections query through the **same audited POST gateway**
+  `workItems.query` that `GridWorkItems` uses — no new endpoint.
+- **Shared data layer can't carry the clamp, so the POC gets its own.**
+  `queryFilters()` in `scopeTreeData.ts` maps only type/status/priority/owner
+  (its `ScopeTreeFilters = WorkItemsFilters`), and that file is shared by
+  `/scope`, `/work-items`, `/value-sprint-review` — **editing it is forbidden by
+  the constraint.** The POC adds `app/components/Grid/sprintBoundaryTreeData.ts`
+  that reuses the **exported `mapWire`** + `ScopeNode` shape but builds a body
+  with `filters.sprintId`. Reuse without mutation.
+- **useTree pattern mirrored.** Two instances, each like `GridWorkItems`'
+  `useTreeScope(autoLoad, filters)`: `fetchRoots → workItems.query({page,filters})`,
+  `pageSize:100`, `rowIdOf: r => r.id`, `getChildrenCount: r => r.childrenCount`,
+  `expandable: true`. Sprint instance clamps `sprintId=<panelSprintId>`; backlog
+  instance clamps `sprintId="__none__"`.
+- **Sprint id is already resolved on the page.** Reuse the page's existing
+  `panelSprintId` (`useNextSprint` + `panelSprintIdOverride`) — the POC does not
+  re-derive "which sprint."
+- **Commit path is the existing patch, keyed by `uuid` (not display `id`).**
+  `workItems.patch(row.uuid, { sprint_id })` — exactly `assignToSprint`'s call.
+  Batch via `Promise.allSettled`, partial-failure toast via `notify` (mirrors
+  `assignManyToSprint`). `sprint_id: ""` removes (backend convention).
+- **Refetch + realtime reconciliation.** `tree.refresh()` on each instance after
+  commit, plus `useRefetchOnPush({ topic: rankTopic("work_item", tenantId,
+  "backlog", null), refetch })` so a legacy-panel edit below refetches the POC
+  (and vice-versa) — the drift papered over for the "both editable" decision.
+- **Row accent for the tint** comes from `ScopeNode.colour` already mapped by
+  `mapWire`; the "in-sprint tint" is the skin applying the sprint accent above
+  the divider, not a new data field.
+
+The earlier plan to "reuse the resolved wizard URLs" is superseded: the page's
+existing trees are **ObjectTreeV2**, not the Grid primitive, so their URL config
+isn't reusable here. The POC reuses the **Grid** stack (`useTree` + `mapWire` +
+`ScopeNode` + `makeScopeColumns`) instead — the proven `GridWorkItems` path.
 
 ### 3.4 The boundary as a rendered position, not a stored field
 
