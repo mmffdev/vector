@@ -2185,6 +2185,139 @@ paths:
                 - updated_at
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /artefact-types/insert-layer:
+    post:
+      tags:
+      - artefact-types
+      summary: POST /artefact-types/insert-layer
+      operationId: postArtefactTypesInsertLayer
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactTypesH.InsertLayer
+        file: backend/internal/artefacttypes/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tag:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                colour:
+                  type: string
+                child_type_id:
+                  type: string
+                  format: uuid
+              required:
+              - tag
+              - name
+              - child_type_id
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_type:
+                    type: object
+                    x-go-type: ArtefactType
+                  created_count:
+                    type: integer
+                    format: int32
+                required:
+                - created_count
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /artefact-types/insert-layer/preview:
+    post:
+      tags:
+      - artefact-types
+      summary: POST /artefact-types/insert-layer/preview
+      operationId: postArtefactTypesInsertLayerPreview
+      security:
+      - bearerAuth: []
+      description: |-
+        AUTO-CURATED — schema derived from the Go handler. Field names
+        and types come from struct tags + service return types; the
+        human curator can refine summaries, descriptions, and add
+        $ref schemas to /components/schemas. Search for
+        `x-auto-curated: true` to find all auto-curated operations.
+        Re-run `npm run api:sync` to refresh from Go truth (preserves
+        any fields a human has added above `x-auto-curated`).
+      x-auto-curated: true
+      x-handler:
+        symbol: artefactTypesH.PreviewInsertLayer
+        file: backend/internal/artefacttypes/handler.go
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tag:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                colour:
+                  type: string
+                child_type_id:
+                  type: string
+                  format: uuid
+              required:
+              - tag
+              - name
+              - child_type_id
+      responses:
+        '200':
+          description: 200 — success response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  parent_layer:
+                    type: object
+                    x-go-type: LayerRef
+                  child_layer:
+                    type: object
+                    x-go-type: LayerRef
+                  impacted:
+                    type: array
+                    items:
+                      type: object
+                      x-go-type: ImpactedArtefact
+                  passthrough_count:
+                    type: integer
+                    format: int32
+                  rejection:
+                    type: string
+                required:
+                - parent_layer
+                - child_layer
+                - impacted
+                - passthrough_count
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /artefact-types/resync:
     post:
       tags:

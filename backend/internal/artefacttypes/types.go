@@ -68,3 +68,50 @@ type CreateWorkTypeInput struct {
 	Colour            *string   `json:"colour"`
 	BehavesLikeTypeID uuid.UUID `json:"behaves_like_type_id"`
 }
+
+// InsertLayerInput is the body for POST /_site/artefact-types/insert-layer
+// (and its /preview sibling). A new strategy type is inserted directly above
+// ChildTypeID — i.e. between ChildTypeID and ChildTypeID's current strategy
+// parent — and every live instance of the child type is given a pass-through
+// wrapper of the new type.
+type InsertLayerInput struct {
+	Tag         string    `json:"tag"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description"`
+	Colour      *string   `json:"colour"`
+	ChildTypeID uuid.UUID `json:"child_type_id"`
+}
+
+// ImpactedArtefact is one live child instance that will receive a pass-through
+// wrapper. CurrentParentName is the title of its present parent (nil if root).
+type ImpactedArtefact struct {
+	ID                uuid.UUID `json:"id"`
+	Name              string    `json:"name"`
+	CurrentParentName *string   `json:"current_parent_name"`
+}
+
+// LayerRef is a lightweight {id, name} reference to a strategy type, used in
+// the preview to name the parent + child layer either side of the insertion.
+type LayerRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// InsertLayerPreview is the non-mutating preview of an insert-layer operation.
+// Rejection (when non-nil) explains a BLOCKING hierarchy condition (bounds /
+// depth cap) so the flyout can disable Confirm and say why; malformed INPUT is
+// surfaced as a 422 ValidationError instead, never here.
+type InsertLayerPreview struct {
+	ParentLayer      LayerRef           `json:"parent_layer"`
+	ChildLayer       LayerRef           `json:"child_layer"`
+	Impacted         []ImpactedArtefact `json:"impacted"`
+	PassthroughCount int                `json:"passthrough_count"`
+	Rejection        *string            `json:"rejection"`
+}
+
+// InsertLayerResult is the committed outcome: the created strategy type and the
+// number of pass-through wrappers backfilled.
+type InsertLayerResult struct {
+	NewType      *ArtefactType `json:"new_type"`
+	CreatedCount int           `json:"created_count"`
+}

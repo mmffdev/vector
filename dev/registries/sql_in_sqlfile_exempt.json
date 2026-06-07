@@ -4,6 +4,7 @@
     "backend/internal/apikeys/apikeys.go",
     "backend/internal/apikeys/dev.go",
     "backend/internal/artefacttypes/service.go",
+    "backend/internal/artefacttypes/insert_layer.go",
     "backend/internal/audit/audit.go",
     "backend/internal/custompages/service.go",
     "backend/internal/notifications/v2/pipeline/pipeline.go",

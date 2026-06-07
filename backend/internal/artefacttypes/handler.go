@@ -35,6 +35,8 @@ func (h *Handler) Mount(r chi.Router) {
 	// cmd/server/main.go (e.g. WorkItemsSettingsEdit on artefact-priorities).
 	gate := auth.RequirePermission(h.Perms, permissions.PortfolioModelEdit)
 	r.With(gate).Post("/", h.Create)
+	r.With(gate).Post("/insert-layer/preview", h.PreviewInsertLayer)
+	r.With(gate).Post("/insert-layer", h.InsertLayer)
 }
 
 // GET /_site/artefact-types
@@ -127,9 +129,66 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
+// POST /_site/artefact-types/insert-layer/preview — non-mutating preview of an
+// insert-strategic-layer operation. Gated on portfolio.model.edit (see Mount).
+// Returns 200 with the parent/child layer refs, the impacted instance list, and
+// a `rejection` string for BLOCKING hierarchy conditions (bounds / depth cap);
+// malformed input is surfaced as 422.
+func (h *Handler) PreviewInsertLayer(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
+	if !ok {
+		httperr.Write(w, r, http.StatusBadRequest, "workspace context required")
+		return
+	}
+	var in InsertLayerInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	prev, err := h.Svc.PreviewInsertLayer(r.Context(), u.SubscriptionID, wsID, in)
+	if err != nil {
+		writeArtefactTypeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, prev)
+}
+
+// POST /_site/artefact-types/insert-layer — commit the insertion: insert the new
+// strategy type, reparent the child type + its instances, backfill pass-through
+// wrappers, recompute layer depth. Single transaction in the service. Gated on
+// portfolio.model.edit (see Mount).
+func (h *Handler) InsertLayer(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromCtx(r.Context())
+	if u == nil {
+		httperr.Write(w, r, http.StatusUnauthorized, usermessages.AuthUnauthorized)
+		return
+	}
+	wsID, ok := sentinel.WorkspaceIDFromCtx(r.Context())
+	if !ok {
+		httperr.Write(w, r, http.StatusBadRequest, "workspace context required")
+		return
+	}
+	var in InsertLayerInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		httperr.Write(w, r, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	res, err := h.Svc.InsertLayer(r.Context(), u.SubscriptionID, wsID, in)
+	if err != nil {
+		writeArtefactTypeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 // writeArtefactTypeErr maps a service error to the wire response shared by
-// Create/Patch (and InsertLayer in Phase 3): ValidationError → 422 with
-// violations[], ErrNotFound → 404, anything else → 500.
+// Create/Patch/InsertLayer: ValidationError → 422 with violations[],
+// ErrNotFound → 404, anything else → 500.
 func writeArtefactTypeErr(w http.ResponseWriter, r *http.Request, err error) {
 	var ve *ValidationError
 	if errors.As(err, &ve) {
