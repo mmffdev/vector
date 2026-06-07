@@ -136,6 +136,9 @@ export function GridSprintBoundary({
   // delta — sweep "add" → toSprint, "remove" → toBacklog.
   const containerRef = useRef<HTMLDivElement | null>(null);
   const counterRef = useRef<HTMLSpanElement | null>(null);
+  // The divider line element — moved through the grid during a sweep so the
+  // boundary visibly travels through the rows (the original in-grid look).
+  const handleRef = useRef<HTMLDivElement | null>(null);
 
   const onSweepCommit = useCallback(
     (r: SweepResult) => {
@@ -151,6 +154,7 @@ export function GridSprintBoundary({
   const { dragging, handlePointerProps } = useSweepSelect({
     containerRef,
     counterRef,
+    handleRef,
     onCommit: onSweepCommit,
   });
 
@@ -217,6 +221,7 @@ export function GridSprintBoundary({
           dragging={dragging}
           pointerProps={handlePointerProps}
           counterRef={counterRef}
+          handleRef={handleRef}
         />
         {backlogNodes.map((n) => (
           <div

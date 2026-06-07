@@ -22762,17 +22762,8 @@ tr.is-editing {
 .grid__SprintBoundary_Divider_Count { font-variant-numeric: tabular-nums; }
 
 /* Imperative sweep highlight — toggled on each crossed row by useSweepSelect
-   (pure classList, no React render). Add = accent green, remove = amber. */
-.grid__SprintBoundary_Row-sweptAdd {
-  background: color-mix(in srgb, var(--accent, #0bb45a) 16%, transparent);
-  box-shadow: inset 3px 0 0 var(--accent, #0bb45a);
-}
-.grid__SprintBoundary_Row-sweptRemove {
-  background: color-mix(in srgb, #e8a13a 18%, transparent);
-  box-shadow: inset 3px 0 0 #e8a13a;
-}
-
-/* Tint applied by the skin to rows currently above the line. */
+   (pure classList, no React render). Every row ABOVE the line is "in sprint";
+   the contiguous tint reads as one block, the original look. */
 .grid__SprintBoundary_Row-inSprint {
   background: color-mix(in srgb, var(--accent, #0bb45a) 10%, transparent);
   box-shadow: inset 3px 0 0 var(--accent, #0bb45a);
