@@ -22456,6 +22456,14 @@ tr.is-editing {
   white-space: nowrap;
   min-width: 0;
 }
+/* The summary's cell must NOT clip vertically, or the up-nudged Add-Child
+   button's top border is cropped by .grid__Tree_Cell's overflow:hidden. The
+   ellipsis lives on .grid__Cell_Summary_Text, so this cell has no reason to
+   clip. Scoped via :has() so only the summary cell opens up; every other column
+   keeps its clip. */
+.grid__Tree_Cell:has(> .grid__Cell_Summary) {
+  overflow: visible;
+}
 /* Childless-container "Add Child" stub button, prefixed before the warning
    glyph on rows flagged by isFlaggedChildless. Styled with the
    --buttons-missing-children token set (light by default, inverts to dark ink
