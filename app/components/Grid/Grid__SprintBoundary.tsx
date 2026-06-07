@@ -29,9 +29,19 @@ import { GridSprintBoundaryDivider } from "./Grid__SprintBoundary_Divider";
 import PrefixBlockStripes from "@/app/components/PrefixBlockStripes";
 import { GridTreeActionBar, type GridTreeActionBarConfig } from "./Grid__Tree_ActionBar";
 import { useSweepSelect, type SweepResult } from "./useSweepSelect";
-import type { SprintBoundaryDelta } from "./useSprintBoundary";
 import type { GridColumn, SortState, TreeNode, UseTreeResult } from "./types";
 import type { ScopeNode } from "@/app/(user)/scope/scopeTreeData";
+
+/**
+ * The membership PATCH set committed on sweep-release: backlog rows that ended
+ * up in the sprint (toSprint) and sprint rows that ended up in the backlog
+ * (toBacklog). Lives here because the sweep skin is its sole producer/consumer
+ * (formerly defined on the retired useSprintBoundary hook).
+ */
+export interface SprintBoundaryDelta {
+  toSprint: string[];
+  toBacklog: string[];
+}
 
 export interface GridSprintBoundaryProps {
   sprintTree: UseTreeResult<ScopeNode>;
@@ -56,8 +66,9 @@ export interface GridSprintBoundaryProps {
   emptySprintHint?: ReactNode;
   /**
    * Client-side, case-insensitive title filter over the LOADED rows of both
-   * trees. The boundary math, divider counts, and render all consume the
-   * filtered set. Off-page / non-title matches are NOT found — the backend
+   * trees. The filter narrows the rows the sweep sees (and the render shows);
+   * the sweep only ever crosses rows that survive the filter. Off-page /
+   * non-title matches are NOT found — the backend
    * WorkItemQueryBody has no server-side search term (see TD-SPRINT-BOUNDARY-
    * SEARCH). Omit/empty → all rows shown.
    */

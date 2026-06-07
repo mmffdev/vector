@@ -24,12 +24,11 @@ import { MdChevronLeft, MdChevronRight, MdOutlineFlag } from "react-icons/md";
 import { BsCalendar3 } from "react-icons/bs";
 import { usePageSavedViews } from "@/app/components/SavedViews/PageSavedViewsControl";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
-import { GridSprintBoundary } from "@/app/components/Grid/Grid__SprintBoundary";
+import { GridSprintBoundary, type SprintBoundaryDelta } from "@/app/components/Grid/Grid__SprintBoundary";
 import { useTree } from "@/app/components/Grid/useTree";
 import { fetchSprintRoots } from "@/app/components/Grid/sprintBoundaryTreeData";
 import type { ScopeNode } from "@/app/(user)/scope/scopeTreeData";
 import { makeScopeColumns } from "@/app/(user)/scope/scopeColumns";
-import type { SprintBoundaryDelta } from "@/app/components/Grid/useSprintBoundary";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 import {
   useWorkItemsFilters,

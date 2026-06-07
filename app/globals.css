@@ -18041,6 +18041,15 @@ tr.is-editing {
   padding: 0 0 8px 0;
 }
 
+/* Standalone page-level action strip (the Poker panel under the page top).
+   Left-aligned, no extra padding — the host Panel owns the 5px chrome. */
+.value-sprint__ActionStrip {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ──────────────────────────────────────────────────────────────────────
    TypeBindingsPicker — two-column field-to-type binder.
    Specs: docs/superpowers/specs/2026-05-28-custom-field-type-bindings-design.md
@@ -22778,4 +22787,12 @@ tr.is-editing {
   text-align: center;
   background: color-mix(in srgb, var(--accent) 4%, transparent);
   border-bottom: 1px dashed var(--border-subtle, #d0d3d8);
+}
+
+/* Sprint-sweep grid: scroll right-edge columns (Sprint, Due) instead of clipping
+   them. Scoped to the sweep skin only — the shared .grid / .grid__Tree rules keep
+   overflow: hidden for every other grid. */
+.grid__SprintBoundary,
+.grid__SprintBoundary_Body {
+  overflow-x: auto;
 }
