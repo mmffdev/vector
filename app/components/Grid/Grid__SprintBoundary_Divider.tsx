@@ -28,18 +28,13 @@ export interface GridSprintBoundaryDividerProps {
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
   };
   // React 18 RefObject<T>.current is already T | null; pairs with the parent's
-  // useRef<HTMLSpanElement | null>(null) (a MutableRefObject) without widening.
-  /** Live "N to add / remove" delta text (hook-written during a sweep). */
-  counterRef: React.RefObject<HTMLSpanElement>;
-  /** "Artefacts N" pill text node — hook overwrites during a sweep. */
-  artefactsRef: React.RefObject<HTMLSpanElement>;
-  /** "Points N" pill text node — hook overwrites during a sweep. */
-  pointsRef: React.RefObject<HTMLSpanElement>;
-  /** Root element — hook sets `--divider-colour` on it during a sweep. */
+  // useRef<HTMLDivElement | null>(null) (a MutableRefObject) without widening.
+  /** Root element — React sets the at-rest `--divider-colour` on it; the hook
+   *  reads it as lineRef (kept for parity, drives the resting colour). */
   lineRef: React.RefObject<HTMLDivElement>;
-  /** At-rest committed-artefact count (shown when not dragging). */
+  /** At-rest committed-artefact count (the resting display). */
   atRestCount: number;
-  /** At-rest committed-points sum (shown when not dragging). */
+  /** At-rest committed-points sum (the resting display). */
   atRestPoints: number;
   /** Sprint's Planned Velocity cap — drives the at-rest colour. */
   plannedVelocity: number | null;
@@ -48,17 +43,14 @@ export interface GridSprintBoundaryDividerProps {
 export function GridSprintBoundaryDivider({
   dragging,
   pointerProps,
-  counterRef,
-  artefactsRef,
-  pointsRef,
   lineRef,
   atRestCount,
   atRestPoints,
   plannedVelocity,
 }: GridSprintBoundaryDividerProps) {
-  // At-rest colour from the committed totals. During a drag the hook overwrites
-  // this inline custom property; on the next render (release) this value wins
-  // again. Set as a CSS custom property the pills + line read via var().
+  // At-rest colour from the committed totals. The static divider is the RESTING
+  // display — during a drag the floating overlay takes over (this element is
+  // dimmed via the -dragging modifier) and the overlay carries the live values.
   const atRestColour = velocityColour(atRestPoints, plannedVelocity);
 
   return (
@@ -73,23 +65,18 @@ export function GridSprintBoundaryDivider({
     >
       <span className="grid__SprintBoundary_Divider_Pill grid__SprintBoundary_Divider_Pill-artefacts">
         <span className="grid__SprintBoundary_Divider_Pill_Label">Artefacts</span>{" "}
-        <span className="grid__SprintBoundary_Divider_Pill_Value" ref={artefactsRef}>
-          {atRestCount}
-        </span>
+        <span className="grid__SprintBoundary_Divider_Pill_Value">{atRestCount}</span>
       </span>
 
       <span className="grid__SprintBoundary_Divider_Line" aria-hidden>
         <span className="grid__SprintBoundary_Divider_Grip" aria-hidden>
           ⇕
         </span>
-        <span className="grid__SprintBoundary_Divider_Count" ref={counterRef} />
       </span>
 
       <span className="grid__SprintBoundary_Divider_Pill grid__SprintBoundary_Divider_Pill-points">
         <span className="grid__SprintBoundary_Divider_Pill_Label">Points</span>{" "}
-        <span className="grid__SprintBoundary_Divider_Pill_Value" ref={pointsRef}>
-          {atRestPoints}
-        </span>
+        <span className="grid__SprintBoundary_Divider_Pill_Value">{atRestPoints}</span>
       </span>
     </div>
   );

@@ -266,4 +266,34 @@ describe("useSweepSelect", () => {
     act(() => p.onPointerUp(pointer(70)));
     container.remove();
   });
+
+  it("rides the floating overlay to the boundary row's bottom edge each move", () => {
+    // 2 sprint + 2 backlog, 40px rows → bottoms (container-relative) at
+    // 40, 80, 120, 160. The hook reads getBoundingClientRect; with the container
+    // at viewport top 0 and scrollTop 0, bottom == row bottom.
+    const container = makeContainer([
+      { uuid: "s1", section: "sprint", top: 0, height: 40 },
+      { uuid: "s2", section: "sprint", top: 40, height: 40 },
+      { uuid: "b1", section: "backlog", top: 80, height: 40 },
+      { uuid: "b2", section: "backlog", top: 120, height: 40 },
+    ]);
+    // container rect at viewport origin so container-relative == viewport.
+    container.getBoundingClientRect = () =>
+      ({ top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => {} }) as DOMRect;
+    const containerRef = { current: container };
+    const counterRef = { current: document.createElement("span") };
+    const overlayRef = { current: document.createElement("div") };
+    const { result: hook } = renderHook(() =>
+      useSweepSelect({ containerRef, counterRef, overlayRef, onCommit: () => {} }),
+    );
+    const p = hook.current.handlePointerProps;
+    act(() => p.onPointerDown(pointer(70))); // split = 2 → overlay at s2's bottom (80)
+    expect(overlayRef.current.style.top).toBe("80px");
+    act(() => p.onPointerMove(pointer(110))); // boundary 3 (incl b1) → b1 bottom (120)
+    expect(overlayRef.current.style.top).toBe("120px");
+    act(() => p.onPointerMove(pointer(10))); // boundary 0 → top of container
+    expect(overlayRef.current.style.top).toBe("0px");
+    act(() => p.onPointerUp(pointer(10)));
+    container.remove();
+  });
 });

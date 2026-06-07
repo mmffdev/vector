@@ -31,6 +31,10 @@ interface RowSnap {
   section: "sprint" | "backlog";
   mid: number;
   points: number;
+  // The row's bottom edge in CONTAINER-relative px (offsetTop + height). Used
+  // to position the floating overlay line at the boundary as the sweep moves,
+  // so the coloured bar visibly travels with the pointer.
+  bottom: number;
 }
 
 export interface UseSweepSelectArgs {
@@ -51,6 +55,15 @@ export interface UseSweepSelectArgs {
    * inherit the colour. Optional.
    */
   lineRef?: { current: HTMLElement | null };
+  /**
+   * The floating overlay line — an absolutely-positioned child of the container
+   * that VISIBLY TRACKS the pointer during a drag. Each move sets its `top`
+   * (container-relative px of the boundary row's bottom edge) and its
+   * `--divider-colour`, so the coloured commitment bar rides down the grid with
+   * the mouse. NEVER reparented (only style mutated) → pointer capture is safe.
+   * Optional: omit and no floating line is drawn (class-toggle line still shows).
+   */
+  overlayRef?: { current: HTMLElement | null };
   /**
    * The sprint's Planned Velocity cap that drives the colour escalation. Read
    * via a ref internally so the LATEST value is used mid-drag without
@@ -80,6 +93,7 @@ export function useSweepSelect({
   artefactsRef,
   pointsRef,
   lineRef,
+  overlayRef,
   plannedVelocity,
 }: UseSweepSelectArgs): UseSweepSelectResult {
   const [dragging, setDragging] = useState(false);
@@ -107,6 +121,8 @@ export function useSweepSelect({
       for (let i = 0; i < boundary && i < snap.length; i++) {
         pointsAbove += snap[i].points;
       }
+      const colour = velocityColour(pointsAbove, velocityRef.current);
+
       if (artefactsRef?.current) {
         artefactsRef.current.textContent = String(boundary);
       }
@@ -114,13 +130,21 @@ export function useSweepSelect({
         pointsRef.current.textContent = String(pointsAbove);
       }
       if (lineRef?.current) {
-        lineRef.current.style.setProperty(
-          "--divider-colour",
-          velocityColour(pointsAbove, velocityRef.current),
-        );
+        lineRef.current.style.setProperty("--divider-colour", colour);
+      }
+
+      // The floating overlay line — ride it to the bottom edge of the last
+      // in-sprint row (boundary 0 → the very top of the container). Only `top`
+      // + `--divider-colour` are mutated; the element is never reparented, so
+      // the pointer capture on the handle survives and the drag keeps going.
+      if (overlayRef?.current) {
+        const ov = overlayRef.current;
+        const top = boundary <= 0 ? 0 : snap[boundary - 1]?.bottom ?? 0;
+        ov.style.top = `${top}px`;
+        ov.style.setProperty("--divider-colour", colour);
       }
     },
-    [artefactsRef, pointsRef, lineRef],
+    [artefactsRef, pointsRef, lineRef, overlayRef],
   );
 
   const onPointerDown = useCallback(
@@ -132,6 +156,10 @@ export function useSweepSelect({
       const rows = Array.from(
         container.querySelectorAll<HTMLElement>("[data-sweep-row]"),
       );
+      // Container origin (viewport) + its scroll offset → convert each row's
+      // viewport rect into a CONTAINER-relative bottom edge for the overlay.
+      const containerTop = container.getBoundingClientRect().top;
+      const scrollTop = container.scrollTop;
       snapRef.current = rows.map((el) => {
         const r = el.getBoundingClientRect();
         // data-sweep-points carries the row's story points ("" / missing → 0).
@@ -144,6 +172,7 @@ export function useSweepSelect({
             "backlog",
           mid: r.top + r.height / 2,
           points: Number.isFinite(pts) ? pts : 0,
+          bottom: r.bottom - containerTop + scrollTop,
         };
       });
       const split = snapRef.current.filter((r) => r.section === "sprint").length;
@@ -172,10 +201,11 @@ export function useSweepSelect({
 
       // Paint the boundary purely via classes — NO DOM relocation of the handle.
       //   • every row above the line → IN_SPRINT (the contiguous "in sprint" tint)
-      //   • the last row above the line → LINE (a strong bottom edge = the moving
-      //     commitment line). The line therefore travels with the pointer as the
-      //     tint extends, WITHOUT re-inserting the handle element (which would
-      //     drop the pointer capture and freeze the drag after one move).
+      //   • the last row above the line → LINE (a thin edge under the tint that
+      //     anchors the floating overlay bar). Both travel with the pointer via
+      //     class toggling — no element is re-inserted (which would drop the
+      //     pointer capture and freeze the drag after one move). The bold
+      //     coloured commitment bar itself is the overlay, positioned below.
       snap.forEach((row, i) => {
         const above = i < boundary;
         row.el.classList.toggle(IN_SPRINT, above);

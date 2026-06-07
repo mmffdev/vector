@@ -155,9 +155,16 @@ export function GridSprintBoundary({
   // toSprint, "remove" → toBacklog.
   const containerRef = useRef<HTMLDivElement | null>(null);
   const counterRef = useRef<HTMLSpanElement | null>(null);
+  // The STATIC divider's colour at rest (lineRef). Its pills show the at-rest
+  // committed totals via React props — they are NOT hook-driven (the moving
+  // overlay carries the live readout during a drag instead).
+  const lineRef = useRef<HTMLDivElement | null>(null);
+  // The FLOATING overlay that tracks the pointer during a drag: its root
+  // (overlayRef — hook sets `top` + colour) and its two live pill spans
+  // (artefactsRef / pointsRef — hook sets the count + points text).
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const artefactsRef = useRef<HTMLSpanElement | null>(null);
   const pointsRef = useRef<HTMLSpanElement | null>(null);
-  const lineRef = useRef<HTMLDivElement | null>(null);
 
   const onSweepCommit = useCallback(
     (r: SweepResult) => {
@@ -176,6 +183,7 @@ export function GridSprintBoundary({
     artefactsRef,
     pointsRef,
     lineRef,
+    overlayRef,
     plannedVelocity,
     onCommit: onSweepCommit,
   });
@@ -207,6 +215,34 @@ export function GridSprintBoundary({
         primaryColumnIndex={primaryColumnIndex}
       />
       <div className="grid__SprintBoundary_Body" ref={containerRef}>
+        {/* Floating commitment overlay — an absolutely-positioned bar the sweep
+            hook rides to the boundary row's bottom edge during a drag (sets
+            `top` + `--divider-colour`; never reparented → capture-safe). Shown
+            only while dragging; carries the live Artefacts/Points pills + the
+            grip + the "N to add/remove" counter, so the COLOURED bar visibly
+            travels with the pointer. */}
+        <div
+          ref={overlayRef}
+          className={`grid__SprintBoundary_Overlay${dragging ? " grid__SprintBoundary_Overlay-active" : ""}`}
+          aria-hidden
+        >
+          <span className="grid__SprintBoundary_Divider_Pill grid__SprintBoundary_Divider_Pill-artefacts">
+            <span className="grid__SprintBoundary_Divider_Pill_Label">Artefacts</span>{" "}
+            <span className="grid__SprintBoundary_Divider_Pill_Value" ref={artefactsRef}>
+              {atRestCount}
+            </span>
+          </span>
+          <span className="grid__SprintBoundary_Overlay_Line">
+            <span className="grid__SprintBoundary_Divider_Grip">⇕</span>
+            <span className="grid__SprintBoundary_Divider_Count" ref={counterRef} />
+          </span>
+          <span className="grid__SprintBoundary_Divider_Pill grid__SprintBoundary_Divider_Pill-points">
+            <span className="grid__SprintBoundary_Divider_Pill_Label">Points</span>{" "}
+            <span className="grid__SprintBoundary_Divider_Pill_Value" ref={pointsRef}>
+              {atRestPoints}
+            </span>
+          </span>
+        </div>
         {sprintNodes.length === 0 && !dragging && (
           <div className="grid__SprintBoundary_Empty" data-sprintboundary-empty>
             {emptySprintHint ?? (
@@ -239,13 +275,12 @@ export function GridSprintBoundary({
           </div>
         ))}
         {/* The handle is the sweep origin — it sits BETWEEN sprint and backlog
-            rows. Sweep down over backlog → add; up over sprint → remove. */}
+            rows. Sweep down over backlog → add; up over sprint → remove. At
+            rest it shows the committed Artefacts/Points; during a drag the
+            floating overlay (below) carries the live readout instead. */}
         <GridSprintBoundaryDivider
           dragging={dragging}
           pointerProps={handlePointerProps}
-          counterRef={counterRef}
-          artefactsRef={artefactsRef}
-          pointsRef={pointsRef}
           lineRef={lineRef}
           atRestCount={atRestCount}
           atRestPoints={atRestPoints}

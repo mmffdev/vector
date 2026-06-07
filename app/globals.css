@@ -22773,9 +22773,10 @@ tr.is-editing {
 .grid__SprintBoundary_Divider:hover .grid__SprintBoundary_Divider_Line {
   height: 3px;
 }
-.grid__SprintBoundary_Divider-dragging .grid__SprintBoundary_Divider_Line {
-  height: 4px;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--divider-colour) 55%, transparent);
+/* While dragging, the floating overlay is the focal commitment bar — fade the
+   static divider back so the two don't compete. */
+.grid__SprintBoundary_Divider-dragging {
+  opacity: 0.35;
 }
 .grid__SprintBoundary_Divider_Grip {
   font-size: 13px;
@@ -22897,4 +22898,47 @@ tr.is-editing {
 .grid__SprintBoundary,
 .grid__SprintBoundary_Body {
   overflow-x: auto;
+}
+/* The body is the positioning context for the floating commitment overlay. */
+.grid__SprintBoundary_Body {
+  position: relative;
+}
+
+/* ── Floating commitment overlay — the coloured bar that RIDES with the pointer.
+   Absolutely positioned inside the body; useSweepSelect sets its `top` (the
+   boundary row's bottom edge, container-relative) + `--divider-colour` each
+   move, so the bar + its Artefacts/Points pills visibly travel down the grid.
+   Hidden at rest; revealed (and pointer-events:none so it never eats the drag)
+   only while -active. Pulled up half its height to straddle the boundary edge. */
+.grid__SprintBoundary_Overlay {
+  --divider-colour: var(--grid-tree-artefact-divider-green);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  transform: translateY(-50%);
+  z-index: 5;
+  display: none; /* shown only when -active */
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  height: 28px;
+  pointer-events: none; /* the divider handle owns the gesture; never intercept */
+}
+.grid__SprintBoundary_Overlay-active {
+  display: flex;
+}
+/* The overlay's connecting line — flex-grows between the two pills, carries the
+   grip + the live "N to add/remove" counter. Shares the velocity colour. */
+.grid__SprintBoundary_Overlay_Line {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--divider-colour);
+  color: var(--divider-colour);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--divider-colour) 55%, transparent);
 }

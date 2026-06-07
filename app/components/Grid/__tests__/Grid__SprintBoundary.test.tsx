@@ -380,7 +380,7 @@ describe("GridSprintBoundary", () => {
       capturedOn = this;
     };
     try {
-      const { container } = render(
+      render(
         <GridSprintBoundary
           sprintTree={treeStub(["s1", "s2"])}
           backlogTree={treeStub(["b1", "b2", "b3"])}
@@ -388,9 +388,12 @@ describe("GridSprintBoundary", () => {
           commit={vi.fn()}
         />,
       );
-      const grip = container.querySelector(
-        ".grid__SprintBoundary_Divider_Grip",
-      ) as HTMLElement;
+      // Grab the grip INSIDE the separator (the static divider). The floating
+      // overlay carries its own grip with the same class but is pointer-events:
+      // none — the gesture belongs to the divider handle.
+      const grip = screen
+        .getByRole("separator")
+        .querySelector(".grid__SprintBoundary_Divider_Grip") as HTMLElement;
       fireEvent.pointerDown(grip, { clientY: 100, pointerId: 1 });
       expect(capturedOn).toBe(screen.getByRole("separator"));
     } finally {
