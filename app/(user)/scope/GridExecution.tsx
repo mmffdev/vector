@@ -200,8 +200,8 @@ export function GridExecution() {
   const reparentMap = useMemo(() => buildReparentMap(typeCatalogue), [typeCatalogue]);
   const createTypes = useMemo(
     () =>
-      workTypeOptions.filter((t) =>
-        t.slot ? WORK_ITEM_CREATEABLE_SLOTS.has(t.slot) : false,
+      workTypeOptions.filter(
+        (t) => t.slot == null || WORK_ITEM_CREATEABLE_SLOTS.has(t.slot),
       ),
     [workTypeOptions],
   );

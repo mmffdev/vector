@@ -40,6 +40,7 @@ import {
   invalidateFlowStatesByType,
 } from "@/app/components/useFlowStatesByType";
 import { useArtefactTypeCatalogue } from "@/app/contexts/ArtefactTypeCatalogueContext";
+import { isStoryTier } from "@/app/lib/workTypeTier";
 import { workItems } from "@/app/lib/apiSite";
 import { apiSite, ApiError } from "@/app/lib/api";
 import { useSentinel } from "@/app/sentinel";
@@ -63,13 +64,6 @@ import {
   type ScopeNode,
   type ScopeTreeFilters,
 } from "./sprintReviewTreeData";
-
-// The story tier — work types at the same level as User Story. Story + Defect +
-// Risk are the leaf work types that are neither Epic (above) nor Task (below).
-// Resolved slot → type-UUID via the workspace catalogue so gadmin renames + any
-// custom tenant type carrying these slots survive. (Custom non-slot types at the
-// same tier are not auto-included — see TD-SPRINTREVIEW-STORY-TIER-STATIC.)
-const STORY_TIER_SLOTS = ["wrk_story", "wrk_defect", "wrk_risk"] as const;
 
 const FILTER_PREF_KEY = "value_sprint_review.workitems.filters";
 
@@ -162,24 +156,23 @@ export function GridSprintReview({
   // execution_parent_slots (replaces the retired PARENT_PREFIX_MAP).
   const reparentMap = useMemo(() => buildReparentMap(types), [types]);
 
-  // Story-tier type-UUIDs from the workspace catalogue.
-  const storyTierTypeIds = useMemo(() => {
-    const bySlot = new Map(types.map((t) => [t.slot, t.id]));
-    return STORY_TIER_SLOTS.map((s) => bySlot.get(s)).filter(
-      (id): id is string => !!id,
-    );
-  }, [types]);
+  // Story-tier type-UUIDs from the workspace catalogue. Tier is now derived
+  // from execution_parent_slots via isStoryTier, so canonical Story/Defect/Risk
+  // AND any custom behaves-like-Story type ride along (pays down
+  // TD-SPRINTREVIEW-STORY-TIER-STATIC).
+  const storyTierTypeIds = useMemo(
+    () => types.filter(isStoryTier).map((t) => t.id),
+    [types],
+  );
 
   // Type-filter options = the story tier only, so the Type chip never offers a
-  // type outside the clamp. Drives the single-select Type chip.
+  // type outside the clamp. Drives the single-select Type chip. Filtered by the
+  // derived story-tier id set so chip options and the payload stay in lockstep.
   const workTypeOptions = useChipTypeOptions("work");
-  const filterTypeOptions = useMemo(
-    () =>
-      workTypeOptions.filter((t) =>
-        t.slot ? (STORY_TIER_SLOTS as readonly string[]).includes(t.slot) : false,
-      ),
-    [workTypeOptions],
-  );
+  const filterTypeOptions = useMemo(() => {
+    const allowedIds = new Set(storyTierTypeIds);
+    return workTypeOptions.filter((t) => allowedIds.has(t.value));
+  }, [workTypeOptions, storyTierTypeIds]);
   const selectedTypeId = useMemo(() => {
     if (filterTypeOptions.length === 0) return null;
     const allowed = new Set(filterTypeOptions.map((t) => t.value));
