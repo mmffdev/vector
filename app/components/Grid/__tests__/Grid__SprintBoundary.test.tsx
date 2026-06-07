@@ -131,4 +131,73 @@ describe("GridSprintBoundary", () => {
       toBacklog: ["s2-uuid", "s3-uuid"],
     });
   });
+
+  it("renders the title band with FILTER prefix + sprint label + subtitle", () => {
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub(["s1"])}
+        backlogTree={treeStub(["b1"])}
+        columns={columns}
+        commit={vi.fn()}
+        sprintLabel="Sprint 1 — Red"
+        subtitle="Work items committed to this sprint."
+      />,
+    );
+    expect(screen.getByText("FILTER")).toBeInTheDocument();
+    expect(screen.getByText("Sprint 1 — Red")).toBeInTheDocument();
+    expect(screen.getByText("Work items committed to this sprint.")).toBeInTheDocument();
+  });
+
+  it("renders the action bar leading + search when provided", () => {
+    const onChange = vi.fn();
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub(["s1"])}
+        backlogTree={treeStub(["b1"])}
+        columns={columns}
+        commit={vi.fn()}
+        actionBar={{
+          leading: <button>Prev</button>,
+          search: { placeholder: "Search…", value: "", onChange },
+          filterChips: <div data-testid="chips">chips</div>,
+        }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Prev" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search…")).toBeInTheDocument();
+    expect(screen.getByTestId("chips")).toBeInTheDocument();
+  });
+
+  it("shows the empty-sprint explanatory row when the sprint section is empty", () => {
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub([])}
+        backlogTree={treeStub(["b1", "b2"])}
+        columns={columns}
+        commit={vi.fn()}
+        sprintLabel="Sprint 1 — Red"
+      />,
+    );
+    expect(screen.getByText(/this sprint is empty/i)).toBeInTheDocument();
+    expect(screen.getByRole("separator")).toBeInTheDocument();
+    expect(screen.getByText("0 of 2 in sprint")).toBeInTheDocument();
+  });
+
+  it("still commits a drag when the sprint started empty", () => {
+    const commit = vi.fn();
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub([])}
+        backlogTree={treeStub(["b1", "b2", "b3"])}
+        columns={columns}
+        commit={commit}
+        rowHeightForTest={40}
+      />,
+    );
+    const divider = screen.getByRole("separator");
+    fireEvent.pointerDown(divider, { clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(divider, { clientY: 180, pointerId: 1 });
+    fireEvent.pointerUp(divider, { clientY: 180, pointerId: 1 });
+    expect(commit).toHaveBeenCalledWith({ toSprint: ["b1-uuid", "b2-uuid"], toBacklog: [] });
+  });
 });

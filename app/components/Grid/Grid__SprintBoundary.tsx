@@ -24,6 +24,8 @@ import { useColumnManager } from "./useColumnManager";
 import { GridTreeHead } from "./Grid__Tree_Head";
 import { GridTreeRow } from "./Grid__Tree_Row";
 import { GridSprintBoundaryDivider } from "./Grid__SprintBoundary_Divider";
+import PrefixBlockStripes from "@/app/components/PrefixBlockStripes";
+import { GridTreeActionBar, type GridTreeActionBarConfig } from "./Grid__Tree_ActionBar";
 import {
   useSprintBoundary,
   type SprintBoundaryDelta,
@@ -40,6 +42,14 @@ export interface GridSprintBoundaryProps {
   defaultSort?: SortState | null;
   /** Test-only: fixed row height so the px→index map is deterministic. */
   rowHeightForTest?: number;
+  /** In-skin title-band heading (rendered with the FILTER prefix). Omit → no band. */
+  sprintLabel?: string;
+  /** In-skin title-band subtitle line. Omit → no subtitle. */
+  subtitle?: string;
+  /** Action-bar config (leading slot, search, filter chips). Omit → no bar. */
+  actionBar?: GridTreeActionBarConfig;
+  /** Custom body for the empty-sprint hint row. Omit → default copy. */
+  emptySprintHint?: ReactNode;
 }
 
 export function GridSprintBoundary({
@@ -49,6 +59,10 @@ export function GridSprintBoundary({
   commit,
   defaultSort = null,
   rowHeightForTest,
+  sprintLabel,
+  subtitle,
+  actionBar,
+  emptySprintHint,
 }: GridSprintBoundaryProps) {
   const sprintNodes = sprintTree.flatNodes;
   const backlogNodes = backlogTree.flatNodes;
@@ -119,6 +133,23 @@ export function GridSprintBoundary({
 
   return (
     <div className="grid grid__SprintBoundary">
+      {(sprintLabel != null || subtitle != null) && (
+        <div className="grid__Tree_Title grid__SprintBoundary_Title">
+          <PrefixBlockStripes />
+          <div className="grid__Tree_Title_Body">
+            {sprintLabel != null && (
+              <h3 className="grid__Tree_Title_Heading">
+                <span className="grid__Tree_Title_Heading_Filter">FILTER</span>{" "}
+                {sprintLabel}
+              </h3>
+            )}
+            {subtitle != null && (
+              <p className="grid__Tree_Title_Sub">{subtitle}</p>
+            )}
+          </div>
+        </div>
+      )}
+      {actionBar && <GridTreeActionBar {...actionBar} />}
       <GridTreeHead
         columns={columns}
         gridTemplateColumns={gridTemplateColumns}
@@ -127,6 +158,18 @@ export function GridSprintBoundary({
         primaryColumnIndex={primaryColumnIndex}
       />
       <div className="grid__SprintBoundary_Body" ref={bodyRef}>
+        {sprintNodes.length === 0 && (
+          <div className="grid__SprintBoundary_Empty" data-sprintboundary-empty>
+            {emptySprintHint ?? (
+              <>
+                <strong>This sprint is empty.</strong> Drag the handle below
+                downward through the backlog to commit work items
+                {sprintLabel ? <> into <strong>{sprintLabel}</strong></> : null}.
+                Release to save.
+              </>
+            )}
+          </div>
+        )}
         {/*
           Rows and the divider are emitted as flat siblings — the divider is a
           SINGLE element with a CONSTANT key ("__divider__") so React preserves
