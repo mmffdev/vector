@@ -109,6 +109,17 @@
   --grid-tree-artefact-divider-green-ink:  #f7f7f7;
   --grid-tree-artefact-divider-green: #66cc33;
 
+  /* ROW MISSING CHILDREN Barber Poles */
+  --barber-pole-row-off:                     #f0f0f0;
+  /* ROW MISSING CHILDREN Add Child Button */
+  --buttons-missing-children-ink:                        #142424;
+  --buttons-missing-children-bg:             #f7f7f7;
+  --buttons-missing-children-border:           var(--buttons-missing-children-ink);
+
+  --buttons-missing-children-ink-hover:      #f7f7f7;
+  --buttons-missing-children-bg-hover:       #142424;
+  --buttons-missing-children-border-hover:     var(--buttons-missing-children-ink-hover);
+
   /* ── 1. CANVAS ─────────────────────────────────────────────
      Page surfaces — what everything sits on. */
   --canvas:          #f7f7f7;
