@@ -20,6 +20,7 @@ import {
 } from "@/app/lib/artefactTypesApi";
 import { safeInk } from "@/app/lib/colourUtils";
 import { ColourPicker } from "@/app/components/ColourPicker";
+import { ArtefactTypeCreateFlyout } from "@/app/components/ArtefactTypeCreateFlyout";
 
 // ── Row union ─────────────────────────────────────────────────────────────────
 // All rows are flat roots — no expand/collapse. Scope rows are section dividers.
@@ -143,40 +144,18 @@ function buildColumns(
       },
     },
     {
-      // Layer depth — 0-based. 0 means top-of-ladder; useParentCandidates
-      // treats parent_type_id=null as "no allowed parent" so a depth=0
-      // type cannot be a child. Padmin maintains this manually.
+      // Layer depth — 0-based, READ-ONLY. Derived server-side as a mirror of
+      // the parent_type_id chain (recomputed on insert-layer); no longer hand-
+      // editable here. 0 means top-of-ladder. Strategy layers are created /
+      // re-ordered via the Add-type flyout's insert-layer flow.
       key: "layer",
       label: "Layer",
       width: 80,
       align: "mono",
       render: (row) => {
         if (row.kind === "scope") return null;
-        const { type } = row;
-        const v = type.layer_depth == null ? "" : String(type.layer_depth);
-        return (
-          <InlineEditField
-            value={v}
-            onCommit={(next) => {
-              const trimmed = next.trim();
-              if (trimmed === v) return;
-              if (trimmed === "") {
-                onPatch(type.id, type, { layer_depth: "" });
-                return;
-              }
-              const n = parseInt(trimmed, 10);
-              if (Number.isNaN(n) || n < 0) return false;
-              onPatch(type.id, type, { layer_depth: String(n) });
-            }}
-            ariaLabel={`Layer depth for ${type.prefix}`}
-            inputClassName="form__input form__input--sm form__input--numeric"
-            displayClassName="inline-edit-trigger"
-            clickToEdit
-            allowEmpty
-            emptyDisplay="—"
-            maxLength={3}
-          />
-        );
+        const v = row.type.layer_depth == null ? "—" : String(row.type.layer_depth);
+        return <span className="inline-edit-trigger" aria-label={`Layer depth for ${row.type.prefix}`}>{v}</span>;
       },
     },
     {
@@ -238,6 +217,7 @@ export default function ArtefactTypesPage() {
   const openPickerIdRef = useRef<string | null>(null);
   openPickerIdRef.current = openPickerId;
   const [resyncing, setResyncing] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -348,6 +328,13 @@ export default function ArtefactTypesPage() {
         <div className="at-tree__toolbar">
           <button
             type="button"
+            className="btn btn--primary btn--sm"
+            onClick={() => setCreating(true)}
+          >
+            Add type
+          </button>
+          <button
+            type="button"
             className="btn btn--ghost btn--sm"
             onClick={onResync}
             disabled={resyncing}
@@ -373,6 +360,13 @@ export default function ArtefactTypesPage() {
         />
         </div>
       </Panel>
+      {creating && types && (
+        <ArtefactTypeCreateFlyout
+          types={types}
+          onClose={() => setCreating(false)}
+          onCreated={() => { setCreating(false); load(); }}
+        />
+      )}
     </PageContent>
   );
 }

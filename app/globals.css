@@ -11148,6 +11148,35 @@ input[type="reset"] {
   gap: 16px;
 }
 
+/* Action footer for flyouts that own a Cancel + primary action pair
+   (ArtefactTypeCreateFlyout). Right-aligned, sticks below the scrolling body. */
+.topo-flyout__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #e5e1da);
+}
+
+/* Insert-layer impact preview block: the explanatory hint plus the list of
+   child instances that will receive a pass-through wrapper. */
+.at-impact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.at-impact__list {
+  margin: 0;
+  padding-left: 18px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 13px;
+  color: var(--ink-muted, #5c5c5c);
+  list-style: disc;
+}
+
 .topo-flyout__field {
   display: flex;
   flex-direction: column;
