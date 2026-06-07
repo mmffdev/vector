@@ -22459,9 +22459,6 @@ tr.is-editing {
   height: 20px;
   padding: 0 8px;
   margin-right: 6px;
-  /* Optical nudge up 2px to sit level with the centred text/glyph. transform so
-     it shifts visually without affecting the flex layout of its neighbours. */
-  transform: translateY(-2px);
   border: 1px solid var(--buttons-missing-children-border, #f7f7f7);
   border-radius: 4px;
   background: var(--buttons-missing-children-bg, #f7f7f7);
