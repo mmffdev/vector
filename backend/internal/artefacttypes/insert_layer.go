@@ -258,14 +258,20 @@ func (s *Service) InsertLayer(ctx context.Context, subID, wsID uuid.UUID, in Ins
 	}
 	created := 0
 	for _, c := range impacted {
-		// Resolve the child instance's current parent (may be NULL).
-		var curParent *uuid.UUID
+		// Resolve the child instance's current parent (may be NULL) AND its
+		// topology node. The wrapper sits between the child and its old parent,
+		// so it MUST inherit the child's topology node — otherwise the wrapper is
+		// created with a NULL clamp and ListChildren's topology subtree clamp
+		// (topologyclamp.SubtreeClause) silently drops it, capping the tree at the
+		// inserted layer. (Origin: 2026-06-07 "portfolio tree stops at Theme".)
+		var curParent, curTopo *uuid.UUID
 		if err := tx.QueryRow(ctx, `
-			SELECT artefacts_id_parent FROM artefacts WHERE artefacts_id = $1`, c.ID,
-		).Scan(&curParent); err != nil {
+			SELECT artefacts_id_parent, artefacts_id_topology_node
+			FROM artefacts WHERE artefacts_id = $1`, c.ID,
+		).Scan(&curParent, &curTopo); err != nil {
 			return nil, fmt.Errorf("InsertLayer read parent: %w", err)
 		}
-		newWrapperID, err := s.insertPassThroughArtefact(ctx, tx, subID, wsID, newType.ID, c.Name, curParent, defaultPriorityID)
+		newWrapperID, err := s.insertPassThroughArtefact(ctx, tx, subID, wsID, newType.ID, c.Name, curParent, curTopo, defaultPriorityID)
 		if err != nil {
 			return nil, fmt.Errorf("InsertLayer wrapper: %w", err)
 		}
@@ -294,19 +300,23 @@ func (s *Service) InsertLayer(ctx context.Context, subID, wsID uuid.UUID, in Ins
 // pass-through needs only identity, type, parent, clamp, a number, and the
 // workspace default priority (artefacts_id_priority is NOT NULL with no DB
 // default). The number is allocated as max+1 within the workspace.
-func (s *Service) insertPassThroughArtefact(ctx context.Context, tx pgx.Tx, subID, wsID, typeID uuid.UUID, title string, parent *uuid.UUID, priorityID uuid.UUID) (uuid.UUID, error) {
+//
+// topoNode is the topology node the wrapper inherits from the child it wraps —
+// it MUST be carried through, or the wrapper is created with a NULL clamp and
+// ListChildren's topology subtree clamp drops it (the tree caps at this layer).
+func (s *Service) insertPassThroughArtefact(ctx context.Context, tx pgx.Tx, subID, wsID, typeID uuid.UUID, title string, parent, topoNode *uuid.UUID, priorityID uuid.UUID) (uuid.UUID, error) {
 	var newID uuid.UUID
 	err := tx.QueryRow(ctx, `
 		INSERT INTO artefacts (
 			artefacts_id_subscription, artefacts_id_workspace,
 			artefacts_id_artefact_type, artefacts_number, artefacts_title,
-			artefacts_id_parent, artefacts_id_priority)
+			artefacts_id_parent, artefacts_id_topology_node, artefacts_id_priority)
 		VALUES ($1,$2,$3,
 			COALESCE((SELECT MAX(artefacts_number)+1 FROM artefacts
 				WHERE artefacts_id_workspace=$2),1),
-			$4,$5,$6)
+			$4,$5,$6,$7)
 		RETURNING artefacts_id`,
-		subID, wsID, typeID, title, parent, priorityID,
+		subID, wsID, typeID, title, parent, topoNode, priorityID,
 	).Scan(&newID)
 	return newID, err
 }

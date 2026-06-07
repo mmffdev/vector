@@ -192,6 +192,58 @@ func assertArtefactParent(t *testing.T, pool *pgxpool.Pool, id, wantParent uuid.
 	}
 }
 
+// seedTopologyNode inserts a real topology_nodes row (artefacts_id_topology_node
+// is FK-constrained to it) and returns its id.
+func seedTopologyNode(t *testing.T, pool *pgxpool.Pool, subID, wsID uuid.UUID) uuid.UUID {
+	t.Helper()
+	id := uuid.New()
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO topology_nodes (
+			topology_nodes_id, topology_nodes_id_subscription,
+			topology_nodes_id_workspace, topology_nodes_name)
+		VALUES ($1,$2,$3,'insert-layer-test-node')`, id, subID, wsID,
+	); err != nil {
+		t.Fatalf("seedTopologyNode: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM topology_nodes WHERE topology_nodes_id_subscription = $1 AND topology_nodes_id_workspace = $2`,
+			subID, wsID)
+	})
+	return id
+}
+
+// stampTopologyNode sets an artefact's topology node directly (test scaffolding
+// for the pass-through-inherits-topology regression).
+func stampTopologyNode(t *testing.T, pool *pgxpool.Pool, id, node uuid.UUID) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE artefacts SET artefacts_id_topology_node = $1 WHERE artefacts_id = $2`, node, id,
+	); err != nil {
+		t.Fatalf("stampTopologyNode: %v", err)
+	}
+}
+
+// assertArtefactTopologyNode asserts an artefact's topology node equals want.
+// Guards the pass-through-wrapper bug: a wrapper created with a NULL topology
+// node is dropped by ListChildren's topology subtree clamp, capping the tree at
+// the inserted layer (origin: 2026-06-07 "portfolio tree stops at Theme").
+func assertArtefactTopologyNode(t *testing.T, pool *pgxpool.Pool, id, want uuid.UUID) {
+	t.Helper()
+	var node *uuid.UUID
+	if err := pool.QueryRow(context.Background(),
+		`SELECT artefacts_id_topology_node FROM artefacts WHERE artefacts_id = $1`, id,
+	).Scan(&node); err != nil {
+		t.Fatalf("assertArtefactTopologyNode query: %v", err)
+	}
+	if node == nil {
+		t.Fatalf("artefact %s topology node is NULL, want %s (wrapper would be clamp-dropped)", id, want)
+	}
+	if *node != want {
+		t.Fatalf("artefact %s topology node = %s, want %s", id, *node, want)
+	}
+}
+
 // assertArtefactParentNil asserts the artefact's parent is NULL (a root).
 func assertArtefactParentNil(t *testing.T, pool *pgxpool.Pool, id uuid.UUID) {
 	t.Helper()
@@ -272,6 +324,43 @@ func TestInsertLayer_PassThroughBackfill(t *testing.T) {
 	p2 := artefactParent(t, pool, f2.ID)
 	assertArtefactTitle(t, pool, p2, "Signup")
 	assertArtefactParent(t, pool, p2, themeInst.ID)
+}
+
+// A child instance on a topology node yields a pass-through wrapper on the SAME
+// node — not NULL. Regression for the "tree stops at the inserted layer" bug:
+// ListChildren clamps direct children by artefacts_id_topology_node, so a
+// NULL-node wrapper is silently dropped and the inserted layer's descendants
+// never render.
+func TestInsertLayer_PassThroughInheritsTopologyNode(t *testing.T) {
+	pool := testPool(t)
+	svc := NewService(pool, nil)
+	ctx := context.Background()
+	subID := seedTestSubscription(t, pool)
+	wsID := seedTestWorkspace(t, pool, subID)
+	seedDefaultPriority(t, pool, wsID)
+
+	product := seedStrategyType(t, pool, subID, wsID, "Product", "PR", nil)
+	theme := seedStrategyType(t, pool, subID, wsID, "Theme", "TH", &product.ID)
+	feature := seedStrategyType(t, pool, subID, wsID, "Feature", "FE", &theme.ID)
+
+	// Seed a real topology node FIRST (its cleanup runs LIFO, i.e. AFTER the
+	// artefact cleanups registered below, so the FK is clear by then). One
+	// feature instance, stamped with that node.
+	node := seedTopologyNode(t, pool, subID, wsID)
+	themeInst := seedArtefact(t, pool, subID, wsID, theme.ID, "Theme A", nil)
+	f1 := seedArtefact(t, pool, subID, wsID, feature.ID, "Login", &themeInst.ID)
+	stampTopologyNode(t, pool, f1.ID, node)
+
+	if _, err := svc.InsertLayer(ctx, subID, wsID, InsertLayerInput{
+		Tag: "so", Name: "Strategic Objective", ChildTypeID: feature.ID,
+	}); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	// The pass-through wrapper now parents the feature instance; it must carry
+	// the child's topology node (else ListChildren's clamp drops it).
+	wrapper := artefactParent(t, pool, f1.ID)
+	assertArtefactTopologyNode(t, pool, wrapper, node)
 }
 
 func TestInsertLayer_OrphanChild(t *testing.T) {
