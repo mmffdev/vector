@@ -166,7 +166,7 @@ function SummaryCell({ row }: { row: ScopeNode }) {
           />
         </>
       ) : null}
-      {row.summary}
+      <span className="grid__Cell_Summary_Text">{row.summary}</span>
     </span>
   );
 }

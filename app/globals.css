@@ -22440,9 +22440,17 @@ tr.is-editing {
 .grid__Cell_Summary {
   /* Flex so the Add-Child button, warning glyph, and title text share ONE
      vertically-centred baseline (the button has its own height; inline-baseline
-     alignment was making the text ride high against it). */
+     alignment was making the text ride high against it). NO overflow:hidden
+     here — that clipped the Add-Child button's top border once it was nudged up.
+     The ellipsis lives on the inner text span instead, so the button can
+     overflow the line vertically without being cropped. */
   display: flex;
   align-items: center;
+  min-width: 0;
+}
+/* Title text — owns the truncation so its container (.grid__Cell_Summary) does
+   not need overflow:hidden (which would clip the nudged button). */
+.grid__Cell_Summary_Text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -22459,6 +22467,10 @@ tr.is-editing {
   height: 20px;
   padding: 0 8px;
   margin-right: 6px;
+  /* Optical nudge up 2px to sit level with the centred text/glyph. Safe now:
+     .grid__Cell_Summary no longer clips (ellipsis moved to the text span), so
+     the button's top border is not cropped. */
+  transform: translateY(-2px);
   border: 1px solid var(--buttons-missing-children-border, #f7f7f7);
   border-radius: 4px;
   background: var(--buttons-missing-children-bg, #f7f7f7);
