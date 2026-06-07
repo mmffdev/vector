@@ -31,6 +31,12 @@ import type { ScopeNode } from "@/app/(user)/scope/scopeTreeData";
 import { makeScopeColumns } from "@/app/(user)/scope/scopeColumns";
 import type { SprintBoundaryDelta } from "@/app/components/Grid/useSprintBoundary";
 import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
+import {
+  useWorkItemsFilters,
+  WorkItemsFilterChips,
+} from "@/app/components/work-items-tree-config";
+import { useChipTypeOptions } from "@/app/hooks/useChipTypeOptions";
+import { useArtefactPriorityCatalogue } from "@/app/contexts/ArtefactPriorityCatalogueContext";
 
 // Column drops for the value-sprint trees. The rowButtons column adds
 // ~244px of horizontal chrome (Add to Sprint + Target Sprint chips),
@@ -199,29 +205,14 @@ export default function ValueSprint() {
   // without colliding with the backlog tree's bulk bar.
   const panelBulkBarRef = useRef<HTMLDivElement | null>(null);
 
-  // Resolved sprint id for the panel — override wins, else fall back
-  // to useNextSprint's pick. The matching SprintWireRow comes from the
-  // upcomingSprints list (which already covers planned + active).
-  const panelSprintId =
-    panelSprintIdOverride ?? nextSprint?.timeboxes_sprints_id ?? null;
-  // Resolve from `allSprints` first so Prev/Next navigation into completed
-  // sprints (which are excluded from `upcomingSprints`) still surfaces the
-  // correct title / dates / status. Fall back to upcoming + nextSprint
-  // for the initial render path where allSprints hasn't loaded yet.
-  const panelSprint = useMemo(
-    () =>
-      allSprints.find((s) => s.timeboxes_sprints_id === panelSprintId) ??
-      upcomingSprints.find((s) => s.timeboxes_sprints_id === panelSprintId) ??
-      nextSprint,
-    [allSprints, upcomingSprints, panelSprintId, nextSprint],
-  );
-
   // Date-driven "current" sprint — today's date falls within the
-  // sprint's [start, end] window. Powers the "Current sprint" jump
-  // button. Wire dates are ISO YYYY-MM-DD with no time component, so a
-  // string compare against today's local-date ISO works without
-  // timezone juggling. Returns null when today doesn't fall in any
-  // sprint's window (e.g. between two planned sprints).
+  // sprint's [start, end] window. Powers both the default-to-current
+  // resolution below AND the "Current sprint" jump button. Wire dates
+  // are ISO YYYY-MM-DD with no time component, so a string compare
+  // against today's local-date ISO works without timezone juggling.
+  // Returns null when today doesn't fall in any sprint's window (e.g.
+  // between two planned sprints). Declared ABOVE panelSprintId so the
+  // panel defaults to the current sprint, not merely the next one.
   const currentSprint = useMemo<SprintWireRow | null>(() => {
     if (allSprints.length === 0) return null;
     const t = new Date();
@@ -235,6 +226,47 @@ export default function ValueSprint() {
       }) ?? null
     );
   }, [allSprints]);
+
+  // Auto-advance the panel to the current sprint once allSprints resolves
+  // (mirrors app/(user)/value-sprint-review/page.tsx). We track the id we
+  // last auto-advanced TO so a user's manual Switch / Prev / Next (which
+  // sets panelSprintIdOverride to something else) is never overridden by a
+  // later refetch. If the override matches what we last pushed, we're still
+  // "following" the current sprint and may advance again when it changes.
+  const autoAdvancedToRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentSprint) return;
+    const newId = currentSprint.timeboxes_sprints_id;
+    const userNavigatedAway =
+      panelSprintIdOverride !== null &&
+      panelSprintIdOverride !== autoAdvancedToRef.current;
+    if (userNavigatedAway) return;
+    if (panelSprintIdOverride === newId) return;
+    autoAdvancedToRef.current = newId;
+    setPanelSprintIdOverride(newId);
+  }, [currentSprint, panelSprintIdOverride]);
+
+  // Resolved sprint id for the panel — override wins, else default to the
+  // CURRENT sprint (today's window), else fall back to useNextSprint's pick.
+  // The matching SprintWireRow comes from the upcomingSprints list (which
+  // already covers planned + active).
+  const panelSprintId =
+    panelSprintIdOverride ??
+    currentSprint?.timeboxes_sprints_id ??
+    nextSprint?.timeboxes_sprints_id ??
+    null;
+  // Resolve from `allSprints` first so Prev/Next navigation into completed
+  // sprints (which are excluded from `upcomingSprints`) still surfaces the
+  // correct title / dates / status. Fall back to upcoming + nextSprint
+  // for the initial render path where allSprints hasn't loaded yet.
+  const panelSprint = useMemo(
+    () =>
+      allSprints.find((s) => s.timeboxes_sprints_id === panelSprintId) ??
+      upcomingSprints.find((s) => s.timeboxes_sprints_id === panelSprintId) ??
+      nextSprint,
+    [allSprints, upcomingSprints, panelSprintId, nextSprint],
+  );
+
   // Hide the button when the panel is already on the current sprint
   // (no-op affordance reads as clutter), or when there's no current
   // sprint to jump to.
@@ -254,6 +286,13 @@ export default function ValueSprint() {
   // lifecycle states (Planning / In Flight / Completed). The picker
   // greys-out illegal transitions; the backend re-enforces them.
   const statusSprintBtnRef = useRef<HTMLButtonElement | null>(null);
+  // Parallel anchor refs for the POC boundary's copy of the Switch / Status
+  // buttons. The POC renders its OWN nav node (boundaryNav) above the legacy
+  // panels, so the Switch / Status radial pickers anchored from it need their
+  // own DOM anchors — sharing the legacy refs would bind one ref to two nodes
+  // (the later-mounted one wins) and anchor the menu against the wrong button.
+  const pocSwitchSprintBtnRef = useRef<HTMLButtonElement | null>(null);
+  const pocStatusSprintBtnRef = useRef<HTMLButtonElement | null>(null);
 
   // ObjectTreeV2 sidecars — base config is the Work Items wizard, but
   // the value-sprint backlog is intentionally narrower: stories +
@@ -391,11 +430,67 @@ export default function ValueSprint() {
       (id): id is string => !!id,
     );
   }, [types]);
+
+  // ── In-skin chrome: filter chips + search for the boundary POC ──────────────
+  // One shared filter pref namespace drives BOTH POC trees (sprint + backlog) so
+  // a chip selection re-clamps the whole boundary view in lockstep. The chips
+  // map onto the boundary's extra-filter wire params: status → flowStateId,
+  // priority → priorityId, owner_id → ownerId. Type chips are intentionally NOT
+  // threaded into the wire here — the POC already hard-clamps to the
+  // story/defect/risk type set (pocAllowedTypeIds); the Type chip's role is to
+  // narrow WITHIN that set, which the skin handles client-side in Task 4.
+  const BOUNDARY_FILTER_PREF_KEY = "value_sprint.boundary.filters";
+  const { filters: boundaryFilters } = useWorkItemsFilters(
+    BOUNDARY_FILTER_PREF_KEY,
+  );
+  const boundaryExtraFilters = useMemo(
+    () => ({
+      flowStateId: boundaryFilters.status,
+      priorityId: boundaryFilters.priority,
+      ownerId: boundaryFilters.owner_id,
+    }),
+    [boundaryFilters],
+  );
+
+  // Type chip options restricted to the POC's story/defect/risk set so the Type
+  // chip never offers a type outside the visible clamp. Mirrors
+  // GridSprintReview.tsx's filterTypeOptions (work scope, filtered to the
+  // allowed id set).
+  const pocWorkTypeOptions = useChipTypeOptions("work");
+  const pocFilterTypeOptions = useMemo(() => {
+    const allowed = new Set(pocAllowedTypeIds);
+    return pocWorkTypeOptions.filter((t) => allowed.has(t.value));
+  }, [pocWorkTypeOptions, pocAllowedTypeIds]);
+
+  // Priority chip options from the workspace catalogue, mapped to the chip
+  // {value,label,color?} shape (mirrors GridSprintReview.tsx:289-291, sorted by
+  // the catalogue's own sort_order).
+  const { priorities: workspacePriorities } = useArtefactPriorityCatalogue();
+  const pocPriorityOptions = useMemo(
+    () =>
+      workspacePriorities
+        .slice()
+        .sort(
+          (a, b) =>
+            a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+        )
+        .map((p) => ({
+          value: p.id,
+          label: p.name,
+          color: p.colour ?? undefined,
+        })),
+    [workspacePriorities],
+  );
+
+  // Boundary search input value. The skin's client-side filtering lands in
+  // Task 4; wiring the controlled value now is harmless.
+  const [boundarySearch, setBoundarySearch] = useState("");
+
   const pocSprintTree = useTree<ScopeNode>({
     fetchRoots: useCallback(
       (page: { limit: number; offset: number }) =>
-        fetchSprintRoots(page, pocSprintId, pocAllowedTypeIds),
-      [pocSprintId, pocAllowedTypeIds],
+        fetchSprintRoots(page, pocSprintId, pocAllowedTypeIds, boundaryExtraFilters),
+      [pocSprintId, pocAllowedTypeIds, boundaryExtraFilters],
     ),
     pageSize: 100,
     rowIdOf: (r) => r.id,
@@ -407,8 +502,8 @@ export default function ValueSprint() {
   const pocBacklogTree = useTree<ScopeNode>({
     fetchRoots: useCallback(
       (page: { limit: number; offset: number }) =>
-        fetchSprintRoots(page, "__none__", pocAllowedTypeIds),
-      [pocAllowedTypeIds],
+        fetchSprintRoots(page, "__none__", pocAllowedTypeIds, boundaryExtraFilters),
+      [pocAllowedTypeIds, boundaryExtraFilters],
     ),
     pageSize: 100,
     rowIdOf: (r) => r.id,
@@ -823,6 +918,99 @@ export default function ValueSprint() {
   }, [pocSprintTree, pocBacklogTree]);
   useRefetchOnPush({ topic, refetch: pocRefetch });
 
+  // In-skin action-bar `leading` for the boundary POC — a parallel copy of the
+  // legacy panel's Prev / Next / Current / Switch / Sprint-Status nav. Shares
+  // every callback + state read with the legacy block (stepSprint,
+  // sprintNavState, showCurrentSprintBtn, setPanelSprintIdOverride,
+  // currentSprint, upcomingSprints, panelSprint, setTargetMenu), but mounts its
+  // own button DOM with POC-private anchor refs so the Switch / Status radial
+  // pickers anchor against THIS bar's buttons, not the legacy panel's. The
+  // legacy panel below keeps its own copy unchanged.
+  const boundaryNav = (
+    <>
+      {sprintNavState.hasPrev && (
+        <button
+          type="button"
+          className="btn"
+          onClick={() => stepSprint(-1)}
+          aria-label="Previous sprint"
+          title="Previous sprint"
+        >
+          <span className="btn__icon">
+            <MdChevronLeft size={14} />
+          </span>
+          <span>Prev</span>
+        </button>
+      )}
+      {sprintNavState.hasNext && (
+        <button
+          type="button"
+          className="btn"
+          onClick={() => stepSprint(1)}
+          aria-label="Next sprint"
+          title="Next sprint"
+        >
+          <span>Next</span>
+          <span className="btn__icon">
+            <MdChevronRight size={14} />
+          </span>
+        </button>
+      )}
+      {showCurrentSprintBtn && (
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            if (currentSprint) {
+              setPanelSprintIdOverride(currentSprint.timeboxes_sprints_id);
+            }
+          }}
+          aria-label="Jump to the current sprint (today's date)"
+          title="Jump to the sprint that today's date falls within"
+        >
+          <span className="btn__icon">
+            <BsCalendar3 aria-hidden />
+          </span>
+          <span>Current sprint</span>
+        </button>
+      )}
+      <button
+        ref={pocSwitchSprintBtnRef}
+        type="button"
+        className="btn"
+        disabled={upcomingSprints.length < 2}
+        onClick={() =>
+          setTargetMenu({
+            mode: "switch-panel",
+            anchor: pocSwitchSprintBtnRef.current,
+          })
+        }
+        aria-label="Switch the displayed sprint"
+      >
+        <span>Switch sprint</span>
+      </button>
+      <button
+        ref={pocStatusSprintBtnRef}
+        type="button"
+        className="btn"
+        disabled={!panelSprint}
+        onClick={() =>
+          setTargetMenu({
+            mode: "status-panel",
+            anchor: pocStatusSprintBtnRef.current,
+          })
+        }
+        aria-label={`Sprint status — ${panelSprint?.timeboxes_sprints_status ?? "—"}`}
+        title="Change sprint status"
+      >
+        <span className="btn__icon">
+          <MdOutlineFlag size={14} />
+        </span>
+        <span>Sprint Status</span>
+      </button>
+    </>
+  );
+
   return (
     <PageContent className="value-sprint">
       <>
@@ -857,6 +1045,24 @@ export default function ValueSprint() {
               backlogTree={pocBacklogTree}
               columns={pocColumns}
               commit={pocCommit}
+              sprintLabel={panelSprint ? formatSprintLabel(panelSprint) : "No sprint"}
+              subtitle="Work items committed to this sprint — drag the divider to adjust membership."
+              actionBar={{
+                ariaLabel: "Sprint boundary actions",
+                leading: boundaryNav,
+                search: {
+                  placeholder: "Search work items…",
+                  value: boundarySearch,
+                  onChange: setBoundarySearch,
+                },
+                filterChips: (
+                  <WorkItemsFilterChips
+                    prefKey={BOUNDARY_FILTER_PREF_KEY}
+                    typeOptions={pocFilterTypeOptions}
+                    priorityOptions={pocPriorityOptions}
+                  />
+                ),
+              }}
             />
           </Panel>
         )}
