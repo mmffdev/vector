@@ -143,3 +143,35 @@
 - 2026-04-25 — FLUX tie in
 - 2026-04-25 — SPINE tie in
 - 2026-04-25 — VISION tie in
+
+### TOGAF — Enterprise Architecture Alignment
+> A governance/positioning module mapping Vector's own architecture onto TOGAF's Architecture Development Method (ADM). The thesis: the Service Pillars refactor (PLA065) and the DB consolidation (PLA064) are not just engineering moves — they are an enterprise-architecture story a defence/finance buyer's architecture-review board already knows how to read. Each ADM phase has a concrete artefact in this repo; the work here is to surface that mapping as a procurement/audit narrative (and, later, as a product capability — Vector helping *customers* run their own ADM). Reference framework: The Open Group TOGAF 10. Sibling to SPINE (Governance).
+
+**Phase A — Architecture Vision:**
+- 2026-06-07 — The Service Pillars north star (PLA065) as the architecture vision — one named contract per pillar, identity/tenant/scope owned solely by Sentinel. Statement of Architecture Work + stakeholder map (defence/finance buyer, SOC 2 / ISO 27001 audiences per `context/USER.md`).
+
+**Phase B — Business Architecture:**
+- 2026-06-07 — Map the 9 pillars to business capabilities (delivery, governance, identity, library spine, etc.); show the capability → pillar → service lineage so a capability gap is traceable to a missing/owned service.
+
+**Phase C — Information Systems Architecture:**
+- 2026-06-07 — Data architecture: the DB consolidation from PLA064 — two databases (`vector_artefacts` canonical tenant DB, `mmff_library` read-only spine), the dropped legacy `mmff_vector`, full-table-name column convention, cross-DB soft-ref boundary. SY003 is the substrate source of truth.
+- 2026-06-07 — Application architecture: the 9 Service Pillars (PLA065) — service boundaries, sole-writer ownership, the Sentinel clamp as the cross-cutting authorisation seam.
+
+**Phase D — Technology Architecture:**
+- 2026-06-07 — Infrastructure layer: Docker Swarm dev tier (`infra/swarm/`), PostgreSQL, shared services (`backend/internal/shared/` + `app/lib/shared/` parity), transport segregation (`/_site` + `/samantha/v2`). Map standards/platform services to the technology stack.
+
+**Phase E — Opportunities & Solutions:**
+- 2026-06-07 — Migration sequencing distilled from PLA064 (DB consolidation) + PLA065 (pillars) — capability increments, work packages, transition architectures between the pre-merge and post-pillars states.
+
+**Phase F — Migration Planning:**
+- 2026-06-07 — Phased rollout plan: dependency-ordered work packages, per-environment migration version tracking (ties to the OPERATOR PLATFORM DB schema sync monitor), implementation roadmap with risk-assessed gates.
+
+**Phase G — Implementation Governance:**
+- 2026-06-07 — The compliance machinery as ADM governance: the `lint:*` ratchets (column-prefix, sentinel-clamp, no-direct-workspace-id, transport trio), architectural decision records (`docs/adr/`), and the `<report>` reporting system as the governance log. Architecture contracts enforced in CI.
+
+**Phase H — Architecture Change Management:**
+- 2026-06-07 — Continuous-compliance loop: the tech-debt register (`docs/c_tech_debt.md`, identify/measure/recommend), the SY system papers (SY003 regenerated on every substrate change), and the requirement-driven change pipeline keeping the architecture description from drifting from the substrate.
+
+- 2026-06-07 — VECTOR tie in
+- 2026-06-07 — SPINE tie in
+- 2026-06-07 — COMBAT tie in
