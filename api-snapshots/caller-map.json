@@ -46,10 +46,17 @@
     "app/lib/artefactPrioritiesApi.ts:42"
   ],
   "/artefact-types": [
-    "app/lib/artefactTypesApi.ts:46"
+    "app/lib/artefactTypesApi.ts:53",
+    "app/lib/artefactTypesApi.ts:88"
+  ],
+  "/artefact-types/insert-layer": [
+    "app/lib/artefactTypesApi.ts:129"
+  ],
+  "/artefact-types/insert-layer/preview": [
+    "app/lib/artefactTypesApi.ts:116"
   ],
   "/artefact-types/resync": [
-    "app/lib/artefactTypesApi.ts:63"
+    "app/lib/artefactTypesApi.ts:70"
   ],
   "/auth/change-password": [
     "app/change-password/page.tsx:46",
