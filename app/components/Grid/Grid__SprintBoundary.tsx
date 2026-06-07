@@ -91,10 +91,20 @@ export function GridSprintBoundary({
     () => sprintTree.flatNodes.filter(matches),
     [sprintTree.flatNodes, matches],
   );
-  const backlogNodes = useMemo(
-    () => backlogTree.flatNodes.filter(matches),
-    [backlogTree.flatNodes, matches],
-  );
+  // Dedupe the backlog against the sprint by uuid. The two trees clamp to
+  // disjoint sprint_id sets (=<id> vs __none__) so they're normally mutually
+  // exclusive — but during the commit→refetch window a just-moved row can sit
+  // in BOTH for a frame (sprint tree already refetched, backlog tree still
+  // stale). Without this, the same row lands in `combined` twice → duplicate
+  // React keys → crash. Sprint side wins (the row was moved INTO the sprint),
+  // and dropping it from the backlog keeps every downstream derivation
+  // (ids, boundary counts, combined render) consistent.
+  const backlogNodes = useMemo(() => {
+    const inSprint = new Set(sprintNodes.map((n) => n.row.uuid));
+    return backlogTree.flatNodes.filter(
+      (n) => matches(n) && !inSprint.has(n.row.uuid),
+    );
+  }, [backlogTree.flatNodes, matches, sprintNodes]);
 
   const sprintIds = useMemo(
     () => sprintNodes.map((n) => n.row.uuid),
@@ -225,8 +235,12 @@ export function GridSprintBoundary({
           combined.forEach((n, i) => {
             const inSprint = i < boundary.boundaryIndex;
             children.push(
+              // Key by the stable artefact uuid (not the display id, which can
+              // repeat across artefacts) so reconciliation is correct and a
+              // cross-section duplicate cannot collide. backlogNodes is already
+              // deduped against the sprint, so uuids are unique across combined.
               <div
-                key={n.id}
+                key={n.row.uuid}
                 data-sprintboundary-row
                 className={
                   inSprint ? "grid__SprintBoundary_Row-inSprint" : undefined

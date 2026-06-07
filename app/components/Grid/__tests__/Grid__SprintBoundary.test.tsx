@@ -295,4 +295,35 @@ describe("GridSprintBoundary", () => {
       proto.setPointerCapture = origSet;
     }
   });
+
+  // Regression: during the commit→refetch window a row can transiently appear
+  // in BOTH the sprint clamp and the __none__ backlog clamp (the sprint tree
+  // already has the moved row while the backlog tree's stale page still does).
+  // The combined render keyed rows by id, so the duplicate crashed React with
+  // "two children with the same key". The skin must tolerate it: dedupe the
+  // combined list (keep the first/sprint-side occurrence) so the row renders
+  // once and no key collides.
+  it("does not crash or duplicate when a row appears in both trees (refetch race)", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    render(
+      <GridSprintBoundary
+        // US-18169-like collision: same uuid present in sprint AND backlog.
+        sprintTree={treeStub(["dup", "s2"])}
+        backlogTree={treeStub(["dup", "b1"])}
+        columns={columns}
+        commit={vi.fn()}
+      />,
+    );
+    // The duplicated row renders exactly once (deduped), no second "dup".
+    const dupCells = screen.getAllByText("dup");
+    expect(dupCells).toHaveLength(1);
+    // No React "same key" warning was emitted.
+    const sameKeyWarning = consoleError.mock.calls.some((args) =>
+      String(args[0] ?? "").includes("same key"),
+    );
+    expect(sameKeyWarning).toBe(false);
+    consoleError.mockRestore();
+  });
 });
