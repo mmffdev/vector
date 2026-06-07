@@ -183,8 +183,5 @@ jobs:
       - name: lint:public-dto-mapper
         run: npm run lint:public-dto-mapper
 
-      - name: lint:page-description
-        run: npm run lint:page-description
-
       - name: lint:h2-panel-only
         run: npm run lint:h2-panel-only

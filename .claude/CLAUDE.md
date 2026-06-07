@@ -105,7 +105,7 @@ Load the relevant guide only when the task touches that area — keeps this file
 - **Topology — federated canvas (PLA-0006)** → [`docs/c_c_topology.md`](../docs/c_c_topology.md) — `topology_nodes` tree + `topology.Service` sole writer (post RF1.4.1).
 - **Roles & permissions RBAC (PLA-0007)** → [`docs/c_c_roles_permissions.md`](../docs/c_c_roles_permissions.md) — `users_roles`/`users_permissions`/`users_roles_permissions` (post RF1.4.2); `useHasPermission` gates; lint trio.
 - **Project lint rules (custom)** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — `lint:*` catalog + ledgers.
-- **`<PageDescription>` primitive** → [`app/components/PageDescription.tsx`](../app/components/PageDescription.tsx) — required at top of every `app/(user)/` page; enforced by `lint:page-description`.
+- **`<PageDescription>` primitive** → [`app/components/PageDescription.tsx`](../app/components/PageDescription.tsx) — optional help-icon Panel + standard top spacing; the `lint:page-description` gate that once made it mandatory was retired 2026-06-07.
 - **Section titles via `<Panel>` only** → [`docs/c_c_lint_rules.md`](../docs/c_c_lint_rules.md) — raw `<h2>` forbidden; enforced by `lint:h2-panel-only`.
 - **Diagram canvas (`<DiagramCanvas>`)** → [`docs/c_c_diagram_canvas.md`](../docs/c_c_diagram_canvas.md) — Canvas2D + dagre + d3-zoom; `samantha.diagram.canvas` surface.
 - **Secondary nav deep-linking (PLA-0018)** → [`docs/c_c_secondary_nav_deeplink.md`](../docs/c_c_secondary_nav_deeplink.md) — path-segment routing per tab.

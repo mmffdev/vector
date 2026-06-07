@@ -6,7 +6,6 @@
 # are left for the relevant `npm run lint:*` to surface.
 #
 # Path → lint mapping mirrors the routes in package.json:
-#   app/(user)/**/page.tsx                          → lint:page-description
 #   app/(user)/**/*.tsx                             → lint:h2-panel-only
 #   app/**/*.tsx                                    → lint:no-raw-table
 #   app/**/*.{tsx,ts}                               → lint:api-caller-discipline
@@ -52,9 +51,6 @@ esac
 
 # Build list of linters whose scan domain covers this path.
 LINTS=()
-case "$REL" in
-  "app/(user)/"*"/page.tsx") LINTS+=("page_description") ;;
-esac
 case "$REL" in
   "app/(user)/"*.tsx) LINTS+=("h2_panel_only") ;;
 esac

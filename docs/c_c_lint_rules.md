@@ -18,7 +18,6 @@ All lints share the same shape:
 | `lint:secondary-nav` | `dev/scripts/lint_secondary_nav.py` | `secondary_nav_exempt.json` | every `<SecondaryNavigation reorderable …>` carries a `pageId="…"` so per-user tab order can persist (PLA-0014 / 00420) |
 | `lint:portfolio-library-read` | `dev/scripts/lint_portfolio_library_read.py` | `lint_portfolio_library_read_exemptions.json` | tenant-side code MUST NOT read `/api/library/`, `/api/portfolio-templates/`, or `mmff_library` outside the adoption saga + library admin surface — post-cutover invariant: tenant runtime reads `vector_artefacts` only, library is consulted once at adoption (PLA-0026 / 00512) |
 | `lint:scope-literals` | `dev/scripts/lint_scope_literals.py` | `scope_literals_exempt.json` | inside `backend/internal/artefactitemsv2/`, `'work'` / `'strategy'` MUST NOT appear as SQL literals — bind via `$N` + `s.scope` (PLA-0037 / B21) |
-| `lint:page-description` | `dev/scripts/lint_page_description.py` | `page_description_exempt.json` | every `page.tsx` under `app/(user)/` must render `<PageDescription>` so the helper-icon Panel + 30px bottom gap land consistently |
 | `lint:h2-panel-only` | `dev/scripts/lint_h2_panel_only.py` | `h2_panel_only_exempt.json` | raw `<h2>` in `app/(user)/**/*.tsx` is forbidden — section titles must go through `<Panel title="…">` (which renders `<h2 class="panel__title">`) |
 | `lint:column-prefix-convention` | `dev/scripts/lint_column_prefix_convention.py` | `column_prefix_exempt.json` | **HARD GATE** — every column on a renamed (§2.6 root-family) table must carry the table-name prefix per §2.3. Ledger emptied 2026-05-14 with the final pay-down (mig 190 — users_nav family); lint flipped from warn-only to fail-on-violation. TD-NAME-001 resolved same day (9 column-rename migrations: 186, 063, 187, 064, 188, 189, 065, 066, 190 → 245→0 findings). |
 | `lint:cross-db-writer-test` | `dev/scripts/lint_cross_db_writer_test.py` | `cross_db_writer_test_exempt.json` | any Go package with >1 `*pgxpool.Pool` struct field must have a sibling `*crossdb*_test.go` documenting the partial-failure boundary (PLA-0048 / RF1.5.6) |
@@ -123,18 +122,15 @@ The detector skips the component implementation file itself (`app/components/Sec
 
 ---
 
-## `lint:page-description` — detail
+## `lint:page-description` — RETIRED (2026-06-07)
 
-Walks every `page.tsx` under `app/(user)/**` and requires the text `<PageDescription` to appear somewhere in the file. The primitive lives at `app/components/PageDescription.tsx` and wraps a `<Panel name="page_description" title={…}>` so the help-icon contract from `feedback_helper_icon.md` is wired automatically; the wrapper carries a `.page-description` class for the standardised 30px bottom margin. Title defaults to the deepest active secondary-nav tab label, published via `ActiveNavContext` from `app/components/SecondaryNavigation.tsx`.
-
-**Adoption playbook** when adding (or pulling out of exemption) a page:
-
-1. Add `import PageDescription from "@/app/components/PageDescription";` to the page.
-2. Render `<PageDescription>` once at the top of the page's return tree. Pass `title="…"` only when you want to override the active-nav default.
-3. Remove the path from `dev/registries/page_description_exempt.json`.
-4. Run `npm run lint:page-description` — must exit 0.
-
-The exemption registry is seeded with the 51 pre-existing pages that lacked the primitive on 2026-05-12; each is a pay-down debt entry, not a permanent exemption.
+This rule (and its `lint_page_description.py` script + `page_description_exempt.json` registry)
+was removed on 2026-06-07 at the user's request. `<PageDescription>` is no longer
+mandatory on `app/(user)/**/page.tsx`; the primitive at `app/components/PageDescription.tsx`
+remains available for pages that want the help-icon Panel + standard top spacing, but its
+use is now optional. Removal touched: `package.json` (`lint:project` chain + script),
+`.github/workflows/tests.yml` (CI step), `.claude/hooks/post-edit-lint.sh` (path mapping),
+and the `.claude/CLAUDE.md` primitive line.
 
 ---
 
