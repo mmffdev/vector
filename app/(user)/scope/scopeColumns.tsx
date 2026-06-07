@@ -44,14 +44,10 @@ function isFlaggedChildless(row: ScopeNode): boolean {
   return row.childrenCount === 0 && !LEAF_BY_DESIGN_PREFIXES.has(row.type);
 }
 
-function TypeBadge({ type, childless }: { type: string; childless?: boolean }) {
+function TypeBadge({ type }: { type: string }) {
   const tier = TIER_BY_PREFIX[type] ?? "story";
   return (
-    <span
-      className="grid__Cell_TypeBadge"
-      data-tier={tier}
-      data-childless={childless ? "true" : undefined}
-    >
+    <span className="grid__Cell_TypeBadge" data-tier={tier}>
       {type}
     </span>
   );
@@ -69,17 +65,19 @@ function IdCell({
   row: ScopeNode;
   onOpenForm?: (id: string) => void;
 }) {
+  const childless = isFlaggedChildless(row);
   return (
     <button
       type="button"
       className="grid__Cell_TypeBadgeBtn"
-      aria-label={`Edit ${row.id}`}
+      data-childless={childless ? "true" : undefined}
+      aria-label={`Edit ${row.id}${childless ? " (no children)" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
         onOpenForm?.(row.id);
       }}
     >
-      <TypeBadge type={row.type} childless={isFlaggedChildless(row)} />
+      <TypeBadge type={row.type} />
     </button>
   );
 }
