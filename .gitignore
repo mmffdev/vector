@@ -63,3 +63,11 @@ docs/saasAccounts/
 
 # Brainstorming visual companion mockups
 .superpowers/
+
+# Scratch screenshots dropped at the repo root during dev (not source)
+/*.png
+
+# Accidental Finder/editor duplicates (" copy" suffix) — never source
+*[ -][Cc]opy.css
+*[ -][Cc]opy.tsx
+*[ -][Cc]opy.ts
