@@ -22210,6 +22210,12 @@ tr.is-editing {
 
 /* Expand-all toggle — lives inside the primary header cell, aligned to carets.
    Mirrors the row caret: Material +/− icon, tinted by the same tokens. */
+/* The expand-all toggle lives in the DARK header band (--grid-tree-header-bg),
+   so it must use the header INK in both states — not the row-caret tokens. The
+   open token (--grid-tree-expander-open #142424) is identical to the header
+   background, which made the expanded "−" invisible (it's correct only for the
+   per-row caret, which sits on a light row surface). Header ink keeps the
+   toggle legible and consistent with the column labels beside it. */
 .grid__Tree_ExpandAll {
   flex: 0 0 auto;
   display: inline-flex;
@@ -22222,17 +22228,17 @@ tr.is-editing {
   border: 0;
   background: transparent;
   cursor: pointer;
-  color: var(--grid-tree-expander-closed, #be513f);
-  transition: color 0.12s ease;
+  color: var(--grid-tree-header-ink, #f7f7f7);
+  transition: color 0.12s ease, opacity 0.12s ease;
 }
-.grid__Tree_ExpandAll:hover { filter: brightness(0.9); }
+.grid__Tree_ExpandAll:hover { opacity: 0.7; }
 .grid__Tree_ExpandAllGlyph {
   display: block;
   width: 16px;
   height: 16px;
 }
 .grid__Tree_ExpandAll[data-expanded="true"] {
-  color: var(--grid-tree-expander-open, #142424);
+  color: var(--grid-tree-header-ink, #f7f7f7);
 }
 
 /* Drag grip (dnd opt-in). Oversized vs the other lead controls so the row
