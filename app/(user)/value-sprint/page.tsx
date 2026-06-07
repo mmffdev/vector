@@ -406,10 +406,12 @@ export default function ValueSprint() {
     expandable: false,
   });
 
-  // Columns for the POC list. Status pills + colour are inert here (the POC is
-  // membership-drag only); pass no-op callbacks. flowStatesByType drives the
-  // status pill rendering — an empty Map renders them read-only/blank, which is
-  // fine for the POC.
+  // Columns for the POC list. Status pills + colour/form affordances are
+  // intentionally inert here (this is a membership-only POC); pass no-op
+  // callbacks. flowStatesByType drives the status pill rendering — an empty Map
+  // makes the status pills read-only (each row shows its current status, not
+  // editable: StatusCell synthesizes a pill from the row's own
+  // flowStateId/flowStateName when the map is empty).
   const pocColumns = useMemo(
     () =>
       makeScopeColumns(
@@ -797,6 +799,18 @@ export default function ValueSprint() {
     : null;
   useRefetchOnPush({ topic, refetch });
 
+  // Keep the POC trees reconciled with realtime pushes + legacy-panel edits.
+  // The page's primary useRefetchOnPush refreshes the LEGACY surfaces via
+  // `refetch`; this second subscription (same topic) refreshes the POC trees so
+  // a membership edit made in the legacy panel below — or pushed from another
+  // tab — is reflected in the boundary list above. This is what makes the
+  // "both editable, realtime reconciles" design actually hold.
+  const pocRefetch = useCallback(async () => {
+    pocSprintTree.refresh();
+    pocBacklogTree.refresh();
+  }, [pocSprintTree, pocBacklogTree]);
+  useRefetchOnPush({ topic, refetch: pocRefetch });
+
   return (
     <PageContent className="value-sprint">
       <>
@@ -816,7 +830,9 @@ export default function ValueSprint() {
         {/* ── POC: Jira-style sprint boundary-drag (above the legacy panels) ──
             New build per docs/superpowers/specs/2026-06-07-sprint-boundary-drag-design.md.
             Membership-only, commit-on-drop. The two legacy panels below remain
-            fully editable; realtime refetch reconciles drift. */}
+            fully editable; a dedicated realtime subscription (pocRefetch)
+            refreshes this POC list when membership changes there or in another
+            tab. */}
         {catalogueReady && panelSprintId && (
           <Panel
             name="panel_value_sprint_boundary_poc"
