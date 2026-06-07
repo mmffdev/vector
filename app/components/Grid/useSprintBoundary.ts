@@ -13,7 +13,7 @@
 // (which index a pointer-y maps to) is the caller's. This keeps the math unit-
 // testable without a rendered tree.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export interface SprintBoundaryDelta {
   toSprint: string[]; // backlog rows that ended up above the line
@@ -49,6 +49,16 @@ export function useSprintBoundary(
     () => [...sprintIds, ...backlogIds],
     [sprintIds, backlogIds],
   );
+
+  // Resync the divider to the fresh split whenever the underlying rows change
+  // (e.g. after a commit→refetch re-renders the hook with new id arrays). Without
+  // this, boundaryIndex stays frozen at its mount value and computeDelta() would
+  // diff the new initialSplit against a stale index — phantom deltas. Keyed on
+  // initialSplit + total so it fires on any membership/count change, not on every
+  // render (a pure drag, which changes only boundaryIndex, does not refire it).
+  useEffect(() => {
+    setBoundaryIndexRaw(initialSplit);
+  }, [initialSplit, total]);
 
   const setBoundaryIndex = useCallback(
     (n: number) => {
