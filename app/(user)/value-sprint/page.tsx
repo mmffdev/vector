@@ -24,6 +24,13 @@ import { MdChevronLeft, MdChevronRight, MdOutlineFlag } from "react-icons/md";
 import { BsCalendar3 } from "react-icons/bs";
 import { usePageSavedViews } from "@/app/components/SavedViews/PageSavedViewsControl";
 import { usePageHeader } from "@/app/contexts/PageHeaderContext";
+import { GridSprintBoundary } from "@/app/components/Grid/Grid__SprintBoundary";
+import { useTree } from "@/app/components/Grid/useTree";
+import { fetchSprintRoots } from "@/app/components/Grid/sprintBoundaryTreeData";
+import type { ScopeNode } from "@/app/(user)/scope/scopeTreeData";
+import { makeScopeColumns } from "@/app/(user)/scope/scopeColumns";
+import type { SprintBoundaryDelta } from "@/app/components/Grid/useSprintBoundary";
+import type { WorkItemFlowState } from "@/app/components/useWorkItemFlowStates";
 
 // Column drops for the value-sprint trees. The rowButtons column adds
 // ~244px of horizontal chrome (Add to Sprint + Target Sprint chips),
@@ -365,6 +372,77 @@ export default function ValueSprint() {
     await backlogRefetchRef.current?.();
     await panelRefetchRef.current?.();
   }, [refetchNextSprint]);
+
+  // ── POC: sprint boundary-drag (mounted above the legacy panels) ───────────
+  // Two useTree instances over the SAME audited POST gateway the Grid pages
+  // use, clamped by filters.sprintId. Sprint section = the panel sprint;
+  // backlog section = unassigned (__none__). expandable:false — sprint planning
+  // is a flat story/defect/risk list (no child expansion in the POC).
+  const pocSprintId = panelSprintId ?? "";
+  const pocSprintTree = useTree<ScopeNode>({
+    fetchRoots: useCallback(
+      (page: { limit: number; offset: number }) =>
+        fetchSprintRoots(page, pocSprintId),
+      [pocSprintId],
+    ),
+    pageSize: 100,
+    rowIdOf: (r) => r.id,
+    getChildrenCount: () => 0,
+    fetchChildren: async () => [],
+    autoLoad: !!pocSprintId,
+    expandable: false,
+  });
+  const pocBacklogTree = useTree<ScopeNode>({
+    fetchRoots: useCallback(
+      (page: { limit: number; offset: number }) =>
+        fetchSprintRoots(page, "__none__"),
+      [],
+    ),
+    pageSize: 100,
+    rowIdOf: (r) => r.id,
+    getChildrenCount: () => 0,
+    fetchChildren: async () => [],
+    autoLoad: true,
+    expandable: false,
+  });
+
+  // Columns for the POC list. Status pills + colour are inert here (the POC is
+  // membership-drag only); pass no-op callbacks. flowStatesByType drives the
+  // status pill rendering — an empty Map renders them read-only/blank, which is
+  // fine for the POC.
+  const pocColumns = useMemo(
+    () =>
+      makeScopeColumns(
+        () => {},
+        new Map<string, WorkItemFlowState[]>(),
+        () => {},
+      ),
+    [],
+  );
+
+  // Commit-on-drop: PATCH each crossed row's sprint_id (uuid-keyed), in
+  // parallel, then refetch both POC trees + the page's existing surfaces.
+  // "" removes from sprint (backend convention).
+  const pocCommit = useCallback(
+    async (delta: SprintBoundaryDelta) => {
+      const calls: Promise<unknown>[] = [
+        ...delta.toSprint.map((uuid) =>
+          workItems.patch(uuid, { sprint_id: pocSprintId }),
+        ),
+        ...delta.toBacklog.map((uuid) =>
+          workItems.patch(uuid, { sprint_id: "" }),
+        ),
+      ];
+      const results = await Promise.allSettled(calls);
+      const failed = results.filter((r) => r.status === "rejected").length;
+      pocSprintTree.refresh();
+      pocBacklogTree.refresh();
+      await refetch();
+      if (failed === 0) notify.success("Sprint membership updated.");
+      else notify.error(`${failed} of ${calls.length} updates failed.`);
+    },
+    [pocSprintId, pocSprintTree, pocBacklogTree, refetch],
+  );
 
   // Slice 5 — single-row assignment. PATCH work-item with the target
   // sprint_id, then refetch the backlog window + sprint panel so the
@@ -734,6 +812,26 @@ export default function ValueSprint() {
         <PageDescription>
           Manage the active sprint. The grid below is the workspace backlog (same clamp as Work Items). Drag stories onto the sprint to commit them.
         </PageDescription>
+
+        {/* ── POC: Jira-style sprint boundary-drag (above the legacy panels) ──
+            New build per docs/superpowers/specs/2026-06-07-sprint-boundary-drag-design.md.
+            Membership-only, commit-on-drop. The two legacy panels below remain
+            fully editable; realtime refetch reconciles drift. */}
+        {catalogueReady && panelSprintId && (
+          <Panel
+            name="panel_value_sprint_boundary_poc"
+            className="page-panel-heading value-sprint__boundary-poc"
+            title="Sprint planning (boundary-drag POC)"
+            description="Drag the divider down to commit backlog rows into the sprint; drag up to release them. Membership saves on release."
+          >
+            <GridSprintBoundary
+              sprintTree={pocSprintTree}
+              backlogTree={pocBacklogTree}
+              columns={pocColumns}
+              commit={pocCommit}
+            />
+          </Panel>
+        )}
 
         {/* Top panel — sprint scope. Title + description reflect the
             currently-displayed sprint (which defaults to useNextSprint's
