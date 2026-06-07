@@ -22438,6 +22438,34 @@ tr.is-editing {
   white-space: nowrap;
   min-width: 0;
 }
+/* Childless-container "Add Child" stub button, prefixed before the warning
+   glyph on rows flagged by isFlaggedChildless. Styled with the
+   --buttons-missing-children token set (light by default, inverts to dark ink
+   on hover). Stub — no handler wired yet. */
+.grid__Cell_AddChildBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  margin-right: 6px;
+  border: 1px solid var(--buttons-missing-children-border, #f7f7f7);
+  border-radius: 4px;
+  background: var(--buttons-missing-children-bg, #f7f7f7);
+  color: var(--buttons-missing-children-ink, #142424);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.grid__Cell_AddChildBtn:hover {
+  background: var(--buttons-missing-children-bg-hover, #142424);
+  color: var(--buttons-missing-children-ink-hover, #f7f7f7);
+  border-color: var(--buttons-missing-children-border-hover, #f7f7f7);
+}
 /* Childless-container warning glyph, prefixed before the summary text on rows
    flagged by isFlaggedChildless. Red, sized to the text, nudged onto the text
    baseline; the title attribute provides the hover tooltip. */

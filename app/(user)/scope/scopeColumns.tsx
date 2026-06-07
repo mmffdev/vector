@@ -140,20 +140,31 @@ function StatusCell({
   );
 }
 
-// SummaryCell — the row title, prefixed with a red warning icon when the row is
-// a childless container (same rule as the red badge + rail). The icon carries a
-// title tooltip ("This artefact has no children") on hover.
+// SummaryCell — the row title. On a childless container (same rule as the red
+// badge + rail) it is prefixed with an "Add Child" button and a red warning
+// icon. The icon carries a title tooltip ("This artefact has no children").
 function SummaryCell({ row }: { row: ScopeNode }) {
   const childless = isFlaggedChildless(row);
   return (
     <span className="grid__Cell_Summary">
       {childless ? (
-        <MdOutlineWarningAmber
-          className="grid__Cell_Summary_Warn"
-          title="This artefact has no children"
-          aria-label="No children"
-          role="img"
-        />
+        <>
+          {/* STUB — no handler wired yet. Click is swallowed so it does not
+              trigger the row's open-detail. Wire to an add-child create flow. */}
+          <button
+            type="button"
+            className="grid__Cell_AddChildBtn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Add Child
+          </button>
+          <MdOutlineWarningAmber
+            className="grid__Cell_Summary_Warn"
+            title="This artefact has no children"
+            aria-label="No children"
+            role="img"
+          />
+        </>
       ) : null}
       {row.summary}
     </span>
