@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+
+	"github.com/mmffdev/vector-backend/internal/flows"
 )
 
 // testPool acquires a vector_artefacts pool the same way vaPoolForSeedTest
@@ -108,7 +110,7 @@ func errorAs[T error](err error, target *T) bool { return errors.As(err, target)
 
 func TestCreateWorkType_HappyPath(t *testing.T) {
 	pool := testPool(t)
-	svc := NewService(pool)
+	svc := NewService(pool, flows.New(pool, pool))
 	ctx := context.Background()
 	subID := seedTestSubscription(t, pool)
 	wsID := seedTestWorkspace(t, pool, subID)
@@ -135,11 +137,29 @@ func TestCreateWorkType_HappyPath(t *testing.T) {
 	if out.ParentTypeID != nil {
 		t.Errorf("work type must have nil strategy parent")
 	}
+
+	// The new type must have a seeded default flow with at least 3 states. The
+	// behaves-like Story seeded here has no flow, so the fallback standard spine
+	// gives 5 states — assert ≥3 to be robust to either path.
+	var stateCount int
+	if err := pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM flows_states st
+		JOIN flows f ON f.flows_id = st.flows_states_id_flow
+		WHERE f.flows_id_artefact_type = $1 AND f.flows_is_default AND f.flows_archived_at IS NULL
+		  AND st.flows_states_archived_at IS NULL`,
+		out.ID,
+	).Scan(&stateCount); err != nil {
+		t.Fatalf("count seeded flow states: %v", err)
+	}
+	if stateCount < 3 {
+		t.Errorf("expected a default flow with ≥3 states, got %d", stateCount)
+	}
 }
 
 func TestCreateWorkType_DuplicatePrefix(t *testing.T) {
 	pool := testPool(t)
-	svc := NewService(pool)
+	svc := NewService(pool, flows.New(pool, pool))
 	ctx := context.Background()
 	subID := seedTestSubscription(t, pool)
 	wsID := seedTestWorkspace(t, pool, subID)

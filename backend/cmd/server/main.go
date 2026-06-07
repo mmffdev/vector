@@ -961,9 +961,13 @@ func main() {
 	// (vector_artefacts post Pillar 3 step 1; users lives there now).
 	lookupsH := lookups.NewHandler(lookups.NewService(servicePool))
 
+	// Shared flows service — backs both the flows handler and the
+	// artefact-types CreateWorkType flow seeder (one Service instance).
+	var flowsSvc *flows.Service
 	var flowsH *flows.Handler
 	if vaPool != nil {
-		flowsH = flows.NewHandler(flows.New(vaPool, servicePool))
+		flowsSvc = flows.New(vaPool, servicePool)
+		flowsH = flows.NewHandler(flowsSvc)
 	}
 
 	// Generic rank service. Backed by vaPool (vector_artefacts) for
@@ -995,7 +999,16 @@ func main() {
 
 	// Artefact-types settings handler (Customisation page).
 	// Serves GET + PATCH for name/prefix/description/colour on all live types.
-	artefactTypesSvc := artefacttypes.NewService(vaPool)
+	// Guard the typed-nil interface trap: when flowsSvc is nil (vaPool
+	// unavailable in headless/test builds), pass an explicit nil FlowSeeder so
+	// CreateWorkType's `s.flowSeeder != nil` guard reads false. Passing a
+	// typed-nil *flows.Service would wrap a non-nil interface around a nil
+	// pointer and panic at call time.
+	var flowSeeder artefacttypes.FlowSeeder
+	if flowsSvc != nil {
+		flowSeeder = flowsSvc
+	}
+	artefactTypesSvc := artefacttypes.NewService(vaPool, flowSeeder)
 	workspacesSvc.WithArtefactTypeSeeder(artefactTypesSvc)
 	artefactTypesH := artefacttypes.NewHandler(artefactTypesSvc, permResolver)
 	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))

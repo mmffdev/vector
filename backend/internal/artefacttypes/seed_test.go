@@ -49,7 +49,7 @@ func TestSeedDefaultWorkspaceTypes(t *testing.T) {
 	defer pool.Close()
 
 	ctx := context.Background()
-	svc := NewService(pool)
+	svc := NewService(pool, nil) // flow seeding is not exercised by SeedDefaultWorkspaceTypes
 
 	subID := uuid.New()
 	wsID := uuid.New()

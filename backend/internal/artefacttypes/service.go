@@ -15,14 +15,21 @@ import (
 
 var hexColourRE = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
+// FlowSeeder seeds a default flow for a newly-created artefact type, inside a
+// transaction. Implemented by flows.Service.
+type FlowSeeder interface {
+	SeedDefaultFlowForType(ctx context.Context, tx pgx.Tx, sourceTypeID, newTypeID uuid.UUID, newTypeName string) error
+}
+
 // Service owns DB operations for the artefacts_types settings surface.
 // It operates against vector_artefacts only.
 type Service struct {
-	pool *pgxpool.Pool
+	pool       *pgxpool.Pool
+	flowSeeder FlowSeeder
 }
 
-func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+func NewService(pool *pgxpool.Pool, flowSeeder FlowSeeder) *Service {
+	return &Service{pool: pool, flowSeeder: flowSeeder}
 }
 
 // List returns all live artefact types in the caller's subscription,
@@ -319,8 +326,18 @@ func (s *Service) CreateWorkType(ctx context.Context, subscriptionID, workspaceI
 		return nil, fmt.Errorf("artefacttypes.CreateWorkType resolve base: %w", err)
 	}
 
+	// Tx-wrap the type insert + flow seeding so the new type and its default
+	// flow (states + transitions) commit atomically — a partial flow state is
+	// impossible. The slot-resolution SELECT above stays on s.pool (read,
+	// pre-tx).
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("artefacttypes.CreateWorkType begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	var t ArtefactType
-	err = s.pool.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		INSERT INTO artefacts_types (
 			artefacts_types_id_subscription, artefacts_types_id_workspace,
 			artefacts_types_scope, artefacts_types_source,
@@ -352,6 +369,17 @@ func (s *Service) CreateWorkType(ctx context.Context, subscriptionID, workspaceI
 			return nil, &ValidationError{Violations: []Violation{{"prefix", "A live type with that prefix already exists in this scope."}}}
 		}
 		return nil, fmt.Errorf("artefacttypes.CreateWorkType insert: %w", err)
+	}
+
+	// Seed the new type's default flow inside the same tx — cloned from the
+	// behaves-like base, or the standard spine if that base has no live flow.
+	if s.flowSeeder != nil {
+		if err := s.flowSeeder.SeedDefaultFlowForType(ctx, tx, in.BehavesLikeTypeID, t.ID, t.Name); err != nil {
+			return nil, fmt.Errorf("artefacttypes.CreateWorkType seed flow: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("artefacttypes.CreateWorkType commit: %w", err)
 	}
 	return &t, nil
 }

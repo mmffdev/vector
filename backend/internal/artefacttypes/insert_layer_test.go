@@ -211,7 +211,7 @@ func assertArtefactParentNil(t *testing.T, pool *pgxpool.Pool, id uuid.UUID) {
 // gets one pass-through parent of the new type, mirroring its name.
 func TestInsertLayer_PassThroughBackfill(t *testing.T) {
 	pool := testPool(t)
-	svc := NewService(pool)
+	svc := NewService(pool, nil)
 	ctx := context.Background()
 	subID := seedTestSubscription(t, pool)
 	wsID := seedTestWorkspace(t, pool, subID)
@@ -276,7 +276,7 @@ func TestInsertLayer_PassThroughBackfill(t *testing.T) {
 
 func TestInsertLayer_OrphanChild(t *testing.T) {
 	pool := testPool(t)
-	svc := NewService(pool)
+	svc := NewService(pool, nil)
 	ctx := context.Background()
 	subID := seedTestSubscription(t, pool)
 	wsID := seedTestWorkspace(t, pool, subID)

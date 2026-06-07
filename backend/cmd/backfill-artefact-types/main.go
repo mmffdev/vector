@@ -68,7 +68,7 @@ func main() {
 		workspaces = append(workspaces, w)
 	}
 
-	svc := artefacttypes.NewService(vaPool)
+	svc := artefacttypes.NewService(vaPool, nil) // backfill seeds types only, no flow seeding
 	for _, w := range workspaces {
 		if err := svc.SeedDefaultWorkspaceTypes(ctx, w.subID, w.id); err != nil {
 			log.Printf("FAIL %s (%s): %v", w.name, w.id, err)

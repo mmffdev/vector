@@ -36,7 +36,7 @@ func TestF3_DTO_IncludesSlot(t *testing.T) {
 		t.Skipf("dev DB has no usable (sub, ws) fixture: %v", err)
 	}
 
-	svc := artefacttypes.NewService(pool)
+	svc := artefacttypes.NewService(pool, nil)
 	types, err := svc.ListByWorkspace(ctx, a.subID, a.wsID)
 	if err != nil {
 		t.Fatalf("ListByWorkspace: %v", err)
