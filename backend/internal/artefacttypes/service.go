@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -272,6 +273,94 @@ func (s *Service) Patch(ctx context.Context, id, subscriptionID uuid.UUID, in Pa
 		return nil, fmt.Errorf("artefacttypes.Patch: %w", err)
 	}
 	return &t, nil
+}
+
+// CreateWorkType inserts a tenant work type as a sibling at the execution
+// level. Its allowed-parent rule is copied from the "behaves like" rung's
+// execution_parent_slots. No artefact instances are touched.
+func (s *Service) CreateWorkType(ctx context.Context, subscriptionID, workspaceID uuid.UUID, in CreateWorkTypeInput) (*ArtefactType, error) {
+	if s.pool == nil {
+		return nil, errors.New("vector_artefacts pool not available")
+	}
+
+	var violations []Violation
+	prefix := strings.ToUpper(strings.TrimSpace(in.Tag))
+	if len(prefix) == 0 || len(prefix) > 4 || !regexp.MustCompile(`^[A-Z0-9]+$`).MatchString(prefix) {
+		violations = append(violations, Violation{"prefix", "Prefix must be 1–4 uppercase letters/digits."})
+	}
+	name := strings.TrimSpace(in.Name)
+	if len(name) == 0 || len(name) > 64 {
+		violations = append(violations, Violation{"name", "Name must be 1–64 characters."})
+	}
+	if in.Colour != nil && *in.Colour != "" && !hexColourRE.MatchString(*in.Colour) {
+		violations = append(violations, Violation{"colour", "Colour must be a 6-digit hex value."})
+	}
+	if in.BehavesLikeTypeID == uuid.Nil {
+		violations = append(violations, Violation{"behaves_like_type_id", "Choose an existing work type to base nesting on."})
+	}
+	if len(violations) > 0 {
+		return nil, &ValidationError{Violations: violations}
+	}
+
+	// Resolve the behaves-like rung's slots, scoped to caller — cross-tenant
+	// ids resolve to no row and fail closed.
+	var slots []string
+	err := s.pool.QueryRow(ctx, `
+		SELECT artefacts_types_execution_parent_slots
+		FROM artefacts_types
+		WHERE artefacts_types_id = $1 AND artefacts_types_id_subscription = $2
+		  AND artefacts_types_scope = 'work' AND artefacts_types_archived_at IS NULL`,
+		in.BehavesLikeTypeID, subscriptionID,
+	).Scan(&slots)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, &ValidationError{Violations: []Violation{{"behaves_like_type_id", "Base work type not found."}}}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("artefacttypes.CreateWorkType resolve base: %w", err)
+	}
+
+	var t ArtefactType
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO artefacts_types (
+			artefacts_types_id_subscription, artefacts_types_id_workspace,
+			artefacts_types_scope, artefacts_types_source,
+			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+			artefacts_types_colour, artefacts_types_execution_parent_slots,
+			artefacts_types_allows_children, artefacts_types_sort_order
+		)
+		VALUES ($1,$2,'work','tenant',$3,$4,$5,$6,$7,FALSE,
+			COALESCE((SELECT MAX(artefacts_types_sort_order) FROM artefacts_types
+				WHERE artefacts_types_id_subscription=$1 AND artefacts_types_scope='work'
+				  AND artefacts_types_archived_at IS NULL), 0) + 10)
+		RETURNING
+			artefacts_types_id, artefacts_types_scope, artefacts_types_source,
+			artefacts_types_name, artefacts_types_prefix, artefacts_types_description,
+			artefacts_types_colour, artefacts_types_slot, artefacts_types_strategy_parent_id,
+			artefacts_types_allows_children, artefacts_types_layer_depth,
+			artefacts_types_sort_order, artefacts_types_archived_at,
+			artefacts_types_created_at, artefacts_types_updated_at,
+			artefacts_types_execution_parent_slots`,
+		subscriptionID, workspaceID, name, prefix, in.Description, in.Colour, slots,
+	).Scan(
+		&t.ID, &t.Scope, &t.Source, &t.Name, &t.Prefix, &t.Description, &t.Colour,
+		&t.Slot, &t.ParentTypeID, &t.AllowsChildren, &t.LayerDepth, &t.SortOrder,
+		&t.ArchivedAt, &t.CreatedAt, &t.UpdatedAt, &t.ExecutionParentSlots,
+	)
+	if err != nil {
+		// Unique-violation on the live prefix index → 422.
+		if isUniqueViolation(err) {
+			return nil, &ValidationError{Violations: []Violation{{"prefix", "A live type with that prefix already exists in this scope."}}}
+		}
+		return nil, fmt.Errorf("artefacttypes.CreateWorkType insert: %w", err)
+	}
+	return &t, nil
+}
+
+// isUniqueViolation reports whether err is a Postgres unique-constraint
+// violation (SQLSTATE 23505).
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
 var ErrNotFound = errors.New("artefact type not found")

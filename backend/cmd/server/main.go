@@ -997,7 +997,7 @@ func main() {
 	// Serves GET + PATCH for name/prefix/description/colour on all live types.
 	artefactTypesSvc := artefacttypes.NewService(vaPool)
 	workspacesSvc.WithArtefactTypeSeeder(artefactTypesSvc)
-	artefactTypesH := artefacttypes.NewHandler(artefactTypesSvc)
+	artefactTypesH := artefacttypes.NewHandler(artefactTypesSvc, permResolver)
 	artefactPrioritiesH := artefactpriorities.NewHandler(artefactpriorities.NewService(vaPool))
 
 	// PLA074 / B23.1.4 — artefact dependency maps. Sole-writer service

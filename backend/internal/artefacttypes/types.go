@@ -59,3 +59,12 @@ type PatchInput struct {
 	// empty string clears to NULL, integer-as-string sets.
 	LayerDepth *string `json:"layer_depth"`
 }
+
+// CreateWorkTypeInput is the body for POST /_site/artefact-types (scope=work).
+type CreateWorkTypeInput struct {
+	Tag               string    `json:"tag"`
+	Name              string    `json:"name"`
+	Description       *string   `json:"description"`
+	Colour            *string   `json:"colour"`
+	BehavesLikeTypeID uuid.UUID `json:"behaves_like_type_id"`
+}
