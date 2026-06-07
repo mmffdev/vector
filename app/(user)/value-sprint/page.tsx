@@ -1047,6 +1047,7 @@ export default function ValueSprint() {
               commit={pocCommit}
               sprintLabel={panelSprint ? formatSprintLabel(panelSprint) : "No sprint"}
               subtitle="Work items committed to this sprint — drag the divider to adjust membership."
+              searchTerm={boundarySearch}
               actionBar={{
                 ariaLabel: "Sprint boundary actions",
                 leading: boundaryNav,

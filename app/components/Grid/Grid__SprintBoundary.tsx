@@ -30,7 +30,7 @@ import {
   useSprintBoundary,
   type SprintBoundaryDelta,
 } from "./useSprintBoundary";
-import type { GridColumn, SortState, UseTreeResult } from "./types";
+import type { GridColumn, SortState, TreeNode, UseTreeResult } from "./types";
 import type { ScopeNode } from "@/app/(user)/scope/scopeTreeData";
 
 export interface GridSprintBoundaryProps {
@@ -50,6 +50,14 @@ export interface GridSprintBoundaryProps {
   actionBar?: GridTreeActionBarConfig;
   /** Custom body for the empty-sprint hint row. Omit → default copy. */
   emptySprintHint?: ReactNode;
+  /**
+   * Client-side, case-insensitive title filter over the LOADED rows of both
+   * trees. The boundary math, divider counts, and render all consume the
+   * filtered set. Off-page / non-title matches are NOT found — the backend
+   * WorkItemQueryBody has no server-side search term (see TD-SPRINT-BOUNDARY-
+   * SEARCH). Omit/empty → all rows shown.
+   */
+  searchTerm?: string;
 }
 
 export function GridSprintBoundary({
@@ -63,9 +71,30 @@ export function GridSprintBoundary({
   subtitle,
   actionBar,
   emptySprintHint,
+  searchTerm,
 }: GridSprintBoundaryProps) {
-  const sprintNodes = sprintTree.flatNodes;
-  const backlogNodes = backlogTree.flatNodes;
+  // Client-side title filter (see searchTerm doc). Narrows the node arrays
+  // BEFORE they feed sprintIds/backlogIds → useSprintBoundary, so counts, the
+  // divider "N of M", the combined render, and the commit delta all use the
+  // same filtered set. No search term → every node matches → identical to the
+  // unfiltered behaviour.
+  const term = (searchTerm ?? "").trim().toLowerCase();
+  const matches = useCallback(
+    (n: TreeNode<ScopeNode>) => {
+      if (!term) return true;
+      const text = (n.row.summary ?? "").toLowerCase();
+      return text.includes(term);
+    },
+    [term],
+  );
+  const sprintNodes = useMemo(
+    () => sprintTree.flatNodes.filter(matches),
+    [sprintTree.flatNodes, matches],
+  );
+  const backlogNodes = useMemo(
+    () => backlogTree.flatNodes.filter(matches),
+    [backlogTree.flatNodes, matches],
+  );
 
   const sprintIds = useMemo(
     () => sprintNodes.map((n) => n.row.uuid),

@@ -200,4 +200,33 @@ describe("GridSprintBoundary", () => {
     fireEvent.pointerUp(divider, { clientY: 180, pointerId: 1 });
     expect(commit).toHaveBeenCalledWith({ toSprint: ["b1-uuid", "b2-uuid"], toBacklog: [] });
   });
+
+  it("filters rows by searchTerm (client-side, case-insensitive)", () => {
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub(["Alpha", "Beta"])}
+        backlogTree={treeStub(["Gamma"])}
+        columns={columns}
+        commit={vi.fn()}
+        searchTerm="alph"
+      />,
+    );
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gamma")).not.toBeInTheDocument();
+  });
+
+  it("ignores empty/whitespace searchTerm (shows all rows)", () => {
+    render(
+      <GridSprintBoundary
+        sprintTree={treeStub(["Alpha"])}
+        backlogTree={treeStub(["Gamma"])}
+        columns={columns}
+        commit={vi.fn()}
+        searchTerm="   "
+      />,
+    );
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.getByText("Gamma")).toBeInTheDocument();
+  });
 });
