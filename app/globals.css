@@ -22047,6 +22047,10 @@ tr.is-editing {
 .grid__Tree_Row[data-childless="true"],
 .grid__Tree_Row[data-childless="true"]:hover {
   border-left-color: var(--status-danger, #B23B3B);
+  /* No background-size: the repeating-linear-gradient tiles itself across the
+     whole row, so the diagonal stripes run UNBROKEN. A background-size box
+     re-tiles the gradient and chops the -45° lines into separated dashes. The
+     20px period lives in the gradient stops (10px transparent + 10px off). */
   background-image: repeating-linear-gradient(
     -45deg,
     transparent 0,
@@ -22054,7 +22058,6 @@ tr.is-editing {
     var(--barber-pole-row-off, #f0f0f0) 10px,
     var(--barber-pole-row-off, #f0f0f0) 20px
   );
-  background-size: 20px 20px;
 }
 /* Hover tint sits BEHIND the stripes (background-color, not the shorthand which
    would wipe background-image) so the barber-pole survives hover. */
