@@ -154,7 +154,14 @@ function buildColumns(
       align: "mono",
       render: (row) => {
         if (row.kind === "scope") return null;
-        const v = row.type.layer_depth == null ? "—" : String(row.type.layer_depth);
+        // Layer is only meaningful for strategy types (depth in the portfolio
+        // ladder). Work types are flat — any layer_depth on them is a stale
+        // pre-cleanup artefact, not a real position — so show "—" for every
+        // work type (canonical and custom alike). See TD-LAYER-DEPTH-DERIVED.
+        const v =
+          row.type.scope === "strategy" && row.type.layer_depth != null
+            ? String(row.type.layer_depth)
+            : "—";
         return <span className="inline-edit-trigger" aria-label={`Layer depth for ${row.type.prefix}`}>{v}</span>;
       },
     },
@@ -260,8 +267,21 @@ export default function ArtefactTypesPage() {
   // All rows are flat roots — section dividers + type rows, no expand/collapse.
   const roots = useMemo<ATRow[]>(() => {
     if (!types) return [];
+    // Work types are flat — sort_order is the only meaningful order.
     const workTypes = types.filter((t) => t.scope === "work").sort((a, b) => a.sort_order - b.sort_order);
-    const stratTypes = types.filter((t) => t.scope === "strategy").sort((a, b) => a.sort_order - b.sort_order);
+    // Strategy types form a ladder; render it top-down (root → leaf). The
+    // strategy_parent_id chain is the source of truth, mirrored by layer_depth
+    // (0 = Portfolio Runway root). sort_order is INVERTED relative to the
+    // ladder (leaf=0), so ordering by it shows the ladder upside-down — order
+    // by layer_depth ascending instead. Rows with a null depth (duplicate-seed
+    // contamination, e.g. a slot-less Feature) sort last, not first.
+    const stratTypes = types
+      .filter((t) => t.scope === "strategy")
+      .sort((a, b) => {
+        const da = a.layer_depth ?? Number.MAX_SAFE_INTEGER;
+        const db = b.layer_depth ?? Number.MAX_SAFE_INTEGER;
+        return da - db || a.sort_order - b.sort_order || a.name.localeCompare(b.name);
+      });
     const rows: ATRow[] = [];
     if (workTypes.length > 0) {
       rows.push({ kind: "scope", id: "scope-work", label: "Work types" });
