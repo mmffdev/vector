@@ -123,3 +123,23 @@
 
 ### Breakout Ideas
 - 2026-04-25 — Support-ticket reply flow ("Respond above this line") — separate sub-system. Outbound: unique From per thread `support+ticket-12345@vector.xxx` (routing token, lands in shared support@ mailbox). Inbound: mailbox poller parses ticket ID from recipient, strips quoted history at marker, posts body as a comment on ticket #12345. Auth: verify sender email matches a ticket participant, or unauthenticated path with token-in-address — decide before building.
+
+### PRISM — Visual MBSE / Diagram Engine
+> A visual modelling product line — "build our own Visual Paradigm" (NOT Rhapsody; reference is `MMFFDev - Vector Assets/Papers/Visual Paradigm - Full Features.pdf`). The half Vector LACKS: a direct-manipulation diagram canvas + formal models (UML / SysML / BPMN / ArchiMate) + the 150+ casual diagrams. The differentiator is asymmetry — Vector already owns a world-class agile/backlog engine (work items, sprints, burndown, dependency maps, RACI), so a SysML block tracing to a sprint story is a foreign key, not a tool integration. VP bolts weak agile onto a modeller; we'd bolt native modelling onto a strong delivery engine. **PARKED 2026-06-07 — finish Vector first; building a product on a still-moving core would create the very contention we're avoiding. Resume trigger: Vector stable enough to be a frozen platform to build against.**
+
+**Architecture (decided, parked):**
+- 2026-06-07 — Platform/product split (Atlassian/M365 pattern). Vector-core (identity + Sentinel clamp + tenancy + billing/entitlement) = the shared **platform**; backlog AND modeller are sibling **products** on it. Products link by reference + a platform permission check, never by reaching into each other's tables.
+- 2026-06-07 — **Platform facade seam:** the modeller imports ONE named contract (identity / tenant / `sentinel.FromCtx` clamp / entitlement) — extends the existing Sentinel seam (`useSentinel()` / `FromCtx`) that lint already enforces. Define-the-seam-now is cheap (facade + lint, moves no auth code); physically carving auth/sentinel into a real `platform/` layer is a LATER, separately-risk-assessed refactor — or never. Seam is invisible to the modeller either way.
+- 2026-06-07 — **Biggest constraint = parallel-dev file contention** (NOT context size). The deciding factor. Shared chokepoints today that would block two streams: single migration dir (`db/vector_artefacts/schema/` NNN numbering), single `backend/go.mod`, single root `package.json`, `app/globals.css` (22.7k lines), `backend/cmd/server/main.go` wiring (69 services), shared CI + 21 lint-registry JSONs. A walled in-repo package does NOT solve this (boundary lint stops imports, not shared-file edits). → Leaning **separate repo** (own deps / migrations / CSS / CI / deploy = zero shared files, two streams structurally cannot collide), connected over HTTP to the platform facade with **Sentinel as sole authz authority — queried, not duplicated** (keeps one-clamp SOC 2 story). Final seam choice (separate repo vs shared DB) not locked.
+
+**Open questions when resumed:**
+- 2026-06-07 — Metamodel base: model-elements-AS-artefacts (reuse clamp/search/fields/dependency-maps free; may strain generic schema) vs separate `model_*` tables (clean metamodel, re-implements clamp) vs hybrid (artefact identity + model sidecar, mirrors wizard/sidecar pattern). Claude owes a recommendation-after-schema-analysis.
+- 2026-06-07 — Editor: today's `<DiagramCanvas>` (`docs/c_c_diagram_canvas.md`) is read-mostly (dagre auto-layout, 3k-node graph viewer) — WRONG shape for authoring. Build a sibling authoring-grade `ModelCanvas` (palette, hand-drawn typed connectors, ports, selection/undo, element-vs-view split per VP's "Single model element, multiple views") over a SHARED low-level substrate (Canvas2D layers / d3-zoom / snap-grid / worker).
+- 2026-06-07 — Decompose sequence: platform seam → model-repository spine (metamodel + element/view + clamp + backlog traceability) → ModelCanvas → first notation (UML class or SysML BDD) → traceability surface → export (XMI/ReqIF/image). Each its own spec → plan.
+- 2026-06-07 — Module identity unresolved: new named line vs fold into existing VISION (Systems Thinking). Decide on resume.
+- 2026-04-25 — VECTOR tie in
+- 2026-04-25 — ORIGO tie in
+- 2026-04-25 — SIGMA tie in
+- 2026-04-25 — FLUX tie in
+- 2026-04-25 — SPINE tie in
+- 2026-04-25 — VISION tie in
