@@ -22038,11 +22038,28 @@ tr.is-editing {
   background: color-mix(in srgb, var(--accent, #2563eb) 10%, var(--surface));
 }
 .grid__Tree_Row--parent { font-weight: 600; }
-/* Childless-container rail: a container type (anything except Task / Risk) with
-   zero children gets a red 5px left rail. Set by rowChildless on <GridTree>
-   (page-supplied isFlaggedChildless). Pairs with the red badge fill. */
-.grid__Tree_Row[data-childless="true"] {
+/* Childless-container rail + barber-pole: a container type (anything except
+   Task / Risk) with zero children gets a red 5px left rail AND a static -45°
+   barber-pole row background — transparent banding alternating with
+   --barber-pole-row-off, 20px period. Set by rowChildless on <GridTree>
+   (page-supplied isFlaggedChildless). Pairs with the red badge fill + summary
+   warning glyph. */
+.grid__Tree_Row[data-childless="true"],
+.grid__Tree_Row[data-childless="true"]:hover {
   border-left-color: var(--status-danger, #B23B3B);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 10px,
+    var(--barber-pole-row-off, #f0f0f0) 10px,
+    var(--barber-pole-row-off, #f0f0f0) 20px
+  );
+  background-size: 20px 20px;
+}
+/* Hover tint sits BEHIND the stripes (background-color, not the shorthand which
+   would wipe background-image) so the barber-pole survives hover. */
+.grid__Tree_Row[data-childless="true"]:hover {
+  background-color: color-mix(in srgb, var(--ink) 6%, var(--surface));
 }
 .grid__Tree_Cell {
   display: flex;
