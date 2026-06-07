@@ -1,15 +1,15 @@
 {
   "/addressables/build-reconcile": [
-    "app/lib/apiSite/index.ts:1196"
+    "app/lib/apiSite/index.ts:1285"
   ],
   "/addressables/register": [
-    "app/lib/apiSite/index.ts:1199"
+    "app/lib/apiSite/index.ts:1288"
   ],
   "/addressables/register-bulk": [
     "app/contexts/DomRegistryContext.tsx:220"
   ],
   "/addressables/snapshot": [
-    "app/lib/apiSite/index.ts:1202"
+    "app/lib/apiSite/index.ts:1291"
   ],
   "/admin/api-keys": [
     "app/lib/apiSite/index.ts:393"
@@ -27,7 +27,10 @@
     "app/lib/apiSite/index.ts:409"
   ],
   "/admin/dev/reporting": [
-    "app/lib/apiSite/index.ts:484"
+    "app/lib/apiSite/index.ts:573"
+  ],
+  "/admin/dev/scope-actions/subscriptions": [
+    "app/lib/apiSite/index.ts:436"
   ],
   "/admin/page-grants": [
     "app/(user)/user-management/permissions/page.tsx:104"
@@ -127,30 +130,30 @@
     "app/lib/apiSite/dependencies.ts:155"
   ],
   "/errors/report": [
-    "app/lib/apiSite/index.ts:1172",
+    "app/lib/apiSite/index.ts:1261",
     "app/lib/reportError.ts:8"
   ],
   "/flowboard/wip": [
-    "app/lib/apiSite/index.ts:1500",
-    "app/lib/apiSite/index.ts:1536"
+    "app/lib/apiSite/index.ts:1589",
+    "app/lib/apiSite/index.ts:1625"
   ],
   "/flows": [
     "app/(user)/workspace-admin/work-items/page.tsx:44",
-    "app/lib/apiSite/index.ts:685"
+    "app/lib/apiSite/index.ts:774"
   ],
   "/library/releases": [
     "app/(user)/library-releases/page.tsx:80",
-    "app/lib/apiSite/index.ts:1180"
+    "app/lib/apiSite/index.ts:1269"
   ],
   "/library/releases/count": [
     "app/contexts/LibraryReleasesContext.tsx:45",
-    "app/lib/apiSite/index.ts:1183"
+    "app/lib/apiSite/index.ts:1272"
   ],
   "/me/page-access": [
     "app/contexts/PageAccessContext.tsx:65"
   ],
   "/mentions": [
-    "app/lib/apiSite/index.ts:1265"
+    "app/lib/apiSite/index.ts:1354"
   ],
   "/nav/catalogue": [
     "app/contexts/NavPrefsContext.tsx:241",
@@ -186,43 +189,43 @@
     "app/login/page.tsx:134"
   ],
   "/notifications/prefs": [
-    "app/lib/apiSite/index.ts:1332",
-    "app/lib/apiSite/index.ts:1335"
+    "app/lib/apiSite/index.ts:1421",
+    "app/lib/apiSite/index.ts:1424"
   ],
   "/notifications/read-all": [
-    "app/lib/apiSite/index.ts:1324"
+    "app/lib/apiSite/index.ts:1413"
   ],
   "/notifications/rule-schema": [
-    "app/lib/apiSite/index.ts:1452"
+    "app/lib/apiSite/index.ts:1541"
   ],
   "/notifications/rules": [
-    "app/lib/apiSite/index.ts:1419",
-    "app/lib/apiSite/index.ts:1431"
+    "app/lib/apiSite/index.ts:1508",
+    "app/lib/apiSite/index.ts:1520"
   ],
   "/notifications/unread-count": [
-    "app/lib/apiSite/index.ts:1309"
+    "app/lib/apiSite/index.ts:1398"
   ],
   "/page-help/admin": [
-    "app/lib/apiSite/index.ts:1208"
+    "app/lib/apiSite/index.ts:1297"
   ],
   "/portfolio-items": [
-    "app/lib/apiSite/index.ts:855"
+    "app/lib/apiSite/index.ts:944"
   ],
   "/portfolio-items/bulk": [
-    "app/lib/apiSite/index.ts:864"
+    "app/lib/apiSite/index.ts:953"
   ],
   "/portfolio-items/query": [
-    "app/lib/apiSite/index.ts:879"
+    "app/lib/apiSite/index.ts:968"
   ],
   "/portfolio-models": [
-    "app/lib/apiSite/index.ts:531"
+    "app/lib/apiSite/index.ts:620"
   ],
   "/portfolio-models/adoption-state": [
-    "app/lib/apiSite/index.ts:535"
+    "app/lib/apiSite/index.ts:624"
   ],
   "/rank/move": [
     "app/hooks/useResourceRank.ts:146",
-    "app/lib/apiSite/index.ts:905"
+    "app/lib/apiSite/index.ts:994"
   ],
   "/risks/summary": [
     "app/(user)/risk/page.tsx:95"
@@ -232,42 +235,43 @@
     "app/(user)/admin/roles/page.tsx:90",
     "app/(user)/user-management/permissions/page.tsx:105",
     "app/(user)/user-management/users/page.tsx:789",
-    "app/lib/apiSite/index.ts:1137",
-    "app/lib/apiSite/index.ts:1149"
+    "app/lib/apiSite/index.ts:1226",
+    "app/lib/apiSite/index.ts:1238"
   ],
   "/roles/creatable": [
     "app/(user)/user-management/users/page.tsx:264",
     "app/(user)/user-management/users/page.tsx:622",
-    "app/lib/apiSite/index.ts:1140"
+    "app/lib/apiSite/index.ts:1229"
   ],
   "/roles/permissions/catalogue": [
     "app/(user)/admin/roles/page.tsx:91",
-    "app/lib/apiSite/index.ts:1143"
+    "app/lib/apiSite/index.ts:1232"
   ],
   "/topology/commit": [
-    "app/lib/apiSite/index.ts:1091",
-    "app/lib/apiSite/index.ts:1124"
+    "app/lib/apiSite/index.ts:1180",
+    "app/lib/apiSite/index.ts:1213"
   ],
   "/topology/disconnected": [
-    "app/lib/apiSite/index.ts:1088"
+    "app/lib/apiSite/index.ts:1177"
   ],
   "/topology/nodes": [
-    "app/lib/apiSite/index.ts:1097"
+    "app/lib/apiSite/index.ts:1186"
   ],
   "/topology/nodes/bulk-position": [
-    "app/lib/apiSite/index.ts:1115"
+    "app/lib/apiSite/index.ts:1204"
   ],
   "/topology/reset": [
-    "app/lib/apiSite/index.ts:1127"
+    "app/lib/apiSite/index.ts:1216"
   ],
   "/topology/view-state": [
-    "app/lib/apiSite/index.ts:1094"
+    "app/lib/apiSite/index.ts:1183"
   ],
   "/work-items": [
-    "app/lib/apiSite/index.ts:788"
+    "app/(user)/value-sprint-review/GridSprintReview.tsx:6",
+    "app/lib/apiSite/index.ts:877"
   ],
   "/work-items/bulk": [
-    "app/lib/apiSite/index.ts:819"
+    "app/lib/apiSite/index.ts:908"
   ],
   "/work-items/columns": [
     "app/components/ObjectTreeV2/adapters/customFieldsAdapter.tsx:373"
