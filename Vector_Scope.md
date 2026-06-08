@@ -2,6 +2,8 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
+**Doc version:** 2.74 (2026-06-08 — PLAT1 build progress: new repo `mmffdev-platform` stood up. PLAT1.1 DONE (5e808c9), PLAT1.5 PARTIAL (072c34b), PLAT1.6 SCAFFOLDED (221e9e1), PLAT1.7 SKELETON (5cb0d38) — all pushed. PLAT1.2 Vector-move PREPARED via dry-run but STILL GATED (awaits branch approval). See HANDOVER.md in the platform repo.)
+
 **Doc version:** 2.73 (2026-06-08 — PLAT1 added from PLA077/RES068: Platform Extraction — shared Control Plane. 15 stories across strangler-fig phases 0–7. Monorepo (control-plane/products/packages) + three independence walls (CODEOWNERS, migration lanes, import lint); hybrid authz; Bridge Model; PoC = cross-product SSO. PLAT1.2 git move APPROVAL-GATED.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
@@ -2530,6 +2532,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: .github/CODEOWNERS exists with control-plane/** requiring the platform team.
   - AC: no Vector code moved yet — products/vector/ is empty.
   - Phase: 0 · Plan: PLA077
+  > ✅ DONE 2026-06-08 — built in new repo `mmffdev-platform` (commit 5e808c9, pushed). All 5 ACs green: turbo dry-run exit 0, placeholder Go builds GOWORK=off, CODEOWNERS gates control-plane/**.
 
 - **PLAT1.2 [P1] 🔵 IN FLIGHT** — Move Vector into the monorepo preserving git history (APPROVAL-GATED). Relocate the existing repo under products/vector/ with full history.
   - AC: `git filter-repo --to-subdirectory-filter products/vector` applied on a throwaway clone, never the working copy.
@@ -2538,6 +2541,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: Vector's existing test + lint suite passes from the new location.
   - AC: executed only after explicit in-chat user approval of the branch name and procedure (HARD RULE).
   - Phase: 0 · Plan: PLA077
+  > 🟡 PREPARED, NOT EXECUTED 2026-06-08 — dry-ran on throwaway clone: 1918 commits preserved, 0 conflicts, ~3s. Verified procedure + 4 decisions (pnpm-workspace glob, Vector CI workflows, 254MB binary-bloat strip, go.work) in `HANDOVER.md`. STILL GATED — awaits user branch approval.
 
 - **PLAT1.3 [P2] 🔵 IN FLIGHT** — Backend AuthzProvider / IdentityProvider interfaces (anti-corruption layer). Wrap in-process Sentinel/auth behind abstractions.
   - AC: Go interfaces IdentityProvider and AuthzProvider defined in a shared package.
@@ -2561,6 +2565,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: import-boundary lint fails when a product imports control-plane internals instead of the SDK/contract.
   - AC: grep finds 0 stale mmff_vector references in active SQL headers/docs after the sweep.
   - Phase: 1b · Plan: PLA077
+  > 🟢 PARTIAL 2026-06-08 — migration-lane guard + import-boundary guard + RED-GREEN self-test + CI workflow built (commit 072c34b, pushed). CODEOWNERS landed in PLAT1.1. Remaining: stale-mmff_vector sweep happens during PLAT1.2 move.
 
 - **PLAT1.6 [P2] 🔵 IN FLIGHT** — Contract-first platform facade (/platform/*). Define HTTP contracts; Vector calls them while impl stays in-process.
   - AC: /platform/session/introspect, /me, /entitlements, /authz/check, /audit contracts defined with OpenAPI.
@@ -2568,6 +2573,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: GREEN when Vector passes using the facade for those calls.
   - AC: product handlers no longer call auth/session/RBAC/audit internals directly.
   - Phase: 1c · Plan: PLA077
+  > 🟢 SCAFFOLDED 2026-06-08 — 5 /platform/* contracts + DTOs (MeResponse mirrors real Sentinel clamp) + RED contract tests built in control-plane/backend/internal/platformapi (commit 221e9e1, pushed). Endpoints at 501; shape tests t.Skip'd ready to flip. Vector-side wiring happens post-move.
 
 - **PLAT1.7 [P2] 🔵 IN FLIGHT** — CP service as OIDC OP with DPoP. Standalone runtime owning identity.
   - AC: control-plane/backend boots and serves OIDC discovery at /.well-known/openid-configuration.
@@ -2576,6 +2582,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: product tables reference users by UUID soft-ref only — grep proves zero cross-DB FKs.
   - AC: RED-GREEN TestCP_DPoP_RejectsUnboundToken and TestCP_PKCE_RequiresVerifier pass.
   - Phase: 2 · Plan: PLA077
+  > 🟢 SKELETON 2026-06-08 — control-plane/backend/internal/oidc built (commit 5cb0d38, pushed): real static discovery doc (S256 PKCE + token-exchange + DPoP algs), DPoP Verifier interface + stub, 501 endpoint placeholders. NO crypto/secrets yet — full OIDC impl deferred to a TDD+review session (PLAT1.7-impl).
 
 - **PLAT1.8 [P2] 🔵 IN FLIGHT** — Entitlements & product registry. Platform product catalogue + plan gates + tenant subscriptions.
   - AC: /platform/entitlements returns whether a tenant may open a given product.
