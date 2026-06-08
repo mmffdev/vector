@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
-**Doc version:** 2.72 (2026-06-05 — B16.20 added from PLA076: multi-tab logout fix — leader-only refresh + grace-chain hardening, 4 stories.)
+**Doc version:** 2.73 (2026-06-08 — PLAT1 added from PLA077/RES068: Platform Extraction — shared Control Plane. 15 stories across strangler-fig phases 0–7. Monorepo (control-plane/products/packages) + three independence walls (CODEOWNERS, migration lanes, import lint); hybrid authz; Bridge Model; PoC = cross-product SSO. PLAT1.2 git move APPROVAL-GATED.)
 
 > **★ Solo-dev mode — WIP cap 5** (since 2026-05-17). See [`.claude/memory/feedback_solo_dev_mode.md`](.claude/memory/feedback_solo_dev_mode.md) and the bridge document at [`.claude/scratch/correction-prompt.md`](.claude/scratch/correction-prompt.md). In-flight allowed: FLOW1, F1 (active); FE-POR-0002 done 2026-05-17; B16.8 done 2026-05-18; RF1 done 2026-05-18. Two WIP slots free as of 2026-05-18.
 >
@@ -86,6 +86,10 @@
 **FB — Flow Visualisation** *(Kanban + flow boards built on the artefacts substrate)*
 
 - [FB1. FlowBoard — standalone Kanban component for /value-flow (PLA066)](#fb1-flowboard--standalone-kanban-component-for-value-flow-pla066) 🔵 IN FLIGHT
+
+**PLAT — Platform Extraction** *(master architecture program — shared Control Plane for all products; PLA077/RES068)*
+
+- [PLAT1. Platform Extraction — shared Control Plane (PLA077 / RES068)](#plat1-platform-extraction--shared-control-plane-pla077--res068) 🔵 IN FLIGHT
 
 **Parked — solo-dev mode** *(WIP-cap overflow; verbatim, awaiting unpark)*
 
@@ -2510,6 +2514,128 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: `docs/c_tech_debt.md` gains `TD-DEP-FORWARD-MEG-AUDIT` if any client call site is found passing `?meg=` for edge scoping (per HARD RULE — corollary).
   - Plan: PLA074
   > Last checked: 2026-06-03 — system note `docs/c_c_dependencies.md` written (synopsis, schema table, uniqueness rules, cycle guard, Sentinel discipline, audit narrative, archive preflight contract, HTTP surface table, out-of-scope list, test surface). `.claude/CLAUDE.md` index entry added next to the outbox pattern pointer. Tech-debt: `TD-DEPENDENCY-MAP-PERSISTENCE` marked **RESOLVED** (substrate built); new `TD-DEP-COMPOSER-PERSISTENCE-RENDER` (S2) tracks the deferred UI render switch; new `TD-DEP-CPM-DURATION` (S2) tracks CPM gate. `TD-DEP-FORWARD-MEG-AUDIT` NOT created — grep of `app/lib/apiSite/dependencies.ts` + `app/components/DependencyMap/usePersistedDependencyMap.ts` shows zero `?meg=` call sites; clamp is the JWT-resolved authority per HARD RULE corollary.
+
+---
+
+## PLAT1. Platform Extraction — shared Control Plane (PLA077 / RES068)
+
+*Master architecture program: extract Vector's platform cluster (Sentinel, auth/DPoP, RBAC, audit, tenant registry) into a separate-runtime Control Plane in a monorepo, so every product (Vector, Sigma, Origo, …) consumes one identity/security/audit substrate without replication. Hybrid authz (in-process clamp stays local; central ReBAC for cross-product only). Bridge Model: pooled identity + siloed product DBs. PoC = cross-product SSO. Research: RES068 (reconciled with RES069). Plan: PLA077.*
+
+> **Sequencing:** strangler-fig, each phase reversible behind a flag; no route-group flips until shadow-run divergence is zero. Phase 0 git move is APPROVAL-GATED per HARD RULE — story PLAT1.2 does not execute until the user approves the branch + procedure in chat.
+
+- **PLAT1.1 [P1] 🔵 IN FLIGHT** — Scaffold the platform monorepo skeleton. Stand up Turborepo + go.work workspace shell (control-plane/, products/, packages/, packages-go/, platform/) before moving code.
+  - AC: repo root contains turbo.json, pnpm-workspace.yaml, go.work, and the empty control-plane/ products/ packages/ packages-go/ platform/ trees.
+  - AC: `turbo run build --dry-run` exits 0 and lists the workspace task graph.
+  - AC: CI runs with GOWORK=off and a placeholder Go module builds against its own go.mod.
+  - AC: .github/CODEOWNERS exists with control-plane/** requiring the platform team.
+  - AC: no Vector code moved yet — products/vector/ is empty.
+  - Phase: 0 · Plan: PLA077
+
+- **PLAT1.2 [P1] 🔵 IN FLIGHT** — Move Vector into the monorepo preserving git history (APPROVAL-GATED). Relocate the existing repo under products/vector/ with full history.
+  - AC: `git filter-repo --to-subdirectory-filter products/vector` applied on a throwaway clone, never the working copy.
+  - AC: `git log` in the monorepo shows pre-move Vector commits with paths under products/vector/.
+  - AC: merged via a real merge commit (not squash).
+  - AC: Vector's existing test + lint suite passes from the new location.
+  - AC: executed only after explicit in-chat user approval of the branch name and procedure (HARD RULE).
+  - Phase: 0 · Plan: PLA077
+
+- **PLAT1.3 [P2] 🔵 IN FLIGHT** — Backend AuthzProvider / IdentityProvider interfaces (anti-corruption layer). Wrap in-process Sentinel/auth behind abstractions.
+  - AC: Go interfaces IdentityProvider and AuthzProvider defined in a shared package.
+  - AC: current in-process impl registered as sole backing; behaviour byte-identical (existing tests green).
+  - AC: all 13 product handlers resolve the clamp via the interface, not sentinel.FromCtx directly.
+  - AC: a new lint check fails the build if product code imports the concrete sentinel package.
+  - AC: RED-GREEN TestAuthzProvider_InProcessParity proves interface output == legacy FromCtx for a role matrix.
+  - Phase: 1 · Plan: PLA077
+
+- **PLAT1.4 [P2] 🔵 IN FLIGHT** — @mmff/auth-sdk frontend facade. Front the Sentinel/Auth client surface.
+  - AC: @mmff/auth-sdk exports useSentinel-compatible hooks; app imports resolve to it.
+  - AC: the 388 existing call sites compile unchanged against the facade.
+  - AC: lint:no-old-context-imports extended to forbid direct AuthContext imports outside the SDK + exempt list.
+  - AC: frontend build + typecheck green.
+  - Phase: 1 · Plan: PLA077
+
+- **PLAT1.5 [P1] 🔵 IN FLIGHT** — Independence walls + migration lanes. CODEOWNERS, split migration lanes + CI guard, import-boundary lint, stale-ref sweep. This is what lets product teams work in parallel without collision.
+  - AC: per-path CODEOWNERS lands; a non-platform-team PR touching control-plane/** is blocked.
+  - AC: migration streams split into platform/product lanes with ownership metadata.
+  - AC: RED-GREEN a product migration altering a platform table fails CI (TestMigrationGuard_BlocksPlatformTable).
+  - AC: import-boundary lint fails when a product imports control-plane internals instead of the SDK/contract.
+  - AC: grep finds 0 stale mmff_vector references in active SQL headers/docs after the sweep.
+  - Phase: 1b · Plan: PLA077
+
+- **PLAT1.6 [P2] 🔵 IN FLIGHT** — Contract-first platform facade (/platform/*). Define HTTP contracts; Vector calls them while impl stays in-process.
+  - AC: /platform/session/introspect, /me, /entitlements, /authz/check, /audit contracts defined with OpenAPI.
+  - AC: RED contract tests exist for each endpoint before implementation.
+  - AC: GREEN when Vector passes using the facade for those calls.
+  - AC: product handlers no longer call auth/session/RBAC/audit internals directly.
+  - Phase: 1c · Plan: PLA077
+
+- **PLAT1.7 [P2] 🔵 IN FLIGHT** — CP service as OIDC OP with DPoP. Standalone runtime owning identity.
+  - AC: control-plane/backend boots and serves OIDC discovery at /.well-known/openid-configuration.
+  - AC: auth-code + PKCE issues a DPoP-bound token; a token without matching proof is rejected 401.
+  - AC: the CP owns ONE shared dedicated DB with the carved identity/directory/tenant tables; SY003 regenerated.
+  - AC: product tables reference users by UUID soft-ref only — grep proves zero cross-DB FKs.
+  - AC: RED-GREEN TestCP_DPoP_RejectsUnboundToken and TestCP_PKCE_RequiresVerifier pass.
+  - Phase: 2 · Plan: PLA077
+
+- **PLAT1.8 [P2] 🔵 IN FLIGHT** — Entitlements & product registry. Platform product catalogue + plan gates + tenant subscriptions.
+  - AC: /platform/entitlements returns whether a tenant may open a given product.
+  - AC: products query entitlement; none infer paid access locally.
+  - AC: RED-GREEN TestEntitlement_GatesProductAccess — product cannot be opened without an entitlement.
+  - AC: admin can grant/revoke a product entitlement per tenant.
+  - Phase: 2b · Plan: PLA077
+
+- **PLAT1.9 [P2] 🔵 IN FLIGHT** — Vector as first relying party (feature-flagged). Vector authenticates against the CP.
+  - AC: behind flag cp_auth_enabled, Vector login redirects to the CP and returns an authenticated session.
+  - AC: the Sentinel clamp hydrates from the CP boot endpoint; useSentinel() state identical to legacy.
+  - AC: with the flag off, Vector uses the legacy in-process path unchanged (reversible).
+  - AC: RED-GREEN e2e cp_login_roundtrip.spec.mjs logs in via the CP and reaches a gated page.
+  - Phase: 3 · Plan: PLA077
+
+- **PLAT1.10 [P2] 🔵 IN FLIGHT** — Shadow-run divergence harness. Old vs new on every decision before any flip.
+  - AC: each auth/authz decision computed on both paths; only legacy result served while shadowing.
+  - AC: divergences written to cp_shadow_divergence with inputs + both outputs.
+  - AC: a /dev dashboard reports divergence count over a rolling window.
+  - AC: cutover flags hard-gated — a guard refuses to flip a route-group while its divergence > 0.
+  - AC: RED-GREEN TestShadowGuard_BlocksOnDivergence proves the guard refuses to flip on a seeded divergence.
+  - Phase: 4 · Plan: PLA077
+
+- **PLAT1.11 [P2] 🔵 IN FLIGHT** — Split Sentinel: platform PDP + Vector scope adapter. Platform Sentinel becomes shared authority; Vector topology/focus becomes a registered product scope adapter.
+  - AC: platform Sentinel answers who/tenant/product/session/entitlement/allowed.
+  - AC: Vector scope adapter answers Vector topology/workspace/focus scope and registers with platform.
+  - AC: RED-GREEN tenant-isolation spec extended to platform-clamp + product-adapter passes (tenant A cannot read tenant B).
+  - AC: in-process clamp retains no network hop on local hot-path reads.
+  - Phase: 4 · Plan: PLA077
+
+- **PLAT1.12 [P3] 🔵 IN FLIGHT** — Cut over authentication route-group to the CP. First real flip, reversible.
+  - AC: with divergence zero, the auth route-group serves the CP result; legacy path dormant but intact.
+  - AC: rollback flag restores the legacy path within one deploy, no data migration.
+  - AC: per-role contract tests pass against the CP-served path (allow + deny matrix).
+  - AC: central audit shows the login event in the CP trail.
+  - Phase: 5 · Plan: PLA077
+
+- **PLAT1.13 [P3] 🔵 IN FLIGHT** — Central revocation: back-channel logout + RFC 7009. The central kill-switch.
+  - AC: CP exposes a token-revocation endpoint and pushes OIDC back-channel logout to registered RPs.
+  - AC: revoking a session at the CP terminates the Vector session within the token TTL window.
+  - AC: RED-GREEN TestCP_Revoke_KillsRPSession proves a revoked token is rejected at the RP.
+  - AC: the revocation event lands in the central audit trail.
+  - Phase: 5 · Plan: PLA077
+
+- **PLAT1.14 [P3] 🔵 IN FLIGHT** — SpiceDB + cross-product Check API (thin). Central ReBAC for cross-product links only.
+  - AC: SpiceDB schema models the artefact↔ambition cross-product relationship.
+  - AC: products write relationship tuples on their own mutations (sole-writer); wrong-service writes are blocked.
+  - AC: a Check call answers a cross-product permission with fully_consistent consistency.
+  - AC: in-process Sentinel clamp unchanged for in-product hot paths (no new network hop on local reads).
+  - AC: RED-GREEN TestReBAC_CrossProductCheck + TestReBAC_NewEnemy_RevokeHonoured pass.
+  - Phase: 6 · Plan: PLA077
+
+- **PLAT1.15 [P2] 🔵 IN FLIGHT** — Cross-product SSO PoC with stub product #2. The acceptance demo.
+  - AC: a thin second product is registered as a CP relying party.
+  - AC: one login at the CP yields authenticated sessions in BOTH Vector and the stub without re-auth.
+  - AC: platform entitlement controls whether the stub product can be opened.
+  - AC: a single audit trail shows both products' access for the one user via a shared correlation ID.
+  - AC: one revocation at the CP kills BOTH sessions within the TTL window.
+  - AC: RED-GREEN e2e cross_product_sso.spec.mjs asserts login-once / revoke-once-kills-both.
+  - Phase: 7 · Plan: PLA077
 
 ---
 

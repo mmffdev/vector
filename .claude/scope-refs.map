@@ -369,3 +369,18 @@ B16.20.1	multi-tab refresh contract test RED authChannel coordinatedRefresh grac
 B16.20.2	leader-only refresh follower await broadcast rotation marker timestamp authChannel coordinatedRefresh RECENT_REFRESH_MS cookie
 B16.20.3	backend grace window successor walk head refreshFromSuccessor chain dpop binding REFRESH_GRACE_SECONDS revoke
 B16.20.4	verify end-to-end multi-tab logout three tabs idle refocus users_sessions reuse binding resolve tech-debt spec
+PLAT1.1	platform monorepo scaffold turborepo workspace control-plane products packages turbo pnpm GOWORK codeowners
+PLAT1.2	vector monorepo move history filter-repo subdirectory products merge clone
+PLAT1.3	authzprovider identityprovider interface anti-corruption sentinel clamp handler parity lint
+PLAT1.4	auth-sdk frontend facade usesentinel hooks authcontext imports typecheck
+PLAT1.5	independence walls migration lanes codeowners guard import-boundary lint stale mmff_vector sweep
+PLAT1.6	contract-first platform facade session introspect entitlements authz audit openapi
+PLAT1.7	control plane oidc dpop pkce discovery token identity database soft-ref cross-db
+PLAT1.8	entitlements product registry catalogue plan gates subscriptions tenant access
+PLAT1.9	vector relying party feature-flagged login redirect clamp hydrate roundtrip
+PLAT1.10	shadow-run divergence harness cutover guard dashboard flip
+PLAT1.11	split sentinel platform adapter scope topology workspace focus isolation tenant
+PLAT1.12	cutover authentication route-group flip rollback contract audit
+PLAT1.13	central revocation back-channel logout token revoke kill-switch session
+PLAT1.14	spicedb rebac cross-product check tuples consistency relationship ambition artefact
+PLAT1.15	cross-product sso poc stub product relying entitlement audit correlation revocation
