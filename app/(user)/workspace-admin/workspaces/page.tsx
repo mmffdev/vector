@@ -318,18 +318,15 @@ function CreateWorkspaceModal({
 }
 
 export default function WorkspacesPage() {
+  // ALL hooks must be declared unconditionally, before any early return —
+  // Rules of Hooks. The permission gate (which can `return null`) lives
+  // BELOW every hook call so the hook order is identical on every render.
   const { full } = usePageTitle();
   // PLA062 S14: identity + permissions via Sentinel.
   const { sentinel_user, sentinel_can } = useSentinel();
-  const canAccess = sentinel_can("workspace.archive");
   const router = useRouter();
 
-  useEffect(() => {
-    if (sentinel_user && !canAccess) router.replace("/workspace-admin");
-  }, [sentinel_user, canAccess, router]);
-
-  if (!sentinel_user || !canAccess) return null;
-
+  const canAccess       = sentinel_can("workspace.archive");
   const canArchive      = sentinel_can("workspace.archive");
   const canViewArchived = sentinel_can("workspace.view_archived");
   const canRestore      = sentinel_can("workspace.restore");
@@ -342,6 +339,7 @@ export default function WorkspacesPage() {
   const [editingId, setEditingId]     = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!canAccess) return; // don't fire the list call for a user the gate will bounce
     setErr(null);
     try {
       const data = await workspacesApi.list();
@@ -349,7 +347,7 @@ export default function WorkspacesPage() {
     } catch (e) {
       setErr(e instanceof ApiError ? `Error ${e.status}: ${String(e.body ?? "")}` : "Failed to load");
     }
-  }, []);
+  }, [canAccess]);
 
   const loadArchived = useCallback(async () => {
     if (!canViewArchived) return;
@@ -362,8 +360,15 @@ export default function WorkspacesPage() {
     }
   }, [canViewArchived]);
 
+  useEffect(() => {
+    if (sentinel_user && !canAccess) router.replace("/workspace-admin");
+  }, [sentinel_user, canAccess, router]);
+
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadArchived(); }, [loadArchived]);
+
+  // Permission gate — AFTER all hooks. Safe to early-return here.
+  if (!sentinel_user || !canAccess) return null;
 
   async function renameWorkspace(id: string, name: string) {
     await workspacesApi.rename(id, name);
