@@ -384,3 +384,14 @@ PLAT1.12	cutover authentication route-group flip rollback contract audit
 PLAT1.13	central revocation back-channel logout token revoke kill-switch session
 PLAT1.14	spicedb rebac cross-product check tuples consistency relationship ambition artefact
 PLAT1.15	cross-product sso poc stub product relying entitlement audit correlation revocation
+PLAT1.16	interactive login retire scaffold authenticated header authorize credential platform users oidcusersource session token cnf jkt
+PLAT1.17	platform boot endpoint sentinel hydration clamp focus subtree role tenant sentinelprovider parity fail-closed
+PLAT1.18	durable refresh-token store platform migration refresh_tokens rotating single-use dpop family-revoking restart
+PLAT1.19	durable revocation store platform revoked_subjects revoked_jtis introspect kill-switch back-channel logout restart
+PLAT1.20	durable audit sink platform audit_logs correlation login revoke auditrecorder bycorrelation restart
+PLAT1.21	shadow-run divergence contract matrix auth route-group cp_shadow_divergence dashboard role allow deny cutover guard
+PLAT1.22	cutover flip auth route-group reversible rollback contract audit trail flag default-on
+PLAT1.23	split sentinel platform pdp scope adapter topology workspace focus tenant-isolation clamp
+PLAT1.24	spicedb cross-product check rebac schema tuples sole-writer consistency clamp newenemy
+PLAT1.25	carve-out prerequisites cross-db joins role-tier denormalise permission-code cache first-workspace materialise auth permissions sentinel workspaceresolver
+PLAT1.26	carve-out drop destructive junction users_roles_workspaces topology_nodes platform sole-writer soft-refs backfill ac4 grep gate
