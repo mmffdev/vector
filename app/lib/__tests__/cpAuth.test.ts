@@ -98,3 +98,76 @@ describe("beginCpLogin safety", () => {
     expect(url.searchParams.get("redirect_uri")).toBe("https://vector.example/api/cp/callback");
   });
 });
+
+describe("refreshCpSession (PLAT1.12 CP-owned refresh)", () => {
+  // Mock the IDB key store so the test doesn't need real IndexedDB. The keypair
+  // is a real WebCrypto ES256 key so mintDpopProof signs successfully.
+  vi.mock("@/app/lib/dpopStore", () => ({
+    readKeyRecord: vi.fn(),
+    writeKeyRecord: vi.fn(),
+    pruneKeysExcept: vi.fn(),
+  }));
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_CP_AUTH_ENABLED = "true";
+    process.env.NEXT_PUBLIC_CP_BASE_URL = "https://cp.example";
+    Object.defineProperty(window, "location", {
+      value: { origin: "https://vector.example", assign: vi.fn() },
+      writable: true,
+    });
+    sessionStorage.clear();
+    vi.resetModules();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("returns null when there is no stored refresh token", async () => {
+    const { refreshCpSession } = await import("@/app/lib/cpAuth");
+    const out = await refreshCpSession("user-1");
+    expect(out).toBeNull();
+  });
+
+  test("rotates against the CP and returns the new access token", async () => {
+    sessionStorage.setItem("vector.cp.refresh_token", "rt-old");
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"],
+    );
+    const store = await import("@/app/lib/dpopStore");
+    (store.readKeyRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      alg: "ES256", keyPair, userId: "user-1", createdAt: "now",
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: "new-access", refresh_token: "rt-new" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshCpSession } = await import("@/app/lib/cpAuth");
+    const out = await refreshCpSession("user-1");
+    expect(out).toBe("new-access");
+    // The rotated refresh token replaced the old one.
+    expect(sessionStorage.getItem("vector.cp.refresh_token")).toBe("rt-new");
+    // The request hit the CP /token with grant_type=refresh_token + a DPoP proof.
+    const [, opts] = fetchMock.mock.calls[0];
+    expect(opts.headers.DPoP).toBeTruthy();
+    expect(opts.body).toContain("grant_type=refresh_token");
+  });
+
+  test("clears the dead token and returns null when the CP rejects the refresh", async () => {
+    sessionStorage.setItem("vector.cp.refresh_token", "rt-dead");
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"],
+    );
+    const store = await import("@/app/lib/dpopStore");
+    (store.readKeyRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      alg: "ES256", keyPair, userId: "user-1", createdAt: "now",
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400 }));
+
+    const { refreshCpSession } = await import("@/app/lib/cpAuth");
+    const out = await refreshCpSession("user-1");
+    expect(out).toBeNull();
+    expect(sessionStorage.getItem("vector.cp.refresh_token")).toBeNull();
+  });
+});

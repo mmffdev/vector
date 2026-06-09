@@ -6,6 +6,7 @@ import { apiSite, ApiError, setApiToken, setRefreshCallback, setHardLogoutCallba
 import { broadcastAuthEvent, bumpRotationMarker, coordinatedRefresh, readBoundJKT, readRotationMarker, subscribeAuthEvents, writeBoundJKT } from "@/app/lib/authChannel";
 import { notify } from "@/app/lib/toast";
 import { purgeDraftsFor } from "@/app/lib/draftStore";
+import { cpAuthEnabled, cpRefreshToken, refreshCpSession } from "@/app/lib/cpAuth";
 // DPoP (RFC 9449) keypair lifecycle. Generated before the initial
 // /auth/login POST so the proof on that request carries the public
 // JWK the backend stamps onto the session row; reparented under the
@@ -218,16 +219,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // CP_AUTH_DUAL_ACCEPT is on server-side). Updates user state so the app boots
   // exactly as it would after a legacy login.
   //
-  // ⚠️ LOUD CAVEAT — DPoP binding is NOT reconciled here. Vector's legacy session
-  // binds the access token to a DPoP keypair in IndexedDB (cnf.jkt), and
-  // /auth/refresh re-signs with that key. A CP-issued token is bound to the CP
-  // login's DPoP key (minted in cpAuth.ts), which is NOT Vector's IDB keypair —
-  // so the FIRST /auth/refresh under a CP session would present the wrong proof
-  // key and the backend binding check would revoke-all (the TD-SEC-DPOP-STALE-KEY
-  // failure mode). This adopt path is therefore SAFE FOR INITIAL LOAD ONLY and is
-  // gated behind NEXT_PUBLIC_CP_AUTH_ENABLED (default OFF). Reconciling the CP
-  // proof key into Vector's IDB keypair lifecycle (or moving Vector's refresh to
-  // the CP) is the remaining PLAT1.9/1.12 work — tracked, not done here.
+  // DPoP binding (PLAT1.9): the CP access token is bound (cnf.jkt) to the DPoP
+  // keypair cpAuth.completeCpLogin() generated for the /token exchange, and that
+  // SAME keypair has already been persisted to Vector's IndexedDB key store under
+  // the user's id (cpAuth → writeKeyRecord). So /auth/refresh — which reads that
+  // store and signs with the user's key — presents the key the token's cnf.jkt
+  // expects, and the backend binding check passes (no revoke-all). adoptCpSession
+  // therefore mirrors applyLogin: set token + user, persist the bound jkt, and
+  // broadcast the key-changed event so sibling tabs reload the right key from IDB.
+  // Gated behind NEXT_PUBLIC_CP_AUTH_ENABLED (default OFF); legacy login untouched.
   const adoptCpSession = useCallback(async (accessToken: string): Promise<AuthUser> => {
     setApiToken(accessToken);
     // Resolve the principal. /auth/me returns the same AuthUser shape login does.
@@ -235,10 +235,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me);
     setSessionCookie();
     writeBoundJKT(jktFromAccessToken(accessToken));
+    // Sibling tabs: the DPoP keypair for this user is now the CP-bound one in IDB.
+    broadcastAuthEvent({ type: "dpop-key-changed", userId: me.id });
     return me;
   }, []);
 
   const refresh = useCallback(async () => {
+    // PLAT1.12 — CP-owned session refresh. If this session was adopted from the
+    // Control-Plane (a CP refresh token is stashed), refresh against the CP
+    // (grant_type=refresh_token, DPoP-signed with the bound key) rather than
+    // Vector's own /auth/refresh — the CP owns the session lifecycle. On success
+    // adopt the rotated access token; on failure fall through to the legacy path
+    // (which will 401 and bounce to login, the correct end state for a dead CP
+    // session). Flag-gated: cpRefreshToken() is empty unless a CP login happened.
+    const cpUser = userRef.current;
+    if (cpAuthEnabled() && cpRefreshToken() && cpUser) {
+      const newAccess = await refreshCpSession(cpUser.id);
+      if (newAccess) {
+        setApiToken(newAccess);
+        writeBoundJKT(jktFromAccessToken(newAccess));
+        return;
+      }
+      // CP refresh failed → the CP session is dead; do NOT fall through to the
+      // legacy /auth/refresh (there is no Vector session row for a CP login).
+      setApiToken(null);
+      setUser(null);
+      return;
+    }
     if (refreshInFlight.current) return refreshInFlight.current;
     // Snapshot the broadcast marker BEFORE we queue for the lock. If a
     // sibling tab broadcasts a fresh token while we wait, the marker

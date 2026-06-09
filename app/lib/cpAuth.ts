@@ -19,6 +19,8 @@
 // (slice E / cp_dual_accept.go on the backend already accepts it), so the rest of
 // Vector — Sentinel, middleware — is unchanged once the session holds a CP token.
 
+import { writeKeyRecord, pruneKeysExcept, readKeyRecord } from "@/app/lib/dpopStore";
+
 const CP_BASE =
   process.env.NEXT_PUBLIC_CP_BASE_URL ?? "http://localhost:8080";
 
@@ -76,13 +78,21 @@ async function s256Challenge(verifier: string): Promise<string> {
 //
 // The CP issues sender-constrained (DPoP) tokens, so the /token exchange must
 // carry a DPoP proof. We generate a fresh P-256 keypair per login and sign a
-// minimal proof. (Vector's own DPoP machinery in AuthContext is for its legacy
-// flow; this keeps the CP path self-contained and flag-isolated.)
-
+// minimal proof.
+//
+// CRITICAL (the PLAT1.9 binding fix): the keypair is generated NON-EXTRACTABLE
+// (extractable=false), exactly like Vector's own dpopStore keys, and AFTER the
+// token exchange it is PERSISTED to Vector's IndexedDB key store under the user's
+// id (completeCpLogin → persistCpKeypair). That is what closes the
+// cnf.jkt-binding gap: the CP access token's cnf.jkt is the thumbprint of THIS
+// key, and /auth/refresh signs with the SAME key it now finds in IDB, so the
+// backend binding check passes instead of revoke-all. A non-extractable EC
+// private key is still storable in IDB (the store holds the CryptoKey object, not
+// raw bytes) and the public half exports fine for the proof header.
 async function generateDpopKey(): Promise<CryptoKeyPair> {
   return crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
-    true,
+    false, // non-extractable — matches Vector's dpopStore, IDB-storable
     ["sign"],
   ) as Promise<CryptoKeyPair>;
 }
@@ -149,10 +159,21 @@ export async function beginCpLogin(): Promise<void> {
   window.location.assign(`${CP_BASE}/authorize?${q.toString()}`);
 }
 
-/** Result of a completed CP login: the DPoP-bound access token. */
+/** Result of a completed CP login: the DPoP-bound access token (+ refresh). */
 export interface CpLoginResult {
   accessToken: string;
   tokenType: string;
+  refreshToken: string;
+}
+
+// sessionStorage key for the CP refresh token. sessionStorage (not localStorage)
+// so it dies with the tab; the token is rotated single-use on every refresh.
+const SS_REFRESH = "vector.cp.refresh_token";
+
+/** cpRefreshToken returns the stored CP refresh token (or "" if none). */
+export function cpRefreshToken(): string {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem(SS_REFRESH) ?? "";
 }
 
 /**
@@ -194,6 +215,87 @@ export async function completeCpLogin(
   if (!res.ok) {
     throw new Error(`CP token exchange failed: ${res.status}`);
   }
-  const json = (await res.json()) as { access_token: string; token_type: string };
-  return { accessToken: json.access_token, tokenType: json.token_type };
+  const json = (await res.json()) as {
+    access_token: string;
+    token_type: string;
+    refresh_token?: string;
+  };
+
+  // BINDING FIX: persist the DPoP keypair we just proved possession of under the
+  // token's subject, so Vector's /auth/refresh (which reads this IDB store and
+  // signs with the user's key) uses the SAME key the CP token's cnf.jkt is bound
+  // to. Without this the first refresh would present a different key → backend
+  // cnf.jkt mismatch → revoke-all. We also prune any other stored keypair so
+  // ensureAnyActiveKeypair can't pick a stale one on the next tab refocus.
+  const sub = subjectFromToken(json.access_token);
+  if (sub) {
+    await writeKeyRecord({
+      alg: "ES256",
+      keyPair: dpopKey,
+      userId: sub,
+      createdAt: new Date().toISOString(),
+    });
+    await pruneKeysExcept(sub);
+  }
+
+  // Stash the refresh token so refreshCpSession() can rotate it against the CP.
+  const refreshToken = json.refresh_token ?? "";
+  if (refreshToken) sessionStorage.setItem(SS_REFRESH, refreshToken);
+
+  return { accessToken: json.access_token, tokenType: json.token_type, refreshToken };
+}
+
+/**
+ * refreshCpSession rotates the stored CP refresh token for a fresh access token,
+ * signing the refresh request's DPoP proof with the SAME keypair persisted at
+ * login (read back from Vector's IDB key store by subject — the key the refresh
+ * token is bound to). Returns the new access token, or null if there is no CP
+ * session to refresh / the rotation failed (caller falls back to re-login). The
+ * CP rotates the refresh token single-use, so we store the new one on success.
+ */
+export async function refreshCpSession(subject: string): Promise<string | null> {
+  if (!cpAuthEnabled() || typeof window === "undefined") return null;
+  const rt = cpRefreshToken();
+  if (!rt || !subject) return null;
+
+  // Read back the bound keypair (persisted at login). If it's gone we cannot
+  // prove possession → cannot refresh.
+  const rec = await readKeyRecord(subject);
+  if (!rec) return null;
+
+  const tokenUrl = `${CP_BASE}/token`;
+  const proof = await mintDpopProof(rec.keyPair, "POST", tokenUrl);
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: rt,
+    client_id: CLIENT_ID,
+  });
+  const res = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", DPoP: proof },
+    body: body.toString(),
+  });
+  if (!res.ok) {
+    // Rotation failed (expired / revoked / reuse). Clear the dead token.
+    sessionStorage.removeItem(SS_REFRESH);
+    return null;
+  }
+  const json = (await res.json()) as { access_token: string; refresh_token?: string };
+  if (json.refresh_token) sessionStorage.setItem(SS_REFRESH, json.refresh_token);
+  return json.access_token;
+}
+
+/** subjectFromToken decodes the JWT `sub` claim without verifying (the token was
+ * just returned over TLS from the CP /token exchange; verification is the
+ * backend's job). Returns "" if it can't be parsed. */
+function subjectFromToken(token: string): string {
+  const parts = token.split(".");
+  if (parts.length !== 3) return "";
+  try {
+    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const claims = JSON.parse(json) as { sub?: string };
+    return claims.sub ?? "";
+  } catch {
+    return "";
+  }
 }
