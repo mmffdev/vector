@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
-**Doc version:** 2.75 (2026-06-09 — PLA078 added: 11 Vector-on-Control-Plane stories PLAT1.16–PLAT1.26 (Line B/C follow-on to PLA077). Line A structural move DONE — Vector backend 54 pkgs green from products/vector/, module renamed 6ba20559, boots against dev DB; platform DB added to the push-backup script f6ee8230. Full plan: PLA078 on /dev/reporting.)
+**Doc version:** 2.76 (2026-06-09 — PLA078 added: 11 Vector-on-Control-Plane stories PLAT1.16–PLAT1.26 (Line B/C follow-on to PLA077). Line A structural move DONE — Vector backend 54 pkgs green from products/vector/, module renamed 6ba20559, boots against dev DB; platform DB added to the push-backup script f6ee8230. Full plan: PLA078 on /dev/reporting.)
 
 **Doc version:** 2.73 (2026-06-08 — PLAT1 added from PLA077/RES068: Platform Extraction — shared Control Plane. 15 stories across strangler-fig phases 0–7. Monorepo (control-plane/products/packages) + three independence walls (CODEOWNERS, migration lanes, import lint); hybrid authz; Bridge Model; PoC = cross-product SSO. PLAT1.2 git move APPROVAL-GATED.)
 
@@ -2703,6 +2703,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: the per-role allow/deny contract matrix (gadmin/padmin/user) is green against the CP-served path.
   - AC: RED-GREEN TestShadowGuard_BlocksOnDivergence proves the cutover guard refuses to flip while divergence is greater than 0.
   - Theme: PLAT1.10 · Plan: PLA078
+  > ✅ DONE 2026-06-09 (platform 8248bd23) — CutoverGuard.CanFlip(group) refuses the flip while divergence>0; divergence records carry inputs+legacy+CP+timestamp; CountSince rolling window + /platform/_shadow/divergences?window= JSON. TestShadowGuard_BlocksOnDivergence + TestAuthContractMatrix_CPMatchesLegacy (15 role/action cells + negative control). HONEST: matrix proves in-process parity via the shadow Compare; the live CP-served authz decision wires into the candidate closure at the PLAT1.22 cutover (the closure is commented).
 - **PLAT1.22 [P2] 🔵 IN FLIGHT** — Cutover flip of the auth route-group to the CP (reversible) — USER-OWNED GATE. The first real flip; legacy dormant but intact.
   - AC: with divergence zero, the auth route-group serves the CP result; the legacy path is dormant.
   - AC: a rollback flag restores the legacy path within one deploy, no data migration.
@@ -2716,6 +2717,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: the tenant-isolation spec extended to platform-clamp + product-adapter passes (tenant A cannot read tenant B).
   - AC: in-process clamp retains no new network hop on local hot-path reads (latency assertion).
   - Theme: PLAT1.11 · Plan: PLA078
+  > ✅ DONE 2026-06-09 (platform ae9b6c9b) — internal/pdp: thin PDP aggregating identity+entitlements+clamp; /platform/authz/check wired real (was 501), hybrid in-product(role+entitlement)/cross-product(rebac at fully_consistent), fail-closed. ScopeAdapter interface + static registry + VectorScopeAdapter (CP-side reference over the clamp resolver; Vector's backend implements the same iface later — kept off Vector's 54-pkg module). HARD RULE held: no new hot-path network hop (reflective test trips on any *http.Client field). TestSentinelSplit_TenantIsolation (forgery path) + 11 pkgs green.
 - **PLAT1.24 [P3] 🔵 IN FLIGHT** — SpiceDB cross-product Check API (thin). Central ReBAC for cross-product links only.
   - AC: the SpiceDB schema models the artefact-to-ambition cross-product relationship.
   - AC: products write relationship tuples on their own mutations (sole-writer); a wrong-service write is blocked.
@@ -2723,6 +2725,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: the in-process Sentinel clamp is unchanged for in-product hot paths (no new network hop on local reads).
   - AC: RED-GREEN TestReBAC_CrossProductCheck + TestReBAC_NewEnemy_RevokeHonoured pass.
   - Theme: PLAT1.14 · Plan: PLA078
+  > ✅ DONE 2026-06-09 (platform 168bd951) — internal/rebac: SpiceDB-shaped cross-product Check (artefact↔ambition schema DSL) + sole-writer WriteRelationshipsAs (wrong-service write → ErrSoleWriterViolation, batch-atomic, fail-closed) + in-memory MemChecker fake (fully_consistent by construction; real authzed client behind the same port, no heavy dep added). TestReBAC_CrossProductCheck + TestReBAC_NewEnemy_RevokeHonoured green. No in-product hot-path hop.
 - **PLAT1.25 [P2] 🔵 IN FLIGHT** — AC4 identity carve-out prerequisites — refactor the 4 cross-DB JOINs. Make the split survivable before any drop (Line C; destructive sequence, user-approved).
   - AC: role-tier resolution no longer joins users-to-users_roles across DBs (role-rank denormalised onto the users row); auth/sql.go updated.
   - AC: permission-code resolution is cached at login (no users_roles_permissions-to-users_permissions cross-DB join on every auth); permissions/sql.go updated.
