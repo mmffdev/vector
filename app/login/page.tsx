@@ -25,6 +25,7 @@ import Image from "next/image";
 import { useAuth, ApiError, MFAChallengeError } from "@/app/contexts/AuthContext";
 import { apiSite } from "@/app/lib/api";
 import { AuthFooter } from "@/app/components/AuthFooter";
+import { cpAuthEnabled, beginCpLogin } from "@/app/lib/cpAuth";
 
 type Reason = "session_revoked" | "session_idle_expired" | "session_anomaly";
 
@@ -266,6 +267,19 @@ function LoginForm() {
           <div className="loginv2__form-foot">
             <Link href="/login/reset" className="loginv2__forgot">Forgot password?</Link>
           </div>
+
+          {/* PLAT1.9 (flag-gated) — alternative: sign in via the MMFF Control
+              Plane (OIDC). Rendered ONLY when NEXT_PUBLIC_CP_AUTH_ENABLED is on;
+              the legacy email/password path above is unchanged. */}
+          {cpAuthEnabled() && (
+            <button
+              type="button"
+              className="loginv2__submit loginv2__submit--alt"
+              onClick={() => { void beginCpLogin(); }}
+            >
+              <span>Sign in with MMFF Platform</span>
+            </button>
+          )}
         </form>
       )}
 

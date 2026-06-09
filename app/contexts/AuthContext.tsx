@@ -99,6 +99,13 @@ interface AuthState {
   // Throws on 403 (no live grant for that workspace).
   switchWorkspace: (workspaceID: string) => Promise<AuthUser>;
   setUser: (u: AuthUser) => void;
+  // PLAT1.9 (flag-gated) — adopt a session minted by the MMFF Control-Plane OP
+  // instead of Vector's /auth/login. Only ever called from the flag-gated
+  // /cp/callback page (NEXT_PUBLIC_CP_AUTH_ENABLED). Sets the CP access token +
+  // resolves the user via /auth/me. See the LOUD DPoP-binding caveat on the impl
+  // — full DPoP-keypair reconciliation between the CP proof key and Vector's IDB
+  // keypair is the remaining work before this is production-ready.
+  adoptCpSession: (accessToken: string) => Promise<AuthUser>;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -203,6 +210,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // refresh with a key we just pruned (which the backend would reject →
     // revoke-all). TD-SEC-DPOP-STALE-KEY live-tab path.
     broadcastAuthEvent({ type: "dpop-key-changed", userId: res.user.id });
+  }, []);
+
+  // PLAT1.9 (flag-gated) — adopt a Control-Plane-minted session. Sets the CP
+  // access token, then resolves the user via /auth/me (the backend accepts the
+  // CP ES384 token via the dual-accept path — cp_dual_accept.go, slice E — when
+  // CP_AUTH_DUAL_ACCEPT is on server-side). Updates user state so the app boots
+  // exactly as it would after a legacy login.
+  //
+  // ⚠️ LOUD CAVEAT — DPoP binding is NOT reconciled here. Vector's legacy session
+  // binds the access token to a DPoP keypair in IndexedDB (cnf.jkt), and
+  // /auth/refresh re-signs with that key. A CP-issued token is bound to the CP
+  // login's DPoP key (minted in cpAuth.ts), which is NOT Vector's IDB keypair —
+  // so the FIRST /auth/refresh under a CP session would present the wrong proof
+  // key and the backend binding check would revoke-all (the TD-SEC-DPOP-STALE-KEY
+  // failure mode). This adopt path is therefore SAFE FOR INITIAL LOAD ONLY and is
+  // gated behind NEXT_PUBLIC_CP_AUTH_ENABLED (default OFF). Reconciling the CP
+  // proof key into Vector's IDB keypair lifecycle (or moving Vector's refresh to
+  // the CP) is the remaining PLAT1.9/1.12 work — tracked, not done here.
+  const adoptCpSession = useCallback(async (accessToken: string): Promise<AuthUser> => {
+    setApiToken(accessToken);
+    // Resolve the principal. /auth/me returns the same AuthUser shape login does.
+    const me = await apiSite<AuthUser>("/auth/me");
+    setUser(me);
+    setSessionCookie();
+    writeBoundJKT(jktFromAccessToken(accessToken));
+    return me;
   }, []);
 
   const refresh = useCallback(async () => {
@@ -533,7 +566,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const role = user?.role ?? null;
 
   return (
-    <Ctx.Provider value={{ user, role, loading, permissions, hasPermission, login, mfaLogin, logout, refresh, switchWorkspace, setUser }}>
+    <Ctx.Provider value={{ user, role, loading, permissions, hasPermission, login, mfaLogin, logout, refresh, switchWorkspace, setUser, adoptCpSession }}>
       {children}
     </Ctx.Provider>
   );

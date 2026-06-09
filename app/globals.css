@@ -17517,6 +17517,15 @@ tr.is-editing {
   cursor: progress;
   opacity: 0.7;
 }
+/* PLAT1.9 (flag-gated) alternative sign-in: secondary/outlined treatment so the
+   legacy email/password submit stays the primary action. */
+.loginv2__submit--alt {
+  margin-top: 12px;
+  background: transparent;
+  color: #181818;
+  border: 1px solid #181818;
+}
+.loginv2__submit--alt:hover:not(:disabled) { background: #f2f2f2; }
 
 /* ── MFA step ─────────────────────────────────────────────── */
 .loginv2__mfa-head {

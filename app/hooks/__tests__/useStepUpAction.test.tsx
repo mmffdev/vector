@@ -46,6 +46,7 @@ const stubAuth = {
   refresh: async () => {},
   switchWorkspace: async () => stubUser,
   setUser: () => {},
+  adoptCpSession: async () => stubUser,
 };
 
 function Harness({
