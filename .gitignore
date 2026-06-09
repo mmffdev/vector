@@ -15,6 +15,7 @@ backend/.env.local
 backend/.env.dev
 backend/.env.staging
 backend/.env.production
+backend/.env.key.aws/
 .env.local
 .env*.local
 dev/remote_setup.html
