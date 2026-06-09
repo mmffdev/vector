@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
-**Doc version:** 2.76 (2026-06-09 — PLA078 added: 11 Vector-on-Control-Plane stories PLAT1.16–PLAT1.26 (Line B/C follow-on to PLA077). Line A structural move DONE — Vector backend 54 pkgs green from products/vector/, module renamed 6ba20559, boots against dev DB; platform DB added to the push-backup script f6ee8230. Full plan: PLA078 on /dev/reporting.)
+**Doc version:** 2.77 (2026-06-09 — PLA078 added: 11 Vector-on-Control-Plane stories PLAT1.16–PLAT1.26 (Line B/C follow-on to PLA077). Line A structural move DONE — Vector backend 54 pkgs green from products/vector/, module renamed 6ba20559, boots against dev DB; platform DB added to the push-backup script f6ee8230. Full plan: PLA078 on /dev/reporting.)
 
 **Doc version:** 2.73 (2026-06-08 — PLAT1 added from PLA077/RES068: Platform Extraction — shared Control Plane. 15 stories across strangler-fig phases 0–7. Monorepo (control-plane/products/packages) + three independence walls (CODEOWNERS, migration lanes, import lint); hybrid authz; Bridge Model; PoC = cross-product SSO. PLAT1.2 git move APPROVAL-GATED.)
 
@@ -2733,6 +2733,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: all 47 mapped SQL ops validated against the split topology; login + token refresh still pass end-to-end.
   - AC: NO drop migration is written in this story (prerequisites only).
   - Theme: PLAT1.7 · Plan: PLA078 · TD-PLATFORM-IDENTITY-CARVEOUT
+  > ✅ DONE 2026-06-09 (platform 05621544) — carve-out prerequisites landed, scoped precisely: the blast-radius map's '4 cross-DB JOINs' is really 2. Sites 1+2 (auth role-tier users⋈users_roles; RBAC users_roles_permissions⋈users_permissions) are IDENTITY-ONLY — both sides move to platform together, JOIN stays single-DB → pool-routing at 1.26, no refactor. Sites 3+4 (first-workspace, master_record_workspaces[product]⋈users_roles_workspaces[identity]) genuinely straddle the boundary → app-level two-query merge: workspaceresolver.NewSplitResolver + sentinel.FirstLiveWorkspace split path, activated only when the two pools differ (no-op today). Live-DB integration tests prove split==JOIN equivalence. NO drop migration (that's 1.26). Reversible, 55 pkgs green.
 - **PLAT1.26 [P3] 🔵 IN FLIGHT** — AC4 identity carve-out — execute the drop (DESTRUCTIVE, separate approved session). Close AC4: identity is one source of truth.
   - AC: the junction tables users_roles_workspaces + users_roles_topology_nodes are moved to platform with users.
   - AC: platform.users is the sole writer; the 42 vector_artefacts FKs are converted to plain UUID soft-refs.
