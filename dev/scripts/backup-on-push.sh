@@ -207,6 +207,18 @@ LIB_PORT="${LIB_PORT:-$DB_PORT}"
 VA_PW=$(grep '^VA_DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
 VA_PORT=$(grep '^VA_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'' | tr -d '[:space:]')
 VA_PORT="${VA_PORT:-$DB_PORT}"
+# -- platform (Control Plane identity DB, PLAT1.2 clone) --------------------
+# The `platform` DB lives on the same dev tunnel and was cloned from
+# vector_artefacts, so it shares the mmff_dev user + VA password. Optional
+# PLATFORM_DB_* overrides are honoured if present in the env file (the
+# control-plane backend reads PLATFORM_DB_PASSWORD/NAME); otherwise we fall
+# back to the VA credential against db name `platform`.
+PLATFORM_PW=$(grep '^PLATFORM_DB_PASSWORD' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'')
+PLATFORM_PW="${PLATFORM_PW:-$VA_PW}"
+PLATFORM_PORT=$(grep '^PLATFORM_DB_PORT' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'' | tr -d '[:space:]')
+PLATFORM_PORT="${PLATFORM_PORT:-$DB_PORT}"
+PLATFORM_NAME=$(grep '^PLATFORM_DB_NAME' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"'' | tr -d '[:space:]')
+PLATFORM_NAME="${PLATFORM_NAME:-platform}"
 ICLOUD_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/SQL Backups Vector"
 mkdir -p "$ICLOUD_DIR" 2>/dev/null || true
 if [[ -z "$PW" ]]; then
@@ -237,8 +249,10 @@ TS=$(ts_fname)
 # Track per-DB success so we only mirror to iCloud if everything dumped cleanly.
 LIB_OK=0
 VA_OK=0
+PLATFORM_OK=0
 OUT_LIB=""
 OUT_VA=""
+OUT_PLATFORM=""
 
 # -- Dump mmff_library ------------------------------------------------------
 if [[ -n "$LIB_PW" ]]; then
@@ -296,14 +310,46 @@ if [[ -n "$VA_PW" ]]; then
   fi
 fi
 
+# -- Dump platform (Control Plane identity DB) ------------------------------
+# Added 2026-06-09 (PLA077 platform extraction): the CP owns identity in its
+# own `platform` DB. A skip here is non-fatal (a fresh clone repopulates it),
+# but a tracked backup means a CP-DB loss is recoverable like the others.
+if [[ -n "$PLATFORM_PW" ]]; then
+  OUT_PLATFORM="$BACKUP_DIR/${TS}_${LABEL}_dev_${PLATFORM_NAME}.sql"
+  START_MS=$(($(date +%s) * 1000))
+
+  if ! PGPASSWORD="$PLATFORM_PW" "$PG_DUMP" \
+      -h localhost -p "$PLATFORM_PORT" -U mmff_dev -d "$PLATFORM_NAME" \
+      --no-owner --no-privileges \
+      > "$OUT_PLATFORM" 2> "$OUT_PLATFORM.err"; then
+    ERR_TAIL=$(tail -c 300 "$OUT_PLATFORM.err" 2>/dev/null | tr '\n' ' ')
+    rm -f "$OUT_PLATFORM" "$OUT_PLATFORM.err"
+    OUT_PLATFORM=""
+    reason="pg_dump_failed (platform): $ERR_TAIL"
+    log_entry "skipped" "$SHA" "${LABEL}_platform" "" 0 0 "$reason"
+    write_diag_log "$reason" "$SHA"
+    emit_skip_banner "pg_dump platform failed: $ERR_TAIL"
+  else
+    rm -f "$OUT_PLATFORM.err"
+    END_MS=$(($(date +%s) * 1000))
+    DUR=$(( END_MS - START_MS ))
+    BYTES_PLATFORM=$(wc -c < "$OUT_PLATFORM" | tr -d ' ')
+    PLATFORM_OK=1
+    log_entry "ok" "$SHA" "${LABEL}_platform" "$(basename "$OUT_PLATFORM")" "$BYTES_PLATFORM" "$DUR" ""
+    printf 'backup-on-push: ok [%s] %s (%s bytes, %sms, channel=%s)\n' \
+      "${LABEL}_platform" "$(basename "$OUT_PLATFORM")" "$BYTES_PLATFORM" "$DUR" "$CHANNEL"
+  fi
+fi
+
 # -- iCloud mirror ----------------------------------------------------------
-# Mirror only if BOTH live DBs dumped successfully — otherwise the iCloud copy
-# would be partial and confusing. Failures here are non-fatal (push never blocks).
-# Post-2026-05-26 (refactorDB Pillar 3): mmff_vector was DROPped; only
-# vector_artefacts + mmff_library are dumped now.
-if [[ $LIB_OK -eq 1 && $VA_OK -eq 1 && -d "$ICLOUD_DIR" ]]; then
-  cp "$OUT_LIB" "$ICLOUD_DIR/" 2>/dev/null || true
-  cp "$OUT_VA"  "$ICLOUD_DIR/" 2>/dev/null || true
+# Mirror each DB that dumped successfully (per-file gate — a single DB's
+# failure no longer suppresses the mirror of the others). Failures here are
+# non-fatal (push never blocks). Three DBs as of 2026-06-09: vector_artefacts
+# + mmff_library + platform (mmff_vector was DROPped 2026-05-26).
+if [[ -d "$ICLOUD_DIR" ]]; then
+  [[ $LIB_OK -eq 1      && -n "$OUT_LIB"      ]] && cp "$OUT_LIB"      "$ICLOUD_DIR/" 2>/dev/null || true
+  [[ $VA_OK -eq 1       && -n "$OUT_VA"       ]] && cp "$OUT_VA"       "$ICLOUD_DIR/" 2>/dev/null || true
+  [[ $PLATFORM_OK -eq 1 && -n "$OUT_PLATFORM" ]] && cp "$OUT_PLATFORM" "$ICLOUD_DIR/" 2>/dev/null || true
 fi
 
 # -- Retention --------------------------------------------------------------
@@ -316,7 +362,7 @@ cutoff = now - keep_days * 86400
 SHA_RE = re.compile(
     r'^('
     r'[0-9a-f]{4,40}_\d{8}_\d{6}(_library)?\.sql'                     # legacy: <sha>_<ts>(_library).sql
-    r'|\d{8}_\d{6}_[0-9a-f]{4,40}_dev_(mmff_vector|mmff_library|vector_artefacts)\.sql'  # new: <ts>_<sha>_dev_<dbname>.sql
+    r'|\d{8}_\d{6}_[0-9a-f]{4,40}_dev_(mmff_vector|mmff_library|vector_artefacts|platform|mmff_dev)\.sql'  # new: <ts>_<sha>_dev_<dbname>.sql
     r')$'
 )
 candidates = []
