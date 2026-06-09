@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
-**Doc version:** 2.74 (2026-06-08 — PLAT1 build progress: new repo `mmffdev-platform` stood up. PLAT1.1 DONE (5e808c9), PLAT1.5 PARTIAL (072c34b), PLAT1.6 SCAFFOLDED (221e9e1), PLAT1.7 SKELETON (5cb0d38) — all pushed. PLAT1.2 Vector-move PREPARED via dry-run but STILL GATED (awaits branch approval). See HANDOVER.md in the platform repo.)
+**Doc version:** 2.75 (2026-06-09 — PLA078 added: 11 Vector-on-Control-Plane stories PLAT1.16–PLAT1.26 (Line B/C follow-on to PLA077). Line A structural move DONE — Vector backend 54 pkgs green from products/vector/, module renamed 6ba20559, boots against dev DB; platform DB added to the push-backup script f6ee8230. Full plan: PLA078 on /dev/reporting.)
 
 **Doc version:** 2.73 (2026-06-08 — PLAT1 added from PLA077/RES068: Platform Extraction — shared Control Plane. 15 stories across strangler-fig phases 0–7. Monorepo (control-plane/products/packages) + three independence walls (CODEOWNERS, migration lanes, import lint); hybrid authz; Bridge Model; PoC = cross-product SSO. PLAT1.2 git move APPROVAL-GATED.)
 
@@ -2652,6 +2652,92 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - Phase: 7 · Plan: PLA077
   > ✅ AC3+AC4 CLOSED 2026-06-09 (platform 04fcaaba) — **AC3** entitlement gate enforced: stub-rp /callback calls CP /entitlements/{product}/can-open and refuses the session (403 no_entitlement) without a grant; e2e proves deny→grant→allow→revoke→deny. **AC4** shared-correlation-id audit trail wired (see PLAT1.13 note). Both gaps from the 2026-06-09 PoC pass are now closed.
   > 🟢 PoC DEMONSTRATED 2026-06-09 (platform commit e50fe118) — the acceptance demo works end to end. **AC1 ✅** `products/stub-rp` — a thin standalone relying party (own go.mod) doing full OIDC auth-code+PKCE+DPoP login against the CP, holding a session, re-introspecting, and receiving back-channel logout; runs as 2 instances = "two products". **AC2 ✅ (protocol)** `TestCrossProductSSO_LoginOnce_RevokeOnce_KillsBoth` (Go) logs the SAME user into both products via the CP. **AC5 ✅** ONE revocation → BOTH products read active:false at /introspect (Go test) + back-channel fan-out reaches both (e2e rps_pushed==2). **AC6 ✅** `e2e/cross_product_sso.spec.mjs` boots CP+2 RPs as real processes, all green. **GAPS:** AC2's "Vector" side is the stub (Vector's real FE login→CP redirect is PLAT1.9, deliberately NOT wired into live login — staged); **AC3 ❌** entitlement gate (PLAT1.8 surface exists, not yet enforced on stub open); **AC4 ❌** shared-correlation-id audit trail not wired (same gap as PLAT1.13 AC4). The cross-product SSO PROPERTY (login-once / revoke-once-kills-both) is proven both deterministically (Go) and live (3-process e2e).
+
+### PLA078 — Vector-on-Control-Plane (Line B/C implementation follow-on to PLA077)
+
+> The structural monorepo move (PLA077 Line A) is DONE 2026-06-09 (backend 54 pkgs green from `products/vector/backend`, frontend builds, module renamed `6ba20559`, boots against dev DB). These 11 stories make Vector a real relying party on the shared Control Plane (Line B) + close the destructive identity carve-out (Line C). Full plan: PLA078 on /dev/reporting → Plan tab. Sequencing note: durable substrates (1.18–1.20) are deliberately pulled AHEAD of the cutover flip (1.22) so a CP restart can't drop sessions/kill-switch state.
+
+- **PLAT1.16 [P1] 🔵 IN FLIGHT** — Real interactive CP login — retire the X-CP-Authenticated-User scaffold. The CP authenticates real users against platform.users instead of trusting a dev header.
+  - AC: the X-CP-Authenticated-User header path is removed from CP /authorize; a request bearing it no longer authenticates.
+  - AC: a real credential challenge verifies against platform.users via OIDCUserSource and establishes the CP session.
+  - AC: the existing auth-code + PKCE (S256) + DPoP + form_post flow still issues a cnf.jkt-bound ES384 token (token_flow tests stay green).
+  - AC: a request with a bad credential returns 401 and mints no code.
+  - AC: RED-GREEN test TestCP_InteractiveLogin_RealCredential passes; the old scaffold test is removed.
+  - Theme: PLAT1.9 · Plan: PLA078
+  > ✅ DONE 2026-06-09 (platform 175018cd) — X-CP-Authenticated-User scaffold retired; /authorize now verifies email+password (bcrypt cost-12 over users_password_hash, fail-closed on users_is_active, timing-flattened, no enumeration oracle) before minting. PKCE+DPoP+form_post path unchanged. TestCP_InteractiveLogin_RealCredential green; 10 pkgs green.
+- **PLAT1.17 [P1] 🔵 IN FLIGHT** — CP /platform/me boot endpoint + Vector Sentinel hydration. Vector's clamp hydrates from the CP, not the legacy in-process path.
+  - AC: GET /platform/me returns identity + clamp seed (focus node, allowed subtree ids, role, tenant) for the DPoP-bound session.
+  - AC: SentinelProvider hydrates from /platform/me when on a CP session; useSentinel() state equals the legacy clamp for the same user (parity test).
+  - AC: with the CP flag OFF, Sentinel still hydrates the legacy way (reversible).
+  - AC: the endpoint is fail-closed — no session returns 401, never a default-open clamp.
+  - AC: RED-GREEN TestSentinelBootParity_CPvsLegacy passes.
+  - Theme: PLAT1.9 · Plan: PLA078
+  > 🟡 BACKEND DONE 2026-06-09 (platform 8fbd1902) — GET /platform/me serves identity+clamp seed; shared DPoP verify extracted to oidc.VerifyDPoPRequest (/userinfo refactored onto it, behavior-preserving); clamp resolved from cloned topology tables, fail-closed (401/503/empty-subtree, never default-open). Integration green vs live DB. REMAINING: Vector SentinelProvider hydration from /platform/me + TestSentinelBootParity_CPvsLegacy (frontend half).
+- **PLAT1.18 [P1] 🔵 IN FLIGHT** — Durable refresh-token store on the platform DB. Replace the in-memory refresh store so sessions survive a restart.
+  - AC: migration creates refresh_tokens (column-prefixed) on the platform DB; schema_migrations row exists.
+  - AC: the DB-backed store satisfies the existing RefreshStore interface — rotating, single-use, DPoP-bound, family-revoking, expiry-inherited (raw never stored).
+  - AC: all 8 refresh-store unit tests + 6 HTTP-flow tests pass against the DB-backed impl.
+  - AC: a process restart preserves an issued refresh token (integration test).
+  - AC: SY003 regenerated with the new table.
+  - Theme: PLAT1.12 · Plan: PLA078
+  > ✅ DONE 2026-06-09 (platform 61b10bff) — platformdb.RefreshStore (satisfies refresh.Store) on platform.refresh_tokens (raw never stored, only SHA-256; migration 0121, all columns prefixed). Survives-restart integration test green vs live DB. main.go selects DB store when pool present, else MemoryStore.
+- **PLAT1.19 [P1] 🔵 IN FLIGHT** — Durable revocation store on the platform DB. The kill-switch survives a restart.
+  - AC: migration creates revoked_subjects + revoked_jtis (column-prefixed); schema_migrations row exists.
+  - AC: the DB-backed store satisfies the RevocationChecker + Revoker interfaces; /introspect returns active:false for a revoked subject after a restart.
+  - AC: back-channel logout fan-out still reaches all registered RPs (rps_pushed assertion).
+  - AC: revocation unit + cross-product SSO tests pass against the DB-backed impl.
+  - AC: SY003 regenerated.
+  - Theme: PLAT1.13 · Plan: PLA078
+  > ✅ DONE 2026-06-09 (platform 61b10bff) — platformdb.RevocationStore (satisfies revocation.RevocationStore + oidc.RevocationChecker) on platform.revoked_subjects + revoked_jtis (migration 0119, prefixed). Survives-restart + idempotent integration tests green vs live DB. Back-channel fan-out unchanged.
+- **PLAT1.20 [P1] 🔵 IN FLIGHT** — Durable audit sink on the platform DB. The correlation-id'd audit trail persists.
+  - AC: migration creates audit_logs (column-prefixed) on the platform DB; schema_migrations row exists.
+  - AC: the DB-backed sink satisfies the AuditRecorder interface; login + revoke events for one correlation id are queryable after a restart.
+  - AC: POST /platform/audit + ByCorrelation read path work against the DB.
+  - AC: the cross-product SSO test's one-correlation-id assertion passes against the DB-backed sink.
+  - AC: SY003 regenerated.
+  - Theme: PLAT1.13 · Plan: PLA078
+  > ✅ DONE 2026-06-09 (platform 61b10bff) — platformdb.AuditSink (satisfies audit.Sink) on NEW platform.platform_audit_events (correlation-id'd; migration 0120, prefixed; cloned Vector audit_logs left untouched). One-correlation-id survives-restart integration test green vs live DB. SY003 regenerated.
+- **PLAT1.21 [P2] 🔵 IN FLIGHT** — Shadow-run to zero + per-role contract matrix for the auth route-group. Prove the CP path matches legacy before any flip.
+  - AC: the PLAT1.10 shadow harness records legacy-vs-CP auth decisions to cp_shadow_divergence over real CP logins.
+  - AC: a /dev dashboard reports divergence count over a rolling window.
+  - AC: the per-role allow/deny contract matrix (gadmin/padmin/user) is green against the CP-served path.
+  - AC: RED-GREEN TestShadowGuard_BlocksOnDivergence proves the cutover guard refuses to flip while divergence is greater than 0.
+  - Theme: PLAT1.10 · Plan: PLA078
+- **PLAT1.22 [P2] 🔵 IN FLIGHT** — Cutover flip of the auth route-group to the CP (reversible) — USER-OWNED GATE. The first real flip; legacy dormant but intact.
+  - AC: with divergence zero, the auth route-group serves the CP result; the legacy path is dormant.
+  - AC: a rollback flag restores the legacy path within one deploy, no data migration.
+  - AC: per-role contract tests pass against the CP-served path (allow + deny).
+  - AC: the central audit trail shows the login event in the CP trail.
+  - AC: the flip flag default-ON change is committed only after explicit in-chat user go-ahead.
+  - Theme: PLAT1.12 · Plan: PLA078
+- **PLAT1.23 [P2] 🔵 IN FLIGHT** — Split Sentinel — platform PDP + Vector scope adapter. Platform Sentinel becomes shared authority; Vector topology/focus registers as a product scope adapter.
+  - AC: platform Sentinel answers who/tenant/product/session/entitlement/allowed.
+  - AC: the Vector scope adapter answers Vector topology/workspace/focus scope and registers with platform.
+  - AC: the tenant-isolation spec extended to platform-clamp + product-adapter passes (tenant A cannot read tenant B).
+  - AC: in-process clamp retains no new network hop on local hot-path reads (latency assertion).
+  - Theme: PLAT1.11 · Plan: PLA078
+- **PLAT1.24 [P3] 🔵 IN FLIGHT** — SpiceDB cross-product Check API (thin). Central ReBAC for cross-product links only.
+  - AC: the SpiceDB schema models the artefact-to-ambition cross-product relationship.
+  - AC: products write relationship tuples on their own mutations (sole-writer); a wrong-service write is blocked.
+  - AC: a Check answers a cross-product permission with fully_consistent consistency.
+  - AC: the in-process Sentinel clamp is unchanged for in-product hot paths (no new network hop on local reads).
+  - AC: RED-GREEN TestReBAC_CrossProductCheck + TestReBAC_NewEnemy_RevokeHonoured pass.
+  - Theme: PLAT1.14 · Plan: PLA078
+- **PLAT1.25 [P2] 🔵 IN FLIGHT** — AC4 identity carve-out prerequisites — refactor the 4 cross-DB JOINs. Make the split survivable before any drop (Line C; destructive sequence, user-approved).
+  - AC: role-tier resolution no longer joins users-to-users_roles across DBs (role-rank denormalised onto the users row); auth/sql.go updated.
+  - AC: permission-code resolution is cached at login (no users_roles_permissions-to-users_permissions cross-DB join on every auth); permissions/sql.go updated.
+  - AC: first-workspace resolution is materialised or app-joined (no users_roles_workspaces-to-master_record_workspaces cross-DB join); sentinel/sql.go + workspaceresolver/sql.go updated.
+  - AC: all 47 mapped SQL ops validated against the split topology; login + token refresh still pass end-to-end.
+  - AC: NO drop migration is written in this story (prerequisites only).
+  - Theme: PLAT1.7 · Plan: PLA078 · TD-PLATFORM-IDENTITY-CARVEOUT
+- **PLAT1.26 [P3] 🔵 IN FLIGHT** — AC4 identity carve-out — execute the drop (DESTRUCTIVE, separate approved session). Close AC4: identity is one source of truth.
+  - AC: the junction tables users_roles_workspaces + users_roles_topology_nodes are moved to platform with users.
+  - AC: platform.users is the sole writer; the 42 vector_artefacts FKs are converted to plain UUID soft-refs.
+  - AC: a backfill check returns 0 rows where a soft-ref UUID does not resolve against platform.users.
+  - AC: the AC4 query SELECT con.conname ... WHERE ref.relname='users' returns 0 rows on vector_artefacts.
+  - AC: a CI grep gate fails on any new REFERENCES users in a vector_artefacts migration.
+  - AC: SY003 regenerated; AC4 marked green in Vector_Scope.md.
+  - Theme: PLAT1.7 · Plan: PLA078 · TD-PLATFORM-IDENTITY-CARVEOUT
 
 ---
 
