@@ -2628,6 +2628,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: RED-GREEN TestCP_Revoke_KillsRPSession proves a revoked token is rejected at the RP.
   - AC: the revocation event lands in the central audit trail.
   - Phase: 5 · Plan: PLA077
+  > 🟢 MOSTLY DONE 2026-06-09 (platform commit e50fe118) — central revocation REAL (was 501). `internal/revocation`: RevocationStore (revoked subjects+jtis, monotonic) + Revoker.LogoutSubject (mark revoked + fan-out OIDC back-channel logout POST to every registered RP via MemoryRPRegistry/CP_REGISTERED_RPS) + RFC 7009 single-token path. **AC1 ✅** /platform/revoke exposed + pushes back-channel logout to registered RPs (e2e proves rps_pushed==2). **AC2/AC3 ✅ (mechanism)** new OP POST /introspect (RFC 7662) — a verified-but-revoked ES384 token reads active:false; /userinfo honours it too; the Go integration test `TestCrossProductSSO_*` proves a revoked token flips both products to inactive. Tests: impl_test.go + revocation_test.go (un-skipped TestRevoke_Shape + TestLogoutSubject_PushesToEachRP), all green. **AC4 ❌ audit trail** not wired (no audit_logs INSERT on revoke yet). Named test is `TestCrossProductSSO_LoginOnce_RevokeOnce_KillsBoth` (behaviour of the AC's `TestCP_Revoke_KillsRPSession`). PoC substrate is in-memory; durable form = platform DB revoked_subjects/jtis (TD when productionised).
 
 - **PLAT1.14 [P3] 🔵 IN FLIGHT** — SpiceDB + cross-product Check API (thin). Central ReBAC for cross-product links only.
   - AC: SpiceDB schema models the artefact↔ambition cross-product relationship.
@@ -2645,6 +2646,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: one revocation at the CP kills BOTH sessions within the TTL window.
   - AC: RED-GREEN e2e cross_product_sso.spec.mjs asserts login-once / revoke-once-kills-both.
   - Phase: 7 · Plan: PLA077
+  > 🟢 PoC DEMONSTRATED 2026-06-09 (platform commit e50fe118) — the acceptance demo works end to end. **AC1 ✅** `products/stub-rp` — a thin standalone relying party (own go.mod) doing full OIDC auth-code+PKCE+DPoP login against the CP, holding a session, re-introspecting, and receiving back-channel logout; runs as 2 instances = "two products". **AC2 ✅ (protocol)** `TestCrossProductSSO_LoginOnce_RevokeOnce_KillsBoth` (Go) logs the SAME user into both products via the CP. **AC5 ✅** ONE revocation → BOTH products read active:false at /introspect (Go test) + back-channel fan-out reaches both (e2e rps_pushed==2). **AC6 ✅** `e2e/cross_product_sso.spec.mjs` boots CP+2 RPs as real processes, all green. **GAPS:** AC2's "Vector" side is the stub (Vector's real FE login→CP redirect is PLAT1.9, deliberately NOT wired into live login — staged); **AC3 ❌** entitlement gate (PLAT1.8 surface exists, not yet enforced on stub open); **AC4 ❌** shared-correlation-id audit trail not wired (same gap as PLAT1.13 AC4). The cross-product SSO PROPERTY (login-once / revoke-once-kills-both) is proven both deterministically (Go) and live (3-process e2e).
 
 ---
 
