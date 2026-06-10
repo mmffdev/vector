@@ -230,6 +230,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Gated behind NEXT_PUBLIC_CP_AUTH_ENABLED (default OFF); legacy login untouched.
   const adoptCpSession = useCallback(async (accessToken: string): Promise<AuthUser> => {
     setApiToken(accessToken);
+    // Activate the CP-bound keypair from IDB before the first request.
+    // completeCpLogin persisted it (writeKeyRecord) but persistence alone
+    // doesn't make it the dpop module's ACTIVE key — and apiSite only mints
+    // a proof when one is active, so without this /auth/me goes out
+    // proof-less and the backend 401s it (missing_dpop_proof).
+    await ensureAnyActiveKeypair(jktFromAccessToken(accessToken));
     // Resolve the principal. /auth/me returns the same AuthUser shape login does.
     const me = await apiSite<AuthUser>("/auth/me");
     setUser(me);

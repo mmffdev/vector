@@ -29,12 +29,23 @@ const PUBLIC_PATHS = [
   // Phase 2 PoC: /v2/* hits vector_artefacts via /api/v2/* and uses fixture
   // IDs instead of the Go session. Production authz does not gate it.
   "/v2",
+  // PLAT1.9 — CP OIDC completion page. Runs the code→token exchange that
+  // CREATES the session, so it cannot itself require one. Flag-gated like
+  // the rest of the CP flow; renders "not enabled" when the flag is off.
+  "/cp/callback",
 ];
 
 const isProd = process.env.NODE_ENV === "production";
 
 function buildCsp(nonce: string, apiBase: string): string {
   const apiBaseWs = apiBase.replace(/^http/i, "ws");
+  // PLAT1.9 — the CP callback page runs the code→token exchange as a
+  // browser fetch against the Control Plane, so its origin must be
+  // admitted under connect-src. Only when the CP flow is enabled.
+  const cpBase =
+    process.env.NEXT_PUBLIC_CP_AUTH_ENABLED === "true"
+      ? (process.env.NEXT_PUBLIC_CP_BASE_URL ?? "")
+      : "";
   // 'unsafe-eval' kept in dev only — Turbopack/HMR uses it. Production
   // Next.js does not.
   const scriptSrc = [
@@ -66,7 +77,7 @@ function buildCsp(nonce: string, apiBase: string): string {
     "worker-src 'self' blob:",
     "img-src 'self' data: blob:",
     "font-src 'self' data: https://fonts.gstatic.com",
-    `connect-src 'self' ${apiBase} ${apiBaseWs}`,
+    `connect-src 'self' ${apiBase} ${apiBaseWs}${cpBase ? ` ${cpBase}` : ""}`,
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
     "frame-ancestors 'self'",
     "form-action 'self'",
