@@ -125,7 +125,12 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			writeAuthFailure(w, r, logger.AuthFailureNoCredential, "")
 			return
 		}
-		claims, err := ParseAccessToken(raw)
+		// PLAT1.7 slice E — dual-accept entrypoint. Legacy HS256 first,
+		// always; the CP ES384/JWKS path only runs when HS256 rejects AND
+		// CP_AUTH_DUAL_ACCEPT is on, so with the flag off (default) this is
+		// byte-for-byte ParseAccessToken. The DPoP binding checks below run
+		// unchanged for both paths — CP tokens carry cnf.jkt too.
+		claims, err := ParseAccessTokenDualAccept(raw)
 		if err != nil {
 			writeAuthFailure(w, r, logger.AuthFailureInvalidCredential, "bad_token")
 			return
