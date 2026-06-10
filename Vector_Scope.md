@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-08
 **Last updated:** 2026-06-03 — Added B23 (PLA074): artefact dependency maps — edge-first persistence (`artefact_dependency_maps`, `artefact_dependency_edges`, `artefact_dependency_edge_events`), sole-writer `backend/internal/dependencies/` service, Sentinel-gated CRUD, cycle guard, 409 archive preflight, transitive-reachability projection. 14 stories. CPM deferred via `TD-DEP-CPM-DURATION`; `artefacts_is_blocked` stays manual. Research: R058.
-**Doc version:** 2.77 (2026-06-09 — PLA078 added: 11 Vector-on-Control-Plane stories PLAT1.16–PLAT1.26 (Line B/C follow-on to PLA077). Line A structural move DONE — Vector backend 54 pkgs green from products/vector/, module renamed 6ba20559, boots against dev DB; platform DB added to the push-backup script f6ee8230. Full plan: PLA078 on /dev/reporting.)
+**Doc version:** 2.78 (2026-06-10 — PLAT1.22 prereq added: `CP_JWKS_URL` fetch replaces the static `CP_JWKS_JSON` env blob before the flip; browser CP-login round-trip verified end-to-end this date. Previous: 2.77, 2026-06-09 — PLA078 added: 11 Vector-on-Control-Plane stories PLAT1.16–PLAT1.26 (Line B/C follow-on to PLA077). Line A structural move DONE — Vector backend 54 pkgs green from products/vector/, module renamed 6ba20559, boots against dev DB; platform DB added to the push-backup script f6ee8230. Full plan: PLA078 on /dev/reporting.)
 
 **Doc version:** 2.73 (2026-06-08 — PLAT1 added from PLA077/RES068: Platform Extraction — shared Control Plane. 15 stories across strangler-fig phases 0–7. Monorepo (control-plane/products/packages) + three independence walls (CODEOWNERS, migration lanes, import lint); hybrid authz; Bridge Model; PoC = cross-product SSO. PLAT1.2 git move APPROVAL-GATED.)
 
@@ -2710,6 +2710,7 @@ User-authored dependency maps with three buckets (Requires First / In Parallel /
   - AC: per-role contract tests pass against the CP-served path (allow + deny).
   - AC: the central audit trail shows the login event in the CP trail.
   - AC: the flip flag default-ON change is committed only after explicit in-chat user go-ahead.
+  - Prereq (added 2026-06-10): Vector fetches the CP JWKS from a `CP_JWKS_URL` (refresh on unknown kid) instead of the static `CP_JWKS_JSON` env blob. The static blob is boot-time hand-copied state — acceptable for the dual-accept/shadow soak, but CP auth cannot default ON while token verification depends on an operator re-feeding JSON after every CP key rotation. Dev pain is interim-mitigated by a persistent local-dev signing key (`OIDC_SIGNING_KEY_FILE=$HOME/.mmffdev/cp-op-signing-key.pem` — see HANDOVER-RESUME.md in mmffdev-platform).
   - Theme: PLAT1.12 · Plan: PLA078
 - **PLAT1.23 [P2] 🔵 IN FLIGHT** — Split Sentinel — platform PDP + Vector scope adapter. Platform Sentinel becomes shared authority; Vector topology/focus registers as a product scope adapter.
   - AC: platform Sentinel answers who/tenant/product/session/entitlement/allowed.
