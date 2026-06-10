@@ -16,6 +16,11 @@ backend/.env.dev
 backend/.env.staging
 backend/.env.production
 backend/.env.key.aws/
+# GRN1.2 (PLA079 C1): encrypted env bundles — plaintext-equivalent under the
+# leaked all-zero MASTER_KEY; never tracked
+backend/.env*.locked
+# GRN1.2 (PLA079): compiled encsecret binary (cmd/encsecret source stays tracked)
+backend/encsecret
 .env.local
 .env*.local
 dev/remote_setup.html
@@ -25,6 +30,9 @@ dev/remote_setup.html
 .planka/
 MMFFDev - Vector Assets/backups/
 MMFFDev - Vector Assets/db-backups/
+# GRN1.2 (PLA079 C3/L6): the root-anchored local-assets/backups/ rule above
+# does NOT match this nested path — DB dumps with real user data lived here
+MMFFDev - Vector Assets/local-assets/backups/
 MMFFDev - Vector Assets/security-flags.jsonl
 MMFFDev - Vector Assets/Vector Design System.zip
 .build/
