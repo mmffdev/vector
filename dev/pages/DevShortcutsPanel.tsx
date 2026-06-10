@@ -146,7 +146,7 @@ const DATA: Category[] = [
     shortcuts: [
       {
         tag: "<accounts>",
-        desc: "Source of truth for all dev user accounts, passwords, and Planka credentials. Queries live DB for current users; credential locations for DB, MASTER_KEY, JWT; password reset procedure.",
+        desc: "Source of truth for all dev user accounts and passwords. Queries live DB for current users; credential locations for DB, MASTER_KEY, JWT; password reset procedure.",
         flags: [],
         loadPath: ["CLAUDE.md", "commands/c_accounts.md"],
       },
