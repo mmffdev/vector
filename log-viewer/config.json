@@ -1,28 +1,63 @@
 {
-  "port": 3001,
+  "port": 4002,
   "refreshIntervalMs": 1000,
   "maxLinesInMemory": 50000,
   "tailInitialLines": 500,
-  "db": {
-    "comment": "Connection string is resolved at runtime. Priority: LOG_VIEWER_DB_URL env > VECTOR_ARTEFACTS_DB_URL from ../backend/.env.dev. The viewer only ever issues SELECTs.",
-    "envFile": "../backend/.env.dev",
-    "urlKey": "VECTOR_ARTEFACTS_DB_URL",
-    "statementTimeoutMs": 8000,
-    "maxPoolConnections": 4
+  "databases": {
+    "vector": {
+      "label": "vector_artefacts",
+      "envFile": "../backend/.env.dev",
+      "urlKey": "VECTOR_ARTEFACTS_DB_URL",
+      "statementTimeoutMs": 8000,
+      "maxPoolConnections": 4
+    },
+    "dev": {
+      "label": "mmff_dev",
+      "envFile": "../backend/.env.dev",
+      "urlKey": "MMFF_DEV_DB_URL",
+      "statementTimeoutMs": 8000,
+      "maxPoolConnections": 2
+    },
+    "library": {
+      "label": "mmff_library",
+      "envFile": "../backend/.env.dev",
+      "parts": {
+        "host": "LIBRARY_DB_HOST",
+        "port": "LIBRARY_DB_PORT",
+        "user": "LIBRARY_DB_USER",
+        "password": "LIBRARY_DB_PASSWORD",
+        "database": "LIBRARY_DB_NAME"
+      },
+      "statementTimeoutMs": 8000,
+      "maxPoolConnections": 2
+    }
   },
-  "logs": [
+  "defaultSource": "audit_logs",
+  "sources": [
     {
       "id": "audit_logs",
       "name": "Audit Logs",
+      "group": "Security",
+      "description": "Auth, permission, admin, and product audit events.",
       "color": "#10B981",
+      "db": "vector",
       "table": "audit_logs",
-      "prefix": "audit_logs_",
       "idColumn": "audit_logs_id",
       "tsColumn": "audit_logs_created_at",
       "orderColumn": "audit_logs_created_at",
       "columns": [
         "audit_logs_id",
         "audit_logs_created_at",
+        "audit_logs_action",
+        "audit_logs_resource",
+        "audit_logs_resource_id",
+        "audit_logs_id_user",
+        "audit_logs_id_subscription",
+        "audit_logs_ip_address",
+        "audit_logs_source_transport",
+        "audit_logs_metadata"
+      ],
+      "searchColumns": [
         "audit_logs_action",
         "audit_logs_resource",
         "audit_logs_resource_id",
@@ -41,14 +76,28 @@
         { "match": "token_refresh$", "level": "DEBUG" }
       ],
       "defaultLevel": "INFO",
-      "correlationKey": "audit_logs_id_user"
+      "facets": [
+        { "field": "audit_logs_action", "label": "Action" },
+        { "field": "audit_logs_resource", "label": "Resource" },
+        { "field": "audit_logs_source_transport", "label": "Transport" },
+        { "field": "audit_logs_ip_address", "label": "IP" },
+        { "field": "audit_logs_id_user", "label": "User" }
+      ],
+      "correlationKeys": {
+        "user": "audit_logs_id_user",
+        "subscription": "audit_logs_id_subscription",
+        "resource": "audit_logs_resource_id",
+        "ip": "audit_logs_ip_address"
+      }
     },
     {
       "id": "users_sessions",
       "name": "User Sessions",
+      "group": "Security",
+      "description": "Session lifecycle, DPoP key thumbprints, revocation, and rotation.",
       "color": "#3B82F6",
+      "db": "vector",
       "table": "users_sessions",
-      "prefix": "users_sessions_",
       "idColumn": "users_sessions_id",
       "tsColumn": "users_sessions_created_at",
       "orderColumn": "users_sessions_created_at",
@@ -63,9 +112,18 @@
         "users_sessions_revoked",
         "users_sessions_rotated_at",
         "users_sessions_dpop_jkt",
-        "users_sessions_first_country"
+        "users_sessions_first_country",
+        "users_sessions_first_asn"
       ],
-      "messageTemplate": "session  user={users_sessions_id_user}  ip={users_sessions_ip_address}  country={users_sessions_first_country}  jkt={users_sessions_dpop_jkt}  ua=\"{users_sessions_user_agent}\"",
+      "searchColumns": [
+        "users_sessions_id_user",
+        "users_sessions_ip_address",
+        "users_sessions_user_agent",
+        "users_sessions_dpop_jkt",
+        "users_sessions_first_country",
+        "users_sessions_first_asn"
+      ],
+      "messageTemplate": "session  user={users_sessions_id_user}  ip={users_sessions_ip_address}  country={users_sessions_first_country}  asn={users_sessions_first_asn}  jkt={users_sessions_dpop_jkt}",
       "levelFrom": "_derived",
       "levelRules": [
         { "match": "revoked", "level": "ERROR" },
@@ -73,7 +131,533 @@
         { "match": "active", "level": "SUCCESS" }
       ],
       "defaultLevel": "INFO",
-      "correlationKey": "users_sessions_id_user"
+      "facets": [
+        { "field": "users_sessions_revoked", "label": "Revoked" },
+        { "field": "users_sessions_first_country", "label": "Country" },
+        { "field": "users_sessions_first_asn", "label": "ASN" },
+        { "field": "users_sessions_ip_address", "label": "IP" },
+        { "field": "users_sessions_id_user", "label": "User" }
+      ],
+      "correlationKeys": {
+        "user": "users_sessions_id_user",
+        "ip": "users_sessions_ip_address",
+        "dpop": "users_sessions_dpop_jkt"
+      }
+    },
+    {
+      "id": "error_events",
+      "name": "Error Events",
+      "group": "Reliability",
+      "description": "Application error-code events and request context.",
+      "color": "#EF4444",
+      "db": "vector",
+      "table": "errors_events",
+      "idColumn": "errors_events_id",
+      "tsColumn": "errors_events_occurred_at",
+      "orderColumn": "errors_events_occurred_at",
+      "columns": [
+        "errors_events_id",
+        "errors_events_id_subscription",
+        "errors_events_id_user",
+        "errors_events_code",
+        "errors_events_context",
+        "errors_events_occurred_at",
+        "errors_events_request_id",
+        "errors_events_created_at"
+      ],
+      "searchColumns": [
+        "errors_events_code",
+        "errors_events_id_user",
+        "errors_events_id_subscription",
+        "errors_events_request_id",
+        "errors_events_context"
+      ],
+      "messageTemplate": "{errors_events_code}  request={errors_events_request_id}  user={errors_events_id_user}",
+      "levelFrom": "errors_events_code",
+      "levelRules": [
+        { "match": ".*", "level": "ERROR" }
+      ],
+      "defaultLevel": "ERROR",
+      "facets": [
+        { "field": "errors_events_code", "label": "Code" },
+        { "field": "errors_events_request_id", "label": "Request" },
+        { "field": "errors_events_id_user", "label": "User" },
+        { "field": "errors_events_id_subscription", "label": "Subscription" }
+      ],
+      "correlationKeys": {
+        "user": "errors_events_id_user",
+        "subscription": "errors_events_id_subscription",
+        "request": "errors_events_request_id"
+      }
+    },
+    {
+      "id": "csp_reports",
+      "name": "CSP Reports",
+      "group": "Security",
+      "description": "Browser CSP violation reports.",
+      "color": "#F59E0B",
+      "db": "vector",
+      "table": "csp_reports",
+      "idColumn": "csp_reports_id",
+      "tsColumn": "csp_reports_received_at",
+      "orderColumn": "csp_reports_received_at",
+      "columns": [
+        "csp_reports_id",
+        "csp_reports_received_at",
+        "csp_reports_document_uri",
+        "csp_reports_violated_directive",
+        "csp_reports_effective_directive",
+        "csp_reports_disposition",
+        "csp_reports_blocked_uri",
+        "csp_reports_source_file",
+        "csp_reports_line_number",
+        "csp_reports_column_number",
+        "csp_reports_status_code",
+        "csp_reports_user_agent",
+        "csp_reports_remote_ip",
+        "csp_reports_id_subscription"
+      ],
+      "searchColumns": [
+        "csp_reports_document_uri",
+        "csp_reports_violated_directive",
+        "csp_reports_effective_directive",
+        "csp_reports_blocked_uri",
+        "csp_reports_source_file",
+        "csp_reports_user_agent",
+        "csp_reports_remote_ip"
+      ],
+      "messageTemplate": "{csp_reports_effective_directive} blocked={csp_reports_blocked_uri} doc={csp_reports_document_uri} ip={csp_reports_remote_ip}",
+      "levelFrom": "csp_reports_disposition",
+      "levelRules": [
+        { "match": "enforce", "level": "ERROR" },
+        { "match": "report", "level": "WARN" }
+      ],
+      "defaultLevel": "WARN",
+      "facets": [
+        { "field": "csp_reports_effective_directive", "label": "Directive" },
+        { "field": "csp_reports_disposition", "label": "Disposition" },
+        { "field": "csp_reports_blocked_uri", "label": "Blocked URI" },
+        { "field": "csp_reports_remote_ip", "label": "IP" }
+      ],
+      "correlationKeys": {
+        "subscription": "csp_reports_id_subscription",
+        "ip": "csp_reports_remote_ip"
+      }
+    },
+    {
+      "id": "search_outbox",
+      "name": "Search Outbox",
+      "group": "Queues",
+      "description": "Search indexing queue state and failed attempts.",
+      "color": "#A855F7",
+      "db": "vector",
+      "table": "artefacts_search_outbox",
+      "idColumn": "artefacts_search_outbox_id",
+      "tsColumn": "artefacts_search_outbox_enqueued_at",
+      "orderColumn": "artefacts_search_outbox_enqueued_at",
+      "columns": [
+        "artefacts_search_outbox_id",
+        "artefacts_search_outbox_id_artefact",
+        "artefacts_search_outbox_enqueued_at",
+        "artefacts_search_outbox_claimed_at",
+        "artefacts_search_outbox_attempts",
+        "artefacts_search_outbox_last_error"
+      ],
+      "searchColumns": [
+        "artefacts_search_outbox_id_artefact",
+        "artefacts_search_outbox_last_error"
+      ],
+      "messageTemplate": "search-index artefact={artefacts_search_outbox_id_artefact} attempts={artefacts_search_outbox_attempts} claimed={artefacts_search_outbox_claimed_at} error={artefacts_search_outbox_last_error}",
+      "levelFrom": "artefacts_search_outbox_last_error",
+      "levelRules": [
+        { "match": ".+", "level": "ERROR" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "artefacts_search_outbox_attempts", "label": "Attempts" },
+        { "field": "artefacts_search_outbox_claimed_at", "label": "Claimed" },
+        { "field": "artefacts_search_outbox_last_error", "label": "Error" }
+      ],
+      "correlationKeys": {
+        "artefact": "artefacts_search_outbox_id_artefact"
+      }
+    },
+    {
+      "id": "notifications_outbox",
+      "name": "Notifications Outbox",
+      "group": "Queues",
+      "description": "Notification queue and delivery state.",
+      "color": "#EC4899",
+      "db": "vector",
+      "table": "notifications_outbox",
+      "idColumn": "notifications_outbox_id",
+      "tsColumn": "notifications_outbox_created_at",
+      "orderColumn": "notifications_outbox_created_at",
+      "columns": [
+        "notifications_outbox_id",
+        "notifications_outbox_id_subscription",
+        "notifications_outbox_id_user_recipient",
+        "notifications_outbox_kind",
+        "notifications_outbox_payload",
+        "notifications_outbox_created_at",
+        "notifications_outbox_claimed_at",
+        "notifications_outbox_delivered_at",
+        "notifications_outbox_attempts",
+        "notifications_outbox_last_error"
+      ],
+      "searchColumns": [
+        "notifications_outbox_kind",
+        "notifications_outbox_id_user_recipient",
+        "notifications_outbox_id_subscription",
+        "notifications_outbox_payload",
+        "notifications_outbox_last_error"
+      ],
+      "messageTemplate": "{notifications_outbox_kind}  user={notifications_outbox_id_user_recipient} attempts={notifications_outbox_attempts} delivered={notifications_outbox_delivered_at} error={notifications_outbox_last_error}",
+      "levelFrom": "notifications_outbox_last_error",
+      "levelRules": [
+        { "match": ".+", "level": "ERROR" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "notifications_outbox_kind", "label": "Kind" },
+        { "field": "notifications_outbox_attempts", "label": "Attempts" },
+        { "field": "notifications_outbox_delivered_at", "label": "Delivered" },
+        { "field": "notifications_outbox_id_user_recipient", "label": "Recipient" }
+      ],
+      "correlationKeys": {
+        "user": "notifications_outbox_id_user_recipient",
+        "subscription": "notifications_outbox_id_subscription"
+      }
+    },
+    {
+      "id": "users_notifications",
+      "name": "User Notifications",
+      "group": "Product",
+      "description": "Notification rows shown to users.",
+      "color": "#F97316",
+      "db": "vector",
+      "table": "users_notifications",
+      "idColumn": "users_notifications_id",
+      "tsColumn": "users_notifications_created_at",
+      "orderColumn": "users_notifications_created_at",
+      "columns": [
+        "users_notifications_id",
+        "users_notifications_id_subscription",
+        "users_notifications_id_user",
+        "users_notifications_kind",
+        "users_notifications_title",
+        "users_notifications_body",
+        "users_notifications_context_kind",
+        "users_notifications_context_id",
+        "users_notifications_context_label",
+        "users_notifications_id_outbox",
+        "users_notifications_created_at",
+        "users_notifications_read_at",
+        "users_notifications_tag"
+      ],
+      "searchColumns": [
+        "users_notifications_kind",
+        "users_notifications_title",
+        "users_notifications_body",
+        "users_notifications_context_kind",
+        "users_notifications_context_id",
+        "users_notifications_context_label",
+        "users_notifications_tag"
+      ],
+      "messageTemplate": "{users_notifications_kind}  {users_notifications_title}  user={users_notifications_id_user}  context={users_notifications_context_kind}:{users_notifications_context_label}",
+      "levelFrom": "users_notifications_read_at",
+      "levelRules": [
+        { "match": ".+", "level": "SUCCESS" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "users_notifications_kind", "label": "Kind" },
+        { "field": "users_notifications_context_kind", "label": "Context" },
+        { "field": "users_notifications_tag", "label": "Tag" },
+        { "field": "users_notifications_id_user", "label": "User" }
+      ],
+      "correlationKeys": {
+        "user": "users_notifications_id_user",
+        "subscription": "users_notifications_id_subscription",
+        "context": "users_notifications_context_id"
+      }
+    },
+    {
+      "id": "webhook_deliveries",
+      "name": "Webhook Deliveries",
+      "group": "Queues",
+      "description": "Webhook delivery queue and retry state.",
+      "color": "#06B6D4",
+      "db": "vector",
+      "table": "webhooks_deliveries",
+      "idColumn": "webhooks_deliveries_id",
+      "tsColumn": "webhooks_deliveries_created_at",
+      "orderColumn": "webhooks_deliveries_created_at",
+      "columns": [
+        "webhooks_deliveries_id",
+        "webhooks_deliveries_id_webhooks_subscription",
+        "webhooks_deliveries_event_type",
+        "webhooks_deliveries_payload",
+        "webhooks_deliveries_attempts",
+        "webhooks_deliveries_max_attempts",
+        "webhooks_deliveries_claimed_at",
+        "webhooks_deliveries_next_attempt_at",
+        "webhooks_deliveries_last_error",
+        "webhooks_deliveries_created_at"
+      ],
+      "searchColumns": [
+        "webhooks_deliveries_event_type",
+        "webhooks_deliveries_id_webhooks_subscription",
+        "webhooks_deliveries_payload",
+        "webhooks_deliveries_last_error"
+      ],
+      "messageTemplate": "{webhooks_deliveries_event_type}  subscription={webhooks_deliveries_id_webhooks_subscription} attempts={webhooks_deliveries_attempts}/{webhooks_deliveries_max_attempts} next={webhooks_deliveries_next_attempt_at} error={webhooks_deliveries_last_error}",
+      "levelFrom": "webhooks_deliveries_last_error",
+      "levelRules": [
+        { "match": ".+", "level": "ERROR" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "webhooks_deliveries_event_type", "label": "Event" },
+        { "field": "webhooks_deliveries_attempts", "label": "Attempts" },
+        { "field": "webhooks_deliveries_id_webhooks_subscription", "label": "Subscription" }
+      ],
+      "correlationKeys": {
+        "webhook": "webhooks_deliveries_id_webhooks_subscription"
+      }
+    },
+    {
+      "id": "task_burn_events",
+      "name": "Task Burn Events",
+      "group": "Delivery",
+      "description": "Task remaining/scope burn metric events.",
+      "color": "#84CC16",
+      "db": "vector",
+      "table": "task_burn_events",
+      "idColumn": "task_burn_events_id",
+      "tsColumn": "task_burn_events_occurred_at",
+      "orderColumn": "task_burn_events_occurred_at",
+      "columns": [
+        "task_burn_events_id",
+        "task_burn_events_id_sprint",
+        "task_burn_events_id_artefact",
+        "task_burn_events_event_type",
+        "task_burn_events_remaining_delta",
+        "task_burn_events_scope_delta",
+        "task_burn_events_occurred_at",
+        "task_burn_events_id_actor",
+        "task_burn_events_id_workspace"
+      ],
+      "searchColumns": [
+        "task_burn_events_event_type",
+        "task_burn_events_id_sprint",
+        "task_burn_events_id_artefact",
+        "task_burn_events_id_actor",
+        "task_burn_events_id_workspace"
+      ],
+      "messageTemplate": "{task_burn_events_event_type}  sprint={task_burn_events_id_sprint} artefact={task_burn_events_id_artefact} remaining_delta={task_burn_events_remaining_delta} scope_delta={task_burn_events_scope_delta}",
+      "levelFrom": "task_burn_events_event_type",
+      "levelRules": [
+        { "match": "(removed|scope)", "level": "WARN" },
+        { "match": "(done|complete|closed)", "level": "SUCCESS" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "task_burn_events_event_type", "label": "Event" },
+        { "field": "task_burn_events_id_sprint", "label": "Sprint" },
+        { "field": "task_burn_events_id_workspace", "label": "Workspace" },
+        { "field": "task_burn_events_id_actor", "label": "Actor" }
+      ],
+      "correlationKeys": {
+        "sprint": "task_burn_events_id_sprint",
+        "artefact": "task_burn_events_id_artefact",
+        "user": "task_burn_events_id_actor",
+        "workspace": "task_burn_events_id_workspace"
+      }
+    },
+    {
+      "id": "sprint_burn_events",
+      "name": "Sprint Burn Events",
+      "group": "Delivery",
+      "description": "Sprint point/scope burn metric events.",
+      "color": "#EAB308",
+      "db": "vector",
+      "table": "sprint_burn_events",
+      "idColumn": "sprint_burn_events_id",
+      "tsColumn": "sprint_burn_events_occurred_at",
+      "orderColumn": "sprint_burn_events_occurred_at",
+      "columns": [
+        "sprint_burn_events_id",
+        "sprint_burn_events_id_sprint",
+        "sprint_burn_events_id_artefact",
+        "sprint_burn_events_event_type",
+        "sprint_burn_events_points_delta",
+        "sprint_burn_events_points_after",
+        "sprint_burn_events_scope_delta",
+        "sprint_burn_events_occurred_at",
+        "sprint_burn_events_id_actor",
+        "sprint_burn_events_id_workspace"
+      ],
+      "searchColumns": [
+        "sprint_burn_events_event_type",
+        "sprint_burn_events_id_sprint",
+        "sprint_burn_events_id_artefact",
+        "sprint_burn_events_id_actor",
+        "sprint_burn_events_id_workspace"
+      ],
+      "messageTemplate": "{sprint_burn_events_event_type}  sprint={sprint_burn_events_id_sprint} points_delta={sprint_burn_events_points_delta} points_after={sprint_burn_events_points_after} scope_delta={sprint_burn_events_scope_delta}",
+      "levelFrom": "sprint_burn_events_event_type",
+      "levelRules": [
+        { "match": "(removed|scope)", "level": "WARN" },
+        { "match": "(done|complete|closed)", "level": "SUCCESS" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "sprint_burn_events_event_type", "label": "Event" },
+        { "field": "sprint_burn_events_id_sprint", "label": "Sprint" },
+        { "field": "sprint_burn_events_id_workspace", "label": "Workspace" },
+        { "field": "sprint_burn_events_id_actor", "label": "Actor" }
+      ],
+      "correlationKeys": {
+        "sprint": "sprint_burn_events_id_sprint",
+        "artefact": "sprint_burn_events_id_artefact",
+        "user": "sprint_burn_events_id_actor",
+        "workspace": "sprint_burn_events_id_workspace"
+      }
+    },
+    {
+      "id": "dependency_edge_events",
+      "name": "Dependency Edge Events",
+      "group": "Product",
+      "description": "Artefact dependency edge lifecycle events.",
+      "color": "#14B8A6",
+      "db": "vector",
+      "table": "artefact_dependency_edge_events",
+      "idColumn": "artefact_dependency_edge_events_id",
+      "tsColumn": "artefact_dependency_edge_events_occurred_at",
+      "orderColumn": "artefact_dependency_edge_events_occurred_at",
+      "columns": [
+        "artefact_dependency_edge_events_id",
+        "artefact_dependency_edge_events_id_edge",
+        "artefact_dependency_edge_events_event_kind",
+        "artefact_dependency_edge_events_id_actor_user",
+        "artefact_dependency_edge_events_sentinel_scope_snapshot",
+        "artefact_dependency_edge_events_payload",
+        "artefact_dependency_edge_events_occurred_at"
+      ],
+      "searchColumns": [
+        "artefact_dependency_edge_events_id_edge",
+        "artefact_dependency_edge_events_event_kind",
+        "artefact_dependency_edge_events_id_actor_user",
+        "artefact_dependency_edge_events_payload",
+        "artefact_dependency_edge_events_sentinel_scope_snapshot"
+      ],
+      "messageTemplate": "{artefact_dependency_edge_events_event_kind} edge={artefact_dependency_edge_events_id_edge} actor={artefact_dependency_edge_events_id_actor_user}",
+      "levelFrom": "artefact_dependency_edge_events_event_kind",
+      "levelRules": [
+        { "match": "(delete|remove|archive)", "level": "WARN" },
+        { "match": "(create|add)", "level": "SUCCESS" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "artefact_dependency_edge_events_event_kind", "label": "Event" },
+        { "field": "artefact_dependency_edge_events_id_actor_user", "label": "Actor" },
+        { "field": "artefact_dependency_edge_events_id_edge", "label": "Edge" }
+      ],
+      "correlationKeys": {
+        "user": "artefact_dependency_edge_events_id_actor_user",
+        "edge": "artefact_dependency_edge_events_id_edge"
+      }
+    },
+    {
+      "id": "dev_reports",
+      "name": "Dev Reports",
+      "group": "DevOps",
+      "description": "Research, plans, system papers, architecture, and reports.",
+      "color": "#64748B",
+      "db": "dev",
+      "table": "dev_reports",
+      "idColumn": "id",
+      "tsColumn": "updated_at",
+      "orderColumn": "updated_at",
+      "columns": [
+        "id",
+        "type",
+        "title",
+        "category",
+        "topic",
+        "summary",
+        "report_date",
+        "created_at",
+        "updated_at"
+      ],
+      "searchColumns": [
+        "id",
+        "type",
+        "title",
+        "category",
+        "topic",
+        "summary",
+        "content_text"
+      ],
+      "messageTemplate": "{id} [{type}] {title}  topic={topic}",
+      "levelFrom": "type",
+      "levelRules": [
+        { "match": "(security)", "level": "WARN" },
+        { "match": "(architecture|system|plan|research)", "level": "INFO" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "type", "label": "Type" },
+        { "field": "category", "label": "Category" },
+        { "field": "report_date", "label": "Report Date" }
+      ],
+      "correlationKeys": {
+        "report": "id",
+        "type": "type"
+      }
+    },
+    {
+      "id": "library_release_logs",
+      "name": "Library Release Logs",
+      "group": "Library",
+      "description": "Library release application history.",
+      "color": "#8B5CF6",
+      "db": "library",
+      "table": "library_release_logs",
+      "idColumn": "library_release_logs_id",
+      "tsColumn": "library_release_logs_applied_at",
+      "orderColumn": "library_release_logs_applied_at",
+      "columns": [
+        "library_release_logs_id",
+        "library_release_logs_library_version",
+        "library_release_logs_id_library_release",
+        "library_release_logs_file_name",
+        "library_release_logs_sha256",
+        "library_release_logs_applied_at",
+        "library_release_logs_applied_by"
+      ],
+      "searchColumns": [
+        "library_release_logs_library_version",
+        "library_release_logs_id_library_release",
+        "library_release_logs_file_name",
+        "library_release_logs_sha256",
+        "library_release_logs_applied_by"
+      ],
+      "messageTemplate": "library {library_release_logs_library_version} file={library_release_logs_file_name} by={library_release_logs_applied_by}",
+      "levelFrom": "library_release_logs_library_version",
+      "levelRules": [
+        { "match": ".+", "level": "SUCCESS" }
+      ],
+      "defaultLevel": "INFO",
+      "facets": [
+        { "field": "library_release_logs_library_version", "label": "Version" },
+        { "field": "library_release_logs_applied_by", "label": "Applied By" },
+        { "field": "library_release_logs_file_name", "label": "File" }
+      ],
+      "correlationKeys": {
+        "release": "library_release_logs_id_library_release"
+      }
     }
   ]
 }

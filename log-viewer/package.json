@@ -2,7 +2,7 @@
   "name": "vector-log-viewer",
   "version": "1.0.0",
   "private": true,
-  "description": "Standalone real-time tail viewer for Vector's users_sessions and audit_logs Postgres tables. Read-only, SSE-streamed, multi-panel operator console.",
+  "description": "Standalone read-only DevOps log console for Vector, dev, and library Postgres event sources.",
   "type": "module",
   "engines": {
     "node": ">=20"

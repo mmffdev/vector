@@ -3,130 +3,189 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vector · Log Viewer</title>
+    <title>MMFFDev - Devops</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/vector-app/globals.css" />
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
-    <!-- ── Top control bar ─────────────────────────────────────────────── -->
-    <header class="topbar">
-      <div class="topbar__brand">
-        <span class="topbar__logo">▚</span>
-        <span class="topbar__title">Vector Log Viewer</span>
-      </div>
-
-      <div class="topbar__group">
-        <button id="btn-tail" class="btn btn--toggle is-active" title="Play / pause live tail (Space)">
-          <span class="dot dot--live"></span> Tailing
-        </button>
-        <button id="btn-clear" class="btn" title="Clear all panels">Clear</button>
-        <button id="btn-export" class="btn" title="Export visible / selected">Export ▾</button>
-        <div id="export-menu" class="menu" hidden>
-          <button data-scope="visible" data-format="txt">Visible → TXT</button>
-          <button data-scope="visible" data-format="csv">Visible → CSV</button>
-          <button data-scope="visible" data-format="json">Visible → JSON</button>
-          <button data-scope="visible" data-format="html">Visible → HTML (coloured)</button>
-          <hr />
-          <button data-scope="selected" data-format="txt">Selected → TXT</button>
-          <button data-scope="selected" data-format="csv">Selected → CSV</button>
-          <button data-scope="highlighted" data-format="txt">Highlighted → TXT</button>
-          <hr />
-          <button data-scope="visible" data-format="clipboard">Copy visible to clipboard</button>
+    <div class="log-console">
+      <header class="log-console__topbar">
+        <div class="log-console__brand">
+          <div>
+            <strong>MMFFDev - Devops</strong>
+            <span id="health-summary" class="log-console__subtle">connecting</span>
+          </div>
         </div>
-      </div>
 
-      <div class="topbar__group topbar__search">
-        <input id="global-filter" class="input" type="search"
-               placeholder="Filter all panels…  (plain text, or /regex/)" />
-        <label class="chk" title="Treat filter as regular expression">
-          <input type="checkbox" id="global-regex" /> regex
-        </label>
-        <label class="chk" title="Show only lines matching a highlight rule">
-          <input type="checkbox" id="only-highlighted" /> only ★
-        </label>
-      </div>
-
-      <div class="topbar__group topbar__right">
-        <button id="btn-view" class="btn" title="Toggle dashboard">Dashboard</button>
-        <button id="btn-highlights" class="btn" title="Highlight rules">★ Rules</button>
-        <button id="btn-layout" class="btn" title="Cycle panel layout">Layout</button>
-        <span id="conn" class="conn conn--down" title="Stream connection">
-          <span class="dot"></span> <span class="conn__txt">connecting…</span>
-        </span>
-        <span id="last-update" class="muted">—</span>
-      </div>
-    </header>
-
-    <!-- ── Live tail view: split panels ─────────────────────────────────── -->
-    <main id="tail-view" class="stage"></main>
-
-    <!-- ── Dashboard view ───────────────────────────────────────────────── -->
-    <section id="dashboard-view" class="dashboard" hidden></section>
-
-    <!-- ── Status bar ───────────────────────────────────────────────────── -->
-    <footer class="statusbar">
-      <span id="st-tail" class="statusbar__item">● Active</span>
-      <span id="st-rate" class="statusbar__item">0 lines/s</span>
-      <span id="st-total" class="statusbar__item">0 lines</span>
-      <span id="st-filter" class="statusbar__item">0 filters</span>
-      <span id="st-selected" class="statusbar__item">0 selected</span>
-      <span id="st-mem" class="statusbar__item">— in memory</span>
-      <span class="statusbar__spacer"></span>
-      <span id="st-refs" class="statusbar__item statusbar__item--nav">
-        <button id="ref-back" class="linkbtn" disabled>◀</button>
-        <span id="ref-label">no jumps</span>
-        <button id="ref-fwd" class="linkbtn" disabled>▶</button>
-      </span>
-    </footer>
-
-    <!-- ── Highlight-rules drawer ───────────────────────────────────────── -->
-    <aside id="highlights-drawer" class="drawer" hidden>
-      <header class="drawer__head">
-        <strong>Highlight rules</strong>
-        <button id="hl-close" class="linkbtn">✕</button>
+        <div class="log-console__actions">
+          <button id="live-toggle" class="btn btn--primary log-console__live-toggle is-active" type="button" aria-pressed="true">
+            <span class="log-console__pulse"></span>
+            Live
+          </button>
+          <button id="refresh-button" class="btn btn--ghost btn--sm" type="button">Refresh</button>
+          <button id="style-button" class="btn btn--ghost btn--sm" type="button">Row Colors</button>
+          <button id="export-button" class="btn btn--ghost btn--sm" type="button">Export</button>
+        </div>
       </header>
-      <div class="drawer__body">
-        <p class="muted">Level rules are built in. Add your own pattern → colour.</p>
-        <div id="hl-list" class="hl-list"></div>
-        <div class="hl-add">
-          <input id="hl-pattern" class="input" placeholder="regex e.g. \b\d{1,3}(\.\d{1,3}){3}\b" />
-          <input id="hl-color" class="input input--color" type="color" value="#f59e0b" />
-          <button id="hl-add" class="btn">Add</button>
+
+      <aside class="log-console__sources">
+        <div class="log-console__section-head">
+          <span>Sources</span>
+          <span id="source-count" class="log-console__badge">0</span>
         </div>
-        <hr />
-        <strong>Matches</strong>
-        <div id="hl-summary" class="hl-summary muted">no custom matches</div>
-      </div>
-    </aside>
+        <nav id="source-list" class="log-console__source-list" aria-label="Log sources"></nav>
 
-    <!-- ── Context menu (right-click on a line) ─────────────────────────── -->
-    <div id="ctx-menu" class="menu menu--ctx" hidden></div>
+        <div class="log-console__section-head">
+          <span>Facets</span>
+          <button id="clear-filters" class="btn btn--ghost btn--sm" type="button">clear</button>
+        </div>
+        <div id="facet-list" class="log-console__facet-list"></div>
+      </aside>
 
-    <!-- ── Toast / notification host ────────────────────────────────────── -->
-    <div id="toasts" class="toasts"></div>
+      <main class="log-console__main">
+        <section class="log-console__hero">
+          <div>
+            <div id="active-source-group" class="log-console__eyebrow">Security</div>
+            <h1 id="active-source-name">Audit Logs</h1>
+            <p id="active-source-description">Read-only live events.</p>
+          </div>
+          <div class="log-console__stat-grid">
+            <div class="log-console__stat">
+              <span class="log-console__stat-label">Rows</span>
+              <strong id="stat-total">0</strong>
+            </div>
+            <div class="log-console__stat">
+              <span class="log-console__stat-label">Shown</span>
+              <strong id="stat-shown">0</strong>
+            </div>
+            <div class="log-console__stat">
+              <span class="log-console__stat-label">Latest</span>
+              <strong id="stat-latest">-</strong>
+            </div>
+          </div>
+        </section>
 
-    <!-- Panel template -->
-    <template id="panel-tpl">
-      <section class="panel" tabindex="0">
-        <header class="panel__head">
-          <span class="panel__swatch"></span>
-          <select class="panel__select"></select>
-          <span class="panel__meta">
-            <span class="panel__count">0</span> lines ·
-            <span class="panel__latest muted">—</span>
-          </span>
-          <span class="panel__spacer"></span>
-          <input class="input panel__filter" type="search" placeholder="filter this panel…" />
-          <button class="linkbtn panel__jump" title="Jump to line #">⤷ line</button>
-          <button class="linkbtn panel__close" title="Close panel">✕</button>
+        <section class="log-console__toolbar" aria-label="Log filters">
+          <label class="form__label log-console__field log-console__field--wide">
+            <span>Search</span>
+            <input id="query-input" class="form__input" type="search" placeholder="message, user, IP, UUID, JSON..." />
+          </label>
+          <label class="form__label form__label--inline log-console__check">
+            <input id="regex-toggle" type="checkbox" />
+            regex
+          </label>
+          <label class="form__label log-console__field">
+            <span>Window</span>
+            <select id="time-range" class="form__select form__select--sm">
+              <option value="" selected>All time</option>
+              <option value="15m">15 minutes</option>
+              <option value="1h">1 hour</option>
+              <option value="6h">6 hours</option>
+              <option value="24h">24 hours</option>
+              <option value="7d">7 days</option>
+            </select>
+          </label>
+          <label class="form__label log-console__field">
+            <span>Limit</span>
+            <select id="limit-select" class="form__select form__select--sm">
+              <option>100</option>
+              <option selected>500</option>
+              <option>1000</option>
+              <option>2500</option>
+              <option>5000</option>
+            </select>
+          </label>
+          <div class="log-console__level-group" aria-label="Level filters">
+            <button class="btn btn--ghost btn--sm log-console__level is-active" data-level="ERROR" type="button" aria-pressed="true">Error</button>
+            <button class="btn btn--ghost btn--sm log-console__level is-active" data-level="WARN" type="button" aria-pressed="true">Warn</button>
+            <button class="btn btn--ghost btn--sm log-console__level is-active" data-level="SUCCESS" type="button" aria-pressed="true">Success</button>
+            <button class="btn btn--ghost btn--sm log-console__level is-active" data-level="INFO" type="button" aria-pressed="true">Info</button>
+            <button class="btn btn--ghost btn--sm log-console__level is-active" data-level="DEBUG" type="button" aria-pressed="true">Debug</button>
+          </div>
+        </section>
+
+        <section id="filter-chips" class="log-console__chips" aria-label="Active filters"></section>
+
+        <section class="log-console__timeline" aria-label="Event volume">
+          <div id="timeline-chart" class="log-console__bars"></div>
+        </section>
+
+        <section class="log-console__table-wrap">
+          <div class="log-console__table-head">
+            <span>Time</span>
+            <span>Level</span>
+            <span>Message</span>
+          </div>
+          <div id="log-rows" class="log-console__rows" role="list"></div>
+        </section>
+      </main>
+
+      <aside id="detail-drawer" class="log-console__drawer" hidden>
+        <header class="log-console__drawer-head">
+          <div>
+            <strong>Event Detail</strong>
+            <span id="detail-title" class="log-console__subtle">No row selected</span>
+          </div>
+          <button id="detail-close" class="btn btn--icon btn--sm btn--ghost" type="button" aria-label="Close detail">x</button>
         </header>
-        <div class="panel__viewport">
-          <div class="panel__spacer-top"></div>
-          <div class="panel__rows"></div>
-          <div class="panel__spacer-bottom"></div>
+        <div class="log-console__drawer-tabs">
+          <button class="btn btn--ghost btn--sm log-console__drawer-tab is-active" data-detail-tab="summary" type="button">Summary</button>
+          <button class="btn btn--ghost btn--sm log-console__drawer-tab" data-detail-tab="json" type="button">JSON</button>
+          <button class="btn btn--ghost btn--sm log-console__drawer-tab" data-detail-tab="correlate" type="button">Correlate</button>
         </div>
-      </section>
-    </template>
+        <div id="detail-body" class="log-console__drawer-body"></div>
+      </aside>
+
+      <aside id="style-drawer" class="log-console__drawer log-console__drawer--wide" hidden>
+        <header class="log-console__drawer-head">
+          <div>
+            <strong>User Row Colors</strong>
+            <span class="log-console__subtle">Rules are local to this browser</span>
+          </div>
+          <button id="style-close" class="btn btn--icon btn--sm btn--ghost" type="button" aria-label="Close color rules">x</button>
+        </header>
+        <form id="style-form" class="log-console__rule-form">
+          <label class="form__label log-console__field">
+            <span>Name</span>
+            <input id="rule-name" class="form__input" required value="Important row" />
+          </label>
+          <label class="form__label log-console__field">
+            <span>Source</span>
+            <select id="rule-source" class="form__select form__select--sm"></select>
+          </label>
+          <label class="form__label log-console__field">
+            <span>Field</span>
+            <select id="rule-field" class="form__select form__select--sm"></select>
+          </label>
+          <label class="form__label log-console__field">
+            <span>Match</span>
+            <select id="rule-op" class="form__select form__select--sm">
+              <option value="contains">contains</option>
+              <option value="eq">equals</option>
+              <option value="regex">regex</option>
+              <option value="exists">exists</option>
+            </select>
+          </label>
+          <label class="form__label log-console__field log-console__field--wide">
+            <span>Value</span>
+            <input id="rule-value" class="form__input" placeholder="failed, user id, /regex/..." />
+          </label>
+          <label class="form__label log-console__field">
+            <span>Ink</span>
+            <input id="rule-ink" class="log-console__color" type="color" value="#ffffff" />
+          </label>
+          <label class="form__label log-console__field">
+            <span>Row BG</span>
+            <input id="rule-bg" class="log-console__color" type="color" value="#7f1d1d" />
+          </label>
+          <button class="btn btn--primary log-console__rule-submit" type="submit">Add Rule</button>
+        </form>
+        <div id="style-rules" class="log-console__rule-list"></div>
+      </aside>
+
+      <div id="toast-host" class="log-console__toasts" aria-live="polite"></div>
+    </div>
 
     <script type="module" src="/js/app.js"></script>
   </body>

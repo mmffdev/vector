@@ -1,576 +1,773 @@
-// app.js — orchestrator for the Vector Log Viewer.
-//
-// Responsibilities:
-//   * boot: fetch /api/logs, build panels, restore layout/prefs
-//   * panels + layout: split-screen, resize handles, add/close, layout cycle
-//   * global controls: tail play/pause, clear, export scope, global filter
-//   * cross-references: [source:line] index by correlation key, jump + history
-//   * dashboard: per-source stats + simple charts
-//   * status bar: rate, totals, selection, memory
-//   * notifications: toast + browser + flash on CRITICAL/ERROR
-
-import { LogViewer } from './logViewer.js';
-import { HighlightEngine } from './highlightEngine.js';
-import { exportLines, copyText } from './exportManager.js';
-
-const LS_PREFS = 'vlv.prefs.v1';
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const STYLE_KEY = 'vector-log-console-style-rules-v1';
+const ALL_LEVELS = ['ERROR', 'WARN', 'SUCCESS', 'INFO', 'DEBUG'];
 
 const state = {
   sources: [],
-  panels: [], // LogViewer instances
-  layout: 'auto', // auto | horizontal | vertical | single
-  tailing: true,
-  global: { text: '', regex: false, onlyHighlighted: false },
-  refHistory: [], // {source, line}
-  refIndex: -1,
-  correlation: new Map(), // correlationValue -> [{source, line}]
-  notify: { sound: false, browser: false },
+  sourceMap: new Map(),
+  activeSource: '',
+  stats: new Map(),
+  lines: [],
+  facets: {},
+  histogram: [],
+  filters: [],
+  activeLevels: new Set(ALL_LEVELS),
+  live: true,
+  eventSource: null,
+  reloadVersion: 0,
+  streamVersion: 0,
+  selected: null,
+  detailTab: 'summary',
+  styleRules: [],
 };
 
-const highlighter = new HighlightEngine();
+const $ = (id) => document.getElementById(id);
 
-// ── boot ────────────────────────────────────────────────────────────────────
+const dom = {
+  healthSummary: $('health-summary'),
+  sourceCount: $('source-count'),
+  sourceList: $('source-list'),
+  facetList: $('facet-list'),
+  activeGroup: $('active-source-group'),
+  activeName: $('active-source-name'),
+  activeDescription: $('active-source-description'),
+  statTotal: $('stat-total'),
+  statShown: $('stat-shown'),
+  statLatest: $('stat-latest'),
+  queryInput: $('query-input'),
+  regexToggle: $('regex-toggle'),
+  timeRange: $('time-range'),
+  limitSelect: $('limit-select'),
+  filterChips: $('filter-chips'),
+  timelineChart: $('timeline-chart'),
+  rows: $('log-rows'),
+  liveToggle: $('live-toggle'),
+  refreshButton: $('refresh-button'),
+  clearFilters: $('clear-filters'),
+  exportButton: $('export-button'),
+  styleButton: $('style-button'),
+  detailDrawer: $('detail-drawer'),
+  detailTitle: $('detail-title'),
+  detailBody: $('detail-body'),
+  detailClose: $('detail-close'),
+  styleDrawer: $('style-drawer'),
+  styleClose: $('style-close'),
+  styleForm: $('style-form'),
+  ruleSource: $('rule-source'),
+  ruleField: $('rule-field'),
+  ruleName: $('rule-name'),
+  ruleOp: $('rule-op'),
+  ruleValue: $('rule-value'),
+  ruleInk: $('rule-ink'),
+  ruleBg: $('rule-bg'),
+  styleRules: $('style-rules'),
+  toastHost: $('toast-host'),
+};
 
-async function boot() {
-  const res = await fetch('/api/logs');
-  const data = await res.json();
-  state.sources = data.sources = data.logs;
-  state.maxLines = data.config.maxLinesInMemory;
-
-  restorePrefs();
-  buildPanelsForLayout();
-  wireControls();
-  wireHighlightDrawer();
-  startStatusLoop();
-  refreshHighlightSummary();
+function fmtNumber(value) {
+  return new Intl.NumberFormat().format(Number(value || 0));
 }
 
-// ── panels + layout ──────────────────────────────────────────────────────────
-
-function panelOpts() {
-  return {
-    sources: state.sources,
-    maxLines: state.maxLines,
-    highlighter,
-    globalFilterState: () => state.global,
-    onStatus: setConn,
-    onClose: closePanel,
-    onContext: openContextMenu,
-    onSelectionChange: updateStatus,
-    onLine: onIncomingLine,
-    onPausedExternally: () => setTailing(false),
-    toast,
-  };
+function fmtTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
-function makePanel(sourceId) {
-  const tpl = $('#panel-tpl').content.firstElementChild.cloneNode(true);
-  $('#tail-view').appendChild(tpl);
-  const v = new LogViewer(tpl, panelOpts());
-  v.connect(sourceId);
-  state.panels.push(v);
-  return v;
+function timeRangeStart(value) {
+  if (!value) return '';
+  const match = /^(\d+)(m|h|d)$/.exec(value);
+  if (!match) return '';
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const ms = unit === 'm' ? amount * 60_000 : unit === 'h' ? amount * 3_600_000 : amount * 86_400_000;
+  return new Date(Date.now() - ms).toISOString();
 }
 
-function buildPanelsForLayout() {
-  // tear down
-  state.panels.forEach((p) => p.destroy());
-  state.panels = [];
-  $('#tail-view').replaceChildren();
+function toast(message, kind = 'info') {
+  const el = document.createElement('div');
+  el.className = 'log-console__toast';
+  el.textContent = message;
+  if (kind === 'error') el.style.borderColor = 'var(--console-red)';
+  if (kind === 'ok') el.style.borderColor = 'var(--console-green)';
+  dom.toastHost.append(el);
+  setTimeout(() => el.remove(), 4200);
+}
 
-  const stage = $('#tail-view');
-  stage.className = `stage stage--${effectiveLayout()}`;
-
-  const ids = state.sources.map((s) => s.id);
-  if (state.layout === 'single') {
-    makePanel(ids[0]);
-  } else {
-    // one panel per source by default (2 sources → side-by-side)
-    ids.forEach((id) => makePanel(id));
-    insertResizers();
+async function api(path, options = {}) {
+  const res = await fetch(path, options);
+  if (!res.ok) {
+    let message = `${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      message = body.error || message;
+    } catch {
+      // keep status text
+    }
+    throw new Error(message);
   }
-  updateStatus();
+  return res.json();
 }
 
-function effectiveLayout() {
-  if (state.layout !== 'auto') return state.layout;
-  return state.sources.length <= 2 ? 'horizontal' : 'vertical';
+function source() {
+  return state.sourceMap.get(state.activeSource);
 }
 
-function insertResizers() {
-  const stage = $('#tail-view');
-  const panels = $$('.panel', stage);
-  for (let i = 0; i < panels.length - 1; i++) {
-    const handle = document.createElement('div');
-    handle.className = 'resizer';
-    panels[i].after(handle);
-    makeResizable(handle, panels[i], panels[i + 1]);
+function selectedLevelsParam() {
+  if (state.activeLevels.size === ALL_LEVELS.length) return '';
+  return [...state.activeLevels].join(',');
+}
+
+function queryParams(extra = {}) {
+  const params = new URLSearchParams();
+  params.set('limit', dom.limitSelect.value || '500');
+  if (dom.queryInput.value.trim()) params.set('q', dom.queryInput.value.trim());
+  if (dom.regexToggle.checked) params.set('regex', '1');
+  const from = timeRangeStart(dom.timeRange.value);
+  if (from) params.set('from', from);
+  const levels = selectedLevelsParam();
+  if (levels) params.set('levels', levels);
+  if (state.filters.length) params.set('filters', JSON.stringify(state.filters));
+  for (const [key, value] of Object.entries(extra)) {
+    if (value !== undefined && value !== null && value !== '') params.set(key, value);
+  }
+  return params;
+}
+
+function lineKey(line) {
+  return `${line.source || state.activeSource}:${line.id || line.orderValue || line.ts || line.message}`;
+}
+
+function uniqueLines(lines) {
+  const seen = new Set();
+  return (lines || []).filter((line) => {
+    const key = lineKey(line);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function debounce(fn, delay = 250) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function saveStyleRules() {
+  localStorage.setItem(STYLE_KEY, JSON.stringify(state.styleRules));
+}
+
+function loadStyleRules() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STYLE_KEY) || '[]');
+    state.styleRules = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    state.styleRules = [];
   }
 }
 
-function makeResizable(handle, a, b) {
-  const horizontal = effectiveLayout() === 'horizontal';
-  let startPos, startA, startB;
-  const onDown = (e) => {
-    startPos = horizontal ? e.clientX : e.clientY;
-    startA = horizontal ? a.offsetWidth : a.offsetHeight;
-    startB = horizontal ? b.offsetWidth : b.offsetHeight;
-    document.body.classList.add('is-resizing');
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  };
-  const onMove = (e) => {
-    const delta = (horizontal ? e.clientX : e.clientY) - startPos;
-    const aSize = startA + delta;
-    const bSize = startB - delta;
-    if (aSize < 120 || bSize < 120) return;
-    a.style.flex = `0 0 ${aSize}px`;
-    b.style.flex = `0 0 ${bSize}px`;
-    state.panels.forEach((p) => p.render());
-  };
-  const onUp = () => {
-    document.body.classList.remove('is-resizing');
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-  };
-  handle.addEventListener('mousedown', onDown);
+function matchRule(line, rule) {
+  if (!rule.enabled) return false;
+  if (rule.source !== '*' && rule.source !== line.source) return false;
+
+  const value =
+    rule.field === 'message'
+      ? line.message
+      : line.raw?.[rule.field] ?? line.correlations?.[rule.field] ?? '';
+  const text = value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+
+  if (rule.op === 'exists') return text !== '';
+  if (rule.op === 'eq') return text === rule.value;
+  if (rule.op === 'regex') {
+    try {
+      return new RegExp(rule.value, 'i').test(text);
+    } catch {
+      return false;
+    }
+  }
+  return text.toLowerCase().includes(String(rule.value || '').toLowerCase());
 }
 
-function closePanel(viewer) {
-  if (state.panels.length <= 1) {
-    toast('At least one panel must stay open.', 'warn');
+function styleForLine(line) {
+  return state.styleRules.find((rule) => matchRule(line, rule)) || null;
+}
+
+function renderSources() {
+  const groups = new Map();
+  for (const src of state.sources) {
+    if (!groups.has(src.group)) groups.set(src.group, []);
+    groups.get(src.group).push(src);
+  }
+
+  dom.sourceList.replaceChildren();
+  for (const [group, sources] of groups.entries()) {
+    const head = document.createElement('div');
+    head.className = 'log-console__section-head';
+    head.textContent = group;
+    dom.sourceList.append(head);
+
+    for (const src of sources) {
+      const stat = state.stats.get(src.id);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `btn btn--ghost log-console__source${src.id === state.activeSource ? ' is-active' : ''}`;
+      button.style.setProperty('--source-color', src.color);
+      button.addEventListener('click', () => {
+        state.activeSource = src.id;
+        state.filters = [];
+        state.selected = null;
+        renderSourceHeader();
+        renderSources();
+        renderDetail();
+        syncRuleForm();
+        reload();
+      });
+
+      const swatch = document.createElement('span');
+      swatch.className = 'log-console__source-swatch';
+      const name = document.createElement('span');
+      name.className = 'log-console__source-name';
+      name.textContent = src.name;
+      const meta = document.createElement('span');
+      meta.className = 'log-console__source-meta';
+      meta.textContent = stat ? fmtNumber(stat.total) : '-';
+      button.append(swatch, name, meta);
+      dom.sourceList.append(button);
+    }
+  }
+  dom.sourceCount.textContent = String(state.sources.length);
+}
+
+function renderSourceHeader() {
+  const src = source();
+  if (!src) return;
+  const stat = state.stats.get(src.id);
+  dom.activeGroup.textContent = src.group;
+  dom.activeName.textContent = src.name;
+  dom.activeDescription.textContent = src.description || `${src.db}.${src.table}`;
+  dom.statTotal.textContent = stat ? fmtNumber(stat.total) : '-';
+  dom.statShown.textContent = fmtNumber(state.lines.length);
+  dom.statLatest.textContent = stat?.latest ? fmtTime(stat.latest) : '-';
+}
+
+function renderFilterChips() {
+  dom.filterChips.replaceChildren();
+  if (!state.filters.length) {
+    const empty = document.createElement('span');
+    empty.className = 'log-console__subtle';
+    empty.textContent = 'No facet filters';
+    dom.filterChips.append(empty);
     return;
   }
-  viewer.destroy();
-  state.panels = state.panels.filter((p) => p !== viewer);
-  $$('.resizer').forEach((r) => r.remove());
-  insertResizers();
-  updateStatus();
+
+  state.filters.forEach((filter, index) => {
+    const chip = document.createElement('span');
+    chip.className = 'log-console__chip';
+    const strong = document.createElement('strong');
+    strong.textContent = `${filter.field} ${filter.op} ${filter.value ?? ''}`;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn btn--icon btn--micro btn--ghost';
+    remove.textContent = 'x';
+    remove.addEventListener('click', () => {
+      state.filters.splice(index, 1);
+      reload();
+    });
+    chip.append(strong, remove);
+    dom.filterChips.append(chip);
+  });
 }
 
-function cycleLayout() {
-  const order = ['auto', 'horizontal', 'vertical', 'single'];
-  state.layout = order[(order.indexOf(state.layout) + 1) % order.length];
-  savePrefs();
-  buildPanelsForLayout();
-  toast(`Layout: ${state.layout}`, 'ok');
+function renderTimeline() {
+  dom.timelineChart.replaceChildren();
+  const max = Math.max(1, ...state.histogram.map((row) => Number(row.n || 0)));
+  if (!state.histogram.length) {
+    const empty = document.createElement('div');
+    empty.className = 'log-console__empty';
+    empty.textContent = 'No timeline buckets';
+    dom.timelineChart.append(empty);
+    return;
+  }
+  for (const bucket of state.histogram.slice(-80)) {
+    const bar = document.createElement('div');
+    bar.className = 'log-console__bar';
+    bar.style.height = `${Math.max(4, (Number(bucket.n || 0) / max) * 100)}%`;
+    bar.title = `${fmtTime(bucket.bucket)}: ${bucket.n}`;
+    dom.timelineChart.append(bar);
+  }
 }
 
-// ── global controls ──────────────────────────────────────────────────────────
+function renderFacets() {
+  dom.facetList.replaceChildren();
+  const entries = Object.entries(state.facets || {});
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'log-console__empty';
+    empty.textContent = 'No facets for this source';
+    dom.facetList.append(empty);
+    return;
+  }
 
-function wireControls() {
-  $('#btn-tail').addEventListener('click', () => setTailing(!state.tailing));
-  $('#btn-clear').addEventListener('click', () => {
-    state.panels.forEach((p) => p.clear());
-    toast('Cleared all panels.', 'ok');
-  });
-  $('#btn-layout').addEventListener('click', cycleLayout);
-  $('#btn-view').addEventListener('click', toggleDashboard);
+  for (const [field, facet] of entries) {
+    const box = document.createElement('section');
+    box.className = 'log-console__facet';
+    const title = document.createElement('div');
+    title.className = 'log-console__facet-title';
+    title.textContent = facet.label || field;
+    box.append(title);
 
-  // export menu
-  const menu = $('#export-menu');
-  $('#btn-export').addEventListener('click', (e) => {
-    e.stopPropagation();
-    menu.hidden = !menu.hidden;
-    positionUnder(menu, e.currentTarget);
-  });
-  $$('#export-menu button').forEach((b) =>
-    b.addEventListener('click', () => {
-      menu.hidden = true;
-      doExport(b.dataset.scope, b.dataset.format);
-    })
-  );
-  document.addEventListener('click', () => (menu.hidden = true));
-
-  // global filter
-  const gf = $('#global-filter');
-  gf.addEventListener('input', () => {
-    let text = gf.value;
-    let regex = $('#global-regex').checked;
-    // /pattern/ shorthand toggles regex
-    if (/^\/.*\/$/.test(text)) {
-      regex = true;
-      text = text.slice(1, -1);
+    for (const item of (facet.values || []).slice(0, 8)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn--ghost log-console__facet-option';
+      button.addEventListener('click', () => {
+        state.filters.push({ field, op: 'eq', value: String(item.value) });
+        reload();
+      });
+      const value = document.createElement('span');
+      value.textContent = String(item.value);
+      const count = document.createElement('strong');
+      count.textContent = fmtNumber(item.n);
+      button.append(value, count);
+      box.append(button);
     }
-    state.global.text = text;
-    state.global.regex = regex;
-    refilterAll();
-    updateStatus();
-  });
-  $('#global-regex').addEventListener('change', refilterAll);
-  $('#only-highlighted').addEventListener('change', (e) => {
-    state.global.onlyHighlighted = e.target.checked;
-    refilterAll();
-  });
-
-  // reference history nav
-  $('#ref-back').addEventListener('click', () => navRef(-1));
-  $('#ref-fwd').addEventListener('click', () => navRef(1));
-
-  // keyboard
-  document.addEventListener('keydown', (e) => {
-    if (e.target.matches('input,select,textarea')) return;
-    if (e.code === 'Space') {
-      e.preventDefault();
-      setTailing(!state.tailing);
-    } else if (e.key === 'n') jumpHighlight(1);
-    else if (e.key === 'p') jumpHighlight(-1);
-  });
-}
-
-function setTailing(on) {
-  state.tailing = on;
-  $('#btn-tail').classList.toggle('is-active', on);
-  $('#btn-tail').innerHTML = on
-    ? '<span class="dot dot--live"></span> Tailing'
-    : '<span class="dot"></span> Paused';
-  $('#st-tail').textContent = on ? '● Active' : '⏸ Paused';
-  state.panels.forEach((p) => p.setPaused(!on));
-}
-
-function refilterAll() {
-  state.panels.forEach((p) => p.applyFilter(false));
-  refreshHighlightSummary();
-  updateStatus();
-}
-
-// ── export scope ─────────────────────────────────────────────────────────────
-
-function doExport(scope, format) {
-  // Operate on the focused panel if there's a selection anywhere; else merge.
-  const withSel = state.panels.find((p) => p.selectionCount() > 0);
-  const panel = scope === 'selected' && withSel ? withSel : state.panels[0];
-
-  let lines;
-  if (scope === 'selected') lines = state.panels.flatMap((p) => p.selectedLines());
-  else if (scope === 'highlighted') lines = state.panels.flatMap((p) => p.highlightedLines());
-  else lines = panel.visibleLines();
-
-  exportLines({ lines, format, source: panel?.sourceId || 'logs', toast });
-}
-
-// ── cross-references ─────────────────────────────────────────────────────────
-
-function onIncomingLine(viewer, ln) {
-  // index by correlation value for cross-panel jump
-  if (ln.correlation != null) {
-    const key = String(ln.correlation);
-    if (!state.correlation.has(key)) state.correlation.set(key, []);
-    const arr = state.correlation.get(key);
-    arr.push({ source: viewer.sourceId, line: ln.lineNumber });
-    if (arr.length > 200) arr.shift();
-  }
-  maybeNotify(viewer, ln);
-}
-
-function pushRef(source, line) {
-  // truncate forward history
-  state.refHistory = state.refHistory.slice(0, state.refIndex + 1);
-  state.refHistory.push({ source, line });
-  state.refIndex = state.refHistory.length - 1;
-  renderRefNav();
-}
-
-async function jumpToRef(source, line, record = true) {
-  const panel =
-    state.panels.find((p) => p.sourceId === source) || state.panels[0];
-  if (panel.sourceId !== source) panel.connect(source);
-  await panel.jumpToLine(line);
-  if (record) pushRef(source, line);
-  panel.el.scrollIntoView({ block: 'nearest' });
-}
-
-function navRef(dir) {
-  const next = state.refIndex + dir;
-  if (next < 0 || next >= state.refHistory.length) return;
-  state.refIndex = next;
-  const r = state.refHistory[next];
-  jumpToRef(r.source, r.line, false);
-  renderRefNav();
-}
-
-function renderRefNav() {
-  const r = state.refHistory[state.refIndex];
-  $('#ref-label').textContent = r ? `${r.source}:${r.line}` : 'no jumps';
-  $('#ref-back').disabled = state.refIndex <= 0;
-  $('#ref-fwd').disabled = state.refIndex >= state.refHistory.length - 1;
-}
-
-// ── context menu ─────────────────────────────────────────────────────────────
-
-function openContextMenu({ viewer, line, value, x, y }) {
-  const menu = $('#ctx-menu');
-  const ref = `[${viewer.sourceId}:${line.lineNumber}]`;
-  const header = `${line.lineNumber}\t${line.ts ?? ''}\t${line.level ?? ''}\t${line.message ?? ''}`;
-  const json = line.raw != null ? JSON.stringify(line.raw, null, 2) : '(no raw payload)';
-  const items = [
-    { label: 'Copy line + JSON', fn: () => copyText(`${header}\n${json}`, toast, `line ${line.lineNumber} + JSON`) },
-    { label: 'Copy line only', fn: () => copyText(header, toast, 'line') },
-    { label: 'Copy raw JSON', fn: () => copyText(json, toast, 'raw row') },
-    { label: `Copy reference ${ref}`, fn: () => copyText(ref, toast, 'reference') },
-    { label: 'Copy with context (±5)', fn: () => copyWithContext(viewer, line) },
-    { sep: true },
-  ];
-  if (value) {
-    items.push({ label: `Filter by “${truncate(value)}”`, fn: () => applyGlobal(value) });
-    items.push({ label: `Exclude “${truncate(value)}”`, fn: () => applyGlobal(`^(?!.*${escapeReg(value)}).*$`, true) });
-    items.push({ label: `Highlight similar`, fn: () => { highlighter.addCustom(escapeReg(value), '#f472b6'); refilterAll(); } });
-    items.push({ sep: true });
-  }
-  // correlated entries in other panels
-  const corr = line.correlation != null ? state.correlation.get(String(line.correlation)) : null;
-  if (corr && corr.length > 1) {
-    const others = corr.filter((c) => !(c.source === viewer.sourceId && c.line === line.lineNumber));
-    items.push({ label: `Correlated entries (${others.length})`, header: true });
-    others.slice(-6).forEach((c) =>
-      items.push({ label: `↪ ${c.source}:${c.line}`, fn: () => jumpToRef(c.source, c.line) })
-    );
-  }
-
-  menu.replaceChildren();
-  for (const it of items) {
-    if (it.sep) { menu.appendChild(document.createElement('hr')); continue; }
-    const b = document.createElement('button');
-    b.textContent = it.label;
-    if (it.header) { b.className = 'menu__header'; b.disabled = true; }
-    else b.addEventListener('click', () => { menu.hidden = true; it.fn(); });
-    menu.appendChild(b);
-  }
-  menu.hidden = false;
-  menu.style.left = Math.min(x, innerWidth - 260) + 'px';
-  menu.style.top = Math.min(y, innerHeight - menu.offsetHeight - 10) + 'px';
-  const close = () => { menu.hidden = true; document.removeEventListener('click', close); };
-  setTimeout(() => document.addEventListener('click', close), 0);
-}
-
-async function copyWithContext(viewer, line) {
-  const lo = line.lineNumber - 5;
-  const hi = line.lineNumber + 5;
-  try {
-    const res = await fetch(`/api/logs/${viewer.sourceId}/range?start=${lo}&end=${hi}`);
-    const d = await res.json();
-    const text = d.lines.map((l) => `${l.lineNumber}\t${l.ts}\t${l.level}\t${l.message}`).join('\n');
-    await copyText(text, toast, `${d.lines.length} lines with context`);
-  } catch (err) {
-    toast(`Context copy failed: ${err.message}`, 'err');
+    dom.facetList.append(box);
   }
 }
 
-function applyGlobal(text, regex = false) {
-  state.global.text = text;
-  state.global.regex = regex;
-  $('#global-filter').value = regex ? `/${text}/` : text;
-  $('#global-regex').checked = regex;
-  refilterAll();
-}
+function renderRows() {
+  dom.rows.replaceChildren();
+  dom.statShown.textContent = fmtNumber(state.lines.length);
+  if (!state.lines.length) {
+    const stat = state.stats.get(state.activeSource);
+    const hasAnyRows = Number(stat?.total || 0) > 0;
+    const hasTimeWindow = Boolean(dom.timeRange.value);
+    const hasSearchOrFacet = Boolean(dom.queryInput.value.trim() || state.filters.length);
+    const empty = document.createElement('div');
+    empty.className = 'log-console__empty';
+    const message = document.createElement('span');
+    message.textContent =
+      hasAnyRows && hasTimeWindow
+        ? 'No rows in the selected time window'
+        : hasAnyRows && hasSearchOrFacet
+          ? 'No rows match the current filters'
+          : 'No rows available for this source';
+    empty.append(message);
 
-// ── highlight drawer ─────────────────────────────────────────────────────────
-
-function wireHighlightDrawer() {
-  const drawer = $('#highlights-drawer');
-  $('#btn-highlights').addEventListener('click', () => { drawer.hidden = !drawer.hidden; renderHlList(); });
-  $('#hl-close').addEventListener('click', () => (drawer.hidden = true));
-  $('#hl-add').addEventListener('click', () => {
-    const pat = $('#hl-pattern').value.trim();
-    if (!pat) return;
-    try {
-      highlighter.addCustom(pat, $('#hl-color').value);
-      $('#hl-pattern').value = '';
-      refilterAll();
-      renderHlList();
-    } catch (err) {
-      toast(err.message, 'err');
+    if (hasAnyRows && hasTimeWindow) {
+      const showAll = document.createElement('button');
+      showAll.className = 'btn btn--primary btn--sm';
+      showAll.type = 'button';
+      showAll.setAttribute('aria-label', 'Show rows from all time');
+      showAll.textContent = 'Show all time';
+      showAll.addEventListener('click', () => {
+        dom.timeRange.value = '';
+        reload();
+      });
+      empty.append(showAll);
+    } else if (hasAnyRows && hasSearchOrFacet) {
+      const clear = document.createElement('button');
+      clear.className = 'btn btn--ghost btn--sm';
+      clear.type = 'button';
+      clear.setAttribute('aria-label', 'Clear search and facet filters');
+      clear.textContent = 'Clear filters';
+      clear.addEventListener('click', () => {
+        state.filters = [];
+        dom.queryInput.value = '';
+        reload();
+      });
+      empty.append(clear);
     }
-  });
-  highlighter.onChange(() => { renderHlList(); refreshHighlightSummary(); });
+
+    dom.rows.append(empty);
+    return;
+  }
+
+  for (const line of state.lines) {
+    const row = document.createElement('article');
+    const level = String(line.level || 'INFO').toLowerCase();
+    row.className = `log-row log-row--${level}${state.selected?.id === line.id ? ' is-selected' : ''}`;
+    row.role = 'listitem';
+    const rule = styleForLine(line);
+    if (rule) {
+      row.style.setProperty('--row-ink', rule.ink);
+      row.style.setProperty('--row-bg', rule.bg);
+      row.title = `Styled by rule: ${rule.name}`;
+    }
+    row.addEventListener('click', () => selectLine(line));
+
+    const time = document.createElement('span');
+    time.className = 'log-row__time';
+    time.textContent = fmtTime(line.ts);
+    const lvl = document.createElement('span');
+    lvl.className = 'log-row__level';
+    lvl.textContent = line.level || 'INFO';
+    const message = document.createElement('span');
+    message.className = 'log-row__message';
+    message.textContent = line.message;
+    const src = document.createElement('span');
+    src.className = 'log-row__source';
+    src.textContent = line.sourceName || line.source;
+
+    row.append(time, lvl, message, src);
+    dom.rows.append(row);
+  }
 }
 
-function renderHlList() {
-  const host = $('#hl-list');
-  host.replaceChildren();
-  for (const r of highlighter.rules()) {
-    const row = document.createElement('div');
-    row.className = 'hl-row';
-    row.innerHTML = `
-      <span class="hl-swatch" style="background:${r.color}"></span>
-      <code class="hl-label">${escapeHtmlInline(r.label)}</code>
-      <span class="hl-count muted">${highlighter.countFor(r.id)}</span>`;
-    if (!r.builtin) {
-      const del = document.createElement('button');
-      del.className = 'linkbtn';
-      del.textContent = '✕';
-      del.addEventListener('click', () => { highlighter.removeCustom(r.id); refilterAll(); });
-      row.appendChild(del);
+function renderDetail() {
+  const line = state.selected;
+  if (!line) {
+    dom.detailDrawer.hidden = true;
+    return;
+  }
+  dom.detailDrawer.hidden = false;
+  dom.detailTitle.textContent = `${line.sourceName} · ${fmtTime(line.ts)}`;
+  dom.detailBody.replaceChildren();
+
+  if (state.detailTab === 'json') {
+    const pre = document.createElement('pre');
+    pre.className = 'log-console__json';
+    pre.textContent = JSON.stringify(line.raw, null, 2);
+    dom.detailBody.append(pre);
+    return;
+  }
+
+  if (state.detailTab === 'correlate') {
+    const dl = document.createElement('dl');
+    for (const [key, value] of Object.entries(line.correlations || {})) {
+      const row = document.createElement('div');
+      row.className = 'log-console__kv';
+      const dt = document.createElement('dt');
+      dt.textContent = key;
+      const dd = document.createElement('dd');
+      const button = document.createElement('button');
+      button.className = 'btn btn--ghost btn--sm';
+      button.type = 'button';
+      button.textContent = value;
+      button.addEventListener('click', () => {
+        const src = source();
+        const field = src?.correlationKeys?.[key];
+        if (field) state.filters.push({ field, op: 'eq', value });
+        else dom.queryInput.value = value;
+        reload();
+      });
+      dd.append(button);
+      row.append(dt, dd);
+      dl.append(row);
+    }
+    if (!dl.children.length) {
+      const empty = document.createElement('div');
+      empty.className = 'log-console__empty';
+      empty.textContent = 'No correlation keys on this row';
+      dom.detailBody.append(empty);
     } else {
-      const tag = document.createElement('span');
-      tag.className = 'muted';
-      tag.textContent = 'built-in';
-      row.appendChild(tag);
+      dom.detailBody.append(dl);
     }
-    host.appendChild(row);
+    return;
+  }
+
+  const pairs = [
+    ['source', line.sourceName || line.source],
+    ['id', line.id],
+    ['time', line.ts],
+    ['level', line.level],
+    ['message', line.message],
+  ];
+  for (const [key, value] of pairs) {
+    const row = document.createElement('div');
+    row.className = 'log-console__kv';
+    const dt = document.createElement('dt');
+    dt.textContent = key;
+    const dd = document.createElement('dd');
+    dd.textContent = value || '-';
+    row.append(dt, dd);
+    dom.detailBody.append(row);
   }
 }
 
-function refreshHighlightSummary() {
-  highlighter.resetCounts();
-  state.panels.forEach((p) => p.visibleLines().forEach((l) => highlighter.decorate(l.message)));
-  const custom = highlighter.rules().filter((r) => !r.builtin);
-  const parts = custom.map((r) => `${r.label}: ${highlighter.countFor(r.id)}`);
-  $('#hl-summary').textContent = parts.length ? parts.join(' · ') : 'no custom matches';
+function selectLine(line) {
+  state.selected = line;
+  renderRows();
+  renderDetail();
 }
 
-function jumpHighlight(dir) {
-  const panel = state.panels[0];
-  if (!panel) return;
-  const hits = panel.visibleLines().filter((l) => l._hit);
-  if (!hits.length) { toast('No highlighted lines in view.', 'warn'); return; }
-  panel._hlIdx = ((panel._hlIdx ?? -1) + dir + hits.length) % hits.length;
-  panel.jumpToLine(hits[panel._hlIdx].lineNumber);
+function renderStyleRules() {
+  dom.styleRules.replaceChildren();
+  if (!state.styleRules.length) {
+    const empty = document.createElement('div');
+    empty.className = 'log-console__empty';
+    empty.textContent = 'No user color rules yet';
+    dom.styleRules.append(empty);
+    return;
+  }
+
+  state.styleRules.forEach((rule) => {
+    const row = document.createElement('section');
+    row.className = 'log-console__rule';
+    const swatch = document.createElement('span');
+    swatch.className = 'log-console__rule-swatch';
+    swatch.style.setProperty('--rule-ink', rule.ink);
+    swatch.style.setProperty('--rule-bg', rule.bg);
+    const body = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'log-console__rule-name';
+    name.textContent = rule.name;
+    const meta = document.createElement('div');
+    meta.className = 'log-console__rule-meta';
+    meta.textContent = `${rule.source} · ${rule.field} ${rule.op} ${rule.value || ''}`;
+    body.append(name, meta);
+    const remove = document.createElement('button');
+    remove.className = 'btn btn--ghost btn--sm';
+    remove.type = 'button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      state.styleRules = state.styleRules.filter((candidate) => candidate.id !== rule.id);
+      saveStyleRules();
+      renderStyleRules();
+      renderRows();
+    });
+    row.append(swatch, body, remove);
+    dom.styleRules.append(row);
+  });
 }
 
-// ── dashboard ────────────────────────────────────────────────────────────────
-
-async function toggleDashboard() {
-  const dash = $('#dashboard-view');
-  const tail = $('#tail-view');
-  const showing = dash.hidden;
-  dash.hidden = !showing;
-  tail.hidden = showing;
-  $('#btn-view').classList.toggle('is-active', showing);
-  if (showing) {
-    // Dashboard takes the screen — drop the live tail streams so the server
-    // stops polling the DB for panels nobody is watching. Reconnect on return.
-    state.panels.forEach((p) => p.disconnect());
-    await renderDashboard();
+function renderLiveButton() {
+  dom.liveToggle.replaceChildren();
+  if (state.live) {
+    const pulse = document.createElement('span');
+    pulse.className = 'log-console__pulse';
+    dom.liveToggle.append(pulse, document.createTextNode('Live'));
   } else {
-    // Back to the tail. Only re-open streams if we're actually tailing; if the
-    // user paused, leave them closed (pause already stopped the poll loops).
-    if (state.tailing) state.panels.forEach((p) => p.connect(p.sourceId));
+    dom.liveToggle.append(document.createTextNode('Paused'));
+  }
+  dom.liveToggle.classList.toggle('is-active', state.live);
+  dom.liveToggle.setAttribute('aria-pressed', String(state.live));
+}
+
+function syncRuleForm() {
+  dom.ruleSource.replaceChildren();
+  const all = document.createElement('option');
+  all.value = '*';
+  all.textContent = 'All sources';
+  dom.ruleSource.append(all);
+  for (const src of state.sources) {
+    const option = document.createElement('option');
+    option.value = src.id;
+    option.textContent = src.name;
+    dom.ruleSource.append(option);
+  }
+  dom.ruleSource.value = state.activeSource;
+  syncRuleFields();
+}
+
+function syncRuleFields() {
+  const src = state.sourceMap.get(dom.ruleSource.value) || source();
+  const fields = ['message', ...(src?.searchColumns || []), ...(src?.facets || []).map((facet) => facet.field)];
+  dom.ruleField.replaceChildren();
+  for (const field of [...new Set(fields)]) {
+    const option = document.createElement('option');
+    option.value = field;
+    option.textContent = field;
+    dom.ruleField.append(option);
   }
 }
 
-async function renderDashboard() {
-  const dash = $('#dashboard-view');
-  dash.innerHTML = '<div class="muted dash-loading">Loading stats…</div>';
+async function reloadStats() {
+  const data = await api('/api/stats');
+  state.stats = new Map((data.sources || []).map((stat) => [stat.id, stat]));
+  renderSources();
+  renderSourceHeader();
+}
+
+async function reload() {
+  if (!state.activeSource) return;
+  const version = ++state.reloadVersion;
+  stopStream();
+  renderFilterChips();
+  const params = queryParams();
+  const sourceId = state.activeSource;
+
   try {
-    const res = await fetch('/api/stats');
-    const { sources } = await res.json();
-    dash.replaceChildren();
-    for (const s of sources) dash.appendChild(statCard(s));
+    const [query, facetData, histogramData, statData] = await Promise.all([
+      api(`/api/logs/${sourceId}/query?${params}`),
+      api(`/api/logs/${sourceId}/facets?${params}`),
+      api(`/api/logs/${sourceId}/histogram?${params}`),
+      api(`/api/logs/${sourceId}/stats`),
+    ]);
+    if (version !== state.reloadVersion || sourceId !== state.activeSource) return;
+    state.lines = uniqueLines(query.lines);
+    state.facets = facetData.facets || {};
+    state.histogram = histogramData.histogram || [];
+    state.stats.set(sourceId, statData);
+    renderSourceHeader();
+    renderFacets();
+    renderTimeline();
+    renderRows();
+    if (state.selected) renderDetail();
+    if (state.live) startStream();
   } catch (err) {
-    dash.innerHTML = `<div class="toast toast--err">Stats failed: ${escapeHtmlInline(err.message)}</div>`;
+    toast(err.message, 'error');
   }
 }
 
-function statCard(s) {
-  const card = document.createElement('div');
-  card.className = 'card';
-  const maxVol = Math.max(1, ...s.volume.map((v) => v.n));
-  const bars = s.volume
-    .map((v) => `<div class="bar" style="height:${(v.n / maxVol) * 100}%" title="${new Date(v.bucket).toLocaleString()} — ${v.n}"></div>`)
-    .join('');
-  const top = s.topPatterns
-    .map((p) => {
-      const w = (p.n / s.topPatterns[0].n) * 100;
-      return `<div class="toprow"><span class="toprow__bar" style="width:${w}%"></span><code>${escapeHtmlInline(p.pattern)}</code><b>${p.n.toLocaleString()}</b></div>`;
-    })
-    .join('');
-  card.innerHTML = `
-    <header class="card__head"><h3>${escapeHtmlInline(s.name)}</h3>
-      <span class="muted">${s.total.toLocaleString()} rows · latest ${s.latest ? new Date(s.latest).toLocaleString() : '—'}</span>
-    </header>
-    <div class="card__chart"><div class="chart-label muted">volume / hour (24h)</div><div class="chart">${bars || '<span class="muted">no rows in last 24h</span>'}</div></div>
-    <div class="card__top"><div class="chart-label muted">top patterns</div>${top || '<span class="muted">n/a</span>'}</div>`;
-  return card;
-}
-
-// ── notifications ────────────────────────────────────────────────────────────
-
-function maybeNotify(viewer, ln) {
-  if (ln.level !== 'CRITICAL' && ln.level !== 'ERROR') return;
-  toast(`${ln.level} in ${viewer.sourceId}: ${truncate(ln.message, 80)}`, ln.level === 'CRITICAL' ? 'err' : 'warn');
-  if (state.notify.browser && Notification?.permission === 'granted') {
-    new Notification(`Vector ${ln.level}`, { body: ln.message.slice(0, 120) });
+function stopStream() {
+  state.streamVersion += 1;
+  if (state.eventSource) {
+    state.eventSource.close();
+    state.eventSource = null;
   }
 }
 
-function toast(msg, kind = 'ok') {
-  const host = $('#toasts');
-  const t = document.createElement('div');
-  t.className = `toast toast--${kind}`;
-  t.textContent = msg;
-  host.appendChild(t);
-  setTimeout(() => t.classList.add('is-out'), 3200);
-  setTimeout(() => t.remove(), 3600);
+function startStream() {
+  stopStream();
+  if (!state.live || !state.activeSource) return;
+  const version = ++state.streamVersion;
+  const sourceId = state.activeSource;
+  const params = queryParams();
+  state.eventSource = new EventSource(`/api/logs/${sourceId}/stream?${params}`);
+  state.eventSource.addEventListener('hello', () => {
+    if (version !== state.streamVersion || sourceId !== state.activeSource) return;
+    dom.healthSummary.textContent = 'live stream connected';
+  });
+  state.eventSource.addEventListener('lines', (event) => {
+    if (version !== state.streamVersion || sourceId !== state.activeSource) return;
+    const payload = JSON.parse(event.data);
+    if (payload.reset) state.lines = uniqueLines(payload.lines);
+    else state.lines = uniqueLines([...state.lines, ...(payload.lines || [])]).slice(-Number(dom.limitSelect.value || 500));
+    renderSourceHeader();
+    renderRows();
+  });
+  state.eventSource.addEventListener('error', () => {
+    if (version !== state.streamVersion || sourceId !== state.activeSource) return;
+    dom.healthSummary.textContent = 'stream reconnecting';
+  });
 }
 
-// ── status bar ───────────────────────────────────────────────────────────────
-
-function startStatusLoop() {
-  setInterval(() => {
-    const rate = state.panels.reduce((a, p) => a + p.takeRate(), 0);
-    $('#st-rate').textContent = `${rate.toFixed(1)} lines/s`;
-    updateStatus();
-  }, 1000);
-}
-
-function updateStatus() {
-  const total = state.panels.reduce((a, p) => a + p.total, 0);
-  const mem = state.panels.reduce((a, p) => a + p.lines.length, 0);
-  const sel = state.panels.reduce((a, p) => a + p.selectionCount(), 0);
-  const filters = (state.global.text ? 1 : 0) + (state.global.onlyHighlighted ? 1 : 0);
-  $('#st-total').textContent = `${total.toLocaleString()} lines`;
-  $('#st-mem').textContent = `${mem.toLocaleString()} in memory`;
-  $('#st-selected').textContent = `${sel} selected`;
-  $('#st-filter').textContent = `${filters} filter${filters === 1 ? '' : 's'}`;
-  $('#last-update').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
-}
-
-function setConn(status) {
-  const el = $('#conn');
-  const up = status === 'up';
-  el.className = `conn ${up ? 'conn--up' : 'conn--down'}`;
-  $('.conn__txt', el).textContent = up ? 'live' : 'reconnecting…';
-}
-
-// ── prefs ────────────────────────────────────────────────────────────────────
-
-function savePrefs() {
+async function exportLines() {
   try {
-    localStorage.setItem(LS_PREFS, JSON.stringify({ layout: state.layout, notify: state.notify }));
-  } catch {}
+    const res = await fetch('/api/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: state.activeSource, format: 'json', lines: state.lines }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.activeSource}-export.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Exported visible rows', 'ok');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
-function restorePrefs() {
+
+function bindEvents() {
+  const debouncedReload = debounce(reload, 300);
+  dom.queryInput.addEventListener('input', debouncedReload);
+  dom.regexToggle.addEventListener('change', reload);
+  dom.timeRange.addEventListener('change', reload);
+  dom.limitSelect.addEventListener('change', reload);
+  dom.refreshButton.addEventListener('click', reload);
+  dom.clearFilters.addEventListener('click', () => {
+    state.filters = [];
+    dom.queryInput.value = '';
+    reload();
+  });
+  dom.exportButton.addEventListener('click', exportLines);
+  dom.liveToggle.addEventListener('click', () => {
+    state.live = !state.live;
+    renderLiveButton();
+    if (state.live) startStream();
+    else stopStream();
+  });
+
+  document.querySelectorAll('.log-console__level').forEach((button) => {
+    button.addEventListener('click', () => {
+      const level = button.dataset.level;
+      if (state.activeLevels.has(level)) state.activeLevels.delete(level);
+      else state.activeLevels.add(level);
+      button.classList.toggle('is-active', state.activeLevels.has(level));
+      button.setAttribute('aria-pressed', String(state.activeLevels.has(level)));
+      reload();
+    });
+  });
+
+  dom.detailClose.addEventListener('click', () => {
+    state.selected = null;
+    renderRows();
+    renderDetail();
+  });
+  document.querySelectorAll('[data-detail-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.detailTab = button.dataset.detailTab;
+      document.querySelectorAll('[data-detail-tab]').forEach((tab) => tab.classList.toggle('is-active', tab === button));
+      renderDetail();
+    });
+  });
+
+  dom.styleButton.addEventListener('click', () => {
+    dom.styleDrawer.hidden = false;
+    syncRuleForm();
+    renderStyleRules();
+  });
+  dom.styleClose.addEventListener('click', () => {
+    dom.styleDrawer.hidden = true;
+  });
+  dom.ruleSource.addEventListener('change', syncRuleFields);
+  dom.styleForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    state.styleRules.push({
+      id: crypto.randomUUID(),
+      enabled: true,
+      name: dom.ruleName.value.trim() || 'Row color rule',
+      source: dom.ruleSource.value,
+      field: dom.ruleField.value,
+      op: dom.ruleOp.value,
+      value: dom.ruleValue.value,
+      ink: dom.ruleInk.value,
+      bg: dom.ruleBg.value,
+    });
+    saveStyleRules();
+    renderStyleRules();
+    renderRows();
+    toast('Row color rule added', 'ok');
+  });
+}
+
+async function boot() {
+  bindEvents();
+  loadStyleRules();
+  renderLiveButton();
   try {
-    const p = JSON.parse(localStorage.getItem(LS_PREFS) || '{}');
-    if (p.layout) state.layout = p.layout;
-    if (p.notify) state.notify = p.notify;
-  } catch {}
-  // ask for browser-notification permission lazily on first ERROR is nicer,
-  // but offer it up-front if the user previously opted in.
-  if (state.notify.browser && Notification?.permission === 'default') Notification.requestPermission();
+    const [sourcesData, health] = await Promise.all([api('/api/sources'), api('/api/health')]);
+    state.sources = sourcesData.sources || [];
+    state.sourceMap = new Map(state.sources.map((src) => [src.id, src]));
+    if (!state.activeSource) {
+      state.activeSource = sourcesData.defaultSource || state.sources[0]?.id || '';
+    }
+    const failed = Object.entries(health.databases || {}).filter(([, check]) => !check.ok);
+    dom.healthSummary.textContent = failed.length ? `${failed.length} DB check failed` : 'all DBs connected';
+    syncRuleForm();
+    await reloadStats();
+    renderSourceHeader();
+    renderStyleRules();
+    await reload();
+  } catch (err) {
+    toast(err.message, 'error');
+    dom.healthSummary.textContent = err.message;
+  }
 }
 
-// ── small utils ──────────────────────────────────────────────────────────────
-
-function positionUnder(menu, btn) {
-  const r = btn.getBoundingClientRect();
-  menu.style.left = r.left + 'px';
-  menu.style.top = r.bottom + 4 + 'px';
-}
-function truncate(s, n = 40) {
-  s = String(s);
-  return s.length > n ? s.slice(0, n) + '…' : s;
-}
-function escapeReg(s) {
-  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-function escapeHtmlInline(s) {
-  return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
-
-boot().catch((err) => {
-  document.body.innerHTML = `<pre style="color:#f87171;padding:24px;font:14px monospace">Boot failed: ${err.message}\n\nIs the server running and the DB tunnel up?</pre>`;
-});
+boot();

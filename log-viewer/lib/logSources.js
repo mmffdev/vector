@@ -1,15 +1,7 @@
-// Turns config.json log definitions into validated, queryable "log sources",
-// and turns raw DB rows into normalised log lines the frontend understands.
-//
-// A normalised line looks like:
-//   { id, ts, level, message, raw, correlation }
-// where `raw` is the full row (for expand / export / cross-reference) and
-// `correlation` is the value the cross-referencing system joins on.
+// Config -> validated source registry, plus DB row -> normalized log event.
 
-// Postgres identifier allowlist — table and column names from config are
-// validated against this before being placed into SQL. Anything from a request
-// is bound as a parameter and never reaches here.
 const IDENT = /^[a-z_][a-z0-9_]*$/;
+const SOURCE_ID = /^[a-z][a-z0-9_-]*$/;
 
 function assertIdent(name, what) {
   if (typeof name !== 'string' || !IDENT.test(name)) {
@@ -18,96 +10,177 @@ function assertIdent(name, what) {
   return name;
 }
 
+function assertSourceId(name) {
+  if (typeof name !== 'string' || !SOURCE_ID.test(name)) {
+    throw new Error(`Unsafe source id in config: ${JSON.stringify(name)}`);
+  }
+  return name;
+}
+
+function compact(list) {
+  return [...new Set((list || []).filter(Boolean))];
+}
+
+function asIso(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function stringifyValue(value) {
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
 export class LogSource {
-  constructor(def) {
-    this.id = def.id;
-    this.name = def.name;
-    this.color = def.color || '#888888';
-    this.table = assertIdent(def.table, 'table name');
-    this.idColumn = assertIdent(def.idColumn, 'idColumn');
-    this.tsColumn = assertIdent(def.tsColumn, 'tsColumn');
-    this.orderColumn = assertIdent(def.orderColumn || def.tsColumn, 'orderColumn');
-    this.columns = (def.columns || []).map((c) => assertIdent(c, 'column'));
-    if (!this.columns.includes(this.idColumn)) this.columns.unshift(this.idColumn);
+  constructor(def, databases) {
+    this.id = assertSourceId(def.id);
+    this.name = def.name || def.id;
+    this.group = def.group || 'Logs';
+    this.description = def.description || '';
+    this.color = def.color || '#64748B';
+    this.db = def.db || 'vector';
+    if (!databases[this.db]) throw new Error(`Source ${this.id} references unknown DB ${this.db}`);
+
+    this.table = assertIdent(def.table, `${this.id}.table`);
+    this.idColumn = assertIdent(def.idColumn, `${this.id}.idColumn`);
+    this.tsColumn = assertIdent(def.tsColumn, `${this.id}.tsColumn`);
+    this.orderColumn = assertIdent(def.orderColumn || def.tsColumn, `${this.id}.orderColumn`);
+    this.columns = compact([this.idColumn, this.tsColumn, ...(def.columns || [])]).map((column) =>
+      assertIdent(column, `${this.id}.column`)
+    );
+    this.searchColumns = compact(def.searchColumns || this.columns).map((column) =>
+      assertIdent(column, `${this.id}.searchColumn`)
+    );
     this.messageTemplate = def.messageTemplate || '';
     this.levelFrom = def.levelFrom || '_derived';
-    this.levelRules = def.levelRules || [];
+    if (this.levelFrom !== '_derived') assertIdent(this.levelFrom, `${this.id}.levelFrom`);
+    this.levelRules = Array.isArray(def.levelRules) ? def.levelRules : [];
     this.defaultLevel = def.defaultLevel || 'INFO';
-    this.correlationKey = def.correlationKey
-      ? assertIdent(def.correlationKey, 'correlationKey')
-      : null;
+    this.facets = (def.facets || []).map((facet) => ({
+      field: assertIdent(facet.field, `${this.id}.facet`),
+      label: facet.label || facet.field,
+    }));
+    this.correlationKeys = Object.fromEntries(
+      Object.entries(def.correlationKeys || {}).map(([key, field]) => [
+        key,
+        assertIdent(field, `${this.id}.correlationKey.${key}`),
+      ])
+    );
+    this.filterFields = compact([
+      ...this.columns,
+      ...this.searchColumns,
+      ...this.facets.map((facet) => facet.field),
+      ...Object.values(this.correlationKeys),
+    ]);
   }
 
-  /** Comma-separated, validated column list for SELECT. */
   selectList() {
-    return this.columns.map((c) => `"${c}"`).join(', ');
+    return this.columns.map((column) => `"${column}"`).join(', ');
   }
 
-  /** Derive a level keyword used for matching when levelFrom === "_derived". */
-  #derivedSubject(row) {
-    // users_sessions has no level column; synthesise one from row state.
-    // Distinguish *routine rotation* (revoked because a successor token was
-    // issued — expected, not alarming) from a *bare revoke* (forced logout /
-    // token reuse — a real anomaly worth surfacing).
-    const revoked = row[`${this.table}_revoked`] === true || row.users_sessions_revoked === true;
-    const rotated = !!(row[`${this.table}_rotated_at`] || row.users_sessions_rotated_at);
-    if (revoked && rotated) return 'rotated'; // normal refresh chain → WARN
-    if (revoked) return 'revoked'; // bare revoke, no successor → ERROR
-    return 'active';
+  hasField(field) {
+    return this.filterFields.includes(field);
+  }
+
+  publicShape() {
+    return {
+      id: this.id,
+      name: this.name,
+      group: this.group,
+      description: this.description,
+      color: this.color,
+      db: this.db,
+      table: this.table,
+      idColumn: this.idColumn,
+      tsColumn: this.tsColumn,
+      facets: this.facets,
+      searchColumns: this.searchColumns,
+      correlationKeys: this.correlationKeys,
+    };
+  }
+
+  derivedSubject(row) {
+    if (this.id === 'users_sessions') {
+      const revoked = row.users_sessions_revoked === true;
+      const rotated = Boolean(row.users_sessions_rotated_at);
+      if (revoked && rotated) return 'rotated';
+      if (revoked) return 'revoked';
+      return 'active';
+    }
+
+    const lastError = Object.keys(row).find((key) => key.endsWith('_last_error'));
+    if (lastError && row[lastError]) return 'error';
+    const delivered = Object.keys(row).find((key) => key.endsWith('_delivered_at'));
+    if (delivered && row[delivered]) return 'delivered';
+    const attempts = Object.keys(row).find((key) => key.endsWith('_attempts'));
+    if (attempts && Number(row[attempts]) > 0) return 'retry';
+    return 'info';
   }
 
   classifyLevel(row) {
     const subject =
       this.levelFrom === '_derived'
-        ? this.#derivedSubject(row)
-        : String(row[this.levelFrom] ?? '');
+        ? this.derivedSubject(row)
+        : stringifyValue(row[this.levelFrom]);
+
     for (const rule of this.levelRules) {
-      let re;
       try {
-        re = new RegExp(rule.match, 'i');
+        if (new RegExp(rule.match, 'i').test(subject)) return rule.level || this.defaultLevel;
       } catch {
-        continue;
+        // Bad config regex: skip it rather than making the whole viewer unusable.
       }
-      if (re.test(subject)) return rule.level;
     }
     return this.defaultLevel;
   }
 
-  #renderMessage(row) {
-    // {col} substitution + a couple of computed helpers.
+  renderMessage(row) {
+    if (!this.messageTemplate) return JSON.stringify(row);
     let out = this.messageTemplate;
     out = out.replace('{resource_id_suffix}', () => {
-      const rid = row[`${this.table}_resource_id`] ?? row.audit_logs_resource_id;
+      const rid = row.audit_logs_resource_id;
       return rid ? `#${rid}` : '';
     });
-    out = out.replace(/\{([a-z_][a-z0-9_]*)\}/g, (_, key) => {
-      const v = row[key];
-      if (v === null || v === undefined) return '';
-      if (typeof v === 'object') return JSON.stringify(v);
-      return String(v);
-    });
-    // Collapse runs of whitespace left by empty substitutions.
+    out = out.replace(/\{([a-z_][a-z0-9_]*)\}/g, (_, key) => stringifyValue(row[key]));
     return out.replace(/\s{2,}/g, '  ').trim();
   }
 
-  /** Normalise one DB row into a frontend log line. */
-  normalise(row) {
+  correlations(row) {
+    return Object.fromEntries(
+      Object.entries(this.correlationKeys)
+        .map(([key, field]) => [key, stringifyValue(row[field])])
+        .filter(([, value]) => value !== '')
+    );
+  }
+
+  normalise(row, lineNumber = null) {
+    const ts = asIso(row[this.tsColumn]);
+    const orderValue = asIso(row[this.orderColumn]) || ts;
     return {
-      id: row[this.idColumn],
-      ts: row[this.tsColumn],
+      source: this.id,
+      sourceName: this.name,
+      color: this.color,
+      id: stringifyValue(row[this.idColumn]),
+      ts,
+      orderValue,
       level: this.classifyLevel(row),
-      message: this.messageTemplate ? this.#renderMessage(row) : JSON.stringify(row),
+      message: this.renderMessage(row),
       raw: row,
-      correlation: this.correlationKey ? row[this.correlationKey] : null,
+      correlations: this.correlations(row),
+      lineNumber,
     };
   }
 }
 
-export function buildLogSources(config) {
+export function buildLogSources(config, databases) {
   const map = new Map();
-  for (const def of config.logs || []) {
-    const src = new LogSource(def);
-    map.set(src.id, src);
+  const list = config.sources || config.logs || [];
+  for (const def of list) {
+    const source = new LogSource(def, databases);
+    if (map.has(source.id)) throw new Error(`Duplicate log source id: ${source.id}`);
+    map.set(source.id, source);
   }
   return map;
 }
