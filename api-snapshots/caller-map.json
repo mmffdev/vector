@@ -63,19 +63,20 @@
     "app/lib/apiSite/index.ts:131"
   ],
   "/auth/login": [
-    "app/contexts/AuthContext.tsx:339",
+    "app/contexts/AuthContext.tsx:401",
     "app/lib/apiSite/index.ts:115"
   ],
   "/auth/login-continuation": [
-    "app/login/page.tsx:126"
+    "app/login/page.tsx:127"
   ],
   "/auth/logout": [
-    "app/contexts/AuthContext.tsx:394",
-    "app/contexts/AuthContext.tsx:435",
+    "app/contexts/AuthContext.tsx:456",
+    "app/contexts/AuthContext.tsx:497",
     "app/lib/apiSite/index.ts:125"
   ],
   "/auth/me": [
-    "app/contexts/AuthContext.tsx:499",
+    "app/contexts/AuthContext.tsx:240",
+    "app/contexts/AuthContext.tsx:561",
     "app/lib/apiSite/index.ts:128"
   ],
   "/auth/mfa": [
@@ -91,7 +92,7 @@
     "app/user/account-settings/page.tsx:41"
   ],
   "/auth/mfa/verify": [
-    "app/contexts/AuthContext.tsx:360"
+    "app/contexts/AuthContext.tsx:422"
   ],
   "/auth/password-reset": [
     "app/lib/apiSite/index.ts:137",
@@ -108,7 +109,7 @@
     "app/hooks/useStepUpAction.ts:106"
   ],
   "/auth/refresh": [
-    "app/contexts/AuthContext.tsx:247",
+    "app/contexts/AuthContext.tsx:309",
     "app/lib/apiSite/index.ts:122"
   ],
   "/auth/sessions": [
@@ -118,7 +119,7 @@
     "app/user/account-settings/sessions/page.tsx:104"
   ],
   "/auth/switch-workspace": [
-    "app/contexts/AuthContext.tsx:381"
+    "app/contexts/AuthContext.tsx:443"
   ],
   "/cost-centres": [
     "app/lib/costCentresApi.ts:36",
@@ -193,7 +194,7 @@
   ],
   "/nav/start-page": [
     "app/lib/apiSite/index.ts:207",
-    "app/login/page.tsx:134"
+    "app/login/page.tsx:135"
   ],
   "/notifications/prefs": [
     "app/lib/apiSite/index.ts:1421",

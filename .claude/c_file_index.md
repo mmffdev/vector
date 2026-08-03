@@ -1,6 +1,6 @@
 # Codebase File Index (auto-generated)
 
-**Generated:** 2026-06-06 22:19:42
+**Generated:** 2026-08-03 19:16:40
 **Generator:** `dev/scripts/gen-file-index.sh`
 
 Map of curated source directories. Use this to **locate the right area before reaching for `<search>`**.
@@ -23,7 +23,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/portfolio-items
-2 file(s) · key: page.tsx, layout.tsx
+3 file(s) · key: GridPortfolioItems.tsx, page.tsx, layout.tsx
 Purpose: _(unset)_
 
 ### app/(user)/portfolio-model
@@ -35,7 +35,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/scope
-4 file(s) · key: scopeColumns.tsx, scopeTreeData.ts, GridExecution.tsx
+4 file(s) · key: scopeColumns.tsx, GridExecution.tsx, scopeTreeData.ts
 Purpose: _(unset)_
 
 ### app/(user)/user-management
@@ -43,7 +43,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/(user)/value-sprint-review
-3 file(s) · key: page.tsx, GridSprintReview.tsx, sprintReviewTreeData.ts
+3 file(s) · key: GridSprintReview.tsx, page.tsx, sprintReviewTreeData.ts
 Purpose: _(unset)_
 
 ### app/(user)/vector-admin/api-manager
@@ -75,7 +75,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/ArtefactInlineForm
-9 file(s) · key: types.ts, ArtefactInlineForm.tsx, useParentCandidates.ts
+9 file(s) · key: useParentCandidates.ts, types.ts, ArtefactInlineForm.tsx
 Purpose: _(unset)_
 
 ### app/components/CustomFields
@@ -123,11 +123,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/components/Grid
-12 file(s) · key: Grid__Tree_Forms.tsx, Grid__Tree.tsx, Grid__Tree_ActionBar.tsx
+17 file(s) · key: Grid__Tree.tsx, Grid__Tree_Row.tsx, Grid__SprintBoundary.tsx
 Purpose: _(unset)_
 
 ### app/components/Grid/__tests__
-2 file(s) · key: Grid__Tree_Lines.test.tsx, useTree.test.tsx
+6 file(s) · key: Grid__SprintBoundary.test.tsx, useSweepSelect.test.ts, Grid__Tree_Lines.test.tsx
 Purpose: _(unset)_
 
 ### app/components/MapRelationship3D
@@ -199,7 +199,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/hooks
-18 file(s) · key: useTaskMetrics.ts, usePageTitle.ts, useTeamVelocity.ts
+18 file(s) · key: useNextSprint.ts, useTaskMetrics.ts, usePageTitle.ts
 Purpose: _(unset)_
 
 ### app/hooks/__tests__
@@ -207,11 +207,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### app/lib
-25 file(s) · key: dpop.ts, authChannel.ts, artefactTypeGroups.ts
+27 file(s) · key: cpAuth.ts, workTypeTier.ts, artefactTypesApi.ts
 Purpose: _(unset)_
 
 ### app/lib/__tests__
-8 file(s) · key: dpop.test.ts, dpop-jkt-helpers.test.ts, authChannel.test.ts
+10 file(s) · key: cpAuth.test.ts, workTypeTier.test.ts, dpop.test.ts
 Purpose: _(unset)_
 
 ### app/lib/apiSite
@@ -298,6 +298,7 @@ Purpose: _(unset)_
 - app/(user)/workspace-admin/work-items
 - app/(user)/workspace-admin/workspace-details
 - app/(user)/workspace-admin/workspaces
+- app/api/cp/callback
 - app/api/dev/api-changelog
 - app/api/dev/code
 - app/api/dev/go-test
@@ -314,6 +315,9 @@ Purpose: _(unset)_
 - app/api/dev/services
 - app/change-password
 - app/components/ArtefactCreateFlyout/__tests__
+- app/components/ArtefactInlineForm/__tests__
+- app/components/ArtefactTypeCreateFlyout
+- app/components/ArtefactTypeCreateFlyout/__tests__
 - app/components/Canvas
 - app/components/DataContainer
 - app/components/FullscreenCanvasOverlay
@@ -326,6 +330,7 @@ Purpose: _(unset)_
 - app/components/TimeboxInlineForm
 - app/components/TimeboxObjectTree
 - app/components/catalogue/c_circular_additor
+- app/cp/callback
 - app/help/[id]
 - app/lib/shared/topology
 - app/lib/shared/topology/__tests__
@@ -420,7 +425,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefactitems
-26 file(s) · key: service_rank_placement_test.go, handler.go, service.go
+26 file(s) · key: types.go, sql.go, service_rank_placement_test.go
 Purpose: _(unset)_
 
 ### backend/internal/artefactpriorities
@@ -428,7 +433,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/artefacttypes
-6 file(s) · key: service.go, handler.go, types.go
+9 file(s) · key: insert_layer_test.go, insert_layer.go, seed_test.go
 Purpose: _(unset)_
 
 ### backend/internal/audit
@@ -436,7 +441,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/auth
-26 file(s) · key: grace_chain_integration_test.go, sql.go, grace_chain.go
+28 file(s) · key: middleware.go, cp_dual_accept_test.go, cp_dual_accept.go
 Purpose: _(unset)_
 
 ### backend/internal/bootstatus
@@ -488,7 +493,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/featuretests
-8 file(s) · key: helpers_test.go, f7_priority_substrate_test.go, f8_priority_crud_wire_test.go
+8 file(s) · key: f3_dto_slot_test.go, helpers_test.go, f7_priority_substrate_test.go
 Purpose: _(unset)_
 
 ### backend/internal/fields
@@ -500,7 +505,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/flows
-10 file(s) · key: types.go, sql.go, service.go
+13 file(s) · key: seed_test.go, seed.go, spine.go
 Purpose: _(unset)_
 
 ### backend/internal/formlayouts
@@ -620,7 +625,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/portfoliomodels
-35 file(s) · key: dev_reset.go, cross_db_canary_test.go, adopt_va_only_test.go
+35 file(s) · key: sql.go, scope_resolver_matrix_test.go, adopt_work_types_test.go
 Purpose: _(unset)_
 
 ### backend/internal/ranking
@@ -644,7 +649,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/search
-3 file(s) · key: handler.go, handler_test.go, service.go
+3 file(s) · key: handler_test.go, handler.go, service.go
 Purpose: _(unset)_
 
 ### backend/internal/searchworker
@@ -656,7 +661,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### backend/internal/security
-10 file(s) · key: mfaremember_test.go, mfaremember.go, csrf.go
+10 file(s) · key: csrf_test.go, csrf.go, mfaremember_test.go
 Purpose: _(unset)_
 
 ### backend/internal/sentinel
@@ -738,7 +743,7 @@ Purpose: _(unset)_
 ## Dev tooling
 
 ### dev/pages
-30 file(s) · key: DevVisualiserPanelV4.tsx, DevReportingPanel.tsx, DevPage.tsx
+30 file(s) · key: DevShortcutsPanel.tsx, DevScopeActionsPanel.tsx, DevPage.tsx
 Purpose: _(unset)_
 
 ### dev/pages/V2A
@@ -746,7 +751,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/scripts
-65 file(s) · key: audit_codegraph.sh, lint_cross_db_writer_test.py, lint_artefact_read_sentinel.py
+64 file(s) · key: backup-on-push.sh, lint_cross_db_writer_test.py, lint_artefact_read_sentinel.py
 Purpose: _(unset)_
 
 ### dev/scripts/backup/lib
@@ -783,11 +788,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/registries
-21 file(s) · key: page_description_exempt.json, no_old_context_imports_exempt.json, cross_db_writer_test_exe
+20 file(s) · key: sql_in_sqlfile_exempt.json, cross_db_writer_test_exempt.json, artefact_read_sentinel_exemp
 Purpose: _(unset)_
 
 ### dev/reports
-1230 file(s) · key: 20260606-072522-addressables.json, 20260606-041220-addressables.json, 20260606-040528-addr
+1343 file(s) · key: 20260610-225126-addressables.json, 20260610-190105-addressables.json, 20260610-185946-addr
 Purpose: _(unset)_
 
 ### dev/research
@@ -795,7 +800,7 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### dev/scripts
-12 file(s) · key: backfill_task_burn_added.sql, backfill_sprint_burn_added.sql, etl_workspace_settings.sql
+13 file(s) · key: backfill_spike_flow.sql, backfill_sprint_burn_added.sql, backfill_task_burn_added.sql
 Purpose: _(unset)_
 
 ### _Single-file dirs (rolled up)_
@@ -845,11 +850,11 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema
-174 file(s) · key: 180_work_items_2_nav_page.sql, 179_task_burn_events.sql, 178_metrics_page.sql
+175 file(s) · key: 181_artefact_types_parent_columns.sql, 180_work_items_2_nav_page.sql, 178_metrics_page.sql
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/down
-106 file(s) · key: 180_work_items_2_nav_page_DOWN.sql, 178_metrics_page_DOWN.sql, 175_artefact_dependency_edg
+107 file(s) · key: 181_artefact_types_parent_columns_DOWN.sql, 180_work_items_2_nav_page_DOWN.sql, 178_metric
 Purpose: _(unset)_
 
 ### db/vector_artefacts/schema/merge_plan
@@ -863,11 +868,11 @@ Purpose: _(unset)_
 ## Documentation indexes
 
 ### .
-12 file(s) · key: Vector_Scope.md, README.md, AGENTS.md
+14 file(s) · key: BACKLOG.md, README.md, 2026-06-10.md
 Purpose: _(unset)_
 
 ### docs
-80 file(s) · key: c_tech_debt.md, structure.md, c_c_dependencies.md
+81 file(s) · key: c_tech_debt.md, c_c_lint_rules.md, c_c_tech_debt_completed.md
 Purpose: _(unset)_
 
 ### docs/Database
@@ -887,10 +892,10 @@ Purpose: _(unset)_
 Purpose: _(unset)_
 
 ### docs/superpowers/plans
-28 file(s) · key: 2026-06-06-report-architecture-flag.md, 2026-06-06-task-burndown.md, 2026-06-06-session-id
+33 file(s) · key: 2026-06-07-sprint-sweep-rebuild.md, 2026-06-07-sprint-boundary-chrome.md, 2026-06-07-custo
 Purpose: _(unset)_
 
 ### docs/superpowers/specs
-31 file(s) · key: 2026-06-06-new-artefact-rank-placement.md, 2026-06-06-task-burndown-design.md, 2026-06-06-
+38 file(s) · key: 2026-06-07-sprint-velocity-line-design.md, 2026-06-07-portfolio-items-grid-swap-design.md,
 Purpose: _(unset)_
 
