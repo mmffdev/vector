@@ -1,3 +1,5 @@
+> **Canonical version has moved** — the authoritative, up-to-date copy of this doc now lives in the monorepo at `products/vector/.claude/commands/c_db-backup.md` (MMFFDev - Platform). This standalone copy is preserved until Vector repo cutover but is no longer maintained.
+
 # Database backup
 
 Lazy-loaded guide for `<backupsql>` — load only when the user invokes the shortcut or asks about DB dumps.

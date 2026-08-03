@@ -1,3 +1,15 @@
+> ## ⚠️ END OF LIFE — repo retired 2026-06-11
+>
+> This standalone repo is no longer the source of truth. Vector now lives in the
+> **Platform monorepo**: `MMFFDev - Platform/products/vector` (dev stack runs from
+> there on the same ports — backend `:5100`, frontend `:5101`, tunnel `:5435`).
+> The launcher moved to `MMFFDev - Platform/platform/launcher/` (build via
+> `scripts/build-launcher.sh`; do NOT use this repo's `MMFF Vector Launcher.app`,
+> it supervises THIS repo's services and will fight the monorepo stack).
+> Today's final fixes (PLAT1.9 CSRF bearer carve-out + sentinel switch-workspace
+> bridge) were ported to the monorepo before retirement. Keep this repo for
+> history only — make no new changes here.
+
 # Vector PM
 
 Enterprise agile / portfolio management platform. Private repo, Mac-only dev.
