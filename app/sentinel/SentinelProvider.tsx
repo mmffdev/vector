@@ -479,9 +479,29 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
 
   const switchWorkspace = useCallback(async (workspaceId: string) => {
     dispatch({ type: "loading_start" });
-    const payload = await postSwitchWorkspace(workspaceId);
+    // Path 1 — canonical /sentinel/switch-workspace. Not mounted on the
+    // backend today (only /sentinel/boot and /sentinel/focus are), so this
+    // 404s and falls through to the bridge — same pattern as fetchBoot().
+    // Other statuses (401, 403, 500) bubble unchanged.
+    try {
+      const payload = await postSwitchWorkspace(workspaceId);
+      dispatch({ type: "boot_loaded", payload });
+      return;
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.status !== 404 || !authCtx) throw err;
+      // fall through to the bridge
+    }
+    // Path 2 — bridge via the legacy /auth/switch-workspace wrapper.
+    // applyLogin inside it owns the full token-rotation lifecycle (new
+    // access token, refresh+csrf cookies, bound-JKT, sibling-tab
+    // broadcast) — crucially it also mints a Vector-native session for
+    // CP-adopted logins (PLAT1.9), which never held those cookies.
+    // fetchBoot() then rebuilds the payload the canonical route would
+    // have returned, so the reducer sees the identical wire shape.
+    await authCtx.switchWorkspace(workspaceId);
+    const payload = await fetchBoot();
     dispatch({ type: "boot_loaded", payload });
-  }, []);
+  }, [authCtx]);
 
   const setFocus = useCallback(async (nodeId: string | null) => {
     // Capture the previous user-row default so a server-side failure

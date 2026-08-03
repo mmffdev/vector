@@ -69,12 +69,21 @@ func ClearCSRFCookie(w http.ResponseWriter) {
 // (/auth/login, /auth/refresh) also pass — they're how the user obtains the
 // token, and they're protected by rate limiting + credentials.
 //
-// Api-key bearer callers (Authorization: Bearer sam_live_*) also pass — they
+// Bearer callers (Authorization: Bearer …, api-key or JWT) also pass — they
 // authenticate via a header the browser never auto-attaches cross-origin, so
 // the cookie-based double-submit defence is structurally inapplicable. This
-// is the B20.5.L follow-on: the dual-mount api-key writer surface needs a
-// CSRF carve-out symmetrical to its bearer-auth model. Cookie-auth callers
-// (the SPA) keep the full check.
+// is safe because RequireAuth reads credentials EXCLUSIVELY from the
+// Authorization header (auth/middleware.go) — there is no cookie fallback an
+// attacker could ride after slipping past this check, and the cookie-auth
+// surfaces (/auth/refresh, rt cookie) are covered by their own exemptions +
+// rotation/binding. Cookie-only callers keep the full check.
+//
+// History: B20.5.L carved out sam_live_* api-key bearers; PLAT1.9 widened it
+// to all bearers because CP-minted sessions never visit Vector's legacy
+// login/refresh handlers, so a CP session has no csrf_token cookie at all —
+// every browser POST (sentinel switch-workspace/focus, the /query read
+// gateways) was 403ing with AuthCSRFInvalid despite carrying a valid
+// DPoP-bound bearer token.
 func CSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -86,7 +95,7 @@ func CSRF(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if isAPIKeyBearer(r.Header.Get("Authorization")) {
+		if isBearerAuth(r.Header.Get("Authorization")) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -104,13 +113,17 @@ func CSRF(next http.Handler) http.Handler {
 	})
 }
 
-// isAPIKeyBearer reports whether the Authorization header carries an
-// api-key bearer token (sam_live_* prefix). Used by the CSRF middleware
-// to skip the cookie double-submit check for token-auth callers — see
-// the comment on CSRF for the threat-model rationale.
-func isAPIKeyBearer(authHeader string) bool {
-	const prefix = "Bearer sam_live_"
-	return strings.HasPrefix(authHeader, prefix) && len(authHeader) > len(prefix)
+// isBearerAuth reports whether the Authorization header carries a
+// non-empty bearer token (api-key sam_live_* or JWT access token). Used
+// by the CSRF middleware to skip the cookie double-submit check for
+// token-auth callers — see the comment on CSRF for the threat-model
+// rationale. The token's validity is NOT checked here; that's
+// RequireAuth's job. Presence alone proves the request was made by code
+// that can set headers (same-origin JS or a CORS-approved caller),
+// which is exactly what the double-submit cookie exists to prove.
+func isBearerAuth(authHeader string) bool {
+	const prefix = "Bearer "
+	return strings.HasPrefix(authHeader, prefix) && strings.TrimSpace(authHeader[len(prefix):]) != ""
 }
 
 func isCSRFExempt(path string) bool {

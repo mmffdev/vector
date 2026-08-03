@@ -47,11 +47,15 @@ func TestCSRF_CookieAuth_RequiresDoubleSubmit(t *testing.T) {
 	}
 }
 
-// TestCSRF_JWTBearer_StillCheckedAsCookieAuth verifies that a Bearer
-// token that is NOT an api-key (no sam_live_ prefix) does not bypass.
-// JWT cookies + Authorization are how the SPA authenticates today; CSRF
-// must still apply to that path.
-func TestCSRF_JWTBearer_StillCheckedAsCookieAuth(t *testing.T) {
+// TestCSRF_JWTBearer_BypassesDoubleSubmit verifies that a JWT bearer
+// token also bypasses the cookie double-submit check. PLAT1.9: CP-minted
+// sessions never visit Vector's legacy login/refresh handlers, so they
+// hold no csrf_token cookie — and RequireAuth authenticates exclusively
+// from the Authorization header (no cookie fallback), so the double-submit
+// defence is structurally inapplicable to ANY bearer caller, not just
+// sam_live_* api keys. This inverts the pre-PLAT1.9 contract that pinned
+// JWT bearers to the full check.
+func TestCSRF_JWTBearer_BypassesDoubleSubmit(t *testing.T) {
 	handler := CSRF(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -61,8 +65,8 @@ func TestCSRF_JWTBearer_StillCheckedAsCookieAuth(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("JWT bearer POST without CSRF: got %d, want 403 (only sam_live_ bypasses)", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("JWT bearer POST: got %d, want 200 (bearer auth should bypass CSRF)", rec.Code)
 	}
 }
 
@@ -83,23 +87,24 @@ func TestCSRF_SafeMethods_AlwaysPass(t *testing.T) {
 	}
 }
 
-func TestIsAPIKeyBearer(t *testing.T) {
+func TestIsBearerAuth(t *testing.T) {
 	cases := []struct {
-		name    string
-		header  string
-		want    bool
+		name   string
+		header string
+		want   bool
 	}{
 		{"empty", "", false},
-		{"jwt", "Bearer eyJhbGc...", false},
+		{"jwt", "Bearer eyJhbGc...", true},
 		{"api-key proper", "Bearer sam_live_abcdef1234567890", true},
-		{"api-key just prefix no body", "Bearer sam_live_", false},
+		{"bearer scheme but empty token", "Bearer ", false},
+		{"bearer scheme but whitespace token", "Bearer   ", false},
 		{"wrong scheme", "Basic sam_live_abc", false},
 		{"no scheme", "sam_live_abc", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := isAPIKeyBearer(c.header); got != c.want {
-				t.Errorf("isAPIKeyBearer(%q) = %v, want %v", c.header, got, c.want)
+			if got := isBearerAuth(c.header); got != c.want {
+				t.Errorf("isBearerAuth(%q) = %v, want %v", c.header, got, c.want)
 			}
 		})
 	}
