@@ -208,3 +208,36 @@
 - 2026-06-07 — SPINE tie in
 - 2026-06-07 — SIGMA tie in
 - 2026-06-07 — VISION tie in
+
+### HEKLA — Crisis & Incident Management
+> Vector's crisis line. Named after Hekla, the Icelandic volcano that gives barely half an hour of warning before it erupts and was known for centuries as the gateway to hell — the module is about the discipline that turns those thirty minutes into a controlled response rather than a panic. The thesis: an incident is not a separate universe of work, it is a severity-driven lifecycle over the same artefact substrate Vector already owns, wired to the same identity, audit trail, and notification spine. Every standalone incident tool ends at "resolved" and hands you a document; Vector can carry the incident all the way through to the corrective actions in the backlog and the release that ships them. Frameworks: ITIL 4 (incident + major incident management), ISO 27001 Annex A 5.24–5.26, SOC 2 CC7.3–CC7.5. Sibling to SPINE (Governance) and COMBAT (Red Team); candidate pillar under the Service Pillars architecture (PLA065).
+
+**What it is:**
+- 2026-08-20 — Crisis and incident management for the Vector suite: declaration and severity classification, a live command centre for the response, an immutable chronology, and a blameless post-incident loop that closes onto tracked corrective actions in the delivery backlog.
+
+**Core capabilities:**
+- 2026-08-20 — Incident declaration + severity classification — SEV1–SEV4 with declared criteria per level, auto-derived initial severity from the triggering signal, and an audited re-classification trail (upgrade/downgrade with reason and actor).
+- 2026-08-20 — War room / command centre — real-time collaborative surface for the active incident: live participant roster, current status, working hypothesis, actions in flight, and the running timeline in one view.
+- 2026-08-20 — Incident commander role assignment + escalation chains — named IC (plus comms lead, ops lead, scribe), explicit handover, and time-based/severity-based escalation ladders with on-call rota resolution.
+- 2026-08-20 — Runbook management + execution tracking — versioned runbooks as typed artefacts; an incident instantiates a runbook and tracks each step's owner, state, and elapsed time, so "what have we actually tried" is a query, not a scroll-back.
+- 2026-08-20 — Timeline / chronology — append-only, immutable audit trail of every declaration, severity change, action, decision, and communication during the incident; the regulator-facing and postmortem-facing record, written as events, never editable after the fact.
+- 2026-08-20 — Stakeholder communication templates — internal (exec brief, engineering update) and customer-facing (status page, holding statement, RCA summary) templates with severity-appropriate cadence, approval step, and a log of what went out when and to whom.
+- 2026-08-20 — Post-incident review / blameless retrospective workflow — structured PIR: contributing factors, detection and response timings (TTD/TTA/TTR), what went well, what was luck, and lessons — blameless by design, with the timeline auto-seeding the narrative.
+- 2026-08-20 — Corrective action tracking — PIR actions become real Vector artefacts (work items) with owner, due date, and severity linkage, so remediation lands in a sprint and its completion is provable — not a bullet in a document nobody reopens.
+- 2026-08-20 — SLA/SLO monitoring + breach alerting — service objectives and error budgets tracked against the incident record; breach and near-breach alerting, contractual SLA clocks per customer tier, and burn-rate visibility during the response.
+- 2026-08-20 — Integration points — PagerDuty and OpsGenie (alert ingest, on-call rota, ack/escalate round-trip), Slack and Teams (channel-per-incident, bidirectional timeline sync so chat activity lands in the immutable record).
+- 2026-08-20 — Regulatory incident reporting — mandatory-timeline reporting for regulated sectors (finance and defence notification windows), with per-regime templates, countdown clocks from declaration, and an evidence pack assembled from the timeline.
+
+**Market angle:**
+- 2026-08-20 — Defence, financial services, critical national infrastructure, and healthcare — the sectors where an incident carries a statutory reporting clock and an auditor asks for the chronology afterwards. ITIL-aligned so an existing service-management shop recognises the vocabulary on day one; ISO 27001 A.5.24–A.5.26 (incident planning, assessment/decision, response) and SOC 2 CC7.3–CC7.5 (evaluate, respond, recover) map onto the module's artefacts directly, which is procurement evidence rather than marketing copy. Matches the defence/finance buyer profile in `context/USER.md`.
+
+**Architecture:**
+- 2026-08-20 — A natural pillar under the Service Pillars architecture (PLA065) — one named contract, sole-writer ownership of its incident/timeline/runbook tables, identity/tenant/scope resolved solely by the Sentinel clamp like every other pillar. No parallel auth, no second tenancy model.
+- 2026-08-20 — Shares auth (Sentinel), the audit trail, and notifications wholesale; the immutable timeline is a natural consumer of the deep logging and `error_events` infrastructure already in place, and the transactional-outbox pattern (`docs/c_c_outbox_pattern.md`) is the right shape for chat/alert-integration fan-out.
+
+**Competitive edge:**
+- 2026-08-20 — PagerDuty, FireHydrant, incident.io, and Rootly are standalone — they run the incident well and then hand the fix to a different tool, breaking the chain exactly where accountability starts. Vector ties the incident to the work that caused it and the work that fixes it: the offending change, the corrective actions, the sprint they land in, and the release that ships them — one closed loop, one identity model, one audit log. That is the asymmetry no standalone incident tool can reach without becoming a delivery platform.
+
+- 2026-08-20 — VECTOR tie in
+- 2026-08-20 — SPINE tie in
+- 2026-08-20 — COMBAT tie in
